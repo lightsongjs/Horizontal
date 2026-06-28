@@ -13,7 +13,14 @@ import {
 } from 'react'
 import { repository } from './data'
 import type { NewIssue, NewProject } from './data/repository'
-import { computeLayers, deriveState, indexById, projectCompletion, unblocks } from './lib/engine'
+import {
+  DependencyCycleError,
+  computeLayers,
+  deriveState,
+  indexById,
+  projectCompletion,
+  unblocks,
+} from './lib/engine'
 import type { Issue, IssueState, Layers, Project, Theme, Wave } from './lib/types'
 
 interface DepFlowState {
@@ -238,7 +245,11 @@ export function DepFlowProvider({ children }: { children: ReactNode }) {
     try {
       return computeLayers(issues, activeWave)
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      if (e instanceof DependencyCycleError) {
+        setError(`Ciclu de dependențe: ${e.cycle.join(' → ')}. Scoate una dintre legături.`)
+      } else {
+        setError(e instanceof Error ? e.message : String(e))
+      }
       return {}
     }
   }, [issues, activeWave])

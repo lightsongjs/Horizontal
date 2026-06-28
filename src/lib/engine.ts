@@ -87,3 +87,38 @@ export function layerKeys(layers: Layers): number[] {
     .map(Number)
     .sort((a, b) => a - b)
 }
+
+/**
+ * Returns a dependency cycle as an ordered id path (e.g. [A, B, A]) if one
+ * exists in the full graph (all waves), or null. Used to prevent creating
+ * cycles before they break the layer view.
+ */
+export function detectCycle(issues: Issue[]): string[] | null {
+  const byId = indexById(issues)
+  const GRAY = 1
+  const BLACK = 2
+  const color: Record<string, number> = {}
+  const stack: string[] = []
+  let found: string[] | null = null
+
+  const dfs = (id: string): boolean => {
+    color[id] = GRAY
+    stack.push(id)
+    for (const d of byId[id]?.deps ?? []) {
+      if (!byId[d]) continue
+      if (color[d] === GRAY) {
+        found = stack.slice(stack.indexOf(d)).concat(d)
+        return true
+      }
+      if (color[d] === undefined && dfs(d)) return true
+    }
+    color[id] = BLACK
+    stack.pop()
+    return false
+  }
+
+  for (const it of issues) {
+    if (color[it.id] === undefined && dfs(it.id)) break
+  }
+  return found
+}

@@ -3,6 +3,7 @@ import {
   DependencyCycleError,
   computeLayers,
   deriveState,
+  detectCycle,
   indexById,
   projectCompletion,
   unblocks,
@@ -59,6 +60,27 @@ describe('computeLayers', () => {
 
     const withZ = [mk('A', []), mk('B', ['A', 'Z']), mk('Z', ['A'])]
     expect(computeLayers(withZ, 1)).toEqual({ 0: ['A'], 1: ['Z'], 2: ['B'] })
+  })
+})
+
+describe('detectCycle', () => {
+  it('returns null for an acyclic graph', () => {
+    expect(detectCycle(ISSUES)).toBeNull()
+  })
+
+  it('finds a cycle across waves and returns a closed path', () => {
+    // A -> B -> C -> A (deps point "backwards"), spanning waves to prove it is
+    // not wave-scoped.
+    const cyclic = [mk('A', ['C'], 1), mk('B', ['A'], 2), mk('C', ['B'], 1)]
+    const path = detectCycle(cyclic)
+    expect(path).not.toBeNull()
+    // path is a closed loop: first and last ids match
+    expect(path![0]).toBe(path![path!.length - 1])
+    expect(new Set(path)).toEqual(new Set(['A', 'B', 'C']))
+  })
+
+  it('ignores deps pointing to unknown ids', () => {
+    expect(detectCycle([mk('A', ['ghost'])])).toBeNull()
   })
 })
 

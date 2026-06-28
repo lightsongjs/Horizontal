@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import { detectCycle } from '../lib/engine'
 import { useDepFlow } from '../store'
 import { useUI } from '../ui'
+import type { Issue } from '../lib/types'
 
 const PALETTE = ['#6e7bff', '#3ecf8e', '#ffb454', '#a06eff', '#ff6b6b', '#46d1d9', '#f78fb3']
 
@@ -24,8 +26,32 @@ export function IssueForm({ issueId }: { issueId?: string }) {
   )
   const [saving, setSaving] = useState(false)
   const [confirmDel, setConfirmDel] = useState(false)
+  const [cycleMsg, setCycleMsg] = useState<string | null>(null)
 
   if (!project) return null
+
+  /** Build the would-be issue graph and return a cycle path (titles) if any. */
+  const cycleAfterSave = (): string | null => {
+    const targetId = existing?.id ?? '__new__'
+    const titleOf = (id: string) =>
+      id === targetId ? title.trim() || '(nou)' : byId[id]?.title ?? id
+    const prospective: Issue[] = issues.map((i) => ({ ...i, deps: [...(i.deps ?? [])] }))
+    let target = prospective.find((i) => i.id === targetId)
+    if (!target) {
+      target = { id: targetId, projectId: project.id, title, desc: '', theme, wave, deps: [], done: false }
+      prospective.push(target)
+    }
+    target.deps = [...deps]
+    for (const p of prospective) {
+      if (p.id === targetId) continue
+      const shouldDepend = blocks.includes(p.id)
+      const has = p.deps.includes(targetId)
+      if (shouldDepend && !has) p.deps = [...p.deps, targetId]
+      if (!shouldDepend && has) p.deps = p.deps.filter((d) => d !== targetId)
+    }
+    const cycle = detectCycle(prospective)
+    return cycle ? cycle.map(titleOf).join(' → ') : null
+  }
 
   const candidates = issues.filter((i) => i.id !== issueId)
   const toggle = (set: string[], setSet: (v: string[]) => void, id: string) =>
@@ -41,6 +67,12 @@ export function IssueForm({ issueId }: { issueId?: string }) {
 
   const save = async () => {
     if (!title.trim() || saving) return
+    const cyc = cycleAfterSave()
+    if (cyc) {
+      setCycleMsg(cyc)
+      return
+    }
+    setCycleMsg(null)
     setSaving(true)
     try {
       const targetId = isEdit
@@ -172,6 +204,12 @@ export function IssueForm({ issueId }: { issueId?: string }) {
           >
             {confirmDel ? '⚠ Apasă din nou ca să confirmi ștergerea' : '🗑 Șterge tichetul'}
           </button>
+        )}
+
+        {cycleMsg && (
+          <div className="banner">
+            ⚠ Asta ar crea un ciclu de dependențe: {cycleMsg}. Scoate una dintre legături.
+          </div>
         )}
 
         <div className="save-bar">

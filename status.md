@@ -68,10 +68,10 @@ supabase/     schema.sql · seed.sql
 
 ---
 
-## Teste: 29 verzi
+## Teste: 32 verzi
 | Zonă | Nr. | Acoperă |
 |---|---|---|
-| Engine | 14 | layere/ordine, cross-wave, stări done/active/blocked, deblocări, procent, **cicluri**, scenariul „depinde de + blochează" |
+| Engine | 17 | layere/ordine, cross-wave, stări done/active/blocked, deblocări, procent, **cicluri** (computeLayers + `detectCycle` global), scenariul „depinde de + blochează" |
 | localRepository | 7 | seed, creare proiect + Val 1, CRUD valuri, ID-uri secvențiale, update, ștergere cu curățarea deps, **CRUD teme + ștergere temă curăță tichetele** |
 | supabaseRepository (mock) | 8 | maparea `details`↔`desc` + `theme`, asamblarea deps, createProject+val, coloane createIssue, înlocuire deps, **createTheme/listThemes/deleteTheme**, delete |
 
@@ -105,12 +105,15 @@ real al bazei se face manual pe app-ul deployat.
 ### Gata ✅
 - [x] **Teme** (Faza 2): tab + gestionare + bulină colorată + filtrare.
 - [x] **Graf** (Faza 2): grafic vizual de dependențe.
+- [x] **Protecție valuri orfane**: ștergerea unui val cu tichete e blocată, cu
+      mesaj („mută întâi tichetele").
+- [x] **Prevenire cicluri**: la salvarea unui tichet, dacă dependențele ar crea
+      un ciclu, salvarea e oprită și se arată traseul ciclului.
 
 ### Rafinări / nice-to-have
 - [ ] Reordonare valuri (drag & drop).
 - [ ] Editare / ștergere proiect; setare „val curent".
-- [ ] Mesaj clar în UI dacă se formează un **ciclu** de dependențe (acum apare ca
-      banner de eroare generic).
+- [ ] „Adaugă dependență tastând un nume nou" (acum se aleg tichete existente).
 - [ ] Căutare / filtrare tichete.
 - [ ] Test live automat pe Supabase (necesită deschiderea network policy spre
       `*.supabase.co` sau un mediu CI cu acces).

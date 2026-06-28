@@ -7,6 +7,7 @@ export function WaveManager() {
   const [newLabel, setNewLabel] = useState('')
   const [busy, setBusy] = useState(false)
   const [confirmDel, setConfirmDel] = useState<number | null>(null)
+  const [blocked, setBlocked] = useState<number | null>(null)
 
   const add = async () => {
     const name = newName.trim()
@@ -22,6 +23,18 @@ export function WaveManager() {
   }
 
   const count = (n: number) => issues.filter((i) => i.wave === n).length
+
+  const onDelete = (n: number) => {
+    if (count(n) > 0) {
+      // Deleting a wave with tickets would orphan them — block and explain.
+      setBlocked(n)
+      setConfirmDel(null)
+      return
+    }
+    setBlocked(null)
+    if (confirmDel === n) void deleteWave(n)
+    else setConfirmDel(n)
+  }
 
   return (
     <>
@@ -54,13 +67,19 @@ export function WaveManager() {
             <button
               className="wave-del"
               aria-label="Șterge val"
-              title={count(w.number) > 0 ? `${count(w.number)} tichete rămân fără val valid` : 'Șterge'}
-              onClick={() => (confirmDel === w.number ? void deleteWave(w.number) : setConfirmDel(w.number))}
+              title={count(w.number) > 0 ? `${count(w.number)} tichete în acest val` : 'Șterge'}
+              onClick={() => onDelete(w.number)}
             >
               {confirmDel === w.number ? 'Sigur?' : '🗑'}
             </button>
           </div>
         ))}
+        {blocked !== null && (
+          <div className="banner">
+            ⚠ Valul are {count(blocked)} tichete. Mută-le pe alt val (din editarea tichetului)
+            înainte să-l poți șterge.
+          </div>
+        )}
 
         <div className="sheet-section-t">Adaugă val nou</div>
         <div className="inline-new">
