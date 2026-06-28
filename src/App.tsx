@@ -5,7 +5,7 @@ import { DepFlowProvider, useDepFlow } from './store'
 import { UIProvider, useUI } from './ui'
 import { Login } from './components/Login'
 import { ProjectsView } from './components/ProjectsView'
-import { OrdineView } from './components/OrdineView'
+import { ProjectDetail } from './components/ProjectDetail'
 import { SheetHost } from './components/SheetHost'
 
 function Header() {
@@ -46,7 +46,7 @@ function Shell() {
             <p className="empty">Se încarcă…</p>
           </div>
         ) : project ? (
-          <OrdineView />
+          <ProjectDetail />
         ) : (
           <ProjectsView />
         )}

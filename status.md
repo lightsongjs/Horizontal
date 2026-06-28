@@ -9,11 +9,12 @@ automat **ordinea de lucru (layere)** din dependențe și organizează livrarea 
 Cele 3 unghiuri:
 - **Layer** = calculat din dependențe ("ce pot începe acum"). Read-only.
 - **Val** = sprint setat manual de tine ("ce livrez acum").
-- **Temă** = etichetă/categorie colorată. _(amânată — vezi Faza 2)_
+- **Temă** = etichetă/categorie colorată, per proiect, gestionată de tine.
 
 ---
 
-## Stadiu: Faza 1 (ecranul „Ordine") — GATA ✅
+## Stadiu: Faza 1 + Faza 2 — GATA ✅
+Ecranele Ordine, Graf și Teme sunt toate funcționale.
 
 ### Model de date (varianta agreată)
 - **Tichet (issue)**: titlu, descriere, val, gata/nu, dependențe. **Fără tip,
@@ -29,12 +30,22 @@ Cele 3 unghiuri:
 - Login simplu (un singur user, creat manual în Supabase). Fără signup, fără
   logout (sesiunea persistă).
 - Listă proiecte + creare proiect.
+- Detaliu proiect cu 3 tab-uri: **Ordine / Graf / Teme**.
 - **Ordine**: selector de valuri (cu ⚙ pentru gestionare) + layere calculate
   automat, cu badge „Acum / Începe aici" pe layer 0.
-- Tichete: adaugă / editează / șterge / bifează gata / mută pe alt val.
+- **Graf**: graficul de dependențe (noduri stânga→dreapta pe adâncime, colorate
+  după temă, cu stările done/active/blocked), scroll orizontal.
+- **Teme**: per proiect, gestionare completă (adaugă/redenumește/recolorează/
+  șterge), filtrare pe temă, bulină colorată pe tichete. La ștergerea unei teme,
+  tichetele rămân fără temă (nu se șterg).
+- Tichete: adaugă / editează / șterge / bifează gata / mută pe alt val / temă.
 - Dependențe în ambele direcții; fișa unui tichet arată „Depinde de" (toate
   valurile, cu tag de val) + „Deblochează".
 - Persistență reală în Supabase (Postgres) + fallback localStorage pentru dev.
+
+### ⚠️ Migrare necesară pentru Teme (dacă ai rulat deja schema veche)
+Rulează o dată în SQL Editor: `supabase/migration-themes.sql` (adaugă tabela
+`themes` + coloana `issues.theme`). Pe proiecte noi, `schema.sql` deja le conține.
 
 ---
 
@@ -57,12 +68,12 @@ supabase/     schema.sql · seed.sql
 
 ---
 
-## Teste: 25 verzi
+## Teste: 29 verzi
 | Zonă | Nr. | Acoperă |
 |---|---|---|
 | Engine | 14 | layere/ordine, cross-wave, stări done/active/blocked, deblocări, procent, **cicluri**, scenariul „depinde de + blochează" |
-| localRepository | 6 | seed, creare proiect + Val 1, CRUD valuri, ID-uri secvențiale, update, ștergere cu curățarea deps |
-| supabaseRepository (mock) | 5 | maparea `details`↔`desc`, asamblarea deps, createProject+val, coloane createIssue, înlocuire deps, delete |
+| localRepository | 7 | seed, creare proiect + Val 1, CRUD valuri, ID-uri secvențiale, update, ștergere cu curățarea deps, **CRUD teme + ștergere temă curăță tichetele** |
+| supabaseRepository (mock) | 8 | maparea `details`↔`desc` + `theme`, asamblarea deps, createProject+val, coloane createIssue, înlocuire deps, **createTheme/listThemes/deleteTheme**, delete |
 
 Plus: typecheck curat + verificări Playwright e2e pe backend local (creare/editare
 tichet, mutare val, adăugare val, scenariul depinde-de+blochează).
@@ -91,10 +102,9 @@ real al bazei se face manual pe app-ul deployat.
 
 ## Ce mai trebuie făcut (backlog)
 
-### Faza 2
-- [ ] **Teme**: tab Teme + gestionare teme (creare/redenumire/recolorare/ștergere)
-      + bulina colorată pe tichete + filtrare pe temă.
-- [ ] **Graf**: graficul vizual de dependențe (noduri + săgeți, scroll orizontal).
+### Gata ✅
+- [x] **Teme** (Faza 2): tab + gestionare + bulină colorată + filtrare.
+- [x] **Graf** (Faza 2): grafic vizual de dependențe.
 
 ### Rafinări / nice-to-have
 - [ ] Reordonare valuri (drag & drop).

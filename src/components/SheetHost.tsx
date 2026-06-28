@@ -4,11 +4,16 @@ import { IssueSheet } from './IssueSheet'
 import { IssueForm } from './IssueForm'
 import { ProjectForm } from './ProjectForm'
 import { WaveManager } from './WaveManager'
+import { ThemeManager } from './ThemeManager'
 
 export function SheetHost() {
   const { sheet, closeSheet } = useUI()
   const open = sheet.kind !== 'none'
-  const tall = sheet.kind === 'issue-form' || sheet.kind === 'project-form' || sheet.kind === 'wave-manage'
+  const tall =
+    sheet.kind === 'issue-form' ||
+    sheet.kind === 'project-form' ||
+    sheet.kind === 'wave-manage' ||
+    sheet.kind === 'theme-manage'
 
   useEffect(() => {
     if (!open) return
@@ -26,6 +31,7 @@ export function SheetHost() {
         {sheet.kind === 'issue-form' && <IssueForm issueId={sheet.issueId} />}
         {sheet.kind === 'project-form' && <ProjectForm />}
         {sheet.kind === 'wave-manage' && <WaveManager />}
+        {sheet.kind === 'theme-manage' && <ThemeManager />}
       </div>
     </>
   )

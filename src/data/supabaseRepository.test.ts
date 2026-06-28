@@ -70,12 +70,12 @@ const { fakeDb } = vi.hoisted(() => {
     }
   }
   class FakeDB {
-    tables: Record<string, Row[]> = { projects: [], waves: [], issues: [], dependencies: [] }
+    tables: Record<string, Row[]> = { projects: [], waves: [], themes: [], issues: [], dependencies: [] }
     from(table: string) {
       return new Query(this.tables, table)
     }
     reset() {
-      this.tables = { projects: [], waves: [], issues: [], dependencies: [] }
+      this.tables = { projects: [], waves: [], themes: [], issues: [], dependencies: [] }
     }
   }
   return { fakeDb: new FakeDB() }
@@ -137,6 +137,31 @@ describe('supabaseRepository', () => {
     expect(fakeDb.tables.dependencies.filter((d) => d.issue_id === 'P-02')).toEqual([
       { issue_id: 'P-02', depends_on_id: 'P-03' },
     ])
+  })
+
+  it('createTheme inserts a slugged key and listThemes maps project_id', async () => {
+    fakeDb.tables.projects.push({ id: 'p', prefix: 'P', current_wave: 1, name: 'x', description: '', accent: '#fff' })
+    const repo = createSupabaseRepository()
+    const t = await repo.createTheme('p', 'Auth Stuff', '#6e7bff')
+    expect(t).toEqual({ projectId: 'p', key: 'auth-stuff', name: 'Auth Stuff', color: '#6e7bff' })
+    expect(fakeDb.tables.themes[0]).toMatchObject({ project_id: 'p', key: 'auth-stuff', name: 'Auth Stuff' })
+    expect(await repo.listThemes('p')).toEqual([{ projectId: 'p', key: 'auth-stuff', name: 'Auth Stuff', color: '#6e7bff' }])
+  })
+
+  it('deleteTheme clears the theme from issues, then removes the theme row', async () => {
+    fakeDb.tables.themes.push({ project_id: 'p', key: 'auth', name: 'Auth', color: '#6e7bff' })
+    fakeDb.tables.issues.push({ id: 'P-01', project_id: 'p', title: 'A', details: '', theme: 'auth', wave: 1, done: false })
+    const repo = createSupabaseRepository()
+    await repo.deleteTheme('p', 'auth')
+    expect(fakeDb.tables.themes).toHaveLength(0)
+    expect(fakeDb.tables.issues[0].theme).toBeNull()
+  })
+
+  it('listIssues maps the theme column', async () => {
+    fakeDb.tables.issues.push({ id: 'P-01', project_id: 'p', title: 'A', details: '', theme: 'auth', wave: 1, done: false })
+    const repo = createSupabaseRepository()
+    const issues = await repo.listIssues('p')
+    expect(issues[0].theme).toBe('auth')
   })
 
   it('deleteIssue removes the issue row', async () => {

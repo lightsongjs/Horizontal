@@ -1,15 +1,16 @@
 // localStorage-backed repository for credential-free local dev. Seeds the tiny
 // example on first run. Mirrors the Supabase backend's behavior.
 
-import { SEED_ISSUES, SEED_PROJECTS, SEED_WAVES } from '../lib/seed'
-import type { Issue, Project, Wave } from '../lib/types'
-import type { NewIssue, NewProject, Repository } from './repository'
+import { SEED_ISSUES, SEED_PROJECTS, SEED_THEMES, SEED_WAVES } from '../lib/seed'
+import type { Issue, Project, Theme, Wave } from '../lib/types'
+import { themeKey, type NewIssue, type NewProject, type Repository } from './repository'
 
 const KEY = 'depflow:v2'
 
 interface DB {
   projects: Project[]
   waves: Wave[]
+  themes: Theme[]
   issues: Issue[]
 }
 
@@ -20,11 +21,19 @@ function clone<T>(v: T): T {
 function load(): DB {
   try {
     const raw = localStorage.getItem(KEY)
-    if (raw) return JSON.parse(raw) as DB
+    if (raw) {
+      const db = JSON.parse(raw) as Partial<DB>
+      return { projects: db.projects ?? [], waves: db.waves ?? [], themes: db.themes ?? [], issues: db.issues ?? [] }
+    }
   } catch {
     /* fall through to seed */
   }
-  const seeded: DB = { projects: clone(SEED_PROJECTS), waves: clone(SEED_WAVES), issues: clone(SEED_ISSUES) }
+  const seeded: DB = {
+    projects: clone(SEED_PROJECTS),
+    waves: clone(SEED_WAVES),
+    themes: clone(SEED_THEMES),
+    issues: clone(SEED_ISSUES),
+  }
   save(seeded)
   return seeded
 }
@@ -100,6 +109,37 @@ export function createLocalRepository(): Repository {
       save(db)
     },
 
+    async listThemes(projectId: string) {
+      return clone(load().themes.filter((t) => t.projectId === projectId))
+    },
+
+    async createTheme(projectId: string, name: string, color: string) {
+      const db = load()
+      const existing = db.themes.filter((t) => t.projectId === projectId).map((t) => t.key)
+      const theme: Theme = { projectId, key: themeKey(name, existing), name, color }
+      db.themes.push(theme)
+      save(db)
+      return clone(theme)
+    },
+
+    async updateTheme(projectId, key, patch) {
+      const db = load()
+      const theme = db.themes.find((t) => t.projectId === projectId && t.key === key)
+      if (!theme) throw new Error(`Unknown theme ${projectId}/${key}`)
+      Object.assign(theme, patch)
+      save(db)
+      return clone(theme)
+    },
+
+    async deleteTheme(projectId, key) {
+      const db = load()
+      db.themes = db.themes.filter((t) => !(t.projectId === projectId && t.key === key))
+      db.issues = db.issues.map((i) =>
+        i.projectId === projectId && i.theme === key ? { ...i, theme: '' } : i,
+      )
+      save(db)
+    },
+
     async listIssues(projectId: string) {
       return clone(load().issues.filter((i) => i.projectId === projectId))
     },
@@ -113,6 +153,7 @@ export function createLocalRepository(): Repository {
         projectId: input.projectId,
         title: input.title,
         desc: input.desc ?? '',
+        theme: input.theme ?? '',
         wave: input.wave ?? project.currentWave,
         deps: input.deps ?? [],
         done: false,

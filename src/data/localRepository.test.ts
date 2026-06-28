@@ -70,6 +70,25 @@ describe('localRepository', () => {
     expect(saved).toMatchObject({ title: 'A2', done: true, wave: 2 })
   })
 
+  it('theme CRUD: create slugs the key, assign to an issue, delete clears it', async () => {
+    const repo = createLocalRepository()
+    await repo.createProject({ name: 'T', description: '', prefix: 'TST' })
+
+    const theme = await repo.createTheme('tst', 'Auth Stuff', '#6e7bff')
+    expect(theme.key).toBe('auth-stuff')
+    expect(await repo.listThemes('tst')).toEqual([theme])
+
+    await repo.updateTheme('tst', 'auth-stuff', { name: 'Auth', color: '#fff' })
+    expect((await repo.listThemes('tst'))[0]).toMatchObject({ name: 'Auth', color: '#fff' })
+
+    const issue = await repo.createIssue({ projectId: 'tst', title: 'A', theme: 'auth-stuff' })
+    expect(issue.theme).toBe('auth-stuff')
+
+    await repo.deleteTheme('tst', 'auth-stuff')
+    expect(await repo.listThemes('tst')).toEqual([])
+    expect((await repo.listIssues('tst'))[0].theme).toBe('') // cleared from the issue
+  })
+
   it('deleteIssue removes it and strips it from other issues deps', async () => {
     const repo = createLocalRepository()
     await repo.createProject({ name: 'T', description: '', prefix: 'TST' })

@@ -10,7 +10,7 @@ export function OrdineView() {
   const keys = layerKeys(layers)
 
   return (
-    <div className="view">
+    <div className="panel">
       <div className="wave-sel">
         {waves.map((w) => {
           const cnt = issues.filter((i) => i.wave === w.number).length

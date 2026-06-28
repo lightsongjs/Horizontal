@@ -1,6 +1,6 @@
-// App store: loads projects, and the selected project's waves + issues through
-// the repository. Exposes mutations with optimistic updates and memoized
-// derived data (layers, states, completion).
+// App store: loads projects, and the selected project's waves + themes +
+// issues through the repository. Exposes mutations with optimistic updates and
+// memoized derived data (layers, states, completion).
 
 import {
   createContext,
@@ -14,7 +14,7 @@ import {
 import { repository } from './data'
 import type { NewIssue, NewProject } from './data/repository'
 import { computeLayers, deriveState, indexById, projectCompletion, unblocks } from './lib/engine'
-import type { Issue, IssueState, Layers, Project, Wave } from './lib/types'
+import type { Issue, IssueState, Layers, Project, Theme, Wave } from './lib/types'
 
 interface DepFlowState {
   loading: boolean
@@ -22,6 +22,7 @@ interface DepFlowState {
   projects: Project[]
   project: Project | null
   waves: Wave[]
+  themes: Theme[]
   issues: Issue[]
   activeWave: number
 
@@ -32,6 +33,10 @@ interface DepFlowState {
   createWave(name: string, label?: string): Promise<void>
   renameWave(number: number, name: string, label: string): Promise<void>
   deleteWave(number: number): Promise<void>
+
+  createTheme(name: string, color: string): Promise<Theme | null>
+  updateTheme(key: string, patch: Partial<Pick<Theme, 'name' | 'color'>>): Promise<void>
+  deleteTheme(key: string): Promise<void>
 
   toggleDone(id: string): Promise<void>
   createIssue(input: NewIssue): Promise<Issue>
@@ -44,6 +49,7 @@ interface DepFlowState {
   stateOf(id: string): IssueState
   unblockedBy(id: string): Issue[]
   completion(projectId: string): number
+  themeOf(key: string): Theme | undefined
 }
 
 const Ctx = createContext<DepFlowState | null>(null)
@@ -53,6 +59,7 @@ export function DepFlowProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const [projects, setProjects] = useState<Project[]>([])
   const [allWaves, setAllWaves] = useState<Wave[]>([])
+  const [allThemes, setAllThemes] = useState<Theme[]>([])
   const [allIssues, setAllIssues] = useState<Issue[]>([])
   const [projectId, setProjectId] = useState<string | null>(null)
   const [activeWave, setActiveWave] = useState(1)
@@ -80,6 +87,7 @@ export function DepFlowProvider({ children }: { children: ReactNode }) {
     () => allWaves.filter((w) => w.projectId === projectId).sort((a, b) => a.position - b.position),
     [allWaves, projectId],
   )
+  const themes = useMemo(() => allThemes.filter((t) => t.projectId === projectId), [allThemes, projectId])
 
   const selectProject = useCallback(
     (id: string | null) => {
@@ -87,11 +95,11 @@ export function DepFlowProvider({ children }: { children: ReactNode }) {
       if (!id) return
       const proj = projects.find((p) => p.id === id)
       setActiveWave(proj?.currentWave ?? 1)
-      Promise.all([repository.listWaves(id), repository.listIssues(id)])
-        .then(([w, loaded]) => {
+      Promise.all([repository.listWaves(id), repository.listThemes(id), repository.listIssues(id)])
+        .then(([w, t, loaded]) => {
           setAllWaves((prev) => [...prev.filter((x) => x.projectId !== id), ...w])
+          setAllThemes((prev) => [...prev.filter((x) => x.projectId !== id), ...t])
           setAllIssues((prev) => [...prev.filter((i) => i.projectId !== id), ...loaded])
-          // Snap active wave to the first existing wave if currentWave is gone.
           if (w.length && !w.some((x) => x.number === (proj?.currentWave ?? 1))) {
             setActiveWave(w[0].number)
           }
@@ -149,6 +157,37 @@ export function DepFlowProvider({ children }: { children: ReactNode }) {
       })
     },
     [projectId, allWaves],
+  )
+
+  const createTheme = useCallback(
+    async (name: string, color: string) => {
+      if (!projectId) return null
+      const theme = await repository.createTheme(projectId, name, color)
+      setAllThemes((prev) => [...prev, theme])
+      return theme
+    },
+    [projectId],
+  )
+
+  const updateTheme = useCallback(
+    async (key: string, patch: Partial<Pick<Theme, 'name' | 'color'>>) => {
+      if (!projectId) return
+      const updated = await repository.updateTheme(projectId, key, patch)
+      setAllThemes((prev) => prev.map((t) => (t.projectId === projectId && t.key === key ? updated : t)))
+    },
+    [projectId],
+  )
+
+  const deleteTheme = useCallback(
+    async (key: string) => {
+      if (!projectId) return
+      await repository.deleteTheme(projectId, key)
+      setAllThemes((prev) => prev.filter((t) => !(t.projectId === projectId && t.key === key)))
+      setAllIssues((prev) =>
+        prev.map((i) => (i.projectId === projectId && i.theme === key ? { ...i, theme: '' } : i)),
+      )
+    },
+    [projectId],
   )
 
   const toggleDone = useCallback(
@@ -210,6 +249,7 @@ export function DepFlowProvider({ children }: { children: ReactNode }) {
     (pid: string) => projectCompletion(allIssues.filter((i) => i.projectId === pid)),
     [allIssues],
   )
+  const themeOf = useCallback((key: string) => themes.find((t) => t.key === key), [themes])
 
   const value: DepFlowState = {
     loading,
@@ -217,6 +257,7 @@ export function DepFlowProvider({ children }: { children: ReactNode }) {
     projects,
     project,
     waves,
+    themes,
     issues,
     activeWave,
     selectProject,
@@ -225,6 +266,9 @@ export function DepFlowProvider({ children }: { children: ReactNode }) {
     createWave,
     renameWave,
     deleteWave,
+    createTheme,
+    updateTheme,
+    deleteTheme,
     toggleDone,
     createIssue,
     updateIssue,
@@ -234,6 +278,7 @@ export function DepFlowProvider({ children }: { children: ReactNode }) {
     stateOf,
     unblockedBy,
     completion,
+    themeOf,
   }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

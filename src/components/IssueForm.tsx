@@ -2,17 +2,22 @@ import { useState } from 'react'
 import { useDepFlow } from '../store'
 import { useUI } from '../ui'
 
+const PALETTE = ['#6e7bff', '#3ecf8e', '#ffb454', '#a06eff', '#ff6b6b', '#46d1d9', '#f78fb3']
+
 /** Create (no issueId) or edit (issueId given) an issue, with delete. */
 export function IssueForm({ issueId }: { issueId?: string }) {
-  const { project, waves, issues, byId, activeWave, createIssue, updateIssue, deleteIssue } = useDepFlow()
+  const { project, waves, themes, issues, byId, activeWave, createIssue, updateIssue, deleteIssue, createTheme } =
+    useDepFlow()
   const { closeSheet } = useUI()
   const existing = issueId ? byId[issueId] : undefined
   const isEdit = !!existing
 
   const [title, setTitle] = useState(existing?.title ?? '')
   const [desc, setDesc] = useState(existing?.desc ?? '')
+  const [theme, setTheme] = useState<string>(existing?.theme ?? '')
   const [wave, setWave] = useState<number>(existing?.wave ?? activeWave)
   const [deps, setDeps] = useState<string[]>(existing?.deps ?? [])
+  const [newTheme, setNewTheme] = useState('')
   // "blochează" = issues that depend on THIS one (reverse edges).
   const [blocks, setBlocks] = useState<string[]>(
     existing ? issues.filter((i) => i.deps?.includes(existing.id)).map((i) => i.id) : [],
@@ -26,13 +31,21 @@ export function IssueForm({ issueId }: { issueId?: string }) {
   const toggle = (set: string[], setSet: (v: string[]) => void, id: string) =>
     setSet(set.includes(id) ? set.filter((x) => x !== id) : [...set, id])
 
+  const addTheme = async () => {
+    const name = newTheme.trim()
+    if (!name) return
+    const created = await createTheme(name, PALETTE[themes.length % PALETTE.length])
+    if (created) setTheme(created.key)
+    setNewTheme('')
+  }
+
   const save = async () => {
     if (!title.trim() || saving) return
     setSaving(true)
     try {
       const targetId = isEdit
-        ? (await updateIssue(existing!.id, { title: title.trim(), desc: desc.trim(), wave, deps }), existing!.id)
-        : (await createIssue({ projectId: project.id, title: title.trim(), desc: desc.trim(), wave, deps })).id
+        ? (await updateIssue(existing!.id, { title: title.trim(), desc: desc.trim(), theme, wave, deps }), existing!.id)
+        : (await createIssue({ projectId: project.id, title: title.trim(), desc: desc.trim(), theme, wave, deps })).id
 
       // Apply "blochează": ensure each selected issue B depends on targetId,
       // and remove targetId from any that were deselected.
@@ -99,6 +112,29 @@ export function IssueForm({ issueId }: { issueId?: string }) {
         <div className="fld">
           <label>Detalii / descriere</label>
           <textarea value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Cerințe, notițe…" />
+        </div>
+
+        <div className="sheet-section-t">Temă</div>
+        <div className="chips" style={{ margin: '0 0 4px' }}>
+          <button className={`chip ${theme === '' ? 'on' : ''}`} onClick={() => setTheme('')}>
+            Fără
+          </button>
+          {themes.map((t) => (
+            <button key={t.key} className={`chip ${theme === t.key ? 'on' : ''}`} onClick={() => setTheme(t.key)}>
+              <span className="cdot" style={{ background: t.color }} />
+              {t.name}
+            </button>
+          ))}
+        </div>
+        <div className="inline-new">
+          <input
+            value={newTheme}
+            onChange={(e) => setNewTheme(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && addTheme()}
+            placeholder="+ Temă nouă"
+            autoComplete="off"
+          />
+          <button onClick={addTheme}>OK</button>
         </div>
 
         <div className="sheet-section-t">Val (sprint)</div>

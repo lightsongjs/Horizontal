@@ -11,7 +11,7 @@ import type { Issue } from './types'
 
 // Minimal issue factory for tests.
 function mk(id: string, deps: string[], wave = 1, done = false): Issue {
-  return { id, projectId: 'p', title: id, desc: '', wave, deps, done }
+  return { id, projectId: 'p', title: id, desc: '', theme: '', wave, deps, done }
 }
 
 // A small graph spanning two waves, exercising cross-wave deps.

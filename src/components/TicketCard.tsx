@@ -8,12 +8,13 @@ interface Props {
 }
 
 export function TicketCard({ id, contextWave }: Props) {
-  const { byId, stateOf, toggleDone } = useDepFlow()
+  const { byId, stateOf, toggleDone, themeOf } = useDepFlow()
   const { openIssue } = useUI()
   const it = byId[id]
   if (!it) return null
 
   const state = stateOf(id)
+  const theme = it.theme ? themeOf(it.theme) : undefined
   const deps = it.deps ?? []
   const sameWave = deps.filter((d) => byId[d]?.wave === contextWave)
   const crossWave = deps.filter((d) => byId[d] && byId[d].wave !== contextWave)
@@ -34,7 +35,9 @@ export function TicketCard({ id, contextWave }: Props) {
       </span>
       <span className="tk-body">
         <span className="tk-top">
+          {theme && <span className="theme-dot" style={{ background: theme.color }} />}
           <span className="tk-id">{id}</span>
+          {theme && <span className="tk-theme">{theme.name}</span>}
         </span>
         <h5>{it.title}</h5>
         {(sameWave.length > 0 || crossWave.length > 0) && (

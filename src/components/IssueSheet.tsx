@@ -2,19 +2,29 @@ import { useDepFlow } from '../store'
 import { useUI } from '../ui'
 
 export function IssueSheet({ issueId }: { issueId: string }) {
-  const { byId, waves, toggleDone, unblockedBy } = useDepFlow()
+  const { byId, waves, toggleDone, unblockedBy, themeOf } = useDepFlow()
   const { openIssue, openEditIssue } = useUI()
   const it = byId[issueId]
   if (!it) return null
 
   const waveName = (n: number) => waves.find((w) => w.number === n)?.name ?? `Val ${n}`
+  const theme = it.theme ? themeOf(it.theme) : undefined
   const deps = it.deps ?? []
   const unblocks = unblockedBy(issueId)
 
   return (
     <>
       <div className="sheet-head">
-        <div className="eyebrow">{waveName(it.wave)}</div>
+        <div className="eyebrow">
+          {waveName(it.wave)}
+          {theme && (
+            <>
+              {' · '}
+              <span className="cdot" style={{ background: theme.color }} />
+              {theme.name}
+            </>
+          )}
+        </div>
         <h2>{it.title}</h2>
         {it.desc && <p>{it.desc}</p>}
       </div>

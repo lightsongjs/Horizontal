@@ -1,9 +1,9 @@
 // Supabase-backed repository. Maps the normalized DB (issues + dependencies
-// edge table, per-project waves) to/from the app's models.
+// edge table, per-project waves and themes) to/from the app's models.
 
 import { requireSupabase } from '../lib/supabase'
-import type { Issue, Project, Wave } from '../lib/types'
-import type { NewIssue, NewProject, Repository } from './repository'
+import type { Issue, Project, Theme, Wave } from '../lib/types'
+import { themeKey, type NewIssue, type NewProject, type Repository } from './repository'
 
 interface IssueRow {
   id: string
@@ -11,6 +11,7 @@ interface IssueRow {
   title: string
   // DB column is `details` (avoids the reserved word `desc`).
   details: string
+  theme: string | null
   wave: number
   done: boolean
 }
@@ -21,6 +22,7 @@ function rowToIssue(row: IssueRow, depsByIssue: Record<string, string[]>): Issue
     projectId: row.project_id,
     title: row.title,
     desc: row.details,
+    theme: row.theme ?? '',
     wave: row.wave,
     deps: depsByIssue[row.id] ?? [],
     done: row.done,
@@ -38,14 +40,11 @@ function nextIssueId(existing: string[], prefix: string): string {
 export function createSupabaseRepository(): Repository {
   const db = requireSupabase()
 
-  async function loadDeps(projectId: string): Promise<Record<string, string[]>> {
-    // Only edges whose dependent issue belongs to this project (deps may point
-    // cross-project in theory, but ids are project-scoped here).
+  async function loadDeps(): Promise<Record<string, string[]>> {
     const { data, error } = await db.from('dependencies').select('issue_id, depends_on_id')
     if (error) throw error
     const map: Record<string, string[]> = {}
     for (const r of data ?? []) (map[r.issue_id] ??= []).push(r.depends_on_id)
-    void projectId
     return map
   }
 
@@ -89,11 +88,7 @@ export function createSupabaseRepository(): Repository {
     },
 
     async listWaves(projectId: string) {
-      const { data, error } = await db
-        .from('waves')
-        .select('*')
-        .eq('project_id', projectId)
-        .order('position')
+      const { data, error } = await db.from('waves').select('*').eq('project_id', projectId).order('position')
       if (error) throw error
       return (data ?? []).map((w) => ({
         projectId: w.project_id,
@@ -105,17 +100,12 @@ export function createSupabaseRepository(): Repository {
     },
 
     async createWave(projectId: string, name: string, label = '') {
-      const { data: rows, error: exErr } = await db
-        .from('waves')
-        .select('number, position')
-        .eq('project_id', projectId)
+      const { data: rows, error: exErr } = await db.from('waves').select('number, position').eq('project_id', projectId)
       if (exErr) throw exErr
       const number = (rows ?? []).reduce((m, w) => Math.max(m, w.number), 0) + 1
       const position = (rows ?? []).reduce((m, w) => Math.max(m, w.position), -1) + 1
       const wave: Wave = { projectId, number, name, label, position }
-      const { error } = await db
-        .from('waves')
-        .insert({ project_id: projectId, number, name, label, position })
+      const { error } = await db.from('waves').insert({ project_id: projectId, number, name, label, position })
       if (error) throw error
       return wave
     },
@@ -133,38 +123,68 @@ export function createSupabaseRepository(): Repository {
         .select('*')
         .single()
       if (error) throw error
-      return {
-        projectId: data.project_id,
-        number: data.number,
-        name: data.name,
-        label: data.label,
-        position: data.position,
-      }
+      return { projectId: data.project_id, number: data.number, name: data.name, label: data.label, position: data.position }
     },
 
     async deleteWave(projectId, number) {
-      const { error } = await db
-        .from('waves')
-        .delete()
+      const { error } = await db.from('waves').delete().eq('project_id', projectId).eq('number', number)
+      if (error) throw error
+    },
+
+    async listThemes(projectId: string) {
+      const { data, error } = await db.from('themes').select('*').eq('project_id', projectId).order('name')
+      if (error) throw error
+      return (data ?? []).map((t) => ({ projectId: t.project_id, key: t.key, name: t.name, color: t.color }))
+    },
+
+    async createTheme(projectId: string, name: string, color: string) {
+      const { data: rows, error: exErr } = await db.from('themes').select('key').eq('project_id', projectId)
+      if (exErr) throw exErr
+      const key = themeKey(name, (rows ?? []).map((r) => r.key))
+      const theme: Theme = { projectId, key, name, color }
+      const { error } = await db.from('themes').insert({ project_id: projectId, key, name, color })
+      if (error) throw error
+      return theme
+    },
+
+    async updateTheme(projectId, key, patch) {
+      const row: Record<string, unknown> = {}
+      if (patch.name !== undefined) row.name = patch.name
+      if (patch.color !== undefined) row.color = patch.color
+      const { data, error } = await db
+        .from('themes')
+        .update(row)
         .eq('project_id', projectId)
-        .eq('number', number)
+        .eq('key', key)
+        .select('*')
+        .single()
+      if (error) throw error
+      return { projectId: data.project_id, key: data.key, name: data.name, color: data.color }
+    },
+
+    async deleteTheme(projectId, key) {
+      // Clear the theme from any issue first, then drop the theme row.
+      const { error: clrErr } = await db
+        .from('issues')
+        .update({ theme: null })
+        .eq('project_id', projectId)
+        .eq('theme', key)
+      if (clrErr) throw clrErr
+      const { error } = await db.from('themes').delete().eq('project_id', projectId).eq('key', key)
       if (error) throw error
     },
 
     async listIssues(projectId: string) {
       const [{ data, error }, deps] = await Promise.all([
         db.from('issues').select('*').eq('project_id', projectId).order('id'),
-        loadDeps(projectId),
+        loadDeps(),
       ])
       if (error) throw error
       return (data as IssueRow[]).map((row) => rowToIssue(row, deps))
     },
 
     async createIssue(input: NewIssue) {
-      const { data: existing, error: exErr } = await db
-        .from('issues')
-        .select('id')
-        .eq('project_id', input.projectId)
+      const { data: existing, error: exErr } = await db.from('issues').select('id').eq('project_id', input.projectId)
       if (exErr) throw exErr
       const { data: proj, error: pErr } = await db
         .from('projects')
@@ -179,6 +199,7 @@ export function createSupabaseRepository(): Repository {
         projectId: input.projectId,
         title: input.title,
         desc: input.desc ?? '',
+        theme: input.theme ?? '',
         wave: input.wave ?? proj.current_wave,
         deps: input.deps ?? [],
         done: false,
@@ -188,6 +209,7 @@ export function createSupabaseRepository(): Repository {
         project_id: issue.projectId,
         title: issue.title,
         details: issue.desc,
+        theme: issue.theme || null,
         wave: issue.wave,
         done: issue.done,
       })
@@ -205,6 +227,7 @@ export function createSupabaseRepository(): Repository {
       const row: Record<string, unknown> = {}
       if (patch.title !== undefined) row.title = patch.title
       if (patch.desc !== undefined) row.details = patch.desc
+      if (patch.theme !== undefined) row.theme = patch.theme || null
       if (patch.wave !== undefined) row.wave = patch.wave
       if (patch.done !== undefined) row.done = patch.done
       if (Object.keys(row).length) {
@@ -223,11 +246,9 @@ export function createSupabaseRepository(): Repository {
         }
       }
 
-      const projectId = (await db.from('issues').select('project_id').eq('id', id).single()).data
-        ?.project_id as string
       const { data, error } = await db.from('issues').select('*').eq('id', id).single()
       if (error) throw error
-      const deps = await loadDeps(projectId)
+      const deps = await loadDeps()
       return rowToIssue(data as IssueRow, deps)
     },
 

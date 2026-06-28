@@ -1,6 +1,6 @@
 // Core domain types for DepFlow. See REQUIREMENTS.md §1.
-// User's model: simple issues (no type/epic/children). Waves are per-project
-// and user-managed. Themes are deferred to a later phase.
+// Simple issues (no type/epic/children). Waves and themes are per-project and
+// user-managed.
 
 /** Derived, never stored. See deriveState(). */
 export type IssueState = 'done' | 'active' | 'blocked'
@@ -27,11 +27,22 @@ export interface Wave {
   position: number
 }
 
+export interface Theme {
+  projectId: string
+  /** Stable key, unique within a project. */
+  key: string
+  name: string
+  /** Hex color. */
+  color: string
+}
+
 export interface Issue {
   id: string
   projectId: string
   title: string
   desc: string
+  /** Theme key (within the project), or '' if none. */
+  theme: string
   wave: number
   /** Issue ids this depends on. Global — cross-wave deps are allowed. */
   deps: string[]

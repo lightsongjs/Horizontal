@@ -931,6 +931,51 @@ svg.graph {
   font-size: 15px;
 }
 
+.tk-theme {
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--txt-faint);
+}
+
+/* THEME MANAGER */
+.theme-edit {
+  display: flex;
+  gap: 7px;
+  margin-bottom: 7px;
+  align-items: center;
+}
+.theme-edit input {
+  flex: 1;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 11px;
+  color: var(--txt);
+  font-family: inherit;
+  font-size: 13px;
+  min-width: 0;
+}
+.theme-edit input:focus {
+  outline: none;
+  border-color: #6e7bff88;
+}
+.swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  border: 2px solid transparent;
+}
+.swatch.on {
+  border-color: var(--txt);
+}
+.palette {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
 /* WAVE MANAGER */
 .wave-edit {
   display: flex;
