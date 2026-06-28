@@ -1,12 +1,13 @@
 import { useEffect } from 'react'
 import { useUI } from '../ui'
 import { IssueSheet } from './IssueSheet'
-import { NewIssueSheet } from './NewIssueSheet'
+import { IssueForm } from './IssueForm'
+import { ProjectForm } from './ProjectForm'
 
 export function SheetHost() {
   const { sheet, closeSheet } = useUI()
   const open = sheet.kind !== 'none'
-  const tall = sheet.kind === 'new-issue'
+  const tall = sheet.kind === 'issue-form' || sheet.kind === 'project-form'
 
   // Close on Escape.
   useEffect(() => {
@@ -22,7 +23,8 @@ export function SheetHost() {
       <div className={`sheet ${open ? 'on' : ''} ${tall ? 'tall' : ''}`} role="dialog" aria-modal="true">
         <div className="grip" />
         {sheet.kind === 'issue' && <IssueSheet issueId={sheet.issueId} />}
-        {sheet.kind === 'new-issue' && <NewIssueSheet />}
+        {sheet.kind === 'issue-form' && <IssueForm issueId={sheet.issueId} />}
+        {sheet.kind === 'project-form' && <ProjectForm />}
       </div>
     </>
   )

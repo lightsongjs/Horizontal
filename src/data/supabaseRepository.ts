@@ -198,5 +198,12 @@ export function createSupabaseRepository(): Repository {
       const deps = await loadDeps()
       return rowToIssue(data as IssueRow, deps)
     },
+
+    async deleteIssue(id: string) {
+      // FK on dependencies is ON DELETE CASCADE, so edges (both directions)
+      // are removed automatically when the issue row goes.
+      const { error } = await db.from('issues').delete().eq('id', id)
+      if (error) throw error
+    },
   }
 }

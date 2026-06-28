@@ -35,7 +35,7 @@ function Header() {
 
 function Shell() {
   const { loading, error, project } = useDepFlow()
-  const { openNewIssue } = useUI()
+  const { openNewIssue, openNewProject } = useUI()
   return (
     <div id="app">
       <Header />
@@ -51,11 +51,13 @@ function Shell() {
           <ProjectsView />
         )}
       </main>
-      {project && (
-        <button className="fab" aria-label="Adaugă tichet" onClick={openNewIssue}>
-          +
-        </button>
-      )}
+      <button
+        className="fab"
+        aria-label={project ? 'Adaugă tichet' : 'Adaugă proiect'}
+        onClick={project ? openNewIssue : openNewProject}
+      >
+        +
+      </button>
       <SheetHost />
     </div>
   )

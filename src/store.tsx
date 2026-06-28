@@ -37,6 +37,7 @@ interface DepFlowState {
   toggleDone(id: string): Promise<void>
   createIssue(input: NewIssue): Promise<Issue>
   updateIssue(id: string, patch: Partial<Issue>): Promise<void>
+  deleteIssue(id: string): Promise<void>
   createProject(input: NewProject): Promise<Project>
   createTheme(theme: Theme): Promise<Theme>
 
@@ -154,6 +155,15 @@ export function DepFlowProvider({ children }: { children: ReactNode }) {
     [upsertIssue],
   )
 
+  const deleteIssue = useCallback(async (id: string) => {
+    await repository.deleteIssue(id)
+    setAllIssues((prev) =>
+      prev
+        .filter((i) => i.id !== id)
+        .map((i) => (i.deps?.includes(id) ? { ...i, deps: i.deps.filter((d) => d !== id) } : i)),
+    )
+  }, [])
+
   const createProject = useCallback(async (input: NewProject) => {
     const created = await repository.createProject(input)
     setProjects((prev) => [...prev, created])
@@ -197,6 +207,7 @@ export function DepFlowProvider({ children }: { children: ReactNode }) {
     toggleDone,
     createIssue,
     updateIssue,
+    deleteIssue,
     createProject,
     createTheme,
     byId,

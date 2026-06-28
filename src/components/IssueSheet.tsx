@@ -3,7 +3,7 @@ import { useUI } from '../ui'
 
 export function IssueSheet({ issueId }: { issueId: string }) {
   const { byId, waves, toggleDone, unblockedBy } = useDepFlow()
-  const { openIssue } = useUI()
+  const { openIssue, openEditIssue } = useUI()
   const it = byId[issueId]
   if (!it) return null
 
@@ -22,13 +22,22 @@ export function IssueSheet({ issueId }: { issueId: string }) {
         {it.desc && <p>{it.desc}</p>}
       </div>
       <div className="sheet-scroll">
-        <button
-          className="add-dep"
-          style={{ marginBottom: 4, borderStyle: 'solid' }}
-          onClick={() => void toggleDone(issueId)}
-        >
-          {it.done ? '↺ Marchează ca nefăcut' : '✓ Marchează ca gata'}
-        </button>
+        <div style={{ display: 'flex', gap: 7, marginBottom: 4 }}>
+          <button
+            className="add-dep"
+            style={{ borderStyle: 'solid', flex: 1 }}
+            onClick={() => void toggleDone(issueId)}
+          >
+            {it.done ? '↺ Marchează ca nefăcut' : '✓ Marchează ca gata'}
+          </button>
+          <button
+            className="add-dep"
+            style={{ borderStyle: 'solid', width: 'auto', padding: '10px 14px' }}
+            onClick={() => openEditIssue(issueId)}
+          >
+            ✎ Editează
+          </button>
+        </div>
 
         {deps.length > 0 && (
           <>

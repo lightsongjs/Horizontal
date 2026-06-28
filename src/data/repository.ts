@@ -33,4 +33,6 @@ export interface Repository {
   listIssues(projectId: string): Promise<Issue[]>
   createIssue(input: NewIssue): Promise<Issue>
   updateIssue(id: string, patch: Partial<Issue>): Promise<Issue>
+  /** Deletes the issue and any dependency edges referencing it. */
+  deleteIssue(id: string): Promise<void>
 }

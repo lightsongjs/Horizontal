@@ -10,20 +10,28 @@ const TYPES: { key: IssueType; label: string }[] = [
   { key: 'external', label: 'Extern' },
 ]
 
-export function NewIssueSheet() {
-  const { project, themes, waves, issues, activeWave, createIssue, createTheme } = useDepFlow()
+/** Create (no issueId) or edit (issueId given) an issue, with delete. */
+export function IssueForm({ issueId }: { issueId?: string }) {
+  const { project, themes, waves, issues, byId, activeWave, createIssue, updateIssue, deleteIssue, createTheme } =
+    useDepFlow()
   const { closeSheet } = useUI()
+  const existing = issueId ? byId[issueId] : undefined
+  const isEdit = !!existing
 
-  const [title, setTitle] = useState('')
-  const [desc, setDesc] = useState('')
-  const [type, setType] = useState<IssueType>('task')
-  const [theme, setTheme] = useState<string>(themes[0]?.key ?? '')
-  const [wave, setWave] = useState<number>(activeWave)
-  const [deps, setDeps] = useState<string[]>([])
+  const [title, setTitle] = useState(existing?.title ?? '')
+  const [desc, setDesc] = useState(existing?.desc ?? '')
+  const [type, setType] = useState<IssueType>(existing?.type ?? 'task')
+  const [theme, setTheme] = useState<string>(existing?.theme ?? themes[0]?.key ?? '')
+  const [wave, setWave] = useState<number>(existing?.wave ?? activeWave)
+  const [deps, setDeps] = useState<string[]>(existing?.deps ?? [])
   const [newTheme, setNewTheme] = useState('')
   const [saving, setSaving] = useState(false)
+  const [confirmDel, setConfirmDel] = useState(false)
 
   if (!project) return null
+
+  // Selectable deps: every other issue in the project (can't depend on self).
+  const candidates = issues.filter((i) => i.id !== issueId)
 
   const toggleDep = (id: string) =>
     setDeps((d) => (d.includes(id) ? d.filter((x) => x !== id) : [...d, id]))
@@ -42,15 +50,29 @@ export function NewIssueSheet() {
     if (!title.trim() || saving) return
     setSaving(true)
     try {
-      await createIssue({
-        projectId: project.id,
-        title: title.trim(),
-        desc: desc.trim(),
-        type,
-        theme,
-        wave,
-        deps,
-      })
+      if (isEdit && existing) {
+        await updateIssue(existing.id, {
+          title: title.trim(),
+          desc: desc.trim(),
+          type,
+          theme,
+          wave,
+          deps,
+        })
+      } else {
+        await createIssue({ projectId: project.id, title: title.trim(), desc: desc.trim(), type, theme, wave, deps })
+      }
+      closeSheet()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const remove = async () => {
+    if (!existing || saving) return
+    setSaving(true)
+    try {
+      await deleteIssue(existing.id)
       closeSheet()
     } finally {
       setSaving(false)
@@ -60,9 +82,9 @@ export function NewIssueSheet() {
   return (
     <>
       <div className="sheet-head">
-        <div className="eyebrow">+ Tichet nou</div>
-        <h2>Adaugă tichet</h2>
-        <p>Titlu, detalii, temă, val și dependențe — toate într-un loc.</p>
+        <div className="eyebrow">{isEdit ? `✎ ${existing!.id}` : '+ Tichet nou'}</div>
+        <h2>{isEdit ? 'Editează tichet' : 'Adaugă tichet'}</h2>
+        <p>Titlu, detalii, tip, temă, val și dependențe.</p>
       </div>
       <div className="sheet-scroll">
         <div className="fld">
@@ -130,12 +152,12 @@ export function NewIssueSheet() {
         </div>
 
         <div className="sheet-section-t">Depinde de</div>
-        {issues.length === 0 ? (
+        {candidates.length === 0 ? (
           <p className="empty" style={{ padding: '12px 0' }}>
             Niciun alt tichet de selectat.
           </p>
         ) : (
-          issues.map((i) => (
+          candidates.map((i) => (
             <button
               key={i.id}
               className="dep-row"
@@ -153,9 +175,19 @@ export function NewIssueSheet() {
           ))
         )}
 
+        {isEdit && (
+          <button
+            className="add-dep"
+            style={{ marginTop: 14, borderColor: '#ff6b6b55', color: 'var(--blocked)' }}
+            onClick={() => (confirmDel ? void remove() : setConfirmDel(true))}
+          >
+            {confirmDel ? '⚠ Apasă din nou ca să confirmi ștergerea' : '🗑 Șterge tichetul'}
+          </button>
+        )}
+
         <div className="save-bar">
           <button onClick={save} disabled={!title.trim() || saving}>
-            {saving ? 'Se salvează…' : 'Salvează tichet'}
+            {saving ? 'Se salvează…' : isEdit ? 'Salvează modificările' : 'Salvează tichet'}
           </button>
         </div>
       </div>

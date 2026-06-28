@@ -122,5 +122,13 @@ export function createLocalRepository(): Repository {
       save(db)
       return clone(issue)
     },
+
+    async deleteIssue(id: string) {
+      const db = load()
+      db.issues = db.issues
+        .filter((i) => i.id !== id)
+        .map((i) => (i.deps?.includes(id) ? { ...i, deps: i.deps.filter((d) => d !== id) } : i))
+      save(db)
+    },
   }
 }
