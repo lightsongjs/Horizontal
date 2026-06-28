@@ -49,6 +49,17 @@ describe('computeLayers', () => {
     const cyclic = [mk('X', ['Y']), mk('Y', ['X'])]
     expect(() => computeLayers(cyclic, 1)).toThrow(DependencyCycleError)
   })
+
+  it('sorts an issue that depends on one and blocks another between them', () => {
+    // The UI "blochează" direction is just a dep on the OTHER issue:
+    // Z depends on A; B depends on Z ("Z blocks B"). Order must be A -> Z -> B,
+    // and adding Z pushes B one layer deeper.
+    const without = [mk('A', []), mk('B', ['A'])]
+    expect(computeLayers(without, 1)).toEqual({ 0: ['A'], 1: ['B'] })
+
+    const withZ = [mk('A', []), mk('B', ['A', 'Z']), mk('Z', ['A'])]
+    expect(computeLayers(withZ, 1)).toEqual({ 0: ['A'], 1: ['Z'], 2: ['B'] })
+  })
 })
 
 describe('deriveState', () => {
