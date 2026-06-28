@@ -1,0 +1,95 @@
+{
+  "_README": "Seed data and exact entity shapes for DepFlow. Port the algorithm in _ALGORITHM directly. _EXPECTED_LAYERS lets you unit-test computeLayers().",
+
+  "_ENTITY_SHAPES": {
+    "project": {
+      "id": "string",
+      "name": "string",
+      "description": "string",
+      "prefix": "string (issue id prefix, e.g. TUR)",
+      "currentWave": "integer",
+      "accent": "hex color"
+    },
+    "theme": { "key": "string", "name": "string", "color": "hex color" },
+    "wave": { "number": "integer", "name": "string", "label": "string (sub-label)" },
+    "issue": {
+      "id": "string (e.g. TUR-01)",
+      "projectId": "string",
+      "title": "string",
+      "desc": "string",
+      "type": "external | task | epic",
+      "theme": "theme key",
+      "wave": "integer",
+      "deps": "array of issue ids this issue depends on (global, cross-wave allowed)",
+      "done": "boolean",
+      "parentId": "string|null (set on children of an epic)",
+      "children": "array of {id,title} OR model as issues with parentId"
+    }
+  },
+
+  "_ALGORITHM": {
+    "computeLayers": "For a given wave W: take issues where issue.wave==W into set S. depth(id) = (deps in S).length ? 1 + max(depth(d) for d in deps that are in S) : 0. Dependencies NOT in S are ignored for layer math. Group ids by depth. Layer 0 = 'start here'. Memoize. Guard against cycles.",
+    "deriveState": "if issue.done -> 'done'. else if every dep (across ALL waves) is done -> 'active'. else -> 'blocked'.",
+    "issueDetail_dependencies": "When showing an issue's detail, list ALL deps regardless of wave. Tag each with its wave; if dep.done show a check. Cross-wave deps are shown but never block the wave-filtered Ordine view.",
+    "reverseEdges_unblocks": "issues B where B.deps includes thisId.",
+    "projectCompletion": "doneIssues / totalIssues."
+  },
+
+  "themes": [
+    { "key": "auth", "name": "Auth", "color": "#6e7bff" },
+    { "key": "email", "name": "Email", "color": "#ffb454" },
+    { "key": "db", "name": "Supabase / DB", "color": "#3ecf8e" },
+    { "key": "users", "name": "Utilizatori", "color": "#a06eff" },
+    { "key": "expense", "name": "Expense", "color": "#ff6b6b" }
+  ],
+
+  "waves": [
+    { "number": 1, "name": "Val 1", "label": "MVP" },
+    { "number": 2, "name": "Val 2", "label": "Dashboard & users" },
+    { "number": 3, "name": "Val 3", "label": "Polish" }
+  ],
+
+  "projects": [
+    { "id": "tur", "name": "Aplicație Turism", "description": "Expense tracker + bilete + auth pentru călătorii", "prefix": "TUR", "currentWave": 1, "accent": "#6e7bff" }
+  ],
+
+  "issues": [
+    { "id": "TUR-01", "projectId": "tur", "title": "Adresă email nouă pentru proiect", "desc": "Punctul zero. Tot lanțul de auth depinde de el.", "type": "external", "theme": "email", "wave": 1, "deps": [], "done": true },
+    { "id": "TUR-02", "projectId": "tur", "title": "Cont Supabase (DB + Auth)", "desc": "Bază de date + Auth. Aici trăiesc utilizatorii.", "type": "external", "theme": "db", "wave": 1, "deps": ["TUR-01"], "done": false },
+    { "id": "TUR-03", "projectId": "tur", "title": "Cont Mailjet (trimitere email)", "desc": "Serviciul care trimite efectiv email-urile.", "type": "external", "theme": "email", "wave": 1, "deps": ["TUR-01"], "done": false },
+    { "id": "TUR-04", "projectId": "tur", "title": "Webhook Supabase → Mailjet (verificare)", "desc": "La înregistrare, trimite email de verificare.", "type": "task", "theme": "email", "wave": 1, "deps": ["TUR-02", "TUR-03"], "done": false },
+    { "id": "TUR-05", "projectId": "tur", "title": "Deploy pe Cloudflare + domeniu", "desc": "Aplicația online, pe domeniul tău.", "type": "task", "theme": "db", "wave": 1, "deps": ["TUR-02"], "done": false },
+    { "id": "TUR-06", "projectId": "tur", "title": "Pagină SignUp / Înregistrare", "desc": "Înregistrare cont nou. Epic cu sub-tichete.", "type": "epic", "theme": "auth", "wave": 1, "deps": ["TUR-04"], "done": false,
+      "children": [
+        { "id": "TUR-06.06a", "title": "Form: email + date profil" },
+        { "id": "TUR-06.06b", "title": "Parolă cu reguli (validare)" },
+        { "id": "TUR-06.06c", "title": "Trigger email verificare" },
+        { "id": "TUR-06.06d", "title": "Ecran confirmare + redirect" }
+      ] },
+    { "id": "TUR-API", "projectId": "tur", "title": "API creare user (Supabase fn)", "desc": "Endpoint care creează utilizatori din panoul de admin.", "type": "task", "theme": "db", "wave": 2, "deps": ["TUR-02"], "done": false },
+    { "id": "TUR-07", "projectId": "tur", "title": "Setări → Management utilizatori", "desc": "Tichetul părinte e gata doar când toate sub-tichetele sunt gata.", "type": "epic", "theme": "users", "wave": 2, "deps": ["TUR-06", "TUR-API"], "done": false,
+      "children": [
+        { "id": "TUR-07.07a", "title": "Adaugă utilizator" },
+        { "id": "TUR-07.07b", "title": "Șterge utilizator" },
+        { "id": "TUR-07.07c", "title": "Resetează parola" },
+        { "id": "TUR-07.07d", "title": "Trimite invite" }
+      ] },
+    { "id": "TUR-08", "projectId": "tur", "title": "Expense Tracker", "desc": "Inima aplicației de turism.", "type": "epic", "theme": "expense", "wave": 1, "deps": ["TUR-06"], "done": false,
+      "children": [
+        { "id": "TUR-08.08a", "title": "Adaugă cheltuială (ex: 200 cor.)" },
+        { "id": "TUR-08.08b", "title": "Split datorii (sora: 40 cor.)" },
+        { "id": "TUR-08.08c", "title": "Atașează bilete / chitanțe" }
+      ] }
+  ],
+
+  "_EXPECTED_LAYERS": {
+    "_note": "Output of computeLayers per wave. Keys are layer depth -> issue ids. Use as unit-test fixtures.",
+    "wave1": { "0": ["TUR-01"], "1": ["TUR-02", "TUR-03"], "2": ["TUR-04", "TUR-05"], "3": ["TUR-06"], "4": ["TUR-08"] },
+    "wave2": { "0": ["TUR-API"], "1": ["TUR-07"] }
+  },
+
+  "_EXPECTED_CROSSWAVE_EXAMPLE": {
+    "issue": "TUR-07",
+    "note": "In Val 2 view, TUR-07 sits at layer 1 (after TUR-API). Its dep TUR-06 lives in Val 1 and is ignored for Val-2 layer math, but appears in TUR-07's detail sheet tagged 'Val 1' so the user still sees it."
+  }
+}
