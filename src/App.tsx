@@ -1,5 +1,9 @@
-import { useDepFlow } from './store'
+import { useAuth } from './auth'
+import { DepFlowProvider, useDepFlow } from './store'
+// Note: no in-app logout by design — the session persists. Sign-out, if ever
+// needed, is done out-of-band (e.g. clearing the session via a URL/devtools).
 import { UIProvider, useUI } from './ui'
+import { Login } from './components/Login'
 import { ProjectsView } from './components/ProjectsView'
 import { ProjectDetail } from './components/ProjectDetail'
 import { SheetHost } from './components/SheetHost'
@@ -58,9 +62,27 @@ function Shell() {
 }
 
 export function App() {
+  const { enabled, session, loading } = useAuth()
+
+  if (loading) {
+    return (
+      <div id="app">
+        <main>
+          <div className="view">
+            <p className="empty">Se încarcă…</p>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  if (enabled && !session) return <Login />
+
   return (
-    <UIProvider>
-      <Shell />
-    </UIProvider>
+    <DepFlowProvider>
+      <UIProvider>
+        <Shell />
+      </UIProvider>
+    </DepFlowProvider>
   )
 }
