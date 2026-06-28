@@ -9,7 +9,8 @@ interface IssueRow {
   id: string
   project_id: string
   title: string
-  desc: string
+  // DB column is `details` (avoids the reserved word `desc`).
+  details: string
   wave: number
   done: boolean
 }
@@ -19,7 +20,7 @@ function rowToIssue(row: IssueRow, depsByIssue: Record<string, string[]>): Issue
     id: row.id,
     projectId: row.project_id,
     title: row.title,
-    desc: row.desc,
+    desc: row.details,
     wave: row.wave,
     deps: depsByIssue[row.id] ?? [],
     done: row.done,
@@ -186,7 +187,7 @@ export function createSupabaseRepository(): Repository {
         id: issue.id,
         project_id: issue.projectId,
         title: issue.title,
-        desc: issue.desc,
+        details: issue.desc,
         wave: issue.wave,
         done: issue.done,
       })
@@ -203,7 +204,7 @@ export function createSupabaseRepository(): Repository {
     async updateIssue(id: string, patch: Partial<Issue>) {
       const row: Record<string, unknown> = {}
       if (patch.title !== undefined) row.title = patch.title
-      if (patch.desc !== undefined) row.desc = patch.desc
+      if (patch.desc !== undefined) row.details = patch.desc
       if (patch.wave !== undefined) row.wave = patch.wave
       if (patch.done !== undefined) row.done = patch.done
       if (Object.keys(row).length) {
