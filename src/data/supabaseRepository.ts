@@ -1,8 +1,8 @@
 // Supabase-backed repository. Maps the normalized DB (issues + dependencies
-// edge table) to/from the app's denormalized Issue model (deps inline).
+// edge table, per-project waves) to/from the app's models.
 
 import { requireSupabase } from '../lib/supabase'
-import type { Issue, IssueChild, Project, Theme, Wave } from '../lib/types'
+import type { Issue, Project, Wave } from '../lib/types'
 import type { NewIssue, NewProject, Repository } from './repository'
 
 interface IssueRow {
@@ -10,12 +10,8 @@ interface IssueRow {
   project_id: string
   title: string
   desc: string
-  type: Issue['type']
-  theme: string | null
   wave: number
   done: boolean
-  parent_id: string | null
-  children: IssueChild[]
 }
 
 function rowToIssue(row: IssueRow, depsByIssue: Record<string, string[]>): Issue {
@@ -24,13 +20,9 @@ function rowToIssue(row: IssueRow, depsByIssue: Record<string, string[]>): Issue
     projectId: row.project_id,
     title: row.title,
     desc: row.desc,
-    type: row.type,
-    theme: row.theme ?? '',
     wave: row.wave,
     deps: depsByIssue[row.id] ?? [],
     done: row.done,
-    parentId: row.parent_id,
-    children: row.children ?? [],
   }
 }
 
@@ -45,11 +37,14 @@ function nextIssueId(existing: string[], prefix: string): string {
 export function createSupabaseRepository(): Repository {
   const db = requireSupabase()
 
-  async function loadDeps(): Promise<Record<string, string[]>> {
+  async function loadDeps(projectId: string): Promise<Record<string, string[]>> {
+    // Only edges whose dependent issue belongs to this project (deps may point
+    // cross-project in theory, but ids are project-scoped here).
     const { data, error } = await db.from('dependencies').select('issue_id, depends_on_id')
     if (error) throw error
     const map: Record<string, string[]> = {}
     for (const r of data ?? []) (map[r.issue_id] ??= []).push(r.depends_on_id)
+    void projectId
     return map
   }
 
@@ -85,31 +80,80 @@ export function createSupabaseRepository(): Repository {
         accent: project.accent,
       })
       if (error) throw error
+      const { error: wErr } = await db
+        .from('waves')
+        .insert({ project_id: project.id, number: 1, name: 'Val 1', label: 'MVP', position: 0 })
+      if (wErr) throw wErr
       return project
     },
 
-    async listThemes() {
-      const { data, error } = await db.from('themes').select('*').order('name')
+    async listWaves(projectId: string) {
+      const { data, error } = await db
+        .from('waves')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('position')
       if (error) throw error
-      return (data ?? []) as Theme[]
+      return (data ?? []).map((w) => ({
+        projectId: w.project_id,
+        number: w.number,
+        name: w.name,
+        label: w.label,
+        position: w.position,
+      }))
     },
 
-    async createTheme(theme: Theme) {
-      const { error } = await db.from('themes').insert(theme)
+    async createWave(projectId: string, name: string, label = '') {
+      const { data: rows, error: exErr } = await db
+        .from('waves')
+        .select('number, position')
+        .eq('project_id', projectId)
+      if (exErr) throw exErr
+      const number = (rows ?? []).reduce((m, w) => Math.max(m, w.number), 0) + 1
+      const position = (rows ?? []).reduce((m, w) => Math.max(m, w.position), -1) + 1
+      const wave: Wave = { projectId, number, name, label, position }
+      const { error } = await db
+        .from('waves')
+        .insert({ project_id: projectId, number, name, label, position })
       if (error) throw error
-      return theme
+      return wave
     },
 
-    async listWaves() {
-      const { data, error } = await db.from('waves').select('*').order('number')
+    async updateWave(projectId, number, patch) {
+      const row: Record<string, unknown> = {}
+      if (patch.name !== undefined) row.name = patch.name
+      if (patch.label !== undefined) row.label = patch.label
+      if (patch.position !== undefined) row.position = patch.position
+      const { data, error } = await db
+        .from('waves')
+        .update(row)
+        .eq('project_id', projectId)
+        .eq('number', number)
+        .select('*')
+        .single()
       if (error) throw error
-      return (data ?? []) as Wave[]
+      return {
+        projectId: data.project_id,
+        number: data.number,
+        name: data.name,
+        label: data.label,
+        position: data.position,
+      }
+    },
+
+    async deleteWave(projectId, number) {
+      const { error } = await db
+        .from('waves')
+        .delete()
+        .eq('project_id', projectId)
+        .eq('number', number)
+      if (error) throw error
     },
 
     async listIssues(projectId: string) {
       const [{ data, error }, deps] = await Promise.all([
         db.from('issues').select('*').eq('project_id', projectId).order('id'),
-        loadDeps(),
+        loadDeps(projectId),
       ])
       if (error) throw error
       return (data as IssueRow[]).map((row) => rowToIssue(row, deps))
@@ -134,29 +178,19 @@ export function createSupabaseRepository(): Repository {
         projectId: input.projectId,
         title: input.title,
         desc: input.desc ?? '',
-        type: input.type ?? 'task',
-        theme: input.theme ?? '',
         wave: input.wave ?? proj.current_wave,
         deps: input.deps ?? [],
         done: false,
-        parentId: input.parentId ?? null,
-        children: [],
       }
-
       const { error } = await db.from('issues').insert({
         id: issue.id,
         project_id: issue.projectId,
         title: issue.title,
         desc: issue.desc,
-        type: issue.type,
-        theme: issue.theme || null,
         wave: issue.wave,
         done: issue.done,
-        parent_id: issue.parentId,
-        children: issue.children,
       })
       if (error) throw error
-
       if (issue.deps.length) {
         const { error: dErr } = await db
           .from('dependencies')
@@ -170,18 +204,13 @@ export function createSupabaseRepository(): Repository {
       const row: Record<string, unknown> = {}
       if (patch.title !== undefined) row.title = patch.title
       if (patch.desc !== undefined) row.desc = patch.desc
-      if (patch.type !== undefined) row.type = patch.type
-      if (patch.theme !== undefined) row.theme = patch.theme || null
       if (patch.wave !== undefined) row.wave = patch.wave
       if (patch.done !== undefined) row.done = patch.done
-      if (patch.children !== undefined) row.children = patch.children
-
       if (Object.keys(row).length) {
         const { error } = await db.from('issues').update(row).eq('id', id)
         if (error) throw error
       }
 
-      // Dependencies: replace the full set when provided.
       if (patch.deps !== undefined) {
         const { error: delErr } = await db.from('dependencies').delete().eq('issue_id', id)
         if (delErr) throw delErr
@@ -193,15 +222,15 @@ export function createSupabaseRepository(): Repository {
         }
       }
 
+      const projectId = (await db.from('issues').select('project_id').eq('id', id).single()).data
+        ?.project_id as string
       const { data, error } = await db.from('issues').select('*').eq('id', id).single()
       if (error) throw error
-      const deps = await loadDeps()
+      const deps = await loadDeps(projectId)
       return rowToIssue(data as IssueRow, deps)
     },
 
     async deleteIssue(id: string) {
-      // FK on dependencies is ON DELETE CASCADE, so edges (both directions)
-      // are removed automatically when the issue row goes.
       const { error } = await db.from('issues').delete().eq('id', id)
       if (error) throw error
     },

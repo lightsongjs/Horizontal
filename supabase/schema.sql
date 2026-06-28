@@ -1,6 +1,6 @@
--- DepFlow schema. Paste into the Supabase SQL editor (one-time setup).
--- Mirrors data-model.json. Children of epics are stored inline as JSONB;
--- dependencies are a separate edge table (issue_id depends on depends_on_id).
+-- DepFlow schema (phase 1). Run once in the Supabase SQL editor.
+-- Simple issues (no type/epic). Waves are per-project. Dependencies are an
+-- edge table. No seed data — projects/waves/issues are created in the app.
 
 create table if not exists projects (
   id           text primary key,
@@ -11,16 +11,13 @@ create table if not exists projects (
   accent       text not null default '#6e7bff'
 );
 
-create table if not exists themes (
-  key   text primary key,
-  name  text not null,
-  color text not null
-);
-
 create table if not exists waves (
-  number int  primary key,
-  name   text not null,
-  label  text not null default ''
+  project_id text not null references projects (id) on delete cascade,
+  number     int  not null,
+  name       text not null,
+  label      text not null default '',
+  position   int  not null default 0,
+  primary key (project_id, number)
 );
 
 create table if not exists issues (
@@ -28,12 +25,8 @@ create table if not exists issues (
   project_id text not null references projects (id) on delete cascade,
   title      text not null,
   "desc"     text not null default '',
-  type       text not null check (type in ('external', 'task', 'epic')),
-  theme      text references themes (key),
   wave       int  not null default 1,
-  done       boolean not null default false,
-  parent_id  text references issues (id) on delete cascade,
-  children   jsonb not null default '[]'::jsonb
+  done       boolean not null default false
 );
 
 create index if not exists issues_project_idx on issues (project_id);
@@ -41,31 +34,20 @@ create index if not exists issues_project_idx on issues (project_id);
 create table if not exists dependencies (
   issue_id      text not null references issues (id) on delete cascade,
   depends_on_id text not null references issues (id) on delete cascade,
-  primary key (issue_id, depends_on_id),
-  check (issue_id <> depends_on_id)
+  primary key (issue_id, depends_on_id)
 );
 
-create index if not exists deps_depends_on_idx on dependencies (depends_on_id);
-
--- --- Row Level Security -------------------------------------------------
--- v1 is a single-tenant demo driven by the anon key from the browser, so we
--- enable RLS and add permissive policies. TIGHTEN THESE before any real
--- multi-user deployment (scope by auth.uid() / an owner column).
+-- Row Level Security: single-user app, any logged-in user gets full access.
 alter table projects     enable row level security;
-alter table themes       enable row level security;
 alter table waves        enable row level security;
 alter table issues       enable row level security;
 alter table dependencies enable row level security;
 
-do $$
-declare t text;
-begin
-  foreach t in array array['projects','themes','waves','issues','dependencies']
-  loop
-    execute format('drop policy if exists %I_anon_all on %I;', t, t);
-    execute format(
-      'create policy %I_anon_all on %I for all to anon, authenticated using (true) with check (true);',
-      t, t
-    );
-  end loop;
-end $$;
+drop policy if exists p_projects on projects;
+create policy p_projects on projects for all to authenticated using (true) with check (true);
+drop policy if exists p_waves on waves;
+create policy p_waves on waves for all to authenticated using (true) with check (true);
+drop policy if exists p_issues on issues;
+create policy p_issues on issues for all to authenticated using (true) with check (true);
+drop policy if exists p_dependencies on dependencies;
+create policy p_dependencies on dependencies for all to authenticated using (true) with check (true);

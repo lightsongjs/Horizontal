@@ -8,16 +8,13 @@ export function IssueSheet({ issueId }: { issueId: string }) {
   if (!it) return null
 
   const waveName = (n: number) => waves.find((w) => w.number === n)?.name ?? `Val ${n}`
-  const typeLabel = it.type === 'epic' ? 'Epic' : it.type === 'external' ? 'Extern' : 'Task'
   const deps = it.deps ?? []
   const unblocks = unblockedBy(issueId)
 
   return (
     <>
       <div className="sheet-head">
-        <div className="eyebrow">
-          {waveName(it.wave)} · {typeLabel}
-        </div>
+        <div className="eyebrow">{waveName(it.wave)}</div>
         <h2>{it.title}</h2>
         {it.desc && <p>{it.desc}</p>}
       </div>
@@ -62,21 +59,6 @@ export function IssueSheet({ issueId }: { issueId: string }) {
                 </button>
               )
             })}
-          </>
-        )}
-
-        {it.type === 'epic' && it.children && it.children.length > 0 && (
-          <>
-            <div className="sheet-section-t">Sub-tichete ({it.children.length})</div>
-            {it.children.map((c) => (
-              <div key={c.id} className="dep-row">
-                <span className="ic ext">○</span>
-                <span>{c.title}</span>
-                <span className="tk-id" style={{ marginLeft: 'auto' }}>
-                  {c.id}
-                </span>
-              </div>
-            ))}
           </>
         )}
 

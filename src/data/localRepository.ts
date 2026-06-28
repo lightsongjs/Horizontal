@@ -1,15 +1,14 @@
-// localStorage-backed repository. Seeds from data-model.json on first run.
-// Lets the app run with zero credentials while Supabase is being set up.
+// localStorage-backed repository for credential-free local dev. Seeds the tiny
+// example on first run. Mirrors the Supabase backend's behavior.
 
-import { SEED_ISSUES, SEED_PROJECTS, SEED_THEMES, SEED_WAVES } from '../lib/seed'
-import type { Issue, Project, Theme, Wave } from '../lib/types'
+import { SEED_ISSUES, SEED_PROJECTS, SEED_WAVES } from '../lib/seed'
+import type { Issue, Project, Wave } from '../lib/types'
 import type { NewIssue, NewProject, Repository } from './repository'
 
-const KEY = 'depflow:v1'
+const KEY = 'depflow:v2'
 
 interface DB {
   projects: Project[]
-  themes: Theme[]
   waves: Wave[]
   issues: Issue[]
 }
@@ -25,12 +24,7 @@ function load(): DB {
   } catch {
     /* fall through to seed */
   }
-  const seeded: DB = {
-    projects: clone(SEED_PROJECTS),
-    themes: clone(SEED_THEMES),
-    waves: clone(SEED_WAVES),
-    issues: clone(SEED_ISSUES),
-  }
+  const seeded: DB = { projects: clone(SEED_PROJECTS), waves: clone(SEED_WAVES), issues: clone(SEED_ISSUES) }
   save(seeded)
   return seeded
 }
@@ -39,7 +33,7 @@ function save(db: DB): void {
   localStorage.setItem(KEY, JSON.stringify(db))
 }
 
-/** Next free id for a project, e.g. TUR-09. Skips non-numeric ids (TUR-API). */
+/** Next free issue id for a project, e.g. TUR-09. */
 function nextIssueId(db: DB, project: Project): string {
   const max = db.issues
     .filter((i) => i.projectId === project.id)
@@ -67,25 +61,43 @@ export function createLocalRepository(): Repository {
         accent: input.accent ?? '#6e7bff',
       }
       db.projects.push(project)
+      db.waves.push({ projectId: id, number: 1, name: 'Val 1', label: 'MVP', position: 0 })
       save(db)
       return clone(project)
     },
 
-    async listThemes() {
-      return clone(load().themes)
+    async listWaves(projectId: string) {
+      return clone(
+        load()
+          .waves.filter((w) => w.projectId === projectId)
+          .sort((a, b) => a.position - b.position),
+      )
     },
 
-    async createTheme(theme: Theme) {
+    async createWave(projectId: string, name: string, label = '') {
       const db = load()
-      if (!db.themes.some((t) => t.key === theme.key)) {
-        db.themes.push(theme)
-        save(db)
-      }
-      return clone(theme)
+      const existing = db.waves.filter((w) => w.projectId === projectId)
+      const number = existing.reduce((m, w) => Math.max(m, w.number), 0) + 1
+      const position = existing.reduce((m, w) => Math.max(m, w.position), -1) + 1
+      const wave: Wave = { projectId, number, name, label, position }
+      db.waves.push(wave)
+      save(db)
+      return clone(wave)
     },
 
-    async listWaves() {
-      return clone(load().waves)
+    async updateWave(projectId, number, patch) {
+      const db = load()
+      const wave = db.waves.find((w) => w.projectId === projectId && w.number === number)
+      if (!wave) throw new Error(`Unknown wave ${projectId}/${number}`)
+      Object.assign(wave, patch)
+      save(db)
+      return clone(wave)
+    },
+
+    async deleteWave(projectId, number) {
+      const db = load()
+      db.waves = db.waves.filter((w) => !(w.projectId === projectId && w.number === number))
+      save(db)
     },
 
     async listIssues(projectId: string) {
@@ -101,13 +113,9 @@ export function createLocalRepository(): Repository {
         projectId: input.projectId,
         title: input.title,
         desc: input.desc ?? '',
-        type: input.type ?? 'task',
-        theme: input.theme ?? '',
         wave: input.wave ?? project.currentWave,
         deps: input.deps ?? [],
         done: false,
-        parentId: input.parentId ?? null,
-        children: [],
       }
       db.issues.push(issue)
       save(db)

@@ -7,84 +7,68 @@ import {
   projectCompletion,
   unblocks,
 } from './engine'
-import { SEED_ISSUES } from './seed'
 import type { Issue } from './types'
 
-// Fixtures from data-model.json → _EXPECTED_LAYERS.
-const EXPECTED = {
-  wave1: { 0: ['TUR-01'], 1: ['TUR-02', 'TUR-03'], 2: ['TUR-04', 'TUR-05'], 3: ['TUR-06'], 4: ['TUR-08'] },
-  wave2: { 0: ['TUR-API'], 1: ['TUR-07'] },
+// Minimal issue factory for tests.
+function mk(id: string, deps: string[], wave = 1, done = false): Issue {
+  return { id, projectId: 'p', title: id, desc: '', wave, deps, done }
 }
 
+// A small graph spanning two waves, exercising cross-wave deps.
+//   w1: A -> B,C -> D,E -> F
+//   w2: G ; H depends on G and on F (F is wave 1, ignored for w2 layer math)
+const ISSUES: Issue[] = [
+  mk('A', [], 1, true),
+  mk('B', ['A'], 1),
+  mk('C', ['A'], 1),
+  mk('D', ['B', 'C'], 1),
+  mk('E', ['B'], 1),
+  mk('F', ['D'], 1),
+  mk('G', ['A'], 2),
+  mk('H', ['F', 'G'], 2),
+]
+
 describe('computeLayers', () => {
-  it('matches the expected layers for wave 1', () => {
-    expect(computeLayers(SEED_ISSUES, 1)).toEqual(EXPECTED.wave1)
+  it('computes wave-1 topological depth', () => {
+    expect(computeLayers(ISSUES, 1)).toEqual({ 0: ['A'], 1: ['B', 'C'], 2: ['D', 'E'], 3: ['F'] })
   })
 
-  it('matches the expected layers for wave 2 (cross-wave dep TUR-06 ignored)', () => {
-    // TUR-07 depends on TUR-06 (wave 1) and TUR-API (wave 2). Only TUR-API
-    // counts for layer math, so TUR-07 sits at layer 1, not layer 4.
-    expect(computeLayers(SEED_ISSUES, 2)).toEqual(EXPECTED.wave2)
+  it('ignores cross-wave deps for layer math (H sits right after G)', () => {
+    expect(computeLayers(ISSUES, 2)).toEqual({ 0: ['G'], 1: ['H'] })
   })
 
-  it('returns an empty object for a wave with no issues', () => {
-    expect(computeLayers(SEED_ISSUES, 99)).toEqual({})
+  it('returns {} for a wave with no issues', () => {
+    expect(computeLayers(ISSUES, 99)).toEqual({})
   })
 
   it('preserves input order within a layer', () => {
-    expect(computeLayers(SEED_ISSUES, 1)[1]).toEqual(['TUR-02', 'TUR-03'])
+    expect(computeLayers(ISSUES, 1)[1]).toEqual(['B', 'C'])
   })
 
   it('throws DependencyCycleError on a cycle', () => {
-    const cyclic: Issue[] = [
-      { id: 'A', projectId: 'p', title: 'A', desc: '', type: 'task', theme: 't', wave: 1, deps: ['B'], done: false },
-      { id: 'B', projectId: 'p', title: 'B', desc: '', type: 'task', theme: 't', wave: 1, deps: ['A'], done: false },
-    ]
+    const cyclic = [mk('X', ['Y']), mk('Y', ['X'])]
     expect(() => computeLayers(cyclic, 1)).toThrow(DependencyCycleError)
   })
 })
 
 describe('deriveState', () => {
-  const byId = indexById(SEED_ISSUES)
-
-  it('done issue → done', () => {
-    expect(deriveState(byId['TUR-01'], byId)).toBe('done')
-  })
-
-  it('all deps done → active', () => {
-    // TUR-02 depends only on TUR-01 (done).
-    expect(deriveState(byId['TUR-02'], byId)).toBe('active')
-  })
-
-  it('a dep not done → blocked', () => {
-    // TUR-04 depends on TUR-02 + TUR-03, neither done.
-    expect(deriveState(byId['TUR-04'], byId)).toBe('blocked')
-  })
-
-  it('no deps and not done → active', () => {
-    const orphan: Issue = { id: 'X', projectId: 'p', title: '', desc: '', type: 'task', theme: 't', wave: 1, deps: [], done: false }
-    expect(deriveState(orphan, byId)).toBe('active')
-  })
+  const byId = indexById(ISSUES)
+  it('done issue -> done', () => expect(deriveState(byId['A'], byId)).toBe('done'))
+  it('all deps done -> active', () => expect(deriveState(byId['B'], byId)).toBe('active'))
+  it('a dep not done -> blocked', () => expect(deriveState(byId['D'], byId)).toBe('blocked'))
+  it('no deps, not done -> active', () => expect(deriveState(mk('Z', []), byId)).toBe('active'))
 })
 
 describe('unblocks (reverse edges)', () => {
-  it('finds issues depending on TUR-02 across waves', () => {
-    const ids = unblocks('TUR-02', SEED_ISSUES).map((i) => i.id)
-    expect(ids).toEqual(['TUR-04', 'TUR-05', 'TUR-API'])
+  it('finds issues depending on A across waves', () => {
+    expect(unblocks('A', ISSUES).map((i) => i.id)).toEqual(['B', 'C', 'G'])
   })
-
   it('returns empty when nothing depends on it', () => {
-    expect(unblocks('TUR-08', SEED_ISSUES)).toEqual([])
+    expect(unblocks('H', ISSUES)).toEqual([])
   })
 })
 
 describe('projectCompletion', () => {
-  it('is done/total', () => {
-    // 1 of 9 issues done.
-    expect(projectCompletion(SEED_ISSUES)).toBeCloseTo(1 / 9)
-  })
-
-  it('is 0 for no issues', () => {
-    expect(projectCompletion([])).toBe(0)
-  })
+  it('is done/total', () => expect(projectCompletion(ISSUES)).toBeCloseTo(1 / 8))
+  it('is 0 for no issues', () => expect(projectCompletion([])).toBe(0))
 })

@@ -1,6 +1,6 @@
-// Core domain types for DepFlow. See REQUIREMENTS.md §1 and data-model.json.
-
-export type IssueType = 'external' | 'task' | 'epic'
+// Core domain types for DepFlow. See REQUIREMENTS.md §1.
+// User's model: simple issues (no type/epic/children). Waves are per-project
+// and user-managed. Themes are deferred to a later phase.
 
 /** Derived, never stored. See deriveState(). */
 export type IssueState = 'done' | 'active' | 'blocked'
@@ -16,24 +16,15 @@ export interface Project {
   accent: string
 }
 
-export interface Theme {
-  key: string
-  name: string
-  /** Hex color. */
-  color: string
-}
-
 export interface Wave {
+  projectId: string
+  /** Wave number, unique within a project; also the layer-math wave id. */
   number: number
   name: string
   /** Sub-label, e.g. "MVP". */
   label: string
-}
-
-/** A child of an epic. Modeled inline; mirror of an issue with parentId set. */
-export interface IssueChild {
-  id: string
-  title: string
+  /** Ordering within the project's wave list. */
+  position: number
 }
 
 export interface Issue {
@@ -41,16 +32,10 @@ export interface Issue {
   projectId: string
   title: string
   desc: string
-  type: IssueType
-  /** Theme key. */
-  theme: string
   wave: number
   /** Issue ids this depends on. Global — cross-wave deps are allowed. */
   deps: string[]
   done: boolean
-  /** Set on children of an epic; null otherwise. */
-  parentId?: string | null
-  children?: IssueChild[]
 }
 
 /** Output of computeLayers: layer depth -> issue ids, ordered within layer. */

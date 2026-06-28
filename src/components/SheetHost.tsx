@@ -3,13 +3,13 @@ import { useUI } from '../ui'
 import { IssueSheet } from './IssueSheet'
 import { IssueForm } from './IssueForm'
 import { ProjectForm } from './ProjectForm'
+import { WaveManager } from './WaveManager'
 
 export function SheetHost() {
   const { sheet, closeSheet } = useUI()
   const open = sheet.kind !== 'none'
-  const tall = sheet.kind === 'issue-form' || sheet.kind === 'project-form'
+  const tall = sheet.kind === 'issue-form' || sheet.kind === 'project-form' || sheet.kind === 'wave-manage'
 
-  // Close on Escape.
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && closeSheet()
@@ -25,6 +25,7 @@ export function SheetHost() {
         {sheet.kind === 'issue' && <IssueSheet issueId={sheet.issueId} />}
         {sheet.kind === 'issue-form' && <IssueForm issueId={sheet.issueId} />}
         {sheet.kind === 'project-form' && <ProjectForm />}
+        {sheet.kind === 'wave-manage' && <WaveManager />}
       </div>
     </>
   )

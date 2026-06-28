@@ -921,6 +921,54 @@ svg.graph {
   display: block;
 }
 
+.wbtn.wmanage {
+  align-items: center;
+  justify-content: center;
+  color: var(--txt-faint);
+  border-style: dashed;
+}
+.wbtn.wmanage .wname {
+  font-size: 15px;
+}
+
+/* WAVE MANAGER */
+.wave-edit {
+  display: flex;
+  gap: 7px;
+  margin-bottom: 7px;
+  align-items: center;
+}
+.wave-edit input {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 11px;
+  color: var(--txt);
+  font-family: inherit;
+  font-size: 13px;
+  min-width: 0;
+}
+.wave-edit input:first-child {
+  flex: 2;
+}
+.wave-edit input:nth-child(2) {
+  flex: 1;
+}
+.wave-edit input:focus {
+  outline: none;
+  border-color: #6e7bff88;
+}
+.wave-del {
+  flex-shrink: 0;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 11px;
+  color: var(--blocked);
+  font-size: 12px;
+  font-weight: 600;
+}
+
 /* LOGIN */
 .login {
   flex: 1;

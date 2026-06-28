@@ -1,5 +1,4 @@
-// UI context for the bottom sheet — lets any card open the issue detail, the
-// create/edit issue form, or the new-project form without prop drilling.
+// UI context for the bottom sheet.
 
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
 
@@ -8,6 +7,7 @@ export type SheetState =
   | { kind: 'issue'; issueId: string }
   | { kind: 'issue-form'; issueId?: string } // create when no id, edit otherwise
   | { kind: 'project-form' }
+  | { kind: 'wave-manage' }
 
 interface UI {
   sheet: SheetState
@@ -15,6 +15,7 @@ interface UI {
   openNewIssue(): void
   openEditIssue(id: string): void
   openNewProject(): void
+  openWaveManage(): void
   closeSheet(): void
 }
 
@@ -29,6 +30,7 @@ export function UIProvider({ children }: { children: ReactNode }) {
       openNewIssue: () => setSheet({ kind: 'issue-form' }),
       openEditIssue: (issueId) => setSheet({ kind: 'issue-form', issueId }),
       openNewProject: () => setSheet({ kind: 'project-form' }),
+      openWaveManage: () => setSheet({ kind: 'wave-manage' }),
       closeSheet: () => setSheet({ kind: 'none' }),
     }),
     [sheet],
