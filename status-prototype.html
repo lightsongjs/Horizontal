@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Status Prototype — Horizontal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --surface: #181b23;
+    --border: rgba(255,255,255,0.07);
+    --text: #e2e4ea;
+    --muted: #6b7280;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+
+    --open-bg: rgba(59,130,246,0.12);
+    --open-border: rgba(59,130,246,0.35);
+    --open-text: #93c5fd;
+    --open-dot: #3b82f6;
+
+    --wip-bg: rgba(245,158,11,0.12);
+    --wip-border: rgba(245,158,11,0.35);
+    --wip-text: #fcd34d;
+    --wip-dot: #f59e0b;
+
+    --closed-bg: rgba(34,197,94,0.12);
+    --closed-border: rgba(34,197,94,0.35);
+    --closed-text: #86efac;
+    --closed-dot: #22c55e;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  /* ── Sheet wrapper ── */
+  .sheet {
+    width: 100%;
+    max-width: 420px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  /* ── Header ── */
+  .sheet-head {
+    padding: 20px 20px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: .04em;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .cdot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #7c3aed;
+    display: inline-block;
+  }
+  .sheet-head h2 {
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 1.35;
+    margin-bottom: 4px;
+  }
+  .sheet-head p {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  /* ── Body ── */
+  .sheet-body { padding: 14px 20px 20px; display: flex; flex-direction: column; gap: 12px; }
+
+  /* ── Status selector ── */
+  .status-row {
+    display: flex;
+    gap: 6px;
+  }
+
+  .status-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 9px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: .03em;
+    cursor: pointer;
+    transition: all .15s ease;
+    white-space: nowrap;
+  }
+  .status-btn:hover { border-color: rgba(255,255,255,0.15); color: var(--text); }
+
+  .status-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: .5;
+    flex-shrink: 0;
+    transition: opacity .15s;
+  }
+
+  /* Active states */
+  .status-btn.open {
+    background: var(--open-bg);
+    border-color: var(--open-border);
+    color: var(--open-text);
+  }
+  .status-btn.open .status-dot { background: var(--open-dot); opacity: 1; }
+
+  .status-btn.wip {
+    background: var(--wip-bg);
+    border-color: var(--wip-border);
+    color: var(--wip-text);
+  }
+  .status-btn.wip .status-dot { background: var(--wip-dot); opacity: 1; }
+
+  .status-btn.closed {
+    background: var(--closed-bg);
+    border-color: var(--closed-border);
+    color: var(--closed-text);
+  }
+  .status-btn.closed .status-dot { background: var(--closed-dot); opacity: 1; }
+
+  /* ── Action buttons ── */
+  .actions { display: flex; gap: 7px; }
+
+  .btn {
+    flex: 1;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-family: var(--sans);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all .15s;
+    text-align: center;
+  }
+  .btn:hover { border-color: rgba(255,255,255,0.15); color: var(--text); }
+  .btn.edit { flex: 0 0 auto; padding: 10px 16px; }
+
+  /* ── Deps ── */
+  .section-t {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .dep-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 13px;
+    cursor: pointer;
+    text-align: left;
+    transition: background .12s;
+    margin-bottom: 5px;
+  }
+  .dep-row:hover { background: rgba(255,255,255,0.04); }
+  .dep-row:last-child { margin-bottom: 0; }
+
+  .ic { font-size: 12px; color: var(--muted); flex-shrink: 0; }
+  .ic.ok { color: var(--closed-dot); }
+
+  .dep-title { flex: 1; }
+
+  .wtag {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 6px;
+    flex-shrink: 0;
+  }
+  .wtag.done { color: var(--closed-text); border-color: var(--closed-border); }
+
+  /* ── Feedback toast ── */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(0);
+    background: #1e2130;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text);
+    opacity: 0;
+    transition: opacity .2s, transform .2s;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(-4px); }
+</style>
+</head>
+<body>
+
+<div class="sheet">
+  <div class="sheet-head">
+    <div class="eyebrow">
+      Val 1 · <span class="cdot"></span> Auth
+    </div>
+    <h2>Login cu cont Google</h2>
+    <p>Permite utilizatorilor să se autentifice folosind OAuth 2.0 prin Google.</p>
+  </div>
+
+  <div class="sheet-body">
+
+    <!-- STATUS SELECTOR -->
+    <div class="status-row">
+      <button class="status-btn open active" data-status="open" onclick="setStatus('open')">
+        <span class="status-dot"></span>Open
+      </button>
+      <button class="status-btn" data-status="wip" onclick="setStatus('wip')">
+        <span class="status-dot"></span>In progress
+      </button>
+      <button class="status-btn" data-status="closed" onclick="setStatus('closed')">
+        <span class="status-dot"></span>Closed
+      </button>
+    </div>
+
+    <!-- ACTIONS -->
+    <div class="actions">
+      <button class="btn">✎ Editează</button>
+    </div>
+
+    <!-- DEPS -->
+    <div>
+      <div class="section-t">Depinde de</div>
+      <button class="dep-row">
+        <span class="ic ok">✓</span>
+        <span class="dep-title">DB: Auth schema</span>
+        <span class="wtag done">Val 1 · ✓</span>
+      </button>
+      <button class="dep-row">
+        <span class="ic">↳</span>
+        <span class="dep-title">Configurare OAuth providers</span>
+        <span class="wtag">Val 1</span>
+      </button>
+    </div>
+
+    <!-- UNBLOCKS -->
+    <div>
+      <div class="section-t">Deblochează</div>
+      <button class="dep-row">
+        <span class="ic ok">⌁</span>
+        <span class="dep-title">Dashboard principal</span>
+        <span class="wtag">Val 2</span>
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  let current = 'open'
+
+  const labels = {
+    open: 'Open',
+    wip: 'In progress',
+    closed: 'Closed'
+  }
+
+  function setStatus(s) {
+    if (s === current) return
+    current = s
+
+    document.querySelectorAll('.status-btn').forEach(btn => {
+      const ds = btn.dataset.status
+      btn.className = 'status-btn' + (ds === s ? ' ' + s : '')
+    })
+
+    showToast('Status → ' + labels[s])
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast')
+    t.textContent = msg
+    t.classList.add('show')
+    clearTimeout(t._timer)
+    t._timer = setTimeout(() => t.classList.remove('show'), 1800)
+  }
+</script>
+</body>
+</html>
