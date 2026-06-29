@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from './auth'
 import { DepFlowProvider, useDepFlow } from './store'
 import { UIProvider, useUI } from './ui'
@@ -71,13 +71,38 @@ const SHORTCUTS = [
 ]
 
 function Shell() {
-  const { loading, error, project } = useDepFlow()
+  const { loading, error, project, selectProject } = useDepFlow()
   const { openNewIssue, openNewProject, sheet } = useUI()
   const [tab, setTab] = useState<Tab>('ordine')
   const [showShortcuts, setShowShortcuts] = useState(false)
+  const restoringRef = useRef(false)
 
   // Reset tab when switching projects
   useEffect(() => { setTab('ordine') }, [project?.id])
+
+  // Restore project from URL hash on initial load
+  useEffect(() => {
+    if (loading) return
+    const match = window.location.hash.match(/^#\/project\/(.+)$/)
+    if (match) { restoringRef.current = true; selectProject(match[1]) }
+  }, [loading]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync project → URL (pushState so browser back/forward works)
+  useEffect(() => {
+    if (restoringRef.current) { restoringRef.current = false; return }
+    const hash = project ? `#/project/${project.id}` : ''
+    window.history.pushState({ projectId: project?.id ?? null }, '', hash || window.location.pathname)
+  }, [project?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Browser back/forward → sync store
+  useEffect(() => {
+    const onPop = (e: PopStateEvent) => {
+      restoringRef.current = true
+      selectProject((e.state as { projectId?: string } | null)?.projectId ?? null)
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [selectProject])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
