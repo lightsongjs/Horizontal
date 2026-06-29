@@ -104,6 +104,42 @@ function Shell() {
   const [tab, setTab] = useState<Tab>('ordine')
   const [showShortcuts, setShowShortcuts] = useState(false)
   const urlSyncReady = useRef(false)
+  const mainRef = useRef<HTMLElement>(null)
+  const [pullY, setPullY] = useState(0)
+  const pullStart = useRef<number | null>(null)
+  const pullYRef = useRef(0)
+  const THRESHOLD = 72
+
+  useEffect(() => {
+    const el = mainRef.current
+    if (!el) return
+    const onStart = (e: TouchEvent) => {
+      if (el.scrollTop === 0) pullStart.current = e.touches[0].clientY
+    }
+    const onMove = (e: TouchEvent) => {
+      if (pullStart.current === null) return
+      const dy = e.touches[0].clientY - pullStart.current
+      if (dy > 0) {
+        e.preventDefault()
+        pullYRef.current = Math.min(dy, THRESHOLD * 1.5)
+        setPullY(pullYRef.current)
+      }
+    }
+    const onEnd = async () => {
+      if (pullYRef.current >= THRESHOLD) await refresh()
+      pullStart.current = null
+      pullYRef.current = 0
+      setPullY(0)
+    }
+    el.addEventListener('touchstart', onStart, { passive: true })
+    el.addEventListener('touchmove', onMove, { passive: false })
+    el.addEventListener('touchend', onEnd, { passive: true })
+    return () => {
+      el.removeEventListener('touchstart', onStart)
+      el.removeEventListener('touchmove', onMove)
+      el.removeEventListener('touchend', onEnd)
+    }
+  }, [refresh])
 
   // Reset tab when switching projects
   useEffect(() => { setTab('ordine') }, [project?.id])
@@ -165,7 +201,12 @@ function Shell() {
       <Sidebar />
       <div className="app-body">
         <Header onNewIssue={openNewIssue} onProjectSettings={openProjectSettings} onRefresh={refresh} />
-        <main>
+        <main ref={mainRef}>
+          {pullY > 0 && (
+            <div style={{ textAlign: 'center', padding: '6px 0', fontSize: '13px', color: 'var(--txt-dim)', transform: `translateY(${pullY * 0.4}px)`, transition: pullY === 0 ? 'transform 0.3s' : 'none' }}>
+              {pullY >= THRESHOLD ? '↑ Eliberează' : '↓ Trage pentru refresh'}
+            </div>
+          )}
           {error && <div className="banner">⚠ {error}</div>}
           {loading ? (
             <div className="view">
