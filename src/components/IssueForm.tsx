@@ -36,9 +36,33 @@ function DepSearch({ label, selected, drafts, candidates, onToggle, onToggleDraf
   onToggle: (id: string) => void; onToggleDraft: (d: DraftIssue) => void; onCreateDraft: (title: string) => void
 }) {
   const [q, setQ] = useState('')
-  const filtered = q.trim() ? candidates.filter((i) => i.title.toLowerCase().includes(q.toLowerCase())) : candidates
+  const [hlIdx, setHlIdx] = useState(0)
+
+  const filtered = q.trim() ? candidates.filter((i) => i.title.toLowerCase().includes(q.toLowerCase())) : []
   const hasExact = candidates.some((i) => i.title.toLowerCase() === q.toLowerCase().trim())
   const showCreate = q.trim() && !hasExact
+
+  // Options list: filtered results + optional create entry
+  const optionCount = filtered.length + (showCreate ? 1 : 0)
+
+  const handleChange = (v: string) => { setQ(v); setHlIdx(0) }
+
+  const selectFiltered = (i: Issue) => { onToggle(i.id); setQ(''); setHlIdx(0) }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!optionCount) return
+    if (e.key === 'ArrowDown') { e.preventDefault(); setHlIdx((p) => Math.min(p + 1, optionCount - 1)) }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setHlIdx((p) => Math.max(p - 1, 0)) }
+    else if (e.key === 'Enter') {
+      e.preventDefault()
+      if (hlIdx < filtered.length) {
+        selectFiltered(filtered[hlIdx])
+      } else if (showCreate) {
+        onCreateDraft(q.trim()); setQ(''); setHlIdx(0)
+      }
+    } else if (e.key === 'Escape') { setQ(''); setHlIdx(0) }
+  }
+
   return (
     <div className="dep-search-block">
       <label className="if-field-label">{label}</label>
@@ -65,15 +89,18 @@ function DepSearch({ label, selected, drafts, candidates, onToggle, onToggleDraf
         </div>
       )}
       <div className="dep-search-wrap">
-        <input value={q} onChange={(e) => setQ(e.target.value)}
+        <input value={q} onChange={(e) => handleChange(e.target.value)}
+          onKeyDown={handleKeyDown}
           placeholder="Caută sau creează tichet…" className="dep-search-input" autoComplete="off" />
       </div>
       {q.trim() && (
         <div className="dep-results">
-          {filtered.map((i) => {
+          {filtered.map((i, idx) => {
             const on = selected.includes(i.id)
+            const hl = idx === hlIdx
             return (
-              <button key={i.id} className={`dep-result-row ${on ? 'on' : ''}`} onClick={() => onToggle(i.id)}>
+              <button key={i.id} className={`dep-result-row ${on ? 'on' : ''} ${hl ? 'hl' : ''}`}
+                onClick={() => selectFiltered(i)}>
                 <span className={`ic ${on ? 'ok' : 'ext'}`}>{on ? '✓' : '+'}</span>
                 <span className="dep-result-title">{i.title}</span>
                 <span className="tk-id">{i.id}</span>
@@ -82,7 +109,8 @@ function DepSearch({ label, selected, drafts, candidates, onToggle, onToggleDraf
           })}
           {filtered.length === 0 && !showCreate && <p className="dep-no-results">Niciun tichet găsit.</p>}
           {showCreate && (
-            <button className="dep-create-btn" onClick={() => { onCreateDraft(q.trim()); setQ('') }}>
+            <button className={`dep-create-btn ${hlIdx === filtered.length ? 'hl' : ''}`}
+              onClick={() => { onCreateDraft(q.trim()); setQ(''); setHlIdx(0) }}>
               <span className="dep-create-plus">+</span>
               Creează <strong>«{q.trim()}»</strong> și leagă
             </button>

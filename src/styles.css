@@ -1259,6 +1259,11 @@ svg.graph {
 .dep-result-row.on {
   background: var(--accent-soft);
 }
+.dep-result-row.hl {
+  background: var(--accent-soft);
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+}
 .dep-result-title {
   flex: 1;
   min-width: 0;
@@ -1284,7 +1289,8 @@ svg.graph {
   background: transparent;
   transition: background 0.1s;
 }
-.dep-create-btn:hover {
+.dep-create-btn:hover,
+.dep-create-btn.hl {
   background: var(--accent-soft);
 }
 .dep-create-plus {
