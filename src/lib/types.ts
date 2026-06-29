@@ -5,6 +5,11 @@
 /** Derived, never stored. See deriveState(). */
 export type IssueState = 'done' | 'active' | 'blocked'
 
+export interface Assignee {
+  id: string
+  name: string
+}
+
 export interface Project {
   id: string
   name: string
@@ -14,6 +19,7 @@ export interface Project {
   currentWave: number
   /** Hex accent color. */
   accent: string
+  type: 'personal' | 'work'
 }
 
 export interface Wave {
@@ -58,6 +64,7 @@ export interface Issue {
   selectors: string[]
   scenarios: TestScenario[]
   notes: string
+  assigneeId: string | null
 }
 
 /** Output of computeLayers: layer depth -> issue ids, ordered within layer. */

@@ -1,13 +1,14 @@
 // Storage-agnostic data access. The app talks only to this interface; the
 // concrete backend (local or Supabase) is chosen in ./index.ts by env.
 
-import type { Issue, Project, Theme, Wave } from '../lib/types'
+import type { Assignee, Issue, Project, Theme, Wave } from '../lib/types'
 
 export interface NewProject {
   name: string
   description: string
   prefix: string
   accent?: string
+  type?: 'personal' | 'work'
 }
 
 export interface NewIssue {
@@ -20,13 +21,14 @@ export interface NewIssue {
   selectors?: string[]
   scenarios?: { text: string; kind: string }[]
   notes?: string
+  assigneeId?: string | null
 }
 
 export interface Repository {
   listProjects(): Promise<Project[]>
   /** Creates the project and its first wave ("Val 1"). */
   createProject(input: NewProject): Promise<Project>
-  updateProject(id: string, patch: Partial<Pick<Project, 'name' | 'description' | 'accent'>>): Promise<Project>
+  updateProject(id: string, patch: Partial<Pick<Project, 'name' | 'description' | 'accent' | 'type'>>): Promise<Project>
   /** Deletes the project and all its waves, themes, and issues. */
   deleteProject(id: string): Promise<void>
 
@@ -46,6 +48,9 @@ export interface Repository {
   updateIssue(id: string, patch: Partial<Issue>): Promise<Issue>
   /** Deletes the issue and any dependency edges referencing it. */
   deleteIssue(id: string): Promise<void>
+
+  listAssignees(): Promise<Assignee[]>
+  createAssignee(name: string): Promise<Assignee>
 }
 
 /** Slugify a theme name into a key, unique within `existing`. */

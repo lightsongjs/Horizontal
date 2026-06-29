@@ -121,16 +121,107 @@ function DepSearch({ label, selected, drafts, candidates, onToggle, onToggleDraf
   )
 }
 
+function AssigneeSearch({ assigneeId, assignees, myAssigneeId, onSelect, onSetMe, onCreateAndSelect }: {
+  assigneeId: string | null
+  assignees: import('../lib/types').Assignee[]
+  myAssigneeId: string | null
+  onSelect(id: string | null): void
+  onSetMe(id: string): void
+  onCreateAndSelect(name: string): Promise<void>
+}) {
+  const [q, setQ] = useState('')
+  const [hlIdx, setHlIdx] = useState(0)
+  const [creating, setCreating] = useState(false)
+
+  const sorted = [...assignees].sort((a, b) => {
+    if (a.id === myAssigneeId) return -1
+    if (b.id === myAssigneeId) return 1
+    return a.name.localeCompare(b.name)
+  })
+
+  const filtered = q.trim() ? sorted.filter((a) => a.name.toLowerCase().includes(q.toLowerCase())) : sorted
+  const hasExact = assignees.some((a) => a.name.toLowerCase() === q.toLowerCase().trim())
+  const showCreate = q.trim() && !hasExact
+  const optionCount = filtered.length + (showCreate ? 1 : 0)
+
+  const selected = assigneeId ? assignees.find((a) => a.id === assigneeId) : null
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!optionCount) return
+    if (e.key === 'ArrowDown') { e.preventDefault(); setHlIdx((p) => Math.min(p + 1, optionCount - 1)) }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setHlIdx((p) => Math.max(p - 1, 0)) }
+    else if (e.key === 'Enter') {
+      e.preventDefault()
+      if (hlIdx < filtered.length) { onSelect(filtered[hlIdx].id); setQ(''); setHlIdx(0) }
+      else if (showCreate) handleCreate()
+    } else if (e.key === 'Escape') { setQ(''); setHlIdx(0) }
+  }
+
+  const handleCreate = async () => {
+    const name = q.trim(); if (!name || creating) return
+    setCreating(true)
+    try { await onCreateAndSelect(name); setQ(''); setHlIdx(0) } finally { setCreating(false) }
+  }
+
+  return (
+    <div className="dep-search-block">
+      <label className="if-field-label">Responsabil</label>
+      {selected && (
+        <div className="dep-selected">
+          <button className="dep-chip on" onClick={() => onSelect(null)}>
+            <span className="dep-chip-title">{selected.name}{selected.id === myAssigneeId ? ' (eu)' : ''}</span>
+            <span className="dep-chip-x">×</span>
+          </button>
+        </div>
+      )}
+      <div className="dep-search-wrap">
+        <input value={q} onChange={(e) => { setQ(e.target.value); setHlIdx(0) }}
+          onKeyDown={handleKeyDown}
+          placeholder={selected ? 'Schimbă responsabilul…' : 'Caută sau adaugă…'}
+          className="dep-search-input" autoComplete="off" />
+      </div>
+      {(q.trim() || (!selected && assignees.length > 0)) && (
+        <div className="dep-results">
+          {filtered.map((a, idx) => (
+            <button key={a.id} className={`dep-result-row ${a.id === assigneeId ? 'on' : ''} ${idx === hlIdx ? 'hl' : ''}`}
+              onClick={() => { onSelect(a.id); setQ(''); setHlIdx(0) }}>
+              <span className={`ic ${a.id === assigneeId ? 'ok' : 'ext'}`}>{a.id === assigneeId ? '✓' : '+'}</span>
+              <span className="dep-result-title">{a.name}{a.id === myAssigneeId ? ' (eu)' : ''}</span>
+              {a.id !== myAssigneeId && (
+                <button style={{ marginLeft: 'auto', fontSize: 10, opacity: 0.5, padding: '0 4px' }}
+                  onClick={(e) => { e.stopPropagation(); onSetMe(a.id) }} title="Marchează ca mine">
+                  ★
+                </button>
+              )}
+            </button>
+          ))}
+          {filtered.length === 0 && !showCreate && <p className="dep-no-results">Niciun responsabil găsit.</p>}
+          {showCreate && (
+            <button className={`dep-create-btn ${hlIdx === filtered.length ? 'hl' : ''}`}
+              onClick={handleCreate} disabled={creating}>
+              <span className="dep-create-plus">+</span>
+              Adaugă <strong>«{q.trim()}»</strong>
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function IssueForm({ issueId }: { issueId?: string }) {
-  const { project, waves, themes, issues, byId, activeWave, createIssue, updateIssue, deleteIssue, createTheme } = useDepFlow()
+  const { project, waves, themes, issues, byId, activeWave, createIssue, updateIssue, deleteIssue, createTheme, assignees, myAssigneeId, setMyAssigneeId, createAssignee } = useDepFlow()
   const { closeSheet, setCloseGuard } = useUI()
   const existing = issueId ? byId[issueId] : undefined
   const isEdit = !!existing
+
+  const defaultAssigneeId = !isEdit && project?.type === 'personal' ? (myAssigneeId ?? null) : null
 
   const [title, setTitle] = useState(existing?.title ?? '')
   const [desc, setDesc] = useState(existing?.desc ?? '')
   const [theme, setTheme] = useState(existing?.theme ?? '')
   const [wave, setWave] = useState(existing?.wave ?? activeWave)
+  const [assigneeId, setAssigneeId] = useState<string | null>(existing?.assigneeId ?? defaultAssigneeId)
   const [deps, setDeps] = useState<string[]>(existing?.deps ?? [])
   const [blocks, setBlocks] = useState<string[]>(
     existing ? issues.filter((i) => i.deps?.includes(existing.id)).map((i) => i.id) : []
@@ -215,7 +306,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
     const prospective: Issue[] = issues.map((i) => ({ ...i, deps: [...(i.deps ?? [])] }))
     let target = prospective.find((i) => i.id === targetId)
     if (!target) {
-      target = { id: targetId, projectId: project.id, title, desc: '', theme, wave, deps: [], done: false, selectors: [], scenarios: [], notes: '' }
+      target = { id: targetId, projectId: project.id, title, desc: '', theme, wave, deps: [], done: false, selectors: [], scenarios: [], notes: '', assigneeId: null }
       prospective.push(target)
     }
     target.deps = [...deps.filter((d) => !d.startsWith('__draft_'))]
@@ -252,7 +343,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
         }
       }
       const realDeps = deps.map((id) => draftDepMap[id] ?? (id.startsWith('__draft_') ? null : id)).filter(Boolean) as string[]
-      const qaPayload = { selectors: selectors.filter(Boolean), scenarios, notes: notes.trim() }
+      const qaPayload = { selectors: selectors.filter(Boolean), scenarios, notes: notes.trim(), assigneeId }
       const targetId = isEdit
         ? (await updateIssue(existing!.id, { title: title.trim(), desc: desc.trim(), theme, wave, deps: realDeps, ...qaPayload }), existing!.id)
         : (await createIssue({ projectId: project.id, title: title.trim(), desc: desc.trim(), theme, wave, deps: realDeps, ...qaPayload })).id
@@ -279,7 +370,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
       })
       // For new issues, targetId wasn't in issues yet — add it so cascade sees it as a dependant
       if (!snap.find((i) => i.id === targetId)) {
-        snap = [...snap, { id: targetId, projectId: project.id, title: title.trim(), desc: desc.trim(), theme, wave, deps: realDeps, done: false, selectors: selectors.filter(Boolean), scenarios, notes: notes.trim() }]
+        snap = [...snap, { id: targetId, projectId: project.id, title: title.trim(), desc: desc.trim(), theme, wave, deps: realDeps, done: false, selectors: selectors.filter(Boolean), scenarios, notes: notes.trim(), assigneeId }]
       }
       const cascadeQueue = [...realDeps]
       const cascadeSeen = new Set<string>()
@@ -385,6 +476,18 @@ export function IssueForm({ issueId }: { issueId?: string }) {
               <label className="if-field-label">Descriere</label>
               <AutoTextarea value={desc} onChange={setDesc} placeholder="Cerințe, notițe, context…" minH={100} />
             </div>
+
+            <AssigneeSearch
+              assigneeId={assigneeId}
+              assignees={assignees}
+              myAssigneeId={myAssigneeId}
+              onSelect={setAssigneeId}
+              onSetMe={setMyAssigneeId}
+              onCreateAndSelect={async (name) => {
+                const a = await createAssignee(name)
+                setAssigneeId(a.id)
+              }}
+            />
 
             <DepSearch label="Depinde de" selected={deps} drafts={draftDeps} candidates={candidates}
               onToggle={(id) => toggle(deps, setDeps, id)}

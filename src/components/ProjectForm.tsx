@@ -12,6 +12,7 @@ export function ProjectForm() {
   const [prefix, setPrefix] = useState('')
   const [prefixTouched, setPrefixTouched] = useState(false)
   const [accent, setAccent] = useState(ACCENTS[0])
+  const [type, setType] = useState<'personal' | 'work'>('personal')
 
   const autoPrefix = (n: string) =>
     n.trim().split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 6) ||
@@ -35,6 +36,7 @@ export function ProjectForm() {
         description: description.trim(),
         prefix: cleanPrefix || name.trim().slice(0, 6).toUpperCase().replace(/[^A-Z0-9]/g, ''),
         accent,
+        type,
       })
       closeSheet()
       selectProject(created.id)
@@ -77,6 +79,12 @@ export function ProjectForm() {
             Tichetele vor fi {cleanPrefix || 'XXX'}-01, {cleanPrefix || 'XXX'}-02…
             {taken && <span style={{ color: 'var(--blocked)' }}> · prefix deja folosit</span>}
           </p>
+        </div>
+
+        <div className="sheet-section-t">Tip proiect</div>
+        <div className="chips" style={{ margin: '0 0 16px' }}>
+          <button className={`chip ${type === 'personal' ? 'on' : ''}`} onClick={() => setType('personal')}>Personal</button>
+          <button className={`chip ${type === 'work' ? 'on' : ''}`} onClick={() => setType('work')}>Serviciu</button>
         </div>
 
         <div className="sheet-section-t">Culoare</div>

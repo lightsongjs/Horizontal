@@ -2,7 +2,7 @@
 // example on first run. Mirrors the Supabase backend's behavior.
 
 import { SEED_ISSUES, SEED_PROJECTS, SEED_THEMES, SEED_WAVES } from '../lib/seed'
-import type { Issue, Project, Theme, Wave } from '../lib/types'
+import type { Assignee, Issue, Project, Theme, Wave } from '../lib/types'
 import { themeKey, type NewIssue, type NewProject, type Repository } from './repository'
 
 const KEY = 'depflow:v2'
@@ -12,6 +12,7 @@ interface DB {
   waves: Wave[]
   themes: Theme[]
   issues: Issue[]
+  assignees: Assignee[]
 }
 
 function clone<T>(v: T): T {
@@ -23,7 +24,7 @@ function load(): DB {
     const raw = localStorage.getItem(KEY)
     if (raw) {
       const db = JSON.parse(raw) as Partial<DB>
-      return { projects: db.projects ?? [], waves: db.waves ?? [], themes: db.themes ?? [], issues: db.issues ?? [] }
+      return { projects: db.projects ?? [], waves: db.waves ?? [], themes: db.themes ?? [], issues: db.issues ?? [], assignees: db.assignees ?? [] }
     }
   } catch {
     /* fall through to seed */
@@ -33,6 +34,7 @@ function load(): DB {
     waves: clone(SEED_WAVES),
     themes: clone(SEED_THEMES),
     issues: clone(SEED_ISSUES),
+    assignees: [],
   }
   save(seeded)
   return seeded
@@ -68,6 +70,7 @@ export function createLocalRepository(): Repository {
         prefix: input.prefix.toUpperCase(),
         currentWave: 1,
         accent: input.accent ?? '#6e7bff',
+        type: input.type ?? 'personal',
       }
       db.projects.push(project)
       db.waves.push({ projectId: id, number: 1, name: 'Val 1', label: 'MVP', position: 0 })
@@ -178,6 +181,7 @@ export function createLocalRepository(): Repository {
         selectors: [],
         scenarios: [],
         notes: '',
+        assigneeId: input.assigneeId ?? null,
       }
       db.issues.push(issue)
       save(db)
@@ -199,6 +203,18 @@ export function createLocalRepository(): Repository {
         .filter((i) => i.id !== id)
         .map((i) => (i.deps?.includes(id) ? { ...i, deps: i.deps.filter((d) => d !== id) } : i))
       save(db)
+    },
+
+    async listAssignees() {
+      return clone(load().assignees)
+    },
+
+    async createAssignee(name: string) {
+      const db = load()
+      const assignee: Assignee = { id: crypto.randomUUID(), name }
+      db.assignees.push(assignee)
+      save(db)
+      return clone(assignee)
     },
   }
 }

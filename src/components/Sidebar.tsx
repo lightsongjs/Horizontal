@@ -17,6 +17,9 @@ export function Sidebar() {
   const { theme, toggle } = useTheme()
   const dragId = useRef<string | null>(null)
   const [dragOver, setDragOver] = useState<string | null>(null)
+  const [filter, setFilter] = useState<'all' | 'personal' | 'work'>('all')
+
+  const visibleProjects = filter === 'all' ? projects : projects.filter((p) => p.type === filter)
 
   return (
     <aside className="sidebar">
@@ -43,12 +46,23 @@ export function Sidebar() {
         <span>Toate proiectele</span>
       </button>
 
-      {projects.length > 0 && (
+      <div style={{ display: 'flex', gap: 4, margin: '6px 0 2px', padding: '0 2px' }}>
+        {(['all', 'personal', 'work'] as const).map((f) => (
+          <button key={f} onClick={() => setFilter(f)}
+            style={{ flex: 1, fontSize: 10, padding: '3px 0', borderRadius: 5, border: '1px solid var(--line-soft)',
+              background: filter === f ? 'var(--accent)' : 'transparent',
+              color: filter === f ? '#fff' : 'var(--txt-dim)', cursor: 'pointer', fontWeight: filter === f ? 600 : 400 }}>
+            {f === 'all' ? 'Toate' : f === 'personal' ? 'Personal' : 'Serviciu'}
+          </button>
+        ))}
+      </div>
+
+      {visibleProjects.length > 0 && (
         <div className="sidebar-section-label">Proiecte</div>
       )}
 
       <div className="sidebar-proj-list">
-        {projects.map((p) => {
+        {visibleProjects.map((p) => {
           const pct = Math.round(completion(p.id) * 100)
           const isActive = project?.id === p.id
           return (
@@ -83,8 +97,8 @@ export function Sidebar() {
             </div>
           )
         })}
-        {projects.length === 0 && (
-          <p className="sidebar-empty">Niciun proiect încă</p>
+        {visibleProjects.length === 0 && (
+          <p className="sidebar-empty">{filter === 'all' ? 'Niciun proiect încă' : 'Niciun proiect în această categorie'}</p>
         )}
       </div>
 

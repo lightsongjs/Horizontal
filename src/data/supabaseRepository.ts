@@ -2,7 +2,7 @@
 // edge table, per-project waves and themes) to/from the app's models.
 
 import { requireSupabase } from '../lib/supabase'
-import type { Issue, Project, Theme, Wave } from '../lib/types'
+import type { Assignee, Issue, Project, Theme, Wave } from '../lib/types'
 import { themeKey, type NewIssue, type NewProject, type Repository } from './repository'
 
 interface IssueRow {
@@ -17,6 +17,7 @@ interface IssueRow {
   selectors: unknown
   scenarios: unknown
   notes: string
+  assignee_id: string | null
 }
 
 function rowToIssue(row: IssueRow, depsByIssue: Record<string, string[]>): Issue {
@@ -32,6 +33,7 @@ function rowToIssue(row: IssueRow, depsByIssue: Record<string, string[]>): Issue
     selectors: Array.isArray(row.selectors) ? (row.selectors as string[]) : [],
     scenarios: Array.isArray(row.scenarios) ? (row.scenarios as { text: string; kind: string }[]).map((s) => ({ text: s.text, kind: s.kind as import('../lib/types').ScenarioKind })) : [],
     notes: row.notes ?? '',
+    assigneeId: row.assignee_id ?? null,
   }
 }
 
@@ -65,6 +67,7 @@ export function createSupabaseRepository(): Repository {
         prefix: p.prefix,
         currentWave: p.current_wave,
         accent: p.accent,
+        type: (p.type ?? 'personal') as 'personal' | 'work',
       }))
     },
 
@@ -76,6 +79,7 @@ export function createSupabaseRepository(): Repository {
         prefix: input.prefix.toUpperCase(),
         currentWave: 1,
         accent: input.accent ?? '#6e7bff',
+        type: input.type ?? 'personal',
       }
       const { error } = await db.from('projects').insert({
         id: project.id,
@@ -84,6 +88,7 @@ export function createSupabaseRepository(): Repository {
         prefix: project.prefix,
         current_wave: project.currentWave,
         accent: project.accent,
+        type: project.type,
       })
       if (error) throw error
       const { error: wErr } = await db
@@ -98,9 +103,10 @@ export function createSupabaseRepository(): Repository {
       if (patch.name !== undefined) row.name = patch.name
       if (patch.description !== undefined) row.description = patch.description
       if (patch.accent !== undefined) row.accent = patch.accent
+      if (patch.type !== undefined) row.type = patch.type
       const { data, error } = await db.from('projects').update(row).eq('id', id).select('*').single()
       if (error) throw error
-      return { id: data.id, name: data.name, description: data.description, prefix: data.prefix, currentWave: data.current_wave, accent: data.accent }
+      return { id: data.id, name: data.name, description: data.description, prefix: data.prefix, currentWave: data.current_wave, accent: data.accent, type: (data.type ?? 'personal') as 'personal' | 'work' }
     },
 
     async deleteProject(id) {
@@ -227,6 +233,7 @@ export function createSupabaseRepository(): Repository {
         selectors: input.selectors ?? [],
         scenarios: (input.scenarios ?? []).map((s) => ({ text: s.text, kind: s.kind as import('../lib/types').ScenarioKind })),
         notes: input.notes ?? '',
+        assigneeId: input.assigneeId ?? null,
       }
       const { error } = await db.from('issues').insert({
         id: issue.id,
@@ -239,6 +246,7 @@ export function createSupabaseRepository(): Repository {
         selectors: issue.selectors,
         scenarios: issue.scenarios,
         notes: issue.notes,
+        assignee_id: input.assigneeId ?? null,
       })
       if (error) throw error
       if (issue.deps.length) {
@@ -260,6 +268,7 @@ export function createSupabaseRepository(): Repository {
       if (patch.selectors !== undefined) row.selectors = patch.selectors
       if (patch.scenarios !== undefined) row.scenarios = patch.scenarios
       if (patch.notes !== undefined) row.notes = patch.notes
+      if ('assigneeId' in patch) row.assignee_id = patch.assigneeId ?? null
       if (Object.keys(row).length) {
         const { error } = await db.from('issues').update(row).eq('id', id)
         if (error) throw error
@@ -285,6 +294,18 @@ export function createSupabaseRepository(): Repository {
     async deleteIssue(id: string) {
       const { error } = await db.from('issues').delete().eq('id', id)
       if (error) throw error
+    },
+
+    async listAssignees(): Promise<Assignee[]> {
+      const { data, error } = await db.from('assignees').select('*').order('name')
+      if (error) throw error
+      return (data ?? []).map((a) => ({ id: a.id, name: a.name }))
+    },
+
+    async createAssignee(name: string): Promise<Assignee> {
+      const { data, error } = await db.from('assignees').insert({ name }).select('*').single()
+      if (error) throw error
+      return { id: data.id, name: data.name }
     },
   }
 }

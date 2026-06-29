@@ -2,7 +2,7 @@ import { useDepFlow } from '../store'
 import { useUI } from '../ui'
 
 export function IssueSheet({ issueId }: { issueId: string }) {
-  const { byId, waves, toggleDone, unblockedBy, themeOf } = useDepFlow()
+  const { byId, waves, toggleDone, unblockedBy, themeOf, assignees, myAssigneeId } = useDepFlow()
   const { openIssue, openEditIssue } = useUI()
   const it = byId[issueId]
   if (!it) return null
@@ -11,6 +11,7 @@ export function IssueSheet({ issueId }: { issueId: string }) {
   const theme = it.theme ? themeOf(it.theme) : undefined
   const deps = it.deps ?? []
   const unblocks = unblockedBy(issueId)
+  const assignee = it.assigneeId ? assignees.find((a) => a.id === it.assigneeId) : null
 
   return (
     <>
@@ -22,6 +23,12 @@ export function IssueSheet({ issueId }: { issueId: string }) {
               {' · '}
               <span className="cdot" style={{ background: theme.color }} />
               {theme.name}
+            </>
+          )}
+          {assignee && (
+            <>
+              {' · '}
+              {'👤 '}{assignee.name}{assignee.id === myAssigneeId ? ' (eu)' : ''}
             </>
           )}
         </div>

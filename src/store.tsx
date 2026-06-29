@@ -22,7 +22,7 @@ import {
   projectCompletion,
   unblocks,
 } from './lib/engine'
-import type { Issue, IssueState, Layers, Project, Theme, Wave } from './lib/types'
+import type { Assignee, Issue, IssueState, Layers, Project, Theme, Wave } from './lib/types'
 
 interface DepFlowState {
   loading: boolean
@@ -34,13 +34,17 @@ interface DepFlowState {
   themes: Theme[]
   issues: Issue[]
   activeWave: number
+  assignees: Assignee[]
+  myAssigneeId: string | null
+  setMyAssigneeId(id: string | null): void
 
   selectProject(id: string | null): void
   setActiveWave(wave: number): void
   createProject(input: NewProject): Promise<Project>
-  updateProject(id: string, patch: Partial<Pick<Project, 'name' | 'description' | 'accent'>>): Promise<void>
+  updateProject(id: string, patch: Partial<Pick<Project, 'name' | 'description' | 'accent' | 'type'>>): Promise<void>
   deleteProject(id: string): Promise<void>
   reorderProjects(ids: string[]): void
+  createAssignee(name: string): Promise<Assignee>
 
   createWave(name: string, label?: string): Promise<void>
   renameWave(number: number, name: string, label: string): Promise<void>
@@ -76,6 +80,16 @@ export function DepFlowProvider({ children }: { children: ReactNode }) {
   const [allIssues, setAllIssues] = useState<Issue[]>([])
   const [projectId, setProjectId] = useState<string | null>(null)
   const [activeWave, setActiveWave] = useState(1)
+  const [assignees, setAssignees] = useState<Assignee[]>([])
+  const [myAssigneeId, setMyAssigneeIdState] = useState<string | null>(
+    () => localStorage.getItem('depflow-my-assignee-id')
+  )
+
+  const setMyAssigneeId = useCallback((id: string | null) => {
+    setMyAssigneeIdState(id)
+    if (id) localStorage.setItem('depflow-my-assignee-id', id)
+    else localStorage.removeItem('depflow-my-assignee-id')
+  }, [])
 
   const refresh = useCallback(async () => {
     setLoading(true)
@@ -103,8 +117,8 @@ export function DepFlowProvider({ children }: { children: ReactNode }) {
     let alive = true
     ;(async () => {
       try {
-        const p = await repository.listProjects()
-        if (alive) setRawProjects(p)
+        const [p, a] = await Promise.all([repository.listProjects(), repository.listAssignees()])
+        if (alive) { setRawProjects(p); setAssignees(a) }
       } catch (e) {
         if (alive) setError(e instanceof Error ? e.message : String(e))
       } finally {
@@ -172,9 +186,15 @@ export function DepFlowProvider({ children }: { children: ReactNode }) {
     return created
   }, [])
 
-  const updateProject = useCallback(async (id: string, patch: Partial<Pick<Project, 'name' | 'description' | 'accent'>>) => {
+  const updateProject = useCallback(async (id: string, patch: Partial<Pick<Project, 'name' | 'description' | 'accent' | 'type'>>) => {
     const updated = await repository.updateProject(id, patch)
     setRawProjects((prev) => prev.map((p) => (p.id === id ? updated : p)))
+  }, [])
+
+  const createAssignee = useCallback(async (name: string) => {
+    const assignee = await repository.createAssignee(name)
+    setAssignees((prev) => [...prev, assignee].sort((a, b) => a.name.localeCompare(b.name)))
+    return assignee
   }, [])
 
   const deleteProject = useCallback(async (id: string) => {
@@ -324,12 +344,16 @@ export function DepFlowProvider({ children }: { children: ReactNode }) {
     themes,
     issues,
     activeWave,
+    assignees,
+    myAssigneeId,
+    setMyAssigneeId,
     selectProject,
     setActiveWave,
     createProject,
     updateProject,
     deleteProject,
     reorderProjects,
+    createAssignee,
     createWave,
     renameWave,
     deleteWave,
