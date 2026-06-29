@@ -42,5 +42,8 @@ export default defineConfig(({ command: _command }) => ({
       },
     }),
   ],
+  define: {
+    __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+  },
   server: { host: true, port: 5173 },
 }))
