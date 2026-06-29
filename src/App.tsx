@@ -1,12 +1,11 @@
+import { useState, useEffect } from 'react'
 import { useAuth } from './auth'
 import { DepFlowProvider, useDepFlow } from './store'
-// Note: no in-app logout by design — the session persists. Sign-out, if ever
-// needed, is done out-of-band (e.g. clearing the session via a URL/devtools).
 import { UIProvider, useUI } from './ui'
 import { ThemeProvider, useTheme } from './theme'
 import { Login } from './components/Login'
 import { ProjectsView } from './components/ProjectsView'
-import { ProjectDetail } from './components/ProjectDetail'
+import { ProjectDetail, type Tab } from './components/ProjectDetail'
 import { SheetHost } from './components/SheetHost'
 import { Sidebar } from './components/Sidebar'
 
@@ -30,7 +29,7 @@ function ThemeToggle({ className }: { className?: string }) {
   )
 }
 
-function Header() {
+function Header({ onNewIssue }: { onNewIssue: () => void }) {
   const { project, completion, selectProject } = useDepFlow()
   const pct = project ? Math.round(completion(project.id) * 100) : 0
   return (
@@ -51,19 +50,60 @@ function Header() {
           <span>{pct}%</span>
         </div>
       )}
+      {project && (
+        <button className="header-new-btn" onClick={onNewIssue} title="Tichet nou (C)">
+          + Tichet
+        </button>
+      )}
       <ThemeToggle className="theme-toggle-mobile" />
     </header>
   )
 }
 
+const SHORTCUTS = [
+  { key: 'C', action: 'Tichet nou' },
+  { key: 'P', action: 'Proiect nou' },
+  { key: '1', action: 'Tab → Ordine' },
+  { key: '2', action: 'Tab → Graf' },
+  { key: '3', action: 'Tab → Teme' },
+  { key: '?', action: 'Afișează shortcuts' },
+  { key: 'Esc', action: 'Închide modal' },
+]
+
 function Shell() {
   const { loading, error, project } = useDepFlow()
-  const { openNewIssue, openNewProject } = useUI()
+  const { openNewIssue, openNewProject, sheet } = useUI()
+  const [tab, setTab] = useState<Tab>('ordine')
+  const [showShortcuts, setShowShortcuts] = useState(false)
+
+  // Reset tab when switching projects
+  useEffect(() => { setTab('ordine') }, [project?.id])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement
+      if (['INPUT', 'TEXTAREA'].includes(target.tagName) || target.isContentEditable) return
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+
+      if (e.key === 'Escape' && showShortcuts) { setShowShortcuts(false); return }
+      if (sheet.kind !== 'none') return  // don't fire shortcuts when modal is open
+
+      if (e.key === 'c' || e.key === 'C') { e.preventDefault(); project && openNewIssue() }
+      else if (e.key === 'p' || e.key === 'P') { e.preventDefault(); openNewProject() }
+      else if (e.key === '?') { e.preventDefault(); setShowShortcuts(v => !v) }
+      else if (e.key === '1' && project) { e.preventDefault(); setTab('ordine') }
+      else if (e.key === '2' && project) { e.preventDefault(); setTab('graf') }
+      else if (e.key === '3' && project) { e.preventDefault(); setTab('teme') }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [project, openNewIssue, openNewProject, sheet, showShortcuts])
+
   return (
     <div id="app">
       <Sidebar />
       <div className="app-body">
-        <Header />
+        <Header onNewIssue={openNewIssue} />
         <main>
           {error && <div className="banner">⚠ {error}</div>}
           {loading ? (
@@ -71,7 +111,7 @@ function Shell() {
               <p className="empty">Se încarcă…</p>
             </div>
           ) : project ? (
-            <ProjectDetail />
+            <ProjectDetail tab={tab} setTab={setTab} />
           ) : (
             <ProjectsView />
           )}
@@ -85,6 +125,24 @@ function Shell() {
         </button>
       </div>
       <SheetHost />
+      {showShortcuts && (
+        <div className="shortcuts-overlay" onClick={() => setShowShortcuts(false)}>
+          <div className="shortcuts-card" onClick={(e) => e.stopPropagation()}>
+            <div className="shortcuts-title">Keyboard shortcuts</div>
+            <table className="shortcuts-table">
+              <tbody>
+                {SHORTCUTS.map(({ key, action }) => (
+                  <tr key={key}>
+                    <td><kbd>{key}</kbd></td>
+                    <td>{action}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <button className="shortcuts-close" onClick={() => setShowShortcuts(false)}>Închide</button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

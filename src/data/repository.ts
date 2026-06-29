@@ -17,6 +17,9 @@ export interface NewIssue {
   theme?: string
   wave?: number
   deps?: string[]
+  selectors?: string[]
+  scenarios?: { text: string; kind: string }[]
+  notes?: string
 }
 
 export interface Repository {

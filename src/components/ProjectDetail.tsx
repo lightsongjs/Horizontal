@@ -1,9 +1,8 @@
-import { useState } from 'react'
 import { OrdineView } from './OrdineView'
 import { GraphView } from './GraphView'
 import { ThemesView } from './ThemesView'
 
-type Tab = 'ordine' | 'graf' | 'teme'
+export type Tab = 'ordine' | 'graf' | 'teme'
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'ordine', label: 'Ordine' },
@@ -11,8 +10,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'teme', label: 'Teme' },
 ]
 
-export function ProjectDetail() {
-  const [tab, setTab] = useState<Tab>('ordine')
+export function ProjectDetail({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
   return (
     <div className="view">
       <div className="tabs">

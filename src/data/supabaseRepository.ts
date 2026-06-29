@@ -14,6 +14,9 @@ interface IssueRow {
   theme: string | null
   wave: number
   done: boolean
+  selectors: unknown
+  scenarios: unknown
+  notes: string
 }
 
 function rowToIssue(row: IssueRow, depsByIssue: Record<string, string[]>): Issue {
@@ -26,6 +29,9 @@ function rowToIssue(row: IssueRow, depsByIssue: Record<string, string[]>): Issue
     wave: row.wave,
     deps: depsByIssue[row.id] ?? [],
     done: row.done,
+    selectors: Array.isArray(row.selectors) ? (row.selectors as string[]) : [],
+    scenarios: Array.isArray(row.scenarios) ? (row.scenarios as { text: string; kind: string }[]) : [],
+    notes: row.notes ?? '',
   }
 }
 
@@ -203,6 +209,9 @@ export function createSupabaseRepository(): Repository {
         wave: input.wave ?? proj.current_wave,
         deps: input.deps ?? [],
         done: false,
+        selectors: input.selectors ?? [],
+        scenarios: input.scenarios ?? [],
+        notes: input.notes ?? '',
       }
       const { error } = await db.from('issues').insert({
         id: issue.id,
@@ -212,6 +221,9 @@ export function createSupabaseRepository(): Repository {
         theme: issue.theme || null,
         wave: issue.wave,
         done: issue.done,
+        selectors: issue.selectors,
+        scenarios: issue.scenarios,
+        notes: issue.notes,
       })
       if (error) throw error
       if (issue.deps.length) {
@@ -230,6 +242,9 @@ export function createSupabaseRepository(): Repository {
       if (patch.theme !== undefined) row.theme = patch.theme || null
       if (patch.wave !== undefined) row.wave = patch.wave
       if (patch.done !== undefined) row.done = patch.done
+      if (patch.selectors !== undefined) row.selectors = patch.selectors
+      if (patch.scenarios !== undefined) row.scenarios = patch.scenarios
+      if (patch.notes !== undefined) row.notes = patch.notes
       if (Object.keys(row).length) {
         const { error } = await db.from('issues').update(row).eq('id', id)
         if (error) throw error

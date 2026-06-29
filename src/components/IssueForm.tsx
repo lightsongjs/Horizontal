@@ -1,50 +1,200 @@
-import { useState } from 'react'
+import { useRef, useState, useEffect, useCallback } from 'react'
 import { detectCycle } from '../lib/engine'
 import { useDepFlow } from '../store'
 import { useUI } from '../ui'
-import type { Issue } from '../lib/types'
+import type { Issue, ScenarioKind, TestScenario } from '../lib/types'
 
-const PALETTE = ['#6e7bff', '#3ecf8e', '#ffb454', '#a06eff', '#ff6b6b', '#46d1d9', '#f78fb3']
+const PALETTE = ['#0284C7', '#059669', '#D97706', '#EA580C', '#E11D48', '#7C3AED', '#06B6D4']
 
-/** Create (no issueId) or edit (issueId given) an issue, with delete. */
+const BADGE_CYCLE: { kind: ScenarioKind; icon: string }[] = [
+  { kind: 'pass',    icon: '✓' },
+  { kind: 'fail',    icon: '✕' },
+  { kind: 'neutral', icon: '○' },
+]
+
+type DraftIssue = { tempId: string; title: string }
+let draftCounter = 0
+const newTempId = () => `__draft_${++draftCounter}__`
+
+function AutoTextarea({ value, onChange, placeholder, minH = 80 }: {
+  value: string; onChange: (v: string) => void; placeholder?: string; minH?: number
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null)
+  useEffect(() => {
+    const el = ref.current; if (!el) return
+    el.style.height = 'auto'
+    el.style.height = Math.max(minH, el.scrollHeight) + 'px'
+  }, [value, minH])
+  return (
+    <textarea ref={ref} value={value} onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder} style={{ minHeight: minH, resize: 'none', overflow: 'hidden' }} />
+  )
+}
+
+function DepSearch({ label, selected, drafts, candidates, onToggle, onToggleDraft, onCreateDraft }: {
+  label: string; selected: string[]; drafts: DraftIssue[]; candidates: Issue[]
+  onToggle: (id: string) => void; onToggleDraft: (d: DraftIssue) => void; onCreateDraft: (title: string) => void
+}) {
+  const [q, setQ] = useState('')
+  const filtered = q.trim() ? candidates.filter((i) => i.title.toLowerCase().includes(q.toLowerCase())) : candidates
+  const hasExact = candidates.some((i) => i.title.toLowerCase() === q.toLowerCase().trim())
+  const showCreate = q.trim() && !hasExact
+  return (
+    <div className="dep-search-block">
+      <label className="if-field-label">{label}</label>
+      {selected.length > 0 && (
+        <div className="dep-selected">
+          {selected.map((id) => {
+            const issue = candidates.find((i) => i.id === id)
+            if (!issue) return null
+            return (
+              <button key={id} className="dep-chip on" onClick={() => onToggle(id)}>
+                <span className="dep-chip-id">{id}</span>
+                <span className="dep-chip-title">{issue.title}</span>
+                <span className="dep-chip-x">×</span>
+              </button>
+            )
+          })}
+          {drafts.filter((d) => selected.includes(d.tempId)).map((d) => (
+            <button key={d.tempId} className="dep-chip on draft" onClick={() => onToggleDraft(d)}>
+              <span className="dep-chip-id">nou</span>
+              <span className="dep-chip-title">{d.title}</span>
+              <span className="dep-chip-x">×</span>
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="dep-search-wrap">
+        <input value={q} onChange={(e) => setQ(e.target.value)}
+          placeholder="Caută sau creează tichet…" className="dep-search-input" autoComplete="off" />
+      </div>
+      {q.trim() && (
+        <div className="dep-results">
+          {filtered.map((i) => {
+            const on = selected.includes(i.id)
+            return (
+              <button key={i.id} className={`dep-result-row ${on ? 'on' : ''}`} onClick={() => onToggle(i.id)}>
+                <span className={`ic ${on ? 'ok' : 'ext'}`}>{on ? '✓' : '+'}</span>
+                <span className="dep-result-title">{i.title}</span>
+                <span className="tk-id">{i.id}</span>
+              </button>
+            )
+          })}
+          {filtered.length === 0 && !showCreate && <p className="dep-no-results">Niciun tichet găsit.</p>}
+          {showCreate && (
+            <button className="dep-create-btn" onClick={() => { onCreateDraft(q.trim()); setQ('') }}>
+              <span className="dep-create-plus">+</span>
+              Creează <strong>«{q.trim()}»</strong> și leagă
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function IssueForm({ issueId }: { issueId?: string }) {
-  const { project, waves, themes, issues, byId, activeWave, createIssue, updateIssue, deleteIssue, createTheme } =
-    useDepFlow()
-  const { closeSheet } = useUI()
+  const { project, waves, themes, issues, byId, activeWave, createIssue, updateIssue, deleteIssue, createTheme } = useDepFlow()
+  const { closeSheet, setCloseGuard } = useUI()
   const existing = issueId ? byId[issueId] : undefined
   const isEdit = !!existing
 
   const [title, setTitle] = useState(existing?.title ?? '')
   const [desc, setDesc] = useState(existing?.desc ?? '')
-  const [theme, setTheme] = useState<string>(existing?.theme ?? '')
-  const [wave, setWave] = useState<number>(existing?.wave ?? activeWave)
+  const [theme, setTheme] = useState(existing?.theme ?? '')
+  const [wave, setWave] = useState(existing?.wave ?? activeWave)
+  const [waveExpanded, setWaveExpanded] = useState(false)
   const [deps, setDeps] = useState<string[]>(existing?.deps ?? [])
-  const [newTheme, setNewTheme] = useState('')
-  // "blochează" = issues that depend on THIS one (reverse edges).
   const [blocks, setBlocks] = useState<string[]>(
-    existing ? issues.filter((i) => i.deps?.includes(existing.id)).map((i) => i.id) : [],
+    existing ? issues.filter((i) => i.deps?.includes(existing.id)).map((i) => i.id) : []
   )
+  const [draftDeps, setDraftDeps] = useState<DraftIssue[]>([])
+  const [draftBlocks, setDraftBlocks] = useState<DraftIssue[]>([])
+
+  const [selectors, setSelectors] = useState<string[]>(existing?.selectors ?? [])
+  const [scenarios, setScenarios] = useState<TestScenario[]>(existing?.scenarios ?? [])
+  const [notes, setNotes] = useState(existing?.notes ?? '')
+
+  const [showNewTheme, setShowNewTheme] = useState(false)
+  const [newThemeName, setNewThemeName] = useState('')
   const [saving, setSaving] = useState(false)
   const [confirmDel, setConfirmDel] = useState(false)
   const [cycleMsg, setCycleMsg] = useState<string | null>(null)
+  const [confirmClose, setConfirmClose] = useState(false)
+
+  const isDirty = isEdit
+    ? title !== (existing?.title ?? '') || desc !== (existing?.desc ?? '') ||
+      theme !== (existing?.theme ?? '') || wave !== (existing?.wave ?? activeWave) ||
+      JSON.stringify(selectors) !== JSON.stringify(existing?.selectors ?? []) ||
+      JSON.stringify(scenarios) !== JSON.stringify(existing?.scenarios ?? []) ||
+      notes !== (existing?.notes ?? '')
+    : title.trim() !== '' || desc.trim() !== '' || selectors.length > 0 || scenarios.length > 0 || notes.trim() !== ''
+
+  useEffect(() => {
+    if (isDirty) {
+      setCloseGuard(() => { setConfirmClose(true); return false })
+    } else {
+      setCloseGuard(null)
+    }
+    return () => setCloseGuard(null)
+  }, [isDirty, setCloseGuard])
+
+  // Cmd+Enter to save
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') save()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  })
 
   if (!project) return null
 
-  /** Build the would-be issue graph and return a cycle path (titles) if any. */
+  const candidates = issues.filter((i) => i.id !== issueId)
+  const toggle = (set: string[], setSet: (v: string[]) => void, id: string) =>
+    setSet(set.includes(id) ? set.filter((x) => x !== id) : [...set, id])
+  const toggleDraft = (ds: DraftIssue[], setDs: (v: DraftIssue[]) => void, ids: string[], setIds: (v: string[]) => void, d: DraftIssue) => {
+    if (ids.includes(d.tempId)) { setIds(ids.filter((x) => x !== d.tempId)); setDs(ds.filter((x) => x.tempId !== d.tempId)) }
+  }
+  const createDraftDep = (t: string) => { const d = { tempId: newTempId(), title: t }; setDraftDeps((p) => [...p, d]); setDeps((p) => [...p, d.tempId]) }
+  const createDraftBlock = (t: string) => { const d = { tempId: newTempId(), title: t }; setDraftBlocks((p) => [...p, d]); setBlocks((p) => [...p, d.tempId]) }
+
+  const addTheme = async () => {
+    const name = newThemeName.trim(); if (!name) return
+    const created = await createTheme(name, PALETTE[themes.length % PALETTE.length])
+    if (created) setTheme(created.key)
+    setNewThemeName(''); setShowNewTheme(false)
+  }
+
+  // Selector helpers
+  const addSelector = () => setSelectors((p) => [...p, ''])
+  const updateSelector = (i: number, val: string) => setSelectors((p) => p.map((s, idx) => idx === i ? val : s))
+  const removeSelector = (i: number) => setSelectors((p) => p.filter((_, idx) => idx !== i))
+
+  // Scenario helpers
+  const addScenario = () => setScenarios((p) => [...p, { text: '', kind: 'neutral' }])
+  const updateScenarioText = (i: number, text: string) => setScenarios((p) => p.map((s, idx) => idx === i ? { ...s, text } : s))
+  const cycleScenarioBadge = (i: number) => setScenarios((p) => p.map((s, idx) => {
+    if (idx !== i) return s
+    const cur = BADGE_CYCLE.findIndex((b) => b.kind === s.kind)
+    return { ...s, kind: BADGE_CYCLE[(cur + 1) % BADGE_CYCLE.length].kind }
+  }))
+  const removeScenario = (i: number) => setScenarios((p) => p.filter((_, idx) => idx !== i))
+
   const cycleAfterSave = (): string | null => {
     const targetId = existing?.id ?? '__new__'
-    const titleOf = (id: string) =>
-      id === targetId ? title.trim() || '(nou)' : byId[id]?.title ?? id
+    const titleOf = (id: string) => id === targetId ? title.trim() || '(nou)' : byId[id]?.title ?? id
     const prospective: Issue[] = issues.map((i) => ({ ...i, deps: [...(i.deps ?? [])] }))
     let target = prospective.find((i) => i.id === targetId)
     if (!target) {
-      target = { id: targetId, projectId: project.id, title, desc: '', theme, wave, deps: [], done: false }
+      target = { id: targetId, projectId: project.id, title, desc: '', theme, wave, deps: [], done: false, selectors: [], scenarios: [], notes: '' }
       prospective.push(target)
     }
-    target.deps = [...deps]
+    target.deps = [...deps.filter((d) => !d.startsWith('__draft_'))]
     for (const p of prospective) {
       if (p.id === targetId) continue
-      const shouldDepend = blocks.includes(p.id)
+      const realBlocks = blocks.filter((b) => !b.startsWith('__draft_'))
+      const shouldDepend = realBlocks.includes(p.id)
       const has = p.deps.includes(targetId)
       if (shouldDepend && !has) p.deps = [...p.deps, targetId]
       if (!shouldDepend && has) p.deps = p.deps.filter((d) => d !== targetId)
@@ -53,167 +203,213 @@ export function IssueForm({ issueId }: { issueId?: string }) {
     return cycle ? cycle.map(titleOf).join(' → ') : null
   }
 
-  const candidates = issues.filter((i) => i.id !== issueId)
-  const toggle = (set: string[], setSet: (v: string[]) => void, id: string) =>
-    setSet(set.includes(id) ? set.filter((x) => x !== id) : [...set, id])
-
-  const addTheme = async () => {
-    const name = newTheme.trim()
-    if (!name) return
-    const created = await createTheme(name, PALETTE[themes.length % PALETTE.length])
-    if (created) setTheme(created.key)
-    setNewTheme('')
-  }
-
   const save = async () => {
     if (!title.trim() || saving) return
     const cyc = cycleAfterSave()
-    if (cyc) {
-      setCycleMsg(cyc)
-      return
-    }
-    setCycleMsg(null)
-    setSaving(true)
+    if (cyc) { setCycleMsg(cyc); return }
+    setCycleMsg(null); setSaving(true)
     try {
+      const draftDepMap: Record<string, string> = {}
+      for (const d of draftDeps) {
+        if (deps.includes(d.tempId)) {
+          const created = await createIssue({ projectId: project.id, title: d.title, desc: '', theme, wave, deps: [] })
+          draftDepMap[d.tempId] = created.id
+        }
+      }
+      const draftBlockMap: Record<string, string> = {}
+      for (const d of draftBlocks) {
+        if (blocks.includes(d.tempId)) {
+          const created = await createIssue({ projectId: project.id, title: d.title, desc: '', theme, wave, deps: [] })
+          draftBlockMap[d.tempId] = created.id
+        }
+      }
+      const realDeps = deps.map((id) => draftDepMap[id] ?? (id.startsWith('__draft_') ? null : id)).filter(Boolean) as string[]
+      const qaPayload = { selectors: selectors.filter(Boolean), scenarios, notes: notes.trim() }
       const targetId = isEdit
-        ? (await updateIssue(existing!.id, { title: title.trim(), desc: desc.trim(), theme, wave, deps }), existing!.id)
-        : (await createIssue({ projectId: project.id, title: title.trim(), desc: desc.trim(), theme, wave, deps })).id
-
-      // Apply "blochează": ensure each selected issue B depends on targetId,
-      // and remove targetId from any that were deselected.
+        ? (await updateIssue(existing!.id, { title: title.trim(), desc: desc.trim(), theme, wave, deps: realDeps, ...qaPayload }), existing!.id)
+        : (await createIssue({ projectId: project.id, title: title.trim(), desc: desc.trim(), theme, wave, deps: realDeps, ...qaPayload })).id
+      const realBlocks = blocks.map((id) => draftBlockMap[id] ?? (id.startsWith('__draft_') ? null : id)).filter(Boolean) as string[]
       const currentBlockers = issues.filter((i) => i.deps?.includes(targetId)).map((i) => i.id)
-      const toAdd = blocks.filter((b) => !currentBlockers.includes(b))
-      const toRemove = currentBlockers.filter((b) => !blocks.includes(b))
-      for (const b of toAdd) {
-        const bi = byId[b]
-        if (bi) await updateIssue(b, { deps: [...(bi.deps ?? []), targetId] })
+      for (const b of realBlocks.filter((b) => !currentBlockers.includes(b))) {
+        const bi = byId[b]; if (bi) await updateIssue(b, { deps: [...(bi.deps ?? []), targetId] })
       }
-      for (const b of toRemove) {
-        const bi = byId[b]
-        if (bi) await updateIssue(b, { deps: (bi.deps ?? []).filter((d) => d !== targetId) })
+      for (const b of currentBlockers.filter((b) => !realBlocks.includes(b))) {
+        const bi = byId[b]; if (bi) await updateIssue(b, { deps: (bi.deps ?? []).filter((d) => d !== targetId) })
       }
-      closeSheet()
-    } finally {
-      setSaving(false)
-    }
+      for (const [tempId, realId] of Object.entries(draftBlockMap)) {
+        if (blocks.includes(tempId)) await updateIssue(realId, { deps: [targetId] })
+      }
+      setCloseGuard(null); closeSheet()
+    } finally { setSaving(false) }
   }
 
   const remove = async () => {
     if (!existing || saving) return
     setSaving(true)
-    try {
-      await deleteIssue(existing.id)
-      closeSheet()
-    } finally {
-      setSaving(false)
-    }
+    try { await deleteIssue(existing.id); setCloseGuard(null); closeSheet() }
+    finally { setSaving(false) }
   }
 
-  const depRow = (id: string, set: string[], setSet: (v: string[]) => void) => {
-    const i = byId[id]
-    if (!i) return null
-    const on = set.includes(id)
-    return (
-      <button
-        key={id}
-        className="dep-row"
-        style={{ width: '100%', textAlign: 'left' }}
-        onClick={() => toggle(set, setSet, id)}
-      >
-        <span className={`ic ${on ? 'ok' : 'ext'}`}>{on ? '✓' : '+'}</span>
-        <span>{i.title}</span>
-        <span className="tk-id" style={{ marginLeft: 'auto' }}>
-          {id}
-        </span>
-      </button>
-    )
-  }
+  const otherWaves = waves.filter((w) => w.number !== wave)
+  const activeWaveObj = waves.find((w) => w.number === wave)
+  const badgeIcon = (kind: ScenarioKind) => BADGE_CYCLE.find((b) => b.kind === kind)?.icon ?? '○'
 
   return (
     <>
-      <div className="sheet-head">
-        <div className="eyebrow">{isEdit ? `✎ ${existing!.id}` : '+ Tichet nou'}</div>
-        <h2>{isEdit ? 'Editează tichet' : 'Adaugă tichet'}</h2>
-        <p>Titlu, descriere, val și dependențe.</p>
-      </div>
-      <div className="sheet-scroll">
-        <div className="fld">
-          <label>Titlu</label>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex: Pagina de înregistrare" autoComplete="off" />
-        </div>
-        <div className="fld">
-          <label>Detalii / descriere</label>
-          <textarea value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Cerințe, notițe…" />
-        </div>
+      {/* HEADER */}
+      <div className="if-header">
+        <div className="if-header-left">
+          <span className="if-eyebrow">
+            <span className="if-live-dot" />
+            {isEdit ? `✎ ${existing!.id}` : 'Tichet nou'}
+          </span>
+          <div className="if-title">{isEdit ? 'Editează tichet' : 'Adaugă tichet'}</div>
 
-        <div className="sheet-section-t">Temă</div>
-        <div className="chips" style={{ margin: '0 0 4px' }}>
-          <button className={`chip ${theme === '' ? 'on' : ''}`} onClick={() => setTheme('')}>
-            Fără
-          </button>
-          {themes.map((t) => (
-            <button key={t.key} className={`chip ${theme === t.key ? 'on' : ''}`} onClick={() => setTheme(t.key)}>
-              <span className="cdot" style={{ background: t.color }} />
-              {t.name}
+          {/* Temă + Val pills */}
+          <div className="if-header-meta">
+            <button className={`if-meta-pill ${theme === '' ? 'active' : ''}`} onClick={() => setTheme('')}>Fără temă</button>
+            {themes.map((t) => (
+              <button key={t.key} className={`if-meta-pill ${theme === t.key ? 'active' : ''}`} onClick={() => setTheme(t.key)}>
+                <span className="if-meta-dot" style={{ background: t.color }} />{t.name}
+              </button>
+            ))}
+            <button className="if-meta-add" onClick={() => setShowNewTheme((v) => !v)} title="Temă nouă">
+              {showNewTheme ? '×' : '+'}
             </button>
-          ))}
-        </div>
-        <div className="inline-new">
-          <input
-            value={newTheme}
-            onChange={(e) => setNewTheme(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && addTheme()}
-            placeholder="+ Temă nouă"
-            autoComplete="off"
-          />
-          <button onClick={addTheme}>OK</button>
-        </div>
 
-        <div className="sheet-section-t">Val (sprint)</div>
-        {waves.length === 0 ? (
-          <p className="empty" style={{ padding: '8px 0' }}>Adaugă întâi un val (⚙ în ecranul Ordine).</p>
-        ) : (
-          <div className="chips" style={{ margin: '0 0 4px' }}>
+            <span className="if-meta-sep" />
+
             {waves.map((w) => (
-              <button key={w.number} className={`chip ${wave === w.number ? 'on' : ''}`} onClick={() => setWave(w.number)}>
+              <button key={w.number} className={`if-meta-wave ${wave === w.number ? 'active' : ''}`} onClick={() => setWave(w.number)}>
                 {w.name}
               </button>
             ))}
           </div>
-        )}
 
-        <div className="sheet-section-t">Depinde de</div>
-        {candidates.length === 0 ? (
-          <p className="empty" style={{ padding: '8px 0' }}>Niciun alt tichet.</p>
-        ) : (
-          candidates.map((i) => depRow(i.id, deps, setDeps))
-        )}
+          {showNewTheme && (
+            <div className="if-meta-new-theme">
+              <input value={newThemeName} onChange={(e) => setNewThemeName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addTheme()}
+                placeholder="Nume temă nouă…" autoFocus autoComplete="off" />
+              <button onClick={addTheme} disabled={!newThemeName.trim()}>OK</button>
+            </div>
+          )}
+        </div>
+        <button className="if-close" onClick={closeSheet} aria-label="Închide">✕</button>
+      </div>
 
-        <div className="sheet-section-t">Blochează (astea depind de el)</div>
-        {candidates.length === 0 ? (
-          <p className="empty" style={{ padding: '8px 0' }}>Niciun alt tichet.</p>
-        ) : (
-          candidates.map((i) => depRow(i.id, blocks, setBlocks))
-        )}
+      {/* BODY */}
+      <div className="sheet-scroll if-body">
+        <div className="form-cols">
 
-        {isEdit && (
-          <button
-            className="add-dep"
-            style={{ marginTop: 14, borderColor: '#ff6b6b55', color: 'var(--blocked)' }}
-            onClick={() => (confirmDel ? void remove() : setConfirmDel(true))}
-          >
-            {confirmDel ? '⚠ Apasă din nou ca să confirmi ștergerea' : '🗑 Șterge tichetul'}
-          </button>
-        )}
+          {/* ── STÂNGA ── */}
+          <div className="form-col">
+
+            <div className="fld">
+              <label className="if-field-label req">Titlu</label>
+              <input value={title} onChange={(e) => setTitle(e.target.value)}
+                placeholder="Ex: Pagina de înregistrare" autoComplete="off" autoFocus />
+            </div>
+
+            <div className="fld">
+              <label className="if-field-label">Descriere</label>
+              <AutoTextarea value={desc} onChange={setDesc} placeholder="Cerințe, notițe, context…" minH={100} />
+            </div>
+
+            <DepSearch label="Depinde de" selected={deps} drafts={draftDeps} candidates={candidates}
+              onToggle={(id) => toggle(deps, setDeps, id)}
+              onToggleDraft={(d) => toggleDraft(draftDeps, setDraftDeps, deps, setDeps, d)}
+              onCreateDraft={createDraftDep} />
+
+            <DepSearch label="Blochează" selected={blocks} drafts={draftBlocks} candidates={candidates}
+              onToggle={(id) => toggle(blocks, setBlocks, id)}
+              onToggleDraft={(d) => toggleDraft(draftBlocks, setDraftBlocks, blocks, setBlocks, d)}
+              onCreateDraft={createDraftBlock} />
+
+            {isEdit && (
+              <button className="add-dep" style={{ marginTop: 8, borderColor: 'rgba(225,29,72,0.3)', color: 'var(--blocked)' }}
+                onClick={() => confirmDel ? void remove() : setConfirmDel(true)}>
+                {confirmDel ? '⚠ Apasă din nou ca să confirmi ștergerea' : '🗑 Șterge tichetul'}
+              </button>
+            )}
+          </div>
+
+          {/* ── DREAPTA ── */}
+          <div className="form-col">
+
+            <div className="fld">
+              <label className="if-field-label">Playwright Selectors</label>
+              <div className="if-sc-list">
+                {selectors.map((s, i) => (
+                  <div key={i} className="if-sc-item">
+                    <span className="if-badge selector">⬡</span>
+                    <input value={s} onChange={(e) => updateSelector(i, e.target.value)}
+                      placeholder="getByRole('button', { name: 'Login' })"
+                      style={{ fontFamily: 'var(--mono)', fontSize: 11 }} autoComplete="off" />
+                    <button className="if-sc-del" onClick={() => removeSelector(i)}>×</button>
+                  </div>
+                ))}
+              </div>
+              <button className="if-add-btn" onClick={addSelector}>
+                <span style={{ fontSize: 16, fontWeight: 700, lineHeight: 1 }}>+</span>
+                Adaugă selector
+              </button>
+            </div>
+
+            <div className="fld">
+              <label className="if-field-label">Test Scenarios</label>
+              <div className="if-sc-list">
+                {scenarios.map((s, i) => (
+                  <div key={i} className="if-sc-item">
+                    <span className={`if-badge ${s.kind}`} onClick={() => cycleScenarioBadge(i)} title="Click schimbă tipul">
+                      {badgeIcon(s.kind)}
+                    </span>
+                    <input value={s.text} onChange={(e) => updateScenarioText(i, e.target.value)}
+                      placeholder="Ex: Login reușit cu date valide" autoComplete="off" />
+                    <button className="if-sc-del" onClick={() => removeScenario(i)}>×</button>
+                  </div>
+                ))}
+              </div>
+              <button className="if-add-btn" onClick={addScenario}>
+                <span style={{ fontSize: 16, fontWeight: 700, lineHeight: 1 }}>+</span>
+                Adaugă scenariu
+              </button>
+            </div>
+
+            <div className="fld">
+              <label className="if-field-label">Note</label>
+              <AutoTextarea value={notes} onChange={setNotes}
+                placeholder="Observații libere, edge cases, links…" minH={100} />
+            </div>
+
+          </div>
+        </div>
 
         {cycleMsg && (
-          <div className="banner">
-            ⚠ Asta ar crea un ciclu de dependențe: {cycleMsg}. Scoate una dintre legături.
+          <div className="banner" style={{ marginTop: 12 }}>⚠ Asta ar crea un ciclu: {cycleMsg}</div>
+        )}
+        {confirmClose && (
+          <div className="close-confirm-banner">
+            <span>Ai modificări nesalvate. Ieși totuși?</span>
+            <div className="close-confirm-actions">
+              <button className="close-confirm-stay" onClick={() => setConfirmClose(false)}>Rămâi</button>
+              <button className="close-confirm-exit" onClick={() => { setCloseGuard(null); closeSheet() }}>Ieși</button>
+            </div>
           </div>
         )}
+      </div>
 
-        <div className="save-bar">
-          <button onClick={save} disabled={!title.trim() || saving || waves.length === 0}>
+      {/* FOOTER */}
+      <div className="if-footer">
+        <div className="if-footer-hint">
+          <kbd>⌘</kbd>+<kbd>↵</kbd> salvează rapid
+        </div>
+        <div className="if-footer-actions">
+          <button className="if-btn-ghost" onClick={closeSheet}>Anulează</button>
+          <button className="if-btn-primary" onClick={save} disabled={!title.trim() || saving || waves.length === 0}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
             {saving ? 'Se salvează…' : isEdit ? 'Salvează modificările' : 'Salvează tichet'}
           </button>
         </div>

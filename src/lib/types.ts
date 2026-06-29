@@ -36,6 +36,13 @@ export interface Theme {
   color: string
 }
 
+export type ScenarioKind = 'pass' | 'fail' | 'neutral'
+
+export interface TestScenario {
+  text: string
+  kind: ScenarioKind
+}
+
 export interface Issue {
   id: string
   projectId: string
@@ -47,6 +54,10 @@ export interface Issue {
   /** Issue ids this depends on. Global — cross-wave deps are allowed. */
   deps: string[]
   done: boolean
+  /** Playwright locator strings. */
+  selectors: string[]
+  scenarios: TestScenario[]
+  notes: string
 }
 
 /** Output of computeLayers: layer depth -> issue ids, ordered within layer. */

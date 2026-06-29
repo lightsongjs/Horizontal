@@ -1,6 +1,6 @@
 // UI context for the bottom sheet.
 
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useContext, useMemo, useRef, useState, type ReactNode } from 'react'
 
 export type SheetState =
   | { kind: 'none' }
@@ -19,12 +19,15 @@ interface UI {
   openWaveManage(): void
   openThemeManage(): void
   closeSheet(): void
+  /** Register a guard called before closing. Return false to block close. */
+  setCloseGuard(fn: (() => boolean) | null): void
 }
 
 const Ctx = createContext<UI | null>(null)
 
 export function UIProvider({ children }: { children: ReactNode }) {
   const [sheet, setSheet] = useState<SheetState>({ kind: 'none' })
+  const closeGuard = useRef<(() => boolean) | null>(null)
   const value = useMemo<UI>(
     () => ({
       sheet,
@@ -34,7 +37,11 @@ export function UIProvider({ children }: { children: ReactNode }) {
       openNewProject: () => setSheet({ kind: 'project-form' }),
       openWaveManage: () => setSheet({ kind: 'wave-manage' }),
       openThemeManage: () => setSheet({ kind: 'theme-manage' }),
-      closeSheet: () => setSheet({ kind: 'none' }),
+      closeSheet: () => {
+        if (closeGuard.current && !closeGuard.current()) return
+        setSheet({ kind: 'none' })
+      },
+      setCloseGuard: (fn) => { closeGuard.current = fn },
     }),
     [sheet],
   )
