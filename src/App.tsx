@@ -70,8 +70,11 @@ const SHORTCUTS = [
   { key: 'Esc', action: 'Închide modal' },
 ]
 
+const slugify = (name: string) =>
+  name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '')
+
 function Shell() {
-  const { loading, error, project, selectProject } = useDepFlow()
+  const { loading, error, project, projects, selectProject } = useDepFlow()
   const { openNewIssue, openNewProject, sheet } = useUI()
   const [tab, setTab] = useState<Tab>('ordine')
   const [showShortcuts, setShowShortcuts] = useState(false)
@@ -80,18 +83,23 @@ function Shell() {
   // Reset tab when switching projects
   useEffect(() => { setTab('ordine') }, [project?.id])
 
-  // Step 1 — on load: read path, select project, then unlock URL sync
+  const findBySlug = (slug: string) => projects.find((p) => slugify(p.name) === slug)
+
+  // Step 1 — on load: read path, select project by name slug, then unlock URL sync
   useEffect(() => {
     if (loading) return
     const match = window.location.pathname.match(/^\/project\/(.+)$/)
-    if (match) selectProject(match[1])
+    if (match) {
+      const found = findBySlug(match[1])
+      if (found) selectProject(found.id)
+    }
     urlSyncReady.current = true
   }, [loading]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Step 2 — sync project → URL (only after initial restore is done)
+  // Step 2 — sync project → URL using name slug
   useEffect(() => {
     if (!urlSyncReady.current) return
-    const path = project ? `/project/${project.id}` : '/'
+    const path = project ? `/project/${slugify(project.name)}` : '/'
     if (window.location.pathname !== path)
       window.history.pushState(null, '', path)
   }, [project?.id]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -100,11 +108,12 @@ function Shell() {
   useEffect(() => {
     const onPop = () => {
       const match = window.location.pathname.match(/^\/project\/(.+)$/)
-      selectProject(match ? match[1] : null)
+      const found = match ? findBySlug(match[1]) : null
+      selectProject(found?.id ?? null)
     }
     window.addEventListener('popstate', onPop)
     return () => window.removeEventListener('popstate', onPop)
-  }, [selectProject])
+  }, [selectProject, projects]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
