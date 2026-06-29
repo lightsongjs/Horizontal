@@ -3,14 +3,7 @@ import { useDepFlow } from '../store'
 import { useUI } from '../ui'
 import { useTheme } from '../theme'
 
-function getBuildTimeAgo(): string {
-  const built = new Date(__BUILD_TIME__).getTime()
-  const diff = Math.floor((Date.now() - built) / 1000)
-  if (diff < 60) return `${diff}s ago`
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
-  return `${Math.floor(diff / 86400)}d ago`
-}
+const BUILD_DATE = new Date(__BUILD_TIME__).toLocaleDateString('ro-RO', { day: '2-digit', month: 'short', year: 'numeric' })
 
 export function Sidebar() {
   const { projects, project, completion, selectProject, reorderProjects } = useDepFlow()
@@ -18,38 +11,15 @@ export function Sidebar() {
   const { theme, toggle } = useTheme()
   const dragId = useRef<string | null>(null)
   const [dragOver, setDragOver] = useState<string | null>(null)
-  const [showBuild, setShowBuild] = useState(false)
 
   return (
     <aside className="sidebar">
-      <div
-        className="sidebar-brand"
-        onMouseEnter={() => setShowBuild(true)}
-        onMouseLeave={() => setShowBuild(false)}
-        style={{ position: 'relative', cursor: 'default' }}
-      >
+      <div className="sidebar-brand">
         <div className="logo">H</div>
         <div className="sidebar-brand-txt">
           <span className="sidebar-app-name">Horizontal</span>
+          <span style={{ fontSize: '9px', color: 'var(--txt-dim)', opacity: 0.6, lineHeight: 1 }}>last build: {BUILD_DATE}</span>
         </div>
-        {showBuild && (
-          <div style={{
-            position: 'absolute',
-            top: '100%',
-            left: 0,
-            marginTop: '6px',
-            background: 'var(--surface-2)',
-            border: '1px solid var(--line)',
-            borderRadius: '6px',
-            padding: '4px 8px',
-            fontSize: '11px',
-            color: 'var(--txt-dim)',
-            whiteSpace: 'nowrap',
-            zIndex: 100,
-          }}>
-            Build: {getBuildTimeAgo()}
-          </div>
-        )}
       </div>
 
       <button
