@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useCallback } from 'react'
-import { detectCycle } from '../lib/engine'
+import { detectCycle, requiredDepWave } from '../lib/engine'
 import { useDepFlow } from '../store'
 import { useUI } from '../ui'
 import type { Issue, ScenarioKind, TestScenario } from '../lib/types'
@@ -120,6 +120,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
   const [saving, setSaving] = useState(false)
   const [confirmDel, setConfirmDel] = useState(false)
   const [cycleMsg, setCycleMsg] = useState<string | null>(null)
+  const [waveError, setWaveError] = useState<string | null>(null)
   const [confirmClose, setConfirmClose] = useState(false)
 
   const isDirty = isEdit
@@ -239,6 +240,36 @@ export function IssueForm({ issueId }: { issueId?: string }) {
       for (const [tempId, realId] of Object.entries(draftBlockMap)) {
         if (blocks.includes(tempId)) await updateIssue(realId, { deps: [targetId] })
       }
+
+      // Cascade: auto-move deps to min(wave of their dependants)
+      let snap = issues.map((i) => {
+        if (i.id === targetId) return { ...i, wave, deps: realDeps }
+        if (realBlocks.includes(i.id) && !currentBlockers.includes(i.id))
+          return { ...i, deps: [...(i.deps ?? []), targetId] }
+        if (currentBlockers.includes(i.id) && !realBlocks.includes(i.id))
+          return { ...i, deps: (i.deps ?? []).filter((d) => d !== targetId) }
+        return i
+      })
+      // For new issues, targetId wasn't in issues yet — add it so cascade sees it as a dependant
+      if (!snap.find((i) => i.id === targetId)) {
+        snap = [...snap, { id: targetId, projectId: project.id, title: title.trim(), desc: desc.trim(), theme, wave, deps: realDeps, done: false, selectors: selectors.filter(Boolean), scenarios, notes: notes.trim() }]
+      }
+      const cascadeQueue = [...realDeps]
+      const cascadeSeen = new Set<string>()
+      while (cascadeQueue.length > 0) {
+        const depId = cascadeQueue.shift()!
+        if (cascadeSeen.has(depId)) continue
+        cascadeSeen.add(depId)
+        const dep = snap.find((i) => i.id === depId)
+        if (!dep) continue
+        const req = requiredDepWave(depId, snap)
+        if (req !== null && dep.wave !== req) {
+          await updateIssue(depId, { wave: req })
+          snap = snap.map((i) => (i.id === depId ? { ...i, wave: req } : i))
+          for (const d of dep.deps ?? []) cascadeQueue.push(d)
+        }
+      }
+
       setCloseGuard(null); closeSheet()
     } finally { setSaving(false) }
   }
@@ -280,7 +311,21 @@ export function IssueForm({ issueId }: { issueId?: string }) {
             <span className="if-meta-sep" />
 
             {waves.map((w) => (
-              <button key={w.number} className={`if-meta-wave ${wave === w.number ? 'active' : ''}`} onClick={() => setWave(w.number)}>
+              <button key={w.number} className={`if-meta-wave ${wave === w.number ? 'active' : ''}`} onClick={() => {
+                if (isEdit && existing) {
+                  const dependants = issues.filter((i) => (i.deps ?? []).includes(existing.id))
+                  if (dependants.length > 0) {
+                    const required = Math.min(...dependants.map((d) => d.wave))
+                    if (w.number !== required) {
+                      const names = dependants.map((d) => `„${d.title}" (val ${d.wave})`).join(', ')
+                      setWaveError(`„${title}" este o dependență a ${names}. Nu poți muta tichetul.`)
+                      return
+                    }
+                  }
+                }
+                setWave(w.number)
+                setWaveError(null)
+              }}>
                 {w.name}
               </button>
             ))}
@@ -387,6 +432,9 @@ export function IssueForm({ issueId }: { issueId?: string }) {
 
         {cycleMsg && (
           <div className="banner" style={{ marginTop: 12 }}>⚠ Asta ar crea un ciclu: {cycleMsg}</div>
+        )}
+        {waveError && (
+          <div className="banner" style={{ marginTop: 12 }}>⚠ {waveError}</div>
         )}
         {confirmClose && (
           <div className="close-confirm-banner">

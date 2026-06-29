@@ -74,6 +74,16 @@ export function unblocks(issueId: string, issues: Issue[]): Issue[] {
   return issues.filter((it) => (it.deps ?? []).includes(issueId))
 }
 
+/**
+ * The wave a dependency must sit on: min wave among all issues that have
+ * issueId in their deps. Returns null when no issue depends on it (unconstrained).
+ */
+export function requiredDepWave(issueId: string, allIssues: Issue[]): number | null {
+  const dependants = allIssues.filter((i) => (i.deps ?? []).includes(issueId))
+  if (dependants.length === 0) return null
+  return Math.min(...dependants.map((d) => d.wave))
+}
+
 /** Completion ratio for a set of issues (done / total), in [0, 1]. */
 export function projectCompletion(issues: Issue[]): number {
   if (!issues.length) return 0

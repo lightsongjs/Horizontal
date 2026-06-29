@@ -9,7 +9,7 @@ interface Props {
 
 export function TicketCard({ id, contextWave }: Props) {
   const { byId, stateOf, toggleDone, themeOf } = useDepFlow()
-  const { openIssue } = useUI()
+  const { openEditIssue } = useUI()
   const it = byId[id]
   if (!it) return null
 
@@ -20,7 +20,7 @@ export function TicketCard({ id, contextWave }: Props) {
   const crossWave = deps.filter((d) => byId[d] && byId[d].wave !== contextWave)
 
   return (
-    <button className={`tk ${state}`} onClick={() => openIssue(id)}>
+    <button className={`tk ${state}`} onClick={() => openEditIssue(id)}>
       <span
         className="check"
         role="checkbox"
