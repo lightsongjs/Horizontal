@@ -40,13 +40,7 @@ export function OrdineView() {
         </p>
       ) : (
         <>
-          <div className="layer-intro">
-            📍 <b>{wave ? `${wave.name}${wave.label ? ' — ' + wave.label : ''}.` : ''}</b> Ordinea de mai jos e
-            calculată doar din tichetele acestui val. Dependențele din alte valuri rămân, dar nu te blochează
-            aici.
-          </div>
-
-          {keys.length === 0 ? (
+{keys.length === 0 ? (
             <p className="empty">Niciun tichet în acest val. Apasă + ca să adaugi unul.</p>
           ) : (
             keys.map((L, i) => {
