@@ -175,6 +175,9 @@ export function createLocalRepository(): Repository {
         wave: input.wave ?? project.currentWave,
         deps: input.deps ?? [],
         done: false,
+        selectors: [],
+        scenarios: [],
+        notes: '',
       }
       db.issues.push(issue)
       save(db)

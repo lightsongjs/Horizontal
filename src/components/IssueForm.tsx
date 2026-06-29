@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useCallback } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { detectCycle, requiredDepWave } from '../lib/engine'
 import { useDepFlow } from '../store'
 import { useUI } from '../ui'
@@ -131,7 +131,6 @@ export function IssueForm({ issueId }: { issueId?: string }) {
   const [desc, setDesc] = useState(existing?.desc ?? '')
   const [theme, setTheme] = useState(existing?.theme ?? '')
   const [wave, setWave] = useState(existing?.wave ?? activeWave)
-  const [waveExpanded, setWaveExpanded] = useState(false)
   const [deps, setDeps] = useState<string[]>(existing?.deps ?? [])
   const [blocks, setBlocks] = useState<string[]>(
     existing ? issues.filter((i) => i.deps?.includes(existing.id)).map((i) => i.id) : []
@@ -309,8 +308,6 @@ export function IssueForm({ issueId }: { issueId?: string }) {
     finally { setSaving(false) }
   }
 
-  const otherWaves = waves.filter((w) => w.number !== wave)
-  const activeWaveObj = waves.find((w) => w.number === wave)
   const badgeIcon = (kind: ScenarioKind) => BADGE_CYCLE.find((b) => b.kind === kind)?.icon ?? '○'
 
   return (

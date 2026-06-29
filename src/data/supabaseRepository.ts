@@ -30,7 +30,7 @@ function rowToIssue(row: IssueRow, depsByIssue: Record<string, string[]>): Issue
     deps: depsByIssue[row.id] ?? [],
     done: row.done,
     selectors: Array.isArray(row.selectors) ? (row.selectors as string[]) : [],
-    scenarios: Array.isArray(row.scenarios) ? (row.scenarios as { text: string; kind: string }[]) : [],
+    scenarios: Array.isArray(row.scenarios) ? (row.scenarios as { text: string; kind: string }[]).map((s) => ({ text: s.text, kind: s.kind as import('../lib/types').ScenarioKind })) : [],
     notes: row.notes ?? '',
   }
 }
@@ -225,7 +225,7 @@ export function createSupabaseRepository(): Repository {
         deps: input.deps ?? [],
         done: false,
         selectors: input.selectors ?? [],
-        scenarios: input.scenarios ?? [],
+        scenarios: (input.scenarios ?? []).map((s) => ({ text: s.text, kind: s.kind as import('../lib/types').ScenarioKind })),
         notes: input.notes ?? '',
       }
       const { error } = await db.from('issues').insert({
