@@ -12,7 +12,7 @@ const Ctx = createContext<ThemeCtx | null>(null)
 function getInitial(): Theme {
   const stored = localStorage.getItem('depflow-theme')
   if (stored === 'light' || stored === 'dark') return stored
-  return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
+  return 'light'
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {

@@ -3,7 +3,13 @@ import { useDepFlow } from '../store'
 import { useUI } from '../ui'
 import { useTheme } from '../theme'
 
-const BUILD_DATE = new Date(__BUILD_TIME__).toLocaleDateString('ro-RO', { day: '2-digit', month: 'short', year: 'numeric' })
+function getBuildAgo(): string {
+  const diff = Math.floor((Date.now() - new Date(__BUILD_TIME__).getTime()) / 1000)
+  if (diff < 60) return 'just now'
+  if (diff < 3600) { const m = Math.floor(diff / 60); return `${m} minute${m > 1 ? 's' : ''} ago` }
+  if (diff < 86400) { const h = Math.floor(diff / 3600); return `${h} hour${h > 1 ? 's' : ''} ago` }
+  const d = Math.floor(diff / 86400); return `${d} day${d > 1 ? 's' : ''} ago`
+}
 
 export function Sidebar() {
   const { projects, project, completion, selectProject, reorderProjects } = useDepFlow()
@@ -18,7 +24,7 @@ export function Sidebar() {
         <div className="logo">H</div>
         <div className="sidebar-brand-txt">
           <span className="sidebar-app-name">Horizontal</span>
-          <span style={{ fontSize: '9px', color: 'var(--txt-dim)', opacity: 0.6, lineHeight: 1 }}>last build: {BUILD_DATE}</span>
+          <span style={{ display: 'block', fontSize: '9px', color: 'var(--txt-dim)', opacity: 0.6, lineHeight: 1.4 }}>Built: {getBuildAgo()}</span>
         </div>
       </div>
 

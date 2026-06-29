@@ -29,6 +29,14 @@ function ThemeToggle({ className }: { className?: string }) {
   )
 }
 
+function getBuildAgo(): string {
+  const diff = Math.floor((Date.now() - new Date(__BUILD_TIME__).getTime()) / 1000)
+  if (diff < 60) return 'just now'
+  if (diff < 3600) { const m = Math.floor(diff / 60); return `${m} minute${m > 1 ? 's' : ''} ago` }
+  if (diff < 86400) { const h = Math.floor(diff / 3600); return `${h} hour${h > 1 ? 's' : ''} ago` }
+  const d = Math.floor(diff / 86400); return `${d} day${d > 1 ? 's' : ''} ago`
+}
+
 function Header({ onNewIssue, onProjectSettings, onRefresh }: { onNewIssue: () => void; onProjectSettings: () => void; onRefresh: () => void }) {
   const { project, completion, selectProject } = useDepFlow()
   const pct = project ? Math.round(completion(project.id) * 100) : 0
@@ -42,7 +50,10 @@ function Header({ onNewIssue, onProjectSettings, onRefresh }: { onNewIssue: () =
       <div className="logo">{project ? project.prefix.slice(0, 2) : 'H'}</div>
       <div className="htxt">
         <h1>{project ? project.name : 'Horizontal'}</h1>
-        <div className="crumb">{project ? project.description : 'Toate proiectele tale'}</div>
+        <div className="crumb">
+          {project ? project.description : 'Toate proiectele tale'}
+          {!project && <span style={{ display: 'block', fontSize: '10px', opacity: 0.5, marginTop: '1px' }}>Built: {getBuildAgo()}</span>}
+        </div>
       </div>
       {project && (
         <div className="hprog">
