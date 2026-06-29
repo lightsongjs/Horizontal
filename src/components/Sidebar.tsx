@@ -35,16 +35,15 @@ export function Sidebar() {
         {showBuild && (
           <div style={{
             position: 'absolute',
-            left: '100%',
-            top: '50%',
-            transform: 'translateY(-50%)',
-            marginLeft: '8px',
-            background: 'var(--surface-2, #1e1f2e)',
-            border: '1px solid var(--border, #2a2b3d)',
+            top: '100%',
+            left: 0,
+            marginTop: '6px',
+            background: 'var(--surface-2)',
+            border: '1px solid var(--line)',
             borderRadius: '6px',
             padding: '4px 8px',
             fontSize: '11px',
-            color: 'var(--text-2, #9b9cb8)',
+            color: 'var(--txt-dim)',
             whiteSpace: 'nowrap',
             zIndex: 100,
           }}>
