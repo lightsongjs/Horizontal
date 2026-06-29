@@ -82,11 +82,29 @@ const slugify = (name: string) =>
   name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '')
 
 function Shell() {
-  const { loading, error, project, projects, selectProject } = useDepFlow()
+  const { loading, error, project, projects, selectProject, refresh } = useDepFlow()
   const { openNewIssue, openNewProject, openProjectSettings, sheet } = useUI()
   const [tab, setTab] = useState<Tab>('ordine')
   const [showShortcuts, setShowShortcuts] = useState(false)
   const urlSyncReady = useRef(false)
+  const pullStartY = useRef<number | null>(null)
+  const [pullProgress, setPullProgress] = useState(0) // 0-1
+  const PULL_THRESHOLD = 80
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    const main = (e.currentTarget as HTMLElement)
+    if (main.scrollTop === 0) pullStartY.current = e.touches[0].clientY
+  }
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (pullStartY.current === null) return
+    const dy = e.touches[0].clientY - pullStartY.current
+    if (dy > 0) setPullProgress(Math.min(dy / PULL_THRESHOLD, 1))
+  }
+  const onTouchEnd = async () => {
+    if (pullProgress >= 1) await refresh()
+    pullStartY.current = null
+    setPullProgress(0)
+  }
 
   // Reset tab when switching projects
   useEffect(() => { setTab('ordine') }, [project?.id])
@@ -148,7 +166,12 @@ function Shell() {
       <Sidebar />
       <div className="app-body">
         <Header onNewIssue={openNewIssue} onProjectSettings={openProjectSettings} />
-        <main>
+        <main onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
+          {pullProgress > 0 && (
+            <div style={{ textAlign: 'center', padding: '8px', opacity: pullProgress, color: 'var(--text-2)', fontSize: '13px' }}>
+              {pullProgress >= 1 ? '↑ Eliberează pentru refresh' : '↓ Trage pentru refresh'}
+            </div>
+          )}
           {error && <div className="banner">⚠ {error}</div>}
           {loading ? (
             <div className="view">

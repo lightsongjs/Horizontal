@@ -27,6 +27,7 @@ import type { Issue, IssueState, Layers, Project, Theme, Wave } from './lib/type
 interface DepFlowState {
   loading: boolean
   error: string | null
+  refresh(): Promise<void>
   projects: Project[]
   project: Project | null
   waves: Wave[]
@@ -76,6 +77,28 @@ export function DepFlowProvider({ children }: { children: ReactNode }) {
   const [projectId, setProjectId] = useState<string | null>(null)
   const [activeWave, setActiveWave] = useState(1)
 
+  const refresh = useCallback(async () => {
+    setLoading(true)
+    try {
+      const p = await repository.listProjects()
+      setRawProjects(p)
+      if (projectId) {
+        const [w, t, loaded] = await Promise.all([
+          repository.listWaves(projectId),
+          repository.listThemes(projectId),
+          repository.listIssues(projectId),
+        ])
+        setAllWaves((prev) => [...prev.filter((x) => x.projectId !== projectId), ...w])
+        setAllThemes((prev) => [...prev.filter((x) => x.projectId !== projectId), ...t])
+        setAllIssues((prev) => [...prev.filter((i) => i.projectId !== projectId), ...loaded])
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setLoading(false)
+    }
+  }, [projectId])
+
   useEffect(() => {
     let alive = true
     ;(async () => {
@@ -88,10 +111,14 @@ export function DepFlowProvider({ children }: { children: ReactNode }) {
         if (alive) setLoading(false)
       }
     })()
-    return () => {
-      alive = false
-    }
+    return () => { alive = false }
   }, [])
+
+  useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === 'visible') refresh() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [refresh])
 
   const projects = useMemo(() => applyOrder(rawProjects, projectOrder), [rawProjects, projectOrder])
   const project = useMemo(() => projects.find((p) => p.id === projectId) ?? null, [projects, projectId])
@@ -290,6 +317,7 @@ export function DepFlowProvider({ children }: { children: ReactNode }) {
   const value: DepFlowState = {
     loading,
     error,
+    refresh,
     projects,
     project,
     waves,
