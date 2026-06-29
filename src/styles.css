@@ -371,15 +371,6 @@ main {
   margin-bottom: 20px;
   position: relative;
 }
-.layer:not(:last-child)::after {
-  content: '';
-  position: absolute;
-  left: 12px;
-  top: 28px;
-  bottom: -20px;
-  width: 1px;
-  background: linear-gradient(180deg, var(--line) 0%, transparent 100%);
-}
 .layer-head {
   display: flex;
   align-items: center;
@@ -580,14 +571,27 @@ main {
 /* WAVE SELECTOR */
 .wave-sel {
   display: flex;
+  align-items: center;
   gap: 6px;
   margin-bottom: 14px;
+}
+.wave-tabs {
+  display: flex;
+  gap: 6px;
+  flex: 1;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   padding-bottom: 2px;
+  scrollbar-width: none;
 }
-.wave-sel::-webkit-scrollbar {
+.wave-tabs::-webkit-scrollbar {
   display: none;
+}
+.wave-actions {
+  display: flex;
+  gap: 5px;
+  flex-shrink: 0;
+  align-items: center;
 }
 .wbtn {
   flex-shrink: 0;
@@ -1313,9 +1317,38 @@ svg.graph {
   font-weight: 700;
 }
 
+/* ── Filter bar ── */
+.filter-bar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+  margin-top: -6px;
+}
+
+/* ── Hide done button ── */
+.btn-hide-done {
+  padding: 5px 10px;
+  border-radius: 7px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--txt-faint);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.btn-hide-done:hover { color: var(--txt); border-color: var(--line-soft); }
+.btn-hide-done.active {
+  background: #16a34a18;
+  border-color: #16a34a66;
+  color: #4ade80;
+}
+
 /* ── Bulk select button ── */
 .btn-bulk-select {
-  margin-left: auto;
   padding: 5px 11px;
   border-radius: 7px;
   border: 1px solid var(--line);
@@ -1810,6 +1843,27 @@ svg.graph {
   color: #fff;
 }
 
+/* ─── HEADER SETTINGS BUTTON ────────────────────────────────────────── */
+.header-settings-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: none;
+  color: var(--txt-dim);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.header-settings-btn:hover {
+  background: var(--surface-raised);
+  color: var(--txt);
+  border-color: var(--line-soft);
+}
+
 /* ─── KEYBOARD SHORTCUTS OVERLAY ────────────────────────────────────── */
 .shortcuts-overlay {
   position: fixed;
@@ -2077,25 +2131,16 @@ svg.graph {
   .sidebar-proj-item {
     display: flex;
     align-items: center;
-    gap: 9px;
-    padding: 7px 10px;
     border-radius: 7px;
-    font-size: 12.5px;
-    font-weight: 500;
-    color: var(--txt-dim);
-    text-align: left;
-    width: 100%;
-    transition: background 0.13s, color 0.13s;
+    transition: background 0.13s;
     position: relative;
+    cursor: grab;
   }
   .sidebar-proj-item:hover {
     background: var(--surface-2);
-    color: var(--txt);
   }
   .sidebar-proj-item.on {
     background: var(--surface-2);
-    color: var(--txt);
-    font-weight: 600;
   }
   .sidebar-proj-item.on::before {
     content: '';
@@ -2106,6 +2151,44 @@ svg.graph {
     width: 2px;
     border-radius: 2px;
     background: var(--accent);
+  }
+  .sidebar-proj-item.drag-over {
+    outline: 1px solid var(--accent);
+    background: var(--accent-soft);
+  }
+  .sidebar-drag-handle {
+    padding: 7px 4px 7px 8px;
+    color: var(--txt-faint);
+    font-size: 13px;
+    opacity: 0;
+    transition: opacity 0.13s;
+    flex-shrink: 0;
+    cursor: grab;
+    user-select: none;
+  }
+  .sidebar-proj-item:hover .sidebar-drag-handle {
+    opacity: 1;
+  }
+  .sidebar-proj-btn {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 7px 10px 7px 4px;
+    flex: 1;
+    min-width: 0;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--txt-dim);
+    text-align: left;
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: color 0.13s;
+  }
+  .sidebar-proj-item:hover .sidebar-proj-btn,
+  .sidebar-proj-item.on .sidebar-proj-btn {
+    color: var(--txt);
+    font-weight: 600;
   }
 
   .sidebar-proj-dot {
@@ -2315,6 +2398,10 @@ svg.graph {
     gap: 5px;
     margin-left: 12px;
     flex-shrink: 0;
+  }
+  .header-settings-btn {
+    display: inline-flex;
+    margin-left: 6px;
   }
 
   /* ── ISSUE FORM — 2 coloane pe desktop ────────── */

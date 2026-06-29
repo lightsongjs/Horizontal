@@ -3,6 +3,7 @@ import { useUI } from '../ui'
 import { IssueSheet } from './IssueSheet'
 import { IssueForm } from './IssueForm'
 import { ProjectForm } from './ProjectForm'
+import { ProjectSettings } from './ProjectSettings'
 import { WaveManager } from './WaveManager'
 import { ThemeManager } from './ThemeManager'
 
@@ -12,6 +13,7 @@ export function SheetHost() {
   const tall =
     sheet.kind === 'issue-form' ||
     sheet.kind === 'project-form' ||
+    sheet.kind === 'project-settings' ||
     sheet.kind === 'wave-manage' ||
     sheet.kind === 'theme-manage'
 
@@ -30,6 +32,7 @@ export function SheetHost() {
         {sheet.kind === 'issue' && <IssueSheet issueId={sheet.issueId} />}
         {sheet.kind === 'issue-form' && <IssueForm issueId={sheet.issueId} />}
         {sheet.kind === 'project-form' && <ProjectForm />}
+        {sheet.kind === 'project-settings' && <ProjectSettings />}
         {sheet.kind === 'wave-manage' && <WaveManager />}
         {sheet.kind === 'theme-manage' && <ThemeManager />}
       </div>

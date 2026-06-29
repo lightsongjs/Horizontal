@@ -26,6 +26,9 @@ export interface Repository {
   listProjects(): Promise<Project[]>
   /** Creates the project and its first wave ("Val 1"). */
   createProject(input: NewProject): Promise<Project>
+  updateProject(id: string, patch: Partial<Pick<Project, 'name' | 'description' | 'accent'>>): Promise<Project>
+  /** Deletes the project and all its waves, themes, and issues. */
+  deleteProject(id: string): Promise<void>
 
   listWaves(projectId: string): Promise<Wave[]>
   createWave(projectId: string, name: string, label?: string): Promise<Wave>

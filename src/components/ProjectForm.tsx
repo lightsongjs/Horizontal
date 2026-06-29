@@ -10,11 +10,18 @@ export function ProjectForm() {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [prefix, setPrefix] = useState('')
+  const [prefixTouched, setPrefixTouched] = useState(false)
   const [accent, setAccent] = useState(ACCENTS[0])
+
+  const autoPrefix = (n: string) =>
+    n.trim().split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 6) ||
+    n.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6)
+
+  const derivedPrefix = prefixTouched ? prefix : autoPrefix(name)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const cleanPrefix = prefix.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6)
+  const cleanPrefix = derivedPrefix.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6)
   const taken = projects.some((p) => p.id === cleanPrefix.toLowerCase())
   const valid = name.trim() && cleanPrefix && !taken
 
@@ -26,7 +33,7 @@ export function ProjectForm() {
       const created = await createProject({
         name: name.trim(),
         description: description.trim(),
-        prefix: cleanPrefix,
+        prefix: cleanPrefix || name.trim().slice(0, 6).toUpperCase().replace(/[^A-Z0-9]/g, ''),
         accent,
       })
       closeSheet()
@@ -61,8 +68,8 @@ export function ProjectForm() {
         <div className="fld">
           <label>Prefix ID tichete</label>
           <input
-            value={prefix}
-            onChange={(e) => setPrefix(e.target.value)}
+            value={prefixTouched ? prefix : cleanPrefix}
+            onChange={(e) => { setPrefixTouched(true); setPrefix(e.target.value) }}
             placeholder="Ex: TUR"
             autoComplete="off"
           />

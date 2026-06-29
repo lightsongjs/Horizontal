@@ -1,11 +1,14 @@
+import { useRef, useState } from 'react'
 import { useDepFlow } from '../store'
 import { useUI } from '../ui'
 import { useTheme } from '../theme'
 
 export function Sidebar() {
-  const { projects, project, completion, selectProject } = useDepFlow()
+  const { projects, project, completion, selectProject, reorderProjects } = useDepFlow()
   const { openNewProject, openNewIssue } = useUI()
   const { theme, toggle } = useTheme()
+  const dragId = useRef<string | null>(null)
+  const [dragOver, setDragOver] = useState<string | null>(null)
 
   return (
     <aside className="sidebar">
@@ -40,15 +43,35 @@ export function Sidebar() {
           const pct = Math.round(completion(p.id) * 100)
           const isActive = project?.id === p.id
           return (
-            <button
+            <div
               key={p.id}
-              className={`sidebar-proj-item ${isActive ? 'on' : ''}`}
-              onClick={() => selectProject(p.id)}
+              className={`sidebar-proj-item ${isActive ? 'on' : ''} ${dragOver === p.id ? 'drag-over' : ''}`}
+              draggable
+              onDragStart={(e) => { dragId.current = p.id; e.dataTransfer.effectAllowed = 'move' }}
+              onDragOver={(e) => { e.preventDefault(); setDragOver(p.id) }}
+              onDragLeave={() => setDragOver(null)}
+              onDrop={(e) => {
+                e.preventDefault()
+                setDragOver(null)
+                if (!dragId.current || dragId.current === p.id) return
+                const ids = projects.map((x) => x.id)
+                const from = ids.indexOf(dragId.current)
+                const to = ids.indexOf(p.id)
+                const next = [...ids]
+                next.splice(from, 1)
+                next.splice(to, 0, dragId.current)
+                reorderProjects(next)
+                dragId.current = null
+              }}
+              onDragEnd={() => { setDragOver(null); dragId.current = null }}
             >
-              <span className="sidebar-proj-dot" style={{ background: p.accent }} />
-              <span className="sidebar-proj-name">{p.name}</span>
-              <span className="sidebar-proj-pct">{pct}%</span>
-            </button>
+              <span className="sidebar-drag-handle" title="Trage pentru a reordona">⠿</span>
+              <button className="sidebar-proj-btn" onClick={() => selectProject(p.id)}>
+                <span className="sidebar-proj-dot" style={{ background: p.accent }} />
+                <span className="sidebar-proj-name">{p.name}</span>
+                <span className="sidebar-proj-pct">{pct}%</span>
+              </button>
+            </div>
           )
         })}
         {projects.length === 0 && (

@@ -75,6 +75,24 @@ export function createLocalRepository(): Repository {
       return clone(project)
     },
 
+    async updateProject(id, patch) {
+      const db = load()
+      const project = db.projects.find((p) => p.id === id)
+      if (!project) throw new Error(`Unknown project ${id}`)
+      Object.assign(project, patch)
+      save(db)
+      return clone(project)
+    },
+
+    async deleteProject(id) {
+      const db = load()
+      db.projects = db.projects.filter((p) => p.id !== id)
+      db.waves = db.waves.filter((w) => w.projectId !== id)
+      db.themes = db.themes.filter((t) => t.projectId !== id)
+      db.issues = db.issues.filter((i) => i.projectId !== id)
+      save(db)
+    },
+
     async listWaves(projectId: string) {
       return clone(
         load()

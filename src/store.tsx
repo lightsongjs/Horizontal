@@ -12,6 +12,7 @@ import {
   type ReactNode,
 } from 'react'
 import { repository } from './data'
+import { applyOrder, loadOrder, saveOrder } from './lib/projectOrder'
 import type { NewIssue, NewProject } from './data/repository'
 import {
   DependencyCycleError,
@@ -36,6 +37,9 @@ interface DepFlowState {
   selectProject(id: string | null): void
   setActiveWave(wave: number): void
   createProject(input: NewProject): Promise<Project>
+  updateProject(id: string, patch: Partial<Pick<Project, 'name' | 'description' | 'accent'>>): Promise<void>
+  deleteProject(id: string): Promise<void>
+  reorderProjects(ids: string[]): void
 
   createWave(name: string, label?: string): Promise<void>
   renameWave(number: number, name: string, label: string): Promise<void>
@@ -64,7 +68,8 @@ const Ctx = createContext<DepFlowState | null>(null)
 export function DepFlowProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [projects, setProjects] = useState<Project[]>([])
+  const [projectOrder, setProjectOrder] = useState<string[]>(loadOrder)
+  const [rawProjects, setRawProjects] = useState<Project[]>([])
   const [allWaves, setAllWaves] = useState<Wave[]>([])
   const [allThemes, setAllThemes] = useState<Theme[]>([])
   const [allIssues, setAllIssues] = useState<Issue[]>([])
@@ -76,7 +81,7 @@ export function DepFlowProvider({ children }: { children: ReactNode }) {
     ;(async () => {
       try {
         const p = await repository.listProjects()
-        if (alive) setProjects(p)
+        if (alive) setRawProjects(p)
       } catch (e) {
         if (alive) setError(e instanceof Error ? e.message : String(e))
       } finally {
@@ -88,6 +93,7 @@ export function DepFlowProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const projects = useMemo(() => applyOrder(rawProjects, projectOrder), [rawProjects, projectOrder])
   const project = useMemo(() => projects.find((p) => p.id === projectId) ?? null, [projects, projectId])
   const issues = useMemo(() => allIssues.filter((i) => i.projectId === projectId), [allIssues, projectId])
   const waves = useMemo(
@@ -126,12 +132,31 @@ export function DepFlowProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
+  const reorderProjects = useCallback((ids: string[]) => {
+    setProjectOrder(ids)
+    saveOrder(ids)
+  }, [])
+
   const createProject = useCallback(async (input: NewProject) => {
     const created = await repository.createProject(input)
-    setProjects((prev) => [...prev, created])
+    setRawProjects((prev) => [...prev, created])
     const w = await repository.listWaves(created.id)
     setAllWaves((prev) => [...prev, ...w])
     return created
+  }, [])
+
+  const updateProject = useCallback(async (id: string, patch: Partial<Pick<Project, 'name' | 'description' | 'accent'>>) => {
+    const updated = await repository.updateProject(id, patch)
+    setRawProjects((prev) => prev.map((p) => (p.id === id ? updated : p)))
+  }, [])
+
+  const deleteProject = useCallback(async (id: string) => {
+    await repository.deleteProject(id)
+    setRawProjects((prev) => prev.filter((p) => p.id !== id))
+    setAllWaves((prev) => prev.filter((w) => w.projectId !== id))
+    setAllThemes((prev) => prev.filter((t) => t.projectId !== id))
+    setAllIssues((prev) => prev.filter((i) => i.projectId !== id))
+    setProjectId((cur) => (cur === id ? null : cur))
   }, [])
 
   const createWave = useCallback(
@@ -274,6 +299,9 @@ export function DepFlowProvider({ children }: { children: ReactNode }) {
     selectProject,
     setActiveWave,
     createProject,
+    updateProject,
+    deleteProject,
+    reorderProjects,
     createWave,
     renameWave,
     deleteWave,

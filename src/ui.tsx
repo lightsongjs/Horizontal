@@ -7,6 +7,7 @@ export type SheetState =
   | { kind: 'issue'; issueId: string }
   | { kind: 'issue-form'; issueId?: string } // create when no id, edit otherwise
   | { kind: 'project-form' }
+  | { kind: 'project-settings' }
   | { kind: 'wave-manage' }
   | { kind: 'theme-manage' }
 
@@ -16,6 +17,7 @@ interface UI {
   openNewIssue(): void
   openEditIssue(id: string): void
   openNewProject(): void
+  openProjectSettings(): void
   openWaveManage(): void
   openThemeManage(): void
   closeSheet(): void
@@ -35,6 +37,7 @@ export function UIProvider({ children }: { children: ReactNode }) {
       openNewIssue: () => setSheet({ kind: 'issue-form' }),
       openEditIssue: (issueId) => setSheet({ kind: 'issue-form', issueId }),
       openNewProject: () => setSheet({ kind: 'project-form' }),
+      openProjectSettings: () => setSheet({ kind: 'project-settings' }),
       openWaveManage: () => setSheet({ kind: 'wave-manage' }),
       openThemeManage: () => setSheet({ kind: 'theme-manage' }),
       closeSheet: () => {

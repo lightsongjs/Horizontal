@@ -93,6 +93,21 @@ export function createSupabaseRepository(): Repository {
       return project
     },
 
+    async updateProject(id, patch) {
+      const row: Record<string, unknown> = {}
+      if (patch.name !== undefined) row.name = patch.name
+      if (patch.description !== undefined) row.description = patch.description
+      if (patch.accent !== undefined) row.accent = patch.accent
+      const { data, error } = await db.from('projects').update(row).eq('id', id).select('*').single()
+      if (error) throw error
+      return { id: data.id, name: data.name, description: data.description, prefix: data.prefix, currentWave: data.current_wave, accent: data.accent }
+    },
+
+    async deleteProject(id) {
+      const { error } = await db.from('projects').delete().eq('id', id)
+      if (error) throw error
+    },
+
     async listWaves(projectId: string) {
       const { data, error } = await db.from('waves').select('*').eq('project_id', projectId).order('position')
       if (error) throw error

@@ -12,6 +12,7 @@ export function OrdineView() {
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [confirmDel, setConfirmDel] = useState(false)
+  const [hideDone, setHideDone] = useState(false)
 
   const exitSelectMode = useCallback(() => {
     setSelectMode(false)
@@ -54,32 +55,43 @@ export function OrdineView() {
   return (
     <div className="panel">
       <div className="wave-sel">
-        {waves.map((w) => {
-          const cnt = issues.filter((i) => i.wave === w.number).length
-          return (
-            <button
-              key={w.number}
-              className={`wbtn ${w.number === activeWave ? 'on' : ''}`}
-              onClick={() => { setActiveWave(w.number); exitSelectMode() }}
-            >
-              <span className="wname">{w.name}</span>
-              <span className="wsub">
-                {w.label ? `${w.label} · ` : ''}
-                {cnt}
-              </span>
-            </button>
-          )
-        })}
-        <button className="wbtn wmanage" aria-label="Gestionează valuri" onClick={openWaveManage}>
-          <span className="wname">⚙</span>
-          <span className="wsub">valuri</span>
-        </button>
-        <button
-          className={`btn-bulk-select ${selectMode ? 'active' : ''}`}
-          onClick={selectMode ? exitSelectMode : () => setSelectMode(true)}
-        >
-          {selectMode ? '✕ Anulează' : '☐ Selectează'}
-        </button>
+        <div className="wave-tabs">
+          {waves.map((w) => {
+            const cnt = issues.filter((i) => i.wave === w.number).length
+            return (
+              <button
+                key={w.number}
+                className={`wbtn ${w.number === activeWave ? 'on' : ''}`}
+                onClick={() => { setActiveWave(w.number); exitSelectMode() }}
+              >
+                <span className="wname">{w.name}</span>
+                <span className="wsub">
+                  {w.label ? `${w.label} · ` : ''}
+                  {cnt}
+                </span>
+              </button>
+            )
+          })}
+          <button className="wbtn wmanage" aria-label="Gestionează valuri" onClick={openWaveManage}>
+            <span className="wname">⚙</span>
+            <span className="wsub">valuri</span>
+          </button>
+        </div>
+        <div className="wave-actions">
+          <button
+            className={`btn-hide-done ${hideDone ? 'active' : ''}`}
+            onClick={() => setHideDone((h) => !h)}
+            title={hideDone ? 'Arată toate tichetele' : 'Ascunde tichetele finalizate'}
+          >
+            {hideDone ? 'Arată tot' : 'Ascunde ✓'}
+          </button>
+          <button
+            className={`btn-bulk-select ${selectMode ? 'active' : ''}`}
+            onClick={selectMode ? exitSelectMode : () => setSelectMode(true)}
+          >
+            {selectMode ? '✕' : '☐'}
+          </button>
+        </div>
       </div>
 
       {waves.length === 0 ? (
@@ -91,6 +103,10 @@ export function OrdineView() {
           ) : (
             keys.map((L, i) => {
               const ids = layers[L]
+              const visibleIds = hideDone
+                ? ids.filter((id) => !issues.find((iss) => iss.id === id)?.done)
+                : ids
+              if (hideDone && visibleIds.length === 0) return null
               const ready = i === 0
               return (
                 <div key={L} className={`layer ${ready ? 'ready' : ''}`}>
@@ -105,7 +121,7 @@ export function OrdineView() {
                     </div>
                     {ready && <span className="badge-now">Acum</span>}
                   </div>
-                  {ids.map((id) => (
+                  {visibleIds.map((id) => (
                     <TicketCard
                       key={id}
                       id={id}
