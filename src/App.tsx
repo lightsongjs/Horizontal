@@ -80,10 +80,10 @@ function Shell() {
   // Reset tab when switching projects
   useEffect(() => { setTab('ordine') }, [project?.id])
 
-  // Step 1 — on load: read hash, select project, then unlock URL sync
+  // Step 1 — on load: read path, select project, then unlock URL sync
   useEffect(() => {
     if (loading) return
-    const match = window.location.hash.match(/^#\/project\/(.+)$/)
+    const match = window.location.pathname.match(/^\/project\/(.+)$/)
     if (match) selectProject(match[1])
     urlSyncReady.current = true
   }, [loading]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -91,9 +91,20 @@ function Shell() {
   // Step 2 — sync project → URL (only after initial restore is done)
   useEffect(() => {
     if (!urlSyncReady.current) return
-    const hash = project ? `#/project/${project.id}` : ''
-    window.history.replaceState(null, '', hash || window.location.pathname)
+    const path = project ? `/project/${project.id}` : '/'
+    if (window.location.pathname !== path)
+      window.history.pushState(null, '', path)
   }, [project?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Browser back/forward → sync store
+  useEffect(() => {
+    const onPop = () => {
+      const match = window.location.pathname.match(/^\/project\/(.+)$/)
+      selectProject(match ? match[1] : null)
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [selectProject])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
