@@ -165,11 +165,11 @@ function AssigneeSearch({ assigneeId, assignees, myAssigneeId, onSelect, onSetMe
 
   return (
     <div className="dep-search-block">
-      <label className="if-field-label">Responsabil</label>
+      <label className="if-field-label">Assigned to</label>
       {selected && (
         <div className="dep-selected">
           <button className="dep-chip on" onClick={() => onSelect(null)}>
-            <span className="dep-chip-title">{selected.name}{selected.id === myAssigneeId ? ' (eu)' : ''}</span>
+            <span className="dep-chip-title">{selected.name}{selected.id === myAssigneeId ? ' (me)' : ''}</span>
             <span className="dep-chip-x">×</span>
           </button>
         </div>
@@ -177,30 +177,30 @@ function AssigneeSearch({ assigneeId, assignees, myAssigneeId, onSelect, onSetMe
       <div className="dep-search-wrap">
         <input value={q} onChange={(e) => { setQ(e.target.value); setHlIdx(0) }}
           onKeyDown={handleKeyDown}
-          placeholder={selected ? 'Schimbă responsabilul…' : 'Caută sau adaugă…'}
+          placeholder="Search or add person…"
           className="dep-search-input" autoComplete="off" />
       </div>
-      {(q.trim() || (!selected && assignees.length > 0)) && (
+      {q.trim() && (
         <div className="dep-results">
           {filtered.map((a, idx) => (
             <button key={a.id} className={`dep-result-row ${a.id === assigneeId ? 'on' : ''} ${idx === hlIdx ? 'hl' : ''}`}
               onClick={() => { onSelect(a.id); setQ(''); setHlIdx(0) }}>
               <span className={`ic ${a.id === assigneeId ? 'ok' : 'ext'}`}>{a.id === assigneeId ? '✓' : '+'}</span>
-              <span className="dep-result-title">{a.name}{a.id === myAssigneeId ? ' (eu)' : ''}</span>
+              <span className="dep-result-title">{a.name}{a.id === myAssigneeId ? ' (me)' : ''}</span>
               {a.id !== myAssigneeId && (
                 <button style={{ marginLeft: 'auto', fontSize: 10, opacity: 0.5, padding: '0 4px' }}
-                  onClick={(e) => { e.stopPropagation(); onSetMe(a.id) }} title="Marchează ca mine">
+                  onClick={(e) => { e.stopPropagation(); onSetMe(a.id) }} title="This is me">
                   ★
                 </button>
               )}
             </button>
           ))}
-          {filtered.length === 0 && !showCreate && <p className="dep-no-results">Niciun responsabil găsit.</p>}
+          {filtered.length === 0 && !showCreate && <p className="dep-no-results">No one found.</p>}
           {showCreate && (
             <button className={`dep-create-btn ${hlIdx === filtered.length ? 'hl' : ''}`}
               onClick={handleCreate} disabled={creating}>
               <span className="dep-create-plus">+</span>
-              Adaugă <strong>«{q.trim()}»</strong>
+              Add <strong>«{q.trim()}»</strong>
             </button>
           )}
         </div>
@@ -455,6 +455,18 @@ export function IssueForm({ issueId }: { issueId?: string }) {
               <button onClick={addTheme} disabled={!newThemeName.trim()}>OK</button>
             </div>
           )}
+
+          <AssigneeSearch
+            assigneeId={assigneeId}
+            assignees={assignees}
+            myAssigneeId={myAssigneeId}
+            onSelect={setAssigneeId}
+            onSetMe={setMyAssigneeId}
+            onCreateAndSelect={async (name) => {
+              const a = await createAssignee(name)
+              setAssigneeId(a.id)
+            }}
+          />
         </div>
         <button className="if-close" onClick={closeSheet} aria-label="Închide">✕</button>
       </div>
@@ -476,18 +488,6 @@ export function IssueForm({ issueId }: { issueId?: string }) {
               <label className="if-field-label">Descriere</label>
               <AutoTextarea value={desc} onChange={setDesc} placeholder="Cerințe, notițe, context…" minH={100} />
             </div>
-
-            <AssigneeSearch
-              assigneeId={assigneeId}
-              assignees={assignees}
-              myAssigneeId={myAssigneeId}
-              onSelect={setAssigneeId}
-              onSetMe={setMyAssigneeId}
-              onCreateAndSelect={async (name) => {
-                const a = await createAssignee(name)
-                setAssigneeId(a.id)
-              }}
-            />
 
             <DepSearch label="Depinde de" selected={deps} drafts={draftDeps} candidates={candidates}
               onToggle={(id) => toggle(deps, setDeps, id)}
