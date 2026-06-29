@@ -1863,6 +1863,26 @@ svg.graph {
   color: var(--txt);
   border-color: var(--line-soft);
 }
+.header-refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: none;
+  color: var(--txt-dim);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  margin-left: 6px;
+}
+.header-refresh-btn:hover {
+  background: var(--surface-raised);
+  color: var(--txt);
+  border-color: var(--line-soft);
+}
 
 /* ─── KEYBOARD SHORTCUTS OVERLAY ────────────────────────────────────── */
 .shortcuts-overlay {

@@ -29,7 +29,7 @@ function ThemeToggle({ className }: { className?: string }) {
   )
 }
 
-function Header({ onNewIssue, onProjectSettings }: { onNewIssue: () => void; onProjectSettings: () => void }) {
+function Header({ onNewIssue, onProjectSettings, onRefresh }: { onNewIssue: () => void; onProjectSettings: () => void; onRefresh: () => void }) {
   const { project, completion, selectProject } = useDepFlow()
   const pct = project ? Math.round(completion(project.id) * 100) : 0
   return (
@@ -63,6 +63,12 @@ function Header({ onNewIssue, onProjectSettings }: { onNewIssue: () => void; onP
           </svg>
         </button>
       )}
+      <button className="header-refresh-btn" onClick={onRefresh} aria-label="Reîncarcă">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+        </svg>
+      </button>
       <ThemeToggle className="theme-toggle-mobile" />
     </header>
   )
@@ -87,24 +93,6 @@ function Shell() {
   const [tab, setTab] = useState<Tab>('ordine')
   const [showShortcuts, setShowShortcuts] = useState(false)
   const urlSyncReady = useRef(false)
-  const pullStartY = useRef<number | null>(null)
-  const [pullProgress, setPullProgress] = useState(0) // 0-1
-  const PULL_THRESHOLD = 80
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    const main = (e.currentTarget as HTMLElement)
-    if (main.scrollTop === 0) pullStartY.current = e.touches[0].clientY
-  }
-  const onTouchMove = (e: React.TouchEvent) => {
-    if (pullStartY.current === null) return
-    const dy = e.touches[0].clientY - pullStartY.current
-    if (dy > 0) setPullProgress(Math.min(dy / PULL_THRESHOLD, 1))
-  }
-  const onTouchEnd = async () => {
-    if (pullProgress >= 1) await refresh()
-    pullStartY.current = null
-    setPullProgress(0)
-  }
 
   // Reset tab when switching projects
   useEffect(() => { setTab('ordine') }, [project?.id])
@@ -165,13 +153,8 @@ function Shell() {
     <div id="app">
       <Sidebar />
       <div className="app-body">
-        <Header onNewIssue={openNewIssue} onProjectSettings={openProjectSettings} />
-        <main onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
-          {pullProgress > 0 && (
-            <div style={{ textAlign: 'center', padding: '8px', opacity: pullProgress, color: 'var(--text-2)', fontSize: '13px' }}>
-              {pullProgress >= 1 ? '↑ Eliberează pentru refresh' : '↓ Trage pentru refresh'}
-            </div>
-          )}
+        <Header onNewIssue={openNewIssue} onProjectSettings={openProjectSettings} onRefresh={refresh} />
+        <main>
           {error && <div className="banner">⚠ {error}</div>}
           {loading ? (
             <div className="view">
