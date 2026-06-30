@@ -24,7 +24,7 @@ import {
 } from './lib/engine'
 import type { Assignee, Issue, IssueState, Layers, Project, Theme, Wave } from './lib/types'
 
-interface DepFlowState {
+interface HorizontalState {
   loading: boolean
   error: string | null
   refresh(): Promise<void>
@@ -68,9 +68,9 @@ interface DepFlowState {
   themeOf(key: string): Theme | undefined
 }
 
-const Ctx = createContext<DepFlowState | null>(null)
+const Ctx = createContext<HorizontalState | null>(null)
 
-export function DepFlowProvider({ children }: { children: ReactNode }) {
+export function HorizontalProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [projectOrder, setProjectOrder] = useState<string[]>(loadOrder)
@@ -82,13 +82,13 @@ export function DepFlowProvider({ children }: { children: ReactNode }) {
   const [activeWave, setActiveWave] = useState(1)
   const [assignees, setAssignees] = useState<Assignee[]>([])
   const [myAssigneeId, setMyAssigneeIdState] = useState<string | null>(
-    () => localStorage.getItem('depflow-my-assignee-id')
+    () => localStorage.getItem('horizontal-my-assignee-id')
   )
 
   const setMyAssigneeId = useCallback((id: string | null) => {
     setMyAssigneeIdState(id)
-    if (id) localStorage.setItem('depflow-my-assignee-id', id)
-    else localStorage.removeItem('depflow-my-assignee-id')
+    if (id) localStorage.setItem('horizontal-my-assignee-id', id)
+    else localStorage.removeItem('horizontal-my-assignee-id')
   }, [])
 
   const refresh = useCallback(async () => {
@@ -334,7 +334,7 @@ export function DepFlowProvider({ children }: { children: ReactNode }) {
   )
   const themeOf = useCallback((key: string) => themes.find((t) => t.key === key), [themes])
 
-  const value: DepFlowState = {
+  const value: HorizontalState = {
     loading,
     error,
     refresh,
@@ -374,8 +374,8 @@ export function DepFlowProvider({ children }: { children: ReactNode }) {
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
 
-export function useDepFlow(): DepFlowState {
+export function useHorizontal(): HorizontalState {
   const ctx = useContext(Ctx)
-  if (!ctx) throw new Error('useDepFlow must be used within DepFlowProvider')
+  if (!ctx) throw new Error('useHorizontal must be used within HorizontalProvider')
   return ctx
 }

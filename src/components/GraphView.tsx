@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { useDepFlow } from '../store'
+import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import type { Issue } from '../lib/types'
 
@@ -24,7 +24,7 @@ const NW = 148
 const NH = 60
 
 export function GraphView() {
-  const { issues, project, stateOf, themeOf } = useDepFlow()
+  const { issues, project, stateOf, themeOf } = useHorizontal()
   const { openIssue } = useUI()
 
   const { nodes, edges, W, H } = useMemo(() => {

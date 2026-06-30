@@ -10,7 +10,7 @@ interface ThemeCtx {
 const Ctx = createContext<ThemeCtx | null>(null)
 
 function getInitial(): Theme {
-  const stored = localStorage.getItem('depflow-theme')
+  const stored = localStorage.getItem('horizontal-theme')
   if (stored === 'light' || stored === 'dark') return stored
   return 'light'
 }
@@ -20,7 +20,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
-    localStorage.setItem('depflow-theme', theme)
+    localStorage.setItem('horizontal-theme', theme)
     const meta = document.querySelector('meta[name="theme-color"]')
     if (meta) meta.setAttribute('content', theme === 'dark' ? '#0c0d12' : '#f4f5fa')
   }, [theme])

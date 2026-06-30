@@ -1,4 +1,4 @@
-// Core domain types for DepFlow. See REQUIREMENTS.md §1.
+// Core domain types for Horizontal. See REQUIREMENTS.md §1.
 // Simple issues (no type/epic/children). Waves and themes are per-project and
 // user-managed.
 

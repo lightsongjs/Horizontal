@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { useDepFlow } from '../store'
+import { useHorizontal } from '../store'
 
 const PALETTE = ['#6e7bff', '#3ecf8e', '#ffb454', '#a06eff', '#ff6b6b', '#46d1d9', '#f78fb3', '#9aa0b4']
 
 export function ThemeManager() {
-  const { themes, issues, createTheme, updateTheme, deleteTheme } = useDepFlow()
+  const { themes, issues, createTheme, updateTheme, deleteTheme } = useHorizontal()
   const [name, setName] = useState('')
   const [color, setColor] = useState(PALETTE[0])
   const [busy, setBusy] = useState(false)

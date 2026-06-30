@@ -48,8 +48,10 @@ function nextIssueId(existing: string[], prefix: string): string {
 export function createSupabaseRepository(): Repository {
   const db = requireSupabase()
 
-  async function loadDeps(): Promise<Record<string, string[]>> {
-    const { data, error } = await db.from('dependencies').select('issue_id, depends_on_id')
+  async function loadDeps(issueIds?: string[]): Promise<Record<string, string[]>> {
+    let query = db.from('dependencies').select('issue_id, depends_on_id')
+    if (issueIds?.length) query = query.in('issue_id', issueIds)
+    const { data, error } = await query
     if (error) throw error
     const map: Record<string, string[]> = {}
     for (const r of data ?? []) (map[r.issue_id] ??= []).push(r.depends_on_id)
@@ -202,11 +204,10 @@ export function createSupabaseRepository(): Repository {
     },
 
     async listIssues(projectId: string) {
-      const [{ data, error }, deps] = await Promise.all([
-        db.from('issues').select('*').eq('project_id', projectId).order('id'),
-        loadDeps(),
-      ])
+      const { data, error } = await db.from('issues').select('*').eq('project_id', projectId).order('id')
       if (error) throw error
+      const issueIds = (data as IssueRow[]).map((r) => r.id)
+      const deps = await loadDeps(issueIds)
       return (data as IssueRow[]).map((row) => rowToIssue(row, deps))
     },
 
@@ -287,7 +288,7 @@ export function createSupabaseRepository(): Repository {
 
       const { data, error } = await db.from('issues').select('*').eq('id', id).single()
       if (error) throw error
-      const deps = await loadDeps()
+      const deps = await loadDeps([(data as IssueRow).id])
       return rowToIssue(data as IssueRow, deps)
     },
 

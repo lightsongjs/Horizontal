@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { useDepFlow } from '../store'
+import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 
 export function ThemesView() {
-  const { themes, issues, stateOf } = useDepFlow()
+  const { themes, issues, stateOf } = useHorizontal()
   const { openIssue, openThemeManage } = useUI()
   const [active, setActive] = useState<string>('all')
 
@@ -83,7 +83,7 @@ export function ThemesView() {
 }
 
 function ThemeIssueRow({ id, color }: { id: string; color: string }) {
-  const { byId, stateOf } = useDepFlow()
+  const { byId, stateOf } = useHorizontal()
   const { openIssue } = useUI()
   const it = byId[id]
   if (!it) return null

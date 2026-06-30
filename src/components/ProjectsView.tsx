@@ -1,7 +1,7 @@
-import { useDepFlow } from '../store'
+import { useHorizontal } from '../store'
 
 export function ProjectsView() {
-  const { projects, completion, selectProject } = useDepFlow()
+  const { projects, completion, selectProject } = useHorizontal()
 
   return (
     <div className="view">

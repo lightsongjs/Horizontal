@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react'
 import { detectCycle, requiredDepWave } from '../lib/engine'
-import { useDepFlow } from '../store'
+import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import type { Issue, ScenarioKind, TestScenario } from '../lib/types'
 
@@ -210,7 +210,7 @@ function AssigneeSearch({ assigneeId, assignees, myAssigneeId, onSelect, onSetMe
 }
 
 export function IssueForm({ issueId }: { issueId?: string }) {
-  const { project, waves, themes, issues, byId, activeWave, createIssue, updateIssue, deleteIssue, createTheme, assignees, myAssigneeId, setMyAssigneeId, createAssignee } = useDepFlow()
+  const { project, waves, themes, issues, byId, activeWave, createIssue, updateIssue, deleteIssue, createTheme, assignees, myAssigneeId, setMyAssigneeId, createAssignee } = useHorizontal()
   const { closeSheet, setCloseGuard } = useUI()
   const existing = issueId ? byId[issueId] : undefined
   const isEdit = !!existing

@@ -1,11 +1,11 @@
 import { useState, useCallback, useEffect } from 'react'
 import { layerKeys } from '../lib/engine'
-import { useDepFlow } from '../store'
+import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { TicketCard } from './TicketCard'
 
 export function OrdineView() {
-  const { waves, issues, activeWave, setActiveWave, layers, deleteIssue, updateIssue } = useDepFlow()
+  const { waves, issues, activeWave, setActiveWave, layers, deleteIssue, updateIssue } = useHorizontal()
   const { openWaveManage } = useUI()
   const keys = layerKeys(layers)
 

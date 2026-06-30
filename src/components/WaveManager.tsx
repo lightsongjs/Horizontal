@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { useDepFlow } from '../store'
+import { useHorizontal } from '../store'
 
 export function WaveManager() {
-  const { waves, issues, createWave, renameWave, deleteWave } = useDepFlow()
+  const { waves, issues, createWave, renameWave, deleteWave } = useHorizontal()
   const [newName, setNewName] = useState('')
   const [newLabel, setNewLabel] = useState('')
   const [busy, setBusy] = useState(false)

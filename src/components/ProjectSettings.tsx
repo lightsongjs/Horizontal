@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { useDepFlow } from '../store'
+import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 
 const ACCENTS = ['#6e7bff', '#3ecf8e', '#ffb454', '#a06eff', '#ff6b6b', '#46d1d9']
 
 export function ProjectSettings() {
-  const { project, updateProject, deleteProject } = useDepFlow()
+  const { project, updateProject, deleteProject } = useHorizontal()
   const { closeSheet } = useUI()
 
   const [name, setName] = useState(project?.name ?? '')

@@ -1,8 +1,8 @@
-import { useDepFlow } from '../store'
+import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 
 export function IssueSheet({ issueId }: { issueId: string }) {
-  const { byId, waves, toggleDone, unblockedBy, themeOf, assignees, myAssigneeId } = useDepFlow()
+  const { byId, waves, toggleDone, unblockedBy, themeOf, assignees, myAssigneeId } = useHorizontal()
   const { openIssue, openEditIssue } = useUI()
   const it = byId[issueId]
   if (!it) return null

@@ -1,4 +1,4 @@
-import { useDepFlow } from '../store'
+import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 
 interface Props {
@@ -10,7 +10,7 @@ interface Props {
 }
 
 export function TicketCard({ id, contextWave, selectMode, isSelected, onToggleSelect }: Props) {
-  const { byId, stateOf, toggleDone, themeOf } = useDepFlow()
+  const { byId, stateOf, toggleDone, themeOf } = useHorizontal()
   const { openEditIssue } = useUI()
   const it = byId[id]
   if (!it) return null

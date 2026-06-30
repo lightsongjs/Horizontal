@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { useDepFlow } from '../store'
+import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { useTheme } from '../theme'
 
@@ -12,7 +12,7 @@ function getBuildAgo(): string {
 }
 
 export function Sidebar() {
-  const { projects, project, completion, selectProject, reorderProjects } = useDepFlow()
+  const { projects, project, completion, selectProject, reorderProjects } = useHorizontal()
   const { openNewProject, openNewIssue } = useUI()
   const { theme, toggle } = useTheme()
   const dragId = useRef<string | null>(null)

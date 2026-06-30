@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from './auth'
-import { DepFlowProvider, useDepFlow } from './store'
+import { HorizontalProvider, useHorizontal } from './store'
 import { UIProvider, useUI } from './ui'
 import { ThemeProvider, useTheme } from './theme'
 import { Login } from './components/Login'
@@ -38,7 +38,7 @@ function getBuildAgo(): string {
 }
 
 function Header({ onNewIssue, onProjectSettings, onRefresh }: { onNewIssue: () => void; onProjectSettings: () => void; onRefresh: () => void }) {
-  const { project, completion, selectProject } = useDepFlow()
+  const { project, completion, selectProject } = useHorizontal()
   const pct = project ? Math.round(completion(project.id) * 100) : 0
   return (
     <header>
@@ -99,7 +99,7 @@ const slugify = (name: string) =>
   name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '')
 
 function Shell() {
-  const { loading, error, project, projects, selectProject, refresh } = useDepFlow()
+  const { loading, error, project, projects, selectProject, refresh } = useHorizontal()
   const { openNewIssue, openNewProject, openProjectSettings, sheet } = useUI()
   const [tab, setTab] = useState<Tab>('ordine')
   const [showShortcuts, setShowShortcuts] = useState(false)
@@ -268,11 +268,11 @@ export function App() {
 
   return (
     <ThemeProvider>
-      <DepFlowProvider>
+      <HorizontalProvider>
         <UIProvider>
           <Shell />
         </UIProvider>
-      </DepFlowProvider>
+      </HorizontalProvider>
     </ThemeProvider>
   )
 }

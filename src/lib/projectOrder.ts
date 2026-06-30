@@ -1,4 +1,4 @@
-const KEY = 'depflow:project-order'
+const KEY = 'horizontal:project-order'
 
 export function loadOrder(): string[] {
   try { return JSON.parse(localStorage.getItem(KEY) ?? '[]') } catch { return [] }

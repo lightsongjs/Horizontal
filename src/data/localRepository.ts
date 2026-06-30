@@ -5,7 +5,7 @@ import { SEED_ISSUES, SEED_PROJECTS, SEED_THEMES, SEED_WAVES } from '../lib/seed
 import type { Assignee, Issue, Project, Theme, Wave } from '../lib/types'
 import { themeKey, type NewIssue, type NewProject, type Repository } from './repository'
 
-const KEY = 'depflow:v2'
+const KEY = 'horizontal:v2'
 
 interface DB {
   projects: Project[]
