@@ -91,7 +91,8 @@ function DepSearch({ label, selected, drafts, candidates, onToggle, onToggleDraf
       <div className="dep-search-wrap">
         <input value={q} onChange={(e) => handleChange(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Caută sau creează tichet…" className="dep-search-input" autoComplete="off" />
+          placeholder="Caută sau creează tichet…" className="dep-search-input"
+          autoComplete="off" autoCorrect="off" inputMode="text" />
       </div>
       {q.trim() && (
         <div className="dep-results">
@@ -178,7 +179,7 @@ function AssigneeSearch({ assigneeId, assignees, myAssigneeId, onSelect, onSetMe
         <input value={q} onChange={(e) => { setQ(e.target.value); setHlIdx(0) }}
           onKeyDown={handleKeyDown}
           placeholder="Search or add person…"
-          className="dep-search-input" autoComplete="off" />
+          className="dep-search-input" autoComplete="off" autoCorrect="off" inputMode="text" />
       </div>
       {q.trim() && (
         <div className="dep-results">
@@ -240,6 +241,15 @@ export function IssueForm({ issueId }: { issueId?: string }) {
   const [cycleMsg, setCycleMsg] = useState<string | null>(null)
   const [waveError, setWaveError] = useState<string | null>(null)
   const [confirmClose, setConfirmClose] = useState(false)
+  const [depTab, setDepTab] = useState<'necesita' | 'permite'>('necesita')
+  const titleInputRef = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (isEdit && titleInputRef.current) {
+      titleInputRef.current.setSelectionRange(0, 0)
+      titleInputRef.current.scrollLeft = 0
+    }
+  }, [])
+  const [showAssigneeInline, setShowAssigneeInline] = useState(false)
 
   const isDirty = isEdit
     ? title !== (existing?.title ?? '') || desc !== (existing?.desc ?? '') ||
@@ -403,101 +413,181 @@ export function IssueForm({ issueId }: { issueId?: string }) {
 
   return (
     <>
-      {/* HEADER */}
-      <div className="if-header">
-        <div className="if-header-left">
-          <span className="if-eyebrow">
-            <span className="if-live-dot" />
-            {isEdit ? `✎ ${existing!.id}` : 'Tichet nou'}
-          </span>
-          <div className="if-title">{isEdit ? 'Editează tichet' : 'Adaugă tichet'}</div>
-
-          {/* Temă + Val pills */}
-          <div className="if-header-meta">
-            <button className={`if-meta-pill ${theme === '' ? 'active' : ''}`} onClick={() => setTheme('')}>Fără temă</button>
-            {themes.map((t) => (
-              <button key={t.key} className={`if-meta-pill ${theme === t.key ? 'active' : ''}`} onClick={() => setTheme(t.key)}>
-                <span className="if-meta-dot" style={{ background: t.color }} />{t.name}
-              </button>
-            ))}
-            <button className="if-meta-add" onClick={() => setShowNewTheme((v) => !v)} title="Temă nouă">
-              {showNewTheme ? '×' : '+'}
-            </button>
-
-            <span className="if-meta-sep" />
-
-            {waves.map((w) => (
-              <button key={w.number} className={`if-meta-wave ${wave === w.number ? 'active' : ''}`} onClick={() => {
-                if (isEdit && existing) {
-                  const dependants = issues.filter((i) => (i.deps ?? []).includes(existing.id))
-                  if (dependants.length > 0) {
-                    const required = Math.min(...dependants.map((d) => d.wave))
-                    if (w.number !== required) {
-                      const names = dependants.map((d) => `„${d.title}" (val ${d.wave})`).join(', ')
-                      setWaveError(`„${title}" este o dependență a ${names}. Nu poți muta tichetul.`)
-                      return
-                    }
-                  }
-                }
-                setWave(w.number)
-                setWaveError(null)
-              }}>
-                {w.name}
-              </button>
-            ))}
-          </div>
-
-          {showNewTheme && (
-            <div className="if-meta-new-theme">
-              <input value={newThemeName} onChange={(e) => setNewThemeName(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && addTheme()}
-                placeholder="Nume temă nouă…" autoFocus autoComplete="off" />
-              <button onClick={addTheme} disabled={!newThemeName.trim()}>OK</button>
-            </div>
-          )}
-
-          <AssigneeSearch
-            assigneeId={assigneeId}
-            assignees={assignees}
-            myAssigneeId={myAssigneeId}
-            onSelect={setAssigneeId}
-            onSetMe={setMyAssigneeId}
-            onCreateAndSelect={async (name) => {
-              const a = await createAssignee(name)
-              setAssigneeId(a.id)
-            }}
-          />
-        </div>
-        <button className="if-close" onClick={closeSheet} aria-label="Închide">✕</button>
+      {/* NEW HEADER */}
+      <div className="sh-header">
+        <button className="sh-close" onClick={closeSheet} aria-label="Închide">✕</button>
+        <input
+          ref={titleInputRef}
+          className="sh-title-input"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder={isEdit ? `✎ ${existing!.id}` : 'Titlu tichet…'}
+          autoFocus
+          autoComplete="off"
+          autoCorrect="off"
+          inputMode="text"
+          spellCheck={false}
+        />
+        <button
+          className="sh-save"
+          onClick={save}
+          disabled={!title.trim() || saving || waves.length === 0}
+          title={saving ? 'Se salvează…' : 'Salvează'}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="19" x2="12" y2="5"/>
+            <polyline points="5 12 12 5 19 12"/>
+          </svg>
+        </button>
       </div>
 
       {/* BODY */}
       <div className="sheet-scroll if-body">
+
+        {/* META SECTION — Temă, Val, Assigned to */}
+        <div className="sh-meta-section">
+
+          {/* Temă */}
+          <div className="meta-row">
+            <span className="meta-row-label">Temă</span>
+            <div className="pills-row">
+              <button className={`if-meta-pill ${theme === '' ? 'active' : ''}`} onClick={() => setTheme('')}>Fără</button>
+              {themes.map((t) => (
+                <button key={t.key} className={`if-meta-pill ${theme === t.key ? 'active' : ''}`} onClick={() => setTheme(t.key)}>
+                  <span className="if-meta-dot" style={{ background: t.color }} />{t.name}
+                </button>
+              ))}
+              <button className="if-meta-add" onClick={() => setShowNewTheme((v) => !v)} title="Temă nouă">
+                {showNewTheme ? '×' : '+'}
+              </button>
+            </div>
+            {showNewTheme && (
+              <div className="inline-search-wrap">
+                <input
+                  className="inline-search-input"
+                  value={newThemeName}
+                  onChange={(e) => setNewThemeName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && addTheme()}
+                  placeholder="Nume temă nouă…"
+                  autoFocus
+                  autoComplete="off"
+                  autoCorrect="off"
+                  inputMode="text"
+                />
+                <button className="inline-ok-btn" onClick={addTheme} disabled={!newThemeName.trim()}>OK</button>
+              </div>
+            )}
+          </div>
+
+          {/* Val */}
+          <div className="meta-row">
+            <span className="meta-row-label">Val</span>
+            <div className="pills-row">
+              {waves.map((w) => (
+                <button key={w.number} className={`if-meta-wave ${wave === w.number ? 'active' : ''}`} onClick={() => {
+                  if (isEdit && existing) {
+                    const dependants = issues.filter((i) => (i.deps ?? []).includes(existing.id))
+                    if (dependants.length > 0) {
+                      const required = Math.min(...dependants.map((d) => d.wave))
+                      if (w.number !== required) {
+                        const names = dependants.map((d) => `„${d.title}" (val ${d.wave})`).join(', ')
+                        setWaveError(`„${title}" este o dependență a ${names}. Nu poți muta tichetul.`)
+                        return
+                      }
+                    }
+                  }
+                  setWave(w.number)
+                  setWaveError(null)
+                }}>
+                  {w.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Assigned to */}
+          <div className="meta-row">
+            <div className="meta-row-inline">
+              <span className="meta-row-label" style={{ marginBottom: 0 }}>Assigned to</span>
+              {assigneeId && !showAssigneeInline && (() => {
+                const a = assignees.find((x) => x.id === assigneeId)
+                return a ? (
+                  <div className="assignee-chip-inline">
+                    <div className="assignee-avatar-sm">{a.name.slice(0, 2).toUpperCase()}</div>
+                    <span className="assignee-name-sm">{a.name}{a.id === myAssigneeId ? ' (me)' : ''}</span>
+                    <span className="assignee-x-sm" onClick={() => setAssigneeId(null)}>×</span>
+                  </div>
+                ) : null
+              })()}
+              <button className="if-meta-add" style={{ marginLeft: 'auto' }} onClick={() => setShowAssigneeInline((v) => !v)}>
+                {showAssigneeInline ? '×' : '+'}
+              </button>
+            </div>
+            {showAssigneeInline && (
+              <div className="inline-search-wrap">
+                <AssigneeSearch
+                  assigneeId={null}
+                  assignees={assignees}
+                  myAssigneeId={myAssigneeId}
+                  onSelect={(id) => { setAssigneeId(id); setShowAssigneeInline(false) }}
+                  onSetMe={setMyAssigneeId}
+                  onCreateAndSelect={async (name) => {
+                    const a = await createAssignee(name)
+                    setAssigneeId(a.id)
+                    setShowAssigneeInline(false)
+                  }}
+                />
+              </div>
+            )}
+          </div>
+
+        </div>{/* end sh-meta-section */}
+
+        {/* MAIN FORM — 2 cols desktop, 1 col mobile */}
         <div className="form-cols">
 
-          {/* ── STÂNGA ── */}
+          {/* LEFT COL */}
           <div className="form-col">
-
-            <div className="fld">
-              <label className="if-field-label req">Titlu</label>
-              <input value={title} onChange={(e) => setTitle(e.target.value)}
-                placeholder="Ex: Pagina de înregistrare" autoComplete="off" autoFocus />
-            </div>
 
             <div className="fld">
               <label className="if-field-label">Descriere</label>
               <AutoTextarea value={desc} onChange={setDesc} placeholder="Cerințe, notițe, context…" minH={100} />
             </div>
 
-            <DepSearch label="Depinde de" selected={deps} drafts={draftDeps} candidates={candidates}
-              onToggle={(id) => toggle(deps, setDeps, id)}
-              onToggleDraft={(d) => toggleDraft(draftDeps, setDraftDeps, deps, setDeps, d)}
-              onCreateDraft={createDraftDep} />
-
-            <DepSearch label="Blochează" selected={blocks} drafts={draftBlocks} candidates={candidates}
-              onToggle={(id) => toggle(blocks, setBlocks, id)}
-              onToggleDraft={(d) => toggleDraft(draftBlocks, setDraftBlocks, blocks, setBlocks, d)}
-              onCreateDraft={createDraftBlock} />
+            {/* Dependențe — tabbed Necesită / Permite */}
+            <div className="sh-dep-section">
+              <div className="sh-dep-tabs">
+                {(() => {
+                  const necCount = deps.filter((d) => !d.startsWith('__draft_')).length + draftDeps.filter((d) => deps.includes(d.tempId)).length
+                  const perCount = blocks.filter((b) => !b.startsWith('__draft_')).length + draftBlocks.filter((d) => blocks.includes(d.tempId)).length
+                  return (
+                    <>
+                      <button className={`sh-dep-tab ${depTab === 'necesita' ? 'on' : ''}`} onClick={() => setDepTab('necesita')}>
+                        ← Necesită{necCount > 0 && <span className="dep-count"> ({necCount})</span>}
+                      </button>
+                      <button className={`sh-dep-tab ${depTab === 'permite' ? 'on' : ''}`} onClick={() => setDepTab('permite')}>
+                        → Permite{perCount > 0 && <span className="dep-count"> ({perCount})</span>}
+                      </button>
+                    </>
+                  )
+                })()}
+              </div>
+              <p className="dep-tab-hint">
+                {depTab === 'necesita' ? 'Ce trebuie să existe înainte de acest tichet?' : 'Ce deblochează sau face posibil acest tichet?'}
+              </p>
+              {depTab === 'necesita' && (
+                <DepSearch label="" selected={deps} drafts={draftDeps} candidates={candidates}
+                  onToggle={(id) => toggle(deps, setDeps, id)}
+                  onToggleDraft={(d) => toggleDraft(draftDeps, setDraftDeps, deps, setDeps, d)}
+                  onCreateDraft={createDraftDep} />
+              )}
+              {depTab === 'permite' && (
+                <DepSearch label="" selected={blocks} drafts={draftBlocks} candidates={candidates}
+                  onToggle={(id) => toggle(blocks, setBlocks, id)}
+                  onToggleDraft={(d) => toggleDraft(draftBlocks, setDraftBlocks, blocks, setBlocks, d)}
+                  onCreateDraft={createDraftBlock} />
+              )}
+            </div>
 
             {isEdit && (
               <button className="add-dep" style={{ marginTop: 8, borderColor: 'rgba(225,29,72,0.3)', color: 'var(--blocked)' }}
@@ -505,9 +595,10 @@ export function IssueForm({ issueId }: { issueId?: string }) {
                 {confirmDel ? '⚠ Apasă din nou ca să confirmi ștergerea' : '🗑 Șterge tichetul'}
               </button>
             )}
+
           </div>
 
-          {/* ── DREAPTA ── */}
+          {/* RIGHT COL */}
           <div className="form-col">
 
             <div className="fld">
@@ -518,7 +609,8 @@ export function IssueForm({ issueId }: { issueId?: string }) {
                     <span className="if-badge selector">⬡</span>
                     <input value={s} onChange={(e) => updateSelector(i, e.target.value)}
                       placeholder="getByRole('button', { name: 'Login' })"
-                      style={{ fontFamily: 'var(--mono)', fontSize: 11 }} autoComplete="off" />
+                      style={{ fontFamily: 'var(--mono)', fontSize: 11 }}
+                      autoComplete="off" autoCorrect="off" inputMode="text" />
                     <button className="if-sc-del" onClick={() => removeSelector(i)}>×</button>
                   </div>
                 ))}
@@ -538,7 +630,8 @@ export function IssueForm({ issueId }: { issueId?: string }) {
                       {badgeIcon(s.kind)}
                     </span>
                     <input value={s.text} onChange={(e) => updateScenarioText(i, e.target.value)}
-                      placeholder="Ex: Login reușit cu date valide" autoComplete="off" />
+                      placeholder="Ex: Login reușit cu date valide"
+                      autoComplete="off" autoCorrect="off" inputMode="text" />
                     <button className="if-sc-del" onClick={() => removeScenario(i)}>×</button>
                   </div>
                 ))}
@@ -556,7 +649,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
             </div>
 
           </div>
-        </div>
+        </div>{/* end form-cols */}
 
         {cycleMsg && (
           <div className="banner" style={{ marginTop: 12 }}>⚠ Asta ar crea un ciclu: {cycleMsg}</div>
@@ -573,23 +666,8 @@ export function IssueForm({ issueId }: { issueId?: string }) {
             </div>
           </div>
         )}
-      </div>
 
-      {/* FOOTER */}
-      <div className="if-footer">
-        <div className="if-footer-hint">
-          <kbd>⌘</kbd>+<kbd>↵</kbd> salvează rapid
-        </div>
-        <div className="if-footer-actions">
-          <button className="if-btn-ghost" onClick={closeSheet}>Anulează</button>
-          <button className="if-btn-primary" onClick={save} disabled={!title.trim() || saving || waves.length === 0}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <polyline points="20 6 9 17 4 12"/>
-            </svg>
-            {saving ? 'Se salvează…' : isEdit ? 'Salvează modificările' : 'Salvează tichet'}
-          </button>
-        </div>
-      </div>
+      </div>{/* end sheet-scroll */}
     </>
   )
 }

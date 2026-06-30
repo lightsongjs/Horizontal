@@ -49,16 +49,40 @@ export function ProjectForm() {
 
   return (
     <>
-      <div className="sheet-head">
-        <div className="eyebrow">+ Proiect nou</div>
-        <h2>Adaugă proiect</h2>
-        <p>Nume, descriere și un prefix scurt pentru ID-urile tichetelor.</p>
+      {/* NEW HEADER */}
+      <div className="sh-header">
+        <button className="sh-close" onClick={closeSheet} aria-label="Închide">✕</button>
+        <input
+          className="sh-title-input"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Titlu proiect…"
+          autoFocus
+          autoComplete="off"
+          autoCorrect="off"
+          inputMode="text"
+          spellCheck={false}
+        />
+        <button
+          className="sh-save"
+          onClick={save}
+          disabled={!valid || saving}
+          title={saving ? 'Se salvează…' : 'Salvează'}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="19" x2="12" y2="5"/>
+            <polyline points="5 12 12 5 19 12"/>
+          </svg>
+        </button>
       </div>
+
       <div className="sheet-scroll">
-        <div className="fld">
-          <label>Nume</label>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Aplicație Turism" autoFocus />
+        <div className="sheet-section-t">Tip proiect</div>
+        <div className="chips" style={{ margin: '0 0 16px' }}>
+          <button className={`chip ${type === 'personal' ? 'on' : ''}`} onClick={() => setType('personal')}>Personal</button>
+          <button className={`chip ${type === 'work' ? 'on' : ''}`} onClick={() => setType('work')}>Serviciu</button>
         </div>
+
         <div className="fld">
           <label>Descriere</label>
           <textarea
@@ -74,17 +98,13 @@ export function ProjectForm() {
             onChange={(e) => { setPrefixTouched(true); setPrefix(e.target.value) }}
             placeholder="Ex: TUR"
             autoComplete="off"
+            autoCorrect="off"
+            inputMode="text"
           />
           <p style={{ fontSize: 11, color: 'var(--txt-faint)', marginTop: 6 }}>
             Tichetele vor fi {cleanPrefix || 'XXX'}-01, {cleanPrefix || 'XXX'}-02…
             {taken && <span style={{ color: 'var(--blocked)' }}> · prefix deja folosit</span>}
           </p>
-        </div>
-
-        <div className="sheet-section-t">Tip proiect</div>
-        <div className="chips" style={{ margin: '0 0 16px' }}>
-          <button className={`chip ${type === 'personal' ? 'on' : ''}`} onClick={() => setType('personal')}>Personal</button>
-          <button className={`chip ${type === 'work' ? 'on' : ''}`} onClick={() => setType('work')}>Serviciu</button>
         </div>
 
         <div className="sheet-section-t">Culoare</div>
@@ -102,12 +122,6 @@ export function ProjectForm() {
         </div>
 
         {error && <div className="banner">⚠ {error}</div>}
-
-        <div className="save-bar">
-          <button onClick={save} disabled={!valid || saving}>
-            {saving ? 'Se salvează…' : 'Creează proiect'}
-          </button>
-        </div>
       </div>
     </>
   )
