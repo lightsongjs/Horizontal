@@ -535,6 +535,9 @@ main {
   letter-spacing: -0.012em;
   line-height: 1.35;
   color: var(--txt);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .tk.done h5 {
   color: var(--txt-faint);
