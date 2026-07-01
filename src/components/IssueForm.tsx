@@ -31,9 +31,10 @@ function AutoTextarea({ value, onChange, placeholder, minH = 80 }: {
   )
 }
 
-function DepSearch({ label, selected, drafts, candidates, onToggle, onToggleDraft, onCreateDraft }: {
+function DepSearch({ label, selected, drafts, candidates, onToggle, onToggleDraft, onCreateDraft, onNavigate }: {
   label: string; selected: string[]; drafts: DraftIssue[]; candidates: Issue[]
   onToggle: (id: string) => void; onToggleDraft: (d: DraftIssue) => void; onCreateDraft: (title: string) => void
+  onNavigate?: (id: string) => void
 }) {
   const [q, setQ] = useState('')
   const [hlIdx, setHlIdx] = useState(0)
@@ -72,19 +73,23 @@ function DepSearch({ label, selected, drafts, candidates, onToggle, onToggleDraf
             const issue = candidates.find((i) => i.id === id)
             if (!issue) return null
             return (
-              <button key={id} className="dep-chip on" onClick={() => onToggle(id)}>
-                <span className="dep-chip-id">{id}</span>
-                <span className="dep-chip-title">{issue.title}</span>
-                <span className="dep-chip-x">×</span>
-              </button>
+              <div key={id} className="dep-chip on">
+                <button className="dep-chip-body" onClick={() => onNavigate?.(id)}>
+                  <span className="dep-chip-id">{id}</span>
+                  <span className="dep-chip-title">{issue.title}</span>
+                </button>
+                <button className="dep-chip-x-btn" onClick={() => onToggle(id)}>×</button>
+              </div>
             )
           })}
           {drafts.filter((d) => selected.includes(d.tempId)).map((d) => (
-            <button key={d.tempId} className="dep-chip on draft" onClick={() => onToggleDraft(d)}>
-              <span className="dep-chip-id">nou</span>
-              <span className="dep-chip-title">{d.title}</span>
-              <span className="dep-chip-x">×</span>
-            </button>
+            <div key={d.tempId} className="dep-chip on draft">
+              <span className="dep-chip-body dep-chip-body--static">
+                <span className="dep-chip-id">nou</span>
+                <span className="dep-chip-title">{d.title}</span>
+              </span>
+              <button className="dep-chip-x-btn" onClick={() => onToggleDraft(d)}>×</button>
+            </div>
           ))}
         </div>
       )}
@@ -212,7 +217,7 @@ function AssigneeSearch({ assigneeId, assignees, myAssigneeId, onSelect, onSetMe
 
 export function IssueForm({ issueId }: { issueId?: string }) {
   const { project, waves, themes, issues, byId, activeWave, createIssue, updateIssue, deleteIssue, createTheme, assignees, myAssigneeId, setMyAssigneeId, createAssignee } = useHorizontal()
-  const { closeSheet, setCloseGuard } = useUI()
+  const { closeSheet, setCloseGuard, pushSheet } = useUI()
   const existing = issueId ? byId[issueId] : undefined
   const isEdit = !!existing
 
@@ -579,12 +584,14 @@ export function IssueForm({ issueId }: { issueId?: string }) {
                 <DepSearch label="" selected={deps} drafts={draftDeps} candidates={candidates}
                   onToggle={(id) => toggle(deps, setDeps, id)}
                   onToggleDraft={(d) => toggleDraft(draftDeps, setDraftDeps, deps, setDeps, d)}
+                  onNavigate={(id) => pushSheet({ kind: 'issue', issueId: id })}
                   onCreateDraft={createDraftDep} />
               )}
               {depTab === 'permite' && (
                 <DepSearch label="" selected={blocks} drafts={draftBlocks} candidates={candidates}
                   onToggle={(id) => toggle(blocks, setBlocks, id)}
                   onToggleDraft={(d) => toggleDraft(draftBlocks, setDraftBlocks, blocks, setBlocks, d)}
+                  onNavigate={(id) => pushSheet({ kind: 'issue', issueId: id })}
                   onCreateDraft={createDraftBlock} />
               )}
             </div>

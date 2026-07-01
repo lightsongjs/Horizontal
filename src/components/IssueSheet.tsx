@@ -2,16 +2,18 @@ import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 
 export function IssueSheet({ issueId }: { issueId: string }) {
-  const { byId, waves, toggleDone, unblockedBy, themeOf, assignees, myAssigneeId } = useHorizontal()
-  const { openIssue, openEditIssue } = useUI()
+  const { byId, waves, unblockedBy, themeOf, assignees, myAssigneeId } = useHorizontal()
+  const { openEditIssue, pushSheet } = useUI()
   const it = byId[issueId]
   if (!it) return null
 
   const waveName = (n: number) => waves.find((w) => w.number === n)?.name ?? `Val ${n}`
   const theme = it.theme ? themeOf(it.theme) : undefined
   const deps = it.deps ?? []
-  const unblocks = unblockedBy(issueId)
+  const permits = unblockedBy(issueId)
   const assignee = it.assigneeId ? assignees.find((a) => a.id === it.assigneeId) : null
+
+  const navigateTo = (id: string) => pushSheet({ kind: 'issue', issueId: id })
 
   return (
     <>
@@ -31,31 +33,24 @@ export function IssueSheet({ issueId }: { issueId: string }) {
               {'👤 '}{assignee.name}{assignee.id === myAssigneeId ? ' (eu)' : ''}
             </>
           )}
+          {it.done && <>{' · '}<span style={{ color: 'var(--ok)' }}>✓ Gata</span></>}
         </div>
         <h2>{it.title}</h2>
         {it.desc && <p>{it.desc}</p>}
       </div>
+
       <div className="sheet-scroll">
-        <div style={{ display: 'flex', gap: 7, marginBottom: 4 }}>
-          <button
-            className="add-dep"
-            style={{ borderStyle: 'solid', flex: 1 }}
-            onClick={() => void toggleDone(issueId)}
-          >
-            {it.done ? '↺ Marchează ca nefăcut' : '✓ Marchează ca gata'}
-          </button>
-          <button
-            className="add-dep"
-            style={{ borderStyle: 'solid', width: 'auto', padding: '10px 14px' }}
-            onClick={() => openEditIssue(issueId)}
-          >
-            ✎ Editează
-          </button>
-        </div>
+        <button
+          className="add-dep"
+          style={{ borderStyle: 'solid', width: '100%', marginBottom: 12 }}
+          onClick={() => openEditIssue(issueId)}
+        >
+          ✎ Editează
+        </button>
 
         {deps.length > 0 && (
           <>
-            <div className="sheet-section-t">Depinde de (toate valurile)</div>
+            <div className="sheet-section-t">Necesită</div>
             {deps.map((d) => {
               const dep = byId[d]
               if (!dep) return null
@@ -65,7 +60,7 @@ export function IssueSheet({ issueId }: { issueId: string }) {
                   key={d}
                   className={`dep-row ${cross ? 'cross' : ''}`}
                   style={{ width: '100%', textAlign: 'left' }}
-                  onClick={() => openIssue(d)}
+                  onClick={() => navigateTo(d)}
                 >
                   <span className={`ic ${dep.done ? 'ok' : 'ext'}`}>{dep.done ? '✓' : '↳'}</span>
                   <span>{dep.title}</span>
@@ -79,22 +74,26 @@ export function IssueSheet({ issueId }: { issueId: string }) {
           </>
         )}
 
-        {unblocks.length > 0 && (
+        {permits.length > 0 && (
           <>
-            <div className="sheet-section-t">Deblochează</div>
-            {unblocks.map((b) => (
+            <div className="sheet-section-t">Permite</div>
+            {permits.map((b) => (
               <button
                 key={b.id}
                 className="dep-row"
                 style={{ width: '100%', textAlign: 'left' }}
-                onClick={() => openIssue(b.id)}
+                onClick={() => navigateTo(b.id)}
               >
-                <span className="ic ok">⌁</span>
+                <span className="ic ext">⌁</span>
                 <span>{b.title}</span>
                 <span className="wtag pending">{waveName(b.wave)}</span>
               </button>
             ))}
           </>
+        )}
+
+        {deps.length === 0 && permits.length === 0 && (
+          <p className="dep-no-results">Nicio relație cu alte tichete.</p>
         )}
       </div>
     </>

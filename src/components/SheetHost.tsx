@@ -8,7 +8,7 @@ import { WaveManager } from './WaveManager'
 import { ThemeManager } from './ThemeManager'
 
 export function SheetHost() {
-  const { sheet, closeSheet } = useUI()
+  const { sheet, canGoBack, closeSheet, goBack } = useUI()
   const open = sheet.kind !== 'none'
   const tall =
     sheet.kind === 'issue-form' ||
@@ -19,18 +19,28 @@ export function SheetHost() {
 
   useEffect(() => {
     if (!open) return
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && closeSheet()
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (canGoBack) goBack()
+        else closeSheet()
+      }
+    }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open, closeSheet])
+  }, [open, canGoBack, closeSheet, goBack])
 
   return (
     <>
       <div className={`sheet-bg ${open ? 'on' : ''}`} onClick={closeSheet} />
       <div className={`sheet ${open ? 'on' : ''} ${tall ? 'tall' : ''}`} role="dialog" aria-modal="true">
         <div className="grip" />
-        {sheet.kind === 'issue' && <IssueSheet issueId={sheet.issueId} />}
-        {sheet.kind === 'issue-form' && <IssueForm issueId={sheet.issueId} />}
+        {canGoBack && (
+          <button className="sheet-back" onClick={goBack}>
+            ← Înapoi
+          </button>
+        )}
+        {sheet.kind === 'issue' && <IssueSheet key={sheet.issueId} issueId={sheet.issueId} />}
+        {sheet.kind === 'issue-form' && <IssueForm key={sheet.issueId ?? '__new__'} issueId={sheet.issueId} />}
         {sheet.kind === 'project-form' && <ProjectForm />}
         {sheet.kind === 'project-settings' && <ProjectSettings />}
         {sheet.kind === 'wave-manage' && <WaveManager />}

@@ -719,6 +719,21 @@ main {
   background: var(--line);
   margin: 5px auto 2px;
 }
+.sheet-back {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 16px 2px;
+  cursor: pointer;
+  opacity: 0.75;
+  letter-spacing: 0.01em;
+}
+.sheet-back:hover { opacity: 1; }
 .sheet-head {
   padding: 8px 18px 13px;
   border-bottom: 1px solid var(--line-soft);
@@ -1227,8 +1242,6 @@ svg.graph {
 .dep-chip {
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 8px 4px 9px;
   border-radius: 6px;
   border: 1px solid var(--line);
   background: var(--surface-2);
@@ -1236,6 +1249,7 @@ svg.graph {
   font-weight: 500;
   color: var(--txt-dim);
   transition: border-color 0.13s;
+  overflow: hidden;
 }
 .dep-chip.on {
   background: var(--accent-soft);
@@ -1244,6 +1258,50 @@ svg.graph {
 }
 .dep-chip.draft {
   border-style: dashed;
+}
+.dep-chip-body {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 6px 4px 9px;
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  cursor: pointer;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+.dep-chip-body:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.dep-chip-body--static {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 6px 4px 9px;
+  flex: 1;
+  min-width: 0;
+}
+.dep-chip-x-btn {
+  background: none;
+  border: none;
+  color: inherit;
+  opacity: 0.4;
+  font-size: 16px;
+  font-weight: 300;
+  padding: 4px 8px;
+  cursor: pointer;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: color 0.12s, opacity 0.12s;
+}
+.dep-chip-x-btn:hover {
+  color: #f87171;
+  opacity: 1;
 }
 .dep-chip-id {
   font-family: var(--mono);
@@ -1263,6 +1321,7 @@ svg.graph {
   white-space: nowrap;
 }
 .dep-chip-x {
+  display: none;
   font-size: 16px;
   font-weight: 300;
   opacity: 0.6;
@@ -1373,43 +1432,24 @@ svg.graph {
 }
 
 /* ── Hide done button ── */
-.btn-hide-done {
+.wave-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   padding: 5px 10px;
   border-radius: 7px;
   border: 1px solid var(--line);
   background: transparent;
   color: var(--txt-faint);
-  font-family: var(--mono);
   font-size: 12px;
-  letter-spacing: 0.03em;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.15s;
   flex-shrink: 0;
   white-space: nowrap;
 }
-.btn-hide-done:hover { color: var(--txt); border-color: var(--line-soft); }
-.btn-hide-done.active {
-  background: #16a34a18;
-  border-color: #16a34a66;
-  color: #4ade80;
-}
-
-/* ── Bulk select button ── */
-.btn-bulk-select {
-  padding: 5px 11px;
-  border-radius: 7px;
-  border: 1px solid var(--line);
-  background: transparent;
-  color: var(--txt-faint);
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing: 0.03em;
-  cursor: pointer;
-  transition: all 0.15s;
-  flex-shrink: 0;
-}
-.btn-bulk-select:hover { color: var(--txt); border-color: var(--line-soft); }
-.btn-bulk-select.active {
+.wave-action-btn:hover { color: var(--txt); border-color: var(--txt-faint); }
+.wave-action-btn.active {
   background: var(--accent-soft);
   border-color: var(--accent);
   color: var(--accent);
@@ -2814,30 +2854,6 @@ svg.graph {
   flex-wrap: wrap;
   gap: 6px;
   align-items: center;
-}
-
-/* ─── Tree View ─────────────────────────────────────────────── */
-
-.btn-tree-view {
-  padding: 4px 10px;
-  border-radius: 6px;
-  border: 1px solid var(--line);
-  background: transparent;
-  color: var(--txt-dim);
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 150ms, color 150ms, border-color 150ms;
-  white-space: nowrap;
-}
-.btn-tree-view:hover {
-  background: var(--surface-2);
-  color: var(--txt);
-}
-.btn-tree-view.active {
-  background: color-mix(in srgb, var(--accent) 15%, transparent);
-  border-color: var(--accent);
-  color: var(--accent);
 }
 
 /* Ticket dim: totul în afara lanțului */
