@@ -3,9 +3,10 @@ import { layerKeys } from '../lib/engine'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { TicketCard } from './TicketCard'
+import { getRelatedIds } from '../lib/treeTraversal'
 
 export function OrdineView() {
-  const { waves, issues, activeWave, setActiveWave, layers, deleteIssue, updateIssue } = useHorizontal()
+  const { waves, issues, activeWave, setActiveWave, layers, deleteIssue, updateIssue, byId } = useHorizontal()
   const { openWaveManage } = useUI()
   const keys = layerKeys(layers)
 
@@ -13,11 +14,22 @@ export function OrdineView() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [confirmDel, setConfirmDel] = useState(false)
   const [hideDone, setHideDone] = useState(false)
+  const [treeViewActive, setTreeViewActive] = useState(false)
+  const [treeHighlightId, setTreeHighlightId] = useState<string | null>(null)
 
   const exitSelectMode = useCallback(() => {
     setSelectMode(false)
     setSelectedIds(new Set())
     setConfirmDel(false)
+  }, [])
+
+  const exitTreeView = useCallback(() => {
+    setTreeViewActive(false)
+    setTreeHighlightId(null)
+  }, [])
+
+  const handleTreeSelect = useCallback((id: string) => {
+    setTreeHighlightId((prev) => (prev === id ? null : id))
   }, [])
 
   const toggleSelect = useCallback((id: string) => {
@@ -39,6 +51,8 @@ export function OrdineView() {
     return () => window.removeEventListener('keydown', onKey)
   }, [selectMode, confirmDel, exitSelectMode])
 
+  useEffect(() => { exitTreeView() }, [activeWave]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleBulkMove = async (targetWave: number) => {
     await Promise.all([...selectedIds].map((id) => updateIssue(id, { wave: targetWave })))
     exitSelectMode()
@@ -51,6 +65,10 @@ export function OrdineView() {
 
   const otherWaves = waves.filter((w) => w.number !== activeWave)
   const selCount = selectedIds.size
+
+  const highlightedIds: Set<string> | null = treeHighlightId
+    ? new Set([treeHighlightId, ...getRelatedIds(treeHighlightId, byId)])
+    : null
 
   return (
     <div className="panel">
@@ -84,6 +102,16 @@ export function OrdineView() {
             title={hideDone ? 'Arată toate tichetele' : 'Ascunde tichetele finalizate'}
           >
             {hideDone ? 'Arată tot' : 'Ascunde ✓'}
+          </button>
+          <button
+            className={`btn-tree-view ${treeViewActive ? 'active' : ''}`}
+            onClick={() => {
+              if (treeViewActive) exitTreeView()
+              else { setTreeViewActive(true); exitSelectMode() }
+            }}
+            title={treeViewActive ? 'Ieși din Tree View' : 'Tree View — explorează dependențe'}
+          >
+            {treeViewActive ? '✕ Tree' : '⋱ Tree'}
           </button>
           <button
             className={`btn-bulk-select ${selectMode ? 'active' : ''}`}
@@ -122,13 +150,17 @@ export function OrdineView() {
                     {ready && <span className="badge-now">Acum</span>}
                   </div>
                   {visibleIds.map((id) => (
+                    // @ts-ignore — treeMode/highlighted/onTreeSelect props added in Task 3
                     <TicketCard
                       key={id}
                       id={id}
                       contextWave={activeWave}
-                      selectMode={selectMode}
+                      selectMode={!treeViewActive && selectMode}
                       isSelected={selectedIds.has(id)}
                       onToggleSelect={toggleSelect}
+                      treeMode={treeViewActive}
+                      highlighted={highlightedIds ? highlightedIds.has(id) : undefined}
+                      onTreeSelect={handleTreeSelect}
                     />
                   ))}
                 </div>
