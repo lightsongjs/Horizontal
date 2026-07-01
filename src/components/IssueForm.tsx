@@ -30,7 +30,9 @@ const AutoTextarea = forwardRef<HTMLTextAreaElement, {
     const el = innerRef.current; if (!el) return
     el.style.height = 'auto'
     const natural = Math.max(minH, el.scrollHeight)
-    el.style.height = (maxH ? Math.min(natural, maxH) : natural) + 'px'
+    const capped = maxH ? Math.min(natural, maxH) : natural
+    el.style.height = capped + 'px'
+    el.style.overflow = (maxH && natural >= maxH) ? 'auto' : 'hidden'
   }, [value, minH, maxH])
   return (
     <textarea
@@ -40,7 +42,7 @@ const AutoTextarea = forwardRef<HTMLTextAreaElement, {
         else if (forwardedRef) (forwardedRef as { current: HTMLTextAreaElement | null }).current = el
       }}
       value={value} onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder} style={{ minHeight: minH, resize: 'none', overflow: maxH ? 'auto' : 'hidden' }} />
+      placeholder={placeholder} style={{ minHeight: minH, resize: 'none' }} />
   )
 })
 
