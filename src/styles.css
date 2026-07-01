@@ -458,6 +458,11 @@ main {
 .tk.done {
   opacity: 0.45;
 }
+.tk.vim-focused {
+  outline: 2px solid var(--layer-color, var(--accent));
+  outline-offset: 2px;
+  background: color-mix(in srgb, var(--layer-color, var(--accent)) 8%, var(--surface));
+}
 .tk.active {
   border-left: 2px solid rgba(62, 207, 142, 0.5);
 }

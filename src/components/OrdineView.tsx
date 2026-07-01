@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { layerKeys } from '../lib/engine'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
@@ -18,7 +18,7 @@ const LAYER_COLORS = [
 
 export function OrdineView() {
   const { waves, issues, activeWave, setActiveWave, layers, deleteIssue, updateIssue, byId } = useHorizontal()
-  const { openWaveManage } = useUI()
+  const { openWaveManage, openEditIssue, sheet } = useUI()
   const keys = layerKeys(layers)
 
   const [selectMode, setSelectMode] = useState(false)
@@ -27,6 +27,7 @@ export function OrdineView() {
   const [hideDone, setHideDone] = useState(false)
   const [treeViewActive, setTreeViewActive] = useState(false)
   const [treeHighlightId, setTreeHighlightId] = useState<string | null>(null)
+  const [focusedId, setFocusedId] = useState<string | null>(null)
 
   const exitSelectMode = useCallback(() => {
     setSelectMode(false)
@@ -63,7 +64,94 @@ export function OrdineView() {
     return () => window.removeEventListener('keydown', onKey)
   }, [selectMode, confirmDel, treeViewActive, exitSelectMode, exitTreeView])
 
-  useEffect(() => { exitTreeView() }, [activeWave]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { exitTreeView(); setFocusedId(null) }, [activeWave]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const flatLayers = useMemo(() =>
+    keys
+      .map((L) => {
+        const ids = layers[L]
+        return hideDone ? ids.filter((id) => !byId[id]?.done) : ids
+      })
+      .filter((layer) => layer.length > 0),
+    [keys, layers, hideDone, byId]
+  )
+
+  // Scroll focused card into view
+  useEffect(() => {
+    if (!focusedId) return
+    document.querySelector(`[data-issue-id="${focusedId}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  }, [focusedId])
+
+  // Vim keyboard navigation: H/J/K/L + Enter + Escape
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement
+      if (['INPUT', 'TEXTAREA'].includes(target.tagName) || target.isContentEditable) return
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      if (sheet.kind !== 'none') return
+
+      const key = e.key.toLowerCase()
+      if (!['h', 'j', 'k', 'l', 'enter', 'escape'].includes(key)) return
+
+      if (key === 'escape') {
+        if (focusedId) { e.preventDefault(); setFocusedId(null) }
+        return
+      }
+
+      if (key === 'enter' && focusedId) {
+        e.preventDefault()
+        openEditIssue(focusedId)
+        return
+      }
+
+      if (!['h', 'j', 'k', 'l'].includes(key)) return
+      e.preventDefault()
+
+      // First press — enter nav mode on first visible ticket
+      if (!focusedId) {
+        const firstId = flatLayers[0]?.[0]
+        if (firstId) setFocusedId(firstId)
+        return
+      }
+
+      // Find current position
+      let layerIdx = -1, posInLayer = -1
+      for (let li = 0; li < flatLayers.length; li++) {
+        const pi = flatLayers[li].indexOf(focusedId)
+        if (pi !== -1) { layerIdx = li; posInLayer = pi; break }
+      }
+      if (layerIdx === -1) return
+
+      if (key === 'j') {
+        if (layerIdx + 1 < flatLayers.length) {
+          const next = flatLayers[layerIdx + 1]
+          setFocusedId(next[Math.min(posInLayer, next.length - 1)])
+        }
+      } else if (key === 'k') {
+        if (layerIdx > 0) {
+          const prev = flatLayers[layerIdx - 1]
+          setFocusedId(prev[Math.min(posInLayer, prev.length - 1)])
+        }
+      } else if (key === 'l') {
+        const layer = flatLayers[layerIdx]
+        if (posInLayer + 1 < layer.length) {
+          setFocusedId(layer[posInLayer + 1])
+        } else if (layerIdx + 1 < flatLayers.length) {
+          setFocusedId(flatLayers[layerIdx + 1][0])
+        }
+      } else if (key === 'h') {
+        if (posInLayer > 0) {
+          setFocusedId(flatLayers[layerIdx][posInLayer - 1])
+        } else if (layerIdx > 0) {
+          const prev = flatLayers[layerIdx - 1]
+          setFocusedId(prev[prev.length - 1])
+        }
+      }
+    }
+
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [focusedId, flatLayers, sheet, openEditIssue])
 
   const handleBulkMove = async (targetWave: number) => {
     await Promise.all([...selectedIds].map((id) => updateIssue(id, { wave: targetWave })))
@@ -173,6 +261,7 @@ export function OrdineView() {
                       treeMode={treeViewActive}
                       highlighted={highlightedIds ? highlightedIds.has(id) : undefined}
                       onTreeSelect={handleTreeSelect}
+                      focused={focusedId === id}
                     />
                   ))}
                 </div>

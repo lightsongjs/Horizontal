@@ -8,11 +8,12 @@ interface Props {
   isSelected?: boolean
   onToggleSelect?: (id: string) => void
   treeMode?: boolean
-  highlighted?: boolean       // undefined = treeMode inactiv, true = în lanț, false = dimmed
+  highlighted?: boolean
   onTreeSelect?: (id: string) => void
+  focused?: boolean
 }
 
-export function TicketCard({ id, contextWave, selectMode, isSelected, onToggleSelect, treeMode, highlighted, onTreeSelect }: Props) {
+export function TicketCard({ id, contextWave, selectMode, isSelected, onToggleSelect, treeMode, highlighted, onTreeSelect, focused }: Props) {
   const { byId, stateOf, toggleDone, themeOf } = useHorizontal()
   const { openEditIssue } = useUI()
   const it = byId[id]
@@ -44,9 +45,10 @@ export function TicketCard({ id, contextWave, selectMode, isSelected, onToggleSe
 
   return (
     <button
-      className={`tk ${state}${isSelected ? ' selected' : ''}${selectMode ? ' in-select' : ''}${treeClass}`}
+      className={`tk ${state}${isSelected ? ' selected' : ''}${selectMode ? ' in-select' : ''}${treeClass}${focused ? ' vim-focused' : ''}`}
       onClick={handleClick}
       data-title={it.title}
+      data-issue-id={id}
     >
       <span
         className="tk-check"
