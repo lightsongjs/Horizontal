@@ -30,6 +30,7 @@ export function TicketCard({ id, contextWave, selectMode, isSelected, onToggleSe
     <button
       className={`tk ${state}${isSelected ? ' selected' : ''}${selectMode ? ' in-select' : ''}`}
       onClick={handleClick}
+      data-title={it.title}
     >
       <span
         className="tk-check"
