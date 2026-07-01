@@ -2837,7 +2837,7 @@ svg.graph {
 .tk.tree-dim {
   opacity: 0.18;
   filter: grayscale(0.4);
-  transition: opacity 200ms ease, filter 200ms ease, box-shadow 200ms ease, transform 200ms ease;
+  transition: opacity 200ms ease, filter 200ms ease, box-shadow 200ms ease;
   pointer-events: auto;
 }
 
@@ -2846,7 +2846,7 @@ svg.graph {
   opacity: 1;
   filter: none;
   box-shadow: 0 0 0 2px var(--accent), 0 4px 16px color-mix(in srgb, var(--accent) 30%, transparent);
-  transition: opacity 200ms ease, filter 200ms ease, box-shadow 200ms ease, transform 200ms ease;
+  transition: opacity 200ms ease, filter 200ms ease, box-shadow 200ms ease;
   z-index: 1;
   position: relative;
 }
@@ -2856,6 +2856,7 @@ svg.graph {
   box-shadow: 0 0 0 2px var(--accent), 0 6px 24px color-mix(in srgb, var(--accent) 45%, transparent);
 }
 
-.tk[class*="tree-"] {
+.tk.tree-dim,
+.tk.tree-highlight {
   cursor: pointer;
 }
