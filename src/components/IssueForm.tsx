@@ -17,14 +17,15 @@ let draftCounter = 0
 const newTempId = () => `__draft_${++draftCounter}__`
 
 const AutoTextarea = forwardRef<HTMLTextAreaElement, {
-  value: string; onChange: (v: string) => void; placeholder?: string; minH?: number
-}>(function AutoTextarea({ value, onChange, placeholder, minH = 80 }, forwardedRef) {
+  value: string; onChange: (v: string) => void; placeholder?: string; minH?: number; maxH?: number
+}>(function AutoTextarea({ value, onChange, placeholder, minH = 80, maxH }, forwardedRef) {
   const innerRef = useRef<HTMLTextAreaElement>(null)
   useEffect(() => {
     const el = innerRef.current; if (!el) return
     el.style.height = 'auto'
-    el.style.height = Math.max(minH, el.scrollHeight) + 'px'
-  }, [value, minH])
+    const natural = Math.max(minH, el.scrollHeight)
+    el.style.height = (maxH ? Math.min(natural, maxH) : natural) + 'px'
+  }, [value, minH, maxH])
   return (
     <textarea
       ref={(el) => {
@@ -33,7 +34,7 @@ const AutoTextarea = forwardRef<HTMLTextAreaElement, {
         else if (forwardedRef) (forwardedRef as { current: HTMLTextAreaElement | null }).current = el
       }}
       value={value} onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder} style={{ minHeight: minH, resize: 'none', overflow: 'hidden' }} />
+      placeholder={placeholder} style={{ minHeight: minH, resize: 'none', overflow: maxH ? 'auto' : 'hidden' }} />
   )
 })
 
@@ -428,6 +429,28 @@ export function IssueForm({ issueId }: { issueId?: string }) {
       {/* NEW HEADER */}
       <div className="sh-header">
         <button className="sh-close" onClick={closeSheet} aria-label="Închide">✕</button>
+        {isEdit && (
+          <button
+            tabIndex={-1}
+            className={`sh-delete${confirmDel ? ' confirming' : ''}`}
+            onClick={() => confirmDel ? void remove() : setConfirmDel(true)}
+            onBlur={() => setTimeout(() => setConfirmDel(false), 200)}
+            title={confirmDel ? 'Apasă din nou ca să confirmi ștergerea' : 'Șterge tichetul'}
+          >
+            {confirmDel ? (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+              </svg>
+            )}
+          </button>
+        )}
         <input
           ref={titleInputRef}
           className="sh-title-input"
@@ -448,7 +471,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
         />
         <button
           tabIndex={-1}
-          className="sh-save"
+          className={`sh-save${isDirty ? ' dirty' : ''}`}
           onClick={save}
           disabled={!title.trim() || saving || waves.length === 0}
           title={saving ? 'Se salvează…' : 'Salvează'}
@@ -578,7 +601,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
 
             <div className="fld">
               <label className="if-field-label">Descriere</label>
-              <AutoTextarea ref={descRef} value={desc} onChange={setDesc} placeholder="Cerințe, notițe, context…" minH={300} />
+              <AutoTextarea ref={descRef} value={desc} onChange={setDesc} placeholder="Cerințe, notițe, context…" minH={300} maxH={300} />
             </div>
 
             {/* Dependențe — tabbed Necesită / Permite */}
@@ -618,12 +641,6 @@ export function IssueForm({ issueId }: { issueId?: string }) {
               )}
             </div>
 
-            {isEdit && (
-              <button className="add-dep" style={{ marginTop: 8, borderColor: 'rgba(225,29,72,0.3)', color: 'var(--blocked)' }}
-                onClick={() => confirmDel ? void remove() : setConfirmDel(true)}>
-                {confirmDel ? '⚠ Apasă din nou ca să confirmi ștergerea' : '🗑 Șterge tichetul'}
-              </button>
-            )}
 
           </div>
 
