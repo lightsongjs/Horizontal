@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, forwardRef } from 'react'
 import { detectCycle, requiredDepWave } from '../lib/engine'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
@@ -16,20 +16,26 @@ type DraftIssue = { tempId: string; title: string }
 let draftCounter = 0
 const newTempId = () => `__draft_${++draftCounter}__`
 
-function AutoTextarea({ value, onChange, placeholder, minH = 80 }: {
+const AutoTextarea = forwardRef<HTMLTextAreaElement, {
   value: string; onChange: (v: string) => void; placeholder?: string; minH?: number
-}) {
-  const ref = useRef<HTMLTextAreaElement>(null)
+}>(function AutoTextarea({ value, onChange, placeholder, minH = 80 }, forwardedRef) {
+  const innerRef = useRef<HTMLTextAreaElement>(null)
   useEffect(() => {
-    const el = ref.current; if (!el) return
+    const el = innerRef.current; if (!el) return
     el.style.height = 'auto'
     el.style.height = Math.max(minH, el.scrollHeight) + 'px'
   }, [value, minH])
   return (
-    <textarea ref={ref} value={value} onChange={(e) => onChange(e.target.value)}
+    <textarea
+      ref={(el) => {
+        (innerRef as { current: HTMLTextAreaElement | null }).current = el
+        if (typeof forwardedRef === 'function') forwardedRef(el)
+        else if (forwardedRef) (forwardedRef as { current: HTMLTextAreaElement | null }).current = el
+      }}
+      value={value} onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder} style={{ minHeight: minH, resize: 'none', overflow: 'hidden' }} />
   )
-}
+})
 
 function DepSearch({ label, selected, drafts, candidates, onToggle, onToggleDraft, onCreateDraft, onNavigate }: {
   label: string; selected: string[]; drafts: DraftIssue[]; candidates: Issue[]
@@ -248,6 +254,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
   const [confirmClose, setConfirmClose] = useState(false)
   const [depTab, setDepTab] = useState<'necesita' | 'permite'>('necesita')
   const titleInputRef = useRef<HTMLInputElement>(null)
+  const descRef = useRef<HTMLTextAreaElement>(null)
   useEffect(() => {
     if (isEdit && titleInputRef.current) {
       titleInputRef.current.setSelectionRange(0, 0)
@@ -432,6 +439,12 @@ export function IssueForm({ issueId }: { issueId?: string }) {
           autoCorrect="off"
           inputMode="text"
           spellCheck={false}
+          onKeyDown={(e) => {
+            if (e.key === 'Tab' && !e.shiftKey) {
+              e.preventDefault()
+              descRef.current?.focus()
+            }
+          }}
         />
         <button
           tabIndex={-1}
@@ -565,7 +578,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
 
             <div className="fld">
               <label className="if-field-label">Descriere</label>
-              <AutoTextarea value={desc} onChange={setDesc} placeholder="Cerințe, notițe, context…" minH={300} />
+              <AutoTextarea ref={descRef} value={desc} onChange={setDesc} placeholder="Cerințe, notițe, context…" minH={300} />
             </div>
 
             {/* Dependențe — tabbed Necesită / Permite */}
