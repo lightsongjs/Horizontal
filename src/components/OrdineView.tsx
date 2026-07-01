@@ -43,13 +43,14 @@ export function OrdineView() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (confirmDel) setConfirmDel(false)
-        else if (selectMode) exitSelectMode()
+        if (confirmDel) { setConfirmDel(false); return }
+        if (treeViewActive) { exitTreeView(); return }
+        if (selectMode) exitSelectMode()
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [selectMode, confirmDel, exitSelectMode])
+  }, [selectMode, confirmDel, treeViewActive, exitSelectMode, exitTreeView])
 
   useEffect(() => { exitTreeView() }, [activeWave]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -150,7 +151,6 @@ export function OrdineView() {
                     {ready && <span className="badge-now">Acum</span>}
                   </div>
                   {visibleIds.map((id) => (
-                    // @ts-ignore — treeMode/highlighted/onTreeSelect props added in Task 3
                     <TicketCard
                       key={id}
                       id={id}

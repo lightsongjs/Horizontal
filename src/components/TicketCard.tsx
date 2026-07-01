@@ -7,9 +7,12 @@ interface Props {
   selectMode?: boolean
   isSelected?: boolean
   onToggleSelect?: (id: string) => void
+  treeMode?: boolean
+  highlighted?: boolean       // undefined = treeMode inactiv, true = în lanț, false = dimmed
+  onTreeSelect?: (id: string) => void
 }
 
-export function TicketCard({ id, contextWave, selectMode, isSelected, onToggleSelect }: Props) {
+export function TicketCard({ id, contextWave, selectMode, isSelected, onToggleSelect, treeMode, highlighted, onTreeSelect }: Props) {
   const { byId, stateOf, toggleDone, themeOf } = useHorizontal()
   const { openEditIssue } = useUI()
   const it = byId[id]
@@ -22,13 +25,26 @@ export function TicketCard({ id, contextWave, selectMode, isSelected, onToggleSe
   const crossWave = deps.filter((d) => byId[d] && byId[d].wave !== contextWave)
 
   const handleClick = () => {
-    if (selectMode) onToggleSelect?.(id)
-    else openEditIssue(id)
+    if (treeMode) {
+      onTreeSelect?.(id)
+    } else if (selectMode) {
+      onToggleSelect?.(id)
+    } else {
+      openEditIssue(id)
+    }
   }
+
+  const treeClass = treeMode
+    ? highlighted === undefined
+      ? ''
+      : highlighted
+        ? ' tree-highlight'
+        : ' tree-dim'
+    : ''
 
   return (
     <button
-      className={`tk ${state}${isSelected ? ' selected' : ''}${selectMode ? ' in-select' : ''}`}
+      className={`tk ${state}${isSelected ? ' selected' : ''}${selectMode ? ' in-select' : ''}${treeClass}`}
       onClick={handleClick}
       data-title={it.title}
     >
