@@ -55,6 +55,7 @@ export function TicketCard({ id, contextWave, selectMode, isSelected, onToggleSe
         aria-label={selectMode ? (isSelected ? 'Deselectează' : 'Selectează') : (it.done ? 'Marchează nefăcut' : 'Marchează gata')}
         onClick={(e) => {
           e.stopPropagation()
+          if (treeMode) return
           if (selectMode) onToggleSelect?.(id)
           else void toggleDone(id)
         }}
