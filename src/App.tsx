@@ -8,6 +8,7 @@ import { ProjectsView } from './components/ProjectsView'
 import { ProjectDetail, type Tab } from './components/ProjectDetail'
 import { SheetHost } from './components/SheetHost'
 import { Sidebar } from './components/Sidebar'
+import { QuickSearch } from './components/QuickSearch'
 
 function ThemeToggle({ className }: { className?: string }) {
   const { theme, toggle } = useTheme()
@@ -87,6 +88,7 @@ function Header({ onNewIssue, onProjectSettings, onRefresh }: { onNewIssue: () =
 
 const SHORTCUTS = [
   { key: 'C', action: 'Tichet nou' },
+  { key: 'O', action: 'Caută tichet' },
   { key: 'P', action: 'Proiect nou' },
   { key: '1', action: 'Tab → Ordine' },
   { key: '2', action: 'Tab → Graf' },
@@ -103,6 +105,7 @@ function Shell() {
   const { openNewIssue, openNewProject, openProjectSettings, sheet } = useUI()
   const [tab, setTab] = useState<Tab>('ordine')
   const [showShortcuts, setShowShortcuts] = useState(false)
+  const [showSearch, setShowSearch] = useState(false)
   const urlSyncReady = useRef(false)
   const mainRef = useRef<HTMLElement>(null)
   const [pullY, setPullY] = useState(0)
@@ -153,6 +156,12 @@ function Shell() {
     if (match) {
       const found = findBySlug(match[1])
       if (found) selectProject(found.id)
+    } else {
+      const lastSlug = localStorage.getItem('horizontal:last-project')
+      if (lastSlug) {
+        const found = findBySlug(lastSlug)
+        if (found) selectProject(found.id)
+      }
     }
     urlSyncReady.current = true
   }, [loading]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -163,6 +172,8 @@ function Shell() {
     const path = project ? `/project/${slugify(project.name)}` : '/'
     if (window.location.pathname !== path)
       window.history.pushState(null, '', path)
+    if (project) localStorage.setItem('horizontal:last-project', slugify(project.name))
+    else localStorage.removeItem('horizontal:last-project')
   }, [project?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Browser back/forward → sync store
@@ -183,9 +194,12 @@ function Shell() {
       if (e.metaKey || e.ctrlKey || e.altKey) return
 
       if (e.key === 'Escape' && showShortcuts) { setShowShortcuts(false); return }
+      if (e.key === 'Escape' && showSearch) { setShowSearch(false); return }
       if (sheet.kind !== 'none') return  // don't fire shortcuts when modal is open
+      if (showSearch) return
 
       if (e.key === 'c' || e.key === 'C') { e.preventDefault(); project && openNewIssue() }
+      else if (e.key === 'o' || e.key === 'O') { e.preventDefault(); project && setShowSearch(true) }
       else if (e.key === 'p' || e.key === 'P') { e.preventDefault(); openNewProject() }
       else if (e.key === '?') { e.preventDefault(); setShowShortcuts(v => !v) }
       else if (e.key === '1' && project) { e.preventDefault(); setTab('ordine') }
@@ -194,7 +208,7 @@ function Shell() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [project, openNewIssue, openNewProject, sheet, showShortcuts])
+  }, [project, openNewIssue, openNewProject, sheet, showShortcuts, showSearch])
 
   return (
     <div id="app">
@@ -227,6 +241,7 @@ function Shell() {
         </button>
       </div>
       <SheetHost />
+      {showSearch && <QuickSearch onClose={() => setShowSearch(false)} />}
       {showShortcuts && (
         <div className="shortcuts-overlay" onClick={() => setShowShortcuts(false)}>
           <div className="shortcuts-card" onClick={(e) => e.stopPropagation()}>

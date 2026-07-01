@@ -33,7 +33,7 @@ export function UIProvider({ children }: { children: ReactNode }) {
   const value = useMemo<UI>(
     () => ({
       sheet,
-      openIssue: (issueId) => setSheet({ kind: 'issue', issueId }),
+      openIssue: (issueId) => setSheet({ kind: 'issue-form', issueId }),
       openNewIssue: () => setSheet({ kind: 'issue-form' }),
       openEditIssue: (issueId) => setSheet({ kind: 'issue-form', issueId }),
       openNewProject: () => setSheet({ kind: 'project-form' }),

@@ -519,7 +519,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
                   </div>
                 ) : null
               })()}
-              <button className="if-meta-add" style={{ marginLeft: 'auto' }} onClick={() => setShowAssigneeInline((v) => !v)}>
+              <button className="if-meta-add" onClick={() => setShowAssigneeInline((v) => !v)}>
                 {showAssigneeInline ? '×' : '+'}
               </button>
             </div>
@@ -551,7 +551,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
 
             <div className="fld">
               <label className="if-field-label">Descriere</label>
-              <AutoTextarea value={desc} onChange={setDesc} placeholder="Cerințe, notițe, context…" minH={100} />
+              <AutoTextarea value={desc} onChange={setDesc} placeholder="Cerințe, notițe, context…" minH={300} />
             </div>
 
             {/* Dependențe — tabbed Necesită / Permite */}

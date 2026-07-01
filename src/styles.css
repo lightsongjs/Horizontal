@@ -1,4 +1,4 @@
-/* Horizontal — dark theme. Tokens from REQUIREMENTS.md §4; layout/interactions
+﻿/* Horizontal — dark theme. Tokens from REQUIREMENTS.md §4; layout/interactions
    adapted from prototype.html. */
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
@@ -40,7 +40,7 @@ body {
   background: var(--bg);
   color: var(--txt);
   font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  font-size: 15px;
+  font-size: 17px;
   line-height: 1.5;
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
@@ -133,7 +133,7 @@ header {
   align-items: center;
   justify-content: center;
   font-weight: 800;
-  font-size: 13px;
+  font-size: 15px;
   color: #fff;
   letter-spacing: -0.02em;
 }
@@ -142,14 +142,14 @@ header {
   min-width: 0;
 }
 .htxt h1 {
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 700;
   letter-spacing: -0.025em;
   line-height: 1.2;
   font-family: var(--display);
 }
 .htxt .crumb {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--txt-faint);
   font-weight: 500;
   margin-top: 2px;
@@ -167,7 +167,7 @@ header {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: 21px;
   flex-shrink: 0;
 }
 .back:active {
@@ -177,7 +177,7 @@ header {
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--done);
   background: var(--done-soft);
@@ -216,7 +216,7 @@ main {
 
 /* PROJECTS LIST */
 .section-label {
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -227,7 +227,7 @@ main {
   align-items: center;
 }
 .section-label .cnt {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--txt-faint);
   background: var(--surface-2);
@@ -262,14 +262,14 @@ main {
   height: 100%;
 }
 .proj h3 {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
   letter-spacing: -0.025em;
   margin-bottom: 3px;
   font-family: var(--display);
 }
 .proj > p {
-  font-size: 12.5px;
+  font-size: 14px;
   color: var(--txt-dim);
   margin-bottom: 13px;
   line-height: 1.4;
@@ -294,7 +294,7 @@ main {
   transition: width 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .pct {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--txt);
   min-width: 32px;
@@ -308,7 +308,7 @@ main {
   flex-wrap: wrap;
 }
 .mini {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   padding: 2px 7px;
   border-radius: 5px;
@@ -333,7 +333,7 @@ main {
 .tab {
   flex: 1;
   text-align: center;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--txt-faint);
   padding: 9px 4px;
@@ -355,7 +355,7 @@ main {
   border-radius: var(--r);
   padding: 12px 14px;
   margin-bottom: 16px;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--txt-dim);
   line-height: 1.55;
   position: relative;
@@ -388,7 +388,7 @@ main {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--txt-faint);
   font-family: var(--mono);
@@ -400,13 +400,13 @@ main {
   background: var(--active-soft);
 }
 .layer-head h4 {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
   letter-spacing: -0.01em;
   color: var(--txt);
 }
 .layer-head .sub {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--txt-faint);
   font-weight: 500;
   margin-top: 1px;
@@ -414,7 +414,7 @@ main {
 .badge-now {
   margin-left: auto;
   flex-shrink: 0;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -470,7 +470,7 @@ main {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: 11px;
   font-family: var(--mono);
   color: transparent;
   transition: all 0.18s;
@@ -501,7 +501,7 @@ main {
   padding-right: 24px;
 }
 .tk-id {
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--txt-faint);
   font-family: var(--mono);
@@ -514,7 +514,7 @@ main {
   flex-shrink: 0;
 }
 .type-badge {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -530,7 +530,7 @@ main {
   border-color: var(--line);
 }
 .tk h5 {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   letter-spacing: -0.012em;
   line-height: 1.35;
@@ -544,7 +544,7 @@ main {
   text-decoration: line-through;
 }
 .tk-sub {
-  font-size: 10.5px;
+  font-size: 12px;
   color: var(--txt-faint);
   margin-top: 4px;
   display: flex;
@@ -558,11 +558,11 @@ main {
   padding: 1px 6px;
   border-radius: 4px;
   font-weight: 600;
-  font-size: 9.5px;
+  font-size: 11px;
   border: 1px solid #ff6b6b33;
 }
 .tk-children {
-  font-size: 9.5px;
+  font-size: 11px;
   color: var(--txt-faint);
   background: var(--surface-2);
   padding: 1px 6px;
@@ -598,7 +598,7 @@ main {
 }
 .wbtn {
   flex-shrink: 0;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   padding: 9px 14px;
   border-radius: 10px;
@@ -613,7 +613,7 @@ main {
   transition: border-color 0.15s, color 0.15s, background 0.15s;
 }
 .wbtn .wsub {
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -668,21 +668,21 @@ main {
   opacity: 1;
 }
 .sheet.tall {
-  max-height: 94dvh;
+  max-height: 98dvh;
 }
 .grip {
   width: 36px;
   height: 3px;
   border-radius: 3px;
   background: var(--line);
-  margin: 10px auto 3px;
+  margin: 5px auto 2px;
 }
 .sheet-head {
   padding: 8px 18px 13px;
   border-bottom: 1px solid var(--line-soft);
 }
 .sheet-head .eyebrow {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -694,14 +694,14 @@ main {
   font-family: var(--mono);
 }
 .sheet-head h2 {
-  font-size: 19px;
+  font-size: 22px;
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1.2;
   font-family: var(--display);
 }
 .sheet-head p {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--txt-dim);
   margin-top: 5px;
   line-height: 1.5;
@@ -713,7 +713,7 @@ main {
   min-height: 0;
 }
 .sheet-section-t {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.09em;
   text-transform: uppercase;
@@ -742,7 +742,7 @@ main {
   border-radius: 8px;
   padding: 9px 11px;
   margin-bottom: 6px;
-  font-size: 12.5px;
+  font-size: 14px;
 }
 .dep-row .ic {
   width: 18px;
@@ -751,7 +751,7 @@ main {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: 11px;
   flex-shrink: 0;
   font-weight: 800;
   font-family: var(--mono);
@@ -767,14 +767,14 @@ main {
 .dep-row .arr {
   margin-left: auto;
   color: var(--txt-faint);
-  font-size: 13px;
+  font-size: 15px;
 }
 .dep-row.cross {
   opacity: 0.8;
 }
 .dep-row .wtag {
   margin-left: auto;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -801,7 +801,7 @@ main {
   border-radius: 8px;
   padding: 10px;
   color: var(--txt-dim);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   background: transparent;
   margin-top: 3px;
@@ -818,7 +818,7 @@ main {
 }
 .fld label {
   display: block;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.09em;
   text-transform: uppercase;
@@ -835,7 +835,7 @@ main {
   padding: 10px 12px;
   color: var(--txt);
   font-family: inherit;
-  font-size: 13.5px;
+  font-size: 15px;
   resize: none;
   line-height: 1.5;
 }
@@ -864,7 +864,7 @@ main {
   border-radius: 8px;
   padding: 9px 11px;
   color: var(--txt);
-  font-size: 13px;
+  font-size: 15px;
   font-family: inherit;
 }
 .inline-new input:focus {
@@ -877,7 +877,7 @@ main {
   border-radius: 8px;
   padding: 0 15px;
   font-weight: 700;
-  font-size: 12.5px;
+  font-size: 14px;
 }
 .save-bar {
   position: sticky;
@@ -969,7 +969,7 @@ main {
 
 /* GRAPH */
 .graph-hint {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--txt-faint);
   margin-bottom: 12px;
   text-align: center;
@@ -993,11 +993,11 @@ svg.graph {
   border-style: dashed;
 }
 .wbtn.wmanage .wname {
-  font-size: 15px;
+  font-size: 17px;
 }
 
 .tk-theme {
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--txt-faint);
 }
@@ -1017,7 +1017,7 @@ svg.graph {
   padding: 9px 11px;
   color: var(--txt);
   font-family: inherit;
-  font-size: 13px;
+  font-size: 15px;
   min-width: 0;
 }
 .theme-edit input:focus {
@@ -1055,7 +1055,7 @@ svg.graph {
   padding: 9px 11px;
   color: var(--txt);
   font-family: inherit;
-  font-size: 13px;
+  font-size: 15px;
   min-width: 0;
 }
 .wave-edit input:first-child {
@@ -1075,7 +1075,7 @@ svg.graph {
   border-radius: 8px;
   padding: 9px 11px;
   color: var(--blocked);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
 }
 
@@ -1105,7 +1105,7 @@ svg.graph {
   letter-spacing: -0.03em;
 }
 .login-sub {
-  font-size: 12.5px;
+  font-size: 14px;
   color: var(--txt-dim);
   margin: 4px 0 20px;
 }
@@ -1118,7 +1118,7 @@ svg.graph {
   color: var(--txt-faint);
   text-align: center;
   padding: 40px 0;
-  font-size: 13px;
+  font-size: 15px;
 }
 .banner {
   background: var(--blocked-soft);
@@ -1126,7 +1126,7 @@ svg.graph {
   color: var(--blocked);
   border-radius: 10px;
   padding: 10px 12px;
-  font-size: 12px;
+  font-size: 14px;
   margin-bottom: 12px;
 }
 
@@ -1145,7 +1145,7 @@ svg.graph {
 }
 .chip-add {
   flex-shrink: 0;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 400;
   width: 32px;
   padding: 0;
@@ -1205,7 +1205,7 @@ svg.graph {
 }
 .dep-chip-id {
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   color: var(--txt-faint);
   letter-spacing: 0.03em;
@@ -1221,7 +1221,7 @@ svg.graph {
   white-space: nowrap;
 }
 .dep-chip-x {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 300;
   opacity: 0.6;
   margin-left: 2px;
@@ -1242,7 +1242,7 @@ svg.graph {
   padding: 9px 12px;
   color: var(--txt);
   font-family: inherit;
-  font-size: 13px;
+  font-size: 15px;
 }
 .dep-search-input:focus {
   outline: none;
@@ -1266,7 +1266,7 @@ svg.graph {
   align-items: center;
   gap: 9px;
   padding: 9px 11px;
-  font-size: 12.5px;
+  font-size: 14px;
   width: 100%;
   text-align: left;
   border-bottom: 1px solid var(--line-soft);
@@ -1293,7 +1293,7 @@ svg.graph {
 }
 .dep-no-results {
   padding: 10px 12px;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--txt-faint);
 }
 .dep-create-btn {
@@ -1303,7 +1303,7 @@ svg.graph {
   padding: 10px 12px;
   width: 100%;
   text-align: left;
-  font-size: 13px;
+  font-size: 15px;
   color: var(--accent);
   border-top: 1px solid var(--line-soft);
   background: transparent;
@@ -1314,7 +1314,7 @@ svg.graph {
   background: var(--accent-soft);
 }
 .dep-create-plus {
-  font-size: 18px;
+  font-size: 21px;
   font-weight: 300;
   line-height: 1;
 }
@@ -1338,7 +1338,7 @@ svg.graph {
   background: transparent;
   color: var(--txt-faint);
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.03em;
   cursor: pointer;
   transition: all 0.15s;
@@ -1360,7 +1360,7 @@ svg.graph {
   background: transparent;
   color: var(--txt-faint);
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.03em;
   cursor: pointer;
   transition: all 0.15s;
@@ -1397,7 +1397,7 @@ svg.graph {
 }
 .bulk-count {
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 14px;
   color: var(--accent);
   padding-right: 10px;
   border-right: 1px solid var(--line);
@@ -1408,7 +1408,7 @@ svg.graph {
   gap: 8px;
 }
 .bulk-label {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--txt-faint);
   font-family: var(--mono);
 }
@@ -1419,7 +1419,7 @@ svg.graph {
   background: var(--surface);
   color: var(--txt);
   font-family: var(--sans);
-  font-size: 12px;
+  font-size: 14px;
   cursor: pointer;
   outline: none;
 }
@@ -1435,7 +1435,7 @@ svg.graph {
   background: transparent;
   color: var(--txt);
   font-family: var(--sans);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.12s;
@@ -1463,12 +1463,12 @@ svg.graph {
   width: min(340px, 90vw);
   box-shadow: 0 32px 80px rgba(0,0,0,.8);
 }
-.bulk-confirm-box h3 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
-.bulk-confirm-box p { font-size: 13px; color: var(--txt-faint); line-height: 1.55; margin-bottom: 20px; }
+.bulk-confirm-box h3 { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+.bulk-confirm-box p { font-size: 15px; color: var(--txt-faint); line-height: 1.55; margin-bottom: 20px; }
 .bulk-confirm-actions { display: flex; gap: 8px; }
 .bulk-confirm-actions button {
   flex: 1; padding: 10px; border-radius: 8px;
-  font-family: var(--sans); font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.12s;
+  font-family: var(--sans); font-size: 15px; font-weight: 500; cursor: pointer; transition: all 0.12s;
 }
 .bulk-confirm-cancel {
   background: transparent; border: 1px solid var(--line); color: var(--txt-faint);
@@ -1523,7 +1523,7 @@ svg.graph {
 }
 .if-header-left { display: flex; flex-direction: column; gap: 3px; }
 .if-eyebrow {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.09em;
   text-transform: uppercase;
@@ -1545,7 +1545,7 @@ svg.graph {
   50%      { box-shadow: 0 0 0 4px rgba(16,185,129,0.1); }
 }
 .if-title {
-  font-size: 18px;
+  font-size: 21px;
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1.2;
@@ -1557,7 +1557,7 @@ svg.graph {
   width: 32px; height: 32px;
   border-radius: 8px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 14px;
+  font-size: 16px;
   cursor: pointer;
   flex-shrink: 0;
   transition: background 0.15s, color 0.15s;
@@ -1577,7 +1577,7 @@ svg.graph {
   display: inline-flex; align-items: center; gap: 4px;
   border-radius: 99px;
   padding: 3px 10px;
-  font-size: 11px; font-weight: 600;
+  font-size: 12px; font-weight: 600;
   cursor: pointer;
   border: 1.5px solid var(--line);
   background: var(--surface-3);
@@ -1596,7 +1596,7 @@ svg.graph {
   display: inline-flex; align-items: center;
   border-radius: 99px;
   padding: 3px 10px;
-  font-size: 11px; font-weight: 600;
+  font-size: 12px; font-weight: 600;
   cursor: pointer;
   border: 1.5px solid var(--line);
   background: var(--surface-3);
@@ -1617,7 +1617,7 @@ svg.graph {
   border: 1.5px dashed var(--line);
   background: none;
   color: var(--txt-faint);
-  font-size: 14px; font-weight: 600; line-height: 1;
+  font-size: 16px; font-weight: 600; line-height: 1;
   cursor: pointer;
   transition: all 0.13s;
   flex-shrink: 0;
@@ -1628,7 +1628,7 @@ svg.graph {
   margin-top: 6px;
 }
 .if-meta-new-theme input {
-  font-size: 12px;
+  font-size: 14px;
   padding: 4px 10px;
   border-radius: 99px;
   border: 1.5px solid var(--accent);
@@ -1639,7 +1639,7 @@ svg.graph {
   font-family: 'IBM Plex Sans', sans-serif;
 }
 .if-meta-new-theme button {
-  font-size: 11px; font-weight: 600;
+  font-size: 12px; font-weight: 600;
   padding: 4px 10px;
   border-radius: 99px;
   border: none;
@@ -1649,7 +1649,7 @@ svg.graph {
 }
 
 .if-field-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -1683,7 +1683,7 @@ svg.graph {
   border-radius: 5px;
   padding: 1px 6px;
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 11px;
   color: var(--txt-dim);
 }
 .if-footer-actions { display: flex; gap: 8px; }
@@ -1693,7 +1693,7 @@ svg.graph {
   color: var(--txt-dim);
   border-radius: 8px;
   padding: 7px 16px;
-  font-size: 13px; font-weight: 500;
+  font-size: 15px; font-weight: 500;
   cursor: pointer;
   transition: border-color 0.15s, color 0.15s;
 }
@@ -1704,7 +1704,7 @@ svg.graph {
   color: #fff;
   border-radius: 8px;
   padding: 7px 20px;
-  font-size: 13.5px; font-weight: 600;
+  font-size: 15px; font-weight: 600;
   cursor: pointer;
   box-shadow: 0 3px 12px rgba(2,132,199,0.35);
   display: flex; align-items: center; gap: 6px;
@@ -1724,7 +1724,7 @@ svg.graph {
   border: 1px solid var(--line);
   border-radius: 9px;
   padding: 7px 11px;
-  font-size: 13px;
+  font-size: 15px;
   color: var(--txt-dim);
 }
 .if-sc-item input {
@@ -1732,7 +1732,7 @@ svg.graph {
   border: none;
   outline: none;
   font-family: 'IBM Plex Sans', sans-serif;
-  font-size: 13px;
+  font-size: 15px;
   color: var(--txt);
   flex: 1;
   min-width: 0;
@@ -1742,7 +1742,7 @@ svg.graph {
   background: none; border: none;
   color: var(--line);
   cursor: pointer;
-  font-size: 15px; padding: 0 2px;
+  font-size: 17px; padding: 0 2px;
   line-height: 1;
   transition: color 0.12s;
   flex-shrink: 0;
@@ -1752,7 +1752,7 @@ svg.graph {
   width: 22px; height: 22px;
   border-radius: 6px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 11px; font-weight: 700;
+  font-size: 12px; font-weight: 700;
   flex-shrink: 0;
   cursor: pointer;
   user-select: none;
@@ -1763,7 +1763,7 @@ svg.graph {
 .if-badge.pass    { background: rgba(5,150,105,0.15);  color: #059669; }
 .if-badge.fail    { background: rgba(225,29,72,0.12);  color: #E11D48; }
 .if-badge.neutral { background: rgba(2,132,199,0.12);  color: #0284C7; }
-.if-badge.selector { background: rgba(2,132,199,0.12); color: #0284C7; font-size: 9px; }
+.if-badge.selector { background: rgba(2,132,199,0.12); color: #0284C7; font-size: 10px; }
 
 .if-add-btn {
   display: flex; align-items: center; gap: 8px;
@@ -1774,7 +1774,7 @@ svg.graph {
   padding: 8px 13px;
   color: var(--accent);
   font-family: 'IBM Plex Sans', sans-serif;
-  font-size: 13px; font-weight: 500;
+  font-size: 15px; font-weight: 500;
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
 }
@@ -1791,7 +1791,7 @@ svg.graph {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  font-size: 13px;
+  font-size: 15px;
   color: var(--txt);
 }
 .close-confirm-actions {
@@ -1805,7 +1805,7 @@ svg.graph {
   border: 1px solid var(--line);
   background: none;
   color: var(--txt-dim);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
 }
@@ -1819,7 +1819,7 @@ svg.graph {
   border: none;
   background: var(--blocked);
   color: #fff;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   opacity: 0.85;
@@ -1837,7 +1837,7 @@ svg.graph {
   border: 1px solid var(--accent);
   background: none;
   color: var(--accent);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
@@ -1910,7 +1910,7 @@ svg.graph {
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
 }
 .shortcuts-title {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -1929,7 +1929,7 @@ svg.graph {
   padding-right: 16px;
 }
 .shortcuts-table td {
-  font-size: 13px;
+  font-size: 15px;
   color: var(--txt);
   vertical-align: middle;
 }
@@ -1940,7 +1940,7 @@ svg.graph {
   background: var(--line-soft);
   border: 1px solid var(--line);
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--txt);
 }
@@ -1952,7 +1952,7 @@ svg.graph {
   border: 1px solid var(--line);
   background: none;
   color: var(--txt-dim);
-  font-size: 12px;
+  font-size: 14px;
   cursor: pointer;
 }
 .shortcuts-close:hover {
@@ -1973,7 +1973,7 @@ svg.graph {
   border: none;
   color: var(--txt-faint);
   cursor: pointer;
-  font-size: 16px;
+  font-size: 18px;
   padding: 4px 8px;
   border-radius: 6px;
   line-height: 1;
@@ -1988,7 +1988,7 @@ svg.graph {
   color: var(--txt-dim);
   border-radius: 8px;
   padding: 7px 12px;
-  font-size: 12px;
+  font-size: 14px;
   cursor: pointer;
   width: 100%;
   text-align: left;
@@ -2017,7 +2017,7 @@ svg.graph {
   border: none;
   color: var(--txt-faint);
   cursor: pointer;
-  font-size: 14px;
+  font-size: 16px;
   padding: 2px 7px;
   border-radius: 4px;
   line-height: 1;
@@ -2091,20 +2091,20 @@ svg.graph {
     width: 28px;
     height: 28px;
     border-radius: 8px;
-    font-size: 11px;
+    font-size: 12px;
     flex-shrink: 0;
   }
 
   .sidebar-app-name {
     font-family: var(--display);
-    font-size: 15px;
+    font-size: 17px;
     font-weight: 700;
     letter-spacing: -0.02em;
     color: var(--txt);
   }
 
   .sidebar-section-label {
-    font-size: 9.5px;
+    font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -2119,7 +2119,7 @@ svg.graph {
     gap: 9px;
     padding: 8px 10px;
     border-radius: 8px;
-    font-size: 13px;
+    font-size: 15px;
     font-weight: 500;
     color: var(--txt-dim);
     text-align: left;
@@ -2184,7 +2184,7 @@ svg.graph {
   .sidebar-drag-handle {
     padding: 7px 4px 7px 8px;
     color: var(--txt-faint);
-    font-size: 13px;
+    font-size: 15px;
     opacity: 0;
     transition: opacity 0.13s;
     flex-shrink: 0;
@@ -2201,7 +2201,7 @@ svg.graph {
     padding: 7px 10px 7px 4px;
     flex: 1;
     min-width: 0;
-    font-size: 12.5px;
+    font-size: 14px;
     font-weight: 500;
     color: var(--txt-dim);
     text-align: left;
@@ -2232,7 +2232,7 @@ svg.graph {
   }
 
   .sidebar-proj-pct {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
     color: var(--txt-faint);
     font-family: var(--mono);
@@ -2240,7 +2240,7 @@ svg.graph {
   }
 
   .sidebar-empty {
-    font-size: 12px;
+    font-size: 14px;
     color: var(--txt-faint);
     padding: 8px 10px;
     font-style: italic;
@@ -2265,7 +2265,7 @@ svg.graph {
     background: var(--surface-2);
     border: 1px solid var(--line);
     color: var(--txt-dim);
-    font-size: 12.5px;
+    font-size: 14px;
     font-weight: 600;
     flex: 1;
     text-align: left;
@@ -2277,7 +2277,7 @@ svg.graph {
     background: var(--accent-soft);
   }
   .sidebar-new-plus {
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 400;
     line-height: 1;
     opacity: 0.8;
@@ -2390,7 +2390,7 @@ svg.graph {
     opacity: 1;
   }
   .sheet.tall {
-    max-height: 88dvh;
+    max-height: 80dvh;
   }
 
   /* Hide drag grip — not needed for modal */
@@ -2407,7 +2407,7 @@ svg.graph {
 
   /* ── SECTION LABEL ────────────────────────────── */
   .section-label {
-    font-size: 11px;
+    font-size: 12px;
     margin-bottom: 18px;
   }
 
@@ -2431,14 +2431,15 @@ svg.graph {
 
   /* ── ISSUE FORM — 2 coloane pe desktop ────────── */
   .sheet:has(.form-cols) {
-    width: min(960px, 92vw);
-    max-width: 960px;
+    width: 80vw;
+    max-width: 80vw;
   }
   .form-cols {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 0 28px;
     align-items: start;
+    padding-top: 16px;
   }
 }
 
@@ -2448,7 +2449,7 @@ svg.graph {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 14px;
+  padding: 6px 14px;
   border-bottom: 1px solid var(--line-soft);
   background: var(--card);
   position: relative;
@@ -2470,7 +2471,7 @@ svg.graph {
   color: var(--txt-dim);
   display: flex; align-items: center; justify-content: center;
   cursor: pointer;
-  font-size: 16px; font-weight: 300;
+  font-size: 18px; font-weight: 300;
   transition: all 0.15s;
 }
 .sh-close:hover { background: var(--blocked-soft); color: var(--blocked); border-color: rgba(225,29,72,0.25); }
@@ -2494,7 +2495,7 @@ svg.graph {
   flex: 1;
   min-width: 0;
   font-family: var(--display);
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 500;
   color: var(--txt);
   background: transparent;
@@ -2525,7 +2526,7 @@ svg.graph {
   width: 100%;
 }
 .meta-row-label {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -2549,10 +2550,10 @@ svg.graph {
   border-radius: 50%;
   background: linear-gradient(135deg, #0EA5E9, #10B981);
   display: flex; align-items: center; justify-content: center;
-  font-size: 9px; font-weight: 700; color: #fff; flex-shrink: 0;
+  font-size: 10px; font-weight: 700; color: #fff; flex-shrink: 0;
 }
-.assignee-name-sm { font-size: 12px; font-weight: 500; color: var(--txt); }
-.assignee-x-sm { font-size: 13px; color: var(--txt-faint); cursor: pointer; margin-left: 2px; }
+.assignee-name-sm { font-size: 14px; font-weight: 500; color: var(--txt); }
+.assignee-x-sm { font-size: 15px; color: var(--txt-faint); cursor: pointer; margin-left: 2px; }
 
 /* ── INLINE SEARCH ───────────────────────────────── */
 .inline-search-wrap {
@@ -2566,7 +2567,7 @@ svg.graph {
 .inline-search-input {
   width: 100%;
   font-family: var(--font);
-  font-size: 13px;
+  font-size: 15px;
   color: var(--txt);
   background: var(--card-hi);
   border: 1px solid rgba(14,165,233,0.35);
@@ -2579,7 +2580,7 @@ svg.graph {
 .inline-ok-btn {
   margin-top: 5px;
   font-family: var(--font);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   padding: 5px 14px;
   border-radius: 6px;
@@ -2599,7 +2600,7 @@ svg.graph {
 }
 .sh-dep-tab {
   font-family: var(--font);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   padding: 5px 12px;
   border-radius: 20px;
@@ -2615,16 +2616,154 @@ svg.graph {
   color: #38bdf8;
 }
 .dep-count {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 400;
   opacity: 0.65;
 }
 .dep-tab-hint {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--txt-faint);
   font-style: italic;
   margin-bottom: 8px;
   line-height: 1.4;
+}
+
+/* ── QUICK SEARCH ────────────────────────────────── */
+.qs-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 12vh;
+  animation: qsFadeIn 0.12s ease;
+}
+@keyframes qsFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.qs-card {
+  width: min(600px, 92vw);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04);
+  overflow: hidden;
+  animation: qsSlideIn 0.15s cubic-bezier(0.18, 0.9, 0.24, 1);
+}
+@keyframes qsSlideIn {
+  from { opacity: 0; transform: translateY(-12px) scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+.qs-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.qs-icon {
+  color: var(--txt-faint);
+  flex-shrink: 0;
+}
+.qs-input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  font-size: 17px;
+  font-family: inherit;
+  color: var(--txt);
+  caret-color: var(--accent);
+}
+.qs-input::placeholder {
+  color: var(--txt-faint);
+}
+.qs-esc-badge {
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--txt-faint);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 2px 6px;
+  flex-shrink: 0;
+}
+.qs-results {
+  max-height: 400px;
+  overflow-y: auto;
+}
+.qs-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 18px;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: background 0.1s;
+  color: var(--txt);
+}
+.qs-item.on {
+  background: var(--surface-2);
+}
+.qs-item-id {
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--txt-faint);
+  flex-shrink: 0;
+  min-width: 60px;
+}
+.qs-item-title {
+  flex: 1;
+  font-size: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.qs-item-title mark {
+  background: none;
+  color: var(--accent);
+  font-weight: 700;
+}
+.qs-item-done {
+  font-size: 12px;
+  color: var(--done);
+  flex-shrink: 0;
+}
+.qs-empty {
+  padding: 24px 18px;
+  color: var(--txt-faint);
+  font-size: 14px;
+  text-align: center;
+}
+.qs-footer {
+  display: flex;
+  gap: 16px;
+  padding: 8px 18px;
+  border-top: 1px solid var(--line-soft);
+  background: var(--surface-2);
+}
+.qs-footer span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--txt-faint);
+}
+.qs-footer kbd {
+  font-size: 10px;
+  font-family: var(--mono);
+  background: var(--surface-3);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 1px 5px;
 }
 
 /* ── PILLS ROW (reusable) ────────────────────────── */
