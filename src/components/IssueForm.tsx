@@ -166,7 +166,6 @@ export function IssueForm({ issueId }: { issueId?: string }) {
   const [depTab, setDepTab] = useState<'necesita' | 'permite'>('necesita')
   const [showAssigneeInline, setShowAssigneeInline] = useState(false)
 
-  // Dep search state (new inline design)
   const [depSearchQ, setDepSearchQ] = useState('')
   const [depSearchHl, setDepSearchHl] = useState(0)
   const [depDropdownOpen, setDepDropdownOpen] = useState(false)
@@ -194,6 +193,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
       deps.filter((d) => !d.startsWith('__draft_')).slice().sort().join(',') !== (existing?.deps ?? []).slice().sort().join(',') ||
       draftDeps.filter((d) => deps.includes(d.tempId)).length > 0 ||
       draftBlocks.filter((d) => blocks.includes(d.tempId)).length > 0 ||
+      blocks.filter((b) => !b.startsWith('__draft_')).slice().sort().join(',') !== (existing ? issues.filter((i) => i.deps?.includes(existing.id)).map((i) => i.id) : []).slice().sort().join(',') ||
       JSON.stringify(selectors) !== JSON.stringify(existing?.selectors ?? []) ||
       JSON.stringify(scenarios) !== JSON.stringify(existing?.scenarios ?? []) ||
       notes !== (existing?.notes ?? '')
@@ -220,9 +220,6 @@ export function IssueForm({ issueId }: { issueId?: string }) {
   if (!project) return null
 
   const candidates = issues.filter((i) => i.id !== issueId)
-
-  const toggle = (set: string[], setSet: (v: string[]) => void, id: string) =>
-    setSet(set.includes(id) ? set.filter((x) => x !== id) : [...set, id])
 
   const toggleDraft = (ds: DraftIssue[], setDs: (v: DraftIssue[]) => void, ids: string[], setIds: (v: string[]) => void, d: DraftIssue) => {
     if (ids.includes(d.tempId)) { setIds(ids.filter((x) => x !== d.tempId)); setDs(ds.filter((x) => x.tempId !== d.tempId)) }
@@ -634,6 +631,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
                         <button
                           key={issue.id}
                           className={`dep-dd-item${idx === depSearchHl ? ' hl' : ''}`}
+                          onMouseDown={(e) => e.preventDefault()}
                           onClick={() => addCurrentDep(issue.id)}
                         >
                           <span className="dep-dd-ic">+</span>
@@ -647,6 +645,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
                       {depShowCreate && (
                         <button
                           className={`dep-dd-create${depSearchHl === depFiltered.length ? ' hl' : ''}`}
+                          onMouseDown={(e) => e.preventDefault()}
                           onClick={() => createCurrentDraft(depSearchQ.trim())}
                         >
                           <span className="dep-dd-plus">+</span>
@@ -679,7 +678,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
                   })}
                   {currentDraftItems.map((d) => (
                     <div key={d.tempId} className="dep-card dep-card--draft">
-                      <div className="dep-card-body dep-card-body--static">
+                      <div className="dep-card-body">
                         <span className="dep-card-id">nou</span>
                         <span className="dep-card-title">{d.title}</span>
                       </div>

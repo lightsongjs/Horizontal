@@ -1,6 +1,6 @@
 ﻿/* Horizontal — dark theme. Tokens from REQUIREMENTS.md §4; layout/interactions
    adapted from prototype.html. */
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 :root {
   --bg: #0c0d12;
@@ -547,8 +547,8 @@ main {
   border-color: var(--line);
 }
 .tk h5 {
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 400;
   letter-spacing: -0.012em;
   line-height: 1.35;
   color: var(--txt);
@@ -561,17 +561,17 @@ main {
   position: absolute;
   bottom: calc(100% + 7px);
   left: 0;
-  background: #1e2030;
+  background: var(--surface-3);
   color: var(--txt);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 400;
   line-height: 1.4;
   white-space: normal;
   max-width: 280px;
   padding: 7px 11px;
   border-radius: 8px;
   border: 1px solid var(--line);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
   pointer-events: none;
   opacity: 0;
   transform: translateY(4px);
@@ -3097,15 +3097,7 @@ svg.graph {
 }
 .dep-card-body:hover .dep-card-title { text-decoration: underline; text-underline-offset: 2px; }
 
-.dep-card-body--static {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 0 8px;
-  overflow: hidden;
-}
+.dep-card--draft .dep-card-body { cursor: default; }
 
 .dep-card-id {
   font-family: var(--mono);
@@ -3293,7 +3285,6 @@ svg.graph {
 .notes-section {
   padding: 0 16px 16px;
   flex: 1;
-  border-top: 1px solid var(--line-soft);
 }
 
 .notes-section textarea {
@@ -3307,6 +3298,7 @@ svg.graph {
   line-height: 1.6;
   padding: 10px 12px;
   outline: none;
+  resize: none;
   transition: border-color 0.14s;
 }
 .notes-section textarea:focus { border-color: rgba(14, 165, 233, 0.3); }
@@ -3326,7 +3318,7 @@ svg.graph {
 [data-theme='light'] .desc-fixed,
 [data-theme='light'] .notes-section textarea,
 [data-theme='light'] .dep-search-field {
-  background: #EBF5FF;
+  background: var(--field-bg);
   border-color: #C3DDF5;
 }
 [data-theme='light'] .desc-fixed:focus,
