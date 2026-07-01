@@ -1862,53 +1862,66 @@ svg.graph {
 }
 .if-add-btn:hover { border-color: var(--accent); background: var(--accent-soft); }
 
-/* ─── CLOSE CONFIRM BANNER ───────────────────────────────────────────── */
-.close-confirm-banner {
-  margin-top: 12px;
-  padding: 12px 14px;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--blocked) 12%, var(--surface));
-  border: 1px solid color-mix(in srgb, var(--blocked) 35%, transparent);
+/* ─── CLOSE CONFIRM MODAL ────────────────────────────────────────────── */
+.ccm-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 15px;
-  color: var(--txt);
+  justify-content: center;
+  z-index: 200;
+  border-radius: inherit;
 }
-.close-confirm-actions {
+.ccm-box {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 22px 24px 18px;
+  min-width: 260px;
+  max-width: 340px;
   display: flex;
-  gap: 8px;
-  flex-shrink: 0;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.4);
 }
-.close-confirm-stay {
-  padding: 5px 12px;
-  border-radius: 7px;
+.ccm-msg {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--txt);
+  text-align: center;
+}
+.ccm-btns {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+}
+.ccm-stay {
+  flex: 1;
+  padding: 7px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.12s;
+}
+.ccm-stay:hover { opacity: 0.88; }
+.ccm-exit {
+  flex: 1;
+  padding: 7px 12px;
+  border-radius: 8px;
   border: 1px solid var(--line);
   background: none;
   color: var(--txt-dim);
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
+  transition: color 0.12s, border-color 0.12s;
 }
-.close-confirm-stay:hover {
-  background: var(--line-soft);
-  color: var(--txt);
-}
-.close-confirm-exit {
-  padding: 5px 12px;
-  border-radius: 7px;
-  border: none;
-  background: var(--blocked);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  opacity: 0.85;
-}
-.close-confirm-exit:hover {
-  opacity: 1;
-}
+.ccm-exit:hover { color: var(--txt); border-color: var(--txt-dim); }
 
 /* ─── HEADER NEW BUTTON ──────────────────────────────────────────────── */
 .header-new-btn {
@@ -2590,31 +2603,44 @@ svg.graph {
 
 /* ── META SECTION (theme/val/assignee) ──────────── */
 .sh-meta-section {
-  padding: 12px 16px 4px;
   border-bottom: 1px solid var(--line-soft);
+}
+.sh-meta-inline-row {
+  display: flex;
+  align-items: flex-start;
+  min-height: 52px;
+}
+.meta-col {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 4px;
+  padding: 8px 12px;
+  min-width: 0;
+  overflow: hidden;
 }
-.meta-row {
-  padding: 6px 0;
-  border-bottom: 1px solid var(--line-soft);
+.meta-col-theme { flex: 1; }
+.meta-col-wave  { flex: 1; }
+.meta-col-assign { flex: 1; }
+.meta-vsep {
+  width: 1px;
+  background: var(--line-soft);
+  align-self: stretch;
+  flex-shrink: 0;
 }
-.meta-row:last-child { border-bottom: none; }
 .meta-row-inline {
   display: flex;
   align-items: center;
   gap: 8px;
-  width: 100%;
+  flex-wrap: wrap;
 }
 .meta-row-label {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--txt-faint);
   display: block;
-  margin-bottom: 5px;
+  flex-shrink: 0;
 }
 
 /* ── ASSIGNEE INLINE CHIP ────────────────────────── */

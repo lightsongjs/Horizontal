@@ -434,6 +434,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
           spellCheck={false}
         />
         <button
+          tabIndex={-1}
           className="sh-save"
           onClick={save}
           disabled={!title.trim() || saving || waves.length === 0}
@@ -449,103 +450,111 @@ export function IssueForm({ issueId }: { issueId?: string }) {
       {/* BODY */}
       <div className="sheet-scroll if-body">
 
-        {/* META SECTION — Temă, Val, Assigned to */}
+        {/* META SECTION — Temă · Val · Assigned to — un singur rând */}
         <div className="sh-meta-section">
+          <div className="sh-meta-inline-row">
 
-          {/* Temă */}
-          <div className="meta-row">
-            <span className="meta-row-label">Temă</span>
-            <div className="pills-row">
-              <button className={`if-meta-pill ${theme === '' ? 'active' : ''}`} onClick={() => setTheme('')}>Fără</button>
-              {themes.map((t) => (
-                <button key={t.key} className={`if-meta-pill ${theme === t.key ? 'active' : ''}`} onClick={() => setTheme(t.key)}>
-                  <span className="if-meta-dot" style={{ background: t.color }} />{t.name}
+            {/* Temă — 3/4 din lățime */}
+            <div className="meta-col meta-col-theme">
+              <span className="meta-row-label">Temă</span>
+              <div className="pills-row">
+                <button tabIndex={-1} className={`if-meta-pill ${theme === '' ? 'active' : ''}`} onClick={() => setTheme('')}>Fără</button>
+                {themes.map((t) => (
+                  <button tabIndex={-1} key={t.key} className={`if-meta-pill ${theme === t.key ? 'active' : ''}`} onClick={() => setTheme(t.key)}>
+                    <span className="if-meta-dot" style={{ background: t.color }} />{t.name}
+                  </button>
+                ))}
+                <button tabIndex={-1} className="if-meta-add" onClick={() => setShowNewTheme((v) => !v)} title="Temă nouă">
+                  {showNewTheme ? '×' : '+'}
                 </button>
-              ))}
-              <button className="if-meta-add" onClick={() => setShowNewTheme((v) => !v)} title="Temă nouă">
-                {showNewTheme ? '×' : '+'}
-              </button>
-            </div>
-            {showNewTheme && (
-              <div className="inline-search-wrap">
-                <input
-                  className="inline-search-input"
-                  value={newThemeName}
-                  onChange={(e) => setNewThemeName(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && addTheme()}
-                  placeholder="Nume temă nouă…"
-                  autoFocus
-                  autoComplete="off"
-                  autoCorrect="off"
-                  inputMode="text"
-                />
-                <button className="inline-ok-btn" onClick={addTheme} disabled={!newThemeName.trim()}>OK</button>
               </div>
-            )}
-          </div>
+            </div>
 
-          {/* Val */}
-          <div className="meta-row">
-            <span className="meta-row-label">Val</span>
-            <div className="pills-row">
-              {waves.map((w) => (
-                <button key={w.number} className={`if-meta-wave ${wave === w.number ? 'active' : ''}`} onClick={() => {
-                  if (isEdit && existing) {
-                    const dependants = issues.filter((i) => (i.deps ?? []).includes(existing.id))
-                    if (dependants.length > 0) {
-                      const required = Math.min(...dependants.map((d) => d.wave))
-                      if (w.number !== required) {
-                        const names = dependants.map((d) => `„${d.title}" (val ${d.wave})`).join(', ')
-                        setWaveError(`„${title}" este o dependență a ${names}. Nu poți muta tichetul.`)
-                        return
+            <div className="meta-vsep" />
+
+            {/* Val */}
+            <div className="meta-col meta-col-wave">
+              <span className="meta-row-label">Val</span>
+              <div className="pills-row">
+                {waves.map((w) => (
+                  <button tabIndex={-1} key={w.number} className={`if-meta-wave ${wave === w.number ? 'active' : ''}`} onClick={() => {
+                    if (isEdit && existing) {
+                      const dependants = issues.filter((i) => (i.deps ?? []).includes(existing.id))
+                      if (dependants.length > 0) {
+                        const required = Math.min(...dependants.map((d) => d.wave))
+                        if (w.number !== required) {
+                          const names = dependants.map((d) => `„${d.title}" (val ${d.wave})`).join(', ')
+                          setWaveError(`„${title}" este o dependență a ${names}. Nu poți muta tichetul.`)
+                          return
+                        }
                       }
                     }
-                  }
-                  setWave(w.number)
-                  setWaveError(null)
-                }}>
-                  {w.name}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Assigned to */}
-          <div className="meta-row">
-            <div className="meta-row-inline">
-              <span className="meta-row-label" style={{ marginBottom: 0 }}>Assigned to</span>
-              {assigneeId && !showAssigneeInline && (() => {
-                const a = assignees.find((x) => x.id === assigneeId)
-                return a ? (
-                  <div className="assignee-chip-inline">
-                    <div className="assignee-avatar-sm">{a.name.slice(0, 2).toUpperCase()}</div>
-                    <span className="assignee-name-sm">{a.name}{a.id === myAssigneeId ? ' (me)' : ''}</span>
-                    <span className="assignee-x-sm" onClick={() => setAssigneeId(null)}>×</span>
-                  </div>
-                ) : null
-              })()}
-              <button className="if-meta-add" onClick={() => setShowAssigneeInline((v) => !v)}>
-                {showAssigneeInline ? '×' : '+'}
-              </button>
-            </div>
-            {showAssigneeInline && (
-              <div className="inline-search-wrap">
-                <AssigneeSearch
-                  assigneeId={null}
-                  assignees={assignees}
-                  myAssigneeId={myAssigneeId}
-                  onSelect={(id) => { setAssigneeId(id); setShowAssigneeInline(false) }}
-                  onSetMe={setMyAssigneeId}
-                  onCreateAndSelect={async (name) => {
-                    const a = await createAssignee(name)
-                    setAssigneeId(a.id)
-                    setShowAssigneeInline(false)
-                  }}
-                />
+                    setWave(w.number)
+                    setWaveError(null)
+                  }}>
+                    {w.name}
+                  </button>
+                ))}
               </div>
-            )}
-          </div>
+            </div>
 
+            <div className="meta-vsep" />
+
+            {/* Assigned to */}
+            <div className="meta-col meta-col-assign">
+              <span className="meta-row-label">Assigned to</span>
+              <div className="meta-row-inline">
+                {assigneeId && !showAssigneeInline && (() => {
+                  const a = assignees.find((x) => x.id === assigneeId)
+                  return a ? (
+                    <div className="assignee-chip-inline">
+                      <div className="assignee-avatar-sm">{a.name.slice(0, 2).toUpperCase()}</div>
+                      <span className="assignee-name-sm">{a.name}{a.id === myAssigneeId ? ' (me)' : ''}</span>
+                      <span className="assignee-x-sm" tabIndex={-1} onClick={() => setAssigneeId(null)}>×</span>
+                    </div>
+                  ) : null
+                })()}
+                <button tabIndex={-1} className="if-meta-add" onClick={() => setShowAssigneeInline((v) => !v)}>
+                  {showAssigneeInline ? '×' : '+'}
+                </button>
+              </div>
+            </div>
+
+          </div>{/* end sh-meta-inline-row */}
+
+          {/* Expandabile sub rând */}
+          {showNewTheme && (
+            <div className="inline-search-wrap" style={{ padding: '6px 12px 8px' }}>
+              <input
+                className="inline-search-input"
+                value={newThemeName}
+                onChange={(e) => setNewThemeName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addTheme()}
+                placeholder="Nume temă nouă…"
+                autoFocus
+                autoComplete="off"
+                autoCorrect="off"
+                inputMode="text"
+              />
+              <button className="inline-ok-btn" onClick={addTheme} disabled={!newThemeName.trim()}>OK</button>
+            </div>
+          )}
+          {showAssigneeInline && (
+            <div className="inline-search-wrap" style={{ padding: '6px 12px 8px' }}>
+              <AssigneeSearch
+                assigneeId={null}
+                assignees={assignees}
+                myAssigneeId={myAssigneeId}
+                onSelect={(id) => { setAssigneeId(id); setShowAssigneeInline(false) }}
+                onSetMe={setMyAssigneeId}
+                onCreateAndSelect={async (name) => {
+                  const a = await createAssignee(name)
+                  setAssigneeId(a.id)
+                  setShowAssigneeInline(false)
+                }}
+              />
+            </div>
+          )}
         </div>{/* end sh-meta-section */}
 
         {/* MAIN FORM — 2 cols desktop, 1 col mobile */}
@@ -664,17 +673,32 @@ export function IssueForm({ issueId }: { issueId?: string }) {
         {waveError && (
           <div className="banner" style={{ marginTop: 12 }}>⚠ {waveError}</div>
         )}
-        {confirmClose && (
-          <div className="close-confirm-banner">
-            <span>Ai modificări nesalvate. Ieși totuși?</span>
-            <div className="close-confirm-actions">
-              <button className="close-confirm-stay" onClick={() => setConfirmClose(false)}>Rămâi</button>
-              <button className="close-confirm-exit" onClick={() => { setCloseGuard(null); closeSheet() }}>Ieși</button>
+      </div>{/* end sheet-scroll */}
+
+      {confirmClose && (
+        <div className="ccm-overlay" role="dialog" aria-modal="true">
+          <div className="ccm-box">
+            <p className="ccm-msg">Ai modificări nesalvate.</p>
+            <div
+              className="ccm-btns"
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+                  const btns = Array.from(e.currentTarget.querySelectorAll<HTMLButtonElement>('button'))
+                  const idx = btns.indexOf(document.activeElement as HTMLButtonElement)
+                  if (idx !== -1) btns[(idx + (e.key === 'ArrowRight' ? 1 : -1) + btns.length) % btns.length].focus()
+                }
+              }}
+            >
+              <button className="ccm-stay" autoFocus onClick={() => setConfirmClose(false)}>
+                Rămâi pe pagină
+              </button>
+              <button className="ccm-exit" onClick={() => { setCloseGuard(null); closeSheet() }}>
+                Ieși din pagină
+              </button>
             </div>
           </div>
-        )}
-
-      </div>{/* end sheet-scroll */}
+        </div>
+      )}
     </>
   )
 }
