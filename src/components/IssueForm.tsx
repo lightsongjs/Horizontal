@@ -176,6 +176,26 @@ export function IssueForm({ issueId }: { issueId?: string }) {
 
   const titleInputRef = useRef<HTMLInputElement>(null)
   const descRef = useRef<HTMLTextAreaElement>(null)
+  const notesSectionRef = useRef<HTMLDivElement>(null)
+  const [notesMaxH, setNotesMaxH] = useState(200)
+
+  useEffect(() => {
+    const section = notesSectionRef.current
+    if (!section) return
+    const compute = () => {
+      const sheet = section.closest('.sheet')
+      if (!sheet) return
+      const sheetBottom = sheet.getBoundingClientRect().bottom - 24
+      const labelEl = section.querySelector('.notes-label') as HTMLElement | null
+      const textareaTop = section.getBoundingClientRect().top + (labelEl ? labelEl.offsetHeight + 10 : 36)
+      setNotesMaxH(Math.max(80, sheetBottom - textareaTop))
+    }
+    compute()
+    const sheet = section.closest('.sheet')
+    const ro = new ResizeObserver(compute)
+    if (sheet) ro.observe(sheet)
+    return () => ro.disconnect()
+  }, [])
 
   useEffect(() => {
     if (isEdit && titleInputRef.current) {
@@ -751,10 +771,10 @@ export function IssueForm({ issueId }: { issueId?: string }) {
             </div>
 
             {/* NOTE — mereu vizibil */}
-            <div className="notes-section">
+            <div className="notes-section" ref={notesSectionRef}>
               <span className="notes-label">NOTE</span>
               <AutoTextarea value={notes} onChange={setNotes}
-                placeholder="Observații libere, edge cases, links…" minH={80} maxH={200} />
+                placeholder="Observații libere, edge cases, links…" minH={80} maxH={notesMaxH} />
             </div>
 
           </div>
