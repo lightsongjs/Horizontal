@@ -16,6 +16,12 @@ type DraftIssue = { tempId: string; title: string }
 let draftCounter = 0
 const newTempId = () => `__draft_${++draftCounter}__`
 
+function depCols(n: number): number {
+  if (n <= 2) return 1
+  if (n <= 4) return 2
+  return 3
+}
+
 const AutoTextarea = forwardRef<HTMLTextAreaElement, {
   value: string; onChange: (v: string) => void; placeholder?: string; minH?: number; maxH?: number
 }>(function AutoTextarea({ value, onChange, placeholder, minH = 80, maxH }, forwardedRef) {
@@ -37,102 +43,6 @@ const AutoTextarea = forwardRef<HTMLTextAreaElement, {
       placeholder={placeholder} style={{ minHeight: minH, resize: 'none', overflow: maxH ? 'auto' : 'hidden' }} />
   )
 })
-
-function DepSearch({ label, selected, drafts, candidates, onToggle, onToggleDraft, onCreateDraft, onNavigate }: {
-  label: string; selected: string[]; drafts: DraftIssue[]; candidates: Issue[]
-  onToggle: (id: string) => void; onToggleDraft: (d: DraftIssue) => void; onCreateDraft: (title: string) => void
-  onNavigate?: (id: string) => void
-}) {
-  const [q, setQ] = useState('')
-  const [hlIdx, setHlIdx] = useState(0)
-
-  const filtered = q.trim() ? candidates.filter((i) => i.title.toLowerCase().includes(q.toLowerCase())) : []
-  const hasExact = candidates.some((i) => i.title.toLowerCase() === q.toLowerCase().trim())
-  const showCreate = q.trim() && !hasExact
-
-  // Options list: filtered results + optional create entry
-  const optionCount = filtered.length + (showCreate ? 1 : 0)
-
-  const handleChange = (v: string) => { setQ(v); setHlIdx(0) }
-
-  const selectFiltered = (i: Issue) => { onToggle(i.id); setQ(''); setHlIdx(0) }
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!optionCount) return
-    if (e.key === 'ArrowDown') { e.preventDefault(); setHlIdx((p) => Math.min(p + 1, optionCount - 1)) }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); setHlIdx((p) => Math.max(p - 1, 0)) }
-    else if (e.key === 'Enter') {
-      e.preventDefault()
-      if (hlIdx < filtered.length) {
-        selectFiltered(filtered[hlIdx])
-      } else if (showCreate) {
-        onCreateDraft(q.trim()); setQ(''); setHlIdx(0)
-      }
-    } else if (e.key === 'Escape') { setQ(''); setHlIdx(0) }
-  }
-
-  return (
-    <div className="dep-search-block">
-      <label className="if-field-label">{label}</label>
-      {selected.length > 0 && (
-        <div className="dep-selected">
-          {selected.map((id) => {
-            const issue = candidates.find((i) => i.id === id)
-            if (!issue) return null
-            return (
-              <div key={id} className="dep-chip on">
-                <button className="dep-chip-body" onClick={() => onNavigate?.(id)}>
-                  <span className="dep-chip-id">{id}</span>
-                  <span className="dep-chip-title">{issue.title}</span>
-                </button>
-                <button className="dep-chip-x-btn" onClick={() => onToggle(id)}>×</button>
-              </div>
-            )
-          })}
-          {drafts.filter((d) => selected.includes(d.tempId)).map((d) => (
-            <div key={d.tempId} className="dep-chip on draft">
-              <span className="dep-chip-body dep-chip-body--static">
-                <span className="dep-chip-id">nou</span>
-                <span className="dep-chip-title">{d.title}</span>
-              </span>
-              <button className="dep-chip-x-btn" onClick={() => onToggleDraft(d)}>×</button>
-            </div>
-          ))}
-        </div>
-      )}
-      <div className="dep-search-wrap">
-        <input value={q} onChange={(e) => handleChange(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Caută sau creează tichet…" className="dep-search-input"
-          autoComplete="off" autoCorrect="off" inputMode="text" />
-      </div>
-      {q.trim() && (
-        <div className="dep-results">
-          {filtered.map((i, idx) => {
-            const on = selected.includes(i.id)
-            const hl = idx === hlIdx
-            return (
-              <button key={i.id} className={`dep-result-row ${on ? 'on' : ''} ${hl ? 'hl' : ''}`}
-                onClick={() => selectFiltered(i)}>
-                <span className={`ic ${on ? 'ok' : 'ext'}`}>{on ? '✓' : '+'}</span>
-                <span className="dep-result-title">{i.title}</span>
-                <span className="tk-id">{i.id}</span>
-              </button>
-            )
-          })}
-          {filtered.length === 0 && !showCreate && <p className="dep-no-results">Niciun tichet găsit.</p>}
-          {showCreate && (
-            <button className={`dep-create-btn ${hlIdx === filtered.length ? 'hl' : ''}`}
-              onClick={() => { onCreateDraft(q.trim()); setQ(''); setHlIdx(0) }}>
-              <span className="dep-create-plus">+</span>
-              Creează <strong>«{q.trim()}»</strong> și leagă
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
 
 function AssigneeSearch({ assigneeId, assignees, myAssigneeId, onSelect, onSetMe, onCreateAndSelect }: {
   assigneeId: string | null
@@ -254,23 +164,41 @@ export function IssueForm({ issueId }: { issueId?: string }) {
   const [waveError, setWaveError] = useState<string | null>(null)
   const [confirmClose, setConfirmClose] = useState(false)
   const [depTab, setDepTab] = useState<'necesita' | 'permite'>('necesita')
+  const [showAssigneeInline, setShowAssigneeInline] = useState(false)
+
+  // Dep search state (new inline design)
+  const [depSearchQ, setDepSearchQ] = useState('')
+  const [depSearchHl, setDepSearchHl] = useState(0)
+  const [depDropdownOpen, setDepDropdownOpen] = useState(false)
+
+  // QA accordion — open if has content, closed if empty
+  const initialQaCount = (existing?.selectors?.filter(Boolean).length ?? 0) + (existing?.scenarios?.length ?? 0)
+  const [qaOpen, setQaOpen] = useState(initialQaCount > 0)
+
   const titleInputRef = useRef<HTMLInputElement>(null)
   const descRef = useRef<HTMLTextAreaElement>(null)
+
   useEffect(() => {
     if (isEdit && titleInputRef.current) {
       titleInputRef.current.setSelectionRange(0, 0)
       titleInputRef.current.scrollLeft = 0
     }
   }, [])
-  const [showAssigneeInline, setShowAssigneeInline] = useState(false)
 
   const isDirty = isEdit
-    ? title !== (existing?.title ?? '') || desc !== (existing?.desc ?? '') ||
-      theme !== (existing?.theme ?? '') || wave !== (existing?.wave ?? activeWave) ||
+    ? title !== (existing?.title ?? '') ||
+      desc !== (existing?.desc ?? '') ||
+      theme !== (existing?.theme ?? '') ||
+      wave !== (existing?.wave ?? activeWave) ||
+      assigneeId !== (existing?.assigneeId ?? null) ||
+      deps.filter((d) => !d.startsWith('__draft_')).slice().sort().join(',') !== (existing?.deps ?? []).slice().sort().join(',') ||
+      draftDeps.filter((d) => deps.includes(d.tempId)).length > 0 ||
+      draftBlocks.filter((d) => blocks.includes(d.tempId)).length > 0 ||
       JSON.stringify(selectors) !== JSON.stringify(existing?.selectors ?? []) ||
       JSON.stringify(scenarios) !== JSON.stringify(existing?.scenarios ?? []) ||
       notes !== (existing?.notes ?? '')
-    : title.trim() !== '' || desc.trim() !== '' || selectors.length > 0 || scenarios.length > 0 || notes.trim() !== ''
+    : title.trim() !== '' || desc.trim() !== '' || deps.length > 0 || blocks.length > 0 ||
+      selectors.length > 0 || scenarios.length > 0 || notes.trim() !== ''
 
   useEffect(() => {
     if (isDirty) {
@@ -281,7 +209,6 @@ export function IssueForm({ issueId }: { issueId?: string }) {
     return () => setCloseGuard(null)
   }, [isDirty, setCloseGuard])
 
-  // Cmd+Enter to save
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') save()
@@ -293,13 +220,77 @@ export function IssueForm({ issueId }: { issueId?: string }) {
   if (!project) return null
 
   const candidates = issues.filter((i) => i.id !== issueId)
+
   const toggle = (set: string[], setSet: (v: string[]) => void, id: string) =>
     setSet(set.includes(id) ? set.filter((x) => x !== id) : [...set, id])
+
   const toggleDraft = (ds: DraftIssue[], setDs: (v: DraftIssue[]) => void, ids: string[], setIds: (v: string[]) => void, d: DraftIssue) => {
     if (ids.includes(d.tempId)) { setIds(ids.filter((x) => x !== d.tempId)); setDs(ds.filter((x) => x.tempId !== d.tempId)) }
   }
+
   const createDraftDep = (t: string) => { const d = { tempId: newTempId(), title: t }; setDraftDeps((p) => [...p, d]); setDeps((p) => [...p, d.tempId]) }
   const createDraftBlock = (t: string) => { const d = { tempId: newTempId(), title: t }; setDraftBlocks((p) => [...p, d]); setBlocks((p) => [...p, d.tempId]) }
+
+  // Dep section helpers (inline design)
+  const necRealIds = deps.filter((d) => !d.startsWith('__draft_'))
+  const necDraftItems = draftDeps.filter((d) => deps.includes(d.tempId))
+  const necCount = necRealIds.length + necDraftItems.length
+
+  const perRealIds = blocks.filter((b) => !b.startsWith('__draft_'))
+  const perDraftItems = draftBlocks.filter((d) => blocks.includes(d.tempId))
+  const perCount = perRealIds.length + perDraftItems.length
+
+  const currentRealIds = depTab === 'necesita' ? necRealIds : perRealIds
+  const currentDraftItems = depTab === 'necesita' ? necDraftItems : perDraftItems
+  const totalCurrentCount = currentRealIds.length + currentDraftItems.length
+
+  const depFiltered = depSearchQ.trim()
+    ? candidates.filter((i) => i.title.toLowerCase().includes(depSearchQ.toLowerCase()))
+    : []
+  const depHasExact = depFiltered.some((i) => i.title.toLowerCase() === depSearchQ.toLowerCase().trim())
+  const depShowCreate = !!depSearchQ.trim() && !depHasExact
+  const depOptionCount = depFiltered.length + (depShowCreate ? 1 : 0)
+
+  const addCurrentDep = (id: string) => {
+    const alreadyIn = depTab === 'necesita' ? deps.includes(id) : blocks.includes(id)
+    if (alreadyIn) return
+    if (depTab === 'necesita') setDeps((p) => [...p, id])
+    else setBlocks((p) => [...p, id])
+    setDepSearchQ(''); setDepDropdownOpen(false); setDepSearchHl(0)
+  }
+
+  const removeCurrentDep = (id: string) => {
+    if (depTab === 'necesita') setDeps(deps.filter((d) => d !== id))
+    else setBlocks(blocks.filter((b) => b !== id))
+  }
+
+  const removeCurrentDraft = (d: DraftIssue) => {
+    if (depTab === 'necesita') toggleDraft(draftDeps, setDraftDeps, deps, setDeps, d)
+    else toggleDraft(draftBlocks, setDraftBlocks, blocks, setBlocks, d)
+  }
+
+  const createCurrentDraft = (t: string) => {
+    if (depTab === 'necesita') createDraftDep(t)
+    else createDraftBlock(t)
+    setDepSearchQ(''); setDepDropdownOpen(false); setDepSearchHl(0)
+  }
+
+  const handleDepKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!depOptionCount) {
+      if (e.key === 'Escape') { setDepSearchQ(''); setDepDropdownOpen(false); setDepSearchHl(0) }
+      return
+    }
+    if (e.key === 'ArrowDown') { e.preventDefault(); setDepSearchHl((p) => Math.min(p + 1, depOptionCount - 1)) }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setDepSearchHl((p) => Math.max(p - 1, 0)) }
+    else if (e.key === 'Enter') {
+      e.preventDefault()
+      if (depSearchHl < depFiltered.length) addCurrentDep(depFiltered[depSearchHl].id)
+      else if (depShowCreate) createCurrentDraft(depSearchQ.trim())
+    }
+    else if (e.key === 'Escape') { setDepSearchQ(''); setDepDropdownOpen(false); setDepSearchHl(0) }
+  }
+
+  const qaCount = selectors.filter(Boolean).length + scenarios.length
 
   const addTheme = async () => {
     const name = newThemeName.trim(); if (!name) return
@@ -308,12 +299,10 @@ export function IssueForm({ issueId }: { issueId?: string }) {
     setNewThemeName(''); setShowNewTheme(false)
   }
 
-  // Selector helpers
   const addSelector = () => setSelectors((p) => [...p, ''])
   const updateSelector = (i: number, val: string) => setSelectors((p) => p.map((s, idx) => idx === i ? val : s))
   const removeSelector = (i: number) => setSelectors((p) => p.filter((_, idx) => idx !== i))
 
-  // Scenario helpers
   const addScenario = () => setScenarios((p) => [...p, { text: '', kind: 'neutral' }])
   const updateScenarioText = (i: number, text: string) => setScenarios((p) => p.map((s, idx) => idx === i ? { ...s, text } : s))
   const cycleScenarioBadge = (i: number) => setScenarios((p) => p.map((s, idx) => {
@@ -382,7 +371,6 @@ export function IssueForm({ issueId }: { issueId?: string }) {
         if (blocks.includes(tempId)) await updateIssue(realId, { deps: [targetId] })
       }
 
-      // Cascade: auto-move deps to min(wave of their dependants)
       let snap = issues.map((i) => {
         if (i.id === targetId) return { ...i, wave, deps: realDeps }
         if (realBlocks.includes(i.id) && !currentBlockers.includes(i.id))
@@ -391,7 +379,6 @@ export function IssueForm({ issueId }: { issueId?: string }) {
           return { ...i, deps: (i.deps ?? []).filter((d) => d !== targetId) }
         return i
       })
-      // For new issues, targetId wasn't in issues yet — add it so cascade sees it as a dependant
       if (!snap.find((i) => i.id === targetId)) {
         snap = [...snap, { id: targetId, projectId: project.id, title: title.trim(), desc: desc.trim(), theme, wave, deps: realDeps, done: false, selectors: selectors.filter(Boolean), scenarios, notes: notes.trim(), assigneeId }]
       }
@@ -426,7 +413,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
 
   return (
     <>
-      {/* NEW HEADER */}
+      {/* HEADER */}
       <div className="sh-header">
         <button className="sh-close" onClick={closeSheet} aria-label="Închide">✕</button>
         {isEdit && (
@@ -486,11 +473,10 @@ export function IssueForm({ issueId }: { issueId?: string }) {
       {/* BODY */}
       <div className="sheet-scroll if-body">
 
-        {/* META SECTION — Temă · Val · Assigned to — un singur rând */}
+        {/* META — Temă · Val · Assigned to */}
         <div className="sh-meta-section">
           <div className="sh-meta-inline-row">
 
-            {/* Temă — 3/4 din lățime */}
             <div className="meta-col meta-col-theme">
               <span className="meta-row-label">Temă</span>
               <div className="pills-row">
@@ -508,7 +494,6 @@ export function IssueForm({ issueId }: { issueId?: string }) {
 
             <div className="meta-vsep" />
 
-            {/* Val */}
             <div className="meta-col meta-col-wave">
               <span className="meta-row-label">Val</span>
               <div className="pills-row">
@@ -536,7 +521,6 @@ export function IssueForm({ issueId }: { issueId?: string }) {
 
             <div className="meta-vsep" />
 
-            {/* Assigned to */}
             <div className="meta-col meta-col-assign">
               <span className="meta-row-label">Assigned to</span>
               <div className="meta-row-inline">
@@ -556,9 +540,8 @@ export function IssueForm({ issueId }: { issueId?: string }) {
               </div>
             </div>
 
-          </div>{/* end sh-meta-inline-row */}
+          </div>
 
-          {/* Expandabile sub rând */}
           {showNewTheme && (
             <div className="inline-search-wrap" style={{ padding: '6px 12px 8px' }}>
               <input
@@ -591,111 +574,192 @@ export function IssueForm({ issueId }: { issueId?: string }) {
               />
             </div>
           )}
-        </div>{/* end sh-meta-section */}
+        </div>
 
-        {/* MAIN FORM — 2 cols desktop, 1 col mobile */}
+        {/* MAIN FORM — 2 cols */}
         <div className="form-cols">
 
-          {/* LEFT COL */}
-          <div className="form-col">
-
-            <div className="fld">
-              <label className="if-field-label">Descriere</label>
-              <AutoTextarea ref={descRef} value={desc} onChange={setDesc} placeholder="Cerințe, notițe, context…" minH={300} maxH={300} />
-            </div>
-
-            {/* Dependențe — tabbed Necesită / Permite */}
-            <div className="sh-dep-section">
-              <div className="sh-dep-tabs">
-                {(() => {
-                  const necCount = deps.filter((d) => !d.startsWith('__draft_')).length + draftDeps.filter((d) => deps.includes(d.tempId)).length
-                  const perCount = blocks.filter((b) => !b.startsWith('__draft_')).length + draftBlocks.filter((d) => blocks.includes(d.tempId)).length
-                  return (
-                    <>
-                      <button className={`sh-dep-tab ${depTab === 'necesita' ? 'on' : ''}`} onClick={() => setDepTab('necesita')}>
-                        ← Necesită{necCount > 0 && <span className="dep-count"> ({necCount})</span>}
-                      </button>
-                      <button className={`sh-dep-tab ${depTab === 'permite' ? 'on' : ''}`} onClick={() => setDepTab('permite')}>
-                        → Permite{perCount > 0 && <span className="dep-count"> ({perCount})</span>}
-                      </button>
-                    </>
-                  )
-                })()}
-              </div>
-              <p className="dep-tab-hint">
-                {depTab === 'necesita' ? 'Ce trebuie să existe înainte de acest tichet?' : 'Ce deblochează sau face posibil acest tichet?'}
-              </p>
-              {depTab === 'necesita' && (
-                <DepSearch label="" selected={deps} drafts={draftDeps} candidates={candidates}
-                  onToggle={(id) => toggle(deps, setDeps, id)}
-                  onToggleDraft={(d) => toggleDraft(draftDeps, setDraftDeps, deps, setDeps, d)}
-                  onNavigate={(id) => pushSheet({ kind: 'issue', issueId: id })}
-                  onCreateDraft={createDraftDep} />
-              )}
-              {depTab === 'permite' && (
-                <DepSearch label="" selected={blocks} drafts={draftBlocks} candidates={candidates}
-                  onToggle={(id) => toggle(blocks, setBlocks, id)}
-                  onToggleDraft={(d) => toggleDraft(draftBlocks, setDraftBlocks, blocks, setBlocks, d)}
-                  onNavigate={(id) => pushSheet({ kind: 'issue', issueId: id })}
-                  onCreateDraft={createDraftBlock} />
-              )}
-            </div>
-
-
+          {/* LEFT — descriere */}
+          <div className="form-col form-col-desc">
+            <label className="if-field-label" style={{ display: 'block', marginBottom: 8 }}>Descriere</label>
+            <textarea
+              ref={descRef}
+              className="desc-fixed"
+              value={desc}
+              onChange={(e) => setDesc(e.target.value)}
+              placeholder="Cerințe, notițe, context…"
+            />
           </div>
 
-          {/* RIGHT COL */}
-          <div className="form-col">
+          {/* RIGHT — deps + QA + note */}
+          <div className="form-col form-col-right">
 
-            <div className="fld">
-              <label className="if-field-label">Playwright Selectors</label>
-              <div className="if-sc-list">
-                {selectors.map((s, i) => (
-                  <div key={i} className="if-sc-item">
-                    <span className="if-badge selector">⬡</span>
-                    <input value={s} onChange={(e) => updateSelector(i, e.target.value)}
-                      placeholder="getByRole('button', { name: 'Login' })"
-                      style={{ fontFamily: 'var(--mono)', fontSize: 11 }}
-                      autoComplete="off" autoCorrect="off" inputMode="text" />
-                    <button className="if-sc-del" onClick={() => removeSelector(i)}>×</button>
+            {/* DEPS ZONE */}
+            <div className="deps-zone">
+              <div className="deps-bar">
+                <button
+                  className={`dep-tab-btn ${depTab === 'necesita' ? 'on' : ''}`}
+                  onClick={() => { setDepTab('necesita'); setDepSearchQ(''); setDepDropdownOpen(false) }}
+                >
+                  ← Necesită{necCount > 0 && <span className="dep-tab-count">{necCount}</span>}
+                </button>
+                <button
+                  className={`dep-tab-btn ${depTab === 'permite' ? 'on' : ''}`}
+                  onClick={() => { setDepTab('permite'); setDepSearchQ(''); setDepDropdownOpen(false) }}
+                >
+                  → Permite{perCount > 0 && <span className="dep-tab-count">{perCount}</span>}
+                </button>
+                <div className="dep-search-wrap-rel">
+                  <div className="dep-search-field">
+                    <svg className="dep-search-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                    <input
+                      className="dep-search-input-sm"
+                      value={depSearchQ}
+                      onChange={(e) => { setDepSearchQ(e.target.value); setDepSearchHl(0); setDepDropdownOpen(true) }}
+                      onKeyDown={handleDepKeyDown}
+                      onFocus={() => { setDepSearchHl(0); if (depSearchQ.trim()) setDepDropdownOpen(true) }}
+                      onBlur={() => setTimeout(() => setDepDropdownOpen(false), 150)}
+                      placeholder="Caută sau creează tichet…"
+                      autoComplete="off"
+                      autoCorrect="off"
+                    />
                   </div>
-                ))}
+
+                  {/* Floating dropdown — anchored under the search field */}
+                  {depDropdownOpen && depSearchQ.trim() && (
+                    <div className="dep-dropdown">
+                      {depFiltered.map((issue, idx) => (
+                        <button
+                          key={issue.id}
+                          className={`dep-dd-item${idx === depSearchHl ? ' hl' : ''}`}
+                          onClick={() => addCurrentDep(issue.id)}
+                        >
+                          <span className="dep-dd-ic">+</span>
+                          <span className="dep-dd-title">{issue.title}</span>
+                          <span className="dep-dd-id">{issue.id}</span>
+                        </button>
+                      ))}
+                      {depFiltered.length === 0 && !depShowCreate && (
+                        <div className="dep-dd-empty">Niciun tichet găsit.</div>
+                      )}
+                      {depShowCreate && (
+                        <button
+                          className={`dep-dd-create${depSearchHl === depFiltered.length ? ' hl' : ''}`}
+                          onClick={() => createCurrentDraft(depSearchQ.trim())}
+                        >
+                          <span className="dep-dd-plus">+</span>
+                          Creează <strong>«{depSearchQ.trim()}»</strong> și leagă
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
-              <button className="if-add-btn" onClick={addSelector}>
-                <span style={{ fontSize: 16, fontWeight: 700, lineHeight: 1 }}>+</span>
-                Adaugă selector
-              </button>
+
+              {/* Dep cards grid */}
+              {totalCurrentCount > 0 ? (
+                <div
+                  className="dep-cards-grid"
+                  style={{ '--dep-cols': depCols(totalCurrentCount) } as React.CSSProperties}
+                >
+                  {currentRealIds.map((id) => {
+                    const issue = byId[id]
+                    if (!issue) return null
+                    return (
+                      <div key={id} className="dep-card">
+                        <button className="dep-card-body" onClick={() => pushSheet({ kind: 'issue', issueId: id })}>
+                          <span className="dep-card-id">{id}</span>
+                          <span className="dep-card-title">{issue.title}</span>
+                        </button>
+                        <button className="dep-card-x" onClick={() => removeCurrentDep(id)}>×</button>
+                      </div>
+                    )
+                  })}
+                  {currentDraftItems.map((d) => (
+                    <div key={d.tempId} className="dep-card dep-card--draft">
+                      <div className="dep-card-body dep-card-body--static">
+                        <span className="dep-card-id">nou</span>
+                        <span className="dep-card-title">{d.title}</span>
+                      </div>
+                      <button className="dep-card-x" onClick={() => removeCurrentDraft(d)}>×</button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="dep-empty-row" />
+              )}
+
             </div>
 
-            <div className="fld">
-              <label className="if-field-label">Test Scenarios</label>
-              <div className="if-sc-list">
-                {scenarios.map((s, i) => (
-                  <div key={i} className="if-sc-item">
-                    <span className={`if-badge ${s.kind}`} onClick={() => cycleScenarioBadge(i)} title="Click schimbă tipul">
-                      {badgeIcon(s.kind)}
-                    </span>
-                    <input value={s.text} onChange={(e) => updateScenarioText(i, e.target.value)}
-                      placeholder="Ex: Login reușit cu date valide"
-                      autoComplete="off" autoCorrect="off" inputMode="text" />
-                    <button className="if-sc-del" onClick={() => removeScenario(i)}>×</button>
-                  </div>
-                ))}
-              </div>
-              <button className="if-add-btn" onClick={addScenario}>
-                <span style={{ fontSize: 16, fontWeight: 700, lineHeight: 1 }}>+</span>
-                Adaugă scenariu
+            {/* QA ACCORDION */}
+            <div className="acc-section">
+              <button className="acc-header" onClick={() => setQaOpen((v) => !v)}>
+                <span className="acc-icon">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="12" y2="17"/>
+                  </svg>
+                </span>
+                <span className="acc-title">QA</span>
+                {qaCount > 0 && <span className="acc-count">{qaCount}</span>}
+                <svg className={`acc-chevron${qaOpen ? ' open' : ''}`} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="6 9 12 15 18 9"/>
+                </svg>
               </button>
+              {qaOpen && (
+                <div className="acc-body">
+                  <div className="qa-sub-row">
+                    <span className="qa-sub-label">Playwright Selectors</span>
+                    <button className="qa-sub-add" onClick={addSelector}>+</button>
+                  </div>
+                  <div className="if-sc-list">
+                    {selectors.map((s, i) => (
+                      <div key={i} className="if-sc-item">
+                        <span className="if-badge selector">⬡</span>
+                        <input value={s} onChange={(e) => updateSelector(i, e.target.value)}
+                          placeholder="getByRole('button', { name: 'Login' })"
+                          style={{ fontFamily: 'var(--mono)', fontSize: 11 }}
+                          autoComplete="off" autoCorrect="off" inputMode="text" />
+                        <button className="if-sc-del" onClick={() => removeSelector(i)}>×</button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="qa-divider" />
+
+                  <div className="qa-sub-row">
+                    <span className="qa-sub-label">Test Scenarios</span>
+                    <button className="qa-sub-add" onClick={addScenario}>+</button>
+                  </div>
+                  <div className="if-sc-list">
+                    {scenarios.map((s, i) => (
+                      <div key={i} className="if-sc-item">
+                        <span className={`if-badge ${s.kind}`} onClick={() => cycleScenarioBadge(i)} title="Click schimbă tipul">
+                          {badgeIcon(s.kind)}
+                        </span>
+                        <input value={s.text} onChange={(e) => updateScenarioText(i, e.target.value)}
+                          placeholder="Ex: Login reușit cu date valide"
+                          autoComplete="off" autoCorrect="off" inputMode="text" />
+                        <button className="if-sc-del" onClick={() => removeScenario(i)}>×</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="fld">
-              <label className="if-field-label">Note</label>
+            {/* NOTE — mereu vizibil */}
+            <div className="notes-section">
+              <span className="notes-label">NOTE</span>
               <AutoTextarea value={notes} onChange={setNotes}
-                placeholder="Observații libere, edge cases, links…" minH={100} />
+                placeholder="Observații libere, edge cases, links…" minH={80} maxH={200} />
             </div>
 
           </div>
-        </div>{/* end form-cols */}
+        </div>
 
         {cycleMsg && (
           <div className="banner" style={{ marginTop: 12 }}>⚠ Asta ar crea un ciclu: {cycleMsg}</div>
@@ -703,7 +767,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
         {waveError && (
           <div className="banner" style={{ marginTop: 12 }}>⚠ {waveError}</div>
         )}
-      </div>{/* end sheet-scroll */}
+      </div>
 
       {confirmClose && (
         <div className="ccm-overlay" role="dialog" aria-modal="true">
