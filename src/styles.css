@@ -395,7 +395,9 @@ main {
   flex-shrink: 0;
 }
 /* Layer color applied to cards and dep indicators within each layer */
-.layer .tk {
+.layer .tk,
+.layer .tk.active,
+.layer .tk.blocked {
   border-left: 2px solid color-mix(in srgb, var(--layer-color, var(--line)) 45%, transparent);
 }
 .layer .tk-sub .dep {

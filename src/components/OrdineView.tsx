@@ -5,6 +5,17 @@ import { useUI } from '../ui'
 import { TicketCard } from './TicketCard'
 import { getRelatedIds } from '../lib/treeTraversal'
 
+const LAYER_COLORS = [
+  '#3ecf8e', // 0 — green (start here)
+  '#6e7bff', // 1 — indigo
+  '#ffb454', // 2 — amber
+  '#a06eff', // 3 — purple
+  '#46d1d9', // 4 — cyan
+  '#f78fb3', // 5 — pink
+  '#ff6b6b', // 6 — coral
+  '#38bdf8', // 7 — sky blue
+]
+
 export function OrdineView() {
   const { waves, issues, activeWave, setActiveWave, layers, deleteIssue, updateIssue, byId } = useHorizontal()
   const { openWaveManage } = useUI()
@@ -137,8 +148,9 @@ export function OrdineView() {
                 : ids
               if (hideDone && visibleIds.length === 0) return null
               const ready = i === 0
+              const color = LAYER_COLORS[i % LAYER_COLORS.length]
               return (
-                <div key={L} className={`layer ${ready ? 'ready' : ''}`}>
+                <div key={L} className={`layer ${ready ? 'ready' : ''}`} style={{ '--layer-color': color } as React.CSSProperties}>
                   <div className="layer-head">
                     <div className="layer-num">{L + 1}</div>
                     <div>
