@@ -539,7 +539,7 @@ main {
   border-radius: 4px;
   color: var(--accent);
   background: var(--accent-soft);
-  border: 1px solid #6e7bff33;
+  border: 1px solid #0EA5E933;
 }
 .type-badge.ext {
   color: var(--txt-faint);
@@ -663,8 +663,8 @@ main {
   color: var(--txt-faint);
 }
 .wbtn.on {
-  background: linear-gradient(135deg, #6e7bff22, #7c3aed11);
-  border-color: #6e7bff66;
+  background: linear-gradient(135deg, #0EA5E922, #06B6D411);
+  border-color: #0EA5E966;
   color: var(--txt);
 }
 .wbtn.on .wsub,
@@ -900,7 +900,7 @@ main {
 .fld input:focus,
 .fld textarea:focus {
   outline: none;
-  border-color: #6e7bff88;
+  border-color: #0EA5E988;
   background: var(--surface-3);
 }
 .fld textarea {
@@ -918,7 +918,7 @@ main {
 .inline-new input {
   flex: 1;
   background: var(--surface-2);
-  border: 1px solid #6e7bff55;
+  border: 1px solid #0EA5E955;
   border-radius: 8px;
   padding: 9px 11px;
   color: var(--txt);
@@ -974,7 +974,7 @@ main {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 24px -4px #6e7bff55;
+  box-shadow: 0 8px 24px -4px #0EA5E955;
   transition: transform 0.13s;
 }
 .fab:active {
@@ -1080,7 +1080,7 @@ svg.graph {
 }
 .theme-edit input:focus {
   outline: none;
-  border-color: #6e7bff88;
+  border-color: #0EA5E988;
 }
 .swatch {
   width: 28px;
@@ -1124,7 +1124,7 @@ svg.graph {
 }
 .wave-edit input:focus {
   outline: none;
-  border-color: #6e7bff88;
+  border-color: #0EA5E988;
 }
 .wave-del {
   flex-shrink: 0;
@@ -1254,7 +1254,7 @@ svg.graph {
 }
 .dep-chip.on {
   background: var(--accent-soft);
-  border-color: #6e7bff55;
+  border-color: #0EA5E955;
   color: var(--accent);
 }
 .dep-chip.draft {
@@ -1348,7 +1348,7 @@ svg.graph {
 }
 .dep-search-input:focus {
   outline: none;
-  border-color: #6e7bff88;
+  border-color: #0EA5E988;
   background: var(--surface-3);
 }
 .dep-search-input::placeholder {

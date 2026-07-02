@@ -80,7 +80,7 @@ export function createSupabaseRepository(): Repository {
         description: input.description,
         prefix: input.prefix.toUpperCase(),
         currentWave: 1,
-        accent: input.accent ?? '#6e7bff',
+        accent: input.accent ?? '#0EA5E9',
         type: input.type ?? 'personal',
       }
       const { error } = await db.from('projects').insert({

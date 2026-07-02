@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 
-const ACCENTS = ['#6e7bff', '#3ecf8e', '#ffb454', '#a06eff', '#ff6b6b', '#46d1d9']
+const ACCENTS = ['#0EA5E9', '#3ecf8e', '#ffb454', '#a06eff', '#ff6b6b', '#46d1d9']
 
 export function ProjectSettings() {
   const { project, updateProject, deleteProject } = useHorizontal()

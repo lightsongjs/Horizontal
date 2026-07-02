@@ -69,7 +69,7 @@ export function createLocalRepository(): Repository {
         description: input.description,
         prefix: input.prefix.toUpperCase(),
         currentWave: 1,
-        accent: input.accent ?? '#6e7bff',
+        accent: input.accent ?? '#0EA5E9',
         type: input.type ?? 'personal',
       }
       db.projects.push(project)
