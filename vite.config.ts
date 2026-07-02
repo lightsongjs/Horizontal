@@ -7,7 +7,10 @@ export default defineConfig(({ command: _command }) => ({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt' (not 'autoUpdate') so a new build installs into the waiting
+      // state instead of activating mid-session. src/pwa.ts decides when to
+      // apply it (on app open / focus), avoiding reloads while a user edits.
+      registerType: 'prompt',
       includeAssets: ['icon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: 'Horizontal',
@@ -26,8 +29,11 @@ export default defineConfig(({ command: _command }) => ({
         ],
       },
       workbox: {
-        skipWaiting: true,
+        // No skipWaiting here — the new SW must wait so we can apply it at a
+        // safe moment. clientsClaim lets the activated SW control the page on
+        // reload; cleanupOutdatedCaches purges stale precaches from old builds.
         clientsClaim: true,
+        cleanupOutdatedCaches: true,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         runtimeCaching: [
           {

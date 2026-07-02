@@ -1,0 +1,19 @@
+# Cloudflare Pages headers.
+#
+# The service worker and the app shell must always be revalidated so a new
+# deploy is detected on the next check. Without this, Cloudflare may serve a
+# cached sw.js and installed PWAs never see the new build.
+/sw.js
+  Cache-Control: no-cache
+/registerSW.js
+  Cache-Control: no-cache
+/manifest.webmanifest
+  Cache-Control: no-cache
+/index.html
+  Cache-Control: no-cache
+/
+  Cache-Control: no-cache
+
+# Hashed build assets are content-addressed and safe to cache forever.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
