@@ -9,6 +9,7 @@ const { fakeDb } = vi.hoisted(() => {
   class Query {
     op = 'select'
     filters: [string, unknown][] = []
+    inFilters: [string, unknown[]][] = []
     payload: Row | Row[] | null = null
     single_ = false
     constructor(
@@ -36,6 +37,10 @@ const { fakeDb } = vi.hoisted(() => {
       this.filters.push([col, val])
       return this
     }
+    in(col: string, values: unknown[]) {
+      this.inFilters.push([col, values])
+      return this
+    }
     order() {
       return this
     }
@@ -44,7 +49,10 @@ const { fakeDb } = vi.hoisted(() => {
       return this
     }
     private match(r: Row) {
-      return this.filters.every(([c, v]) => r[c] === v)
+      return (
+        this.filters.every(([c, v]) => r[c] === v) &&
+        this.inFilters.every(([c, vs]) => vs.includes(r[c]))
+      )
     }
     private run() {
       const t = this.tables[this.table]
