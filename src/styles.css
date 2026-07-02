@@ -3331,3 +3331,99 @@ svg.graph {
   background: #E3F0FC;
   border-color: #0EA5E9;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   MOBILE REFINEMENTS (< 900px)
+   Appended last so these override the mobile-first base rules above.
+   Fixes surfaced by mobile viewport testing (390×844 / 360×740):
+   settings reachability, cramped form meta, crushed wave selector,
+   small tap targets, and off-screen accent-colour chips.
+   ═══════════════════════════════════════════════════════════════════════ */
+@media (max-width: 899px) {
+
+  /* ── Settings reachable on mobile ──────────────────────────────────
+     The header gear is the only entry point to project settings, but the
+     base rule hides it (`display:none`) and only the ≥900px block re-shows
+     it. Expose it on mobile too. */
+  .header-settings-btn {
+    display: inline-flex;
+  }
+
+  /* ── Refresh button is redundant on mobile — pull-to-refresh (touch
+     handler in App.tsx) already covers it — so hide it to declutter the
+     header and make room for the settings gear. ─────────────────────── */
+  .header-refresh-btn {
+    display: none;
+  }
+
+  /* ── Bigger header tap targets (was 30–32px → 36px) ──────────────── */
+  .back,
+  .theme-toggle,
+  .header-settings-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  /* ── Tabs: taller, easier to hit ─────────────────────────────────── */
+  .tab {
+    padding: 12px 4px;
+    min-height: 44px;
+  }
+
+  /* ── Wave selector: give the wave tabs the full first row and drop the
+     Tree/Ascunde/Select actions onto their own row below, so waves are
+     no longer crushed into a tiny (and sometimes clipped) scroll strip. */
+  .wave-sel {
+    flex-wrap: wrap;
+  }
+  .wave-actions {
+    flex: 0 0 100%;
+    justify-content: flex-end;
+    margin-top: 8px;
+  }
+  .wave-action-btn {
+    padding: 9px 14px;
+    font-size: 13px;
+  }
+
+  /* ── Issue form meta: stack Temă / Val / Assigned vertically instead of
+     three cramped inline columns (the 3rd was clipped off-screen). ──── */
+  .sh-meta-inline-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .meta-col,
+  .meta-col-theme,
+  .meta-col-wave,
+  .meta-col-assign {
+    flex: none;
+  }
+  .meta-col {
+    padding: 10px 18px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .meta-col:last-child {
+    border-bottom: none;
+  }
+  .meta-vsep {
+    display: none;
+  }
+
+  /* ── Issue form body: single column, shorter description box ───────
+     The 2-column grid already collapses below 900px, but the fixed 560px
+     description height and its column separator are desktop-oriented. */
+  .form-col-desc {
+    border-right: none;
+    padding: 14px 16px 16px;
+  }
+  .desc-fixed {
+    height: 200px;
+  }
+
+  /* ── Settings accent colours: wrap instead of clipping the last
+     swatch(es) off the right edge. ─────────────────────────────────── */
+  .color-chips {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+}

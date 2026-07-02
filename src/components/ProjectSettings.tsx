@@ -66,7 +66,7 @@ export function ProjectSettings() {
         </div>
 
         <div className="sheet-section-t">Culoare accent</div>
-        <div className="chips" style={{ margin: '0 0 4px' }}>
+        <div className="chips color-chips" style={{ margin: '0 0 4px' }}>
           {ACCENTS.map((c) => (
             <button key={c} className={`chip ${accent === c ? 'on' : ''}`} onClick={() => setAccent(c)}>
               <span className="cdot" style={{ background: c }} />
