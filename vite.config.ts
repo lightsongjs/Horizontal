@@ -14,7 +14,7 @@ export default defineConfig(({ command: _command }) => ({
         short_name: 'Horizontal',
         description: 'Project planning with dependency layers and waves',
         theme_color: '#6e7bff',
-        background_color: '#0c0d12',
+        background_color: '#EEF2F7',
         display: 'standalone',
         orientation: 'portrait-primary',
         start_url: '.',
