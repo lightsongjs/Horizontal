@@ -22,18 +22,39 @@ function sbHeaders(key: string): Record<string, string> {
   }
 }
 
+async function resolveProject(
+  param: string,
+  supabaseUrl: string,
+  headers: Record<string, string>
+): Promise<{ id: string; prefix: string } | null> {
+  const encoded = encodeURIComponent(param)
+  const res = await fetch(
+    `${supabaseUrl}/rest/v1/projects?or=(id.eq.${encoded},name.ilike.${encoded})&select=id,prefix&limit=1`,
+    { headers }
+  )
+  if (!res.ok) return null
+  const rows = await res.json() as Array<{ id: string; prefix: string }>
+  return rows[0] ?? null
+}
+
 export const onRequestGet: PagesFunction<Env> = async (context) => {
   const url = new URL(context.request.url)
-  const project = url.searchParams.get('project')?.toLowerCase()
+  const projectParam = url.searchParams.get('project')
   const title = url.searchParams.get('title')
   const waveParam = url.searchParams.get('wave')
 
-  if (!project) {
+  if (!projectParam) {
     return Response.json({ error: 'missing_params', required: ['project'] }, { status: 400 })
   }
 
   const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = context.env
   const headers = sbHeaders(SUPABASE_SERVICE_ROLE_KEY)
+
+  const proj = await resolveProject(projectParam, SUPABASE_URL, headers)
+  if (!proj) {
+    return Response.json({ error: 'project_not_found' }, { status: 404 })
+  }
+  const project = proj.id
 
   // LIST mode: no title param — return all tickets for project, optionally filtered by wave
   if (!title) {
@@ -109,7 +130,12 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
   const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = context.env
   const headers = sbHeaders(SUPABASE_SERVICE_ROLE_KEY)
-  const pid = projectId.toLowerCase()
+
+  const projResolved = await resolveProject(projectId, SUPABASE_URL, headers)
+  if (!projResolved) {
+    return Response.json({ error: 'project_not_found' }, { status: 404 })
+  }
+  const pid = projResolved.id
 
   // 1. Validate deps exist
   if (deps.length > 0) {
@@ -128,21 +154,9 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     }
   }
 
-  // 2. Get project prefix
-  const projRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/projects?id=eq.${pid}&select=prefix`,
-    { headers }
-  )
-  if (!projRes.ok) {
-    return Response.json({ error: 'db_error' }, { status: 502 })
-  }
-  const projects = await projRes.json() as Array<{ prefix: string }>
-  if (!projects.length) {
-    return Response.json({ error: 'project_not_found' }, { status: 404 })
-  }
-  const prefix = projects[0].prefix
+  const prefix = projResolved.prefix
 
-  // 3. Compute next ID
+  // 2. Compute next ID
   const issuesRes = await fetch(
     `${SUPABASE_URL}/rest/v1/issues?project_id=eq.${pid}&select=id`,
     { headers }
