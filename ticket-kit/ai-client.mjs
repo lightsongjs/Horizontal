@@ -138,7 +138,10 @@ async function update() {
   if ('title' in flags) body.title = flags.title
   if ('desc' in flags) body.desc = flags.desc
   if ('theme' in flags) body.theme = flags.theme
-  if ('wave' in flags) body.wave = Number(flags.wave)
+  if ('wave' in flags) {
+    body.wave = Number(flags.wave)
+    if (isNaN(body.wave)) { console.error('--wave must be a number'); process.exit(1) }
+  }
   if ('done' in flags) body.done = flags.done === 'true'
   if ('notes' in flags) body.notes = flags.notes
   if ('deps' in flags) body.deps = flags.deps ? String(flags.deps).split(',').map(s => s.trim()).filter(Boolean) : []
