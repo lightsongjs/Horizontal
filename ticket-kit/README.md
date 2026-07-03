@@ -43,6 +43,15 @@ node ticket-kit/ai-client.mjs --create --project Katalist --title "Auth flow" --
 # Vezi toate detaliile unui tichet (desc, deps, selectors, scenarios, notes etc.)
 node ticket-kit/ai-client.mjs --get --id KATA-03
 # output: JSON complet cu toate câmpurile
+
+# Actualizează câmpuri ale unui tichet existent (PATCH)
+node ticket-kit/ai-client.mjs --update --id KATA-03 --title "Nou titlu"
+node ticket-kit/ai-client.mjs --update --id KATA-03 --wave 2 --done true
+node ticket-kit/ai-client.mjs --update --id KATA-03 --deps KATA-01,KATA-02
+node ticket-kit/ai-client.mjs --update --id KATA-03 --deps ""   # șterge toate deps
+node ticket-kit/ai-client.mjs --update --id KATA-03 --selectors '["mobile","desktop"]'
+node ticket-kit/ai-client.mjs --update --id KATA-03 --scenarios '[{"given":"...","when":"...","then":"..."}]'
+# output: updated: KATA-03   (sau duplicate: KATA-07 / not_found)
 ```
 
 ### Flow tipic pentru AI
@@ -62,4 +71,8 @@ node ticket-kit/ai-client.mjs --create --project Katalist --title "Deploy" --wav
 # 4. Verifică tichetul creat
 node ticket-kit/ai-client.mjs --get --id KATA-05
 # → JSON cu toate câmpurile confirmate
+
+# 5. Actualizează un tichet după review
+node ticket-kit/ai-client.mjs --update --id KATA-05 --done true
+# → updated: KATA-05
 ```
