@@ -1,6 +1,9 @@
 // ticket-kit/ai-client.mjs
 import { config } from 'dotenv'
-config({ path: '../.env' })
+import { fileURLToPath } from 'url'
+import { dirname, resolve } from 'path'
+const __dirname = dirname(fileURLToPath(import.meta.url))
+config({ path: resolve(__dirname, '../.env') })
 
 const API_URL = process.env.HORIZONTAL_API_URL?.replace(/\/$/, '')
 const API_KEY = process.env.HORIZONTAL_API_KEY
@@ -19,7 +22,7 @@ async function apiFetch(path, options = {}) {
       ...(options.headers ?? {}),
     },
   })
-  const data = await res.json()
+  const data = await res.json().catch(() => ({ error: 'non-JSON response' }))
   return { status: res.status, data }
 }
 
