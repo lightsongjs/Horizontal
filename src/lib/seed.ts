@@ -11,7 +11,7 @@ export const SEED_PROJECTS: Project[] = [
     description: 'Proiect demo pentru dezvoltare locală',
     prefix: 'EX',
     currentWave: 1,
-    accent: '#6e7bff',
+    accent: '#0EA5E9',
     type: 'personal',
   },
 ]

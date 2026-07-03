@@ -539,7 +539,7 @@ main {
   border-radius: 4px;
   color: var(--accent);
   background: var(--accent-soft);
-  border: 1px solid #6e7bff33;
+  border: 1px solid #0EA5E933;
 }
 .type-badge.ext {
   color: var(--txt-faint);
@@ -663,8 +663,8 @@ main {
   color: var(--txt-faint);
 }
 .wbtn.on {
-  background: linear-gradient(135deg, #6e7bff22, #7c3aed11);
-  border-color: #6e7bff66;
+  background: linear-gradient(135deg, #0EA5E922, #06B6D411);
+  border-color: #0EA5E966;
   color: var(--txt);
 }
 .wbtn.on .wsub,
@@ -900,7 +900,7 @@ main {
 .fld input:focus,
 .fld textarea:focus {
   outline: none;
-  border-color: #6e7bff88;
+  border-color: #0EA5E988;
   background: var(--surface-3);
 }
 .fld textarea {
@@ -918,7 +918,7 @@ main {
 .inline-new input {
   flex: 1;
   background: var(--surface-2);
-  border: 1px solid #6e7bff55;
+  border: 1px solid #0EA5E955;
   border-radius: 8px;
   padding: 9px 11px;
   color: var(--txt);
@@ -974,7 +974,7 @@ main {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 24px -4px #6e7bff55;
+  box-shadow: 0 8px 24px -4px #0EA5E955;
   transition: transform 0.13s;
 }
 .fab:active {
@@ -1080,7 +1080,7 @@ svg.graph {
 }
 .theme-edit input:focus {
   outline: none;
-  border-color: #6e7bff88;
+  border-color: #0EA5E988;
 }
 .swatch {
   width: 28px;
@@ -1124,7 +1124,7 @@ svg.graph {
 }
 .wave-edit input:focus {
   outline: none;
-  border-color: #6e7bff88;
+  border-color: #0EA5E988;
 }
 .wave-del {
   flex-shrink: 0;
@@ -1254,7 +1254,7 @@ svg.graph {
 }
 .dep-chip.on {
   background: var(--accent-soft);
-  border-color: #6e7bff55;
+  border-color: #0EA5E955;
   color: var(--accent);
 }
 .dep-chip.draft {
@@ -1348,7 +1348,7 @@ svg.graph {
 }
 .dep-search-input:focus {
   outline: none;
-  border-color: #6e7bff88;
+  border-color: #0EA5E988;
   background: var(--surface-3);
 }
 .dep-search-input::placeholder {
@@ -3330,4 +3330,100 @@ svg.graph {
 [data-theme='light'] .dep-search-field:focus-within {
   background: #E3F0FC;
   border-color: #0EA5E9;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   MOBILE REFINEMENTS (< 900px)
+   Appended last so these override the mobile-first base rules above.
+   Fixes surfaced by mobile viewport testing (390×844 / 360×740):
+   settings reachability, cramped form meta, crushed wave selector,
+   small tap targets, and off-screen accent-colour chips.
+   ═══════════════════════════════════════════════════════════════════════ */
+@media (max-width: 899px) {
+
+  /* ── Settings reachable on mobile ──────────────────────────────────
+     The header gear is the only entry point to project settings, but the
+     base rule hides it (`display:none`) and only the ≥900px block re-shows
+     it. Expose it on mobile too. */
+  .header-settings-btn {
+    display: inline-flex;
+  }
+
+  /* ── Refresh button is redundant on mobile — pull-to-refresh (touch
+     handler in App.tsx) already covers it — so hide it to declutter the
+     header and make room for the settings gear. ─────────────────────── */
+  .header-refresh-btn {
+    display: none;
+  }
+
+  /* ── Bigger header tap targets (was 30–32px → 36px) ──────────────── */
+  .back,
+  .theme-toggle,
+  .header-settings-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  /* ── Tabs: taller, easier to hit ─────────────────────────────────── */
+  .tab {
+    padding: 12px 4px;
+    min-height: 44px;
+  }
+
+  /* ── Wave selector: give the wave tabs the full first row and drop the
+     Tree/Ascunde/Select actions onto their own row below, so waves are
+     no longer crushed into a tiny (and sometimes clipped) scroll strip. */
+  .wave-sel {
+    flex-wrap: wrap;
+  }
+  .wave-actions {
+    flex: 0 0 100%;
+    justify-content: flex-end;
+    margin-top: 8px;
+  }
+  .wave-action-btn {
+    padding: 9px 14px;
+    font-size: 13px;
+  }
+
+  /* ── Issue form meta: stack Temă / Val / Assigned vertically instead of
+     three cramped inline columns (the 3rd was clipped off-screen). ──── */
+  .sh-meta-inline-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .meta-col,
+  .meta-col-theme,
+  .meta-col-wave,
+  .meta-col-assign {
+    flex: none;
+  }
+  .meta-col {
+    padding: 10px 18px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .meta-col:last-child {
+    border-bottom: none;
+  }
+  .meta-vsep {
+    display: none;
+  }
+
+  /* ── Issue form body: single column, shorter description box ───────
+     The 2-column grid already collapses below 900px, but the fixed 560px
+     description height and its column separator are desktop-oriented. */
+  .form-col-desc {
+    border-right: none;
+    padding: 14px 16px 16px;
+  }
+  .desc-fixed {
+    height: 200px;
+  }
+
+  /* ── Settings accent colours: wrap instead of clipping the last
+     swatch(es) off the right edge. ─────────────────────────────────── */
+  .color-chips {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
 }

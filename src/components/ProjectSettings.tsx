@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 
-const ACCENTS = ['#6e7bff', '#3ecf8e', '#ffb454', '#a06eff', '#ff6b6b', '#46d1d9']
+const ACCENTS = ['#0EA5E9', '#3ecf8e', '#ffb454', '#a06eff', '#ff6b6b', '#46d1d9']
 
 export function ProjectSettings() {
   const { project, updateProject, deleteProject } = useHorizontal()
@@ -66,7 +66,7 @@ export function ProjectSettings() {
         </div>
 
         <div className="sheet-section-t">Culoare accent</div>
-        <div className="chips" style={{ margin: '0 0 4px' }}>
+        <div className="chips color-chips" style={{ margin: '0 0 4px' }}>
           {ACCENTS.map((c) => (
             <button key={c} className={`chip ${accent === c ? 'on' : ''}`} onClick={() => setAccent(c)}>
               <span className="cdot" style={{ background: c }} />
