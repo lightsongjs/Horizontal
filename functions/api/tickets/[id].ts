@@ -21,7 +21,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   const headers = sbHeaders(SUPABASE_SERVICE_ROLE_KEY)
 
   const issueRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/issues?id=eq.${encodeURIComponent(id)}&select=id,title,details,theme,wave,done,notes,assignee_id&limit=1`,
+    `${SUPABASE_URL}/rest/v1/issues?id=eq.${encodeURIComponent(id)}&select=id,title,details,theme,wave,done,notes,assignee_id,selectors,scenarios&limit=1`,
     { headers }
   )
   if (!issueRes.ok) {
@@ -51,6 +51,8 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     done: row.done,
     notes: row.notes ?? '',
     assigneeId: row.assignee_id ?? null,
+    selectors: row.selectors ?? [],
+    scenarios: row.scenarios ?? [],
     deps: depsRows.map(r => r.depends_on_id),
   })
 }
