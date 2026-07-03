@@ -91,6 +91,9 @@ export const onRequestPatch: PagesFunction<Env> = async (context) => {
   const issueUpdate = buildIssueUpdate(body)
   const hasDeps = 'deps' in body
   const deps = hasDeps ? (body.deps as string[]) : null
+  if (hasDeps && !Array.isArray(body.deps)) {
+    return Response.json({ error: 'deps_must_be_array' }, { status: 400 })
+  }
 
   if (Object.keys(issueUpdate).length === 0 && !hasDeps) {
     return Response.json({ error: 'no_updatable_fields' }, { status: 400 })
@@ -173,6 +176,12 @@ export const onRequestPatch: PagesFunction<Env> = async (context) => {
     }
   }
 
-  const updatedFields = [...Object.keys(issueUpdate), ...(hasDeps ? ['deps'] : [])]
+  const dbToClient: Record<string, string> = Object.fromEntries(
+    Object.entries(FIELD_MAP).map(([client, db]) => [db, client])
+  )
+  const updatedFields = [
+    ...Object.keys(issueUpdate).map(k => dbToClient[k] ?? k),
+    ...(hasDeps ? ['deps'] : []),
+  ]
   return Response.json({ id, updated: updatedFields })
 }
