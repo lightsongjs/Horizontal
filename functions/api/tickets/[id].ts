@@ -6,6 +6,17 @@ interface Env {
   SUPABASE_SERVICE_ROLE_KEY: string
 }
 
+const FIELD_MAP: Record<string, string> = {
+  title: 'title',
+  desc: 'details',
+  theme: 'theme',
+  wave: 'wave',
+  done: 'done',
+  notes: 'notes',
+  selectors: 'selectors',
+  scenarios: 'scenarios',
+}
+
 function sbHeaders(key: string): Record<string, string> {
   return {
     apikey: key,
@@ -16,18 +27,8 @@ function sbHeaders(key: string): Record<string, string> {
 }
 
 export function buildIssueUpdate(body: Record<string, unknown>): Record<string, unknown> {
-  const fieldMap: Record<string, string> = {
-    title: 'title',
-    desc: 'details',
-    theme: 'theme',
-    wave: 'wave',
-    done: 'done',
-    notes: 'notes',
-    selectors: 'selectors',
-    scenarios: 'scenarios',
-  }
   const update: Record<string, unknown> = {}
-  for (const [clientKey, dbKey] of Object.entries(fieldMap)) {
+  for (const [clientKey, dbKey] of Object.entries(FIELD_MAP)) {
     if (clientKey in body) update[dbKey] = body[clientKey]
   }
   return update
