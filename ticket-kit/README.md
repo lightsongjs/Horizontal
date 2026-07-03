@@ -25,32 +25,41 @@ HORIZONTAL_API_KEY=<cheia din Cloudflare env vars>
 
 ### Comenzi
 
+`--project` acceptă fie numele vizibil din interfață (`Katalist`), fie ID-ul intern (`kata`).
+
 ```bash
+# Listează toate tichetele unui proiect (opțional filtrare pe wave)
+node ticket-kit/ai-client.mjs --list --project Katalist --wave 1
+# output: KATA-01  [wave 1]  Setup DB
+
 # Caută ID-ul unui tichet după titlu
-node ticket-kit/ai-client.mjs --lookup --project KATA --title "Setup DB" --wave 1
+node ticket-kit/ai-client.mjs --lookup --project Katalist --title "Setup DB" --wave 1
 # output: KATA-03   (sau "not_found")
 
-# Creează un tichet (deps = ID-uri reale, obținute via --lookup)
-node ticket-kit/ai-client.mjs --create --project kata --title "Auth flow" --wave 1 --deps KATA-03
+# Creează un tichet
+node ticket-kit/ai-client.mjs --create --project Katalist --title "Auth flow" --wave 1 --deps KATA-03
 # output: KATA-04   (sau "duplicate: KATA-03")
 
-# Listează toate tichetele unui proiect (opțional filtrare pe wave)
-node ticket-kit/ai-client.mjs --list --project KATA --wave 1
-# output: KATA-01  [wave 1]  Setup DB
-#         KATA-02  [wave 1]  ...
+# Vezi toate detaliile unui tichet (desc, deps, selectors, scenarios, notes etc.)
+node ticket-kit/ai-client.mjs --get --id KATA-03
+# output: JSON complet cu toate câmpurile
 ```
 
 ### Flow tipic pentru AI
 
 ```bash
 # 1. Verifică ce există
-node ticket-kit/ai-client.mjs --list --project KATA --wave 1
+node ticket-kit/ai-client.mjs --list --project Katalist --wave 1
 
 # 2. Găsește ID-ul dependinței
-node ticket-kit/ai-client.mjs --lookup --project KATA --title "Setup DB" --wave 1
+node ticket-kit/ai-client.mjs --lookup --project Katalist --title "Setup DB" --wave 1
 # → KATA-03
 
 # 3. Creează tichetul cu deps rezolvate
-node ticket-kit/ai-client.mjs --create --project kata --title "Deploy" --wave 1 --deps KATA-03
+node ticket-kit/ai-client.mjs --create --project Katalist --title "Deploy" --wave 1 --deps KATA-03
 # → KATA-05
+
+# 4. Verifică tichetul creat
+node ticket-kit/ai-client.mjs --get --id KATA-05
+# → JSON cu toate câmpurile confirmate
 ```
