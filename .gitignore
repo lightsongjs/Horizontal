@@ -12,3 +12,4 @@ coverage
 *.log
 *.tsbuildinfo
 .worktrees/
+# ticket-kit/ is versioned here as master copy

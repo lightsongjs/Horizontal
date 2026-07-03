@@ -107,13 +107,32 @@ async function list() {
   }
 }
 
+async function get() {
+  const { id } = flags
+  if (!id) {
+    console.error('Usage: --get --id <ticket-id>')
+    process.exit(1)
+  }
+  const { status, data } = await apiFetch(`/api/tickets/${encodeURIComponent(id)}`)
+  if (status === 200) {
+    console.log(JSON.stringify(data, null, 2))
+  } else if (status === 404) {
+    console.log('not_found')
+  } else {
+    console.error(`Error ${status}: ${JSON.stringify(data)}`)
+    process.exit(1)
+  }
+}
+
 if (flags.lookup !== undefined) {
   await lookup()
 } else if (flags.create !== undefined) {
   await create()
 } else if (flags.list !== undefined) {
   await list()
+} else if (flags.get !== undefined) {
+  await get()
 } else {
-  console.error('Usage: node ai-client.mjs --lookup|--create|--list [options]')
+  console.error('Usage: node ai-client.mjs --lookup|--create|--list|--get [options]')
   process.exit(1)
 }
