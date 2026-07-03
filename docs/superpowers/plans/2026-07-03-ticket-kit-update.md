@@ -217,8 +217,15 @@ export const onRequestPatch: PagesFunction<Env> = async (context) => {
     }
   }
 
-  const updatedFields = [...Object.keys(issueUpdate), ...(hasDeps ? ['deps'] : [])]
+  const dbToClient: Record<string, string> = Object.fromEntries(
+    Object.entries(FIELD_MAP).map(([client, db]) => [db, client])
+  )
+  const updatedFields = [
+    ...Object.keys(issueUpdate).map(k => dbToClient[k] ?? k),
+    ...(hasDeps ? ['deps'] : []),
+  ]
   return Response.json({ id, updated: updatedFields })
+  // Note: updated[] contains client-facing field names (e.g. "desc", not "details")
 }
 ```
 
