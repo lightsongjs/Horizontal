@@ -49,6 +49,9 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       `${SUPABASE_URL}/rest/v1/issues?${filter}&select=id,title,wave,done&order=id.asc`,
       { headers }
     )
+    if (!res.ok) {
+      return Response.json({ error: 'db_error' }, { status: 502 })
+    }
     const data = await res.json() as SupabaseIssue[]
     return Response.json(data)
   }
@@ -67,6 +70,9 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     `${SUPABASE_URL}/rest/v1/issues?project_id=eq.${project}&title=ilike.${encoded}&wave=eq.${waveNum}&select=id,title,wave,done&limit=1`,
     { headers }
   )
+  if (!res.ok) {
+    return Response.json({ error: 'db_error' }, { status: 502 })
+  }
   const data = await res.json() as SupabaseIssue[]
 
   if (!data.length) {
