@@ -90,10 +90,10 @@ export const onRequestPatch: PagesFunction<Env> = async (context) => {
 
   const issueUpdate = buildIssueUpdate(body)
   const hasDeps = 'deps' in body
-  const deps = hasDeps ? (body.deps as string[]) : null
   if (hasDeps && !Array.isArray(body.deps)) {
     return Response.json({ error: 'deps_must_be_array' }, { status: 400 })
   }
+  const deps = hasDeps ? (body.deps as string[]) : null
 
   if (Object.keys(issueUpdate).length === 0 && !hasDeps) {
     return Response.json({ error: 'no_updatable_fields' }, { status: 400 })

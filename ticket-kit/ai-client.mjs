@@ -144,7 +144,10 @@ async function update() {
   }
   if ('done' in flags) body.done = flags.done === 'true'
   if ('notes' in flags) body.notes = flags.notes
-  if ('deps' in flags) body.deps = flags.deps ? String(flags.deps).split(',').map(s => s.trim()).filter(Boolean) : []
+  if ('deps' in flags) {
+    if (flags.deps === true) { console.error('--deps requires a value (use --deps "" to clear all)'); process.exit(1) }
+    body.deps = flags.deps ? String(flags.deps).split(',').map(s => s.trim()).filter(Boolean) : []
+  }
 
   if ('selectors' in flags) {
     try { body.selectors = JSON.parse(flags.selectors) }
