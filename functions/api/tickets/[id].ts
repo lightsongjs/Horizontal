@@ -15,6 +15,24 @@ function sbHeaders(key: string): Record<string, string> {
   }
 }
 
+export function buildIssueUpdate(body: Record<string, unknown>): Record<string, unknown> {
+  const fieldMap: Record<string, string> = {
+    title: 'title',
+    desc: 'details',
+    theme: 'theme',
+    wave: 'wave',
+    done: 'done',
+    notes: 'notes',
+    selectors: 'selectors',
+    scenarios: 'scenarios',
+  }
+  const update: Record<string, unknown> = {}
+  for (const [clientKey, dbKey] of Object.entries(fieldMap)) {
+    if (clientKey in body) update[dbKey] = body[clientKey]
+  }
+  return update
+}
+
 export const onRequestGet: PagesFunction<Env> = async (context) => {
   const id = context.params.id as string
   const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = context.env
