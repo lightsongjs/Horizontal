@@ -124,6 +124,57 @@ async function get() {
   }
 }
 
+// --update --id KATA-03 [--title "..."] [--wave N] [--done true] [--deps ID1,ID2]
+// [--desc "..."] [--notes "..."] [--theme key] [--selectors '[...]'] [--scenarios '[...]']
+// Prints: updated: KATA-03  |  duplicate: KATA-07  |  not_found
+async function update() {
+  const { id } = flags
+  if (!id) {
+    console.error('Usage: --update --id <ticket-id> [--title "..."] [--wave N] [--done true|false] [--deps ID1,ID2] [--desc "..."] [--notes "..."] [--theme key] [--selectors \'[...]\'] [--scenarios \'[...]\']')
+    process.exit(1)
+  }
+
+  const body = {}
+  if ('title' in flags) body.title = flags.title
+  if ('desc' in flags) body.desc = flags.desc
+  if ('theme' in flags) body.theme = flags.theme
+  if ('wave' in flags) body.wave = Number(flags.wave)
+  if ('done' in flags) body.done = flags.done === 'true'
+  if ('notes' in flags) body.notes = flags.notes
+  if ('deps' in flags) body.deps = flags.deps ? String(flags.deps).split(',').map(s => s.trim()).filter(Boolean) : []
+
+  if ('selectors' in flags) {
+    try { body.selectors = JSON.parse(flags.selectors) }
+    catch { console.error('--selectors must be valid JSON array'); process.exit(1) }
+  }
+  if ('scenarios' in flags) {
+    try { body.scenarios = JSON.parse(flags.scenarios) }
+    catch { console.error('--scenarios must be valid JSON array'); process.exit(1) }
+  }
+
+  const knownFields = ['title', 'desc', 'theme', 'wave', 'done', 'notes', 'deps', 'selectors', 'scenarios']
+  if (!knownFields.some(f => f in body)) {
+    console.error('Provide at least one field: --title, --wave, --done, --deps, --desc, --notes, --theme, --selectors, --scenarios')
+    process.exit(1)
+  }
+
+  const { status, data } = await apiFetch(`/api/tickets/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  })
+
+  if (status === 200) {
+    console.log(`updated: ${id}`)
+  } else if (status === 404) {
+    console.log('not_found')
+  } else if (status === 409) {
+    console.log(`duplicate: ${data.existing_id}`)
+  } else {
+    console.error(`Error ${status}: ${JSON.stringify(data)}`)
+    process.exit(1)
+  }
+}
+
 if (flags.lookup !== undefined) {
   await lookup()
 } else if (flags.create !== undefined) {
@@ -132,7 +183,9 @@ if (flags.lookup !== undefined) {
   await list()
 } else if (flags.get !== undefined) {
   await get()
+} else if (flags.update !== undefined) {
+  await update()
 } else {
-  console.error('Usage: node ai-client.mjs --lookup|--create|--list|--get [options]')
+  console.error('Usage: node ai-client.mjs --lookup|--create|--list|--get|--update [options]')
   process.exit(1)
 }
