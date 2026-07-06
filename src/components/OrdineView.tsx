@@ -58,11 +58,23 @@ export function OrdineView() {
         if (confirmDel) { setConfirmDel(false); return }
         if (treeViewActive) { exitTreeView(); return }
         if (selectMode) exitSelectMode()
+        return
+      }
+
+      const target = e.target as HTMLElement
+      if (['INPUT', 'TEXTAREA'].includes(target.tagName) || target.isContentEditable) return
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      if (sheet.kind !== 'none') return  // don't toggle behind an open sheet
+
+      if (e.key === 't' || e.key === 'T') {
+        e.preventDefault()
+        if (treeViewActive) exitTreeView()
+        else { setTreeViewActive(true); exitSelectMode() }
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [selectMode, confirmDel, treeViewActive, exitSelectMode, exitTreeView])
+  }, [selectMode, confirmDel, treeViewActive, exitSelectMode, exitTreeView, sheet.kind])
 
   useEffect(() => { exitTreeView(); setFocusedId(null) }, [activeWave]) // eslint-disable-line react-hooks/exhaustive-deps
 

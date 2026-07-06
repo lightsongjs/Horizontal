@@ -93,6 +93,7 @@ const SHORTCUTS = [
   { key: '1', action: 'Tab → Ordine' },
   { key: '2', action: 'Tab → Graf' },
   { key: '3', action: 'Tab → Teme' },
+  { key: 'T', action: 'Tree View (în Ordine)' },
   { key: '?', action: 'Afișează shortcuts' },
   { key: 'Esc', action: 'Închide modal' },
 ]
