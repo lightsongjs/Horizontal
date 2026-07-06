@@ -6,10 +6,17 @@ interface Props {
   onClose: () => void
 }
 
+// Lowercase + strip diacritics (ă→a, â→a, î→i, ș→s, ț→t, …) so a query
+// like "mada" matches a title like "Mădălin". NFD keeps one base character
+// per letter, so positions stay aligned with the original text in highlight().
+function fold(s: string): string {
+  return s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
+}
+
 function fuzzy(query: string, text: string): boolean {
   if (!query) return true
-  const q = query.toLowerCase()
-  const t = text.toLowerCase()
+  const q = fold(query)
+  const t = fold(text)
   let qi = 0
   for (let i = 0; i < t.length && qi < q.length; i++) {
     if (t[i] === q[qi]) qi++
@@ -19,12 +26,12 @@ function fuzzy(query: string, text: string): boolean {
 
 function highlight(query: string, text: string): React.ReactNode {
   if (!query) return text
-  const q = query.toLowerCase()
+  const q = fold(query)
   const result: React.ReactNode[] = []
   let qi = 0
   let segStart = 0
   for (let i = 0; i < text.length && qi < q.length; i++) {
-    if (text[i].toLowerCase() === q[qi]) {
+    if (fold(text[i]) === q[qi]) {
       if (i > segStart) result.push(text.slice(segStart, i))
       result.push(<mark key={i}>{text[i]}</mark>)
       segStart = i + 1
