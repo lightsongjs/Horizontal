@@ -157,6 +157,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
   const [selectors, setSelectors] = useState<string[]>(existing?.selectors ?? [])
   const [scenarios, setScenarios] = useState<TestScenario[]>(existing?.scenarios ?? [])
   const [notes, setNotes] = useState(existing?.notes ?? '')
+  const [urgent, setUrgent] = useState(existing?.urgent ?? false)
 
   const [showNewTheme, setShowNewTheme] = useState(false)
   const [newThemeName, setNewThemeName] = useState('')
@@ -218,9 +219,10 @@ export function IssueForm({ issueId }: { issueId?: string }) {
       blocks.filter((b) => !b.startsWith('__draft_')).slice().sort().join(',') !== (existing ? issues.filter((i) => i.deps?.includes(existing.id)).map((i) => i.id) : []).slice().sort().join(',') ||
       JSON.stringify(selectors) !== JSON.stringify(existing?.selectors ?? []) ||
       JSON.stringify(scenarios) !== JSON.stringify(existing?.scenarios ?? []) ||
-      notes !== (existing?.notes ?? '')
+      notes !== (existing?.notes ?? '') ||
+      urgent !== (existing?.urgent ?? false)
     : title.trim() !== '' || desc.trim() !== '' || deps.length > 0 || blocks.length > 0 ||
-      selectors.length > 0 || scenarios.length > 0 || notes.trim() !== ''
+      selectors.length > 0 || scenarios.length > 0 || notes.trim() !== '' || urgent
 
   useEffect(() => {
     if (isDirty) {
@@ -374,7 +376,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
         }
       }
       const realDeps = deps.map((id) => draftDepMap[id] ?? (id.startsWith('__draft_') ? null : id)).filter(Boolean) as string[]
-      const qaPayload = { selectors: selectors.filter(Boolean), scenarios, notes: notes.trim(), assigneeId }
+      const qaPayload = { selectors: selectors.filter(Boolean), scenarios, notes: notes.trim(), assigneeId, urgent }
       const targetId = isEdit
         ? (await updateIssue(existing!.id, { title: title.trim(), desc: desc.trim(), theme, wave, deps: realDeps, ...qaPayload }), existing!.id)
         : (await createIssue({ projectId: project.id, title: title.trim(), desc: desc.trim(), theme, wave, deps: realDeps, ...qaPayload })).id
@@ -399,7 +401,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
         return i
       })
       if (!snap.find((i) => i.id === targetId)) {
-        snap = [...snap, { id: targetId, projectId: project.id, title: title.trim(), desc: desc.trim(), theme, wave, deps: realDeps, done: false, selectors: selectors.filter(Boolean), scenarios, notes: notes.trim(), assigneeId, urgent: false }]
+        snap = [...snap, { id: targetId, projectId: project.id, title: title.trim(), desc: desc.trim(), theme, wave, deps: realDeps, done: false, selectors: selectors.filter(Boolean), scenarios, notes: notes.trim(), assigneeId, urgent }]
       }
       const cascadeQueue = [...realDeps]
       const cascadeSeen = new Set<string>()
@@ -555,6 +557,23 @@ export function IssueForm({ issueId }: { issueId?: string }) {
                 })()}
                 <button tabIndex={-1} className="if-meta-add" onClick={() => setShowAssigneeInline((v) => !v)}>
                   {showAssigneeInline ? '×' : '+'}
+                </button>
+              </div>
+            </div>
+
+            <div className="meta-vsep" />
+
+            <div className="meta-col meta-col-urgent">
+              <span className="meta-row-label">Prioritate</span>
+              <div className="pills-row">
+                <button
+                  tabIndex={-1}
+                  type="button"
+                  className={`if-meta-pill urgent-pill ${urgent ? 'active' : ''}`}
+                  onClick={() => setUrgent((v) => !v)}
+                  title={urgent ? 'Scoate urgența' : 'Marchează urgent'}
+                >
+                  ⚡ Urgent
                 </button>
               </div>
             </div>
