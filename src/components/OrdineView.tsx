@@ -24,10 +24,16 @@ export function OrdineView() {
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [confirmDel, setConfirmDel] = useState(false)
-  const [hideDone, setHideDone] = useState(false)
+  const [hideDone, setHideDone] = useState(
+    () => localStorage.getItem('horizontal:hide-done') === '1'
+  )
   const [treeViewActive, setTreeViewActive] = useState(false)
   const [treeHighlightId, setTreeHighlightId] = useState<string | null>(null)
   const [focusedId, setFocusedId] = useState<string | null>(null)
+
+  useEffect(() => {
+    localStorage.setItem('horizontal:hide-done', hideDone ? '1' : '0')
+  }, [hideDone])
 
   const exitSelectMode = useCallback(() => {
     setSelectMode(false)
