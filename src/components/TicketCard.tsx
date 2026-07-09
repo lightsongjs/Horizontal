@@ -68,6 +68,7 @@ export function TicketCard({ id, contextWave, selectMode, isSelected, onToggleSe
         {theme && <span className="theme-dot" style={{ background: theme.color }} />}
         <span className="tk-id">{id}</span>
         {theme && <span className="tk-theme">{theme.name}</span>}
+        {it.urgent && <span className="tk-urgent" title="Urgent">⚡</span>}
       </div>
       <h5>{it.title}</h5>
       {(sameWave.length > 0 || crossWave.length > 0) && (
