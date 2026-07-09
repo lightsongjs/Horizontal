@@ -1,10 +1,10 @@
 import { useState, useCallback, useEffect, useMemo } from 'react'
-import { layerKeys } from '../lib/engine'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { TicketCard } from './TicketCard'
 import { WaveTabs } from './WaveTabs'
 import { getRelatedIds } from '../lib/treeTraversal'
+import { useHideDone, useOrderedLayers } from '../hooks'
 
 const LAYER_COLORS = [
   '#3ecf8e', // 0 — green (start here)
@@ -18,23 +18,16 @@ const LAYER_COLORS = [
 ]
 
 export function OrdineView() {
-  const { waves, issues, activeWave, layers, deleteIssue, updateIssue, byId } = useHorizontal()
+  const { waves, activeWave, deleteIssue, updateIssue, byId } = useHorizontal()
   const { openEditIssue, sheet } = useUI()
-  const keys = layerKeys(layers)
 
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [confirmDel, setConfirmDel] = useState(false)
-  const [hideDone, setHideDone] = useState(
-    () => localStorage.getItem('horizontal:hide-done') === '1'
-  )
+  const [hideDone, toggleHideDone] = useHideDone()
   const [treeViewActive, setTreeViewActive] = useState(false)
   const [treeHighlightId, setTreeHighlightId] = useState<string | null>(null)
   const [focusedId, setFocusedId] = useState<string | null>(null)
-
-  useEffect(() => {
-    localStorage.setItem('horizontal:hide-done', hideDone ? '1' : '0')
-  }, [hideDone])
 
   const exitSelectMode = useCallback(() => {
     setSelectMode(false)
@@ -85,15 +78,8 @@ export function OrdineView() {
 
   useEffect(() => { exitTreeView(); setFocusedId(null) }, [activeWave]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const flatLayers = useMemo(() =>
-    keys
-      .map((L) => {
-        const ids = layers[L]
-        return hideDone ? ids.filter((id) => !byId[id]?.done) : ids
-      })
-      .filter((layer) => layer.length > 0),
-    [keys, layers, hideDone, byId]
-  )
+  const orderedLayers = useOrderedLayers(hideDone)
+  const flatLayers = useMemo(() => orderedLayers.map((g) => g.ids), [orderedLayers])
 
   // Scroll focused card into view
   useEffect(() => {
@@ -207,7 +193,7 @@ export function OrdineView() {
           </button>
           <button
             className={`wave-action-btn ${hideDone ? 'active' : ''}`}
-            onClick={() => setHideDone((h) => !h)}
+            onClick={toggleHideDone}
             title={hideDone ? 'Arată tichetele completate' : 'Ascunde tichetele completate'}
           >
             {hideDone ? (
@@ -239,31 +225,26 @@ export function OrdineView() {
         <p className="empty">Niciun val încă. Apasă ⚙ ca să adaugi primul val (sprint).</p>
       ) : (
         <>
-          {keys.length === 0 ? (
+          {orderedLayers.length === 0 ? (
             <p className="empty">Niciun tichet în acest val. Apasă + ca să adaugi unul.</p>
           ) : (
-            keys.map((L, i) => {
-              const ids = layers[L]
-              const visibleIds = hideDone
-                ? ids.filter((id) => !issues.find((iss) => iss.id === id)?.done)
-                : ids
-              if (hideDone && visibleIds.length === 0) return null
+            orderedLayers.map((g, i) => {
               const ready = i === 0
               const color = LAYER_COLORS[i % LAYER_COLORS.length]
               return (
-                <div key={L} className={`layer ${ready ? 'ready' : ''}`} style={{ '--layer-color': color } as React.CSSProperties}>
+                <div key={g.L} className={`layer ${ready ? 'ready' : ''}`} style={{ '--layer-color': color } as React.CSSProperties}>
                   <div className="layer-head">
-                    <div className="layer-num">{L + 1}</div>
+                    <div className="layer-num">{g.L + 1}</div>
                     <div>
-                      <h4>{ready ? 'Începe aici' : `Layer ${L + 1}`}</h4>
+                      <h4>{ready ? 'Începe aici' : `Layer ${g.L + 1}`}</h4>
                       <div className="sub">
-                        {ready ? 'Nu depinde de nimic din acest val' : `Depinde de layer ${L}`} · {ids.length}{' '}
+                        {ready ? 'Nu depinde de nimic din acest val' : `Depinde de layer ${g.L}`} · {g.ids.length}{' '}
                         tichete
                       </div>
                     </div>
                     {ready && <span className="badge-now">Acum</span>}
                   </div>
-                  {visibleIds.map((id) => (
+                  {g.ids.map((id) => (
                     <TicketCard
                       key={id}
                       id={id}
