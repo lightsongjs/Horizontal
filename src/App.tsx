@@ -91,8 +91,9 @@ const SHORTCUTS = [
   { key: 'O', action: 'Caută tichet' },
   { key: 'P', action: 'Proiect nou' },
   { key: '1', action: 'Tab → Ordine' },
-  { key: '2', action: 'Tab → Graf' },
-  { key: '3', action: 'Tab → Teme' },
+  { key: '2', action: 'Tab → List' },
+  { key: '3', action: 'Tab → Graf' },
+  { key: '4', action: 'Tab → Teme' },
   { key: 'T', action: 'Tree View (în Ordine)' },
   { key: '?', action: 'Afișează shortcuts' },
   { key: 'Esc', action: 'Închide modal' },
@@ -204,8 +205,9 @@ function Shell() {
       else if (e.key === 'p' || e.key === 'P') { e.preventDefault(); openNewProject() }
       else if (e.key === '?') { e.preventDefault(); setShowShortcuts(v => !v) }
       else if (e.key === '1' && project) { e.preventDefault(); setTab('ordine') }
-      else if (e.key === '2' && project) { e.preventDefault(); setTab('graf') }
-      else if (e.key === '3' && project) { e.preventDefault(); setTab('teme') }
+      else if (e.key === '2' && project) { e.preventDefault(); setTab('list') }
+      else if (e.key === '3' && project) { e.preventDefault(); setTab('graf') }
+      else if (e.key === '4' && project) { e.preventDefault(); setTab('teme') }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
