@@ -113,4 +113,24 @@ describe('localRepository', () => {
     const reloaded = (await repo.listIssues('tst')).find((i) => i.id === created.id)!
     expect(reloaded.urgent).toBe(true)
   })
+
+  it('backfills urgent=false for legacy issues persisted without the field', async () => {
+    // Seed localStorage with a DB whose issue predates the urgent field.
+    const legacy = {
+      projects: [
+        { id: 'leg', name: 'L', description: '', prefix: 'LEG', currentWave: 1, accent: '#0EA5E9', type: 'personal' },
+      ],
+      waves: [{ projectId: 'leg', number: 1, name: 'Val 1', label: 'MVP', position: 0 }],
+      themes: [],
+      issues: [
+        { id: 'LEG-01', projectId: 'leg', title: 'Old', desc: '', theme: '', wave: 1, deps: [], done: false, selectors: [], scenarios: [], notes: '', assigneeId: null },
+      ] as unknown[],
+      assignees: [],
+    }
+    localStorage.setItem('horizontal:v2', JSON.stringify(legacy))
+
+    const repo = createLocalRepository()
+    const issue = (await repo.listIssues('leg')).find((i) => i.id === 'LEG-01')!
+    expect(issue.urgent).toBe(false)
+  })
 })
