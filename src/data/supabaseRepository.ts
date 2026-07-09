@@ -18,6 +18,7 @@ interface IssueRow {
   scenarios: unknown
   notes: string
   assignee_id: string | null
+  urgent: boolean
 }
 
 function rowToIssue(row: IssueRow, depsByIssue: Record<string, string[]>): Issue {
@@ -34,7 +35,7 @@ function rowToIssue(row: IssueRow, depsByIssue: Record<string, string[]>): Issue
     scenarios: Array.isArray(row.scenarios) ? (row.scenarios as { text: string; kind: string }[]).map((s) => ({ text: s.text, kind: s.kind as import('../lib/types').ScenarioKind })) : [],
     notes: row.notes ?? '',
     assigneeId: row.assignee_id ?? null,
-    urgent: false,
+    urgent: row.urgent ?? false,
   }
 }
 
@@ -250,6 +251,7 @@ export function createSupabaseRepository(): Repository {
         scenarios: issue.scenarios,
         notes: issue.notes,
         assignee_id: input.assigneeId ?? null,
+        urgent: issue.urgent,
       })
       if (error) throw error
       if (issue.deps.length) {
@@ -272,6 +274,7 @@ export function createSupabaseRepository(): Repository {
       if (patch.scenarios !== undefined) row.scenarios = patch.scenarios
       if (patch.notes !== undefined) row.notes = patch.notes
       if ('assigneeId' in patch) row.assignee_id = patch.assigneeId ?? null
+      if ('urgent' in patch) row.urgent = patch.urgent ?? false
       if (Object.keys(row).length) {
         const { error } = await db.from('issues').update(row).eq('id', id)
         if (error) throw error
