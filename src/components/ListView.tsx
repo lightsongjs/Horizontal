@@ -42,7 +42,7 @@ export function ListView() {
               const state = stateOf(id)
               const theme = it.theme ? themeOf(it.theme) : undefined
               return (
-                <div key={id} className={`list-row ${state}`} onClick={() => openEditIssue(id)}>
+                <button type="button" key={id} className={`list-row ${state}`} onClick={() => openEditIssue(id)}>
                   <span
                     className="list-check"
                     role="checkbox"
@@ -56,7 +56,7 @@ export function ListView() {
                   <span className="list-id">{id}</span>
                   <span className="list-title">{it.title}</span>
                   {it.urgent && <span className="tk-urgent" title="Urgent">⚡</span>}
-                </div>
+                </button>
               )
             })}
           </div>
