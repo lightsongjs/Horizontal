@@ -4,7 +4,15 @@ import { buildOrderedLayers, type OrderedLayer } from './lib/ordering'
 
 const HIDE_DONE_KEY = 'horizontal:hide-done'
 
-/** localStorage-backed "hide completed" toggle, shared across views. */
+/**
+ * localStorage-backed "hide completed" toggle, shared across views.
+ *
+ * State is seeded from localStorage only on mount. This keeps the board and
+ * list tabs in sync BECAUSE they are conditionally rendered (one mounted at a
+ * time) — switching tabs remounts the other view, which re-reads the persisted
+ * value. If both views were ever kept mounted (e.g. display:none tabs), the two
+ * independent useState copies would drift; lift the state to context first.
+ */
 export function useHideDone(): [boolean, () => void] {
   const [hideDone, setHideDone] = useState(
     () => localStorage.getItem(HIDE_DONE_KEY) === '1',
