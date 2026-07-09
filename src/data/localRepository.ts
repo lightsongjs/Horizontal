@@ -24,7 +24,13 @@ function load(): DB {
     const raw = localStorage.getItem(KEY)
     if (raw) {
       const db = JSON.parse(raw) as Partial<DB>
-      return { projects: db.projects ?? [], waves: db.waves ?? [], themes: db.themes ?? [], issues: db.issues ?? [], assignees: db.assignees ?? [] }
+      return {
+        projects: db.projects ?? [],
+        waves: db.waves ?? [],
+        themes: db.themes ?? [],
+        issues: (db.issues ?? []).map((i) => ({ ...i, urgent: i.urgent ?? false })),
+        assignees: db.assignees ?? [],
+      }
     }
   } catch {
     /* fall through to seed */
@@ -182,6 +188,7 @@ export function createLocalRepository(): Repository {
         scenarios: [],
         notes: '',
         assigneeId: input.assigneeId ?? null,
+        urgent: input.urgent ?? false,
       }
       db.issues.push(issue)
       save(db)

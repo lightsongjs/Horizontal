@@ -100,4 +100,17 @@ describe('localRepository', () => {
     expect(issues.map((i) => i.id)).toEqual([b.id])
     expect(issues[0].deps).toEqual([])
   })
+
+  it('createIssue defaults urgent to false; updateIssue toggles it', async () => {
+    const repo = createLocalRepository()
+    await repo.createProject({ name: 'T', description: '', prefix: 'TST' })
+    const created = await repo.createIssue({ projectId: 'tst', title: 'Task' })
+    expect(created.urgent).toBe(false)
+
+    const updated = await repo.updateIssue(created.id, { urgent: true })
+    expect(updated.urgent).toBe(true)
+
+    const reloaded = (await repo.listIssues('tst')).find((i) => i.id === created.id)!
+    expect(reloaded.urgent).toBe(true)
+  })
 })
