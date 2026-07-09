@@ -16,6 +16,7 @@ function makeIssue(id: string, deps: string[] = []): Issue {
     scenarios: [],
     notes: '',
     assigneeId: null,
+    urgent: false,
   }
 }
 

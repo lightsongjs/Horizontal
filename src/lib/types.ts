@@ -65,6 +65,8 @@ export interface Issue {
   scenarios: TestScenario[]
   notes: string
   assigneeId: string | null
+  /** Urgent issues sort left within their layer. Default false. */
+  urgent: boolean
 }
 
 /** Output of computeLayers: layer depth -> issue ids, ordered within layer. */

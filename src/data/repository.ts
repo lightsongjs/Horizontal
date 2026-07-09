@@ -22,6 +22,7 @@ export interface NewIssue {
   scenarios?: { text: string; kind: string }[]
   notes?: string
   assigneeId?: string | null
+  urgent?: boolean
 }
 
 export interface Repository {

@@ -337,7 +337,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
     const prospective: Issue[] = issues.map((i) => ({ ...i, deps: [...(i.deps ?? [])] }))
     let target = prospective.find((i) => i.id === targetId)
     if (!target) {
-      target = { id: targetId, projectId: project.id, title, desc: '', theme, wave, deps: [], done: false, selectors: [], scenarios: [], notes: '', assigneeId: null }
+      target = { id: targetId, projectId: project.id, title, desc: '', theme, wave, deps: [], done: false, selectors: [], scenarios: [], notes: '', assigneeId: null, urgent: false }
       prospective.push(target)
     }
     target.deps = [...deps.filter((d) => !d.startsWith('__draft_'))]
@@ -399,7 +399,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
         return i
       })
       if (!snap.find((i) => i.id === targetId)) {
-        snap = [...snap, { id: targetId, projectId: project.id, title: title.trim(), desc: desc.trim(), theme, wave, deps: realDeps, done: false, selectors: selectors.filter(Boolean), scenarios, notes: notes.trim(), assigneeId }]
+        snap = [...snap, { id: targetId, projectId: project.id, title: title.trim(), desc: desc.trim(), theme, wave, deps: realDeps, done: false, selectors: selectors.filter(Boolean), scenarios, notes: notes.trim(), assigneeId, urgent: false }]
       }
       const cascadeQueue = [...realDeps]
       const cascadeSeen = new Set<string>()
