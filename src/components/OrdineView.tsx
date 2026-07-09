@@ -3,6 +3,7 @@ import { layerKeys } from '../lib/engine'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { TicketCard } from './TicketCard'
+import { WaveTabs } from './WaveTabs'
 import { getRelatedIds } from '../lib/treeTraversal'
 
 const LAYER_COLORS = [
@@ -17,8 +18,8 @@ const LAYER_COLORS = [
 ]
 
 export function OrdineView() {
-  const { waves, issues, activeWave, setActiveWave, layers, deleteIssue, updateIssue, byId } = useHorizontal()
-  const { openWaveManage, openEditIssue, sheet } = useUI()
+  const { waves, issues, activeWave, layers, deleteIssue, updateIssue, byId } = useHorizontal()
+  const { openEditIssue, sheet } = useUI()
   const keys = layerKeys(layers)
 
   const [selectMode, setSelectMode] = useState(false)
@@ -191,28 +192,7 @@ export function OrdineView() {
   return (
     <div className="panel">
       <div className="wave-sel">
-        <div className="wave-tabs">
-          {waves.map((w) => {
-            const cnt = issues.filter((i) => i.wave === w.number).length
-            return (
-              <button
-                key={w.number}
-                className={`wbtn ${w.number === activeWave ? 'on' : ''}`}
-                onClick={() => { setActiveWave(w.number); exitSelectMode() }}
-              >
-                <span className="wname">{w.name}</span>
-                <span className="wsub">
-                  {w.label ? `${w.label} · ` : ''}
-                  {cnt}
-                </span>
-              </button>
-            )
-          })}
-          <button className="wbtn wmanage" aria-label="Gestionează valuri" onClick={openWaveManage}>
-            <span className="wname">⚙</span>
-            <span className="wsub">valuri</span>
-          </button>
-        </div>
+        <WaveTabs onWaveChange={exitSelectMode} />
         <div className="wave-actions">
           <button
             className={`wave-action-btn ${treeViewActive ? 'active' : ''}`}
