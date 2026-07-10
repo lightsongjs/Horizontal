@@ -710,6 +710,32 @@ main {
 .wbtn.on .wname {
   color: var(--accent);
 }
+/* Scratchpad: not a delivery wave — compact, dashed, de-emphasized. */
+.wbtn.wscratch {
+  padding: 9px 11px;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  color: var(--txt-faint);
+  border-style: dashed;
+}
+.wbtn.wscratch .wname {
+  font-size: 16px;
+}
+.wbtn.wscratch .wsub {
+  letter-spacing: 0;
+}
+/* Selected Scratchpad stays quiet: solid border to show focus, no accent gradient. */
+.wbtn.wscratch.on {
+  background: var(--surface);
+  border-style: solid;
+  border-color: var(--line);
+  color: var(--txt-dim);
+}
+.wbtn.wscratch.on .wsub,
+.wbtn.wscratch.on .wname {
+  color: var(--txt-dim);
+}
 
 /* BOTTOM SHEET */
 .sheet-bg {

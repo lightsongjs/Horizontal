@@ -9,18 +9,18 @@ export function WaveTabs({ onWaveChange }: { onWaveChange?: () => void }) {
     <div className="wave-tabs">
       {waves.map((w) => {
         const cnt = issues.filter((i) => i.wave === w.number).length
+        const isScratch = w.number === 0
         return (
           <button
             key={w.number}
-            className={`wbtn ${w.number === activeWave ? 'on' : ''}`}
+            className={`wbtn ${isScratch ? 'wscratch' : ''} ${w.number === activeWave ? 'on' : ''}`}
             onClick={() => { setActiveWave(w.number); onWaveChange?.() }}
+            title={isScratch ? w.name : undefined}
+            aria-label={isScratch ? w.name : undefined}
           >
-            <span className="wname">
-              {w.number === 0 ? '📝' : '🌊'} {w.name}
-            </span>
+            <span className="wname">{isScratch ? '📝' : `🌊 ${w.name}`}</span>
             <span className="wsub">
-              {w.label ? `${w.label} · ` : ''}
-              {cnt}
+              {isScratch ? cnt : `${w.label ? `${w.label} · ` : ''}${cnt}`}
             </span>
           </button>
         )
