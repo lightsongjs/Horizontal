@@ -15,7 +15,9 @@ export function WaveTabs({ onWaveChange }: { onWaveChange?: () => void }) {
             className={`wbtn ${w.number === activeWave ? 'on' : ''}`}
             onClick={() => { setActiveWave(w.number); onWaveChange?.() }}
           >
-            <span className="wname">{w.name}</span>
+            <span className="wname">
+              {w.number === 0 ? '📝' : '🌊'} {w.name}
+            </span>
             <span className="wsub">
               {w.label ? `${w.label} · ` : ''}
               {cnt}
