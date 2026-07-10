@@ -79,7 +79,8 @@ export function createLocalRepository(): Repository {
         type: input.type ?? 'personal',
       }
       db.projects.push(project)
-      db.waves.push({ projectId: id, number: 1, name: 'Val 1', label: 'MVP', position: 0 })
+      db.waves.push({ projectId: id, number: 0, name: 'Scratchpad', label: '', position: 0 })
+      db.waves.push({ projectId: id, number: 1, name: 'Val 1', label: 'MVP', position: 1 })
       save(db)
       return clone(project)
     },
@@ -131,6 +132,7 @@ export function createLocalRepository(): Repository {
     },
 
     async deleteWave(projectId, number) {
+      if (number === 0) throw new Error('The Scratchpad wave cannot be deleted')
       const db = load()
       db.waves = db.waves.filter((w) => !(w.projectId === projectId && w.number === number))
       save(db)

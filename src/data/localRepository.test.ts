@@ -29,12 +29,14 @@ describe('localRepository', () => {
     expect(projects.map((p) => p.id)).toContain('demo')
   })
 
-  it('createProject adds the project and an initial Val 1 wave', async () => {
+  it('createProject adds the project with a Scratchpad + Val 1 wave', async () => {
     const repo = createLocalRepository()
     const p = await repo.createProject({ name: 'Test', description: '', prefix: 'TST' })
     expect(p.id).toBe('tst')
+    expect(p.currentWave).toBe(1)
     expect(await repo.listWaves('tst')).toEqual([
-      { projectId: 'tst', number: 1, name: 'Val 1', label: 'MVP', position: 0 },
+      { projectId: 'tst', number: 0, name: 'Scratchpad', label: '', position: 0 },
+      { projectId: 'tst', number: 1, name: 'Val 1', label: 'MVP', position: 1 },
     ])
   })
 
@@ -43,7 +45,7 @@ describe('localRepository', () => {
     await repo.createProject({ name: 'T', description: '', prefix: 'TST' })
 
     const w2 = await repo.createWave('tst', 'Val 2', 'Next')
-    expect(w2).toMatchObject({ number: 2, position: 1, name: 'Val 2', label: 'Next' })
+    expect(w2).toMatchObject({ number: 2, position: 2, name: 'Val 2', label: 'Next' })
 
     await repo.updateWave('tst', 2, { name: 'Sprint 2' })
     expect((await repo.listWaves('tst')).find((w) => w.number === 2)!.name).toBe('Sprint 2')
@@ -112,6 +114,13 @@ describe('localRepository', () => {
 
     const reloaded = (await repo.listIssues('tst')).find((i) => i.id === created.id)!
     expect(reloaded.urgent).toBe(true)
+  })
+
+  it('deleteWave refuses to delete the Scratchpad (wave 0)', async () => {
+    const repo = createLocalRepository()
+    await repo.createProject({ name: 'T', description: '', prefix: 'TST' })
+    await expect(repo.deleteWave('tst', 0)).rejects.toThrow(/scratchpad/i)
+    expect((await repo.listWaves('tst')).some((w) => w.number === 0)).toBe(true)
   })
 
   it('backfills urgent=false for legacy issues persisted without the field', async () => {
