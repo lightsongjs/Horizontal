@@ -656,21 +656,17 @@ main {
 /* WAVE SELECTOR */
 .wave-sel {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
   margin-bottom: 14px;
 }
+/* Wrap onto as many rows as needed so every wave is reachable without
+   horizontal scrolling (which hid the last tabs when there were many). */
 .wave-tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   flex: 1;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  padding-bottom: 2px;
-  scrollbar-width: none;
-}
-.wave-tabs::-webkit-scrollbar {
-  display: none;
 }
 .wave-actions {
   display: flex;
