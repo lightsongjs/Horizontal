@@ -136,7 +136,7 @@ function AssigneeSearch({ assigneeId, assignees, myAssigneeId, onSelect, onSetMe
 
 export function IssueForm({ issueId }: { issueId?: string }) {
   const { project, waves, themes, issues, byId, activeWave, createIssue, updateIssue, deleteIssue, createTheme, assignees, myAssigneeId, setMyAssigneeId, createAssignee } = useHorizontal()
-  const { closeSheet, setCloseGuard, pushSheet } = useUI()
+  const { closeSheet, setCloseGuard, pushSheet, openEditIssue } = useUI()
   const existing = issueId ? byId[issueId] : undefined
   const isEdit = !!existing
 
@@ -235,7 +235,10 @@ export function IssueForm({ issueId }: { issueId?: string }) {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') save()
+      if (e.metaKey || e.ctrlKey) {
+        if (e.key === 'Enter') { e.preventDefault(); void save({ close: true }) }
+        else if (e.key.toLowerCase() === 's') { e.preventDefault(); void save({ close: false }) }
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -355,7 +358,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
     return cycle ? cycle.map(titleOf).join(' → ') : null
   }
 
-  const save = async () => {
+  const save = async ({ close }: { close: boolean }) => {
     if (!title.trim() || saving) return
     const cyc = cycleAfterSave()
     if (cyc) { setCycleMsg(cyc); return }
@@ -419,7 +422,23 @@ export function IssueForm({ issueId }: { issueId?: string }) {
         }
       }
 
-      setCloseGuard(null); closeSheet()
+      setCloseGuard(null)
+      if (close) {
+        closeSheet()
+      } else {
+        // Stay open: reconcile inline drafts to their real ids so their cards
+        // become clickable and the form is no longer dirty.
+        setDeps(realDeps)
+        setBlocks(realBlocks)
+        setDraftDeps([])
+        setDraftBlocks([])
+        // A brand-new card must adopt the id it was just created under, so a
+        // second save updates it instead of creating a duplicate. Switching the
+        // sheet's issueId remounts the form in edit mode (SheetHost keys it by
+        // issueId). Existing cards already have the right id — leave the sheet
+        // (and any navigation stack) as-is.
+        if (!isEdit) openEditIssue(targetId)
+      }
     } finally { setSaving(false) }
   }
 
@@ -480,9 +499,9 @@ export function IssueForm({ issueId }: { issueId?: string }) {
         <button
           tabIndex={-1}
           className={`sh-save${isDirty ? ' dirty' : ''}`}
-          onClick={save}
+          onClick={() => void save({ close: false })}
           disabled={!title.trim() || saving || waves.length === 0}
-          title={saving ? 'Se salvează…' : 'Salvează'}
+          title={saving ? 'Se salvează…' : 'Salvează (Ctrl+S) · Ctrl+Enter salvează și închide'}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <line x1="12" y1="19" x2="12" y2="5"/>
