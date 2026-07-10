@@ -45,6 +45,7 @@ export function TicketCard({ id, contextWave, selectMode, isSelected, onToggleSe
 
   return (
     <button
+      // Same class grammar as ListView.tsx (row variant) — keep in sync.
       className={`tk ${state}${isSelected ? ' selected' : ''}${selectMode ? ' in-select' : ''}${treeClass}${focused ? ' vim-focused' : ''}`}
       onClick={handleClick}
       data-title={it.title}

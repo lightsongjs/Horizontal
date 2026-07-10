@@ -65,6 +65,7 @@ export function ListView() {
                     ? ' tree-highlight'
                     : ' tree-dim'
                 : ''
+              // Same class grammar as TicketCard.tsx (card variant) — keep in sync.
               const cls =
                 `list-row ${state}` +
                 (isSelected ? ' selected' : '') +
