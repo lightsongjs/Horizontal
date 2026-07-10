@@ -1,21 +1,24 @@
 import { useState } from 'react'
+import { toRoman } from '../lib/roman'
 import { useHorizontal } from '../store'
 
 export function WaveManager() {
   const { waves, issues, createWave, renameWave, deleteWave } = useHorizontal()
-  const [newName, setNewName] = useState('')
   const [newLabel, setNewLabel] = useState('')
   const [busy, setBusy] = useState(false)
   const [confirmDel, setConfirmDel] = useState<number | null>(null)
   const [blocked, setBlocked] = useState<number | null>(null)
 
+  // Scratchpad (wave 0) is not a delivery wave — it never appears here.
+  const deliveryWaves = waves.filter((w) => w.number !== 0)
+  const nextRoman = toRoman(deliveryWaves.length + 1)
+
   const add = async () => {
-    const name = newName.trim()
-    if (!name || busy) return
+    if (busy) return
     setBusy(true)
     try {
-      await createWave(name, newLabel.trim())
-      setNewName('')
+      // The name is the auto-assigned Roman numeral; the label is the optional sub-text.
+      await createWave(nextRoman, newLabel.trim())
       setNewLabel('')
     } finally {
       setBusy(false)
@@ -41,39 +44,32 @@ export function WaveManager() {
       <div className="sheet-head">
         <div className="eyebrow">⚙ Valuri</div>
         <h2>Gestionează valurile</h2>
-        <p>Valurile sunt sprinturile proiectului. Adaugă, redenumește sau șterge.</p>
+        <p>Valurile sunt sprinturile proiectului. Numerotarea (I, II, III…) e automată; eticheta e opțională.</p>
       </div>
       <div className="sheet-scroll">
-        <div className="sheet-section-t">Valuri existente ({waves.length})</div>
-        {waves.length === 0 && <p className="empty" style={{ padding: '8px 0' }}>Niciun val încă.</p>}
-        {waves.map((w) => (
+        <div className="sheet-section-t">Valuri existente ({deliveryWaves.length})</div>
+        {deliveryWaves.length === 0 && (
+          <p className="empty" style={{ padding: '8px 0' }}>Niciun val încă.</p>
+        )}
+        {deliveryWaves.map((w, i) => (
           <div key={w.number} className="wave-edit">
-            <input
-              defaultValue={w.name}
-              aria-label="Nume val"
-              onBlur={(e) => {
-                const v = e.target.value.trim()
-                if (v && v !== w.name) void renameWave(w.number, v, w.label)
-              }}
-            />
+            <span className="wave-roman" aria-label={`Valul ${toRoman(i + 1)}`}>{toRoman(i + 1)}</span>
             <input
               defaultValue={w.label}
               aria-label="Sub-etichetă"
-              placeholder="etichetă"
+              placeholder="etichetă (opțional)"
               onBlur={(e) => {
                 if (e.target.value !== w.label) void renameWave(w.number, w.name, e.target.value.trim())
               }}
             />
-            {w.number !== 0 && (
-              <button
-                className="wave-del"
-                aria-label="Șterge val"
-                title={count(w.number) > 0 ? `${count(w.number)} tichete în acest val` : 'Șterge'}
-                onClick={() => onDelete(w.number)}
-              >
-                {confirmDel === w.number ? 'Sigur?' : '🗑'}
-              </button>
-            )}
+            <button
+              className="wave-del"
+              aria-label="Șterge val"
+              title={count(w.number) > 0 ? `${count(w.number)} tichete în acest val` : 'Șterge'}
+              onClick={() => onDelete(w.number)}
+            >
+              {confirmDel === w.number ? 'Sigur?' : '🗑'}
+            </button>
           </div>
         ))}
         {blocked !== null && (
@@ -85,14 +81,14 @@ export function WaveManager() {
 
         <div className="sheet-section-t">Adaugă val nou</div>
         <div className="inline-new">
-          <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nume (ex: Val 2)" />
+          <span className="wave-roman" aria-label={`Următorul val: ${nextRoman}`}>{nextRoman}</span>
           <input
             value={newLabel}
             onChange={(e) => setNewLabel(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && add()}
             placeholder="etichetă (opțional)"
           />
-          <button onClick={add} disabled={!newName.trim() || busy}>
+          <button onClick={add} disabled={busy}>
             Adaugă
           </button>
         </div>

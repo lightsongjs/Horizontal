@@ -1,22 +1,11 @@
+import { toRoman } from '../lib/roman'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 
-/** Delivery waves are labelled by Roman numeral (I, II, III…) in position order. */
-function toRoman(n: number): string {
-  const map: [number, string][] = [
-    [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I'],
-  ]
-  let out = ''
-  for (const [value, symbol] of map) {
-    while (n >= value) {
-      out += symbol
-      n -= value
-    }
-  }
-  return out
-}
-
-/** The wave selector row (wave buttons + manage gear). Shared by board + list. */
+/**
+ * The wave selector row (wave buttons + manage gear). Shared by board + list.
+ * Delivery waves are labelled by Roman numeral (I, II, III…) in position order.
+ */
 export function WaveTabs({ onWaveChange }: { onWaveChange?: () => void }) {
   const { waves, issues, activeWave, setActiveWave } = useHorizontal()
   const { openWaveManage } = useUI()
