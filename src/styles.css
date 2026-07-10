@@ -697,6 +697,17 @@ main {
   text-transform: uppercase;
   color: var(--txt-faint);
 }
+/* All delivery-wave tabs share one standard width; long labels truncate. */
+.wbtn:not(.wscratch):not(.wmanage) {
+  box-sizing: border-box;
+  width: 112px;
+}
+.wbtn:not(.wscratch):not(.wmanage) .wsub {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .wbtn.on {
   background: linear-gradient(135deg, #0EA5E922, #06B6D411);
   border-color: #0EA5E966;
