@@ -95,6 +95,8 @@ const SHORTCUTS = [
   { key: '3', action: 'Tab → Graf' },
   { key: '4', action: 'Tab → Teme' },
   { key: 'T', action: 'Tree View (în Cards)' },
+  { key: 'Ctrl+S', action: 'Salvează cardul (rămâne deschis)' },
+  { key: 'Ctrl+↵', action: 'Salvează și închide cardul' },
   { key: '?', action: 'Afișează shortcuts' },
   { key: 'Esc', action: 'Închide modal' },
 ]
