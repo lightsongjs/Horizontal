@@ -97,7 +97,10 @@ export function createSupabaseRepository(): Repository {
       if (error) throw error
       const { error: wErr } = await db
         .from('waves')
-        .insert({ project_id: project.id, number: 1, name: 'Val 1', label: 'MVP', position: 0 })
+        .insert([
+          { project_id: project.id, number: 0, name: 'Scratchpad', label: '', position: 0 },
+          { project_id: project.id, number: 1, name: 'Val 1', label: 'MVP', position: 1 },
+        ])
       if (wErr) throw wErr
       return project
     },
@@ -158,6 +161,7 @@ export function createSupabaseRepository(): Repository {
     },
 
     async deleteWave(projectId, number) {
+      if (number === 0) throw new Error('The Scratchpad wave cannot be deleted')
       const { error } = await db.from('waves').delete().eq('project_id', projectId).eq('number', number)
       if (error) throw error
     },

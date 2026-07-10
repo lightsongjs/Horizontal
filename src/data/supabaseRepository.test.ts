@@ -110,15 +110,24 @@ describe('supabaseRepository', () => {
     expect(issues.find((i) => i.id === 'P-02')!.deps).toEqual(['P-01'])
   })
 
-  it('createProject inserts the project and a Val 1 wave', async () => {
+  it('createProject inserts the project with a Scratchpad + Val 1 wave', async () => {
     const repo = createSupabaseRepository()
     const p = await repo.createProject({ name: 'Turism', description: 'd', prefix: 'TUR' })
 
     expect(p.id).toBe('tur')
     expect(fakeDb.tables.projects[0]).toMatchObject({ id: 'tur', prefix: 'TUR', current_wave: 1 })
     expect(fakeDb.tables.waves).toEqual([
-      { project_id: 'tur', number: 1, name: 'Val 1', label: 'MVP', position: 0 },
+      { project_id: 'tur', number: 0, name: 'Scratchpad', label: '', position: 0 },
+      { project_id: 'tur', number: 1, name: 'Val 1', label: 'MVP', position: 1 },
     ])
+  })
+
+  it('deleteWave refuses to delete the Scratchpad (wave 0)', async () => {
+    fakeDb.tables.projects.push({ id: 'p', prefix: 'P', current_wave: 1, name: 'x', description: '', accent: '#fff' })
+    fakeDb.tables.waves.push({ project_id: 'p', number: 0, name: 'Scratchpad', label: '', position: 0 })
+    const repo = createSupabaseRepository()
+    await expect(repo.deleteWave('p', 0)).rejects.toThrow(/scratchpad/i)
+    expect(fakeDb.tables.waves.some((w) => w.number === 0)).toBe(true)
   })
 
   it('createIssue writes the `details` column (not `desc`) and dependency rows', async () => {
