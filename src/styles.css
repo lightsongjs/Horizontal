@@ -531,9 +531,12 @@ main {
 .list-group-num {
   display: inline-flex; align-items: center; justify-content: center;
   width: 18px; height: 18px; border-radius: 6px;
-  background: var(--line-soft); font-size: 11px;
+  font-size: 11px; font-weight: 700; font-family: var(--mono);
+  background: color-mix(in srgb, var(--layer-color, var(--txt-faint)) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--layer-color, var(--line)) 35%, transparent);
+  color: var(--layer-color, var(--txt-faint));
 }
-.list-group-label { flex: 1; }
+.list-group-label { flex: 1; color: var(--layer-color, var(--txt-dim)); font-weight: 600; }
 .list-group-count { margin-left: auto; opacity: 0.7; }
 .list-row {
   display: flex; align-items: center; gap: 10px;

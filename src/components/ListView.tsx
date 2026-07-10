@@ -2,6 +2,7 @@ import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { WaveTabs } from './WaveTabs'
 import { useHideDone, useOrderedLayers } from '../hooks'
+import { LAYER_COLORS } from '../lib/layerColors'
 
 export function ListView() {
   const { waves, byId, stateOf, themeOf, toggleDone } = useHorizontal()
@@ -30,7 +31,11 @@ export function ListView() {
         <p className="empty">Niciun tichet în acest val. Apasă + ca să adaugi unul.</p>
       ) : (
         orderedLayers.map((g, i) => (
-          <div key={g.L} className="list-group">
+          <div
+            key={g.L}
+            className="list-group"
+            style={{ '--layer-color': LAYER_COLORS[i % LAYER_COLORS.length] } as React.CSSProperties}
+          >
             <div className="list-group-head">
               <span className="list-group-num">{g.L + 1}</span>
               <span className="list-group-label">{i === 0 ? 'Începe aici' : `Layer ${g.L + 1}`}</span>

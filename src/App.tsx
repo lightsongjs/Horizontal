@@ -90,11 +90,11 @@ const SHORTCUTS = [
   { key: 'C', action: 'Tichet nou' },
   { key: 'O', action: 'Caută tichet' },
   { key: 'P', action: 'Proiect nou' },
-  { key: '1', action: 'Tab → Ordine' },
+  { key: '1', action: 'Tab → Cards' },
   { key: '2', action: 'Tab → List' },
   { key: '3', action: 'Tab → Graf' },
   { key: '4', action: 'Tab → Teme' },
-  { key: 'T', action: 'Tree View (în Ordine)' },
+  { key: 'T', action: 'Tree View (în Cards)' },
   { key: '?', action: 'Afișează shortcuts' },
   { key: 'Esc', action: 'Închide modal' },
 ]

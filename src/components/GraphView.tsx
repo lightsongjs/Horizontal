@@ -67,7 +67,7 @@ export function GraphView() {
   if (issues.length === 0) {
     return (
       <div className="panel">
-        <p className="empty">Niciun tichet de afișat în graf. Adaugă tichete în „Ordine".</p>
+        <p className="empty">Niciun tichet de afișat în graf. Adaugă tichete în „Cards".</p>
       </div>
     )
   }
