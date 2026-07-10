@@ -105,7 +105,10 @@ const slugify = (name: string) =>
 function Shell() {
   const { loading, error, project, projects, selectProject, refresh } = useHorizontal()
   const { openNewIssue, openNewProject, openProjectSettings, sheet } = useUI()
-  const [tab, setTab] = useState<Tab>('ordine')
+  const [tab, setTab] = useState<Tab>(() => {
+    const saved = localStorage.getItem('horizontal:last-tab')
+    return saved === 'list' || saved === 'graf' || saved === 'teme' ? saved : 'ordine'
+  })
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
   const urlSyncReady = useRef(false)
@@ -146,8 +149,18 @@ function Shell() {
     }
   }, [refresh])
 
-  // Reset tab when switching projects
-  useEffect(() => { setTab('ordine') }, [project?.id])
+  // Remember the active tab across refreshes.
+  useEffect(() => { localStorage.setItem('horizontal:last-tab', tab) }, [tab])
+
+  // Reset to the default tab when switching to a DIFFERENT project — but not on
+  // the initial restore (undefined → id) on load, which would clobber the tab
+  // restored from localStorage above.
+  const prevProjectId = useRef<string | undefined>(undefined)
+  useEffect(() => {
+    const prev = prevProjectId.current
+    prevProjectId.current = project?.id
+    if (prev !== undefined && prev !== project?.id) setTab('ordine')
+  }, [project?.id])
 
   const findBySlug = (slug: string) => projects.find((p) => slugify(p.name) === slug)
 
