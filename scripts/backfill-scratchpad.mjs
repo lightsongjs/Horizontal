@@ -22,6 +22,10 @@ const { data: existingScratch, error: wErr } = await supabase
 if (wErr) throw wErr
 
 const haveScratch = new Set((existingScratch ?? []).map((w) => w.project_id))
+// Existing projects already have Val 1 at position 0. Insert Scratchpad at
+// position -1 so it sorts first WITHOUT renumbering their existing waves.
+// (New projects created after this feature seed it at position 0 instead —
+// both render Scratchpad first, ordering is relative.)
 const toInsert = (projects ?? [])
   .filter((p) => !haveScratch.has(p.id))
   .map((p) => ({ project_id: p.id, number: 0, name: 'Scratchpad', label: '', position: -1 }))
