@@ -157,3 +157,99 @@ export function useWaveActions(): WaveActions {
     toggleItem, openConfirm, cancelConfirm, handleBulkMove, handleBulkDelete,
   }
 }
+
+export interface VimNav {
+  focusedId: string | null
+  setFocusedId: (id: string | null) => void
+}
+
+/**
+ * Vim-style keyboard navigation over the layer grid. `flatLayers` is the array
+ * of id-arrays (one per layer) currently rendered. Shared by Cards and List.
+ */
+export function useVimNav(flatLayers: string[][]): VimNav {
+  const { activeWave } = useHorizontal()
+  const { openEditIssue, sheet } = useUI()
+  const [focusedId, setFocusedId] = useState<string | null>(null)
+
+  // reset focus when the wave changes
+  useEffect(() => { setFocusedId(null) }, [activeWave])
+
+  // scroll the focused item into view
+  useEffect(() => {
+    if (!focusedId) return
+    document
+      .querySelector(`[data-issue-id="${focusedId}"]`)
+      ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  }, [focusedId])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement
+      if (['INPUT', 'TEXTAREA'].includes(target.tagName) || target.isContentEditable) return
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      if (sheet.kind !== 'none') return
+
+      const key = e.key.toLowerCase()
+      if (!['h', 'j', 'k', 'l', 'enter', 'escape'].includes(key)) return
+
+      if (key === 'escape') {
+        if (focusedId) { e.preventDefault(); setFocusedId(null) }
+        return
+      }
+
+      if (key === 'enter' && focusedId) {
+        e.preventDefault()
+        openEditIssue(focusedId)
+        return
+      }
+
+      if (!['h', 'j', 'k', 'l'].includes(key)) return
+      e.preventDefault()
+
+      // first press — enter nav mode on the first visible item
+      if (!focusedId) {
+        const firstId = flatLayers[0]?.[0]
+        if (firstId) setFocusedId(firstId)
+        return
+      }
+
+      let layerIdx = -1, posInLayer = -1
+      for (let li = 0; li < flatLayers.length; li++) {
+        const pi = flatLayers[li].indexOf(focusedId)
+        if (pi !== -1) { layerIdx = li; posInLayer = pi; break }
+      }
+      if (layerIdx === -1) return
+
+      if (key === 'j') {
+        if (layerIdx + 1 < flatLayers.length) {
+          const next = flatLayers[layerIdx + 1]
+          setFocusedId(next[Math.min(posInLayer, next.length - 1)])
+        }
+      } else if (key === 'k') {
+        if (layerIdx > 0) {
+          const prev = flatLayers[layerIdx - 1]
+          setFocusedId(prev[Math.min(posInLayer, prev.length - 1)])
+        }
+      } else if (key === 'l') {
+        const layer = flatLayers[layerIdx]
+        if (posInLayer + 1 < layer.length) {
+          setFocusedId(layer[posInLayer + 1])
+        } else if (layerIdx + 1 < flatLayers.length) {
+          setFocusedId(flatLayers[layerIdx + 1][0])
+        }
+      } else if (key === 'h') {
+        if (posInLayer > 0) {
+          setFocusedId(flatLayers[layerIdx][posInLayer - 1])
+        } else if (layerIdx > 0) {
+          const prev = flatLayers[layerIdx - 1]
+          setFocusedId(prev[prev.length - 1])
+        }
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [focusedId, flatLayers, sheet, openEditIssue])
+
+  return { focusedId, setFocusedId }
+}
