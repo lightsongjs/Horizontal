@@ -359,7 +359,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
   }
 
   const save = async ({ close }: { close: boolean }) => {
-    if (!title.trim() || saving) return
+    if (!title.trim() || saving || waves.length === 0) return
     const cyc = cycleAfterSave()
     if (cyc) { setCycleMsg(cyc); return }
     setCycleMsg(null); setSaving(true)
