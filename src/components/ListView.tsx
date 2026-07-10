@@ -1,28 +1,39 @@
+import { useMemo } from 'react'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { WaveTabs } from './WaveTabs'
-import { useHideDone, useOrderedLayers } from '../hooks'
+import { WaveActionsBar } from './WaveActionsBar'
+import { BulkBar } from './BulkBar'
+import { useHideDone, useOrderedLayers, useWaveActions, useVimNav } from '../hooks'
 import { LAYER_COLORS } from '../lib/layerColors'
 
 export function ListView() {
-  const { waves, byId, stateOf, themeOf, toggleDone } = useHorizontal()
+  const { waves, activeWave, byId, stateOf, themeOf, toggleDone } = useHorizontal()
   const { openEditIssue } = useUI()
   const [hideDone, toggleHideDone] = useHideDone()
   const orderedLayers = useOrderedLayers(hideDone)
+  const flatLayers = useMemo(() => orderedLayers.map((g) => g.ids), [orderedLayers])
+
+  const wa = useWaveActions()
+  const { focusedId } = useVimNav(flatLayers)
+
+  const otherWaves = waves.filter((w) => w.number !== activeWave)
+  const selCount = wa.selectedIds.size
+  const inSelect = !wa.treeViewActive && wa.selectMode
 
   return (
     <div className="panel">
       <div className="wave-sel">
-        <WaveTabs />
-        <div className="wave-actions">
-          <button
-            className={`wave-action-btn ${hideDone ? 'active' : ''}`}
-            onClick={toggleHideDone}
-            title={hideDone ? 'Arată tichetele completate' : 'Ascunde tichetele completate'}
-          >
-            <span>{hideDone ? 'Arată' : 'Ascunde'}</span>
-          </button>
-        </div>
+        <WaveTabs onWaveChange={wa.exitSelectMode} />
+        <WaveActionsBar
+          treeViewActive={wa.treeViewActive}
+          onToggleTree={wa.toggleTree}
+          hideDone={hideDone}
+          onToggleHideDone={toggleHideDone}
+          selectMode={wa.selectMode}
+          onEnterSelect={wa.enterSelectMode}
+          onExitSelect={wa.exitSelectMode}
+        />
       </div>
 
       {waves.length === 0 ? (
@@ -46,16 +57,46 @@ export function ListView() {
               if (!it) return null
               const state = stateOf(id)
               const theme = it.theme ? themeOf(it.theme) : undefined
+              const isSelected = wa.selectedIds.has(id)
+              const treeClass = wa.treeViewActive
+                ? wa.highlightedIds === null
+                  ? ''
+                  : wa.highlightedIds.has(id)
+                    ? ' tree-highlight'
+                    : ' tree-dim'
+                : ''
+              const cls =
+                `list-row ${state}` +
+                (isSelected ? ' selected' : '') +
+                (inSelect ? ' in-select' : '') +
+                treeClass +
+                (focusedId === id ? ' vim-focused' : '')
+
+              const handleClick = () => {
+                if (wa.treeViewActive) wa.handleTreeSelect(id)
+                else if (inSelect) wa.toggleSelected(id)
+                else openEditIssue(id)
+              }
+
               return (
-                <button type="button" key={id} className={`list-row ${state}`} onClick={() => openEditIssue(id)}>
+                <button type="button" key={id} className={cls} onClick={handleClick} data-issue-id={id}>
                   <span
                     className="list-check"
                     role="checkbox"
-                    aria-checked={it.done}
-                    aria-label={it.done ? 'Marchează nefăcut' : 'Marchează gata'}
-                    onClick={(e) => { e.stopPropagation(); void toggleDone(id) }}
+                    aria-checked={inSelect ? isSelected : it.done}
+                    aria-label={
+                      inSelect
+                        ? (isSelected ? 'Deselectează' : 'Selectează')
+                        : (it.done ? 'Marchează nefăcut' : 'Marchează gata')
+                    }
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (wa.treeViewActive) return
+                      if (inSelect) wa.toggleSelected(id)
+                      else void toggleDone(id)
+                    }}
                   >
-                    {it.done ? '✓' : ''}
+                    {(inSelect ? isSelected : it.done) ? '✓' : ''}
                   </span>
                   {theme && <span className="theme-dot" style={{ background: theme.color }} />}
                   <span className="list-id">{id}</span>
@@ -66,6 +107,18 @@ export function ListView() {
             })}
           </div>
         ))
+      )}
+
+      {wa.selectMode && (
+        <BulkBar
+          selCount={selCount}
+          otherWaves={otherWaves}
+          confirmDel={wa.confirmDel}
+          onBulkMove={(w) => void wa.handleBulkMove(w)}
+          onRequestDelete={wa.openConfirm}
+          onConfirmDelete={() => void wa.handleBulkDelete()}
+          onCancelDelete={wa.cancelConfirm}
+        />
       )}
     </div>
   )
