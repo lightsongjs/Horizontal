@@ -64,14 +64,16 @@ export function WaveManager() {
                 if (e.target.value !== w.label) void renameWave(w.number, w.name, e.target.value.trim())
               }}
             />
-            <button
-              className="wave-del"
-              aria-label="Șterge val"
-              title={count(w.number) > 0 ? `${count(w.number)} tichete în acest val` : 'Șterge'}
-              onClick={() => onDelete(w.number)}
-            >
-              {confirmDel === w.number ? 'Sigur?' : '🗑'}
-            </button>
+            {w.number !== 0 && (
+              <button
+                className="wave-del"
+                aria-label="Șterge val"
+                title={count(w.number) > 0 ? `${count(w.number)} tichete în acest val` : 'Șterge'}
+                onClick={() => onDelete(w.number)}
+              >
+                {confirmDel === w.number ? 'Sigur?' : '🗑'}
+              </button>
+            )}
           </div>
         ))}
         {blocked !== null && (
