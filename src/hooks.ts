@@ -6,6 +6,15 @@ import { buildOrderedLayers, type OrderedLayer } from './lib/ordering'
 
 const HIDE_DONE_KEY = 'horizontal:hide-done'
 
+/** True when a keyboard shortcut should be ignored: focus is in a text field,
+ *  a modifier is held, or a sheet is open. Shared by the keyboard-driven hooks. */
+function shouldIgnoreKey(e: KeyboardEvent, sheetKind: string): boolean {
+  const target = e.target as HTMLElement
+  if (['INPUT', 'TEXTAREA'].includes(target.tagName) || target.isContentEditable) return true
+  if (e.metaKey || e.ctrlKey || e.altKey) return true
+  return sheetKind !== 'none'
+}
+
 /**
  * localStorage-backed "hide completed" toggle, shared across views.
  *
@@ -46,7 +55,7 @@ export interface WaveActions {
   exitTreeView: () => void
   handleTreeSelect: (id: string) => void
   /** toggle one item's membership in the selection set */
-  toggleItem: (id: string) => void
+  toggleSelected: (id: string) => void
   openConfirm: () => void
   cancelConfirm: () => void
   handleBulkMove: (targetWave: number) => Promise<void>
@@ -99,10 +108,11 @@ export function useWaveActions(): WaveActions {
     setTreeHighlightId((prev) => (prev === id ? null : id))
   }, [])
 
-  const toggleItem = useCallback((id: string) => {
+  const toggleSelected = useCallback((id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
       return next
     })
   }, [])
@@ -119,10 +129,7 @@ export function useWaveActions(): WaveActions {
         return
       }
 
-      const target = e.target as HTMLElement
-      if (['INPUT', 'TEXTAREA'].includes(target.tagName) || target.isContentEditable) return
-      if (e.metaKey || e.ctrlKey || e.altKey) return
-      if (sheet.kind !== 'none') return // don't toggle behind an open sheet
+      if (shouldIgnoreKey(e, sheet.kind)) return
 
       if (e.key === 't' || e.key === 'T') {
         e.preventDefault()
@@ -154,7 +161,7 @@ export function useWaveActions(): WaveActions {
   return {
     selectMode, selectedIds, treeViewActive, treeHighlightId, confirmDel, highlightedIds,
     enterSelectMode, exitSelectMode, toggleTree, exitTreeView, handleTreeSelect,
-    toggleItem, openConfirm, cancelConfirm, handleBulkMove, handleBulkDelete,
+    toggleSelected, openConfirm, cancelConfirm, handleBulkMove, handleBulkDelete,
   }
 }
 
@@ -185,10 +192,7 @@ export function useVimNav(flatLayers: string[][]): VimNav {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement
-      if (['INPUT', 'TEXTAREA'].includes(target.tagName) || target.isContentEditable) return
-      if (e.metaKey || e.ctrlKey || e.altKey) return
-      if (sheet.kind !== 'none') return
+      if (shouldIgnoreKey(e, sheet.kind)) return
 
       const key = e.key.toLowerCase()
       if (!['h', 'j', 'k', 'l', 'enter', 'escape'].includes(key)) return
@@ -204,7 +208,6 @@ export function useVimNav(flatLayers: string[][]): VimNav {
         return
       }
 
-      if (!['h', 'j', 'k', 'l'].includes(key)) return
       e.preventDefault()
 
       // first press — enter nav mode on the first visible item

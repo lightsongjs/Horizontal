@@ -62,7 +62,7 @@ export function OrdineView() {
                   contextWave={activeWave}
                   selectMode={!wa.treeViewActive && wa.selectMode}
                   isSelected={wa.selectedIds.has(id)}
-                  onToggleSelect={wa.toggleItem}
+                  onToggleSelect={wa.toggleSelected}
                   treeMode={wa.treeViewActive}
                   highlighted={wa.highlightedIds ? wa.highlightedIds.has(id) : undefined}
                   onTreeSelect={wa.handleTreeSelect}
