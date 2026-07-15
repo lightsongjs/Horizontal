@@ -114,7 +114,7 @@ function Shell() {
   const [showUsers, setShowUsers] = useState(false)
   const [tab, setTab] = useState<Tab>(() => {
     const saved = localStorage.getItem('horizontal:last-tab')
-    return saved === 'list' || saved === 'graf' || saved === 'teme' ? saved : 'ordine'
+    return saved === 'ordine' || saved === 'list' || saved === 'graf' || saved === 'teme' ? saved : 'list'
   })
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
@@ -156,18 +156,9 @@ function Shell() {
     }
   }, [refresh])
 
-  // Remember the active tab across refreshes.
+  // Remember the active tab globally — persists across refreshes AND across
+  // project switches. The chosen view stays until the user changes it.
   useEffect(() => { localStorage.setItem('horizontal:last-tab', tab) }, [tab])
-
-  // Reset to the default tab when switching to a DIFFERENT project — but not on
-  // the initial restore (undefined → id) on load, which would clobber the tab
-  // restored from localStorage above.
-  const prevProjectId = useRef<string | undefined>(undefined)
-  useEffect(() => {
-    const prev = prevProjectId.current
-    prevProjectId.current = project?.id
-    if (prev !== undefined && prev !== project?.id) setTab('ordine')
-  }, [project?.id])
 
   const findBySlug = (slug: string) => projects.find((p) => slugify(p.name) === slug)
 

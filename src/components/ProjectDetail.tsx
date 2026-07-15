@@ -6,8 +6,8 @@ import { ThemesView } from './ThemesView'
 export type Tab = 'ordine' | 'list' | 'graf' | 'teme'
 
 const TABS: { key: Tab; label: string }[] = [
-  { key: 'ordine', label: 'Cards' },
   { key: 'list', label: 'List' },
+  { key: 'ordine', label: 'Cards' },
   { key: 'graf', label: 'Graf' },
   { key: 'teme', label: 'Teme' },
 ]
