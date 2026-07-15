@@ -8,7 +8,7 @@
 create table if not exists project_members (user_id uuid not null references auth.users(id) on delete cascade, project_id text not null references projects(id) on delete cascade, role text not null check (role in ('read','write')), primary key (user_id, project_id));
 create index if not exists project_members_user_idx on project_members(user_id);
 alter table project_members enable row level security;
-create or replace function is_admin() returns boolean language sql stable as $$ select coalesce((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin', false) $$;
+create or replace function is_admin() returns boolean language sql stable security invoker set search_path = '' as $$ select coalesce((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin', false) $$;
 
 -- Part B: drop old permissive policies, create membership-aware ones
 drop policy if exists p_projects on projects;
