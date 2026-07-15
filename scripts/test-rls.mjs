@@ -8,6 +8,10 @@ config()
 const URL = process.env.VITE_SUPABASE_URL
 const ANON = process.env.VITE_SUPABASE_ANON_KEY
 
+if (!URL || !ANON) { console.error('Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY in .env'); process.exit(1) }
+
+const runId = Date.now()
+
 async function as(email, password) {
   const c = createClient(URL, ANON, { auth: { persistSession: false } })
   const { error } = await c.auth.signInWithPassword({ email, password })
@@ -26,13 +30,15 @@ const rProjects = (await reader.from('projects').select('id')).data ?? []
 assert(rProjects.some((p) => p.id === 'p-test'), 'reader sees P-TEST')
 assert(!rProjects.some((p) => p.id === 'p-secret'), 'reader cannot see P-SECRET')
 
-const rIns = await reader.from('issues').insert({ id: 'x-reader-1', project_id: 'p-test', title: 'nope', wave: 1 })
+const rIns = await reader.from('issues').insert({ id: `x-reader-${runId}`, project_id: 'p-test', title: 'nope', wave: 1 })
 assert(rIns.error !== null, 'reader blocked from inserting issue')
 
-const wIns = await writer.from('issues').insert({ id: 'x-writer-1', project_id: 'p-test', title: 'ok', wave: 1 })
+const wIns = await writer.from('issues').insert({ id: `x-writer-${runId}`, project_id: 'p-test', title: 'ok', wave: 1 })
 assert(wIns.error === null, 'writer can insert issue into P-TEST')
 
-const wSecret = await writer.from('issues').insert({ id: 'x-writer-2', project_id: 'p-secret', title: 'nope', wave: 1 })
+const wSecret = await writer.from('issues').insert({ id: `x-writer-${runId}-secret`, project_id: 'p-secret', title: 'nope', wave: 1 })
 assert(wSecret.error !== null, 'writer blocked from P-SECRET')
+
+await writer.from('issues').delete().eq('id', `x-writer-${runId}`)
 
 console.log('done')
