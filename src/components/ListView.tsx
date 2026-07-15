@@ -4,12 +4,13 @@ import { useUI } from '../ui'
 import { WaveTabs } from './WaveTabs'
 import { WaveActionsBar } from './WaveActionsBar'
 import { BulkBar } from './BulkBar'
-import { useHideDone, useOrderedLayers, useWaveActions, useVimNav } from '../hooks'
+import { useHideDone, useOrderedLayers, useWaveActions, useVimNav, useCanWrite } from '../hooks'
 import { LAYER_COLORS } from '../lib/layerColors'
 
 export function ListView() {
   const { waves, activeWave, byId, stateOf, themeOf, toggleDone } = useHorizontal()
   const { openEditIssue } = useUI()
+  const canWrite = useCanWrite()
   const [hideDone, toggleHideDone] = useHideDone()
   const orderedLayers = useOrderedLayers(hideDone)
   const flatLayers = useMemo(() => orderedLayers.map((g) => g.ids), [orderedLayers])
@@ -24,7 +25,7 @@ export function ListView() {
   return (
     <div className="panel">
       <div className="wave-sel">
-        <WaveTabs onWaveChange={wa.exitSelectMode} />
+        <WaveTabs onWaveChange={wa.exitSelectMode} canWrite={canWrite} />
         <WaveActionsBar
           treeViewActive={wa.treeViewActive}
           onToggleTree={wa.toggleTree}
@@ -33,6 +34,7 @@ export function ListView() {
           selectMode={wa.selectMode}
           onEnterSelect={wa.enterSelectMode}
           onExitSelect={wa.exitSelectMode}
+          canWrite={canWrite}
         />
       </div>
 
@@ -94,7 +96,7 @@ export function ListView() {
                       e.stopPropagation()
                       if (wa.treeViewActive) return
                       if (inSelect) wa.toggleSelected(id)
-                      else void toggleDone(id)
+                      else if (canWrite) void toggleDone(id)
                     }}
                   >
                     {(inSelect ? isSelected : it.done) ? '✓' : ''}

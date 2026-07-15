@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { useTheme } from '../theme'
+import { useCanWrite } from '../hooks'
 
 function getBuildAgo(): string {
   const diff = Math.floor((Date.now() - new Date(__BUILD_TIME__).getTime()) / 1000)
@@ -25,6 +26,9 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
   const goToProject = (id: string | null) => { onNavigate?.(); selectProject(id) }
   const { openNewProject, openNewIssue } = useUI()
   const { theme, toggle } = useTheme()
+  const canWrite = useCanWrite()
+  // "Tichet nou" needs write access to the open project; "Proiect nou" is admin-only.
+  const showNewBtn = project ? canWrite : isAdmin
   const dragId = useRef<string | null>(null)
   const [dragOver, setDragOver] = useState<string | null>(null)
   const [filter, setFilter] = useState<'all' | 'personal' | 'work'>('all')
@@ -132,13 +136,15 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
       <div className="sidebar-spacer" />
 
       <div className="sidebar-footer-row">
-        <button
-          className="sidebar-new-btn"
-          onClick={project ? openNewIssue : openNewProject}
-        >
-          <span className="sidebar-new-plus">+</span>
-          {project ? 'Tichet nou' : 'Proiect nou'}
-        </button>
+        {showNewBtn && (
+          <button
+            className="sidebar-new-btn"
+            onClick={project ? openNewIssue : openNewProject}
+          >
+            <span className="sidebar-new-plus">+</span>
+            {project ? 'Tichet nou' : 'Proiect nou'}
+          </button>
+        )}
         <button className="sidebar-theme-btn" onClick={toggle} aria-label="Schimbă tema">
           {theme === 'dark' ? (
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

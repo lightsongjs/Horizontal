@@ -4,7 +4,7 @@ import { TicketCard } from './TicketCard'
 import { WaveTabs } from './WaveTabs'
 import { WaveActionsBar } from './WaveActionsBar'
 import { BulkBar } from './BulkBar'
-import { useHideDone, useOrderedLayers, useWaveActions, useVimNav } from '../hooks'
+import { useHideDone, useOrderedLayers, useWaveActions, useVimNav, useCanWrite } from '../hooks'
 import { LAYER_COLORS } from '../lib/layerColors'
 
 export function OrdineView() {
@@ -14,6 +14,7 @@ export function OrdineView() {
   const flatLayers = useMemo(() => orderedLayers.map((g) => g.ids), [orderedLayers])
 
   const wa = useWaveActions()
+  const canWrite = useCanWrite()
   const { focusedId } = useVimNav(flatLayers)
 
   const otherWaves = waves.filter((w) => w.number !== activeWave)
@@ -22,7 +23,7 @@ export function OrdineView() {
   return (
     <div className="panel">
       <div className="wave-sel">
-        <WaveTabs onWaveChange={wa.exitSelectMode} />
+        <WaveTabs onWaveChange={wa.exitSelectMode} canWrite={canWrite} />
         <WaveActionsBar
           treeViewActive={wa.treeViewActive}
           onToggleTree={wa.toggleTree}
@@ -31,6 +32,7 @@ export function OrdineView() {
           selectMode={wa.selectMode}
           onEnterSelect={wa.enterSelectMode}
           onExitSelect={wa.exitSelectMode}
+          canWrite={canWrite}
         />
       </div>
 

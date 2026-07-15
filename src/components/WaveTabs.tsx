@@ -6,7 +6,7 @@ import { useUI } from '../ui'
  * The wave selector row (wave buttons + manage gear). Shared by board + list.
  * Delivery waves are labelled by Roman numeral (I, II, III…) in position order.
  */
-export function WaveTabs({ onWaveChange }: { onWaveChange?: () => void }) {
+export function WaveTabs({ onWaveChange, canWrite = true }: { onWaveChange?: () => void; canWrite?: boolean }) {
   const { waves, issues, activeWave, setActiveWave } = useHorizontal()
   const { openWaveManage } = useUI()
   const deliveryWaves = waves.filter((w) => w.number !== 0)
@@ -31,10 +31,12 @@ export function WaveTabs({ onWaveChange }: { onWaveChange?: () => void }) {
           </button>
         )
       })}
-      <button className="wbtn wmanage" aria-label="Gestionează valuri" onClick={openWaveManage}>
-        <span className="wname">⚙</span>
-        <span className="wsub">valuri</span>
-      </button>
+      {canWrite && (
+        <button className="wbtn wmanage" aria-label="Gestionează valuri" onClick={openWaveManage}>
+          <span className="wname">⚙</span>
+          <span className="wsub">valuri</span>
+        </button>
+      )}
     </div>
   )
 }

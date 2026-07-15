@@ -2,6 +2,7 @@ import { useRef, useState, useEffect, forwardRef } from 'react'
 import { detectCycle, requiredDepWave } from '../lib/engine'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
+import { useCanWrite } from '../hooks'
 import type { Issue, ScenarioKind, TestScenario } from '../lib/types'
 
 const PALETTE = ['#0284C7', '#059669', '#D97706', '#EA580C', '#E11D48', '#7C3AED', '#06B6D4']
@@ -137,6 +138,7 @@ function AssigneeSearch({ assigneeId, assignees, myAssigneeId, onSelect, onSetMe
 export function IssueForm({ issueId }: { issueId?: string }) {
   const { project, waves, themes, issues, byId, activeWave, createIssue, updateIssue, deleteIssue, createTheme, assignees, myAssigneeId, setMyAssigneeId, createAssignee } = useHorizontal()
   const { closeSheet, setCloseGuard, pushSheet, openEditIssue } = useUI()
+  const canWrite = useCanWrite()
   const existing = issueId ? byId[issueId] : undefined
   const isEdit = !!existing
 
@@ -235,6 +237,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (!canWrite) return
       if (e.metaKey || e.ctrlKey) {
         if (e.key === 'Enter') { e.preventDefault(); void save({ close: true }) }
         else if (e.key.toLowerCase() === 's') { e.preventDefault(); void save({ close: false }) }
@@ -359,7 +362,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
   }
 
   const save = async ({ close }: { close: boolean }) => {
-    if (!title.trim() || saving || waves.length === 0) return
+    if (!canWrite || !title.trim() || saving || waves.length === 0) return
     const cyc = cycleAfterSave()
     if (cyc) { setCycleMsg(cyc); return }
     setCycleMsg(null); setSaving(true)
@@ -443,7 +446,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
   }
 
   const remove = async () => {
-    if (!existing || saving) return
+    if (!canWrite || !existing || saving) return
     setSaving(true)
     try { await deleteIssue(existing.id); setCloseGuard(null); closeSheet() }
     finally { setSaving(false) }
@@ -456,7 +459,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
       {/* HEADER */}
       <div className="sh-header">
         <button className="sh-close" onClick={closeSheet} aria-label="Închide">✕</button>
-        {isEdit && (
+        {isEdit && canWrite && (
           <button
             tabIndex={-1}
             className={`sh-delete${confirmDel ? ' confirming' : ''}`}
@@ -483,6 +486,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
           className="sh-title-input"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
+          readOnly={!canWrite}
           placeholder={isEdit ? `✎ ${existing!.id}` : 'Titlu tichet…'}
           autoFocus
           autoComplete="off"
@@ -496,18 +500,20 @@ export function IssueForm({ issueId }: { issueId?: string }) {
             }
           }}
         />
-        <button
-          tabIndex={-1}
-          className={`sh-save${isDirty ? ' dirty' : ''}`}
-          onClick={() => void save({ close: false })}
-          disabled={!title.trim() || saving || waves.length === 0}
-          title={saving ? 'Se salvează…' : 'Salvează (Ctrl+S) · Ctrl+Enter salvează și închide'}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="12" y1="19" x2="12" y2="5"/>
-            <polyline points="5 12 12 5 19 12"/>
-          </svg>
-        </button>
+        {canWrite && (
+          <button
+            tabIndex={-1}
+            className={`sh-save${isDirty ? ' dirty' : ''}`}
+            onClick={() => void save({ close: false })}
+            disabled={!title.trim() || saving || waves.length === 0}
+            title={saving ? 'Se salvează…' : 'Salvează (Ctrl+S) · Ctrl+Enter salvează și închide'}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="19" x2="12" y2="5"/>
+              <polyline points="5 12 12 5 19 12"/>
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* BODY */}
@@ -644,6 +650,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
               className="desc-fixed"
               value={desc}
               onChange={(e) => setDesc(e.target.value)}
+              readOnly={!canWrite}
               placeholder="Cerințe, notițe, context…"
             />
           </div>

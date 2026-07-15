@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
+import { useCanWrite } from '../hooks'
 
 export function ThemesView() {
   const { themes, issues, stateOf } = useHorizontal()
   const { openIssue, openThemeManage } = useUI()
+  const canWrite = useCanWrite()
   const [active, setActive] = useState<string>('all')
 
   // "all" shows every theme group plus an "Fără temă" bucket for untagged issues.
@@ -28,13 +30,17 @@ export function ThemesView() {
             {t.name}
           </button>
         ))}
-        <button className="chip add" onClick={openThemeManage}>
-          ⚙ Gestionează
-        </button>
+        {canWrite && (
+          <button className="chip add" onClick={openThemeManage}>
+            ⚙ Gestionează
+          </button>
+        )}
       </div>
 
       {themes.length === 0 && (
-        <p className="empty">Nicio temă încă. Apasă „⚙ Gestionează" ca să adaugi.</p>
+        <p className="empty">
+          {canWrite ? 'Nicio temă încă. Apasă „⚙ Gestionează" ca să adaugi.' : 'Nicio temă încă.'}
+        </p>
       )}
 
       {groups.map((g) => {

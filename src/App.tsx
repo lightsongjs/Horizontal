@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from './auth'
+import { useCanWrite } from './hooks'
 import { HorizontalProvider, useHorizontal } from './store'
 import { UIProvider, useUI } from './ui'
 import { ThemeProvider, useTheme } from './theme'
@@ -39,7 +40,7 @@ function getBuildAgo(): string {
   const d = Math.floor(diff / 86400); return `${d} day${d > 1 ? 's' : ''} ago`
 }
 
-function Header({ onNewIssue, onProjectSettings, onRefresh }: { onNewIssue: () => void; onProjectSettings: () => void; onRefresh: () => void }) {
+function Header({ onNewIssue, onProjectSettings, onRefresh, canWrite }: { onNewIssue: () => void; onProjectSettings: () => void; onRefresh: () => void; canWrite: boolean }) {
   const { project, completion, selectProject } = useHorizontal()
   const pct = project ? Math.round(completion(project.id) * 100) : 0
   return (
@@ -63,12 +64,12 @@ function Header({ onNewIssue, onProjectSettings, onRefresh }: { onNewIssue: () =
           <span>{pct}%</span>
         </div>
       )}
-      {project && (
+      {project && canWrite && (
         <button className="header-new-btn" onClick={onNewIssue} title="Tichet nou (C)">
           + Tichet
         </button>
       )}
-      {project && (
+      {project && canWrite && (
         <button className="header-settings-btn" onClick={onProjectSettings} aria-label="Setări proiect" title="Setări proiect">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="3"/>
@@ -109,6 +110,7 @@ function Shell() {
   const { loading, error, project, projects, selectProject, refresh } = useHorizontal()
   const { openNewIssue, openNewProject, openProjectSettings, sheet } = useUI()
   const { isAdmin } = useAuth()
+  const canWrite = useCanWrite()
   const [showUsers, setShowUsers] = useState(false)
   const [tab, setTab] = useState<Tab>(() => {
     const saved = localStorage.getItem('horizontal:last-tab')
@@ -219,9 +221,9 @@ function Shell() {
       if (showSearch) return
       if (showUsers) return
 
-      if (e.key === 'c' || e.key === 'C') { e.preventDefault(); project && openNewIssue() }
+      if (e.key === 'c' || e.key === 'C') { e.preventDefault(); if (!canWrite) return; project && openNewIssue() }
       else if (e.key === 'o' || e.key === 'O') { e.preventDefault(); project && setShowSearch(true) }
-      else if (e.key === 'p' || e.key === 'P') { e.preventDefault(); openNewProject() }
+      else if (e.key === 'p' || e.key === 'P') { e.preventDefault(); if (!isAdmin) return; openNewProject() }
       else if (e.key === '?') { e.preventDefault(); setShowShortcuts(v => !v) }
       else if (e.key === '1' && project) { e.preventDefault(); setTab('ordine') }
       else if (e.key === '2' && project) { e.preventDefault(); setTab('list') }
@@ -230,7 +232,7 @@ function Shell() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [project, openNewIssue, openNewProject, sheet, showShortcuts, showSearch, showUsers])
+  }, [project, openNewIssue, openNewProject, sheet, showShortcuts, showSearch, showUsers, canWrite, isAdmin])
 
   return (
     <div id="app">
@@ -241,7 +243,7 @@ function Shell() {
         onNavigate={() => setShowUsers(false)}
       />
       <div className="app-body">
-        <Header onNewIssue={openNewIssue} onProjectSettings={openProjectSettings} onRefresh={refresh} />
+        <Header onNewIssue={openNewIssue} onProjectSettings={openProjectSettings} onRefresh={refresh} canWrite={canWrite} />
         <main ref={mainRef}>
           {pullY > 0 && (
             <div style={{ textAlign: 'center', padding: '6px 0', fontSize: '13px', color: 'var(--txt-dim)', transform: `translateY(${pullY * 0.4}px)`, transition: pullY === 0 ? 'transform 0.3s' : 'none' }}>
@@ -261,13 +263,15 @@ function Shell() {
             <ProjectsView />
           )}
         </main>
-        <button
-          className="fab"
-          aria-label={project ? 'Adaugă tichet' : 'Adaugă proiect'}
-          onClick={project ? openNewIssue : openNewProject}
-        >
-          +
-        </button>
+        {(project ? canWrite : isAdmin) && (
+          <button
+            className="fab"
+            aria-label={project ? 'Adaugă tichet' : 'Adaugă proiect'}
+            onClick={project ? openNewIssue : openNewProject}
+          >
+            +
+          </button>
+        )}
       </div>
       <SheetHost />
       {showSearch && <QuickSearch onClose={() => setShowSearch(false)} />}
