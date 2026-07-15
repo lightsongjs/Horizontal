@@ -92,8 +92,8 @@ const SHORTCUTS = [
   { key: 'C', action: 'Tichet nou' },
   { key: 'O', action: 'Caută tichet' },
   { key: 'P', action: 'Proiect nou' },
-  { key: '1', action: 'Tab → Cards' },
-  { key: '2', action: 'Tab → List' },
+  { key: '1', action: 'Tab → List' },
+  { key: '2', action: 'Tab → Cards' },
   { key: '3', action: 'Tab → Graf' },
   { key: '4', action: 'Tab → Teme' },
   { key: 'T', action: 'Tree View (în Cards)' },
@@ -216,8 +216,8 @@ function Shell() {
       else if (e.key === 'o' || e.key === 'O') { e.preventDefault(); project && setShowSearch(true) }
       else if (e.key === 'p' || e.key === 'P') { e.preventDefault(); if (!isAdmin) return; openNewProject() }
       else if (e.key === '?') { e.preventDefault(); setShowShortcuts(v => !v) }
-      else if (e.key === '1' && project) { e.preventDefault(); setTab('ordine') }
-      else if (e.key === '2' && project) { e.preventDefault(); setTab('list') }
+      else if (e.key === '1' && project) { e.preventDefault(); setTab('list') }
+      else if (e.key === '2' && project) { e.preventDefault(); setTab('ordine') }
       else if (e.key === '3' && project) { e.preventDefault(); setTab('graf') }
       else if (e.key === '4' && project) { e.preventDefault(); setTab('teme') }
     }
