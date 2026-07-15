@@ -9,6 +9,7 @@ import { ProjectDetail, type Tab } from './components/ProjectDetail'
 import { SheetHost } from './components/SheetHost'
 import { Sidebar } from './components/Sidebar'
 import { QuickSearch } from './components/QuickSearch'
+import { UsersView } from './components/UsersView'
 
 function ThemeToggle({ className }: { className?: string }) {
   const { theme, toggle } = useTheme()
@@ -107,6 +108,8 @@ const slugify = (name: string) =>
 function Shell() {
   const { loading, error, project, projects, selectProject, refresh } = useHorizontal()
   const { openNewIssue, openNewProject, openProjectSettings, sheet } = useUI()
+  const { isAdmin } = useAuth()
+  const [showUsers, setShowUsers] = useState(false)
   const [tab, setTab] = useState<Tab>(() => {
     const saved = localStorage.getItem('horizontal:last-tab')
     return saved === 'list' || saved === 'graf' || saved === 'teme' ? saved : 'ordine'
@@ -230,7 +233,12 @@ function Shell() {
 
   return (
     <div id="app">
-      <Sidebar />
+      <Sidebar
+        isAdmin={isAdmin}
+        showUsers={showUsers && isAdmin}
+        onShowUsers={() => setShowUsers(true)}
+        onNavigate={() => setShowUsers(false)}
+      />
       <div className="app-body">
         <Header onNewIssue={openNewIssue} onProjectSettings={openProjectSettings} onRefresh={refresh} />
         <main ref={mainRef}>
@@ -244,6 +252,8 @@ function Shell() {
             <div className="view">
               <p className="empty">Se încarcă…</p>
             </div>
+          ) : showUsers && isAdmin ? (
+            <UsersView />
           ) : project ? (
             <ProjectDetail tab={tab} setTab={setTab} />
           ) : (
