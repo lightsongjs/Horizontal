@@ -1,5 +1,6 @@
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
+import { useCanWrite } from '../hooks'
 
 interface Props {
   id: string
@@ -16,6 +17,7 @@ interface Props {
 export function TicketCard({ id, contextWave, selectMode, isSelected, onToggleSelect, treeMode, highlighted, onTreeSelect, focused }: Props) {
   const { byId, stateOf, toggleDone, themeOf } = useHorizontal()
   const { openEditIssue } = useUI()
+  const canWrite = useCanWrite()
   const it = byId[id]
   if (!it) return null
 
@@ -60,7 +62,7 @@ export function TicketCard({ id, contextWave, selectMode, isSelected, onToggleSe
           e.stopPropagation()
           if (treeMode) return
           if (selectMode) onToggleSelect?.(id)
-          else void toggleDone(id)
+          else if (canWrite) void toggleDone(id)
         }}
       >
         {(selectMode ? isSelected : it.done) ? '✓' : ''}

@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { useTheme } from '../theme'
+import { useCanWrite } from '../hooks'
 
 function getBuildAgo(): string {
   const diff = Math.floor((Date.now() - new Date(__BUILD_TIME__).getTime()) / 1000)
@@ -11,10 +12,23 @@ function getBuildAgo(): string {
   const d = Math.floor(diff / 86400); return `${d} day${d > 1 ? 's' : ''} ago`
 }
 
-export function Sidebar() {
+interface SidebarProps {
+  isAdmin?: boolean
+  showUsers?: boolean
+  onShowUsers?: () => void
+  onNavigate?: () => void
+}
+
+export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNavigate }: SidebarProps = {}) {
   const { projects, project, completion, selectProject, reorderProjects } = useHorizontal()
+
+  // Navigate away from any overlay (e.g. Users) then select a project.
+  const goToProject = (id: string | null) => { onNavigate?.(); selectProject(id) }
   const { openNewProject, openNewIssue } = useUI()
   const { theme, toggle } = useTheme()
+  const canWrite = useCanWrite()
+  // "Tichet nou" needs write access to the open project; "Proiect nou" is admin-only.
+  const showNewBtn = project ? canWrite : isAdmin
   const dragId = useRef<string | null>(null)
   const [dragOver, setDragOver] = useState<string | null>(null)
   const [filter, setFilter] = useState<'all' | 'personal' | 'work'>('all')
@@ -32,8 +46,8 @@ export function Sidebar() {
       </div>
 
       <button
-        className={`sidebar-nav-item ${!project ? 'on' : ''}`}
-        onClick={() => selectProject(null)}
+        className={`sidebar-nav-item ${!project && !showUsers ? 'on' : ''}`}
+        onClick={() => goToProject(null)}
       >
         <span className="sidebar-nav-icon">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -45,6 +59,23 @@ export function Sidebar() {
         </span>
         <span>Toate proiectele</span>
       </button>
+
+      {isAdmin && (
+        <button
+          className={`sidebar-nav-item ${showUsers ? 'on' : ''}`}
+          onClick={() => onShowUsers?.()}
+        >
+          <span className="sidebar-nav-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+          </span>
+          <span>Utilizatori</span>
+        </button>
+      )}
 
       <div style={{ display: 'flex', gap: 4, margin: '6px 0 2px', padding: '0 2px' }}>
         {(['all', 'personal', 'work'] as const).map((f) => (
@@ -89,7 +120,7 @@ export function Sidebar() {
               onDragEnd={() => { setDragOver(null); dragId.current = null }}
             >
               <span className="sidebar-drag-handle" title="Trage pentru a reordona">⠿</span>
-              <button className="sidebar-proj-btn" onClick={() => selectProject(p.id)}>
+              <button className="sidebar-proj-btn" onClick={() => goToProject(p.id)}>
                 <span className="sidebar-proj-dot" style={{ background: p.accent }} />
                 <span className="sidebar-proj-name">{p.name}</span>
                 <span className="sidebar-proj-pct">{pct}%</span>
@@ -105,13 +136,15 @@ export function Sidebar() {
       <div className="sidebar-spacer" />
 
       <div className="sidebar-footer-row">
-        <button
-          className="sidebar-new-btn"
-          onClick={project ? openNewIssue : openNewProject}
-        >
-          <span className="sidebar-new-plus">+</span>
-          {project ? 'Tichet nou' : 'Proiect nou'}
-        </button>
+        {showNewBtn && (
+          <button
+            className="sidebar-new-btn"
+            onClick={project ? openNewIssue : openNewProject}
+          >
+            <span className="sidebar-new-plus">+</span>
+            {project ? 'Tichet nou' : 'Proiect nou'}
+          </button>
+        )}
         <button className="sidebar-theme-btn" onClick={toggle} aria-label="Schimbă tema">
           {theme === 'dark' ? (
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

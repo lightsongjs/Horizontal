@@ -12,12 +12,17 @@ import {
 } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './lib/supabase'
+import { isAdminSession, buildAccessMap, type AccessMap } from './lib/access'
 
 interface AuthState {
   /** True when a login is required (Supabase is configured). */
   enabled: boolean
   session: Session | null
   loading: boolean
+  /** True when the signed-in user is the global admin. */
+  isAdmin: boolean
+  /** projectId -> role for the signed-in user (empty for admin). */
+  access: import('./lib/access').AccessMap
   signIn(email: string, password: string): Promise<string | null>
   signOut(): Promise<void>
 }
@@ -28,6 +33,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const enabled = supabase != null
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(enabled)
+  const [access, setAccess] = useState<AccessMap>({})
+  const isAdmin = isAdminSession(session)
 
   useEffect(() => {
     if (!supabase) return
@@ -39,11 +46,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => sub.subscription.unsubscribe()
   }, [])
 
+  useEffect(() => {
+    if (!supabase || !session || isAdmin) {
+      setAccess({})
+      return
+    }
+    let ignore = false
+    supabase
+      .from('project_members')
+      .select('project_id, role')
+      .then(
+        ({ data }) => { if (!ignore) setAccess(buildAccessMap(data ?? [])) },
+        () => { if (!ignore) setAccess({}) },
+      )
+    return () => { ignore = true }
+  }, [session, isAdmin])
+
   const value = useMemo<AuthState>(
     () => ({
       enabled,
       session,
       loading,
+      isAdmin,
+      access,
       async signIn(email, password) {
         if (!supabase) return 'Auth indisponibil.'
         const { error } = await supabase.auth.signInWithPassword({ email, password })
@@ -53,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await supabase?.auth.signOut()
       },
     }),
-    [enabled, session, loading],
+    [enabled, session, loading, isAdmin, access],
   )
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

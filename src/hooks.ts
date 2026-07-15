@@ -1,10 +1,25 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useHorizontal } from './store'
 import { useUI } from './ui'
+import { useAuth } from './auth'
 import { getRelatedIds } from './lib/treeTraversal'
 import { buildOrderedLayers, type OrderedLayer } from './lib/ordering'
 
 const HIDE_DONE_KEY = 'horizontal:hide-done'
+
+/**
+ * Whether the signed-in user may mutate the currently selected project.
+ * Admins can always write; a member can write only projects where their role
+ * is 'write'. Read-only members (role 'read') see the project but cannot edit.
+ *
+ * This is UX gating ONLY — the real boundary is Supabase RLS + the edge
+ * function. Hiding a button never guarantees the mutation is refused server-side.
+ */
+export function useCanWrite(): boolean {
+  const { isAdmin, access } = useAuth()
+  const { project } = useHorizontal()
+  return isAdmin || (project ? access[project.id] === 'write' : false)
+}
 
 /** True when a keyboard shortcut should be ignored: focus is in a text field,
  *  a modifier is held, or a sheet is open. Shared by the keyboard-driven hooks. */

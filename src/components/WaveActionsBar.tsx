@@ -6,12 +6,15 @@ interface Props {
   selectMode: boolean
   onEnterSelect: () => void
   onExitSelect: () => void
+  /** Read-only members can't bulk-move/delete, so the Select control is hidden. */
+  canWrite?: boolean
 }
 
 export function WaveActionsBar({
   treeViewActive, onToggleTree,
   hideDone, onToggleHideDone,
   selectMode, onEnterSelect, onExitSelect,
+  canWrite = true,
 }: Props) {
   return (
     <div className="wave-actions">
@@ -42,17 +45,19 @@ export function WaveActionsBar({
         )}
         <span>{hideDone ? 'Arată' : 'Ascunde'}</span>
       </button>
-      <button
-        className={`wave-action-btn ${selectMode ? 'active' : ''}`}
-        onClick={selectMode ? onExitSelect : onEnterSelect}
-        title={selectMode ? 'Ieși din Select Mode' : 'Select Mode'}
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="3" y="3" width="18" height="18" rx="3"/>
-          {selectMode && <polyline points="9 12 11 14 15 10"/>}
-        </svg>
-        <span>Select</span>
-      </button>
+      {canWrite && (
+        <button
+          className={`wave-action-btn ${selectMode ? 'active' : ''}`}
+          onClick={selectMode ? onExitSelect : onEnterSelect}
+          title={selectMode ? 'Ieși din Select Mode' : 'Select Mode'}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="3"/>
+            {selectMode && <polyline points="9 12 11 14 15 10"/>}
+          </svg>
+          <span>Select</span>
+        </button>
+      )}
     </div>
   )
 }
