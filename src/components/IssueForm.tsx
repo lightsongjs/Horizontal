@@ -320,6 +320,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
   const qaCount = selectors.filter(Boolean).length + scenarios.length
 
   const addTheme = async () => {
+    if (!canWrite) return
     const name = newThemeName.trim(); if (!name) return
     const created = await createTheme(name, PALETTE[themes.length % PALETTE.length])
     if (created) setTheme(created.key)
@@ -532,9 +533,11 @@ export function IssueForm({ issueId }: { issueId?: string }) {
                     <span className="if-meta-dot" style={{ background: t.color }} />{t.name}
                   </button>
                 ))}
-                <button tabIndex={-1} className="if-meta-add" onClick={() => setShowNewTheme((v) => !v)} title="Temă nouă">
-                  {showNewTheme ? '×' : '+'}
-                </button>
+                {canWrite && (
+                  <button tabIndex={-1} className="if-meta-add" onClick={() => setShowNewTheme((v) => !v)} title="Temă nouă">
+                    {showNewTheme ? '×' : '+'}
+                  </button>
+                )}
               </div>
             </div>
 
