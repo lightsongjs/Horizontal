@@ -217,6 +217,7 @@ function Shell() {
       if (e.key === 'Escape' && showSearch) { setShowSearch(false); return }
       if (sheet.kind !== 'none') return  // don't fire shortcuts when modal is open
       if (showSearch) return
+      if (showUsers) return
 
       if (e.key === 'c' || e.key === 'C') { e.preventDefault(); project && openNewIssue() }
       else if (e.key === 'o' || e.key === 'O') { e.preventDefault(); project && setShowSearch(true) }
@@ -229,7 +230,7 @@ function Shell() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [project, openNewIssue, openNewProject, sheet, showShortcuts, showSearch])
+  }, [project, openNewIssue, openNewProject, sheet, showShortcuts, showSearch, showUsers])
 
   return (
     <div id="app">
