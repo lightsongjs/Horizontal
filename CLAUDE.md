@@ -62,6 +62,13 @@ const supabase = createClient(
 
 **De ce funcționează:** supabase-js din `node_modules` e recunoscut ca mediu server → cheile secret sunt acceptate.
 
+## Multi-user access — pași de setup
+
+1. Rulează migrarea `supabase/migration-access.sql` o singură dată în SQL editor-ul Supabase (creează `project_members`, `is_admin()` și politicile RLS conștiente de membership).
+2. Deployează edge function-ul: `supabase functions deploy admin-users`.
+3. Promovează-ți propriul cont la admin: `node scripts/set-admin.mjs <email>`.
+4. (Opțional) Verifică izolarea RLS: `node scripts/test-rls.mjs` după ce ai creat conturile de test.
+
 # context-mode — MANDATORY routing rules
 
 You have context-mode MCP tools available. These rules are NOT optional — they protect your context window from flooding. A single unrouted command can dump 56 KB into context and waste the entire session.
