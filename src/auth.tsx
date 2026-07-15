@@ -51,10 +51,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAccess({})
       return
     }
+    let ignore = false
     supabase
       .from('project_members')
       .select('project_id, role')
-      .then(({ data }) => setAccess(buildAccessMap(data ?? [])))
+      .then(
+        ({ data }) => { if (!ignore) setAccess(buildAccessMap(data ?? [])) },
+        () => { if (!ignore) setAccess({}) },
+      )
+    return () => { ignore = true }
   }, [session, isAdmin])
 
   const value = useMemo<AuthState>(
