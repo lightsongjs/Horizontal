@@ -10,6 +10,9 @@ const cors = {
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } })
 
+const validAccess = (access: { project_id: string; role: string }[] | undefined) =>
+  (access ?? []).every((a) => a.role === 'read' || a.role === 'write')
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
 
@@ -42,6 +45,7 @@ Deno.serve(async (req) => {
 
     if (action === 'create_user') {
       const { email, password, access } = payload as { email: string; password: string; access: { project_id: string; role: string }[] }
+      if (!validAccess(access)) return json({ error: 'invalid role (must be read or write)' }, 400)
       const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true })
       if (error) return json({ error: error.message }, 400)
       if (access?.length) {
@@ -54,6 +58,9 @@ Deno.serve(async (req) => {
 
     if (action === 'set_access') {
       const { user_id, access } = payload as { user_id: string; access: { project_id: string; role: string }[] }
+      if (!validAccess(access)) return json({ error: 'invalid role (must be read or write)' }, 400)
+      // NOTE: delete-then-insert is not transactional; on insert failure the
+      // caller gets a 400 and should retry. Acceptable for this admin tool.
       await admin.from('project_members').delete().eq('user_id', user_id)
       if (access?.length) {
         const rows = access.map((a) => ({ user_id, project_id: a.project_id, role: a.role }))
