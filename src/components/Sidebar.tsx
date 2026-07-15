@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { useTheme } from '../theme'
+import { useAuth } from '../auth'
 import { useCanWrite } from '../hooks'
 
 function getBuildAgo(): string {
@@ -26,6 +27,7 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
   const goToProject = (id: string | null) => { onNavigate?.(); selectProject(id) }
   const { openNewProject, openNewIssue } = useUI()
   const { theme, toggle } = useTheme()
+  const { enabled, signOut } = useAuth()
   const canWrite = useCanWrite()
   // "Tichet nou" needs write access to the open project; "Proiect nou" is admin-only.
   const showNewBtn = project ? canWrite : isAdmin
@@ -159,6 +161,15 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
             </svg>
           )}
         </button>
+        {enabled && (
+          <button className="sidebar-theme-btn" onClick={() => signOut()} aria-label="Deconectare" title="Deconectare">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+          </button>
+        )}
       </div>
     </aside>
   )
