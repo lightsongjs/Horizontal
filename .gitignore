@@ -12,4 +12,6 @@ coverage
 *.log
 *.tsbuildinfo
 .worktrees/
+.superpowers/
+supabase/.temp/
 # ticket-kit/ is versioned here as master copy
