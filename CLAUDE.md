@@ -69,6 +69,23 @@ const supabase = createClient(
 3. Promovează-ți propriul cont la admin: `node scripts/set-admin.mjs <email>`.
 4. (Opțional) Verifică izolarea RLS: `node scripts/test-rls.mjs` după ce ai creat conturile de test.
 
+## ticket-kit — sync (repo git separat)
+
+`ticket-kit/` are **propriul `.git`** (remote `github.com/lightsongjs/horizontal-ticket-kit`),
+separat de repo-ul Horizontal. Master copy e un clone al aceluiași remote la
+`C:\Users\User\OneDrive\03-RESURSE-MAIN\horizontal-ticket-kit\`.
+
+După orice modificare în `ticket-kit/` (`ai-client.mjs`, `README.md`, `seed.mjs`, `CLAUDE.md`):
+**nu copia fișiere** — sincronizează prin git.
+
+```bash
+cd ticket-kit && git add -A && git commit -m "..." && git push origin master
+# apoi la master copy: git pull
+```
+
+Vezi și `ticket-kit/CLAUDE.md`. Endpoint-urile API pe care le lovește `ai-client.mjs`
+sunt în `functions/api/` (tickets + projects).
+
 # context-mode — MANDATORY routing rules
 
 You have context-mode MCP tools available. These rules are NOT optional — they protect your context window from flooding. A single unrouted command can dump 56 KB into context and waste the entire session.
