@@ -2760,6 +2760,11 @@ svg.graph {
   color: var(--accent);
   border-color: var(--accent);
 }
+.sh-copy.copy-failed {
+  color: var(--blocked);
+  border-color: var(--blocked);
+  background: var(--blocked-soft);
+}
 
 .sh-title-input {
   flex: 1;

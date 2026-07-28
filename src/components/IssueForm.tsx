@@ -143,16 +143,22 @@ export function IssueForm({ issueId }: { issueId?: string }) {
   const existing = issueId ? byId[issueId] : undefined
   const isEdit = !!existing
 
-  const [copied, setCopied] = useState(false)
+  const [copyState, setCopyState] = useState<'idle' | 'ok' | 'fail'>('idle')
+  const copyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => { if (copyResetTimer.current) clearTimeout(copyResetTimer.current) }, [])
 
   // Copiază link-ul absolut al ticketului. Necesar în PWA instalat, unde nu
   // există bară de adrese. clipboard.writeText cere context securizat (https
-  // sau localhost) — fallback pe un textarea ascuns dacă lipsește.
-  const copyLink = useCallback(async () => {
-    if (!existing) return
-    const url = ticketUrl(window.location.origin, existing.id)
+  // sau localhost) — fallback pe un textarea ascuns dacă lipsește. execCommand
+  // e deprecat și poate eșua în silență, deci îi verificăm rezultatul: bifa se
+  // arată doar la o copiere confirmată.
+  const copyLink = useCallback(async (id: string | undefined) => {
+    if (!id) return
+    const url = ticketUrl(window.location.origin, id)
+    let ok = false
     try {
       await navigator.clipboard.writeText(url)
+      ok = true
     } catch {
       const ta = document.createElement('textarea')
       ta.value = url
@@ -160,12 +166,13 @@ export function IssueForm({ issueId }: { issueId?: string }) {
       ta.style.opacity = '0'
       document.body.appendChild(ta)
       ta.select()
-      document.execCommand('copy')
+      try { ok = document.execCommand('copy') } catch { ok = false }
       document.body.removeChild(ta)
     }
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1600)
-  }, [existing])
+    setCopyState(ok ? 'ok' : 'fail')
+    if (copyResetTimer.current) clearTimeout(copyResetTimer.current)
+    copyResetTimer.current = setTimeout(() => setCopyState('idle'), ok ? 1600 : 4000)
+  }, [])
 
   // Tasta `y` (convenția GitHub/Linear). Handler-ul global de shortcuts din
   // App.tsx nu se aplică aici — iese devreme când un sheet e deschis.
@@ -177,12 +184,14 @@ export function IssueForm({ issueId }: { issueId?: string }) {
       if (e.metaKey || e.ctrlKey || e.altKey) return
       if (e.key === 'y' || e.key === 'Y') {
         e.preventDefault()
-        void copyLink()
+        void copyLink(existing?.id)
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [isEdit, copyLink])
+    // Doar `existing?.id`: o dependență pe tot `existing` ar reînregistra
+    // listener-ul la fiecare mutație de ticket.
+  }, [isEdit, copyLink, existing?.id])
 
   const defaultAssigneeId = !isEdit && project?.type === 'personal' ? (myAssigneeId ?? null) : null
 
@@ -505,14 +514,20 @@ export function IssueForm({ issueId }: { issueId?: string }) {
         {isEdit && (
           <button
             tabIndex={-1}
-            className={`sh-copy${copied ? ' copied' : ''}`}
-            onClick={() => void copyLink()}
-            aria-label="Copiază link"
-            title="Copiază link către ticket (y)"
+            className={`sh-copy${copyState === 'ok' ? ' copied' : ''}${copyState === 'fail' ? ' copy-failed' : ''}`}
+            onClick={() => void copyLink(existing?.id)}
+            aria-label={copyState === 'fail' ? 'Copierea a eșuat' : 'Copiază link'}
+            title={copyState === 'fail'
+              ? 'Nu am putut copia link-ul — copiază-l din bara de adrese'
+              : 'Copiază link către ticket (y)'}
           >
-            {copied ? (
+            {copyState === 'ok' ? (
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="20 6 9 17 4 12" />
+              </svg>
+            ) : copyState === 'fail' ? (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
               </svg>
             ) : (
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
