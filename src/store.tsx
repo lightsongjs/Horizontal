@@ -33,6 +33,12 @@ interface HorizontalState {
   waves: Wave[]
   themes: Theme[]
   issues: Issue[]
+  /**
+   * Id-ul proiectului pentru care listIssues() s-a încheiat. Issues se încarcă
+   * lazy, per proiect, deci `issues.length === 0` nu poate distinge „încă nu
+   * s-au încărcat” de „proiect fără tichete”; ăsta e semnalul explicit.
+   */
+  issuesLoadedFor: string | null
   activeWave: number
   assignees: Assignee[]
   myAssigneeId: string | null
@@ -79,6 +85,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
   const [allThemes, setAllThemes] = useState<Theme[]>([])
   const [allIssues, setAllIssues] = useState<Issue[]>([])
   const [projectId, setProjectId] = useState<string | null>(null)
+  const [issuesLoadedFor, setIssuesLoadedFor] = useState<string | null>(null)
   const [activeWave, setActiveWave] = useState(1)
   const [assignees, setAssignees] = useState<Assignee[]>([])
   const [myAssigneeId, setMyAssigneeIdState] = useState<string | null>(
@@ -105,6 +112,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
         setAllWaves((prev) => [...prev.filter((x) => x.projectId !== projectId), ...w])
         setAllThemes((prev) => [...prev.filter((x) => x.projectId !== projectId), ...t])
         setAllIssues((prev) => [...prev.filter((i) => i.projectId !== projectId), ...loaded])
+        setIssuesLoadedFor(projectId)
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -154,6 +162,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
           setAllWaves((prev) => [...prev.filter((x) => x.projectId !== id), ...w])
           setAllThemes((prev) => [...prev.filter((x) => x.projectId !== id), ...t])
           setAllIssues((prev) => [...prev.filter((i) => i.projectId !== id), ...loaded])
+          setIssuesLoadedFor(id)
           if (w.length && !w.some((x) => x.number === (proj?.currentWave ?? 1))) {
             setActiveWave(w[0].number)
           }
@@ -204,6 +213,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     setAllThemes((prev) => prev.filter((t) => t.projectId !== id))
     setAllIssues((prev) => prev.filter((i) => i.projectId !== id))
     setProjectId((cur) => (cur === id ? null : cur))
+    setIssuesLoadedFor((cur) => (cur === id ? null : cur))
   }, [])
 
   const createWave = useCallback(
@@ -343,6 +353,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     waves,
     themes,
     issues,
+    issuesLoadedFor,
     activeWave,
     assignees,
     myAssigneeId,
