@@ -19,6 +19,23 @@ export function prefixOf(issueId: string): string {
   return (dash === -1 ? issueId : issueId.slice(0, dash)).toUpperCase()
 }
 
+/**
+ * Proiectul căruia îi aparține un id de ticket, dedus din prefix. Un path de
+ * ticket (/MS-03) nu conține proiectul, deci asta e singura cale de la URL la
+ * proiect. Comparația ignoră caps-ul.
+ *
+ * Ambiguitate acceptată: dacă două proiecte împart prefixul, câștigă primul din
+ * listă. În practică nu se poate întâmpla — `id`-ul unui proiect **este**
+ * `prefix.toLowerCase()` și e cheie primară.
+ */
+export function resolveTicketProject<P extends { prefix: string }>(
+  projects: readonly P[],
+  ticketId: string,
+): P | null {
+  const prefix = prefixOf(ticketId)
+  return projects.find((p) => p.prefix.toUpperCase() === prefix) ?? null
+}
+
 /** Path-ul canonic al unui ticket. */
 export function ticketPath(issueId: string): string {
   return `/${issueId}`

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseTicketPath, prefixOf, ticketPath, ticketUrl } from './deepLink'
+import { parseTicketPath, prefixOf, resolveTicketProject, ticketPath, ticketUrl } from './deepLink'
 
 describe('parseTicketPath', () => {
   it('recunoaște un path de ticket', () => {
@@ -43,6 +43,45 @@ describe('prefixOf', () => {
 
   it('întoarce tot id-ul dacă nu există cratimă', () => {
     expect(prefixOf('MS03')).toBe('MS03')
+  })
+})
+
+describe('resolveTicketProject', () => {
+  const projects = [
+    { id: 'ms', prefix: 'MS' },
+    { id: 'tur', prefix: 'TUR' },
+  ]
+
+  it('găsește proiectul după prefixul exact al id-ului', () => {
+    expect(resolveTicketProject(projects, 'MS-03')).toBe(projects[0])
+    expect(resolveTicketProject(projects, 'TUR-API')).toBe(projects[1])
+  })
+
+  it('ignoră diferențele de caps în id și în prefixul proiectului', () => {
+    expect(resolveTicketProject(projects, 'ms-03')).toBe(projects[0])
+    expect(resolveTicketProject([{ id: 'ms', prefix: 'ms' }], 'MS-03')).toEqual({ id: 'ms', prefix: 'ms' })
+  })
+
+  it('întoarce null când niciun proiect nu are prefixul', () => {
+    expect(resolveTicketProject(projects, 'ZZ-99')).toBeNull()
+    expect(resolveTicketProject([], 'MS-03')).toBeNull()
+  })
+
+  it('nu confundă un prefix cu altul care începe la fel', () => {
+    expect(resolveTicketProject(projects, 'M-01')).toBeNull()
+    expect(resolveTicketProject(projects, 'MSX-01')).toBeNull()
+  })
+
+  it('primul din listă câștigă dacă două proiecte împart prefixul (ambiguitate acceptată)', () => {
+    const dupes = [
+      { id: 'ms', prefix: 'MS' },
+      { id: 'ms-2', prefix: 'MS' },
+    ]
+    expect(resolveTicketProject(dupes, 'MS-03')).toBe(dupes[0])
+  })
+
+  it('tratează un id fără cratimă ca prefix întreg', () => {
+    expect(resolveTicketProject(projects, 'MS')).toBe(projects[0])
   })
 })
 
