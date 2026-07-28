@@ -12,7 +12,7 @@ import { Sidebar } from './components/Sidebar'
 import { QuickSearch } from './components/QuickSearch'
 import { UsersView } from './components/UsersView'
 import { Toast } from './components/Toast'
-import { parseTicketPath, resolveTicketProject, ticketPath } from './lib/deepLink'
+import { deepLinkNotice, parseTicketPath, resolveTicketProject, ticketPath } from './lib/deepLink'
 import type { Project } from './lib/types'
 
 function ThemeToggle({ className }: { className?: string }) {
@@ -113,7 +113,7 @@ const slugify = (name: string) =>
   name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '')
 
 function Shell() {
-  const { loading, error, project, projects, issuesLoadedFor, byId, selectProject, refresh } = useHorizontal()
+  const { loading, error, project, projects, issuesLoadedFor, issuesLoadFailedFor, byId, selectProject, refresh } = useHorizontal()
   const { openNewIssue, openNewProject, openProjectSettings, openIssue, closeSheet, sheet, ticketId } = useUI()
   const { isAdmin } = useAuth()
   const canWrite = useCanWrite()
@@ -124,6 +124,27 @@ function Shell() {
   })
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
+  // ─────────────────────────────────────────────────────────────────────────
+  // Mașina de stări a URL-ului. Cine deține URL-ul, și când:
+  //
+  //   • un ticket deschis (`ticketId` din stiva de sheet-uri) → `/<id>`;
+  //   • altfel proiectul selectat → `/project/<slug>`, sau `/` fără proiect.
+  //
+  // Formularul de tichet nou și cardurile de dependență din stivă NU dețin
+  // URL-ul. Regula se aplică în patru efecte, în ordinea asta:
+  //   1. boot (o singură dată, prin `bootDone`): citește path-ul → alege
+  //      proiectul; un `/<id>` lasă `deepLinkPending` și așteaptă datele;
+  //   2. proiect → URL: tace cât timp URL-ul aparține unui ticket;
+  //   3. rezolvarea deep link-ului: deschide sheet-ul când sosesc issues
+  //      (`issuesLoadedFor`) sau renunță onest dacă încărcarea a eșuat;
+  //   4. `[ticketId]` sheet → URL: push la deschidere, back la închidere.
+  // Plus handler-ul de `popstate`, singurul care merge invers: URL → stare.
+  //
+  // Refs, nu state, pentru că handler-ele de istoric citesc valorile *acum*,
+  // în afara unui render. `historyDepth` (ținut și în `history.state`) spune
+  // câte intrări am împins noi în sesiunea asta: 0 înseamnă că un
+  // `history.back()` ar scoate userul din aplicație, deci rescriem în loc.
+  // ─────────────────────────────────────────────────────────────────────────
   const urlSyncReady = useRef(false)
   const [notice, setNotice] = useState<string | null>(null)
   const clearNotice = useCallback(() => setNotice(null), [])
@@ -160,6 +181,18 @@ function Shell() {
   const settleUrl = (p: Project | null) => {
     const path = projectPath(p)
     if (window.location.pathname !== path) replacePath(path)
+  }
+  /**
+   * Un Back a fost refuzat (formular cu modificări nesalvate) → punem URL-ul
+   * înapoi pe starea care rămâne pe ecran: ticketul deschis, altfel proiectul.
+   * Idempotent: dacă intrarea pe care am aterizat arată deja starea corectă nu
+   * împingem nimic, altfel ar rămâne o intrare duplicat pe care nimic nu o mai
+   * scoate și următorul Back n-ar face nimic vizibil.
+   */
+  const reassertUrl = () => {
+    const open = ticketIdRef.current
+    const path = open ? ticketPath(open) : projectPath(projectRef.current)
+    if (window.location.pathname !== path) pushPath(path)
   }
   const mainRef = useRef<HTMLElement>(null)
   const [pullY, setPullY] = useState(0)
@@ -218,19 +251,23 @@ function Shell() {
    * proiectul și lasă efectul de rezolvare să deschidă sheet-ul după ce ajung
    * issues. Dacă nu există (prefix necunoscut sau ticket șters), anunță și
    * așază URL-ul pe destinația reală, ca să nu rămână agățat pe /XX-01.
+   *
+   * Se apelează numai din `popstate`, *după* ce stiva de sheet-uri a fost
+   * închisă (vezi `onPop`). De asta ramurile de eșec pot așeza URL-ul pe
+   * proiect fără să rămână un sheet de ticket deschis sub un URL de proiect.
    */
   const resolveTicketUrl = (target: string) => {
     const current = projectRef.current
     const owner = resolveTicketProject(projectsRef.current, target)
     if (!owner) {
-      setNotice(`Ticketul ${target} nu mai există`)
+      setNotice(deepLinkNotice(target, 'missing'))
       settleUrl(current)
       return
     }
     if (current && owner.id === current.id) {
       if (byIdRef.current[target]) openIssue(target)
       else {
-        setNotice(`Ticketul ${target} nu mai există`)
+        setNotice(deepLinkNotice(target, 'missing'))
         settleUrl(current)
       }
       return
@@ -253,7 +290,9 @@ function Shell() {
         deepLinkPending.current = target
         selectProject(owner.id)
       } else {
-        setNotice(`Ticketul ${target} nu mai există`)
+        // Fără proiecte în listă nu putem ști dacă ticketul a dispărut sau doar
+        // listProjects() a eșuat — `error` face diferența.
+        setNotice(deepLinkNotice(target, error ? 'load-failed' : 'missing'))
         settleUrl(selectLastUsedProject())
       }
     } else {
@@ -270,18 +309,27 @@ function Shell() {
 
   // Rezolvă deep link-ul în așteptare de îndată ce issues proiectului sunt
   // încărcate. Semnalul e `issuesLoadedFor` — o listă goală nu poate distinge
-  // „încă nu s-a încărcat” de „proiect fără tichete”.
+  // „încă nu s-a încărcat” de „proiect fără tichete”. `issuesLoadFailedFor` e
+  // celălalt capăt: fără el, un eșec de încărcare ar lăsa `deepLinkPending`
+  // agățat pe vecie, iar sincronizarea proiect → URL ar tăcea toată sesiunea.
   useEffect(() => {
     const pending = deepLinkPending.current
-    if (!pending || !project || issuesLoadedFor !== project.id) return
+    if (!pending || !project) return
+    if (issuesLoadFailedFor === project.id) {
+      deepLinkPending.current = null
+      setNotice(deepLinkNotice(pending, 'load-failed'))
+      settleUrl(project)
+      return
+    }
+    if (issuesLoadedFor !== project.id) return
     deepLinkPending.current = null
     if (byId[pending]) openIssue(pending)
     else {
-      setNotice(`Ticketul ${pending} nu mai există`)
+      setNotice(deepLinkNotice(pending, 'missing'))
       settleUrl(project)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [issuesLoadedFor, project, byId, openIssue])
+  }, [issuesLoadedFor, issuesLoadFailedFor, project, byId, openIssue])
 
   // Step 2 — sync project → URL using name slug. Nu scrie nimic cât timp URL-ul
   // aparține unui ticket (deep link în curs de rezolvare, sau sheet deschis) —
@@ -333,17 +381,22 @@ function Shell() {
     const onPop = () => {
       historyDepth.current = readDepth()
       const target = parseTicketPath(window.location.pathname)
-      if (target) {
-        // Deja deschis (ex. un card de dependență peste el) → nu resetăm stiva.
-        if (ticketIdRef.current === target) return
-        resolveTicketUrl(target)
+      // Ticketul cerut e deja cel deschis (ex. un card de dependență peste el)
+      // → nu resetăm stiva și nu deranjăm garda de close.
+      if (target && ticketIdRef.current === target) return
+      // Orice altă destinație închide stiva, inclusiv un alt ticket: un
+      // formular cu modificări nesalvate nu are voie să dispară în silență.
+      // Dacă garda blochează, nu mai navigăm nicăieri și punem URL-ul înapoi.
+      if (sheetRef.current.kind !== 'none' && !closeSheet()) {
+        reassertUrl()
         return
       }
-      if (sheetRef.current.kind !== 'none' && !closeSheet()) {
-        // Garda de close a blocat (formular cu modificări nesalvate) → punem
-        // URL-ul înapoi pe ticket, ca să nu rămână desincronizat de sheet.
-        const open = ticketIdRef.current
-        pushPath(open ? ticketPath(open) : projectPath(projectRef.current))
+      if (target) {
+        // `closeSheet()` a golit stiva, iar `openIssue()` de mai jos o rescrie
+        // în același handler → React 18 le grupează într-un singur render, deci
+        // efectul `[ticketId]` nu vede niciodată starea intermediară „niciun
+        // ticket deschis, dar URL de ticket” (care ar declanșa un back).
+        resolveTicketUrl(target)
         return
       }
       const match = window.location.pathname.match(/^\/project\/(.+)$/)
