@@ -11,6 +11,8 @@ import { SheetHost } from './components/SheetHost'
 import { Sidebar } from './components/Sidebar'
 import { QuickSearch } from './components/QuickSearch'
 import { UsersView } from './components/UsersView'
+import { Toast } from './components/Toast'
+import { parseTicketPath, ticketPath } from './lib/deepLink'
 
 function ThemeToggle({ className }: { className?: string }) {
   const { theme, toggle } = useTheme()
@@ -108,7 +110,7 @@ const slugify = (name: string) =>
 
 function Shell() {
   const { loading, error, project, projects, selectProject, refresh } = useHorizontal()
-  const { openNewIssue, openNewProject, openProjectSettings, sheet } = useUI()
+  const { openNewIssue, openNewProject, openProjectSettings, openIssue, closeSheet, sheet } = useUI()
   const { isAdmin } = useAuth()
   const canWrite = useCanWrite()
   const [showUsers, setShowUsers] = useState(false)
@@ -119,6 +121,12 @@ function Shell() {
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
   const urlSyncReady = useRef(false)
+  const [notice, setNotice] = useState<string | null>(null)
+  // Setat cât timp un deep link se rezolvă, ca sincronizarea proiect → URL să
+  // nu scrie /project/<slug> peste /MS-03. Vezi Task 4.
+  const deepLinkPending = useRef<string | null>(null)
+  const sheetRef = useRef(sheet)
+  sheetRef.current = sheet
   const mainRef = useRef<HTMLElement>(null)
   const [pullY, setPullY] = useState(0)
   const pullStart = useRef<number | null>(null)
@@ -179,26 +187,62 @@ function Shell() {
     urlSyncReady.current = true
   }, [loading]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Step 2 — sync project → URL using name slug
+  // Step 2 — sync project → URL using name slug. Nu scrie nimic cât timp URL-ul
+  // aparține unui ticket (deep link în curs de rezolvare, sau sheet deschis) —
+  // altfel /project/<slug> ar călca peste /MS-03.
   useEffect(() => {
     if (!urlSyncReady.current) return
-    const path = project ? `/project/${slugify(project.name)}` : '/'
-    if (window.location.pathname !== path)
-      window.history.pushState(null, '', path)
-    if (project) localStorage.setItem('horizontal:last-project', slugify(project.name))
+    const slug = project ? slugify(project.name) : null
+    if (slug) localStorage.setItem('horizontal:last-project', slug)
     else localStorage.removeItem('horizontal:last-project')
+
+    const ticketOwnsUrl = deepLinkPending.current !== null || parseTicketPath(window.location.pathname)
+    if (ticketOwnsUrl) return
+
+    const path = slug ? `/project/${slug}` : '/'
+    if (window.location.pathname !== path) window.history.pushState(null, '', path)
   }, [project?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Browser back/forward → sync store
+  // Sheet de ticket → URL. Deschiderea împinge o intrare în istoric, deci Back
+  // închide sheet-ul. Închiderea face history.back() în loc de pushState, ca să
+  // nu acumuleze intrări duplicate.
+  const openTicketId = sheet.kind === 'issue-form' && sheet.issueId ? sheet.issueId : null
+  useEffect(() => {
+    if (!urlSyncReady.current) return
+    const onTicketUrl = parseTicketPath(window.location.pathname)
+
+    if (openTicketId) {
+      const path = ticketPath(openTicketId)
+      if (window.location.pathname !== path) {
+        // Deep link în curs: URL-ul e deja corect, doar îl adoptăm.
+        if (onTicketUrl === openTicketId) window.history.replaceState(null, '', path)
+        else window.history.pushState(null, '', path)
+      }
+    } else if (onTicketUrl) {
+      // Sheet-ul s-a închis dar URL-ul e încă de ticket → derulăm istoricul.
+      // Garda `onTicketUrl` previne un back dublu când tocmai popstate a fost
+      // cel care a închis sheet-ul (atunci URL-ul nu mai e de ticket).
+      window.history.back()
+    }
+  }, [openTicketId])
+
+  // Browser back/forward → sync store. Un path de ticket nu schimbă proiectul;
+  // doar deschide sau închide sheet-ul.
   useEffect(() => {
     const onPop = () => {
+      const ticketId = parseTicketPath(window.location.pathname)
+      if (ticketId) {
+        openIssue(ticketId)
+        return
+      }
+      if (sheetRef.current.kind !== 'none') closeSheet()
       const match = window.location.pathname.match(/^\/project\/(.+)$/)
       const found = match ? findBySlug(match[1]) : null
       selectProject(found?.id ?? null)
     }
     window.addEventListener('popstate', onPop)
     return () => window.removeEventListener('popstate', onPop)
-  }, [selectProject, projects]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectProject, projects, openIssue, closeSheet]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -264,6 +308,7 @@ function Shell() {
           </button>
         )}
       </div>
+      <Toast message={notice} onDone={() => setNotice(null)} />
       <SheetHost />
       {showSearch && <QuickSearch onClose={() => setShowSearch(false)} />}
       {showShortcuts && (
