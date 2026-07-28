@@ -13,6 +13,12 @@ export type SheetState =
 
 interface UI {
   sheet: SheetState
+  /**
+   * Ticketul care deține URL-ul: primul `issue-form` cu id din stivă, nu vârful.
+   * Un card de dependență (`kind: 'issue'`) împins deasupra formularului nu
+   * schimbă URL-ul — ticketul de dedesubt e tot cel deschis.
+   */
+  ticketId: string | null
   canGoBack: boolean
   openIssue(id: string): void
   openNewIssue(): void
@@ -21,7 +27,8 @@ interface UI {
   openProjectSettings(): void
   openWaveManage(): void
   openThemeManage(): void
-  closeSheet(): void
+  /** Închide toată stiva. Întoarce false dacă garda de close a blocat. */
+  closeSheet(): boolean
   goBack(): void
   pushSheet(state: SheetState): void
   /** Register a guard called before closing all sheets. Return false to block close. */
@@ -36,9 +43,15 @@ export function UIProvider({ children }: { children: ReactNode }) {
 
   const sheet = sheets[sheets.length - 1] ?? { kind: 'none' }
 
+  const ticketId = useMemo(() => {
+    const found = sheets.find((s) => s.kind === 'issue-form' && s.issueId)
+    return found && found.kind === 'issue-form' ? found.issueId ?? null : null
+  }, [sheets])
+
   const value = useMemo<UI>(
     () => ({
       sheet,
+      ticketId,
       canGoBack: sheets.length > 1,
       openIssue: (issueId) => setSheets([{ kind: 'issue-form', issueId }]),
       openNewIssue: () => setSheets([{ kind: 'issue-form' }]),
@@ -48,15 +61,16 @@ export function UIProvider({ children }: { children: ReactNode }) {
       openWaveManage: () => setSheets([{ kind: 'wave-manage' }]),
       openThemeManage: () => setSheets([{ kind: 'theme-manage' }]),
       closeSheet: () => {
-        if (closeGuard.current && !closeGuard.current()) return
+        if (closeGuard.current && !closeGuard.current()) return false
         setSheets([])
+        return true
       },
       goBack: () => setSheets((prev) => prev.slice(0, -1)),
       pushSheet: (state) => setSheets((prev) => [...prev, state]),
       setCloseGuard: (fn) => { closeGuard.current = fn },
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sheet, sheets.length],
+    [sheet, sheets.length, ticketId],
   )
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
