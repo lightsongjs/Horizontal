@@ -12,7 +12,7 @@ import { Sidebar } from './components/Sidebar'
 import { QuickSearch } from './components/QuickSearch'
 import { UsersView } from './components/UsersView'
 import { Toast } from './components/Toast'
-import { parseTicketPath, ticketPath } from './lib/deepLink'
+import { parseTicketPath, prefixOf, ticketPath } from './lib/deepLink'
 
 function ThemeToggle({ className }: { className?: string }) {
   const { theme, toggle } = useTheme()
@@ -109,7 +109,7 @@ const slugify = (name: string) =>
   name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '')
 
 function Shell() {
-  const { loading, error, project, projects, selectProject, refresh } = useHorizontal()
+  const { loading, error, project, projects, issues, byId, selectProject, refresh } = useHorizontal()
   const { openNewIssue, openNewProject, openProjectSettings, openIssue, closeSheet, sheet } = useUI()
   const { isAdmin } = useAuth()
   const canWrite = useCanWrite()
@@ -170,22 +170,52 @@ function Shell() {
 
   const findBySlug = (slug: string) => projects.find((p) => slugify(p.name) === slug)
 
-  // Step 1 — on load: read path, select project by name slug, then unlock URL sync
+  // Fallback: selectează ultimul proiect folosit (dacă există), din localStorage.
+  const selectLastUsedProject = () => {
+    const lastSlug = localStorage.getItem('horizontal:last-project')
+    const found = lastSlug ? findBySlug(lastSlug) : null
+    if (found) selectProject(found.id)
+  }
+
+  // Step 1 — on load: read path, select project, then unlock URL sync.
+  // Un path de ticket (/MS-03) nu conține proiectul, așa că îl deducem din
+  // prefixul id-ului. Issues se încarcă lazy, deci sheet-ul se deschide mai
+  // târziu, într-un efect separat, după ce ajung datele.
   useEffect(() => {
     if (loading) return
-    const match = window.location.pathname.match(/^\/project\/(.+)$/)
-    if (match) {
-      const found = findBySlug(match[1])
-      if (found) selectProject(found.id)
+    const ticketId = parseTicketPath(window.location.pathname)
+    if (ticketId) {
+      const prefix = prefixOf(ticketId)
+      const found = projects.find((p) => p.prefix.toUpperCase() === prefix)
+      if (found) {
+        deepLinkPending.current = ticketId
+        selectProject(found.id)
+      } else {
+        setNotice(`Ticketul ${ticketId} nu mai există`)
+        selectLastUsedProject()
+      }
     } else {
-      const lastSlug = localStorage.getItem('horizontal:last-project')
-      if (lastSlug) {
-        const found = findBySlug(lastSlug)
+      const match = window.location.pathname.match(/^\/project\/(.+)$/)
+      if (match) {
+        const found = findBySlug(match[1])
         if (found) selectProject(found.id)
+      } else {
+        selectLastUsedProject()
       }
     }
     urlSyncReady.current = true
   }, [loading]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Rezolvă deep link-ul în așteptare de îndată ce issues proiectului sunt
+  // încărcate. `issues` e derivat din proiectul activ, deci un array nevid
+  // înseamnă că datele au ajuns.
+  useEffect(() => {
+    const pending = deepLinkPending.current
+    if (!pending || !project || issues.length === 0) return
+    deepLinkPending.current = null
+    if (byId[pending]) openIssue(pending)
+    else setNotice(`Ticketul ${pending} nu mai există`)
+  }, [issues, project, byId, openIssue])
 
   // Step 2 — sync project → URL using name slug. Nu scrie nimic cât timp URL-ul
   // aparține unui ticket (deep link în curs de rezolvare, sau sheet deschis) —
