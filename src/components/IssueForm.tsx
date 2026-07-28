@@ -1,8 +1,9 @@
-import { useRef, useState, useEffect, forwardRef } from 'react'
+import { useRef, useState, useEffect, useCallback, forwardRef } from 'react'
 import { detectCycle, requiredDepWave } from '../lib/engine'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { useCanWrite } from '../hooks'
+import { ticketUrl } from '../lib/deepLink'
 import type { Issue, ScenarioKind, TestScenario } from '../lib/types'
 
 const PALETTE = ['#0284C7', '#059669', '#D97706', '#EA580C', '#E11D48', '#7C3AED', '#06B6D4']
@@ -141,6 +142,47 @@ export function IssueForm({ issueId }: { issueId?: string }) {
   const canWrite = useCanWrite()
   const existing = issueId ? byId[issueId] : undefined
   const isEdit = !!existing
+
+  const [copied, setCopied] = useState(false)
+
+  // Copiază link-ul absolut al ticketului. Necesar în PWA instalat, unde nu
+  // există bară de adrese. clipboard.writeText cere context securizat (https
+  // sau localhost) — fallback pe un textarea ascuns dacă lipsește.
+  const copyLink = useCallback(async () => {
+    if (!existing) return
+    const url = ticketUrl(window.location.origin, existing.id)
+    try {
+      await navigator.clipboard.writeText(url)
+    } catch {
+      const ta = document.createElement('textarea')
+      ta.value = url
+      ta.style.position = 'fixed'
+      ta.style.opacity = '0'
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    }
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1600)
+  }, [existing])
+
+  // Tasta `y` (convenția GitHub/Linear). Handler-ul global de shortcuts din
+  // App.tsx nu se aplică aici — iese devreme când un sheet e deschis.
+  useEffect(() => {
+    if (!isEdit) return
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable) return
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      if (e.key === 'y' || e.key === 'Y') {
+        e.preventDefault()
+        void copyLink()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [isEdit, copyLink])
 
   const defaultAssigneeId = !isEdit && project?.type === 'personal' ? (myAssigneeId ?? null) : null
 
@@ -460,6 +502,26 @@ export function IssueForm({ issueId }: { issueId?: string }) {
       {/* HEADER */}
       <div className="sh-header">
         <button className="sh-close" onClick={closeSheet} aria-label="Închide">✕</button>
+        {isEdit && (
+          <button
+            tabIndex={-1}
+            className={`sh-copy${copied ? ' copied' : ''}`}
+            onClick={() => void copyLink()}
+            aria-label="Copiază link"
+            title="Copiază link către ticket (y)"
+          >
+            {copied ? (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            ) : (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              </svg>
+            )}
+          </button>
+        )}
         {isEdit && canWrite && (
           <button
             tabIndex={-1}

@@ -2739,6 +2739,28 @@ svg.graph {
   to   { box-shadow: 0 0 0 5px rgba(225,29,72,0.22); }
 }
 
+.sh-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--txt-faint);
+  border: 1px solid var(--line);
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+.sh-copy:hover {
+  background: var(--surface-2);
+  color: var(--txt);
+}
+.sh-copy.copied {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
 .sh-title-input {
   flex: 1;
   min-width: 0;
