@@ -39,6 +39,13 @@ interface HorizontalState {
    * s-au încărcat” de „proiect fără tichete”; ăsta e semnalul explicit.
    */
   issuesLoadedFor: string | null
+  /**
+   * Id-ul proiectului pentru care încărcarea a eșuat. Complementul lui
+   * `issuesLoadedFor`: fără el, un consumator care așteaptă datele (rezolvarea
+   * unui deep link) ar aștepta la infinit după un eșec, iar o listă goală ar
+   * părea „proiect fără tichete” în loc de „n-am putut încărca”.
+   */
+  issuesLoadFailedFor: string | null
   activeWave: number
   assignees: Assignee[]
   myAssigneeId: string | null
@@ -86,6 +93,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
   const [allIssues, setAllIssues] = useState<Issue[]>([])
   const [projectId, setProjectId] = useState<string | null>(null)
   const [issuesLoadedFor, setIssuesLoadedFor] = useState<string | null>(null)
+  const [issuesLoadFailedFor, setIssuesLoadFailedFor] = useState<string | null>(null)
   const [activeWave, setActiveWave] = useState(1)
   const [assignees, setAssignees] = useState<Assignee[]>([])
   const [myAssigneeId, setMyAssigneeIdState] = useState<string | null>(
@@ -100,6 +108,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
 
   const refresh = useCallback(async () => {
     setLoading(true)
+    setIssuesLoadFailedFor(null)
     try {
       const p = await repository.listProjects()
       setRawProjects(p)
@@ -116,6 +125,10 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
+      // Același tratament ca în selectProject: marcăm eșecul, ca oricine
+      // așteaptă datele proiectului să nu aștepte la infinit. `issuesLoadedFor`
+      // rămâne cum era — datele vechi sunt încă în memorie și încă valide.
+      if (projectId) setIssuesLoadFailedFor(projectId)
     } finally {
       setLoading(false)
     }
@@ -157,6 +170,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
       // La schimbarea proiectului, „încărcat” redevine fals până sosesc datele,
       // ca un consumator să nu citească snapshot-ul altui proiect.
       setIssuesLoadedFor((cur) => (cur === id ? cur : null))
+      setIssuesLoadFailedFor(null)
       if (!id) return
       const proj = projects.find((p) => p.id === id)
       setActiveWave(proj?.currentWave ?? 1)
@@ -170,7 +184,13 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
             setActiveWave(w[0].number)
           }
         })
-        .catch((e) => setError(e instanceof Error ? e.message : String(e)))
+        .catch((e) => {
+          setError(e instanceof Error ? e.message : String(e))
+          // `issuesLoadedFor` rămâne null (n-avem date), dar semnalăm explicit
+          // eșecul: altfel cine așteaptă încărcarea (deep link în curs de
+          // rezolvare) rămâne blocat pe vecie.
+          setIssuesLoadFailedFor(id)
+        })
     },
     [projects],
   )
@@ -357,6 +377,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     themes,
     issues,
     issuesLoadedFor,
+    issuesLoadFailedFor,
     activeWave,
     assignees,
     myAssigneeId,
