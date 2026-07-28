@@ -36,6 +36,23 @@ export function resolveTicketProject<P extends { prefix: string }>(
   return projects.find((p) => p.prefix.toUpperCase() === prefix) ?? null
 }
 
+/**
+ * De ce nu s-a putut deschide un deep link: fie datele s-au încărcat și
+ * ticketul chiar nu există, fie încărcarea a eșuat și nu știm nimic despre el.
+ */
+export type DeepLinkFailure = 'missing' | 'load-failed'
+
+/**
+ * Mesajul pentru un deep link care nu s-a putut deschide. Un eșec de încărcare
+ * nu are voie să pretindă că ticketul a dispărut — sunt două probleme diferite,
+ * cu soluții diferite pentru user.
+ */
+export function deepLinkNotice(ticketId: string, failure: DeepLinkFailure): string {
+  return failure === 'load-failed'
+    ? `Nu am putut încărca datele pentru ${ticketId}. Încearcă din nou.`
+    : `Ticketul ${ticketId} nu mai există`
+}
+
 /** Path-ul canonic al unui ticket. */
 export function ticketPath(issueId: string): string {
   return `/${issueId}`

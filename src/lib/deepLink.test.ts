@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseTicketPath, prefixOf, resolveTicketProject, ticketPath, ticketUrl } from './deepLink'
+import { deepLinkNotice, parseTicketPath, prefixOf, resolveTicketProject, ticketPath, ticketUrl } from './deepLink'
 
 describe('parseTicketPath', () => {
   it('recunoaște un path de ticket', () => {
@@ -82,6 +82,23 @@ describe('resolveTicketProject', () => {
 
   it('tratează un id fără cratimă ca prefix întreg', () => {
     expect(resolveTicketProject(projects, 'MS')).toBe(projects[0])
+  })
+})
+
+describe('deepLinkNotice', () => {
+  it('spune că ticketul nu mai există când datele sunt încărcate', () => {
+    expect(deepLinkNotice('MS-03', 'missing')).toBe('Ticketul MS-03 nu mai există')
+  })
+
+  it('nu pretinde că ticketul a dispărut când încărcarea a eșuat', () => {
+    const msg = deepLinkNotice('MS-03', 'load-failed')
+    expect(msg).toContain('MS-03')
+    expect(msg).not.toContain('nu mai există')
+    expect(msg).toBe('Nu am putut încărca datele pentru MS-03. Încearcă din nou.')
+  })
+
+  it('are mesaje diferite pentru cele două motive', () => {
+    expect(deepLinkNotice('ZZ-99', 'missing')).not.toBe(deepLinkNotice('ZZ-99', 'load-failed'))
   })
 })
 
