@@ -154,6 +154,9 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
   const selectProject = useCallback(
     (id: string | null) => {
       setProjectId(id)
+      // La schimbarea proiectului, „încărcat” redevine fals până sosesc datele,
+      // ca un consumator să nu citească snapshot-ul altui proiect.
+      setIssuesLoadedFor((cur) => (cur === id ? cur : null))
       if (!id) return
       const proj = projects.find((p) => p.id === id)
       setActiveWave(proj?.currentWave ?? 1)
