@@ -6,7 +6,7 @@ interface Env {
   SUPABASE_SERVICE_ROLE_KEY: string
 }
 
-import { sbHeaders } from '../_tickets-lib'
+import { sbHeaders, resolveProject, nextIssueId } from '../_tickets-lib'
 
 const FIELD_MAP: Record<string, string> = {
   title: 'title',
@@ -88,7 +88,9 @@ export const onRequestPatch: PagesFunction<Env> = async (context) => {
   }
   const deps = hasDeps ? (body.deps as string[]) : null
 
-  if (Object.keys(issueUpdate).length === 0 && !hasDeps) {
+  const wantsMove = typeof body.projectId === 'string' && body.projectId.length > 0
+
+  if (Object.keys(issueUpdate).length === 0 && !hasDeps && !wantsMove) {
     return Response.json({ error: 'no_updatable_fields' }, { status: 400 })
   }
 
@@ -104,12 +106,35 @@ export const onRequestPatch: PagesFunction<Env> = async (context) => {
   if (!currentRows.length) return Response.json({ error: 'not_found' }, { status: 404 })
   const current = currentRows[0]
 
+  // Move to another project: new id with the target prefix, target wave, no theme.
+  let movedFrom: string | null = null
+  let dupProjectId = current.project_id
+
+  if (wantsMove) {
+    const target = await resolveProject(body.projectId as string, SUPABASE_URL, headers)
+    if (!target) {
+      return Response.json({ error: 'project_not_found' }, { status: 404 })
+    }
+
+    if (target.id !== current.project_id) {
+      const newId = await nextIssueId(target.id, target.prefix, SUPABASE_URL, headers)
+      if (newId === null) return Response.json({ error: 'db_error' }, { status: 502 })
+
+      issueUpdate.wave = target.current_wave
+      issueUpdate.theme = null
+      issueUpdate.id = newId
+      issueUpdate.project_id = target.id
+      movedFrom = id
+      dupProjectId = target.id
+    }
+  }
+
   // Dup-check when the title is being renamed, scoped to the owning project.
   if ('title' in issueUpdate) {
     const wave = (issueUpdate.wave as number | undefined) ?? current.wave
     const encoded = encodeURIComponent(issueUpdate.title as string)
     const dupRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/issues?project_id=eq.${encodeURIComponent(current.project_id)}&title=ilike.${encoded}&wave=eq.${wave}&id=neq.${encodeURIComponent(id)}&select=id&limit=1`,
+      `${SUPABASE_URL}/rest/v1/issues?project_id=eq.${encodeURIComponent(dupProjectId)}&title=ilike.${encoded}&wave=eq.${wave}&id=neq.${encodeURIComponent(id)}&select=id&limit=1`,
       { headers }
     )
     if (!dupRes.ok) return Response.json({ error: 'db_error' }, { status: 502 })
@@ -166,8 +191,16 @@ export const onRequestPatch: PagesFunction<Env> = async (context) => {
     Object.entries(FIELD_MAP).map(([client, db]) => [db, client])
   )
   const updatedFields = [
-    ...Object.keys(issueUpdate).map(k => dbToClient[k] ?? k),
+    ...Object.keys(issueUpdate)
+      .filter(k => k !== 'id' && k !== 'project_id')
+      .map(k => dbToClient[k] ?? k),
+    ...(movedFrom ? ['projectId'] : []),
     ...(hasDeps ? ['deps'] : []),
   ]
-  return Response.json({ id, updated: updatedFields })
+  const finalId = (issueUpdate.id as string | undefined) ?? id
+  return Response.json({
+    id: finalId,
+    ...(movedFrom ? { movedFrom } : {}),
+    updated: updatedFields,
+  })
 }
