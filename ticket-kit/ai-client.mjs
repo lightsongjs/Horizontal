@@ -212,6 +212,9 @@ async function update() {
   } else if (status === 422) {
     console.log(data.error)
     process.exit(1)
+  } else if (status === 400) {
+    console.log(data.error)
+    process.exit(1)
   } else {
     console.error(`Error ${status}: ${JSON.stringify(data)}`)
     process.exit(1)
