@@ -179,10 +179,12 @@ export const onRequestPatch: PagesFunction<Env> = async (context) => {
     }
   }
 
-  // Dup-check when the title is being renamed, scoped to the owning project.
-  if ('title' in issueUpdate) {
+  // Dup-check the effective title. A move must check against the target project
+  // even when the title is unchanged, since the collision is new there.
+  if ('title' in issueUpdate || movedFrom) {
     const wave = (issueUpdate.wave as number | undefined) ?? current.wave
-    const encoded = encodeURIComponent(issueUpdate.title as string)
+    const effectiveTitle = (issueUpdate.title as string | undefined) ?? current.title
+    const encoded = encodeURIComponent(effectiveTitle)
     const dupRes = await fetch(
       `${SUPABASE_URL}/rest/v1/issues?project_id=eq.${encodeURIComponent(dupProjectId)}&title=ilike.${encoded}&wave=eq.${wave}&id=neq.${encodeURIComponent(id)}&select=id&limit=1`,
       { headers }

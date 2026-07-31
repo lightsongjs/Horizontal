@@ -323,3 +323,31 @@ describe('onRequestPatch move wave and theme overrides', () => {
     expect(calls.some(c => c.url.includes('/rest/v1/themes'))).toBe(false)
   })
 })
+
+describe('onRequestPatch move dup-check', () => {
+  it('checks the title against the target project and the final wave', async () => {
+    const calls = mockFetch(moveRoutes())
+    await onRequestPatch(patchCtx('HZ-07', { projectId: 'ticket-kit', title: 'Fresh' }))
+    const dup = calls.find(c => c.url.includes('&title=ilike.'))!
+    expect(dup.url).toContain('project_id=eq.ticket-kit')
+    expect(dup.url).toContain('wave=eq.2')
+  })
+
+  it('409s when the target project already has that title in that wave', async () => {
+    mockFetch(moveRoutes([
+      route('&title=ilike.', [{ id: 'TK-05' }]),
+    ]))
+    const res = await onRequestPatch(patchCtx('HZ-07', { projectId: 'ticket-kit', title: 'Taken' }))
+    expect(res.status).toBe(409)
+    expect(await res.json()).toEqual({ error: 'duplicate_title', existing_id: 'TK-05' })
+  })
+
+  it('carries the current title into the dup-check when the move renames nothing', async () => {
+    const calls = mockFetch(moveRoutes())
+    const res = await onRequestPatch(patchCtx('HZ-07', { projectId: 'ticket-kit' }))
+    expect(res.status).toBe(200)
+    const dup = calls.find(c => c.url.includes('&title=ilike.'))!
+    expect(dup.url).toContain(encodeURIComponent('Wrong project'))
+    expect(dup.url).toContain('project_id=eq.ticket-kit')
+  })
+})
