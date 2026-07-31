@@ -139,8 +139,39 @@ export const onRequestPatch: PagesFunction<Env> = async (context) => {
       const newId = await nextIssueId(target.id, target.prefix, SUPABASE_URL, headers)
       if (newId === null) return Response.json({ error: 'db_error' }, { status: 502 })
 
-      issueUpdate.wave = target.current_wave
-      issueUpdate.theme = null
+      // Wave: caller override, else the target project active wave. Must exist there.
+      let wave = target.current_wave
+      if ('wave' in body) {
+        wave = Number(body.wave)
+        if (!Number.isInteger(wave) || wave < 1) {
+          return Response.json({ error: 'invalid_wave' }, { status: 400 })
+        }
+      }
+      const waveRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/waves?project_id=eq.${encodeURIComponent(target.id)}&number=eq.${wave}&select=number&limit=1`,
+        { headers }
+      )
+      if (!waveRes.ok) return Response.json({ error: 'db_error' }, { status: 502 })
+      const waveRows = await waveRes.json() as Array<{ number: number }>
+      if (!waveRows.length) {
+        return Response.json({ error: 'wave_not_in_target' }, { status: 422 })
+      }
+      issueUpdate.wave = wave
+
+      // Theme: cleared by default, because theme keys are per-project.
+      const theme = (body.theme as string | null | undefined) ?? null
+      if (theme !== null) {
+        const themeRes = await fetch(
+          `${SUPABASE_URL}/rest/v1/themes?project_id=eq.${encodeURIComponent(target.id)}&key=eq.${encodeURIComponent(theme)}&select=key&limit=1`,
+          { headers }
+        )
+        if (!themeRes.ok) return Response.json({ error: 'db_error' }, { status: 502 })
+        const themeRows = await themeRes.json() as Array<{ key: string }>
+        if (!themeRows.length) {
+          return Response.json({ error: 'theme_not_in_target' }, { status: 422 })
+        }
+      }
+      issueUpdate.theme = theme
       issueUpdate.id = newId
       issueUpdate.project_id = target.id
       movedFrom = id

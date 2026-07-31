@@ -264,3 +264,62 @@ describe('onRequestPatch move dependency guard', () => {
     expect((await res.json() as any).updated).toEqual(['deps'])
   })
 })
+
+describe('onRequestPatch move wave and theme overrides', () => {
+  it('honours an explicit wave that exists in the target', async () => {
+    const calls = mockFetch(moveRoutes([
+      route('/rest/v1/waves?project_id=eq.ticket-kit&number=eq.4', [{ number: 4 }]),
+    ]))
+    const res = await onRequestPatch(patchCtx('HZ-07', { projectId: 'ticket-kit', wave: 4 }))
+    expect(res.status).toBe(200)
+    const write = calls.find(c => c.method === 'PATCH')!
+    expect(write.body.wave).toBe(4)
+  })
+
+  it('422s on a wave the target project does not have', async () => {
+    mockFetch(moveRoutes([
+      route('/rest/v1/waves?project_id=eq.ticket-kit&number=eq.9', []),
+    ]))
+    const res = await onRequestPatch(patchCtx('HZ-07', { projectId: 'ticket-kit', wave: 9 }))
+    expect(res.status).toBe(422)
+    expect(await res.json()).toEqual({ error: 'wave_not_in_target' })
+  })
+
+  it('400s on a non-integer wave', async () => {
+    mockFetch(moveRoutes())
+    const res = await onRequestPatch(patchCtx('HZ-07', { projectId: 'ticket-kit', wave: 'two' }))
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ error: 'invalid_wave' })
+  })
+
+  it('validates the default wave too', async () => {
+    const calls = mockFetch(moveRoutes())
+    await onRequestPatch(patchCtx('HZ-07', { projectId: 'ticket-kit' }))
+    expect(calls.some(c => c.url.includes('/rest/v1/waves?project_id=eq.ticket-kit'))).toBe(true)
+  })
+
+  it('honours a theme key that exists in the target', async () => {
+    const calls = mockFetch(moveRoutes([
+      route('/rest/v1/themes?project_id=eq.ticket-kit', [{ key: 'api' }]),
+    ]))
+    const res = await onRequestPatch(patchCtx('HZ-07', { projectId: 'ticket-kit', theme: 'api' }))
+    expect(res.status).toBe(200)
+    const write = calls.find(c => c.method === 'PATCH')!
+    expect(write.body.theme).toBe('api')
+  })
+
+  it('422s on a theme key the target project does not have', async () => {
+    mockFetch(moveRoutes([
+      route('/rest/v1/themes?project_id=eq.ticket-kit', []),
+    ]))
+    const res = await onRequestPatch(patchCtx('HZ-07', { projectId: 'ticket-kit', theme: 'ghost' }))
+    expect(res.status).toBe(422)
+    expect(await res.json()).toEqual({ error: 'theme_not_in_target' })
+  })
+
+  it('does not query themes when no theme is given', async () => {
+    const calls = mockFetch(moveRoutes())
+    await onRequestPatch(patchCtx('HZ-07', { projectId: 'ticket-kit' }))
+    expect(calls.some(c => c.url.includes('/rest/v1/themes'))).toBe(false)
+  })
+})
