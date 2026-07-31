@@ -107,6 +107,24 @@ async function list() {
   }
 }
 
+// --projects
+// Prints one line per project: kata  KATA  Katalist  [work]
+async function projects() {
+  const { status, data } = await apiFetch('/api/projects')
+  if (status === 200) {
+    if (!data.length) {
+      console.log('(no projects found)')
+    } else {
+      for (const p of data) {
+        console.log(`${p.id}  ${p.prefix}  ${p.name}  [${p.type}]`)
+      }
+    }
+  } else {
+    console.error(`Error ${status}: ${JSON.stringify(data)}`)
+    process.exit(1)
+  }
+}
+
 async function get() {
   const { id } = flags
   if (!id) {
@@ -126,11 +144,13 @@ async function get() {
 
 // --update --id KATA-03 [--title "..."] [--wave N] [--done true] [--deps ID1,ID2]
 // [--desc "..."] [--notes "..."] [--theme key] [--selectors '[...]'] [--scenarios '[...]']
-// Prints: updated: KATA-03  |  duplicate: KATA-07  |  not_found
+// [--project <target>]  moves the ticket to another project; it gets a new ID with
+//                       that project's prefix. Refused if any dependency touches it.
+// Prints: updated: KATA-03  |  moved: KATA-03 -> TK-12  |  duplicate: KATA-07  |  not_found
 async function update() {
   const { id } = flags
   if (!id) {
-    console.error('Usage: --update --id <ticket-id> [--title "..."] [--wave N] [--done true|false] [--deps ID1,ID2] [--desc "..."] [--notes "..."] [--theme key] [--selectors \'[...]\'] [--scenarios \'[...]\']')
+    console.error('Usage: --update --id <ticket-id> [--title "..."] [--wave N] [--done true|false] [--deps ID1,ID2] [--desc "..."] [--notes "..."] [--theme key] [--project <target>] [--selectors \'[...]\'] [--scenarios \'[...]\']')
     process.exit(1)
   }
 
@@ -144,6 +164,10 @@ async function update() {
   }
   if ('done' in flags) body.done = flags.done === 'true'
   if ('notes' in flags) body.notes = flags.notes
+  if ('project' in flags) {
+    if (flags.project === true) { console.error('--project requires a value'); process.exit(1) }
+    body.projectId = String(flags.project)
+  }
   if ('deps' in flags) {
     if (flags.deps === true) { console.error('--deps requires a value (use --deps "" to clear all)'); process.exit(1) }
     body.deps = flags.deps ? String(flags.deps).split(',').map(s => s.trim()).filter(Boolean) : []
@@ -158,9 +182,9 @@ async function update() {
     catch { console.error('--scenarios must be valid JSON array'); process.exit(1) }
   }
 
-  const knownFields = ['title', 'desc', 'theme', 'wave', 'done', 'notes', 'deps', 'selectors', 'scenarios']
+  const knownFields = ['title', 'desc', 'theme', 'wave', 'done', 'notes', 'deps', 'selectors', 'scenarios', 'projectId']
   if (!knownFields.some(f => f in body)) {
-    console.error('Provide at least one field: --title, --wave, --done, --deps, --desc, --notes, --theme, --selectors, --scenarios')
+    console.error('Provide at least one field: --title, --wave, --done, --deps, --desc, --notes, --theme, --project, --selectors, --scenarios')
     process.exit(1)
   }
 
@@ -170,18 +194,33 @@ async function update() {
   })
 
   if (status === 200) {
-    console.log(`updated: ${id}`)
+    if (data.movedFrom) {
+      console.log(`moved: ${data.movedFrom} -> ${data.id}`)
+    } else {
+      console.log(`updated: ${id}`)
+    }
   } else if (status === 404) {
-    console.log('not_found')
+    console.log(data.error === 'project_not_found' ? 'project_not_found' : 'not_found')
+  } else if (status === 409 && data.error === 'has_dependencies') {
+    console.log('has_dependencies')
+    if (data.dependsOn?.length) console.log(`  depends on: ${data.dependsOn.join(', ')}`)
+    if (data.dependedOnBy?.length) console.log(`  depended on by: ${data.dependedOnBy.join(', ')}`)
+    console.log('  clear them with --update --id <id> --deps "" then move')
+    process.exit(1)
   } else if (status === 409) {
     console.log(`duplicate: ${data.existing_id}`)
+  } else if (status === 422) {
+    console.log(data.error)
+    process.exit(1)
   } else {
     console.error(`Error ${status}: ${JSON.stringify(data)}`)
     process.exit(1)
   }
 }
 
-if (flags.lookup !== undefined) {
+if (flags.projects !== undefined) {
+  await projects()
+} else if (flags.lookup !== undefined) {
   await lookup()
 } else if (flags.create !== undefined) {
   await create()
@@ -192,6 +231,6 @@ if (flags.lookup !== undefined) {
 } else if (flags.update !== undefined) {
   await update()
 } else {
-  console.error('Usage: node ai-client.mjs --lookup|--create|--list|--get|--update [options]')
+  console.error('Usage: node ai-client.mjs --projects|--lookup|--create|--list|--get|--update [options]')
   process.exit(1)
 }
