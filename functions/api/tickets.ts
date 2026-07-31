@@ -13,29 +13,7 @@ interface SupabaseIssue {
   done: boolean
 }
 
-function sbHeaders(key: string): Record<string, string> {
-  return {
-    apikey: key,
-    Authorization: `Bearer ${key}`,
-    'Content-Type': 'application/json',
-    Prefer: 'return=representation',
-  }
-}
-
-async function resolveProject(
-  param: string,
-  supabaseUrl: string,
-  headers: Record<string, string>
-): Promise<{ id: string; prefix: string } | null> {
-  const encoded = encodeURIComponent(param)
-  const res = await fetch(
-    `${supabaseUrl}/rest/v1/projects?or=(id.eq.${encoded},name.ilike.${encoded})&select=id,prefix&limit=1`,
-    { headers }
-  )
-  if (!res.ok) return null
-  const rows = await res.json() as Array<{ id: string; prefix: string }>
-  return rows[0] ?? null
-}
+import { sbHeaders, resolveProject, nextIssueId } from './_tickets-lib'
 
 export const onRequestGet: PagesFunction<Env> = async (context) => {
   const url = new URL(context.request.url)
@@ -154,22 +132,11 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     }
   }
 
-  const prefix = projResolved.prefix
-
   // 2. Compute next ID
-  const issuesRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/issues?project_id=eq.${pid}&select=id`,
-    { headers }
-  )
-  if (!issuesRes.ok) {
+  const newId = await nextIssueId(pid, projResolved.prefix, SUPABASE_URL, headers)
+  if (newId === null) {
     return Response.json({ error: 'db_error' }, { status: 502 })
   }
-  const existingIssues = await issuesRes.json() as Array<{ id: string }>
-  const maxNum = existingIssues
-    .map(r => Number(r.id.slice(prefix.length + 1)))
-    .filter(Number.isFinite)
-    .reduce((a, b) => Math.max(a, b), 0)
-  const newId = `${prefix}-${String(maxNum + 1).padStart(2, '0')}`
 
   // 4. Check for duplicate title in same wave
   const encoded = encodeURIComponent(title)

@@ -6,6 +6,8 @@ interface Env {
   SUPABASE_SERVICE_ROLE_KEY: string
 }
 
+import { sbHeaders } from '../_tickets-lib'
+
 const FIELD_MAP: Record<string, string> = {
   title: 'title',
   desc: 'details',
@@ -15,15 +17,6 @@ const FIELD_MAP: Record<string, string> = {
   notes: 'notes',
   selectors: 'selectors',
   scenarios: 'scenarios',
-}
-
-function sbHeaders(key: string): Record<string, string> {
-  return {
-    apikey: key,
-    Authorization: `Bearer ${key}`,
-    'Content-Type': 'application/json',
-    Prefer: 'return=representation',
-  }
 }
 
 export function buildIssueUpdate(body: Record<string, unknown>): Record<string, unknown> {
