@@ -92,22 +92,24 @@ export const onRequestPatch: PagesFunction<Env> = async (context) => {
     return Response.json({ error: 'no_updatable_fields' }, { status: 400 })
   }
 
-  // Dup-check when title is being renamed
+  // Load the ticket once: the dup-check and the move both need its current state.
+  const currentRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/issues?id=eq.${encodeURIComponent(id)}&select=id,project_id,title,wave&limit=1`,
+    { headers }
+  )
+  if (!currentRes.ok) return Response.json({ error: 'db_error' }, { status: 502 })
+  const currentRows = await currentRes.json() as Array<{
+    id: string; project_id: string; title: string; wave: number
+  }>
+  if (!currentRows.length) return Response.json({ error: 'not_found' }, { status: 404 })
+  const current = currentRows[0]
+
+  // Dup-check when the title is being renamed, scoped to the owning project.
   if ('title' in issueUpdate) {
-    let wave = issueUpdate.wave as number | undefined
-    if (wave === undefined) {
-      const currentRes = await fetch(
-        `${SUPABASE_URL}/rest/v1/issues?id=eq.${encodeURIComponent(id)}&select=wave&limit=1`,
-        { headers }
-      )
-      if (!currentRes.ok) return Response.json({ error: 'db_error' }, { status: 502 })
-      const current = await currentRes.json() as Array<{ wave: number }>
-      if (!current.length) return Response.json({ error: 'not_found' }, { status: 404 })
-      wave = current[0].wave
-    }
+    const wave = (issueUpdate.wave as number | undefined) ?? current.wave
     const encoded = encodeURIComponent(issueUpdate.title as string)
     const dupRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/issues?title=ilike.${encoded}&wave=eq.${wave}&id=neq.${encodeURIComponent(id)}&select=id&limit=1`,
+      `${SUPABASE_URL}/rest/v1/issues?project_id=eq.${encodeURIComponent(current.project_id)}&title=ilike.${encoded}&wave=eq.${wave}&id=neq.${encodeURIComponent(id)}&select=id&limit=1`,
       { headers }
     )
     if (!dupRes.ok) return Response.json({ error: 'db_error' }, { status: 502 })
@@ -141,15 +143,6 @@ export const onRequestPatch: PagesFunction<Env> = async (context) => {
     if (!patchRes.ok) return Response.json({ error: 'db_error' }, { status: 502 })
     const patched = await patchRes.json() as Array<unknown>
     if (!patched.length) return Response.json({ error: 'not_found' }, { status: 404 })
-  } else {
-    // Only deps update — verify ticket exists
-    const checkRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/issues?id=eq.${encodeURIComponent(id)}&select=id&limit=1`,
-      { headers }
-    )
-    if (!checkRes.ok) return Response.json({ error: 'db_error' }, { status: 502 })
-    const check = await checkRes.json() as Array<{ id: string }>
-    if (!check.length) return Response.json({ error: 'not_found' }, { status: 404 })
   }
 
   // Replace deps (delete all, re-insert)
