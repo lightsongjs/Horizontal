@@ -117,6 +117,25 @@ export const onRequestPatch: PagesFunction<Env> = async (context) => {
     }
 
     if (target.id !== current.project_id) {
+      if (hasDeps) {
+        return Response.json({ error: 'cannot_move_and_set_deps' }, { status: 400 })
+      }
+
+      const enc = encodeURIComponent(id)
+      const depRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/dependencies?or=(issue_id.eq.${enc},depends_on_id.eq.${enc})&select=issue_id,depends_on_id`,
+        { headers }
+      )
+      if (!depRes.ok) return Response.json({ error: 'db_error' }, { status: 502 })
+      const depRows = await depRes.json() as Array<{ issue_id: string; depends_on_id: string }>
+      if (depRows.length > 0) {
+        return Response.json({
+          error: 'has_dependencies',
+          dependsOn: depRows.filter(r => r.issue_id === id).map(r => r.depends_on_id),
+          dependedOnBy: depRows.filter(r => r.depends_on_id === id).map(r => r.issue_id),
+        }, { status: 409 })
+      }
+
       const newId = await nextIssueId(target.id, target.prefix, SUPABASE_URL, headers)
       if (newId === null) return Response.json({ error: 'db_error' }, { status: 502 })
 

@@ -127,10 +127,11 @@ function moveRoutes(over: Route[] = []): Route[] {
       [{ id: 'HZ-07', project_id: 'horizontal', title: 'Wrong project', wave: 3 }]),
     route('/rest/v1/projects?or=', [{ id: 'ticket-kit', prefix: 'TK', current_wave: 2 }]),
     route('/rest/v1/dependencies?or=', []),
+    // Not queried yet — scaffolding for Task 5's wave validation against the target project.
     route('/rest/v1/waves?project_id=eq.ticket-kit', [{ number: 2 }]),
     route('/rest/v1/issues?project_id=eq.ticket-kit&select=id', [{ id: 'TK-01' }, { id: 'TK-02' }]),
     route('&title=ilike.', []),
-    route('/rest/v1/issues?id=eq.HZ-07', [{ id: 'TK-03' }], { method: 'PATCH' }),
+    route('/rest/v1/issues?id=eq.HZ-07', [{ id: 'IGNORED-99' }], { method: 'PATCH' }),
   ]
 }
 
@@ -191,10 +192,75 @@ describe('onRequestPatch move to another project', () => {
     expect(res.status).toBe(404)
     expect(await res.json()).toEqual({ error: 'project_not_found' })
   })
+})
 
-  it('accepts projectId as the only field', async () => {
-    mockFetch(moveRoutes())
+describe('onRequestPatch move dependency guard', () => {
+  it('refuses when the ticket depends on another', async () => {
+    mockFetch(moveRoutes([
+      route('/rest/v1/dependencies?or=', [{ issue_id: 'HZ-07', depends_on_id: 'HZ-03' }]),
+    ]))
     const res = await onRequestPatch(patchCtx('HZ-07', { projectId: 'ticket-kit' }))
+    expect(res.status).toBe(409)
+    expect(await res.json()).toEqual({
+      error: 'has_dependencies',
+      dependsOn: ['HZ-03'],
+      dependedOnBy: [],
+    })
+  })
+
+  it('refuses when another ticket depends on it', async () => {
+    mockFetch(moveRoutes([
+      route('/rest/v1/dependencies?or=', [{ issue_id: 'HZ-09', depends_on_id: 'HZ-07' }]),
+    ]))
+    const res = await onRequestPatch(patchCtx('HZ-07', { projectId: 'ticket-kit' }))
+    expect(res.status).toBe(409)
+    expect(await res.json()).toEqual({
+      error: 'has_dependencies',
+      dependsOn: [],
+      dependedOnBy: ['HZ-09'],
+    })
+  })
+
+  it('reports both directions at once', async () => {
+    mockFetch(moveRoutes([
+      route('/rest/v1/dependencies?or=', [
+        { issue_id: 'HZ-07', depends_on_id: 'HZ-03' },
+        { issue_id: 'HZ-09', depends_on_id: 'HZ-07' },
+      ]),
+    ]))
+    const res = await onRequestPatch(patchCtx('HZ-07', { projectId: 'ticket-kit' }))
+    const out = await res.json() as any
+    expect(out.dependsOn).toEqual(['HZ-03'])
+    expect(out.dependedOnBy).toEqual(['HZ-09'])
+  })
+
+  it('queries the dependency table before writing anything', async () => {
+    const calls = mockFetch(moveRoutes([
+      route('/rest/v1/dependencies?or=', [{ issue_id: 'HZ-07', depends_on_id: 'HZ-03' }]),
+    ]))
+    await onRequestPatch(patchCtx('HZ-07', { projectId: 'ticket-kit' }))
+    expect(calls.some(c => c.method === 'PATCH')).toBe(false)
+  })
+
+  it('refuses to combine a move with a deps update', async () => {
+    mockFetch(moveRoutes())
+    const res = await onRequestPatch(
+      patchCtx('HZ-07', { projectId: 'ticket-kit', deps: ['HZ-03'] })
+    )
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ error: 'cannot_move_and_set_deps' })
+  })
+
+  it('still allows a deps update with no move', async () => {
+    mockFetch([
+      route('/rest/v1/issues?id=eq.HZ-07&select=id,project_id,title,wave',
+        [{ id: 'HZ-07', project_id: 'horizontal', title: 'X', wave: 3 }]),
+      route('/rest/v1/issues?id=in.', [{ id: 'HZ-03' }]),
+      route('/rest/v1/dependencies?issue_id=eq.HZ-07', [], { method: 'DELETE' }),
+      route('/rest/v1/dependencies', [{}], { method: 'POST' }),
+    ])
+    const res = await onRequestPatch(patchCtx('HZ-07', { deps: ['HZ-03'] }))
     expect(res.status).toBe(200)
+    expect((await res.json() as any).updated).toEqual(['deps'])
   })
 })
