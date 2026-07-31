@@ -120,6 +120,11 @@ export const onRequestPatch: PagesFunction<Env> = async (context) => {
     }
 
     if (target.id !== current.project_id) {
+      // Shape checks first: a malformed body should not earn a semantic error.
+      if ('theme' in body && typeof body.theme !== 'string' && body.theme !== null) {
+        return Response.json({ error: 'invalid_theme' }, { status: 400 })
+      }
+
       if (hasDeps) {
         return Response.json({ error: 'cannot_move_and_set_deps' }, { status: 400 })
       }
@@ -162,9 +167,6 @@ export const onRequestPatch: PagesFunction<Env> = async (context) => {
       issueUpdate.wave = wave
 
       // Theme: cleared by default, because theme keys are per-project.
-      if ('theme' in body && typeof body.theme !== 'string' && body.theme !== null) {
-        return Response.json({ error: 'invalid_theme' }, { status: 400 })
-      }
       const theme = (body.theme as string | null | undefined) ?? null
       if (theme !== null) {
         const themeRes = await fetch(

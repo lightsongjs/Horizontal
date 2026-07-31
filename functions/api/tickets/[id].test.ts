@@ -389,6 +389,31 @@ describe('onRequestPatch invalid move payloads', () => {
     expect(await res.json()).toEqual({ error: 'invalid_theme' })
   })
 
+  // A malformed body must not earn a semantic error: the shape check has to beat
+  // every rule check, or a bad theme hides behind whichever rule fails first.
+  it('reports invalid_theme ahead of a rule violation elsewhere in the body', async () => {
+    mockFetch(moveRoutes([
+      route('/rest/v1/waves?project_id=eq.ticket-kit&number=eq.99', []),
+    ]))
+    const res = await onRequestPatch(
+      patchCtx('HZ-07', { projectId: 'ticket-kit', theme: 42, wave: 99 })
+    )
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ error: 'invalid_theme' })
+  })
+
+  it('leaves a non-string theme alone when no move is happening', async () => {
+    const calls = mockFetch([
+      route('/rest/v1/issues?id=eq.HZ-07&select=id,project_id,title,wave',
+        [{ id: 'HZ-07', project_id: 'horizontal', title: 'Old', wave: 3 }]),
+      route('/rest/v1/issues?id=eq.HZ-07', [{ id: 'HZ-07' }], { method: 'PATCH' }),
+    ])
+    const res = await onRequestPatch(patchCtx('HZ-07', { theme: 42 }))
+    expect(res.status).toBe(200)
+    const write = calls.find(c => c.method === 'PATCH')!
+    expect(write.body.theme).toBe(42)
+  })
+
   it('treats a body with no projectId key as a plain update, not a move', async () => {
     mockFetch([
       route('/rest/v1/issues?id=eq.HZ-07&select=id,project_id,title,wave',

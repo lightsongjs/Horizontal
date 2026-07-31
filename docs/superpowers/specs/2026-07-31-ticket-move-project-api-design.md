@@ -53,9 +53,18 @@ singur `UPDATE`, nu o tranzacție multi-tabel.
 4. **Gardă deps:** interoghează `dependencies` pentru `issue_id=eq.:id` și
    `depends_on_id=eq.:id`. Orice rând → `409 has_dependencies` cu `dependsOn` și
    `dependedOnBy`.
-4a. **Validarea payload-ului de mutare:** `projectId` prezent dar nu string
-   ne-gol → `400 invalid_project_id`. `theme` prezent dar nici string, nici
-   `null` → `400 invalid_theme`.
+Validarea formei body-ului vine **înaintea** oricărei reguli, ca un body malformat
+să nu primească o eroare semantică care ascunde adevărata problemă. Concret:
+`projectId` prezent dar nu string ne-gol → `400 invalid_project_id`, verificat
+înaintea pasului 1 (e cel mai ieftin check și nu are nevoie de nicio cerere).
+`theme` prezent dar nici string, nici `null` → `400 invalid_theme`, verificat ca
+primul lucru după ce s-a stabilit că mutarea e reală (pasul 3), deci înaintea
+gărzii de deps și a validării de wave. Altfel `{projectId, theme: 42, wave: 99}`
+ar returna `422 wave_not_in_target` — un 422 semantic pentru un body invalid.
+
+`invalid_theme` se verifică **doar** pe calea de mutare. În afara mutării, `theme`
+rămâne un câmp editabil obișnuit, nevalidat, exact ca înainte.
+
 4b. **Mutarea și `deps` nu se combină:** dacă body-ul conține și `projectId` (o
    mutare reală) și `deps`, → `400 cannot_move_and_set_deps`. Altfel garda de la
    pasul 4 ar trece (tichetul n-are deps încă) și cererea ar crea exact dependența
@@ -137,6 +146,13 @@ Cazuri:
 - titlu duplicat în țintă → `409 duplicate_title`
 - mutare + editare de câmpuri în aceeași cerere
 - mutare + `deps` în aceeași cerere → `400 cannot_move_and_set_deps`
+- `projectId` prezent dar `""`, `null` sau non-string → `400 invalid_project_id`
+- lipsa completă a cheii `projectId` → update simplu, fără 400
+- `theme` non-string la mutare → `400 invalid_theme`, chiar dacă body-ul încalcă
+  și altă regulă (ex. un wave inexistent în țintă)
+- `theme` non-string fără mutare → trece nevalidat, ca înainte
+- `PATCH` eșuat la Supabase → `502 db_error` cu `detail`; corp de eroare non-JSON
+  → tot `502` curat, fără excepție
 - dup-check-ul NU mai declanșează pe un titlu duplicat din alt proiect (regresie
   pentru bugul de mai sus)
 
