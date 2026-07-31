@@ -34,6 +34,7 @@ Singura tabelă care referențiază `issues.id` e `dependencies`. Nimic altceva.
 | Wave țintă | **`current_wave` al țintei**, override opțional prin `wave` | Aterizează unde se lucrează; validat că wave-ul există. |
 | Theme | **`null`**, override opțional prin `theme` | Cheile de theme nu se potrivesc între proiecte. Fără magie tăcută. |
 | Formă | **Același PATCH**, `projectId` e un câmp în plus | O cerere, o stare finală; validarea nu se duplică. |
+| Mutare + `deps` | **Respins** (`400`) | Ar ocoli garda de deps și ar crea legături cross-project. |
 
 Decizia despre deps face redenumirea simplă: fiindcă refuzăm când există
 dependențe, `dependencies` n-are nicio referință la ID-ul vechi în momentul
@@ -52,6 +53,11 @@ singur `UPDATE`, nu o tranzacție multi-tabel.
 4. **Gardă deps:** interoghează `dependencies` pentru `issue_id=eq.:id` și
    `depends_on_id=eq.:id`. Orice rând → `409 has_dependencies` cu `dependsOn` și
    `dependedOnBy`.
+4b. **Mutarea și `deps` nu se combină:** dacă body-ul conține și `projectId` (o
+   mutare reală) și `deps`, → `400 cannot_move_and_set_deps`. Altfel garda de la
+   pasul 4 ar trece (tichetul n-are deps încă) și cererea ar crea exact dependența
+   cross-project pe care am respins-o. Setează deps într-un PATCH separat, după
+   mutare.
 5. Wave final = `body.wave ?? target.current_wave`. Validat că există în
    `waves(project_id=target, number=wave)` → `422 wave_not_in_target`.
 6. Theme = `body.theme ?? null`. Dacă e non-null, validat în
@@ -108,7 +114,14 @@ dup-check corect pe proiectul țintă, deci îl reparăm în același loc.
 
 ## Teste
 
-În `functions/api/tickets/[id].test.ts`:
+Testele existente din `functions/api/tickets/[id].test.ts` acoperă doar funcția
+pură `buildIssueUpdate`; nu există niciun harness care să execute handler-ul.
+Fără el, cei 10 pași ai contractului rămân neverificați. Introducem în fișierul
+de teste un mock pentru `globalThis.fetch` care rutează pe fragmente de URL și
+înregistrează cererile, plus un constructor de `context` fals. Nu adăugăm
+dependențe noi — doar `vitest`, care e deja acolo.
+
+Cazuri:
 
 - mutare reușită → ID nou cu prefixul țintei, `movedFrom` prezent
 - refuz când tichetul depinde de altul (`dependsOn` populat)
@@ -120,6 +133,7 @@ dup-check corect pe proiectul țintă, deci îl reparăm în același loc.
 - proiect țintă inexistent → `404 project_not_found`
 - titlu duplicat în țintă → `409 duplicate_title`
 - mutare + editare de câmpuri în aceeași cerere
+- mutare + `deps` în aceeași cerere → `400 cannot_move_and_set_deps`
 - dup-check-ul NU mai declanșează pe un titlu duplicat din alt proiect (regresie
   pentru bugul de mai sus)
 
