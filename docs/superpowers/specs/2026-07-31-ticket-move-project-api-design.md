@@ -53,6 +53,9 @@ singur `UPDATE`, nu o tranzacție multi-tabel.
 4. **Gardă deps:** interoghează `dependencies` pentru `issue_id=eq.:id` și
    `depends_on_id=eq.:id`. Orice rând → `409 has_dependencies` cu `dependsOn` și
    `dependedOnBy`.
+4a. **Validarea payload-ului de mutare:** `projectId` prezent dar nu string
+   ne-gol → `400 invalid_project_id`. `theme` prezent dar nici string, nici
+   `null` → `400 invalid_theme`.
 4b. **Mutarea și `deps` nu se combină:** dacă body-ul conține și `projectId` (o
    mutare reală) și `deps`, → `400 cannot_move_and_set_deps`. Altfel garda de la
    pasul 4 ar trece (tichetul n-are deps încă) și cererea ar crea exact dependența
@@ -75,7 +78,7 @@ Exemplu:
 PATCH /api/tickets/HZ-07
 { "projectId": "ticket-kit", "title": "Titlu corectat" }
 
-200 { "id": "TK-12", "movedFrom": "HZ-07", "updated": ["projectId","title"] }
+200 { "id": "TK-12", "movedFrom": "HZ-07", "updated": ["title","wave","theme","projectId"] }
 ```
 
 ```

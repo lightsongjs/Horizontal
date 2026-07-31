@@ -31,7 +31,7 @@ describe('buildIssueUpdate', () => {
 interface Call { url: string; method: string; body?: any }
 interface Route {
   match: (url: string, method: string) => boolean
-  respond: () => { ok?: boolean; status?: number; body: unknown }
+  respond: () => { ok?: boolean; status?: number; body: unknown; jsonRejects?: boolean }
 }
 
 const SB = 'https://db.test'
@@ -41,12 +41,12 @@ const realFetch = globalThis.fetch
 function route(
   needle: string,
   body: unknown,
-  opts: { ok?: boolean; status?: number; method?: string } = {}
+  opts: { ok?: boolean; status?: number; method?: string; jsonRejects?: boolean } = {}
 ): Route {
   return {
     match: (url, method) =>
       url.includes(needle) && (!opts.method || method === opts.method),
-    respond: () => ({ body, ok: opts.ok, status: opts.status }),
+    respond: () => ({ body, ok: opts.ok, status: opts.status, jsonRejects: opts.jsonRejects }),
   }
 }
 
@@ -58,8 +58,15 @@ function mockFetch(routes: Route[]): Call[] {
     calls.push({ url, method, body: init.body ? JSON.parse(init.body) : undefined })
     const hit = routes.find(r => r.match(url, method))
     if (!hit) throw new Error(`unmocked fetch: ${method} ${url}`)
-    const { ok = true, status = 200, body } = hit.respond()
-    return { ok, status, json: async () => body } as any
+    const { ok = true, status = 200, body, jsonRejects = false } = hit.respond()
+    return {
+      ok,
+      status,
+      json: async () => {
+        if (jsonRejects) throw new Error('invalid json body')
+        return body
+      },
+    } as any
   }) as any
   return calls
 }
@@ -127,7 +134,6 @@ function moveRoutes(over: Route[] = []): Route[] {
       [{ id: 'HZ-07', project_id: 'horizontal', title: 'Wrong project', wave: 3 }]),
     route('/rest/v1/projects?or=', [{ id: 'ticket-kit', prefix: 'TK', current_wave: 2 }]),
     route('/rest/v1/dependencies?or=', []),
-    // Not queried yet — scaffolding for Task 5's wave validation against the target project.
     route('/rest/v1/waves?project_id=eq.ticket-kit', [{ number: 2 }]),
     route('/rest/v1/issues?project_id=eq.ticket-kit&select=id', [{ id: 'TK-01' }, { id: 'TK-02' }]),
     route('&title=ilike.', []),
@@ -349,5 +355,81 @@ describe('onRequestPatch move dup-check', () => {
     const dup = calls.find(c => c.url.includes('&title=ilike.'))!
     expect(dup.url).toContain(encodeURIComponent('Wrong project'))
     expect(dup.url).toContain('project_id=eq.ticket-kit')
+  })
+})
+
+describe('onRequestPatch invalid move payloads', () => {
+  it('400s on an empty-string projectId', async () => {
+    mockFetch([])
+    const res = await onRequestPatch(patchCtx('HZ-07', { projectId: '' }))
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ error: 'invalid_project_id' })
+  })
+
+  it('400s on a null projectId', async () => {
+    mockFetch([])
+    const res = await onRequestPatch(patchCtx('HZ-07', { projectId: null }))
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ error: 'invalid_project_id' })
+  })
+
+  it('400s on a non-string projectId', async () => {
+    mockFetch([])
+    const res = await onRequestPatch(patchCtx('HZ-07', { projectId: 42 }))
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ error: 'invalid_project_id' })
+  })
+
+  it('400s on a non-string, non-null theme during a move', async () => {
+    mockFetch(moveRoutes())
+    const res = await onRequestPatch(
+      patchCtx('HZ-07', { projectId: 'ticket-kit', theme: 42 })
+    )
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ error: 'invalid_theme' })
+  })
+
+  it('treats a body with no projectId key as a plain update, not a move', async () => {
+    mockFetch([
+      route('/rest/v1/issues?id=eq.HZ-07&select=id,project_id,title,wave',
+        [{ id: 'HZ-07', project_id: 'horizontal', title: 'Old', wave: 3 }]),
+      route('&title=ilike.', []),
+      route('/rest/v1/issues?id=eq.HZ-07', [{ id: 'HZ-07' }], { method: 'PATCH' }),
+    ])
+    const res = await onRequestPatch(patchCtx('HZ-07', { title: 'New title' }))
+    expect(res.status).toBe(200)
+    const out = await res.json() as any
+    expect(out.movedFrom).toBeUndefined()
+  })
+})
+
+describe('onRequestPatch failed write surfaces detail', () => {
+  it('echoes the PostgREST error body as detail on a failed PATCH', async () => {
+    mockFetch([
+      route('/rest/v1/issues?id=eq.HZ-07&select=id,project_id,title,wave',
+        [{ id: 'HZ-07', project_id: 'horizontal', title: 'Old', wave: 3 }]),
+      route('&title=ilike.', []),
+      route('/rest/v1/issues?id=eq.HZ-07', { code: '23505', message: 'duplicate key' },
+        { method: 'PATCH', ok: false, status: 502 }),
+    ])
+    const res = await onRequestPatch(patchCtx('HZ-07', { title: 'New title' }))
+    expect(res.status).toBe(502)
+    expect(await res.json()).toEqual({
+      error: 'db_error',
+      detail: { code: '23505', message: 'duplicate key' },
+    })
+  })
+
+  it('returns a clean 502 when the failed PATCH error body is not JSON', async () => {
+    mockFetch([
+      route('/rest/v1/issues?id=eq.HZ-07&select=id,project_id,title,wave',
+        [{ id: 'HZ-07', project_id: 'horizontal', title: 'Old', wave: 3 }]),
+      route('&title=ilike.', []),
+      route('/rest/v1/issues?id=eq.HZ-07', null,
+        { method: 'PATCH', ok: false, status: 502, jsonRejects: true }),
+    ])
+    const res = await onRequestPatch(patchCtx('HZ-07', { title: 'New title' }))
+    expect(res.status).toBe(502)
+    expect(await res.json()).toEqual({ error: 'db_error' })
   })
 })

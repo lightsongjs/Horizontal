@@ -88,7 +88,10 @@ export const onRequestPatch: PagesFunction<Env> = async (context) => {
   }
   const deps = hasDeps ? (body.deps as string[]) : null
 
-  const wantsMove = typeof body.projectId === 'string' && body.projectId.length > 0
+  const wantsMove = 'projectId' in body
+  if (wantsMove && (typeof body.projectId !== 'string' || body.projectId.length === 0)) {
+    return Response.json({ error: 'invalid_project_id' }, { status: 400 })
+  }
 
   if (Object.keys(issueUpdate).length === 0 && !hasDeps && !wantsMove) {
     return Response.json({ error: 'no_updatable_fields' }, { status: 400 })
@@ -159,6 +162,9 @@ export const onRequestPatch: PagesFunction<Env> = async (context) => {
       issueUpdate.wave = wave
 
       // Theme: cleared by default, because theme keys are per-project.
+      if ('theme' in body && typeof body.theme !== 'string' && body.theme !== null) {
+        return Response.json({ error: 'invalid_theme' }, { status: 400 })
+      }
       const theme = (body.theme as string | null | undefined) ?? null
       if (theme !== null) {
         const themeRes = await fetch(
@@ -217,7 +223,18 @@ export const onRequestPatch: PagesFunction<Env> = async (context) => {
       `${SUPABASE_URL}/rest/v1/issues?id=eq.${encodeURIComponent(id)}`,
       { method: 'PATCH', headers, body: JSON.stringify(issueUpdate) }
     )
-    if (!patchRes.ok) return Response.json({ error: 'db_error' }, { status: 502 })
+    if (!patchRes.ok) {
+      let detail: unknown
+      try {
+        detail = await patchRes.json()
+      } catch {
+        // non-JSON error body from PostgREST — fall back to a bare db_error
+      }
+      return Response.json(
+        { error: 'db_error', ...(detail !== undefined ? { detail } : {}) },
+        { status: 502 }
+      )
+    }
     const patched = await patchRes.json() as Array<unknown>
     if (!patched.length) return Response.json({ error: 'not_found' }, { status: 404 })
   }
