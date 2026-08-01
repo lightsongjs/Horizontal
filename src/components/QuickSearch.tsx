@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
+import type { Issue } from '../lib/types'
 
 interface Props {
   onClose: () => void
@@ -22,6 +23,50 @@ function fuzzy(query: string, text: string): boolean {
     if (t[i] === q[qi]) qi++
   }
   return qi === q.length
+}
+
+// Substring, case-insensitive match against the full id ("H-04") and its
+// numeric part ("04"). Deliberately NOT the fuzzy subsequence matcher above:
+// a subsequence match on "04" would match almost any id containing a 0
+// then a 4 anywhere, which is far too loose for jumping straight to a
+// ticket by number. Substring is the tight, predictable behaviour someone
+// typing a number expects.
+//
+// Note: because the match is substring-on-numeric-part rather than exact
+// numeric equality, a single digit like "4" matches both "H-04" and "H-14"
+// (both numeric parts contain "4"). That is the literal, and simplest,
+// reading of "substring match on the numeric part" — no special-casing to
+// prefer an exact numeric match was added, since the ticket didn't ask for it.
+function matchesId(query: string, id: string): boolean {
+  if (!query) return false
+  const q = query.toLowerCase()
+  const idLower = id.toLowerCase()
+  if (idLower.includes(q)) return true
+  const numericPart = id.match(/\d+/)?.[0] ?? ''
+  return numericPart.includes(q)
+}
+
+/**
+ * Pure ranking function extracted so the matching logic can be unit-tested
+ * without mounting the component. A result matches on title (existing
+ * fuzzy subsequence match, unchanged) or on id (substring match, see
+ * matchesId). Id matches rank before title-only matches. Ranking happens
+ * BEFORE the results are capped to `limit`, so an id match is never pushed
+ * out by title matches that happen to sort earlier.
+ */
+export function rankIssues(query: string, issues: Issue[], limit = 10): Issue[] {
+  if (!query) return issues.slice(0, limit)
+
+  const idMatches: Issue[] = []
+  const titleMatches: Issue[] = []
+  for (const issue of issues) {
+    if (matchesId(query, issue.id)) {
+      idMatches.push(issue)
+    } else if (fuzzy(query, issue.title)) {
+      titleMatches.push(issue)
+    }
+  }
+  return [...idMatches, ...titleMatches].slice(0, limit)
 }
 
 function highlight(query: string, text: string): React.ReactNode {
@@ -50,7 +95,7 @@ export function QuickSearch({ onClose }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const itemsRef = useRef<HTMLDivElement>(null)
 
-  const filtered = issues.filter((i) => fuzzy(query, i.title)).slice(0, 10)
+  const filtered = rankIssues(query, issues)
 
   useEffect(() => { setSelected(0) }, [query])
 
