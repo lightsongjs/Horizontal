@@ -83,4 +83,47 @@ describe('rankIssues', () => {
     const result = rankIssues('zzz-nope', issues)
     expect(result).toEqual([])
   })
+
+  describe('prefix collision (all tickets in a project share one id prefix)', () => {
+    it('a query equal to the single-letter prefix does not id-match — results are title-driven only', () => {
+      // Every ticket in a Horizontal-style project starts with "H-", so a
+      // purely alphabetic query of "h" is a substring of every single id.
+      // If id matching fired here it would flood the id tier with the whole
+      // list on the very first keystroke of a normal title search. None of
+      // these titles contain the letter "h" ("Delta"/"Zeta"/"Omega" — note
+      // "Alpha" would NOT work here, it has an "h"), so if id matching is
+      // correctly suppressed for a digit-free query, nothing should match.
+      const issues = [
+        makeIssue('H-01', 'Delta task'),
+        makeIssue('H-02', 'Zeta task'),
+        makeIssue('H-03', 'Omega task'),
+      ]
+      const result = rankIssues('h', issues)
+      expect(result).toEqual([])
+    })
+
+    it('a query equal to a multi-letter prefix does not id-match', () => {
+      const issues = [
+        makeIssue('KATA-01', 'Delta task'),
+        makeIssue('KATA-02', 'Zeta task'),
+        makeIssue('KATA-03', 'Omega task'),
+      ]
+      const result = rankIssues('kata', issues)
+      expect(result).toEqual([])
+    })
+
+    it('a genuine title match is not displaced when every ticket shares the query as a prefix substring', () => {
+      // Eleven tickets share the "H-" prefix. None of their titles fuzzy-match
+      // "h" except one deliberate target. If prefix letters incorrectly
+      // id-matched, the id tier would fill with (up to) all eleven tickets in
+      // source order and the genuine title match could be pushed out or
+      // buried; with the fix, "h" should not id-match anything, and only the
+      // title match should be returned.
+      const distractors = Array.from({ length: 10 }, (_, n) => makeIssue(`H-${20 + n}`, 'Delta task'))
+      const target = makeIssue('H-99', 'Something with an h in it')
+      const issues = [...distractors, target]
+      const result = rankIssues('h', issues)
+      expect(result.map((i) => i.id)).toContain('H-99')
+    })
+  })
 })

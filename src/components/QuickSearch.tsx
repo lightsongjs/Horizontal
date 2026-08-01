@@ -37,8 +37,18 @@ function fuzzy(query: string, text: string): boolean {
 // (both numeric parts contain "4"). That is the literal, and simplest,
 // reading of "substring match on the numeric part" — no special-casing to
 // prefer an exact numeric match was added, since the ticket didn't ask for it.
+//
+// Guard: `issues` here is already scoped to one project (see store.tsx),
+// so every id shares the same prefix (e.g. all "H-…" or all "KATA-…"). A
+// purely alphabetic query that happens to be a substring of that prefix
+// (the letter "h", or "kata") would otherwise id-match EVERY ticket in the
+// project, flooding the id tier and burying genuine title matches on the
+// very first keystroke of a normal search. Id matching only makes sense
+// for queries that could plausibly be identifying a ticket by number, so
+// it's gated on the query containing at least one digit — every case the
+// feature exists for ("04", "4", "H-04", "h-04", "kata-12") satisfies this.
 function matchesId(query: string, id: string): boolean {
-  if (!query) return false
+  if (!query || !/\d/.test(query)) return false
   const q = query.toLowerCase()
   const idLower = id.toLowerCase()
   if (idLower.includes(q)) return true
