@@ -1,5 +1,19 @@
 # PWA + Cloudflare Pages — update playbook
 
+> **Citește întâi `LightSongAppTemplate/releases-and-builds.md`.** Acolo e versiunea
+> completă și corectată a rețetei, plus cele două lucruri care lipseau de aici: cum
+> **verifici** un release (test automat + marker unic în bundle) și stratul 3 — migrații și
+> edge functions, care nu trec prin `git push`.
+>
+> **Rețeta din secțiunea 1b de mai jos era ruptă** și a fost înlocuită. Arăta corect la
+> citire, dar măsurat: un tab lăsat deschis **nu prelua niciodată** buildul nou, fiindcă
+> `updateSW(true)` activează service workerul dar nu reîncarcă pagina — exact ce promite
+> textul de mai jos că face („activate it and reload"). Detaliile și celelalte două defecte:
+> `src/pwa.ts` din acest repo, plus `npm run test:upgrade`.
+>
+> Ce a rămas valabil aici, integral: **Piece 2** (headerele Cloudflare — piesa pe care lumea
+> o uită) și **Scenario B** (tranziția pentru aplicații care au deja useri instalați).
+
 Reusable recipe so installed PWAs always pick up new deploys. Copy this into
 every new app hosted on Cloudflare Pages. Set it up **from the first line of
 code** — retrofitting an app that already has installed users needs a
