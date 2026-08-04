@@ -2088,6 +2088,28 @@ svg.graph {
   color: var(--txt);
   border-color: var(--line-soft);
 }
+/* Same shape as the settings gear. Like it, hidden by default and re-shown
+   per breakpoint below — see both the min-width:900px and max-width:899px
+   blocks. Miss either one and the button vanishes at that size. */
+.header-search-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: none;
+  color: var(--txt-dim);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.header-search-btn:hover {
+  background: var(--surface-raised);
+  color: var(--txt);
+  border-color: var(--line-soft);
+}
 .header-refresh-btn {
   display: inline-flex;
   align-items: center;
@@ -2643,6 +2665,10 @@ svg.graph {
     gap: 5px;
     margin-left: 12px;
     flex-shrink: 0;
+  }
+  .header-search-btn {
+    display: inline-flex;
+    margin-left: 6px;
   }
   .header-settings-btn {
     display: inline-flex;
@@ -3500,6 +3526,13 @@ svg.graph {
     display: inline-flex;
   }
 
+  /* ── Search reachable on mobile ────────────────────────────────────
+     The whole point of the button: QuickSearch used to open only via the
+     O key, which a phone has no way to press. */
+  .header-search-btn {
+    display: inline-flex;
+  }
+
   /* ── Refresh button is redundant on mobile — pull-to-refresh (touch
      handler in App.tsx) already covers it — so hide it to declutter the
      header and make room for the settings gear. ─────────────────────── */
@@ -3510,6 +3543,7 @@ svg.graph {
   /* ── Bigger header tap targets (was 30–32px → 36px) ──────────────── */
   .back,
   .theme-toggle,
+  .header-search-btn,
   .header-settings-btn {
     width: 36px;
     height: 36px;

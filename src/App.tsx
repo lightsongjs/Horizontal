@@ -43,7 +43,7 @@ function getBuildAgo(): string {
   const d = Math.floor(diff / 86400); return `${d} day${d > 1 ? 's' : ''} ago`
 }
 
-function Header({ onNewIssue, onProjectSettings, onRefresh, canWrite }: { onNewIssue: () => void; onProjectSettings: () => void; onRefresh: () => void; canWrite: boolean }) {
+function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, canWrite }: { onNewIssue: () => void; onSearch: () => void; onProjectSettings: () => void; onRefresh: () => void; canWrite: boolean }) {
   const { project, completion, selectProject } = useHorizontal()
   const pct = project ? Math.round(completion(project.id) * 100) : 0
   return (
@@ -70,6 +70,16 @@ function Header({ onNewIssue, onProjectSettings, onRefresh, canWrite }: { onNewI
       {project && canWrite && (
         <button className="header-new-btn" onClick={onNewIssue} title="Tichet nou (C)">
           + Tichet
+        </button>
+      )}
+      {/* Not gated on canWrite, unlike its neighbours: searching changes
+          nothing, so a read-only member must be able to do it. */}
+      {project && (
+        <button className="header-search-btn" onClick={onSearch} aria-label="Caută tichet" title="Caută tichet (O)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
         </button>
       )}
       {project && canWrite && (
@@ -441,7 +451,7 @@ function Shell() {
         onNavigate={() => setShowUsers(false)}
       />
       <div className="app-body">
-        <Header onNewIssue={openNewIssue} onProjectSettings={openProjectSettings} onRefresh={refresh} canWrite={canWrite} />
+        <Header onNewIssue={openNewIssue} onSearch={() => setShowSearch(true)} onProjectSettings={openProjectSettings} onRefresh={refresh} canWrite={canWrite} />
         <main ref={mainRef}>
           {pullY > 0 && (
             <div style={{ textAlign: 'center', padding: '6px 0', fontSize: '13px', color: 'var(--txt-dim)', transform: `translateY(${pullY * 0.4}px)`, transition: pullY === 0 ? 'transform 0.3s' : 'none' }}>
