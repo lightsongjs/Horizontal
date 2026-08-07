@@ -27,14 +27,22 @@ HORIZONTAL_API_KEY=<cheia din Cloudflare env vars>
 
 `--project` acceptă fie numele vizibil din interfață (`Katalist`), fie ID-ul intern (`kata`).
 
+**Wave 0 e Scratchpad-ul** — un wave ca oricare altul. `--create --wave 0`, `--list --wave 0`
+și `--lookup --wave 0` funcționează normal. Numele wave-urilor le vezi cu `--waves`.
+
 ```bash
 # Listează toate proiectele (id, prefix, nume, tip)
 node ticket-kit/ai-client.mjs --projects
 # output: kata  KATA  Katalist  [work]
 
+# Listează wave-urile unui proiect cu numele lor
+node ticket-kit/ai-client.mjs --waves --project Katalist
+# output: 0  Scratchpad
+#         1  Val 1 / MVP
+
 # Listează toate tichetele unui proiect (opțional filtrare pe wave)
 node ticket-kit/ai-client.mjs --list --project Katalist --wave 1
-# output: KATA-01  [wave 1]  Setup DB
+# output: KATA-01  [wave 1 · Val 1 / MVP]  Setup DB
 
 # Caută ID-ul unui tichet după titlu
 node ticket-kit/ai-client.mjs --lookup --project Katalist --title "Setup DB" --wave 1
