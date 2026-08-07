@@ -39,7 +39,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     let filter = `project_id=eq.${project}`
     if (waveParam) {
       const waveNum = Number(waveParam)
-      if (!Number.isInteger(waveNum) || waveNum < 1) {
+      if (!Number.isInteger(waveNum) || waveNum < 0) {
         return Response.json({ error: 'invalid_wave' }, { status: 400 })
       }
       filter += `&wave=eq.${waveNum}`
@@ -60,7 +60,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     return Response.json({ error: 'missing_params', required: ['project', 'title', 'wave'] }, { status: 400 })
   }
   const waveNum = Number(waveParam)
-  if (!Number.isInteger(waveNum) || waveNum < 1) {
+  if (!Number.isInteger(waveNum) || waveNum < 0) {
     return Response.json({ error: 'invalid_wave' }, { status: 400 })
   }
 
@@ -102,8 +102,13 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   const { projectId, title, wave } = body
   const deps = body.deps ?? []
 
-  if (!projectId || !title || !wave) {
+  if (!projectId || !title || wave === undefined || wave === null) {
     return Response.json({ error: 'missing_fields', required: ['projectId', 'title', 'wave'] }, { status: 400 })
+  }
+
+  const waveNum = Number(wave)
+  if (!Number.isInteger(waveNum) || waveNum < 0) {
+    return Response.json({ error: 'invalid_wave' }, { status: 400 })
   }
 
   const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = context.env
@@ -141,7 +146,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   // 4. Check for duplicate title in same wave
   const encoded = encodeURIComponent(title)
   const dupRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/issues?project_id=eq.${pid}&title=ilike.${encoded}&wave=eq.${wave}&select=id&limit=1`,
+    `${SUPABASE_URL}/rest/v1/issues?project_id=eq.${pid}&title=ilike.${encoded}&wave=eq.${waveNum}&select=id&limit=1`,
     { headers }
   )
   if (!dupRes.ok) {
@@ -162,7 +167,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       title,
       details: body.desc ?? '',
       theme: body.theme ?? null,
-      wave: Number(wave),
+      wave: waveNum,
       done: false,
       selectors: [],
       scenarios: [],
@@ -188,5 +193,5 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     }
   }
 
-  return Response.json({ id: newId, title, wave: Number(wave), deps }, { status: 201 })
+  return Response.json({ id: newId, title, wave: waveNum, deps }, { status: 201 })
 }
