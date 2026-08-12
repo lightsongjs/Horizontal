@@ -274,3 +274,31 @@ export function useVimNav(flatLayers: string[][]): VimNav {
 
   return { focusedId, setFocusedId }
 }
+
+/**
+ * True când pointerul principal e grosier — un deget, nu un mouse.
+ *
+ * Decide dacă se arată cardul de cameră din AttachmentPicker: `capture` deschide
+ * webcamul pe desktop, ceea ce nu e aproape niciodată ce vrei. Detecția e pe
+ * capabilitate, nu pe user-agent, fiindcă șirul de user-agent minte și oricum
+ * n-ar prinde un dispozitiv hibrid care câștigă sau pierde touchscreen-ul în
+ * timpul sesiunii — media query-ul îl urmărește.
+ */
+export function useCoarsePointer(): boolean {
+  const [coarse, setCoarse] = useState(
+    () => window.matchMedia('(pointer: coarse)').matches,
+  )
+
+  useEffect(() => {
+    const mq = window.matchMedia('(pointer: coarse)')
+    // Se resincronizează la montare, nu doar la `change`: între citirea din
+    // `useState` și abonare poate trece un detach de tastatură, iar evenimentul
+    // acela s-ar pierde pentru totdeauna.
+    setCoarse(mq.matches)
+    const onChange = (e: MediaQueryListEvent) => setCoarse(e.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+
+  return coarse
+}
