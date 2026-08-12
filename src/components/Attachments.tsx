@@ -79,6 +79,23 @@ export function Attachments({
 
   useEffect(() => () => { if (armTimer.current) clearTimeout(armTimer.current) }, [])
 
+  // Dezarmarea la atingere in alta parte. Fara ea, un X ramas armat e chiar
+  // capcana pe care confirmarea din doua atingeri trebuia sa o inchida: te
+  // razgandesti, atingi altundeva, iar butonul rămâne armat cateva secunde.
+  //
+  // Garda `.closest('.att-del')` lasa in pace atingerea care ARMEAZA butonul si
+  // pe cea care confirma: altfel prima atingere s-ar dezarma singura.
+  useEffect(() => {
+    if (!armed) return
+    const onDown = (e: PointerEvent) => {
+      if ((e.target as HTMLElement | null)?.closest('.att-del')) return
+      if (armTimer.current) clearTimeout(armTimer.current)
+      setArmed(null)
+    }
+    document.addEventListener('pointerdown', onDown)
+    return () => document.removeEventListener('pointerdown', onDown)
+  }, [armed])
+
   const addFiles = useCallback(
     async (types: readonly string[], files: readonly File[]) => {
       if (!issueId) return
@@ -150,9 +167,13 @@ export function Attachments({
       setViewing(a)
       return
     }
-    const url = await signedDownloadUrl(a)
-    if (url) window.location.href = url
-    else setMessage('Fișierul nu s-a putut descărca.')
+    try {
+      const url = await signedDownloadUrl(a)
+      if (url) window.location.href = url
+      else setMessage('Fișierul nu s-a putut descărca.')
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : 'Fișierul nu s-a putut descărca.')
+    }
   }
 
   const remove = async (a: Attachment) => {
@@ -194,6 +215,12 @@ export function Attachments({
       onDragLeave={canEdit ? () => {
         // Contor, nu boolean: dragleave se declanșează și la trecerea în
         // elementele-copil, iar un boolean face evidențierea să pâlpâie.
+        //
+        // Nu punem gardă `carriesFiles(...)` aici ca la celelalte trei handlere:
+        // la `dragleave` unele browsere expun `dataTransfer.types` gol din motive
+        // de securitate, iar o gardă ar putea bloca decrementul și ar lăsa
+        // `dragDepth` blocat peste zero — evidențierea ar rămâne aprinsă la
+        // nesfârșit. Decrementul negardat e sigur fiindcă adunăm mai jos la 0.
         dragDepth.current -= 1
         if (dragDepth.current <= 0) { dragDepth.current = 0; setDragging(false) }
       } : undefined}
