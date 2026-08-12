@@ -137,16 +137,36 @@ nu se folosește, deci obiectele sunt imuabile odată scrise.
 
 ## Unde trăiește în interfață
 
-**În `src/components/IssueSheet.tsx` — vizualizarea, nu editarea.** „Când deschid un
-tichet" înseamnă exact sheet-ul de vizualizare, cel cu „Necesită" / „Permite". Trei
-câștiguri:
+### Ce înseamnă de fapt „deschid un tichet"
 
-- `IssueForm.tsx` are 944 de linii și nu se atinge deloc.
-- Problema „tichet nou fără id" **dispare**: sheet-ul de vizualizare există doar pentru
-  tichete deja salvate. Fără zone ascunse, fără mesaje „salvează întâi", fără auto-save.
-- Sheet-ul de vizualizare nu are câmpuri de text, deci Ctrl+V nu poate fura paste-ul din
-  vreun input. În `IssueForm` ar fi trebuit deosebit „paste în descriere" de „paste ca
-  attachment".
+Verificat în cod, fiindcă e ușor de presupus greșit: `src/ui.tsx:56-58` arată că
+`openIssue(id)` și `openEditIssue(id)` fac **exact același lucru** —
+`setSheets([{ kind: 'issue-form', issueId }])`. Deci un tap pe un card, un deep link, un
+rezultat din QuickSearch, toate deschid **`IssueForm`**.
+
+`IssueSheet` (`kind: 'issue'`) se atinge numai prin `pushSheet`, adică apăsând o
+dependență din alt tichet. E **cardul de previzualizare a unei dependențe**, împins
+deasupra — de-aia are buton „✎ Editează", care duce la formular. Un ecran nu are buton de
+editare către sine.
+
+### Consecința
+
+**Secțiunea editabilă stă în `src/components/IssueForm.tsx`.** Acolo ajunge utilizatorul
+când deschide un tichet, deci acolo trebuie să poată lipi.
+
+**Aceeași componentă se randează read-only în `src/components/IssueSheet.tsx`** — fără
+paste, fără drop, fără X — ca previzualizarea unei dependențe să arate că are poze, în loc
+să te oblige să intri în ea ca să afli.
+
+Două lucruri pe care plasarea în formular le aduce cu ea:
+
+- **Tichetele noi n-au id**, iar `IssueForm` servește și crearea (`issueId` lipsă). La
+  tichet nou zona afișează un singur rând — „Salvează tichetul, apoi atașează fișiere" — și
+  nu acceptă nici paste, nici drop. Fără auto-save, fără tichete pe jumătate scrise.
+- **Formularul are câmpuri de text** (descriere, notițe). Regula care închide ambiguitatea:
+  **dacă clipboard-ul conține fișiere, e attachment, oriunde ar fi cursorul.** Un paste de
+  imagine într-un `textarea` nu face nimic oricum, iar paste-ul de text rămâne neatins
+  fiindcă renunțăm imediat când nu există fișiere. Nicio euristică pe focus.
 
 Attachment-urile sunt **o listă separată**, nu referințe markdown în descriere.
 Descrierea nu se atinge, deci nu pot exista link-uri rupte în text și ștergerea e
@@ -154,8 +174,9 @@ neambiguă.
 
 ### Ce vezi
 
-Secțiune nouă în sheet, sub „Permite": miniaturi pătrate pentru imagini, rânduri cu
-iconiță + nume + mărime pentru restul. Fiecare cu un X.
+Secțiune nouă, cu titlu „Fișiere": miniaturi pătrate pentru imagini, rânduri cu iconiță +
+nume + mărime pentru restul. Fiecare cu un X. În `IssueForm` stă imediat sub secțiunea de
+notițe; în `IssueSheet` sub „Permite", fără X și fără drop-zone.
 
 - **Click pe imagine** → lightbox în aplicație, cu buton de descărcare. Nu tab nou:
   Horizontal e PWA instalabil, iar un tab nou aruncă utilizatorul în browser cu un URL
@@ -382,19 +403,24 @@ motivul pentru care micșorarea din browser duce toată greutatea.
 ## Paste și drag&drop
 
 **Nu e nevoie de mecanism pentru sheet-uri suprapuse.** `src/ui.tsx` ține `sheets` ca
-istoric de navigare și `SheetHost` randează exact un copil, cel de deasupra. `IssueSheet`
-e montat doar cât e în vârf, deci un listener legat în propriul `useEffect` nu poate
-dubla-declanșa.
+istoric de navigare, iar `SheetHost` randează exact un copil, cel de deasupra
+(`SheetHost.tsx:42-47`). `IssueForm` e montat doar cât e în vârf, deci un listener legat în
+propriul `useEffect` nu poate dubla-declanșa.
 
-**Paste:** `document.addEventListener('paste', …)` într-un `useEffect` din `IssueSheet`,
-curățat la demontare. Un `onPaste` pe un div nu s-ar declanșa niciodată — sheet-ul e
-read-only, nimic nu poate primi focus. Se renunță imediat dacă `clipboardData` nu are
-elemente cu `kind === 'file'` (deci paste-ul de text nu e afectat) și dacă `e.target` e
-input / textarea / contenteditable (aplicația are inputul din QuickSearch).
-`preventDefault()` doar după ce fișierele au fost efectiv consumate.
+**Paste:** `document.addEventListener('paste', …)` într-un `useEffect` din `IssueForm`,
+curățat la demontare, înregistrat **numai** când tichetul e salvat (`issueId` există). Un
+`onPaste` pe containerul secțiunii n-ar fi de ajuns: cursorul e aproape sigur în descriere
+sau în notițe, nu în zona de fișiere, deci evenimentul n-ar urca prin ea.
 
-Listenerul **nu** se pune în `SheetHost` cu un `if (sheet.kind === 'issue')`: ar scurge
-logica de tichet în router și s-ar reînregistra la fiecare schimbare de sheet.
+Se renunță imediat dacă `clipboardData` nu are elemente cu `kind === 'file'` — asta lasă
+paste-ul de text complet neatins, în orice câmp. **Nu** se filtrează pe `e.target`: dacă
+paste-ul aduce fișiere, e attachment oriunde ar fi cursorul, fiindcă un paste de imagine
+într-un `textarea` n-ar face nimic oricum. `preventDefault()` doar după ce fișierele au
+fost efectiv consumate.
+
+Listenerul **nu** se pune în `SheetHost` cu un `if (sheet.kind === 'issue-form')`: ar
+scurge logica de tichet în router și s-ar reînregistra la fiecare schimbare de sheet.
+`key={sheet.issueId ?? '__new__'}` din `SheetHost` dă deja remontare per tichet.
 
 **Drop:** browserul navighează dacă nu se cheamă `preventDefault()` pe **amândouă**,
 `dragover` și `drop`. Doar pe `drop` e eșecul clasic — `dragover` trebuie prevenit ca
@@ -452,7 +478,7 @@ formatul final — inclusiv cazul în care garda de dimensiune a păstrat origin
 | `src/lib/shrinkImage.ts` | `shrinkPlan()` pur (decizie + `outputType`) și micșorarea pe canvas |
 | `src/lib/pickFiles.ts` | Event → listă de fișiere, plafoane, nume sintetizate. Fără DOM |
 | `src/data/attachments.ts` | `listAttachments` / `uploadAttachment` / `deleteAttachment` / cache de URL-uri semnate |
-| `src/components/Attachments.tsx` | Secțiunea din sheet: miniaturi, rânduri, X cu confirmare, drop-zone |
+| `src/components/Attachments.tsx` | Secțiunea: miniaturi, rânduri, X cu confirmare, drop-zone. Prop `readOnly` pentru randarea din `IssueSheet` |
 | `src/components/Lightbox.tsx` | Imagine pe tot ecranul, cu descărcare |
 | `supabase/migration-attachments.sql` | Tabel, indecși, RLS pe `attachments` și pe `storage.objects` |
 | `scripts/test-shrink-image.mjs` | Harnessul de calibrare (portat), cu `--calibrate` |
@@ -462,7 +488,8 @@ formatul final — inclusiv cazul în care garda de dimensiune a păstrat origin
 
 | Fișier | Ce se schimbă |
 |---|---|
-| `src/components/IssueSheet.tsx` | Randează `<Attachments>`; leagă paste și drop |
+| `src/components/IssueForm.tsx` | Randează `<Attachments>` sub notițe; leagă paste și drop când `issueId` există |
+| `src/components/IssueSheet.tsx` | Randează `<Attachments readOnly>` sub „Permite" |
 | `src/data/repository.ts` | `deleteIssues(ids)` în interfață |
 | `src/data/supabaseRepository.ts` | `deleteIssue` / `deleteProject` curăță octeții; `deleteIssues` |
 | `src/data/localRepository.ts` | `deleteIssues` (fără attachment-uri — nu au sens în modul local seeded) |
@@ -477,7 +504,8 @@ secțiunea nu se randează.
 
 ## Ce nu se face
 
-- Nu se atinge `IssueForm.tsx`.
+- Nu se schimbă navigația: `openIssue` continuă să deschidă `IssueForm`. `IssueSheet`
+  rămâne cardul de previzualizare a unei dependențe.
 - Nu se adaugă attachment-uri în API-ul din `functions/api/` (ticket-kit nu le cere).
 - Nu există referințe markdown în descriere.
 - Nu există soft delete, coș de gunoi, trigger de ștergere sau coadă de curățare.
