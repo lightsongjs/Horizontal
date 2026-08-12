@@ -2324,6 +2324,8 @@ export function Attachments({
   const [armed, setArmed] = useState<string | null>(null)
   const [dragging, setDragging] = useState(false)
   const [viewing, setViewing] = useState<Attachment | null>(null)
+  /** Căile ale căror imagini n-au putut fi încărcate (tipic: offline). */
+  const [broken, setBroken] = useState<Set<string>>(new Set())
   const dragDepth = useRef(0)
   const armTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -2494,7 +2496,7 @@ export function Attachments({
           return (
             <div key={a.id} className={`att-item ${isImg ? 'img' : 'file'}`}>
               <button className="att-open" onClick={() => void openItem(a)} title={a.filename}>
-                {isImg && url ? (
+                {isImg && url && !broken.has(a.path) ? (
                   <img
                     src={url}
                     alt={a.filename}
@@ -2502,14 +2504,12 @@ export function Attachments({
                     // URL-urile semnate nu funcționează offline, iar shell-ul
                     // aplicației e precachat — fără asta, sheet-ul s-ar randa
                     // cu imagini moarte, care se citesc ca pierdere de date.
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none'
-                      e.currentTarget.insertAdjacentHTML(
-                        'afterend',
-                        '<span class="att-offline">indisponibil offline</span>',
-                      )
-                    }}
+                    // Marcăm calea în state și lăsăm React să randeze locul
+                    // gol; nu umblăm în DOM cu mâna.
+                    onError={() => setBroken((prev) => new Set(prev).add(a.path))}
                   />
+                ) : isImg ? (
+                  <span className="att-offline">indisponibil offline</span>
                 ) : (
                   <>
                     <span className="att-ic">{iconFor(a.contentType, a.filename)}</span>
