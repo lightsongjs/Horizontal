@@ -77,13 +77,27 @@ const { fakeDb } = vi.hoisted(() => {
       resolve(this.run())
     }
   }
+  class FakeStorage {
+    removed: string[][] = []
+    from(_bucket: string) {
+      return {
+        remove: async (paths: string[]) => {
+          this.removed.push(paths)
+          return { data: null, error: null }
+        },
+      }
+    }
+    reset() { this.removed = [] }
+  }
   class FakeDB {
-    tables: Record<string, Row[]> = { projects: [], waves: [], themes: [], issues: [], dependencies: [] }
+    tables: Record<string, Row[]> = { projects: [], waves: [], themes: [], issues: [], dependencies: [], attachments: [] }
+    storage = new FakeStorage()
     from(table: string) {
       return new Query(this.tables, table)
     }
     reset() {
-      this.tables = { projects: [], waves: [], themes: [], issues: [], dependencies: [] }
+      this.tables = { projects: [], waves: [], themes: [], issues: [], dependencies: [], attachments: [] }
+      this.storage.reset()
     }
   }
   return { fakeDb: new FakeDB() }
@@ -94,6 +108,18 @@ vi.mock('../lib/supabase', () => ({ supabase: fakeDb, requireSupabase: () => fak
 import { createSupabaseRepository } from './supabaseRepository'
 
 beforeEach(() => fakeDb.reset())
+
+function fake_seed() {
+  fakeDb.tables.projects.push({ id: 'p', prefix: 'P', current_wave: 1, name: 'x', description: '', accent: '#fff' })
+  fakeDb.tables.issues.push(
+    { id: 'P-01', project_id: 'p', title: 'A', details: '', wave: 1, done: false },
+    { id: 'P-02', project_id: 'p', title: 'B', details: '', wave: 1, done: false },
+  )
+  fakeDb.tables.attachments.push(
+    { id: 'a1', issue_id: 'P-01', project_id: 'p', path: 'p/P-01/a1', filename: 'x', size: 1, content_type: 'image/png', created_at: 'z' },
+    { id: 'a2', issue_id: 'P-02', project_id: 'p', path: 'p/P-02/a2', filename: 'y', size: 1, content_type: 'image/png', created_at: 'z' },
+  )
+}
 
 describe('supabaseRepository', () => {
   it('listIssues maps the `details` column to desc and assembles deps', async () => {
@@ -186,5 +212,53 @@ describe('supabaseRepository', () => {
     const repo = createSupabaseRepository()
     await repo.deleteIssue('P-01')
     expect(fakeDb.tables.issues).toHaveLength(0)
+  })
+
+  it('deleteIssue șterge rândul ȘI octeții fișierelor lui', async () => {
+    fake_seed()
+    const repo = createSupabaseRepository()
+    await repo.deleteIssue('P-01')
+
+    expect(fakeDb.tables.issues.some((i) => i.id === 'P-01')).toBe(false)
+    expect(fakeDb.storage.removed.flat()).toEqual(['p/P-01/a1'])
+  })
+
+  it('deleteIssues citește căile ÎNAINTE de ștergere — cascada le-ar duce cu ea', async () => {
+    fake_seed()
+    const repo = createSupabaseRepository()
+    await repo.deleteIssues(['P-01', 'P-02'])
+
+    expect(fakeDb.tables.issues).toEqual([])
+    expect(fakeDb.storage.removed.flat().sort()).toEqual(['p/P-01/a1', 'p/P-02/a2'])
+  })
+
+  it('deleteIssues cu listă goală nu atinge nimic', async () => {
+    fake_seed()
+    const repo = createSupabaseRepository()
+    await repo.deleteIssues([])
+
+    expect(fakeDb.tables.issues).toHaveLength(2)
+    expect(fakeDb.storage.removed).toEqual([])
+  })
+
+  it('deleteProject curăță octeții întregului proiect, din project_id', async () => {
+    fake_seed()
+    const repo = createSupabaseRepository()
+    await repo.deleteProject('p')
+
+    expect(fakeDb.tables.projects).toEqual([])
+    expect(fakeDb.storage.removed.flat().sort()).toEqual(['p/P-01/a1', 'p/P-02/a2'])
+  })
+
+  it('un eșec la ștergerea octeților NU face ștergerea tichetului să pară eșuată', async () => {
+    fake_seed()
+    const boom = { from: () => ({ remove: async () => ({ data: null, error: { message: 'reteaua a picat' } }) }) }
+    const original = fakeDb.storage
+    // @ts-expect-error -- înlocuire intenționată în test
+    fakeDb.storage = boom
+    const repo = createSupabaseRepository()
+    await expect(repo.deleteIssue('P-01')).resolves.toBeUndefined()
+    fakeDb.storage = original
+    expect(fakeDb.tables.issues.some((i) => i.id === 'P-01')).toBe(false)
   })
 })

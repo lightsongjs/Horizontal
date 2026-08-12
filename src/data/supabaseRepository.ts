@@ -3,6 +3,7 @@
 
 import { requireSupabase } from '../lib/supabase'
 import type { Assignee, Issue, Project, Theme, Wave } from '../lib/types'
+import { pathsForIssues, pathsForProject, removeObjects } from './attachments'
 import { themeKey, type NewIssue, type NewProject, type Repository } from './repository'
 
 interface IssueRow {
@@ -58,6 +59,19 @@ export function createSupabaseRepository(): Repository {
     const map: Record<string, string[]> = {}
     for (const r of data ?? []) (map[r.issue_id] ??= []).push(r.depends_on_id)
     return map
+  }
+
+  /**
+   * Ordinea contează: căile se citesc ÎNAINTE (cascada FK le-ar duce cu ea),
+   * rândurile se șterg apoi, iar octeții la final și best-effort. Cheia externă
+   * șterge rândurile din `attachments`, niciodată octeții.
+   */
+  async function deleteIssuesImpl(ids: string[]): Promise<void> {
+    if (ids.length === 0) return
+    const paths = await pathsForIssues(ids)
+    const { error } = await db.from('issues').delete().in('id', ids)
+    if (error) throw error
+    await removeObjects(paths)
   }
 
   return {
@@ -117,8 +131,13 @@ export function createSupabaseRepository(): Repository {
     },
 
     async deleteProject(id) {
+      // Ștergerea proiectului cascadează prin FK până la attachments, deci
+      // căile trebuie citite acum. `project_id` denormalizat face asta o
+      // singură interogare indexată, nu o plimbare paginată prin Storage.
+      const paths = await pathsForProject(id)
       const { error } = await db.from('projects').delete().eq('id', id)
       if (error) throw error
+      await removeObjects(paths)
     },
 
     async listWaves(projectId: string) {
@@ -302,8 +321,11 @@ export function createSupabaseRepository(): Repository {
     },
 
     async deleteIssue(id: string) {
-      const { error } = await db.from('issues').delete().eq('id', id)
-      if (error) throw error
+      await deleteIssuesImpl([id])
+    },
+
+    async deleteIssues(ids: string[]) {
+      await deleteIssuesImpl(ids)
     },
 
     async listAssignees(): Promise<Assignee[]> {

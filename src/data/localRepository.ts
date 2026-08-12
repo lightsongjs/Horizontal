@@ -214,6 +214,18 @@ export function createLocalRepository(): Repository {
       save(db)
     },
 
+    // Fără attachment-uri: n-au sens în modul local seeded, iar `Attachments`
+    // nu se randează acolo.
+    async deleteIssues(ids: string[]) {
+      if (ids.length === 0) return
+      const gone = new Set(ids)
+      const db = load()
+      db.issues = db.issues
+        .filter((i) => !gone.has(i.id))
+        .map((i) => (i.deps?.some((d) => gone.has(d)) ? { ...i, deps: i.deps.filter((d) => !gone.has(d)) } : i))
+      save(db)
+    },
+
     async listAssignees() {
       return clone(load().assignees)
     },

@@ -116,6 +116,21 @@ describe('localRepository', () => {
     expect(reloaded.urgent).toBe(true)
   })
 
+  it('deleteIssues șterge toate tichetele date și curăță dependențele către ele', async () => {
+    const repo = createLocalRepository()
+    await repo.createProject({ name: 'T', description: '', prefix: 'TST' })
+    const a = await repo.createIssue({ projectId: 'tst', title: 'A' })
+    const b = await repo.createIssue({ projectId: 'tst', title: 'B' })
+    const c = await repo.createIssue({ projectId: 'tst', title: 'C', deps: [a.id, b.id] })
+
+    await repo.deleteIssues([a.id, b.id])
+
+    const left = await repo.listIssues('tst')
+    expect(left.map((i) => i.id)).not.toContain(a.id)
+    expect(left.map((i) => i.id)).not.toContain(b.id)
+    expect(left.find((i) => i.id === c.id)!.deps).toEqual([])
+  })
+
   it('deleteWave refuses to delete the Scratchpad (wave 0)', async () => {
     const repo = createLocalRepository()
     await repo.createProject({ name: 'T', description: '', prefix: 'TST' })

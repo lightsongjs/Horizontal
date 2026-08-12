@@ -83,7 +83,7 @@ export interface WaveActions {
  * so both views stay in lockstep instead of drifting.
  */
 export function useWaveActions(): WaveActions {
-  const { activeWave, deleteIssue, updateIssue, byId } = useHorizontal()
+  const { activeWave, deleteIssues, updateIssue, byId } = useHorizontal()
   const { sheet } = useUI()
 
   const [selectMode, setSelectMode] = useState(false)
@@ -164,9 +164,12 @@ export function useWaveActions(): WaveActions {
   }, [selectedIds, updateIssue, exitSelectMode])
 
   const handleBulkDelete = useCallback(async () => {
-    await Promise.all([...selectedIds].map((id) => deleteIssue(id)))
+    // Un singur apel, nu `Promise.all(map(deleteIssue))`: acela lansa 3N cereri
+    // concurente și, la primul eșec, lăsa restul în zbor fără rollback —
+    // ștergere parțială plus toast de eroare.
+    await deleteIssues([...selectedIds])
     exitSelectMode()
-  }, [selectedIds, deleteIssue, exitSelectMode])
+  }, [selectedIds, deleteIssues, exitSelectMode])
 
   const highlightedIds: Set<string> | null = useMemo(
     () => (treeHighlightId ? new Set([treeHighlightId, ...getRelatedIds(treeHighlightId, byId)]) : null),

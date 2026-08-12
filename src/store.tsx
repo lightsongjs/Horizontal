@@ -71,6 +71,7 @@ interface HorizontalState {
   createIssue(input: NewIssue): Promise<Issue>
   updateIssue(id: string, patch: Partial<Issue>): Promise<void>
   deleteIssue(id: string): Promise<void>
+  deleteIssues(ids: string[]): Promise<void>
 
   // derived helpers
   byId: Record<string, Issue>
@@ -345,6 +346,17 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     )
   }, [])
 
+  const deleteIssues = useCallback(async (ids: string[]) => {
+    if (ids.length === 0) return
+    await repository.deleteIssues(ids)
+    const gone = new Set(ids)
+    setAllIssues((prev) =>
+      prev
+        .filter((i) => !gone.has(i.id))
+        .map((i) => (i.deps?.some((d) => gone.has(d)) ? { ...i, deps: i.deps.filter((d) => !gone.has(d)) } : i)),
+    )
+  }, [])
+
   const byId = useMemo(() => indexById(issues), [issues])
   const layers = useMemo(() => {
     try {
@@ -399,6 +411,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     createIssue,
     updateIssue,
     deleteIssue,
+    deleteIssues,
     byId,
     layers,
     stateOf,

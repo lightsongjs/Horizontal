@@ -49,6 +49,12 @@ export interface Repository {
   updateIssue(id: string, patch: Partial<Issue>): Promise<Issue>
   /** Deletes the issue and any dependency edges referencing it. */
   deleteIssue(id: string): Promise<void>
+  /**
+   * Bulk delete. On the Supabase backend this is three round trips total, not
+   * three per issue — and unlike `Promise.all(ids.map(deleteIssue))` it cannot
+   * half-succeed and leave the caller with a partial delete plus an error.
+   */
+  deleteIssues(ids: string[]): Promise<void>
 
   listAssignees(): Promise<Assignee[]>
   createAssignee(name: string): Promise<Assignee>
