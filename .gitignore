@@ -14,4 +14,5 @@ coverage
 .worktrees/
 .superpowers/
 supabase/.temp/
+tmp-calibrare/
 # ticket-kit/ is versioned here as master copy

@@ -332,6 +332,47 @@ Două aserțiuni **automate** intră în suita Vitest, independent de calibrare:
 1. Niciun candidat nu depășește numărul de octeți ai originalului.
 2. Intrare PNG nu produce niciodată ieșire `image/jpeg`.
 
+#### Rezultatul calibrării
+
+Rulat cu `npm run test:shrink -- --calibrate <cale-poza>` pe două fișiere reale de pe
+discul utilizatorului (2026-08-12), iar utilizatorul a comparat decupajele 1:1 rezultate
+înainte să aleagă valoarea.
+
+**Cazul 1, decisiv — o captură de telefon.**
+`Screenshot_2026-02-05-20-39-01-973_com.sonar.app.jpg`, 1240 KB, 1080×2400. Latura lungă e
+sub `maxEdge` (3072), deci fișierul se **recomprimă, nu se redimensionează** — JPEG peste
+JPEG, a doua generație de pierderi, pe o captură cu text mic. De-asta acesta, și nu poza de
+cameră, decide `photoQuality`.
+
+| maxEdge | quality | rezultat | dimensiuni | vs. original |
+|---|---|---|---|---|
+| 3072 | 0.92 | 561 KB | 1080×2400 | 2,2× mai mic |
+| 3072 | 0.85 | 423 KB | 1080×2400 | 2,9× mai mic |
+| 3072 | 0.78 | 349 KB | 1080×2400 | 3,6× mai mic |
+| 2048 | 0.85 | 128 KB | 540×1200 | 9,7× mai mic |
+
+**Cazul 2 — o poză de cameră de 200 MP.** `IMG_20260805_113025.jpg`, 13366 KB,
+12288×16320.
+
+| maxEdge | quality | rezultat | dimensiuni | vs. original |
+|---|---|---|---|---|
+| 3072 | 0.92 | 528 KB | 2048×2720 | 25,3× mai mic |
+| 3072 | 0.85 | 363 KB | 2048×2720 | 36,9× mai mic |
+| 3072 | 0.78 | 288 KB | 2048×2720 | 46,4× mai mic |
+| 2048 | 0.85 | 240 KB | 1536×2040 | 55,6× mai mic |
+
+De reținut: la `maxEdge 3072` poza de cameră ajunge la 2048×2720, adică exact ÷6 din
+12288×16320 — confirmă regula divizorului întreg funcționând pe un fișier real.
+
+**Decizia: `photoQuality: 0.92`.** Nu 0.85, deși diferența pe hârtie pare mică. Motivul e
+marja, nu estetica: la scara asta de stocare (planul gratuit Supabase, sute de KB pe
+atașament), diferența de octeți între 0.92 și 0.85 e neglijabilă, dar textul mic dintr-o
+captură de telefon care devine ilizibil costă mult mai mult decât spațiul economisit.
+Poza de cameră nu are opinie aici — la orice calitate din tabel iese de peste 25× mai mică
+decât originalul, deci nu ea decide; capturile de telefon, care se recomprimă fără să se
+micșoreze, sunt singurul caz unde calitatea JPEG contează vizibil. Utilizatorul a ales
+partea sigură a intervalului.
+
 ## Ștergerea în cascadă
 
 Cheia externă șterge **rândurile** din `attachments`, niciodată **octeții**. Trasee

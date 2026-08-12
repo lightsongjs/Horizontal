@@ -39,8 +39,8 @@ const check = (n, c, d = '') => out.push(`${c ? 'OK  ' : 'FAIL'} ${n}${d ? ' —
  * `SHRINK_DEFAULTS` se aleg uitându-te la bucățile alea, nu la kilobytes.
  */
 const COMBOS = [
-  { maxEdge: 3072, photoQuality: 0.92 },
-  { maxEdge: 3072, photoQuality: 0.85 }, // implicitul propus
+  { maxEdge: 3072, photoQuality: 0.92 }, // implicitul propus
+  { maxEdge: 3072, photoQuality: 0.85 },
   { maxEdge: 3072, photoQuality: 0.78 },
   { maxEdge: 2048, photoQuality: 0.85 },
 ]

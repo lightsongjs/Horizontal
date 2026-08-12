@@ -30,13 +30,31 @@ export interface ShrinkOptions {
  * majoritatea (inclusiv capturile de telefon de 1080×2400, care au text mic),
  * iar 3072 atinge exact cele două poze de cameră care au nevoie.
  *
- * `photoQuality: 0.85` e punctul de start moștenit din mateSimo (calibrat pe
- * poze de scris de mână) și E SINGURA VALOARE ÎNCĂ NECALIBRATĂ AICI. Cazul care
- * o decide: capturile de telefon 1080×2400, care cad pe ramura de recomprimare.
+ * `photoQuality: 0.92` e calibrat pe două fișiere reale (2026-08-12), prin
+ * `npm run test:shrink -- --calibrate`. Cazul care decide e captura de telefon
+ * `Screenshot_2026-02-05-20-39-01-973_com.sonar.app.jpg` (1240 KB, 1080×2400):
+ * fiind sub `maxEdge`, se doar RECOMPRIMĂ, nu se redimensionează — JPEG peste
+ * JPEG, a doua generație de pierderi, pe text mic. La `maxEdge 3072`:
+ *
+ * | quality | rezultat | raport |
+ * |---|---|---|
+ * | 0.92 | 561 KB | 2,2× mai mic |
+ * | 0.85 | 423 KB | 2,9× mai mic |
+ * | 0.78 | 349 KB | 3,6× mai mic |
+ *
+ * Poza de cameră de 200 MP (`IMG_20260805_113025.jpg`, 13366 KB) nu decide
+ * nimic aici: trece pe ramura de redimensionare (12288×16320 → 2048×2720,
+ * confirmând regula divizorului întreg), unde pierderea de calitate nu se
+ * vede — la 0.92 iese oricum de 25× mai mică.
+ *
+ * Utilizatorul a ales 0.92, nu 0.85, uitându-se la decupajele 1:1 din ambele
+ * cazuri: diferența de octeți între ele e mică la scara asta de stocare (sute
+ * de KB pe fișier, planul gratuit Supabase), dar text ilizibil într-o captură
+ * de telefon costă mai mult decât economisește spațiul. Marja a câștigat.
  */
 export const SHRINK_DEFAULTS: ShrinkOptions = {
   maxEdge: 3072,
-  photoQuality: 0.85,
+  photoQuality: 0.92,
   photoSkipUnderBytes: 400 * 1024,
   shotSkipUnderBytes: 1536 * 1024,
 }
