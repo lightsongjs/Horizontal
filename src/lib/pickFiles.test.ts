@@ -126,6 +126,23 @@ describe('pickFiles — nume sintetizate', () => {
     expect(r.accept).toHaveLength(1)
     expect(r.renamed[0]).toBe('screenshot-2026-08-12-14-32-07.png')
   })
+
+  it('un fișier cu nume adevărat între două screenshot-uri nu consumă un număr', () => {
+    const r = pickFiles(
+      {
+        types: ['Files'],
+        files: [
+          f('image.png', 'image/png', 1024),
+          f('bug-real.png', 'image/png', 1024),
+          f('image.png', 'image/png', 2048),
+        ],
+      },
+      { now: at('2026-08-12T14:32:07') },
+    )
+    expect(r.renamed[0]).toBe('screenshot-2026-08-12-14-32-07.png')
+    expect(r.renamed[1]).toBeUndefined()
+    expect(r.renamed[2]).toBe('screenshot-2026-08-12-14-32-07-2.png')
+  })
 })
 
 describe('rejectMessage', () => {
@@ -152,5 +169,22 @@ describe('rejectMessage', () => {
     expect(rejectMessage([{ name: 'poze', reason: 'gol' }])).toBe(
       'poze nu a putut fi citit. Folderele nu se pot atașa — trage fișierele din ele.',
     )
+  })
+
+  it('un lot amestecat raportează AMBELE motive, nu doar pe cel mai frecvent', () => {
+    const msg = rejectMessage([
+      { name: 'a.zip', reason: 'prea-mare' },
+      { name: 'poze', reason: 'gol' },
+    ])
+    expect(msg).toContain('a.zip e prea mare')
+    expect(msg).toContain('poze nu a putut fi citit')
+    expect(msg).toContain('Folderele nu se pot atașa')
+  })
+
+  it('mai multe foldere se numără, nu se înșiră', () => {
+    expect(rejectMessage([
+      { name: 'poze', reason: 'gol' },
+      { name: 'docs', reason: 'gol' },
+    ])).toBe('2 fișiere nu au putut fi citite. Folderele nu se pot atașa — trage fișierele din ele.')
   })
 })

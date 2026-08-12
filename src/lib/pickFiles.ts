@@ -86,11 +86,12 @@ export function pickFiles<T extends FileLike>(
 
   let synthesized = 0
   for (const file of input.files) {
+    const type = file.type.toLowerCase()
     if (file.size === 0) {
       rejected.push({ name: file.name || 'fișier', reason: 'gol' })
       continue
     }
-    const cap = file.type.startsWith('image/') ? caps.imageMaxBytes : caps.otherMaxBytes
+    const cap = type.startsWith('image/') ? caps.imageMaxBytes : caps.otherMaxBytes
     if (file.size > cap) {
       rejected.push({ name: file.name || 'fișier', reason: 'prea-mare' })
       continue
@@ -99,7 +100,7 @@ export function pickFiles<T extends FileLike>(
     accept.push(file)
     if (!file.name || GENERIC.test(file.name)) {
       synthesized += 1
-      const ext = SYNTH_EXT[file.type.toLowerCase()] ?? 'png'
+      const ext = SYNTH_EXT[type] ?? 'png'
       const suffix = synthesized > 1 ? `-${synthesized}` : ''
       renamed[index] = `screenshot-${stamp(now())}${suffix}.${ext}`
     }
@@ -109,20 +110,36 @@ export function pickFiles<T extends FileLike>(
 }
 
 const CAPS_TEXT = 'Imaginile pot avea cel mult 20 MB, celelalte fișiere 10 MB.'
+const FOLDER_TEXT = 'Folderele nu se pot atașa — trage fișierele din ele.'
 
 /**
  * Ce se arată pe ecran când plafonul a tăiat din ce ai ales. Refuzul tăcut e un
  * bug în altă haină: alegi șase fișiere, vezi două, și n-ai cum să afli de ce.
+ *
+ * Cele două motive se raportează SEPARAT. Un lot amestecat — un folder tras
+ * peste un fișier gras — se întâmplă în practică, iar un mesaj care spune
+ * „prea mari" despre folder minte exact acolo unde funcția asta există ca să
+ * nu mintă.
  */
 export function rejectMessage(rejected: PickResult<FileLike>['rejected']): string | null {
   if (rejected.length === 0) return null
 
+  const tooBig = rejected.filter((r) => r.reason === 'prea-mare')
   const empty = rejected.filter((r) => r.reason === 'gol')
-  if (empty.length === rejected.length) {
-    const which = empty.length === 1 ? `${empty[0].name} nu a putut fi citit` : `${empty.length} fișiere nu au putut fi citite`
-    return `${which}. Folderele nu se pot atașa — trage fișierele din ele.`
-  }
 
-  if (rejected.length === 1) return `${rejected[0].name} e prea mare. ${CAPS_TEXT}`
-  return `${rejected.length} fișiere nu au fost adăugate: prea mari. ${CAPS_TEXT}`
+  const bigSentence =
+    tooBig.length === 0
+      ? null
+      : tooBig.length === 1
+        ? `${tooBig[0].name} e prea mare. ${CAPS_TEXT}`
+        : `${tooBig.length} fișiere nu au fost adăugate: prea mari. ${CAPS_TEXT}`
+
+  const emptySentence =
+    empty.length === 0
+      ? null
+      : empty.length === 1
+        ? `${empty[0].name} nu a putut fi citit. ${FOLDER_TEXT}`
+        : `${empty.length} fișiere nu au putut fi citite. ${FOLDER_TEXT}`
+
+  return [bigSentence, emptySentence].filter(Boolean).join(' ')
 }
