@@ -79,7 +79,11 @@ export function shrinkPlan(
   input: { type: string; size: number; width: number; height: number },
   opts: ShrinkOptions = SHRINK_DEFAULTS,
 ): ShrinkPlan {
-  const { type, size, width, height } = input
+  const { size, width, height } = input
+  // Normalizat o singură dată: garda de mai jos și tabelul BRANCH trebuie să
+  // vadă același șir, altfel un tip ca 'IMAGE/PNG' pică la gardă înainte să
+  // ajungă la potrivirea case-insensitive din BRANCH.
+  const type = input.type.toLowerCase()
   const keep = (reason: ShrinkPlan['reason']): ShrinkPlan => ({
     action: 'skip',
     width,
@@ -90,12 +94,15 @@ export function shrinkPlan(
 
   if (!type.startsWith('image/')) return keep('nu-e-imagine')
 
-  const outputType = BRANCH[type.toLowerCase()]
+  const outputType = BRANCH[type]
   // GIF (canvas îi pierde animația), SVG (rasterizarea e o degradare), WEBP
   // (deja eficient) și orice tip necunoscut: nu ghicim, nu atingem.
   if (!outputType) return keep('format-neatins')
 
-  const isShot = outputType === 'image/webp'
+  // Derivat din tipul de INTRARE, nu din formatul de ieșire: azi doar PNG
+  // mapează spre webp, dar cuplarea pragului de "e o captură" de decizia de
+  // format ar rupe silențios dacă mâine se adaugă un alt format în BRANCH.
+  const isShot = type === 'image/png'
   const skipUnder = isShot ? opts.shotSkipUnderBytes : opts.photoSkipUnderBytes
   const longEdge = Math.max(width, height)
 
@@ -147,4 +154,78 @@ export function attachmentFilename(name: string, outputType: ShrinkOutputType | 
   if (!outputType) return safe
   const stem = safe.replace(/\.[^.]+$/, '')
   return `${stem || 'fisier'}.${EXT[outputType]}`
+}
+
+function drawTo(
+  width: number,
+  height: number,
+): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D } | null {
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return null
+  // Implicitul browserului pe scalări mari face textul zimțat, exact la ce ne
+  // uităm noi într-un screenshot de cod.
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = 'high'
+  return { canvas, ctx }
+}
+
+/**
+ * Întoarce fișierul micșorat sau, în ORICE caz de îndoială, fișierul primit.
+ *
+ * Regula întregii funcții: **nu strica uploadul**. Orice eșec — format pe care
+ * browserul nu-l decodează (HEIC în majoritatea browserelor), canvas
+ * indisponibil, rezultat mai mare decât originalul — se termină cu fișierul
+ * original, nu cu o eroare în fața utilizatorului.
+ *
+ * Orientarea: reencodarea prin canvas pierde EXIF-ul, deci orientarea trebuie
+ * să intre în pixeli la decodare, altfel o poză verticală ajunge culcată.
+ * `imageOrientation: 'from-image'` e scris explicit nu pentru că Chromium ar
+ * greși fără el — acolo e deja implicitul — ci pentru că implicitul din
+ * specificație a fost `none` până nu demult, iar orientarea nu are voie să
+ * depindă de versiunea de browser.
+ *
+ * Calitatea la WebP e 1.0 = fără pierderi. Ramura de PNG există ca să scadă
+ * octeții FĂRĂ să atingă pixelii; un WebP cu pierderi ar readuce exact
+ * artefactele pentru care am ocolit JPEG-ul.
+ */
+export async function shrinkImage(file: File, opts: ShrinkOptions = SHRINK_DEFAULTS): Promise<File> {
+  if (!file.type.startsWith('image/')) return file
+  if (typeof createImageBitmap !== 'function' || typeof document === 'undefined') return file
+
+  let bitmap: ImageBitmap
+  try {
+    bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' })
+  } catch {
+    return file // format nedecodabil aici
+  }
+
+  try {
+    const plan = shrinkPlan(
+      { type: file.type, size: file.size, width: bitmap.width, height: bitmap.height },
+      opts,
+    )
+    if (plan.action === 'skip' || !plan.outputType) return file
+
+    const target = drawTo(plan.width, plan.height)
+    if (!target) return file
+    target.ctx.drawImage(bitmap, 0, 0, plan.width, plan.height)
+
+    const quality = plan.outputType === 'image/webp' ? 1 : opts.photoQuality
+    const blob = await new Promise<Blob | null>((resolve) =>
+      target.canvas.toBlob(resolve, plan.outputType!, quality),
+    )
+    // Plasă de siguranță, nu decizia principală: se întâmplă real ca o
+    // reencodare să crească. Decizia de format s-a luat deja în `shrinkPlan`.
+    if (!blob || blob.size >= file.size) return file
+
+    return new File([blob], attachmentFilename(file.name, plan.outputType), {
+      type: plan.outputType,
+      lastModified: file.lastModified,
+    })
+  } finally {
+    bitmap.close()
+  }
 }

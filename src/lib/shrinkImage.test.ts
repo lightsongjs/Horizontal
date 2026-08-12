@@ -53,6 +53,11 @@ describe('shrinkPlan — ramificarea pe format', () => {
     const p = shrinkPlan({ type: 'image/heic', size: 9 * MB, width: 4032, height: 3024 })
     expect(p.outputType).toBe('image/jpeg')
   })
+
+  it('un MIME cu majuscule e tratat la fel ca varianta lowercase (image/PNG → PNG)', () => {
+    const p = shrinkPlan({ type: 'image/PNG', size: 9 * MB, width: 5000, height: 3000 })
+    expect(p.outputType).toBe('image/webp')
+  })
 })
 
 describe('shrinkPlan — praguri', () => {

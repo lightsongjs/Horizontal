@@ -13,6 +13,7 @@
     "typecheck": "tsc -b --noEmit",
     "test:upgrade": "node scripts/test-upgrade-path.mjs",
     "storage:bucket": "node scripts/create-attachments-bucket.mjs",
+    "test:shrink": "node scripts/test-shrink-image.mjs",
     "migrate": "node scripts/apply-migration.mjs"
   },
   "dependencies": {
