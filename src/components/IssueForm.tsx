@@ -4,6 +4,7 @@ import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { useCanWrite } from '../hooks'
 import { ticketUrl } from '../lib/deepLink'
+import { Attachments } from './Attachments'
 import type { Issue, ScenarioKind, TestScenario } from '../lib/types'
 
 const PALETTE = ['#0284C7', '#059669', '#D97706', '#EA580C', '#E11D48', '#7C3AED', '#06B6D4']
@@ -903,6 +904,10 @@ export function IssueForm({ issueId }: { issueId?: string }) {
               <AutoTextarea value={notes} onChange={setNotes}
                 placeholder="Observații libere, edge cases, links…" minH={80} maxH={notesMaxH} />
             </div>
+
+            {/* FIȘIERE — sub notițe. La tichet nou (`existing` lipsă) componenta
+                afișează doar îndemnul de a salva întâi. */}
+            {project && <Attachments issueId={existing?.id} projectId={project.id} />}
 
           </div>
         </div>

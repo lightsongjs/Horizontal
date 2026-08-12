@@ -37,6 +37,14 @@ export default defineConfig(({ command: _command }) => ({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         runtimeCaching: [
           {
+            // URL-urile semnate expiră, iar tokenul stă în query string. Azi
+            // nimic nu le-ar prinde oricum (nicio regulă nu se potrivește pe
+            // *.supabase.co), dar o viitoare regulă CacheFirst pe imagini ar
+            // servi URL-uri expirate din cache. Regula asta e documentație în cod.
+            urlPattern: /\/storage\/v1\/object\/sign\//,
+            handler: 'NetworkOnly',
+          },
+          {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
             handler: 'CacheFirst',
             options: { cacheName: 'google-fonts-cache', expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 } },

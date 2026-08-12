@@ -442,6 +442,23 @@ function Shell() {
     return () => window.removeEventListener('keydown', onKey)
   }, [project, openNewIssue, openNewProject, sheet, showShortcuts, showSearch, showUsers, canWrite, isAdmin])
 
+  // Un drop care aterizează în afara zonei de fișiere lovește comportamentul
+  // implicit al browserului și scoate utilizatorul din SPA — deschide fișierul
+  // ca pagină, pierzând starea nesalvată. O pereche inertă la nivel de document
+  // face ratarea fără efect. Înregistrată o singură dată, aici, nu în fiecare
+  // componentă care acceptă fișiere.
+  useEffect(() => {
+    const swallow = (e: DragEvent) => {
+      if (e.dataTransfer?.types.includes('Files')) e.preventDefault()
+    }
+    document.addEventListener('dragover', swallow)
+    document.addEventListener('drop', swallow)
+    return () => {
+      document.removeEventListener('dragover', swallow)
+      document.removeEventListener('drop', swallow)
+    }
+  }, [])
+
   return (
     <div id="app">
       <Sidebar

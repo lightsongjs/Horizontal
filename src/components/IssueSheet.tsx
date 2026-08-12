@@ -1,5 +1,6 @@
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
+import { Attachments } from './Attachments'
 
 export function IssueSheet({ issueId }: { issueId: string }) {
   const { byId, waves, unblockedBy, themeOf, assignees, myAssigneeId } = useHorizontal()
@@ -91,6 +92,8 @@ export function IssueSheet({ issueId }: { issueId: string }) {
             ))}
           </>
         )}
+
+        <Attachments issueId={issueId} projectId={it.projectId} readOnly />
 
         {deps.length === 0 && permits.length === 0 && (
           <p className="dep-no-results">Nicio relație cu alte tichete.</p>
