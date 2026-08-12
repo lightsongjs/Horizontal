@@ -10,10 +10,12 @@ export function Lightbox({
   attachment,
   url,
   onClose,
+  onError,
 }: {
   attachment: Attachment
   url?: string
   onClose: () => void
+  onError?: (message: string) => void
 }) {
   // Escape trebuie să închidă DOAR lightbox-ul. `SheetHost` are propriul
   // listener de Escape pe `window`, în faza de bubble, care ar închide sheet-ul
@@ -29,9 +31,17 @@ export function Lightbox({
     return () => window.removeEventListener('keydown', onKey, true)
   }, [onClose])
 
+  // `signedDownloadUrl` cheamă `requireSupabase()`, care aruncă SINCRON dacă
+  // lipsesc cheile. Fără `try`, butonul ar fi mort iar respingerea ar rămâne
+  // netratată. Mesajul îl deține lista de fișiere, nu lightbox-ul.
   const download = async () => {
-    const href = await signedDownloadUrl(attachment)
-    if (href) window.location.href = href
+    try {
+      const href = await signedDownloadUrl(attachment)
+      if (href) window.location.href = href
+      else onError?.('Fișierul nu s-a putut descărca.')
+    } catch (e) {
+      onError?.(e instanceof Error ? e.message : 'Fișierul nu s-a putut descărca.')
+    }
   }
 
   return (

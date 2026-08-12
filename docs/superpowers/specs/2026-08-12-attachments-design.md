@@ -429,8 +429,10 @@ Expirare **8–24h**, iar upload-ul pune `cacheControl: '31536000'`. Obiectele d
 o oră nu e mai sigură — obiectul e oricum accesibil ora aceea — doar garantează ratări de
 cache.
 
-URL-ul de mărime întreagă se generează la cerere, pentru attachment-ul deschis, nu pentru
-toate.
+Nu există un URL separat de „mărime întreagă": fără transformări de imagine Supabase există
+un singur obiect per attachment, deci URL-ul semnat al miniaturii **este** URL-ul folosit și
+de lightbox. Deschiderea unui attachment refolosește URL-ul deja semnat pentru miniatură —
+fără o a doua rundă de semnare — ceea ce păstrează și hit-ul de cache HTTP descris mai sus.
 
 `vite.config.ts` are acum doar două reguli `runtimeCaching`, ambele pentru Google Fonts,
 deci nimic nu prinde `*.supabase.co` și URL-urile semnate **nu** sunt cachate de service

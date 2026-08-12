@@ -104,9 +104,15 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
               className={`sidebar-proj-item ${isActive ? 'on' : ''} ${dragOver === p.id ? 'drag-over' : ''}`}
               draggable
               onDragStart={(e) => { dragId.current = p.id; e.dataTransfer.effectAllowed = 'move' }}
-              onDragOver={(e) => { e.preventDefault(); setDragOver(p.id) }}
+              onDragOver={(e) => {
+                // Un fișier tras deasupra ține de zona de attachment, nu de
+                // reordonarea proiectelor — nu-l tratăm ca drop de reordonare.
+                if (e.dataTransfer.types.includes('Files')) return
+                e.preventDefault(); setDragOver(p.id)
+              }}
               onDragLeave={() => setDragOver(null)}
               onDrop={(e) => {
+                if (e.dataTransfer.types.includes('Files')) return
                 e.preventDefault()
                 setDragOver(null)
                 if (!dragId.current || dragId.current === p.id) return

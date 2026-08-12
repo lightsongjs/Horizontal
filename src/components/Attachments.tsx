@@ -154,7 +154,10 @@ export function Attachments({
       const files = Array.from(dt.files ?? [])
       if (files.length === 0) return
       e.preventDefault()
-      void addFiles(Array.from(dt.types ?? ['Files']), files)
+      // Prezența fișierelor e deja dovedită mai sus, deci o afirmăm în loc să o
+      // deducem din `types`. Adulmecarea lui `types` are rost doar pe calea de
+      // drop, unde nu avem încă lista de fișiere.
+      void addFiles(['Files'], files)
     }
     document.addEventListener('paste', onPaste)
     return () => document.removeEventListener('paste', onPaste)
@@ -291,7 +294,14 @@ export function Attachments({
         </div>
       )}
 
-      {viewing && <Lightbox attachment={viewing} url={urls[viewing.path]} onClose={() => setViewing(null)} />}
+      {viewing && (
+        <Lightbox
+          attachment={viewing}
+          url={broken.has(viewing.path) ? undefined : urls[viewing.path]}
+          onClose={() => setViewing(null)}
+          onError={setMessage}
+        />
+      )}
     </div>
   )
 }

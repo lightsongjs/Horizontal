@@ -907,7 +907,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
 
             {/* FIȘIERE — sub notițe. La tichet nou (`existing` lipsă) componenta
                 afișează doar îndemnul de a salva întâi. */}
-            {project && <Attachments issueId={existing?.id} projectId={project.id} />}
+            {project && <Attachments issueId={existing?.id} projectId={project.id} readOnly={!canWrite} />}
 
           </div>
         </div>
