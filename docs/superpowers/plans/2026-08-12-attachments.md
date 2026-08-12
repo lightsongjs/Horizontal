@@ -30,7 +30,8 @@
 
 | Fișier | Responsabilitate |
 |---|---|
-| `supabase/migration-attachments.sql` | Tabel, indecși, RLS pe `attachments` și pe `storage.objects` |
+| `supabase/migration-attachments.sql` | Tabel, indecși, RLS pe `attachments` și pe `storage.objects`. Idempotent |
+| `scripts/apply-migration.mjs` | Aplică un fișier `.sql` prin clientul `pg` (DDL și RLS nu merg prin REST) |
 | `scripts/create-attachments-bucket.mjs` | Creează bucketul privat cu service-role (cheia anon nu poate) |
 | `src/lib/shrinkImage.ts` | `shrinkPlan()` pur + `attachmentFilename()` + `shrinkImage()` pe canvas |
 | `src/lib/shrinkImage.test.ts` | Teste pentru partea pură |
@@ -57,7 +58,7 @@
 | `src/App.tsx` | Pereche `dragover`/`drop` inertă la nivel de document |
 | `vite.config.ts` | Regulă `NetworkOnly` pe rutele semnate |
 | `src/styles.css` | Stiluri pentru miniaturi, rânduri, drop-zone, lightbox |
-| `package.json` | Scripturile `test:shrink` și `storage:report` |
+| `package.json` | Scripturile `migrate`, `storage:bucket`, `test:shrink`, `storage:report` |
 
 **Abatere de la spec, intenționată:** specul spune că listenerul de paste stă „într-un `useEffect` din `IssueForm`". Planul îl pune în `Attachments`, care e montat de `IssueForm` — aceeași durată de viață, dar componenta își deține propria intrare. Intenția specului (nu în `SheetHost`, nu în router) e respectată.
 
@@ -68,11 +69,14 @@
 **Files:**
 - Create: `supabase/migration-attachments.sql`
 - Create: `scripts/create-attachments-bucket.mjs`
-- Modify: `package.json` (script `storage:bucket`)
+- Create: `scripts/apply-migration.mjs`
+- Modify: `package.json` (scripturile `storage:bucket` și `migrate`)
 
 **Interfaces:**
 - Consumes: nimic.
 - Produces: tabelul `attachments` cu coloanele `id uuid`, `issue_id text`, `project_id text`, `path text`, `filename text`, `size int`, `content_type text`, `created_at timestamptz`. Bucketul privat `attachments`. Task-urile 5, 6 și 10 depind de ele.
+
+**Ordinea contează:** bucketul se creează ÎNAINTE de migrare. Politicile de pe `storage.objects` se pot crea și fără bucket, dar bucketul nu se poate crea cu cheia anon, iar dacă lipsește la primul upload eroarea e confuză. Deci: `storage:bucket`, apoi `migrate`.
 
 - [ ] **Step 1: Scrie migrarea**
 
@@ -85,10 +89,18 @@ Creează `supabase/migration-attachments.sql`:
 -- Ca și migration-access.sql, fișierul ăsta folosește ghilimele simple: logica
 -- depinde genuin de literalii 'write' și 'attachments'.
 
+-- Fișierul e IDEMPOTENT: se rulează cu `npm run migrate` și, în timpul
+-- dezvoltării, de mai multe ori. Fiecare pas verifică înainte să creeze.
+
 -- Țintă pentru cheia externă compusă de mai jos. `id` e deja primary key, deci
 -- unicitatea e gratuită; constrângerea există doar ca Postgres să accepte
 -- referința pe perechea (id, project_id).
-alter table issues add constraint issues_id_project_key unique (id, project_id);
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'issues_id_project_key') then
+    alter table issues add constraint issues_id_project_key unique (id, project_id);
+  end if;
+end $$;
 
 create table if not exists attachments (
   id uuid primary key default gen_random_uuid(),
@@ -106,6 +118,14 @@ create index if not exists attachments_issue_idx on attachments (issue_id);
 create index if not exists attachments_project_idx on attachments (project_id);
 
 alter table attachments enable row level security;
+
+-- `drop ... if exists` înaintea fiecărei politici, ca fișierul să fie
+-- re-rulabil. Același tipar ca în migration-access.sql.
+drop policy if exists attachments_select on attachments;
+drop policy if exists attachments_write on attachments;
+drop policy if exists attachments_objects_select on storage.objects;
+drop policy if exists attachments_objects_insert on storage.objects;
+drop policy if exists attachments_objects_delete on storage.objects;
 
 -- Aceeași formă ca issues_select / issues_write, dar pe project_id direct.
 create policy attachments_select on attachments for select to authenticated
@@ -225,28 +245,83 @@ Expected: `Bucketul privat `attachments` a fost creat.` (sau mesajul de „exist
 
 Dacă iese cu „Nu s-au putut citi bucketurile", verifică `VITE_SUPABASE_SERVICE_ROLE_KEY` în `.env`.
 
-- [ ] **Step 5: Rulează migrarea**
+- [ ] **Step 5: Scrie scriptul care aplică o migrare**
 
-Deschide SQL editor-ul Supabase, lipește tot conținutul `supabase/migration-attachments.sql`, rulează.
-Expected: `Success. No rows returned`.
+Creează `scripts/apply-migration.mjs`. Folosește clientul `pg` (deja în `dependencies`) cu **parametri separați**, nu `connectionString` — parola conține `@`, care sparge URL-ul de conexiune. Tiparul e documentat în `CLAUDE.md`:
 
-Dacă dă `constraint "issues_id_project_key" already exists`, migrarea a fost deja rulată — sari peste linia `alter table issues` și rulează restul.
+```js
+// Aplică un fișier .sql pe baza de date. Rulează: npm run migrate <cale.sql>
+//
+// De ce `pg` și nu supabase-js: politicile RLS și DDL-ul nu se pot trimite prin
+// API-ul REST. De ce parametri separați și nu connectionString: parola conține
+// `@`, care sparge URL-ul.
+import { readFileSync } from 'node:fs'
+import pg from 'pg'
+import { config } from 'dotenv'
 
-- [ ] **Step 6: Verifică manual că politicile sunt pe loc**
+config()
 
-În SQL editor:
+const file = process.argv[2]
+if (!file) {
+  console.error('Lipsește fișierul: npm run migrate supabase/migration-attachments.sql')
+  process.exit(1)
+}
 
-```sql
-select tablename, policyname from pg_policies
-where policyname like 'attachments%' order by policyname;
+const sql = readFileSync(file, 'utf8')
+const client = new pg.Client({
+  host: process.env.PG_HOST,
+  port: Number(process.env.PG_PORT),
+  database: process.env.PG_DATABASE,
+  user: process.env.PG_USER,
+  password: process.env.PG_PASSWORD,
+  ssl: { rejectUnauthorized: false },
+})
+
+await client.connect()
+try {
+  // Un singur query cu tot fișierul: `pg` îl trimite ca simple query, deci
+  // instrucțiunile rulează într-o singură tranzacție implicită și, la o eroare
+  // la mijloc, nu rămâne o migrare pe jumătate aplicată.
+  await client.query(sql)
+  console.log(`Migrare aplicată: ${file}`)
+} catch (e) {
+  console.error(`Migrarea a eșuat: ${e.message}`)
+  process.exitCode = 1
+} finally {
+  await client.end()
+}
 ```
 
-Expected: cinci rânduri — `attachments_objects_delete`, `attachments_objects_insert`, `attachments_objects_select` (pe `objects`), `attachments_select`, `attachments_write` (pe `attachments`).
+Adaugă în `package.json`, la `scripts`:
 
-- [ ] **Step 7: Commit**
+```json
+    "migrate": "node scripts/apply-migration.mjs",
+```
+
+- [ ] **Step 6: Aplică migrarea**
+
+Run: `npm run migrate supabase/migration-attachments.sql`
+Expected: `Migrare aplicată: supabase/migration-attachments.sql`
+
+Rulează-o **a doua oară** ca să dovedești idempotența.
+Expected: exact același mesaj, fără eroare.
+
+- [ ] **Step 7: Verifică politicile**
+
+Run:
 
 ```bash
-git add supabase/migration-attachments.sql scripts/create-attachments-bucket.mjs package.json
+node -e "import('dotenv').then(d=>d.config()).then(async()=>{const {default:pg}=await import('pg');const c=new pg.Client({host:process.env.PG_HOST,port:Number(process.env.PG_PORT),database:process.env.PG_DATABASE,user:process.env.PG_USER,password:process.env.PG_PASSWORD,ssl:{rejectUnauthorized:false}});await c.connect();const r=await c.query(\"select schemaname,tablename,policyname from pg_policies where policyname like 'attachments%' order by policyname\");console.log(r.rows);const t=await c.query(\"select column_name from information_schema.columns where table_name='attachments' order by ordinal_position\");console.log(t.rows.map(x=>x.column_name).join(', '));await c.end()})"
+```
+
+Expected: cinci politici — `attachments_objects_delete`, `attachments_objects_insert`, `attachments_objects_select` (pe `storage.objects`), `attachments_select`, `attachments_write` (pe `public.attachments`) — și coloanele `id, issue_id, project_id, path, filename, size, content_type, created_at`.
+
+Dacă politicile de pe `storage.objects` lipsesc dar cele de pe `attachments` există, bucketul nu exista când a rulat migrarea: rulează `npm run storage:bucket`, apoi migrarea din nou.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add supabase/migration-attachments.sql scripts/create-attachments-bucket.mjs scripts/apply-migration.mjs package.json
 git commit -m "feat(attachments): migration, RLS policies and private bucket"
 ```
 
