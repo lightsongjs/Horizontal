@@ -54,9 +54,14 @@ describe('shrinkPlan — ramificarea pe format', () => {
     expect(p.outputType).toBe('image/jpeg')
   })
 
-  it('un MIME cu majuscule e tratat la fel ca varianta lowercase (image/PNG → PNG)', () => {
-    const p = shrinkPlan({ type: 'image/PNG', size: 9 * MB, width: 5000, height: 3000 })
-    expect(p.outputType).toBe('image/webp')
+  it('un MIME cu majuscule e recunoscut, inclusiv in prefix', () => {
+    // 'IMAGE/PNG' e cazul care conteaza: garda `startsWith('image/')` era
+    // sensibila la litere mari, deci tipul cadea pe `nu-e-imagine` inainte sa
+    // ajunga la tabelul de formate, care era deja insensibil. Un test cu
+    // 'image/PNG' ar trece si pe codul vechi — prefixul lui e deja mic.
+    expect(shrinkPlan({ type: 'IMAGE/PNG', size: 9 * MB, width: 5000, height: 3000 }).outputType).toBe('image/webp')
+    expect(shrinkPlan({ type: 'Image/Png', size: 9 * MB, width: 5000, height: 3000 }).outputType).toBe('image/webp')
+    expect(shrinkPlan({ type: 'image/PNG', size: 9 * MB, width: 5000, height: 3000 }).outputType).toBe('image/webp')
   })
 })
 
