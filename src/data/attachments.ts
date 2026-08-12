@@ -204,7 +204,18 @@ export async function deleteAttachment(a: Attachment): Promise<void> {
  */
 export async function removeObjects(paths: readonly string[]): Promise<void> {
   if (paths.length === 0) return
-  const db = requireSupabase()
+
+  // `requireSupabase()` aruncă sincron dacă lipsesc cheile, deci intră și el sub
+  // gardă: contractul funcției e „nu arunca NICIODATĂ", iar el nu are voie să
+  // depindă de cine o cheamă. Se cheamă mereu după ce rândurile au dispărut.
+  let db
+  try {
+    db = requireSupabase()
+  } catch (e) {
+    console.warn('Fișiere rămase în stocare:', e, paths)
+    return
+  }
+
   for (const batch of chunk(paths, REMOVE_CHUNK)) {
     try {
       const { error } = await db.storage.from(BUCKET).remove(batch as string[])

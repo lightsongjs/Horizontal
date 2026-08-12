@@ -8,7 +8,7 @@ const { fake } = vi.hoisted(() => {
   // Comutatoare de eșec, citite din `run()`. Preferate înlocuirii lui `fake.from`
   // pe durata unui test: aceea lăsa fake-ul într-o stare pe care testul următor
   // o moștenea dacă restaurarea nu se executa (o aserțiune care aruncă).
-  const flags = { failInsert: false }
+  const flags = { failInsert: false, failRequire: false }
   class Query {
     op = 'select'
     filters: [string, unknown][] = []
@@ -49,6 +49,8 @@ const { fake } = vi.hoisted(() => {
     uploads: { path: string; options: Record<string, unknown> }[] = []
     failUpload = false
     failRemove = false
+    failSign = false
+    signCalls: string[][] = []
     from(_bucket: string) {
       return {
         upload: async (path: string, _body: unknown, options: Record<string, unknown>) => {
@@ -63,14 +65,17 @@ const { fake } = vi.hoisted(() => {
           paths.forEach((p) => this.objects.delete(p))
           return { data: null, error: null }
         },
-        createSignedUrls: async (paths: string[], _ttl: number) => ({
-          data: paths.map((path) => ({ path, signedUrl: `https://sb.test/${path}?token=abc`, error: null })),
-          error: null,
-        }),
-        createSignedUrl: async (path: string, _ttl: number, opts?: Record<string, unknown>) => ({
-          data: { signedUrl: `https://sb.test/${path}?dl=${String(opts?.download ?? '')}` },
-          error: null,
-        }),
+        createSignedUrls: async (paths: string[], _ttl: number) => {
+          this.signCalls.push([...paths])
+          return {
+            data: paths.map((path) => ({ path, signedUrl: `https://sb.test/${path}?token=abc`, error: null })),
+            error: null,
+          }
+        },
+        createSignedUrl: async (path: string, _ttl: number, opts?: Record<string, unknown>) => {
+          if (this.failSign) return { data: null, error: { message: 'sign a picat' } }
+          return { data: { signedUrl: `https://sb.test/${path}?dl=${String(opts?.download ?? '')}` } }
+        },
       }
     }
     reset() {
@@ -79,6 +84,8 @@ const { fake } = vi.hoisted(() => {
       this.uploads = []
       this.failUpload = false
       this.failRemove = false
+      this.failSign = false
+      this.signCalls = []
     }
   }
   class Fake {
@@ -86,12 +93,18 @@ const { fake } = vi.hoisted(() => {
     storage = new FakeStorage()
     flags = flags
     from(table: string) { return new Query(this.tables, table) }
-    reset() { this.tables = { attachments: [] }; this.storage.reset(); flags.failInsert = false }
+    reset() { this.tables = { attachments: [] }; this.storage.reset(); flags.failInsert = false; flags.failRequire = false }
   }
   return { fake: new Fake() }
 })
 
-vi.mock('../lib/supabase', () => ({ supabase: fake, requireSupabase: () => fake }))
+vi.mock('../lib/supabase', () => ({
+  supabase: fake,
+  requireSupabase: () => {
+    if (fake.flags.failRequire) throw new Error('Supabase is not configured.')
+    return fake
+  },
+}))
 
 import {
   buildAttachmentPath,
@@ -104,6 +117,7 @@ import {
   uploadAttachment,
   deleteAttachment,
   signedUrls,
+  signedDownloadUrl,
   removeObjects,
   pathsForIssues,
   pathsForProject,
@@ -258,19 +272,56 @@ describe('removeObjects', () => {
     await removeObjects(paths)
     expect(fake.storage.removed.map((t) => t.length)).toEqual([100, 100, 50])
   })
+
+  it('nu aruncă nici când clientul Supabase nu e configurat', async () => {
+    // Cazul care sparge contractul: requireSupabase() arunca sincron, in afara
+    // gardei. removeObjects se cheama mereu DUPA ce randurile au dispărut, deci
+    // o excepție de aici ar raporta eșec pentru o operație deja reușită.
+    fake.flags.failRequire = true
+    await expect(removeObjects(['a', 'b'])).resolves.toBeUndefined()
+  })
 })
 
 describe('signedUrls', () => {
-  it('cere într-un singur apel și memorează rezultatul', async () => {
+  it('al doilea apel nu mai lovește rețeaua — altfel fiecare deschidere redescarcă tot', async () => {
     const first = await signedUrls(['tur/TUR-01/a1'])
     expect(first['tur/TUR-01/a1']).toContain('token=abc')
-    // Al doilea apel vine din cache: URL identic, deci aceeași cheie de cache HTTP.
+    expect(fake.storage.signCalls).toHaveLength(1)
+
     const second = await signedUrls(['tur/TUR-01/a1'])
     expect(second).toEqual(first)
+    // Numarul de apeluri e asertiunea portanta: URL-uri egale s-ar obtine si
+    // fara cache, fiindca fake-ul e determinist.
+    expect(fake.storage.signCalls).toHaveLength(1)
+  })
+
+  it('cere de la rețea doar căile care lipsesc din cache', async () => {
+    await signedUrls(['tur/TUR-01/a1'])
+    await signedUrls(['tur/TUR-01/a1', 'tur/TUR-01/a2'])
+    expect(fake.storage.signCalls).toEqual([['tur/TUR-01/a1'], ['tur/TUR-01/a2']])
   })
 
   it('lista goală nu lovește rețeaua', async () => {
     expect(await signedUrls([])).toEqual({})
+  })
+})
+
+describe('signedDownloadUrl', () => {
+  const pdf = {
+    id: 'a1', issueId: 'TUR-01', projectId: 'tur', path: 'tur/TUR-01/a1',
+    filename: 'raport final.pdf', size: 10, contentType: 'application/pdf', createdAt: 'z',
+  }
+
+  it('trimite opțiunea download, cu numele de afișat', async () => {
+    // Fake-ul codifică `download` in URL, deci asta dovedeste ca opțiunea pleaca.
+    // Fara ea, un .svg sau .html stocat s-ar randa pe originea Supabase in loc
+    // sa se descarce.
+    expect(await signedDownloadUrl(pdf)).toContain('dl=raport final.pdf')
+  })
+
+  it('întoarce null când semnarea eșuează, fără să arunce', async () => {
+    fake.storage.failSign = true
+    await expect(signedDownloadUrl(pdf)).resolves.toBeNull()
   })
 })
 
