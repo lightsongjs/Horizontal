@@ -260,6 +260,32 @@ Corpus de test: screenshot de terminal întunecat cu culori ANSI, editor de cod 
 panou DevTools, mockup cu gradienți, captură de fereastră cu umbră transparentă, poză
 portret de telefon, captură 5K. Materialul real vine de la utilizator.
 
+#### Ce arată materialul existent (măsurat 2026-08-12, 70 de imagini)
+
+Din `Pictures/Screenshots`, `OneDrive/Pictures/Screenshots`, `Downloads`, `Desktop`:
+
+| grup | câte | median | maxim | dimensiuni |
+|---|---|---|---|---|
+| PNG — capturi de desktop | 23 | 35 KB | 395 KB | maxim 1847×961 |
+| JPEG — capturi de telefon | ~45 | 701 KB | 1,1 MB | 1080×2400 |
+| JPEG — poze de cameră | 2 | — | 13,4 MB | 12288×16320 (200 MP) |
+
+Trei concluzii care **fixează forma regulii pe date, nu pe presupuneri**:
+
+1. **Toate cele 23 de PNG-uri sunt sub 400 KB și niciunul nu trece de 1847px** — ar fi
+   sărite integral. Riscul PNG→JPEG e real în principiu, dar nu se declanșează pe
+   materialul acestui utilizator. Ramificarea pe format rămâne totuși în cod: e ieftină și
+   apară cazul viitor (monitor 4K, ecran Retina), unde PNG-urile devin mari.
+2. **Peste 2000px: 43 din 70. Peste 3072px: 2 din 70.** `maxEdge 2000` ar redimensiona
+   majoritatea, inclusiv capturile de telefon de 1080×2400, care au text mic.
+   `maxEdge 3072` atinge exact cele două fișiere care au nevoie. Corpusul alege numărul.
+3. **Ținta reală sunt cele două poze de cameră** (200 MP / 13,4 MB) — exact cazul pe care
+   e calibrată mateSimo, și fără text fin, deci strivirea nu costă nimic.
+
+Ce **nu** e acoperit de materialul existent: un screenshot de cod sau terminal la DPI
+mare. Toate PNG-urile de aici sunt capturi mici de fereastră pe un ecran de ~1920×1080.
+Ăsta e singurul fișier care mai trebuie adăugat în corpus înainte de a îngheța `quality`.
+
 **Criteriu de ieșire:** textul mic dintr-un screenshot cu cod rămâne citibil la 100%, iar
 fișierul e cât mai mic în condiția asta.
 
