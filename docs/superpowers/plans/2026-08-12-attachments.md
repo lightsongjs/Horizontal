@@ -941,10 +941,19 @@ const run = async (name, bytes, type) => page.evaluate(async ({ name, bytes, typ
   const file = new File([new Uint8Array(bytes)], name, { type })
   const outFile = await shrinkImage(file)
   const dims = async (f) => {
-    const bmp = await createImageBitmap(f, { imageOrientation: 'from-image' })
-    const d = { w: bmp.width, h: bmp.height }
-    bmp.close()
-    return d
+    // Întoarce null pe ce nu se decodează, în loc să arunce. Cazul real:
+    // GIF-ul fals din verificarea 5. `shrinkImage` îl întoarce neatins, exact
+    // cum trebuie — dar harness-ul îl mai măsoară o dată după aceea, iar
+    // `createImageBitmap` aruncă. Fără garda asta, scriptul moare înainte de
+    // tally și pare că verificările n-au rulat, când în realitate au trecut.
+    try {
+      const bmp = await createImageBitmap(f, { imageOrientation: 'from-image' })
+      const d = { w: bmp.width, h: bmp.height }
+      bmp.close()
+      return d
+    } catch {
+      return null
+    }
   }
   return {
     inSize: file.size, outSize: outFile.size,
