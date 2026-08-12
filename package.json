@@ -11,7 +11,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -b --noEmit",
-    "test:upgrade": "node scripts/test-upgrade-path.mjs"
+    "test:upgrade": "node scripts/test-upgrade-path.mjs",
+    "storage:bucket": "node scripts/create-attachments-bucket.mjs",
+    "migrate": "node scripts/apply-migration.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
