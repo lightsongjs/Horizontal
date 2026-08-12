@@ -3821,6 +3821,21 @@ svg.graph {
 .att-msg { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: var(--accent-soft); font-size: 13px; }
 .att-msg-x { margin-left: auto; border: 0; background: none; cursor: pointer; color: inherit; }
 
+/* --- alegerea fișierelor: cameră / galerie / orice --- */
+.att-pick { margin-top: 8px; }
+.att-pick-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.att-pick-card { display: grid; justify-items: center; align-content: center; gap: 3px; min-height: 100px; padding: 12px 8px; border: 1px dashed var(--line); border-radius: 10px; background: var(--surface-2); color: var(--txt); cursor: pointer; text-align: center; }
+.att-pick-card:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); }
+.att-pick-card:disabled { opacity: 0.5; cursor: default; }
+.att-pick-ic { display: grid; place-items: center; width: 36px; height: 36px; margin-bottom: 3px; border-radius: 9px; background: var(--accent-soft); color: var(--accent); }
+.att-pick-t { font-size: 13px; font-weight: 600; }
+.att-pick-d { font-size: 11px; line-height: 1.3; color: var(--txt-dim); }
+.att-pick-more { display: block; width: 100%; min-height: 44px; margin-top: 8px; border: 1px solid var(--line); border-radius: 8px; background: none; color: var(--txt); font-size: 13px; cursor: pointer; }
+.att-pick-more:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.att-pick-more:disabled { opacity: 0.5; cursor: default; }
+.att-pick-hint { margin: 8px 0 0; font-size: 11px; line-height: 1.5; color: var(--txt-dim); text-align: center; }
+.att-pick-input { display: none; }
+
 /* ── Lightbox ────────────────────────────────────────────────────────────── */
 .lb-back { position: fixed; inset: 0; z-index: 60; display: grid; grid-template-rows: auto 1fr; background: rgba(0, 0, 0, 0.92); }
 .lb-bar { display: flex; align-items: center; gap: 10px; padding: 10px 12px; color: #fff; font-size: 13px; }
