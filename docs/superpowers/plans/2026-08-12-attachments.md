@@ -2467,6 +2467,23 @@ export function Attachments({
 
   useEffect(() => () => { if (armTimer.current) clearTimeout(armTimer.current) }, [])
 
+  // Dezarmarea la atingere în altă parte. Fără ea, un X rămas armat e chiar
+  // capcana pe care confirmarea din două atingeri trebuia să o închidă: te
+  // răzgândești, atingi altundeva, iar butonul rămâne armat câteva secunde.
+  //
+  // Garda `.closest('.att-del')` lasă în pace atingerea care ARMEAZĂ butonul și
+  // pe cea care confirmă: altfel prima atingere s-ar dezarma singură.
+  useEffect(() => {
+    if (!armed) return
+    const onDown = (e: PointerEvent) => {
+      if ((e.target as HTMLElement | null)?.closest('.att-del')) return
+      if (armTimer.current) clearTimeout(armTimer.current)
+      setArmed(null)
+    }
+    document.addEventListener('pointerdown', onDown)
+    return () => document.removeEventListener('pointerdown', onDown)
+  }, [armed])
+
   const addFiles = useCallback(
     async (types: readonly string[], files: readonly File[]) => {
       if (!issueId) return
@@ -2538,9 +2555,16 @@ export function Attachments({
       setViewing(a)
       return
     }
-    const url = await signedDownloadUrl(a)
-    if (url) window.location.href = url
-    else setMessage('Fișierul nu s-a putut descărca.')
+    // `signedDownloadUrl` cheamă `requireSupabase()`, care aruncă SINCRON dacă
+    // lipsesc cheile. Fără `try`, ramura de `else` n-ar rula niciodată: click
+    // mort, zero mesaj, plus o respingere de promisiune netratată.
+    try {
+      const url = await signedDownloadUrl(a)
+      if (url) window.location.href = url
+      else setMessage('Fișierul nu s-a putut descărca.')
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : 'Fișierul nu s-a putut descărca.')
+    }
   }
 
   const remove = async (a: Attachment) => {
