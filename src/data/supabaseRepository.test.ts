@@ -67,7 +67,17 @@ const { fakeDb } = vi.hoisted(() => {
         return { data: this.single_ ? (matched[0] ?? null) : matched, error: null }
       }
       if (this.op === 'delete') {
+        const removed = t.filter((r) => this.match(r))
         this.tables[this.table] = t.filter((r) => !this.match(r))
+        // Cascada FK, simulată. In Postgres, stergerea unui tichet sau a unui
+        // proiect ia cu ea randurile din `attachments`. Fara asta, un test care
+        // pretinde ca verifica „caile se citesc INAINTE de stergere" ar trece si
+        // cu ordinea inversata — exact garantia pe care trebuie sa o apere.
+        if (this.tables.attachments && (this.table === 'issues' || this.table === 'projects')) {
+          const key = this.table === 'issues' ? 'issue_id' : 'project_id'
+          const gone = new Set(removed.map((r) => r.id))
+          this.tables.attachments = this.tables.attachments.filter((a) => !gone.has(a[key]))
+        }
         return { data: null, error: null }
       }
       const rows = t.filter((r) => this.match(r))

@@ -60,6 +60,16 @@ function nextIssueId(db: DB, project: Project): string {
   return `${project.prefix}-${String(max + 1).padStart(2, '0')}`
 }
 
+/** Removes issues by id and strips them from every other issue's `deps`. */
+function deleteIssuesImpl(db: DB, ids: string[]): void {
+  if (ids.length === 0) return
+  const gone = new Set(ids)
+  db.issues = db.issues
+    .filter((i) => !gone.has(i.id))
+    .map((i) => (i.deps?.some((d) => gone.has(d)) ? { ...i, deps: i.deps.filter((d) => !gone.has(d)) } : i))
+  save(db)
+}
+
 export function createLocalRepository(): Repository {
   return {
     async listProjects() {
@@ -207,23 +217,13 @@ export function createLocalRepository(): Repository {
     },
 
     async deleteIssue(id: string) {
-      const db = load()
-      db.issues = db.issues
-        .filter((i) => i.id !== id)
-        .map((i) => (i.deps?.includes(id) ? { ...i, deps: i.deps.filter((d) => d !== id) } : i))
-      save(db)
+      deleteIssuesImpl(load(), [id])
     },
 
     // Fără attachment-uri: n-au sens în modul local seeded, iar `Attachments`
     // nu se randează acolo.
     async deleteIssues(ids: string[]) {
-      if (ids.length === 0) return
-      const gone = new Set(ids)
-      const db = load()
-      db.issues = db.issues
-        .filter((i) => !gone.has(i.id))
-        .map((i) => (i.deps?.some((d) => gone.has(d)) ? { ...i, deps: i.deps.filter((d) => !gone.has(d)) } : i))
-      save(db)
+      deleteIssuesImpl(load(), ids)
     },
 
     async listAssignees() {
