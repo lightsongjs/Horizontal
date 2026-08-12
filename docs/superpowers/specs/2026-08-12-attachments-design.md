@@ -282,9 +282,26 @@ Trei concluzii care **fixează forma regulii pe date, nu pe presupuneri**:
 3. **Ținta reală sunt cele două poze de cameră** (200 MP / 13,4 MB) — exact cazul pe care
    e calibrată mateSimo, și fără text fin, deci strivirea nu costă nimic.
 
-Ce **nu** e acoperit de materialul existent: un screenshot de cod sau terminal la DPI
-mare. Toate PNG-urile de aici sunt capturi mici de fereastră pe un ecran de ~1920×1080.
-Ăsta e singurul fișier care mai trebuie adăugat în corpus înainte de a îngheța `quality`.
+#### Cazul greu, măsurat direct
+
+Un screenshot de terminal luat de utilizator pe ecranul lui de lucru — monospace mic, pe
+fundal întunecat, colorat: **1787×481, ~53 KB PNG.** Sub pragul de octeți și sub orice
+`maxEdge` candidat, deci **ar fi sărit complet.** Micșorarea nu atinge screenshot-urile de
+cod pe hardware-ul actual (ecran ~1920 lat, non-Retina).
+
+Deci grija cu care a început designul — „nu strica textul din capturile de cod" — nu are
+de fapt un caz care să o declanșeze azi. Ramificarea pe format rămâne în cod ca asigurare
+pentru un ecran 4K sau Retina viitor, unde aceleași capturi ar depăși pragurile.
+
+#### Singura întrebare rămasă
+
+**Capturile de telefon, 1080×2400, 700 KB – 1,1 MB.** Sunt peste pragul de octeți dar sub
+`maxEdge 3072`, deci cad pe ramura „doar recomprimare": JPEG peste JPEG, a doua generație
+de pierderi, pe capturi care au și ele text mic (WhatsApp, Chrome).
+
+Asta e singurul lucru pe care harnessul mai trebuie să-l arate ca decupaj 1:1, și singura
+valoare care mai are nevoie de ochiul utilizatorului: `quality` pe ramura de fotografie.
+Restul constantelor sunt fixate de măsurătorile de mai sus.
 
 **Criteriu de ieșire:** textul mic dintr-un screenshot cu cod rămâne citibil la 100%, iar
 fișierul e cât mai mic în condiția asta.
