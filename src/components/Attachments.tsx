@@ -248,10 +248,6 @@ export function Attachments({
         />
       )}
 
-      {items.length === 0 && !busy && !canEdit && (
-        <p className="att-empty">Niciun fișier.</p>
-      )}
-
       <div className="att-grid">
         {items.map((a) => {
           const isImg = isRenderableImage(a.contentType)
