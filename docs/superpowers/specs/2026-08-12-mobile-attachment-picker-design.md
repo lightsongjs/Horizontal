@@ -27,8 +27,8 @@ atașamente:
 | **Din galerie** | `accept="image/*" multiple` | mereu |
 | **+ Alt fișier** | `multiple` | mereu |
 
-Sub carduri, o linie de ajutor cu tipurile și plafonul. Pe pointer fine se adaugă
-și hint-ul existent de paste/drop.
+Sub carduri, o linie de ajutor cu tipurile de fișier acceptate. Pe pointer fine se
+adaugă și hint-ul existent de paste/drop.
 
 Referință vizuală: pattern-ul din proiectul „mate cu Simo" — două carduri mari cu
 chenar punctat, iconiță, titlu și un rând de explicație. Îl urmăm ca formă, nu ca
@@ -47,10 +47,20 @@ nu prin user-agent. Pe desktop `capture` deschide webcam-ul, ceea ce e aproape
 niciodată ce vrei. Un dispozitiv hibrid poate trece dintr-o stare în alta în timpul
 sesiunii — hook-ul ascultă schimbarea, deci layout-ul urmează dispozitivul.
 
-**Niciun plafon pe număr de fișiere.** Rămân doar plafoanele pe octeți din
-`PICK_CAPS` (20 MB imagini / 10 MB restul). Un plafon pe număr ar fi pur cosmetic —
-browserul urcă direct în Storage, fără server pe traseu — și ar deschide o cale de
-eroare nouă (ai nouă fișiere, alegi cinci, ce se întâmplă cu ultimele patru?).
+**Niciun plafon, nici pe număr de fișiere, nici pe octeți.** Un plafon pe număr ar
+fi pur cosmetic — browserul urcă direct în Storage, fără server pe traseu — și ar
+deschide o cale de eroare nouă (ai nouă fișiere, alegi cinci, ce se întâmplă cu
+ultimele patru?). Un plafon pe octeți ar fi la fel de arbitrar: nu există un motiv
+de produs pentru care un fișier de 25 MB să fie respins și unul de 19 MB acceptat.
+Singura verificare care rămâne la intrare e cea care exista deja înainte de acest
+picker — fișierele de 0 octeți (foldere trase din greșeală) cad, restul trece.
+
+Rămâne o singură limită, și e în afara aplicației: proiectul Supabase are un
+plafon global per fișier setat din dashboard (implicit ~50 MB pe planul gratuit).
+Bucket-ul `attachments` însuși n-are `file_size_limit` sau `allowed_mime_types` —
+limita aceea nu ține de cod, deci nu poate fi scoasă din cod. Un fișier peste ea
+eșuează cu eroarea proprie a Supabase, care iese prin fluxul existent de mesaje —
+deci raportată, nu tăcută.
 
 **Picker-ul rămâne vizibil când există deja fișiere.** Azi hint-ul apare doar la
 listă goală. Dacă păstram regula, pe mobil n-ai fi putut adăuga al doilea fișier.
@@ -67,7 +77,7 @@ care o alegem, e una pe care o comunicăm.
 { onPick: (files: File[]) => void; disabled?: boolean }
 ```
 
-Nu știe de Supabase, de `issueId`, de plafoane, de redenumire. Deține trei
+Nu știe de Supabase, de `issueId`, de motivele de respingere, de redenumire. Deține trei
 `<input type="file">` ascunse și `ref`-urile lor; fiecare card vizibil e un
 `<button>` care cheamă `ref.current?.click()`.
 
@@ -110,8 +120,8 @@ dovedită de faptul că le ținem în mână, n-o deducem din `types`. Adulmecar
 stratul de date, migrarea SQL, politicile RLS. Zero linii în `src/data/`.
 
 Calea nouă intră exact în același `addFiles` ca paste-ul și drop-ul, deci
-micșorarea imaginilor, sintetizarea numelor, plafoanele și mesajele de respingere
-funcționează din prima fără nimic în plus.
+micșorarea imaginilor, sintetizarea numelor și mesajele de respingere funcționează
+din prima fără nimic în plus.
 
 ### Stiluri
 
@@ -120,14 +130,16 @@ prefix `att-`. Cardurile stau într-un grid de două coloane egale
 (`grid-template-columns: 1fr 1fr`), care cade la o singură coloană sub 360 px
 lățime de container. Ținta de atingere minimum 44 px înălțime.
 
-Linia de ajutor de sub carduri, literal: `JPG / PNG / WEBP / PDF · max 20 MB`. Pe
+Linia de ajutor de sub carduri, literal: `Poze, PDF-uri, arhive — orice fișier`. Pe
 pointer fine se adaugă dedesubt rândul existent `Lipește o poză (Ctrl+V) sau trage
 fișiere aici.`
 
 ## Erori
 
-Nicio cale de eroare nouă. Fișierele prea mari și folderele cad prin `pickFiles`,
-sunt raportate separat de `rejectMessage` și apar în bara de mesaje existentă.
+Nicio cale de eroare nouă. Foldere trase din greșeală peste zonă ajung ca intrări
+de 0 octeți; `pickFiles` le respinge, raportate separat de `rejectMessage`, și apar
+în bara de mesaje existentă. Nu e o limită de dimensiune — e o gardă contra
+folderelor.
 
 Anularea din file picker-ul nativ produce o listă goală — `pickFiles` returnează
 `accept` gol, `rejectMessage` returnează `null`, nu se afișează nimic. Corect:
@@ -156,7 +168,7 @@ Verificarea e manuală, pe dispozitiv real:
 
 Pozele făcute pe iPhone vin HEIC. `shrinkImage` micșorează pe canvas: Safari
 decodează HEIC, Chrome pe Android nu. Pe iOS deci merge normal. Un HEIC ajuns pe
-Android trece nemicșorat, sub plafonul de 20 MB — se urcă, dar ocupă mai mult.
+Android trece nemicșorat — se urcă, dar ocupă mai mult.
 
 Nu rezolvăm acum. Conversia HEIC ar însemna o bibliotecă wasm de câteva sute de KB
 pentru un caz care, pe fluxul principal (faci poza pe telefonul tău, o urci de pe

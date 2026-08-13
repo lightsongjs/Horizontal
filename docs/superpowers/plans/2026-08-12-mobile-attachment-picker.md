@@ -15,7 +15,7 @@
 - **No changes to `src/data/`.** The data layer, the SQL migration, and the RLS policies are done and deployed. This plan touches presentation only.
 - **No new dependencies.** No jsdom, no icon library, no HEIC converter.
 - **UI copy is Romanian**, matching the rest of the app.
-- **Size caps stay as they are:** `PICK_CAPS` in `src/lib/pickFiles.ts` — 20 MB images, 10 MB everything else. No cap on file count.
+- **No size or count caps.** `pickFiles.ts` rejects only zero-byte entries (dragged folders arrive that way) — that is a folder guard, not a size limit, and it stays. Everything else passes through unchanged, and `shrinkImage` still shrinks images that need it. Do not add limits.
 - **Icons are inline SVG**, following `src/components/Sidebar.tsx` and `src/components/QuickSearch.tsx`. Do not use emoji for the picker; the emoji in `Attachments.tsx` label file *types*, these are *actions*.
 - **Colors come from existing CSS custom properties only:** `--accent`, `--accent-soft`, `--line`, `--surface-2`, `--txt`, `--txt-dim`. No new color literals.
 - **Comments explain *why*, in Romanian**, matching the density and voice of `Attachments.tsx` and `pickFiles.ts`. Do not narrate what the code already says.
@@ -26,7 +26,7 @@
 
 Adding jsdom to assert that a button calls `click()` would buy nothing.
 
-Each task's gate is therefore: `npm run typecheck` clean, `npm test` still 238 passing (proving nothing regressed), `npm run build` clean. Task 3 adds manual device verification.
+Each task's gate is therefore: `npm run typecheck` clean, `npm test` still 232 passing (proving nothing regressed), `npm run build` clean. Task 3 adds manual device verification.
 
 ---
 
@@ -81,7 +81,7 @@ Expected: exits 0, no output beyond the tsc banner.
 - [ ] **Step 3: Verify nothing regressed**
 
 Run: `npm test`
-Expected: `Test Files 18 passed (18)`, `Tests 238 passed (238)`
+Expected: `Test Files 18 passed (18)`, `Tests 232 passed (232)`
 
 - [ ] **Step 4: Commit**
 
@@ -203,7 +203,7 @@ export function AttachmentPicker({
       </button>
 
       <p className="att-pick-hint">
-        JPG / PNG / WEBP / PDF · max 20 MB
+        Poze, PDF-uri, arhive — orice fișier
         {!coarse && (
           <>
             <br />
@@ -256,7 +256,7 @@ If `capture="environment"` is rejected, the installed `@types/react` is too old 
 - [ ] **Step 4: Verify nothing regressed and the CSS is valid**
 
 Run: `npm test && npm run build`
-Expected: `Tests 238 passed (238)`, then a clean Vite build ending in `files generated`. A CSS syntax error surfaces here as a build warning — read the output, don't skim it.
+Expected: `Tests 232 passed (232)`, then a clean Vite build ending in `files generated`. A CSS syntax error surfaces here as a build warning — read the output, don't skim it.
 
 - [ ] **Step 5: Commit**
 
@@ -308,18 +308,16 @@ Replace it with:
           disabled={busy > 0}
         />
       )}
-
-      {items.length === 0 && !busy && !canEdit && (
-        <p className="att-empty">Niciun fișier.</p>
-      )}
 ```
 
 `['Files']` is passed literally, exactly as the paste path does at line 160: the files are already in hand, so their presence is asserted rather than sniffed out of `types`. Sniffing `types` only earns its keep on the drop path, where the list is not yet available.
 
+Do not also add a `{items.length === 0 && !busy && !canEdit && <p className="att-empty">Niciun fișier.</p>}` fallback here — it would never render. Past the `!issueId` early return earlier in the component, `canEdit` reduces to `!readOnly`, and the `readOnly && items.length === 0` early return has already fired before this point. A second `<p>` guarded the same way is dead code from the day it's written.
+
 - [ ] **Step 3: Verify it compiles and nothing regressed**
 
 Run: `npm run typecheck && npm test && npm run build`
-Expected: typecheck exits 0; `Tests 238 passed (238)`; clean build.
+Expected: typecheck exits 0; `Tests 232 passed (232)`; clean build.
 
 - [ ] **Step 4: Verify on desktop**
 
@@ -327,7 +325,7 @@ Run: `npm run dev`, open the app, open an **existing** ticket (not an unsaved ne
 
 - [ ] The camera card is **absent**
 - [ ] "Din galerie" and "+ Alt fișier" are present
-- [ ] The hint reads `JPG / PNG / WEBP / PDF · max 20 MB` followed by `Lipește o poză (Ctrl+V) sau trage fișiere aici.`
+- [ ] The hint reads `Poze, PDF-uri, arhive — orice fișier` followed by `Lipește o poză (Ctrl+V) sau trage fișiere aici.`
 - [ ] Ctrl+V with an image in the clipboard still attaches it
 - [ ] Drag & drop of a PDF still attaches it
 - [ ] "Din galerie" → pick two images → both appear in the grid
