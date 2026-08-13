@@ -96,7 +96,7 @@ export function AttachmentPicker({
       </button>
 
       <p className="att-pick-hint">
-        JPG / PNG / WEBP / PDF · max 20 MB
+        Poze, PDF-uri, arhive — orice fișier
         {!coarse && (
           <>
             <br />

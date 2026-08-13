@@ -12,25 +12,7 @@ export interface FileLike {
   size: number
 }
 
-export interface PickCaps {
-  imageMaxBytes: number
-  otherMaxBytes: number
-}
-
-/**
- * Plafoanele sunt PUR UX, nu apărare: browserul urcă direct în Storage, nu
- * există server pe traseu, deci cine vrea le ocolește. Apărarea reală e RLS-ul,
- * care decide *dacă* poți scrie, nu *cât*.
- *
- * Imaginile se măsoară ÎNAINTE de micșorare, fiindcă micșorarea poate eșua (un
- * format nedecodabil) și atunci pleacă originalul.
- */
-export const PICK_CAPS: PickCaps = {
-  imageMaxBytes: 20 * 1024 * 1024,
-  otherMaxBytes: 10 * 1024 * 1024,
-}
-
-export type RejectReason = 'prea-mare' | 'gol'
+export type RejectReason = 'gol'
 
 export interface PickResult<T extends FileLike> {
   accept: T[]
@@ -65,7 +47,8 @@ function stamp(d: Date): string {
 }
 
 /**
- * Aplică plafoanele și sintetizează nume pentru screenshot-urile lipite.
+ * Respinge ce nu se poate încărca și sintetizează nume pentru screenshot-urile
+ * lipite.
  *
  * De ce redenumirea: un screenshot lipit ajunge de la browser cu numele
  * `image.png`, mereu. Fără redenumire fiecare rând din listă ar arăta identic
@@ -73,9 +56,8 @@ function stamp(d: Date): string {
  */
 export function pickFiles<T extends FileLike>(
   input: { types: readonly string[]; files: readonly T[] },
-  opts: { caps?: PickCaps; now?: () => Date } = {},
+  opts: { now?: () => Date } = {},
 ): PickResult<T> {
-  const caps = opts.caps ?? PICK_CAPS
   const now = opts.now ?? (() => new Date())
 
   const accept: T[] = []
@@ -91,11 +73,6 @@ export function pickFiles<T extends FileLike>(
       rejected.push({ name: file.name || 'fișier', reason: 'gol' })
       continue
     }
-    const cap = type.startsWith('image/') ? caps.imageMaxBytes : caps.otherMaxBytes
-    if (file.size > cap) {
-      rejected.push({ name: file.name || 'fișier', reason: 'prea-mare' })
-      continue
-    }
     const index = accept.length
     accept.push(file)
     if (!file.name || GENERIC.test(file.name)) {
@@ -109,37 +86,18 @@ export function pickFiles<T extends FileLike>(
   return { accept, renamed, rejected }
 }
 
-const CAPS_TEXT = 'Imaginile pot avea cel mult 20 MB, celelalte fișiere 10 MB.'
 const FOLDER_TEXT = 'Folderele nu se pot atașa — trage fișierele din ele.'
 
 /**
- * Ce se arată pe ecran când plafonul a tăiat din ce ai ales. Refuzul tăcut e un
- * bug în altă haină: alegi șase fișiere, vezi două, și n-ai cum să afli de ce.
- *
- * Cele două motive se raportează SEPARAT. Un lot amestecat — un folder tras
- * peste un fișier gras — se întâmplă în practică, iar un mesaj care spune
- * „prea mari" despre folder minte exact acolo unde funcția asta există ca să
- * nu mintă.
+ * Ce se arată pe ecran când un fișier a fost respins. Refuzul tăcut e un bug
+ * în altă haină: alegi șase fișiere, vezi cinci, și n-ai cum să afli de ce.
  */
 export function rejectMessage(rejected: PickResult<FileLike>['rejected']): string | null {
   if (rejected.length === 0) return null
 
-  const tooBig = rejected.filter((r) => r.reason === 'prea-mare')
   const empty = rejected.filter((r) => r.reason === 'gol')
 
-  const bigSentence =
-    tooBig.length === 0
-      ? null
-      : tooBig.length === 1
-        ? `${tooBig[0].name} e prea mare. ${CAPS_TEXT}`
-        : `${tooBig.length} fișiere nu au fost adăugate: prea mari. ${CAPS_TEXT}`
-
-  const emptySentence =
-    empty.length === 0
-      ? null
-      : empty.length === 1
-        ? `${empty[0].name} nu a putut fi citit. ${FOLDER_TEXT}`
-        : `${empty.length} fișiere nu au putut fi citite. ${FOLDER_TEXT}`
-
-  return [bigSentence, emptySentence].filter(Boolean).join(' ')
+  return empty.length === 1
+    ? `${empty[0].name} nu a putut fi citit. ${FOLDER_TEXT}`
+    : `${empty.length} fișiere nu au putut fi citite. ${FOLDER_TEXT}`
 }
