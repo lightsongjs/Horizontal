@@ -239,26 +239,25 @@ două rezultate pe care le poate produce sunt „JPEG cu culori stricate" sau �
 neatins" — „rămâne PNG, dar mai mic" nu e atins niciodată. Și o comparație de octeți nu
 poate vedea pierderea de alpha.
 
-Micșorarea e o optimizare, nu o apărare: plafonul din aplicație rămâne singura limită
-reală, fiindcă `shrinkImage` poate eșua (format nedecodabil) și atunci pleacă originalul.
+Micșorarea e o optimizare, nu o apărare: nu există plafon de dimensiune impus de
+aplicație — singura limită reală e cea de proiect a Supabase (setare din dashboard, ~50 MB
+pe planul gratuit), în afara controlului aplicației — fiindcă `shrinkImage` poate eșua
+(format nedecodabil) și atunci pleacă originalul.
 
 ### Ce se acceptă
 
-Orice fișier. Imaginile trec prin micșorare; non-imaginile urcă așa cum sunt. Plafoane:
+Orice fișier. Imaginile trec prin micșorare; non-imaginile urcă așa cum sunt. Nu există
+plafon de dimensiune impus de aplicație — decizia de a renunța la plafoane e ulterioară
+acestui document și e înregistrată în
+`docs/superpowers/specs/2026-08-12-mobile-attachment-picker-design.md`.
 
-| categorie | plafon | măsurat |
-|---|---|---|
-| imagini | **20 MB** | pe fișierul ales, *înainte* de micșorare |
-| orice altceva | **10 MB** | pe fișierul ca atare |
-| număr per tichet | **fără plafon** | — |
+Singura respingere pe dimensiune e garda contra folderelor trase din greșeală peste zonă:
+ajung ca intrări de 0 octeți, pe care `pickFiles` le respinge — nu e o limită de mărime, e
+o gardă contra unei greșeli de manipulare.
 
-Plafonul pe imagini se aplică înaintea micșorării fiindcă micșorarea poate eșua (format
-nedecodabil) și atunci pleacă originalul. După micșorare, cazul normal e cu un ordin de
-mărime sub plafon, deci plafonul prinde doar capturile enorme.
-
-**Aici plafoanele sunt pur UX, nu apărare.** Nu există server pe traseu — browserul urcă
-direct în Storage — deci cine vrea le poate ocoli. Asta e acceptat conștient: aplicația e
-privată, iar apărarea reală rămâne RLS-ul, care decide *dacă* poți scrie, nu *cât*.
+Limita reală care rămâne e externă aplicației: plafonul de proiect al Supabase pe fișier
+încărcat (setare din dashboard, ~50 MB pe planul gratuit), pe care aplicația nu îl
+verifică și nu îl poate schimba.
 
 Nu există plafon pe numărul de attachment-uri per tichet: spațiul total e oricum mărginit
 de bucket, iar `storage-report.mjs` îți arată unde s-a dus. Un plafon pe număr ar bloca
@@ -487,17 +486,17 @@ Nu există `vitest.config.*` și nici jsdom în `devDependencies`, deci Vitest r
 // src/lib/pickFiles.ts — date simple intră, date simple ies
 export interface FileLike { name: string; type: string; size: number }
 export interface PickInput { types: readonly string[]; files: readonly FileLike[] }
-export function pickFiles(input: PickInput, caps = CAPS): {
+export function pickFiles(input: PickInput): {
   accept: FileLike[]
-  rejected: { file: FileLike; reason: 'too-big' | 'empty' | 'no-files' }[]
+  rejected: { name: string; reason: 'gol' }[]
 }
 ```
 
 Două adaptoare de trei linii (`fromClipboard(e)`, `fromDrop(e)`) doar reformează
 evenimentul; sunt netestate prin design. Toată politica trăiește în `pickFiles`: prezența
-lui `'Files'` în `types`, plafonul de 10 MB pe non-imagini, plafonul pe imagini,
-respingerea fișierelor de zero octeți, folderele trase care nu produc niciun fișier —
-toate testabile cu obiecte literale.
+lui `'Files'` în `types`, respingerea fișierelor de zero octeți, folderele trase care nu
+produc niciun fișier decât intrări de 0 octeți — toate testabile cu obiecte literale. Fără
+plafoane de dimensiune — vezi `docs/superpowers/specs/2026-08-12-mobile-attachment-picker-design.md`.
 
 Aceeași separație ca `shrinkPlan` / `shrinkImage`, și e cel mai valoros lucru de portat
 din mateSimo.

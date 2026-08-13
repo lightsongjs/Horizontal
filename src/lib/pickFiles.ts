@@ -95,9 +95,7 @@ const FOLDER_TEXT = 'Folderele nu se pot atașa — trage fișierele din ele.'
 export function rejectMessage(rejected: PickResult<FileLike>['rejected']): string | null {
   if (rejected.length === 0) return null
 
-  const empty = rejected.filter((r) => r.reason === 'gol')
-
-  return empty.length === 1
-    ? `${empty[0].name} nu a putut fi citit. ${FOLDER_TEXT}`
-    : `${empty.length} fișiere nu au putut fi citite. ${FOLDER_TEXT}`
+  return rejected.length === 1
+    ? `${rejected[0].name} nu a putut fi citit. ${FOLDER_TEXT}`
+    : `${rejected.length} fișiere nu au putut fi citite. ${FOLDER_TEXT}`
 }

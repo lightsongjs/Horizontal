@@ -4,8 +4,8 @@
 // Supabase Storage. Micșorarea aici scutește spațiul din bucket (1 GB pe planul
 // gratuit) și timpul de așteptare.
 //
-// PLAFONUL DIN `pickFiles` E SINGURA LIMITĂ, iar și el e doar UX: cine vrea îl
-// ocolește, fiindcă nu există server care să verifice. Micșorarea e optimizare,
+// SINGURUL PLAFON RĂMAS E CEL DE PROIECT AL SUPABASE (setare din dashboard, ~50 MB
+// pe planul gratuit), în afara controlului aplicației. Micșorarea e optimizare,
 // nu apărare — poate eșua (format nedecodabil) și atunci pleacă originalul.
 //
 // CALIBRARE: numerele de mai jos vin din măsurători pe materialul real al

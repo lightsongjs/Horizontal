@@ -126,9 +126,11 @@ din prima fără nimic în plus.
 ### Stiluri
 
 Clasele noi merg în `src/styles.css`, lângă cele `att-*` existente, cu același
-prefix `att-`. Cardurile stau într-un grid de două coloane egale
-(`grid-template-columns: 1fr 1fr`), care cade la o singură coloană sub 360 px
-lățime de container. Ținta de atingere minimum 44 px înălțime.
+prefix `att-`. Cardurile stau într-un grid (`grid-template-columns: repeat(auto-fit,
+minmax(150px, 1fr))`), care cade la o singură coloană când containerul, nu
+viewport-ul, ajunge sub ~150 px pe coloană — esențial cât timp secțiunea
+trăiește într-un bottom sheet, a cărui lățime nu e neapărat cea a ecranului.
+Ținta de atingere minimum 44 px înălțime.
 
 Linia de ajutor de sub carduri, literal: `Poze, PDF-uri, arhive — orice fișier`. Pe
 pointer fine se adaugă dedesubt rândul existent `Lipește o poză (Ctrl+V) sau trage
