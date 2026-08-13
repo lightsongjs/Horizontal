@@ -11,6 +11,7 @@ import {
 import { carriesFiles, pickFiles, rejectMessage } from '../lib/pickFiles'
 import { attachmentFilename, shrinkImage } from '../lib/shrinkImage'
 import { Lightbox } from './Lightbox'
+import { AttachmentPicker } from './AttachmentPicker'
 
 /** Doar în modul Supabase: attachment-urile n-au sens în modul local seeded. */
 const ENABLED = import.meta.env.VITE_DATA_SOURCE === 'supabase'
@@ -237,10 +238,18 @@ export function Attachments({
     >
       <div className="sheet-section-t">Fișiere</div>
 
-      {items.length === 0 && !busy && (
-        <p className="att-empty">
-          {canEdit ? 'Lipește o poză (Ctrl+V) sau trage fișiere aici.' : 'Niciun fișier.'}
-        </p>
+      {/* Picker-ul rămâne montat și când există deja fișiere. Regula veche —
+          hint doar pe listă goală — făcea imposibil al doilea fișier pe telefon,
+          unde nu există nici paste, nici drop. */}
+      {canEdit && (
+        <AttachmentPicker
+          onPick={(files) => void addFiles(['Files'], files)}
+          disabled={busy > 0}
+        />
+      )}
+
+      {items.length === 0 && !busy && !canEdit && (
+        <p className="att-empty">Niciun fișier.</p>
       )}
 
       <div className="att-grid">
