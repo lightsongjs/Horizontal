@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { disablePush, enablePush, pushHint, readPushState, type PushState } from '../lib/push'
+import { errorMessage } from '../lib/errorMessage'
 
 /**
  * Comutatorul de notificări. Trăiește în capul listei „Azi" fiindcă acolo e
@@ -30,7 +31,7 @@ export function PushToggle() {
     try {
       setState(state === 'off' ? await enablePush() : await disablePush())
     } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e))
+      setErr(errorMessage(e))
     } finally {
       setBusy(false)
     }

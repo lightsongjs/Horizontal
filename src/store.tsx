@@ -24,6 +24,7 @@ import {
 } from './lib/engine'
 import { buildSmartLists, smartListRange, type SmartLists } from './lib/schedule'
 import type { Assignee, Issue, IssueState, Layers, Project, Theme, Wave } from './lib/types'
+import { errorMessage } from './lib/errorMessage'
 
 interface HorizontalState {
   loading: boolean
@@ -139,7 +140,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
       setDueRaw(rows)
       setDueLoaded(true)
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      setError(errorMessage(e))
     }
   }, [])
 
@@ -163,7 +164,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
         setLoadedProjects((prev) => new Set(prev).add(projectId))
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      setError(errorMessage(e))
       // Același tratament ca în selectProject: marcăm eșecul, ca oricine
       // așteaptă datele proiectului să nu aștepte la infinit. `issuesLoadedFor`
       // rămâne cum era — datele vechi sunt încă în memorie și încă valide.
@@ -183,7 +184,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
         // secțiune din sidebar și trebuie să aibă numere de la primul cadru.
         if (alive) void loadDue()
       } catch (e) {
-        if (alive) setError(e instanceof Error ? e.message : String(e))
+        if (alive) setError(errorMessage(e))
       } finally {
         if (alive) setLoading(false)
       }
@@ -248,7 +249,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
           }
         })
         .catch((e) => {
-          setError(e instanceof Error ? e.message : String(e))
+          setError(errorMessage(e))
           // `issuesLoadedFor` rămâne null (n-avem date), dar semnalăm explicit
           // eșecul: altfel cine așteaptă încărcarea (deep link în curs de
           // rezolvare) rămâne blocat pe vecie.
@@ -380,7 +381,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
         upsertIssue(saved)
       } catch (e) {
         upsertIssue(current)
-        setError(e instanceof Error ? e.message : String(e))
+        setError(errorMessage(e))
       }
     },
     [allIssues, dueIssues, upsertIssue],
@@ -435,7 +436,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
       if (e instanceof DependencyCycleError) {
         setError(`Ciclu de dependențe: ${e.cycle.join(' → ')}. Scoate una dintre legături.`)
       } else {
-        setError(e instanceof Error ? e.message : String(e))
+        setError(errorMessage(e))
       }
       return {}
     }

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
+import { errorMessage } from '../lib/errorMessage'
 
 const ACCENTS = ['#0EA5E9', '#3ecf8e', '#ffb454', '#a06eff', '#ff6b6b', '#46d1d9']
 
@@ -41,7 +42,7 @@ export function ProjectForm() {
       closeSheet()
       selectProject(created.id)
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      setError(errorMessage(e))
     } finally {
       setSaving(false)
     }
