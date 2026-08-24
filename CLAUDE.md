@@ -85,6 +85,15 @@ Cod: `src/lib/schedule.ts` (bucketizare pe zile locale, restanțe, sortare),
 (contractul cu service worker-ul). Toate trei sunt pure și au fixtures — la fel
 ca `engine.ts`. Nu pune logică de dată în componente.
 
+### Referința din aplicație (Ctrl+,)
+
+`src/components/InfoPanel.tsx` — scurtăturile, ce înțelege recunoașterea datei, și
+regulile care nu se văd din interfață. Tabelul de exemple **nu e scris de mână**:
+se calculează la randare cu `parseDue`, față de ora curentă. Un tabel scris ar
+rămâne în urmă la prima schimbare a parserului și ar minți exact acolo unde
+oamenii vin să afle adevărul. Dacă adaugi un tipar în parser, adaugă un exemplu
+în `GROUPS` — nu o descriere.
+
 ### Pașii de setup pentru scadențe
 
 ```bash
@@ -143,6 +152,27 @@ cere `X-API-Key`, iar un service worker livrat browserului nu poate ține un
 secret. Workerul trimite un mesaj paginii, iar pagina face mutația cu drepturile
 utilizatorului (vezi ascultătorul din `App.tsx`). Fără nicio filă deschisă,
 workerul deschide tichetul — o atingere în loc de zero, dar onest.
+
+### Sunetul mementoului
+
+**O notificare web nu poate avea sunet propriu.** `Notification.sound` a rămas în
+draftul de spec și n-a fost implementat de niciun browser. Cu aplicația închisă
+se aude sunetul sistemului, și nu se poate schimba — nu insista, nu există flag.
+
+Ce se poate: cu o filă VIZIBILĂ, `src/sw.ts` trimite `reminder-arrived` paginii
+și pune `silent: true` pe notificare, iar `src/lib/chime.ts` cântă. Condiționat,
+nu necondiționat: cu aplicația închisă pagina nu poate cânta nimic, iar o
+notificare mută la 7 dimineața e un memento ratat.
+
+Clopoțelul e **generat cu Web Audio**, nu un fișier: un asset ar fi intrat în
+manifestul de precache, adică în contractul de update de mai sus. Sunetul se
+deblochează la primul `pointerdown`/`keydown` pe document — politica de autoplay
+cere un gest, iar mesajul unui service worker nu e un gest; un `resume()` cerut
+atunci e refuzat în silență și primul memento ar veni mut.
+
+Pentru a itera pe sunet fără deploy: `tmp-calibrare/sunet/` (gitignorat) conține
+variantele randate în WAV cu aceeași sinteză. Nota actuală (E5, o singură notă) a
+fost aleasă prin ascultare comparativă.
 
 ## ticket-kit — sync (repo git separat)
 
