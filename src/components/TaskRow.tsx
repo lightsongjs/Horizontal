@@ -1,6 +1,6 @@
 import { useHorizontal } from '../store'
 import { useCanWriteIn } from '../hooks'
-import { hasTime, toTimeInput } from '../lib/schedule'
+import { hasTime, toShortDate, toTimeInput } from '../lib/schedule'
 import type { Issue } from '../lib/types'
 
 /** Clopoțel: „are memento". Inline, ca să moștenească `currentColor`. */
@@ -14,8 +14,6 @@ function Bell() {
     </span>
   )
 }
-
-const DAYS = ['Dum', 'Lun', 'Mar', 'Mie', 'Joi', 'Vin', 'Sâm']
 
 interface Props {
   issue: Issue
@@ -64,9 +62,7 @@ export function TaskRow({ issue, onOpen, late = false }: Props) {
         // O restanță de zi întreagă nu are oră de arătat, dar are o zi ratată —
         // e informația care lipsește cel mai tare din rând.
         <span className="t-time allday">
-          {late && issue.dueAt
-            ? `${DAYS[new Date(issue.dueAt).getDay()]} ${new Date(issue.dueAt).getDate()}`
-            : '—'}
+          {late && issue.dueAt ? toShortDate(issue.dueAt) : '—'}
         </span>
       )}
 

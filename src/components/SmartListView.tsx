@@ -3,7 +3,7 @@ import { useHorizontal } from '../store'
 import { PushToggle } from './PushToggle'
 import { QuickAdd } from './QuickAdd'
 import { TaskRow } from './TaskRow'
-import { addDays, startOfLocalDay } from '../lib/schedule'
+import { addDays, startOfLocalDay, toShortDate } from '../lib/schedule'
 import type { Issue } from '../lib/types'
 
 export type SmartListKind = 'today' | 'tomorrow' | 'week'
@@ -16,7 +16,6 @@ export const SMART_LISTS: { kind: SmartListKind; label: string; icon: string }[]
 
 const DAYS_FULL = ['duminică', 'luni', 'marți', 'miercuri', 'joi', 'vineri', 'sâmbătă']
 const MON_FULL = ['ianuarie', 'februarie', 'martie', 'aprilie', 'mai', 'iunie', 'iulie', 'august', 'septembrie', 'octombrie', 'noiembrie', 'decembrie']
-const MON = ['ian', 'feb', 'mar', 'apr', 'mai', 'iun', 'iul', 'aug', 'sep', 'oct', 'noi', 'dec']
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 const longDate = (d: Date) => `${DAYS_FULL[d.getDay()]}, ${d.getDate()} ${MON_FULL[d.getMonth()]}`
@@ -124,7 +123,7 @@ export function SmartListView({ kind, onOpenTask, focusSignal = 0 }: Props) {
         <Group
           key={offset}
           label={offset === 0 ? 'Azi' : offset === 1 ? 'Mâine' : cap(DAYS_FULL[date.getDay()])}
-          date={`${date.getDate()} ${MON[date.getMonth()]}`}
+          date={toShortDate(date)}
           issues={issues}
           color={offset === 0 ? 'var(--accent)' : offset === 1 ? 'var(--active)' : undefined}
           onOpen={onOpenTask}

@@ -331,7 +331,11 @@ function Shell() {
   const exitSmartList = useCallback(() => {
     setSmartList(null)
     localStorage.removeItem(LAST_VIEW_KEY)
-  }, [])
+    // Deschiderea unei sarcini încarcă proiectul ei în store, fără să schimbe
+    // ecranul. Fără curățenia asta, un Back din „Azi" ar ateriza pe boardul
+    // ultimei sarcini deschise — un loc pe care nu l-a cerut nimeni.
+    selectProject(null)
+  }, [selectProject])
 
   // Remember the active tab globally — persists across refreshes AND across
   // project switches. The chosen view stays until the user changes it.
@@ -381,13 +385,22 @@ function Shell() {
   }
 
   /**
-   * Deschide o sarcină dintr-o listă inteligentă. Poate aparține oricărui
-   * proiect, inclusiv unuia nedeschis niciodată — exact situația unui deep link.
-   * Deci refolosim `resolveTicketUrl`: comută proiectul, iar efectul de
-   * rezolvare deschide sheet-ul când sosesc tichetele. Zero mașinărie nouă.
+   * Deschide o sarcină dintr-o listă inteligentă, PESTE listă.
+   *
+   * Sarcina poate aparține oricărui proiect, inclusiv unuia nedeschis
+   * niciodată, iar formularul are nevoie de contextul acelui proiect: valurile,
+   * temele, celelalte tichete pentru dependențe. `resolveTicketUrl` îl încarcă
+   * (e același drum pe care merge un deep link) și deschide sheet-ul când sosesc
+   * datele.
+   *
+   * Ce NU face, și aici era greșeala: nu părăsește lista. Prima versiune dădea
+   * `setSmartList(null)`, deci se vedea o clipă boardul proiectului și abia apoi
+   * apărea cardul — te muta din „Azi" într-un loc pe care nu-l cerusesi, iar la
+   * închiderea cardului rămâneai acolo. Lista rămâne randată dedesubt fiindcă
+   * `smartList` are prioritate față de `project` în randare; proiectul se
+   * încarcă doar în store, ca formularul să funcționeze complet.
    */
   const openTaskAnywhere = (id: string) => {
-    setSmartList(null)
     resolveTicketUrl(id)
   }
 

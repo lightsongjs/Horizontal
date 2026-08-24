@@ -221,7 +221,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
   // Scadența trăiește în formular ca cele două valori pe care le scrie userul,
   // nu ca ISO: inputurile native vorbesc local, iar conversia stă în
   // `lib/schedule`. Ora goală = toată ziua, deci `allDay` nu are stare proprie.
-  // Textul scris de utilizator, în `zz-ll-aaaa`. Valoarea canonică se derivă din
+  // Textul scris de utilizator, în `zz/ll/aaaa`. Valoarea canonică se derivă din
   // el — o singură stare, deci textul din câmp și data salvată nu pot diverge.
   const [dueText, setDueText] = useState(existing?.dueAt ? toDisplayDate(existing.dueAt) : '')
   const dueDate = fromDisplayDate(dueText) ?? ''
@@ -827,7 +827,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
                     onChange={(e) => { setDueOwned(true); setDueText(maskDateInput(e.target.value)) }}
                     placeholder={DATE_PLACEHOLDER}
                     maxLength={10}
-                    aria-label="Data scadenței, zi-lună-an"
+                    aria-label="Data scadenței, zi/lună/an"
                   />
                   {/* Selectorul nativ rămâne la un click distanță — pe telefon e
                       calendarul sistemului, care bate orice am construi noi. E

@@ -218,33 +218,36 @@ export function reminderKindOf(dueAt: string | null, remindAt: string | null): R
   return 'due'
 }
 
-// ── Data în forma zz-ll-aaaa ────────────────────────────────────────────────
+// ── Data în forma zz/ll/aaaa ────────────────────────────────────────────────
 // Un `<input type="date">` nativ își afișează data în formatul BROWSERULUI, iar
 // acela nu se poate impune: nici `lang`, nici CSS, nici un atribut nu-l schimbă.
 // Un browser în engleză arată `mm/dd/yyyy`, ceea ce pentru o dată românească e
-// ambiguu până la periculos — 03-04 e 3 aprilie sau 4 martie?
+// ambiguu până la periculos — 03/04 e 3 aprilie sau 4 martie?
 //
 // De asta câmpul de dată e un text mascat, iar conversia stă aici.
 
-/** ISO → `zz-ll-aaaa`, în ziua locală. */
+/** ISO → `zz/ll/aaaa`, în ziua locală. */
 export function toDisplayDate(iso: string): string {
   const d = new Date(iso)
-  return `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${d.getFullYear()}`
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`
 }
 
 /** Ce scrie în câmpul gol. Literele sunt cele românești: zi, lună, an. */
-export const DATE_PLACEHOLDER = 'zz-ll-aaaa'
+export const DATE_PLACEHOLDER = 'zz/ll/aaaa'
 
 /**
- * `zz-ll-aaaa` → `aaaa-ll-zz` (forma pe care o consumă `fromInputs`), sau null
+ * `zz/ll/aaaa` → `aaaa-ll-zz` (forma pe care o consumă `fromInputs`), sau null
  * dacă data nu e completă ori nu există în calendar.
+ *
+ * Acceptă și `-` sau `.` ca separator: cine lipește o dată de altundeva n-are de
+ * ce să fie refuzat pentru un caracter. Afișarea rămâne mereu cu `/`.
  *
  * Validarea e prin dus-întors, nu prin comparat numere: `new Date(2026, 1, 31)`
  * nu aruncă, se mută liniștit pe 3 martie. Verificăm că ziua ieșită e ziua
- * cerută — altfel „31-02-2026" ar fi acceptat ca o dată care nu există.
+ * cerută — altfel „31/02/2026" ar fi acceptat ca o dată care nu există.
  */
 export function fromDisplayDate(text: string): string | null {
-  const m = /^(\d{2})-(\d{2})-(\d{4})$/.exec(text.trim())
+  const m = /^(\d{2})[/.-](\d{2})[/.-](\d{4})$/.exec(text.trim())
   if (!m) return null
   const [, dd, mm, yyyy] = m
   const day = Number(dd), month = Number(mm), year = Number(yyyy)
@@ -265,17 +268,27 @@ export function fromDisplayDate(text: string): string | null {
 export function maskDateInput(raw: string): string {
   const digits = raw.replace(/\D/g, '').slice(0, 8)
   const parts = [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4, 8)].filter((p) => p !== '')
-  // Cratima se pune doar DUPĂ ce grupul e complet, ca ștergerea să funcționeze
-  // firesc: un backspace peste „24-" lasă „24", nu „24-" din nou.
-  let out = parts.join('-')
-  if (digits.length === 2 || digits.length === 4) out += '-'
+  // Bara se pune doar DUPĂ ce grupul e complet, ca ștergerea să funcționeze
+  // firesc: un backspace peste „24/" lasă „24", nu „24/" din nou.
+  let out = parts.join('/')
+  if (digits.length === 2 || digits.length === 4) out += '/'
   return out
 }
 
-/** `aaaa-ll-zz` (valoarea unui input nativ de dată) → `zz-ll-aaaa`. */
+/**
+ * `zz/ll` — aceeași ordine, fără an. Pentru coloanele înguste (ora unei sarcini
+ * restante, capul unei zile din „Next 7 days"), unde anul e mereu cel curent și
+ * ar fi doar zgomot repetat pe fiecare rând.
+ */
+export function toShortDate(d: Date | string): string {
+  const x = typeof d === 'string' ? new Date(d) : d
+  return `${pad(x.getDate())}/${pad(x.getMonth() + 1)}`
+}
+
+/** `aaaa-ll-zz` (valoarea unui input nativ de dată) → `zz/ll/aaaa`. */
 export function displayFromInputDate(value: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
-  return m ? `${m[3]}-${m[2]}-${m[1]}` : ''
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : ''
 }
 
 // ── Ora în forma hh:mm, 24 de ore ───────────────────────────────────────────
