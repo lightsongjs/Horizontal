@@ -1,0 +1,765 @@
+<!doctype html>
+<html lang="ro" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Horizontal — mod To-Do (mockup)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+/* ────────────────────────────────────────────────────────────────────────────
+   Tokens copiate 1:1 din src/styles.css. Mockup vizual, nu arhitectură —
+   la fel ca prototype.html. Nimic de aici nu se copiază în aplicație ca cod.
+   ──────────────────────────────────────────────────────────────────────────── */
+:root{
+  --bg:#0c0d12; --surface:#14151c; --surface-2:#1b1d27; --surface-3:#232532;
+  --line:#262833; --line-soft:#1f212b;
+  --txt:#e8e9ee; --txt-dim:#9296a6; --txt-faint:#5d6173;
+  --accent:#0EA5E9; --accent-2:#0284C7; --accent-soft:rgba(14,165,233,0.15);
+  --done:#3ecf8e; --done-soft:#3ecf8e1c;
+  --blocked:#ff6b6b; --blocked-soft:#ff6b6b1c;
+  --active:#ffb454; --active-soft:#ffb4541c;
+  --r:14px; --mono:'JetBrains Mono',ui-monospace,monospace; --display:'IBM Plex Sans',sans-serif;
+  --shadow-md:0 8px 24px rgba(0,0,0,.35);
+  --shadow-lg:0 24px 64px rgba(0,0,0,.45);
+}
+[data-theme='light']{
+  --bg:#EEF2F7; --field-bg:#EBF5FF; --surface:#FFFFFF; --surface-2:#F5F8FC; --surface-3:#F0F4F9;
+  --line:#D8E2EE; --line-soft:#E8EFF7;
+  --txt:#0F1923; --txt-dim:#374151; --txt-faint:#6B7A8F;
+  --accent:#0284C7; --accent-2:#0369A1; --accent-soft:rgba(2,132,199,0.12);
+  --done:#059669; --done-soft:rgba(5,150,105,0.12);
+  --blocked:#E11D48; --blocked-soft:rgba(225,29,72,0.10);
+  --active:#D97706; --active-soft:rgba(217,119,6,0.12);
+  --placeholder:#9DAFC4;
+  --shadow-sm:0 1px 3px rgba(15,25,35,0.07),0 1px 2px rgba(15,25,35,0.04);
+  --shadow-md:0 8px 24px rgba(15,25,35,0.09),0 2px 8px rgba(15,25,35,0.05);
+  --shadow-lg:0 24px 64px rgba(15,25,35,0.11),0 4px 16px rgba(15,25,35,0.06);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--txt);font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:17px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer;color:inherit;background:none;border:none}
+input{font-family:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── carcasa paginii de mockup (nu face parte din design) ─────────────────── */
+.mk-page{max-width:1180px;margin:0 auto;padding:28px 20px 90px}
+.mk-top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:8px}
+.mk-top h1{font-size:22px;font-weight:700;letter-spacing:-.02em}
+.mk-top .mk-sub{color:var(--txt-faint);font-size:14px;flex:1;min-width:200px}
+.mk-btn{border:1px solid var(--line);background:var(--surface);color:var(--txt-dim);border-radius:9px;padding:7px 12px;font-size:13px;font-weight:600}
+.mk-btn:hover{border-color:var(--accent);color:var(--accent)}
+.mk-note{border-left:2px solid var(--accent);background:var(--accent-soft);border-radius:0 9px 9px 0;padding:9px 13px;font-size:13.5px;color:var(--txt-dim);margin:26px 0 12px}
+.mk-note b{color:var(--txt)}
+.mk-h2{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--txt-faint);margin:38px 0 12px;display:flex;align-items:center;gap:10px}
+.mk-h2::after{content:'';flex:1;height:1px;background:var(--line-soft)}
+.mk-frame{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--bg);box-shadow:var(--shadow-md)}
+
+/* ── APP: grid sidebar + corp, copiat din styles.css @media desktop ───────── */
+#app{display:grid;grid-template-columns:240px 1fr;height:640px;background:var(--bg)}
+.app-body{display:flex;flex-direction:column;overflow:hidden;min-width:0}
+
+/* SIDEBAR */
+.sidebar{display:flex;flex-direction:column;overflow-y:auto;background:var(--surface);border-right:1px solid var(--line-soft);padding:18px 10px 16px;gap:2px}
+.sidebar-brand{display:flex;align-items:center;gap:10px;padding:4px 8px 18px;margin-bottom:6px;border-bottom:1px solid var(--line-soft)}
+.logo{width:32px;height:32px;border-radius:10px;flex-shrink:0;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;color:#fff;letter-spacing:-.02em}
+.sidebar-brand .logo{width:28px;height:28px;border-radius:8px;font-size:12px}
+.sidebar-app-name{font-family:var(--display);font-size:17px;font-weight:700;letter-spacing:-.02em;color:var(--txt)}
+.sidebar-build{display:block;font-size:9px;color:var(--txt-dim);opacity:.6;line-height:1.4}
+.sidebar-section-label{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--txt-faint);padding:10px 10px 5px;font-family:var(--mono)}
+.sidebar-nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;font-size:15px;font-weight:500;color:var(--txt-dim);text-align:left;width:100%;transition:background .13s,color .13s}
+.sidebar-nav-item:hover{background:var(--surface-2);color:var(--txt)}
+.sidebar-nav-item.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.sidebar-nav-icon{width:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;opacity:.7}
+.sidebar-nav-item.on .sidebar-nav-icon{opacity:1}
+/* NOU — numărătoarea din dreapta rândului de listă inteligentă */
+.sl-count{margin-left:auto;font-family:var(--mono);font-size:11px;font-weight:700;color:var(--txt-faint)}
+.sidebar-nav-item.on .sl-count{color:var(--accent)}
+.sl-late{font-family:var(--mono);font-size:10px;font-weight:700;color:#fff;background:var(--blocked);border-radius:20px;padding:1px 6px;line-height:1.5}
+.sl-filter{display:flex;gap:4px;margin:6px 0 2px;padding:0 2px}
+.sl-filter button{flex:1;font-size:10px;padding:3px 0;border-radius:5px;border:1px solid var(--line-soft);background:transparent;color:var(--txt-dim)}
+.sl-filter button.on{background:var(--accent);color:#fff;font-weight:600;border-color:var(--accent)}
+.sidebar-proj-list{display:flex;flex-direction:column;gap:1px}
+.sidebar-proj-item{display:flex;align-items:center;border-radius:7px;position:relative;cursor:grab}
+.sidebar-proj-item:hover{background:var(--surface-2)}
+.sidebar-drag-handle{padding:7px 4px 7px 8px;color:var(--txt-faint);font-size:15px;opacity:0;flex-shrink:0;user-select:none}
+.sidebar-proj-item:hover .sidebar-drag-handle{opacity:1}
+.sidebar-proj-btn{display:flex;align-items:center;gap:9px;padding:7px 10px 7px 4px;flex:1;min-width:0;font-size:14px;font-weight:500;color:var(--txt-dim);text-align:left}
+.sidebar-proj-item:hover .sidebar-proj-btn{color:var(--txt);font-weight:600}
+.sidebar-proj-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.sidebar-proj-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sidebar-proj-pct{font-size:11px;font-weight:700;color:var(--txt-faint);font-family:var(--mono);flex-shrink:0}
+.sidebar-spacer{flex:1}
+.sidebar-footer-row{display:flex;gap:6px;align-items:stretch}
+.sidebar-new-btn{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:9px;background:var(--surface-2);border:1px solid var(--line);color:var(--txt-dim);font-size:14px;font-weight:600;flex:1;text-align:left}
+.sidebar-new-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.sidebar-icon-btn{width:36px;border-radius:9px;background:var(--surface-2);border:1px solid var(--line);color:var(--txt-dim);display:flex;align-items:center;justify-content:center}
+
+/* HEADER + corp */
+header{padding:13px 16px 11px;border-bottom:1px solid var(--line-soft);display:flex;align-items:center;gap:10px;background:var(--bg);flex-shrink:0}
+.htxt{flex:1;min-width:0}
+.htxt h1{font-size:17px;font-weight:700;letter-spacing:-.025em;line-height:1.2;font-family:var(--display)}
+.htxt .crumb{font-size:12px;color:var(--txt-faint);font-weight:500;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hcount{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:var(--accent);background:var(--accent-soft);padding:4px 9px;border-radius:20px;border:1px solid color-mix(in srgb,var(--accent) 25%,transparent)}
+.hbtn{width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:var(--txt-dim);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+main{flex:1;overflow-y:auto;overflow-x:hidden}
+/* Padding-ul de desktop e cel din styles.css (28px 32px). `max-width` e o
+   decizie NOUĂ, deliberată: pe un monitor lat, un rând care se întinde complet
+   aruncă numele proiectului la un metru de titlu. Listele au nevoie de o
+   lățime de citit; grila de proiecte nu. */
+.view{padding:28px 32px 48px;animation:fade .24s ease;max-width:760px}
+@keyframes fade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.empty{color:var(--txt-faint);text-align:center;padding:34px 0;font-size:15px}
+
+/* ── QUICK ADD (NOU) ─────────────────────────────────────────────────────────
+   Fragmentul de dată recunoscut se evidențiază ÎN input, peste text, printr-un
+   strat oglindă poziționat identic. Userul vede ce a înțeles parserul înainte
+   să apese Enter — regula din brainstorm: niciodată o ghicire silențioasă. */
+.qa{background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:8px 10px;margin-bottom:16px;box-shadow:var(--shadow-sm)}
+.qa.focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.qa-row{display:flex;align-items:center;gap:9px}
+.qa-plus{width:20px;height:20px;border-radius:6px;border:1px dashed var(--line);color:var(--txt-faint);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.qa-wrap{position:relative;flex:1;min-width:0;height:24px}
+.qa-mirror,.qa-input{position:absolute;inset:0;font-size:14.5px;line-height:24px;white-space:pre;font-family:inherit;letter-spacing:normal}
+.qa-mirror{pointer-events:none;color:transparent}
+.qa-mirror mark{background:var(--accent-soft);color:transparent;border-radius:4px;box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 30%,transparent)}
+.qa-input{background:none;border:none;outline:none;color:var(--txt);width:100%}
+.qa-input::placeholder{color:var(--placeholder,var(--txt-faint))}
+.qa-meta{display:flex;align-items:center;gap:6px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line-soft);flex-wrap:wrap}
+.qa-meta.hide{display:none}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:3px 8px;border-radius:20px;border:1px solid var(--line);background:var(--surface-2);color:var(--txt-dim);font-family:var(--mono);letter-spacing:-.01em}
+.chip.date{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 30%,transparent);color:var(--accent)}
+.chip.bell{background:var(--active-soft);border-color:color-mix(in srgb,var(--active) 35%,transparent);color:var(--active)}
+.chip-x{opacity:.6;font-weight:700;padding:0 1px}
+.chip-x:hover{opacity:1}
+.qa-hint{margin-left:auto;font-size:11px;color:var(--txt-faint)}
+.qa-hint.warn{color:var(--blocked);font-weight:600}
+.qa.shake{animation:shake .3s}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.qa-hint kbd{font-family:var(--mono);font-size:10px;border:1px solid var(--line);border-radius:4px;padding:1px 4px;background:var(--surface-2)}
+.qa-proj{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;padding:3px 8px;border-radius:20px;border:1px dashed var(--line);color:var(--txt-dim)}
+
+/* ── GRUPURI DE ZI + RÂNDURI (gramatica .list-row din styles.css) ────────── */
+.list-group{margin-bottom:14px}
+.list-group-head{display:flex;align-items:center;gap:8px;padding:6px 4px;font-size:12px;color:var(--txt-dim)}
+.list-group-num{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 4px;border-radius:6px;font-size:11px;font-weight:700;font-family:var(--mono);background:color-mix(in srgb,var(--gc,var(--txt-faint)) 12%,transparent);border:1px solid color-mix(in srgb,var(--gc,var(--line)) 35%,transparent);color:var(--gc,var(--txt-faint))}
+.list-group-label{color:var(--gc,var(--txt-dim));font-weight:600}
+.list-group-date{color:var(--txt-faint);font-weight:500}
+.list-group-count{margin-left:auto;opacity:.7;font-family:var(--mono);font-size:11px}
+.list-row{display:flex;align-items:center;gap:10px;min-height:40px;padding:8px 10px;border:1px solid var(--line-soft);border-radius:8px;margin-bottom:6px;cursor:pointer;background:var(--surface);width:100%;text-align:left;font:inherit;color:inherit}
+.list-row:hover{border-color:var(--line)}
+.list-row.done{opacity:.55}
+.list-row.done .list-title{text-decoration:line-through}
+.list-check{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:5px;border:1px solid var(--line);font-size:11px;flex:0 0 auto;color:transparent}
+.list-row.done .list-check{background:var(--done);border-color:var(--done);color:#fff}
+.list-row.late .list-check{border-color:var(--blocked)}
+/* ora e ancora vizuală a unei sarcini, la fel cum id-ul e ancora unui tichet */
+.t-time{font-family:var(--mono);font-size:11.5px;font-weight:700;color:var(--txt-dim);flex:0 0 auto;min-width:38px}
+.list-row.late .t-time{color:var(--blocked)}
+.t-time.allday{color:var(--txt-faint);font-weight:500}
+.list-title{font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+.t-tail{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+.t-bell{color:var(--active);display:inline-flex;align-items:center}
+.t-proj{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--txt-faint);max-width:120px}
+.t-proj span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.t-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.t-urgent{font-size:11px}
+.done-toggle{width:100%;text-align:left;font-size:12px;color:var(--txt-faint);padding:8px 4px;font-weight:600;font-family:var(--mono)}
+.done-toggle:hover{color:var(--txt-dim)}
+.day-empty{font-size:12.5px;color:var(--txt-faint);font-style:italic;padding:2px 4px 10px}
+
+/* ── TELEFON ─────────────────────────────────────────────────────────────── */
+.phones{display:flex;gap:26px;flex-wrap:wrap}
+.phone{width:330px;height:660px;border:1px solid var(--line);border-radius:26px;overflow:hidden;display:flex;flex-direction:column;background:var(--bg);box-shadow:var(--shadow-lg);flex-shrink:0}
+.phone header{padding:11px 13px 9px}
+.phone .view{padding:12px 11px 16px;max-width:none}
+/* Pe telefon numele proiectului costă prea mult: taie titlul, care e singura
+   informație care contează. Rămâne punctul colorat — numele întreg se vede în
+   sheet-ul sarcinii, unde există loc. */
+.phone .t-proj span:not(.t-dot){display:none}
+.phone .t-proj{gap:0}
+.qa-hint svg{vertical-align:-1px}
+.phone main{flex:1;overflow-y:auto}
+.tabbar{display:flex;border-top:1px solid var(--line-soft);background:var(--surface);flex-shrink:0;padding:6px 4px 9px}
+.tabbar button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;font-weight:600;color:var(--txt-faint);padding:4px 0;border-radius:9px}
+.tabbar button.on{color:var(--accent)}
+.tabbar .tb-ico{font-size:16px;line-height:1}
+.tabbar .tb-add{color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent-2));border-radius:12px;margin:0 4px;max-width:52px}
+.tabbar .tb-add .tb-ico{font-size:20px;font-weight:300}
+
+/* ── NOTIFICARE ──────────────────────────────────────────────────────────── */
+.notif{width:360px;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-lg);overflow:hidden}
+.notif-body{display:flex;gap:11px;padding:13px 14px}
+.notif .logo{width:34px;height:34px;border-radius:9px;font-size:15px}
+.notif-txt{flex:1;min-width:0}
+.notif-app{font-size:10.5px;font-family:var(--mono);color:var(--txt-faint);text-transform:uppercase;letter-spacing:.08em}
+.notif-title{font-size:14.5px;font-weight:600;margin-top:2px}
+.notif-sub{font-size:12.5px;color:var(--txt-dim);margin-top:2px}
+.notif-acts{display:flex;border-top:1px solid var(--line-soft)}
+.notif-acts button{flex:1;padding:9px 0;font-size:12.5px;font-weight:600;color:var(--accent)}
+.notif-acts button+button{border-left:1px solid var(--line-soft)}
+.notif-acts button.dim{color:var(--txt-dim)}
+
+/* ── SHEET (câmpuri noi în formularul de tichet) ─────────────────────────── */
+.sheet{width:360px;background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow-lg);overflow:hidden}
+.sheet-head{padding:14px 16px 12px;border-bottom:1px solid var(--line-soft);display:flex;align-items:center;gap:10px}
+.sheet-head .s-id{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--txt-faint)}
+.sheet-head h3{font-size:15px;font-weight:600;flex:1}
+.sheet-body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:12px}
+.f-label{font-size:11px;font-weight:700;font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--txt-faint);margin-bottom:6px}
+.f-row{display:flex;gap:8px;flex-wrap:wrap}
+.f-field{background:var(--field-bg,var(--surface-2));border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:13.5px;color:var(--txt);flex:1;min-width:0;display:flex;align-items:center;gap:8px}
+.f-field .f-ico{color:var(--txt-faint);font-size:12px}
+.f-field.muted{color:var(--txt-faint)}
+.f-seg{display:flex;gap:3px;background:var(--surface-2);border:1px solid var(--line);border-radius:9px;padding:3px}
+.f-seg button{flex:1;font-size:12px;font-weight:600;color:var(--txt-faint);padding:6px 10px;border-radius:6px;white-space:nowrap}
+.f-seg button.on{background:var(--accent);color:#fff}
+.f-help{font-size:11.5px;color:var(--txt-faint);line-height:1.45}
+
+/* ── tabelul de fixtures pentru parser ───────────────────────────────────── */
+.fx{width:100%;border-collapse:collapse;font-size:13px;background:var(--surface);border:1px solid var(--line);border-radius:11px;overflow:hidden}
+.fx th{text-align:left;font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--txt-faint);padding:9px 12px;border-bottom:1px solid var(--line);font-weight:700}
+.fx td{padding:8px 12px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+.fx tr:last-child td{border-bottom:none}
+.fx code{font-family:var(--mono);font-size:12px;background:var(--surface-2);border:1px solid var(--line-soft);border-radius:4px;padding:1px 5px}
+.fx .ok{color:var(--done);font-weight:700}
+.fx .no{color:var(--blocked);font-weight:700}
+@media(max-width:820px){#app{grid-template-columns:1fr}.sidebar{display:none}}
+</style>
+</head>
+<body>
+<div class="mk-page">
+
+  <div class="mk-top">
+    <div class="logo">H</div>
+    <div>
+      <h1>Horizontal — mod To-Do</h1>
+      <div class="mk-sub">Mockup vizual pe deciziile din <code>docs/superpowers/brainstorm/2026-08-24-mod-todo.md</code>. Fără Inbox. Trei liste: Azi, Mâine, Next 7 days.</div>
+    </div>
+    <button class="mk-btn" id="themeBtn">☾ Temă</button>
+  </div>
+
+  <div class="mk-note">
+    <b>Fără Inbox.</b> Consecința e vizibilă în quick add: fiecare sarcină are un proiect, deci
+    rândul de adăugare poartă un selector de proiect care ține minte ultima alegere.
+    Nu există „nicăieri" în care să cadă o sarcină.
+  </div>
+
+  <!-- ══════════════════ DESKTOP ══════════════════ -->
+  <div class="mk-h2">Desktop · lista „Azi"</div>
+  <div class="mk-frame">
+    <div id="app">
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <div class="logo">H</div>
+          <div>
+            <span class="sidebar-app-name">Horizontal</span>
+            <span class="sidebar-build">Built: 4 minutes ago</span>
+          </div>
+        </div>
+
+        <button class="sidebar-nav-item">
+          <span class="sidebar-nav-icon"><svg width="14" height="14" viewBox="0 0 14 14"><rect x="1" y="1" width="5" height="5" rx="1.5" fill="currentColor" opacity=".8"/><rect x="8" y="1" width="5" height="5" rx="1.5" fill="currentColor" opacity=".8"/><rect x="1" y="8" width="5" height="5" rx="1.5" fill="currentColor" opacity=".8"/><rect x="8" y="8" width="5" height="5" rx="1.5" fill="currentColor" opacity=".8"/></svg></span>
+          <span>Toate proiectele</span>
+        </button>
+
+        <div class="sidebar-section-label">Sarcini</div>
+        <div id="slNav"></div>
+
+        <div class="sidebar-section-label">Proiecte</div>
+        <div class="sl-filter">
+          <button class="on">Toate</button><button>Personal</button><button>Serviciu</button>
+        </div>
+        <div class="sidebar-proj-list" id="projNav"></div>
+
+        <div class="sidebar-spacer"></div>
+        <div class="sidebar-footer-row">
+          <button class="sidebar-new-btn"><span style="font-size:15px">+</span> Sarcină nouă</button>
+          <button class="sidebar-icon-btn">☾</button>
+        </div>
+      </aside>
+
+      <div class="app-body">
+        <header>
+          <div class="logo" id="hLogo">★</div>
+          <div class="htxt">
+            <h1 id="hTitle">Azi</h1>
+            <div class="crumb" id="hCrumb">luni, 24 august</div>
+          </div>
+          <div class="hcount" id="hCount">5</div>
+          <button class="hbtn" title="Caută (O)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </button>
+          <button class="hbtn" title="Setări liste">⋯</button>
+        </header>
+        <main>
+          <div class="view">
+            <!-- QUICK ADD -->
+            <div class="qa" id="qa">
+              <div class="qa-row">
+                <span class="qa-plus">+</span>
+                <span class="qa-wrap">
+                  <span class="qa-mirror" id="qaMirror"></span>
+                  <input class="qa-input" id="qaInput" autocomplete="off" spellcheck="false"
+                         placeholder="Adaugă o sarcină… încearcă „mergi la cumpărături la 14:00”" />
+                </span>
+              </div>
+              <div class="qa-meta hide" id="qaMeta"></div>
+            </div>
+            <div id="listBody"></div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <div class="mk-note">
+    <b>Încearcă în inputul de mai sus.</b> Parserul e viu — <code>mâine la 9</code>,
+    <code>vineri 18:30</code>, <code>peste 2 zile</code>, <code>tomorrow 9am</code>,
+    <code>în fiecare luni</code>. Fragmentul recunoscut se colorează în input, iar chipul
+    de dedesubt are un <b>×</b>: parserul propune, userul confirmă.
+    Enter adaugă sarcina în listă.
+  </div>
+
+  <!-- ══════════════════ NEXT 7 DAYS ══════════════════ -->
+  <div class="mk-h2">Desktop · „Next 7 days" — grupat pe zile</div>
+  <div class="mk-frame" style="max-width:720px">
+    <div style="display:flex;flex-direction:column;height:560px;background:var(--bg)">
+      <header>
+        <div class="logo">▤</div>
+        <div class="htxt"><h1>Next 7 days</h1><div class="crumb">24 – 30 august · 11 sarcini</div></div>
+        <div class="hcount">11</div>
+        <button class="hbtn">⋯</button>
+      </header>
+      <main><div class="view" style="max-width:none" id="weekBody"></div></main>
+    </div>
+  </div>
+
+  <!-- ══════════════════ TELEFON ══════════════════ -->
+  <div class="mk-h2">Telefon · bară de tab-uri jos</div>
+  <div class="phones">
+    <div class="phone">
+      <header>
+        <div class="logo" style="width:28px;height:28px;border-radius:9px;font-size:13px">★</div>
+        <div class="htxt"><h1 style="font-size:16px">Azi</h1><div class="crumb">luni, 24 august</div></div>
+        <div class="hcount" style="font-size:11px;padding:3px 8px">5</div>
+      </header>
+      <main><div class="view" id="phoneBody"></div></main>
+      <nav class="tabbar">
+        <button class="on"><span class="tb-ico">★</span>Azi</button>
+        <button><span class="tb-ico">▤</span>7 zile</button>
+        <button class="tb-add"><span class="tb-ico">+</span></button>
+        <button><span class="tb-ico">⊞</span>Proiecte</button>
+        <button><span class="tb-ico">⌕</span>Caută</button>
+      </nav>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:26px;flex:1;min-width:300px">
+      <div>
+        <div class="mk-h2" style="margin-top:0">Notificarea (web push)</div>
+        <div class="notif">
+          <div class="notif-body">
+            <div class="logo">H</div>
+            <div class="notif-txt">
+              <div class="notif-app">Horizontal · acum</div>
+              <div class="notif-title">Mergi la cumpărături</div>
+              <div class="notif-sub">14:00 · Personal</div>
+            </div>
+          </div>
+          <div class="notif-acts">
+            <button>Gata</button>
+            <button class="dim">Amână 10 min</button>
+          </div>
+        </div>
+        <p class="f-help" style="margin-top:10px">
+          Cele două acțiuni sunt <code>notificationActions</code> în service worker: se rezolvă
+          fără să deschidă aplicația. Un click pe corp deschide <code>/MS-03</code> —
+          <code>deepLink.ts</code> face deja restul.
+        </p>
+      </div>
+
+      <div>
+        <div class="mk-h2" style="margin-top:0">Câmpurile noi în formularul de tichet</div>
+        <div class="sheet">
+          <div class="sheet-head"><span class="s-id">HZ-42</span><h3>Du mașina la ITP</h3><span style="color:var(--txt-faint)">✕</span></div>
+          <div class="sheet-body">
+            <div>
+              <div class="f-label">Scadență</div>
+              <div class="f-row">
+                <div class="f-field"><span class="f-ico">▤</span> mar, 25 aug</div>
+                <div class="f-field" style="max-width:110px"><span class="f-ico">◷</span> 09:00</div>
+              </div>
+            </div>
+            <div>
+              <div class="f-label">Toată ziua</div>
+              <div class="f-seg"><button>Da</button><button class="on">Nu</button></div>
+            </div>
+            <div>
+              <div class="f-label">Memento</div>
+              <div class="f-seg"><button class="on">La scadență</button><button>−30 min</button><button>−1 zi</button><button>Fără</button></div>
+              <p class="f-help" style="margin-top:8px">
+                O sarcină <b>cu oră</b> sună implicit la scadență. Una <b>de zi întreagă</b> nu sună
+                singură — intră în rezumatul de dimineață.
+              </p>
+            </div>
+            <div>
+              <div class="f-label">Val · layer</div>
+              <div class="f-field muted"><span class="f-ico">≡</span> Val 1 · calculat automat</div>
+              <p class="f-help" style="margin-top:8px">
+                Rămâne acolo, colapsat. O sarcină nu se atinge de el; un tichet de proiect îl deschide.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════ FIXTURES ══════════════════ -->
+  <div class="mk-h2">parseDue — ce recunoaște (fixtures live)</div>
+  <table class="fx" id="fxTable">
+    <thead><tr><th style="width:38%">Input</th><th style="width:30%">Titlu salvat</th><th>Scadență</th></tr></thead>
+    <tbody></tbody>
+  </table>
+  <p class="f-help" style="margin-top:12px">
+    Rândurile sunt calculate acum, de parserul din pagină — nu sunt scrise de mână. Ce vezi
+    aici e exact lista de fixtures cu care ar porni <code>src/lib/parseDue.test.ts</code>.
+    Ultimul rând e cel important: <b>fără dată în text, titlul rămâne întreg.</b>
+  </p>
+
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════════════
+   parseDue — schița parserului RO + EN. Pur, fără dependențe.
+   Contract: (text, now) -> { title, dueAt, allDay, rrule, match:[s,e] }
+   ══════════════════════════════════════════════════════════════════════════ */
+const NOW = new Date(2026, 7, 24, 8, 40); // luni 24 aug 2026 — fix, ca mockup-ul să fie stabil
+const DAYS_RO = ['duminica','luni','marti','miercuri','joi','vineri','sambata'];
+const DAYS_EN = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+
+const fold = (s) => s.toLowerCase()
+  .normalize('NFD').replace(/[̀-ͯ]/g,'')
+  .replace(/ș/g,'s').replace(/ț/g,'t').replace(/î/g,'i').replace(/ă/g,'a').replace(/â/g,'a');
+
+function startOfDay(d){ const x = new Date(d); x.setHours(0,0,0,0); return x }
+function addDays(d,n){ const x = new Date(d); x.setDate(x.getDate()+n); return x }
+
+/** Un singur pas: găsește tiparul, întoarce ce înseamnă + unde era în text. */
+function parseDue(raw, now = NOW){
+  const hay = fold(raw);
+  let day = null, time = null, rrule = null;
+  // Fiecare tipar găsit își ține propriul interval. Un singur interval unit
+  // [min,max] ar mânca titlul dintre ele: „suna la 9 maine" ar da titlul „suna".
+  const spans = [];
+  const hit = (m) => spans.push([m.index, m.index + m[0].length]);
+
+  // ── recurență (rezervat pentru v2, dar recunoscut ca să nu strice titlul)
+  let m = hay.match(/\b(?:in fiecare|fiecare|every)\s+([a-z]+)\b/);
+  if (m) {
+    const d = DAYS_RO.indexOf(m[1]) >= 0 ? DAYS_RO.indexOf(m[1]) : DAYS_EN.indexOf(m[1]);
+    if (d >= 0 || /zi|day|saptamana|week/.test(m[1])) { rrule = 'FREQ=WEEKLY'; hit(m); }
+  }
+  m = hay.match(/\b(?:zilnic|daily|in fiecare zi|every day)\b/); if (m) { rrule='FREQ=DAILY'; hit(m) }
+
+  // ── zi relativă
+  m = hay.match(/\b(azi|astazi|today)\b/);            if (m) { day = startOfDay(now); hit(m) }
+  m = hay.match(/\b(maine|tomorrow)\b/);              if (m) { day = addDays(startOfDay(now),1); hit(m) }
+  m = hay.match(/\b(poimaine)\b/);                    if (m) { day = addDays(startOfDay(now),2); hit(m) }
+  m = hay.match(/\b(?:peste|in)\s+(\d+)\s*(zile|zi|days|day)\b/);
+  if (m) { day = addDays(startOfDay(now), +m[1]); hit(m) }
+  m = hay.match(/\b(?:peste|in)\s+(\d+)\s*(ore|ora|hours|hour|h)\b/);
+  if (m) { const d = new Date(now); d.setHours(d.getHours()+ +m[1]); day = d; time = [d.getHours(), d.getMinutes()]; hit(m) }
+
+  // ── zi a săptămânii (cea mai apropiată în viitor; „viitoare/next" = +7)
+  if (!day) {
+    m = hay.match(/\b(?:(?:in|pe)\s+)?(duminica|luni|marti|miercuri|joi|vineri|sambata|monday|tuesday|wednesday|thursday|friday|saturday|sunday)(\s+viitoare|\s+viitor)?\b/);
+    if (m) {
+      const name = m[1];
+      let idx = DAYS_RO.indexOf(name); if (idx < 0) idx = DAYS_EN.indexOf(name);
+      let delta = (idx - now.getDay() + 7) % 7; if (delta === 0) delta = 7;
+      // „vineri viitoare" = vinerea de săptămâna viitoare. Dar dacă ziua goală
+      // a aterizat deja la +7 (ex. „luni" spus într-o luni), e chiar aceea —
+      // un +7 în plus ar arunca-o peste două săptămâni.
+      if (m[2] && delta < 7) delta += 7;
+      day = addDays(startOfDay(now), delta); hit(m);
+    }
+  }
+
+  // ── oră: „la 14:00", „la 14", „ora 9", „9:30", „9am", „at 5pm"
+  m = hay.match(/\b(?:la|ora|at)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/)
+   || hay.match(/\b(\d{1,2}):(\d{2})\b/)
+   || hay.match(/\b(\d{1,2})\s*(?::(\d{2}))?\s*(am|pm)\b/);
+  if (m) {
+    let h = +m[1]; const min = m[2] ? +m[2] : 0; const ap = m[3];
+    if (ap === 'pm' && h < 12) h += 12;
+    if (ap === 'am' && h === 12) h = 0;
+    if (h <= 24 && min < 60) { time = [h % 24, min]; hit(m) }
+  }
+
+  if (!spans.length) return { title: raw.trim(), dueAt: null, allDay: true, rrule: null, spans: [] };
+
+  const base = day ? new Date(day) : startOfDay(now);
+  if (time) base.setHours(time[0], time[1], 0, 0);
+  // „la 14:00" fără zi și ora a trecut deja → mâine. Altfel sarcina apare restantă la naștere.
+  if (!day && time && base < now) base.setDate(base.getDate() + 1);
+
+  // Scoate intervalele din titlu de la dreapta la stânga, ca indicii să rămână valizi.
+  const merged = mergeSpans(spans);
+  let title = raw;
+  for (let i = merged.length - 1; i >= 0; i--) title = title.slice(0, merged[i][0]) + title.slice(merged[i][1]);
+  title = title.replace(/\s{2,}/g, ' ').trim().replace(/^[,–-]\s*|[,–-]\s*$/g, '').trim();
+
+  // Titlul poate rămâne GOL („azi la 8" e numai dată). Nu întoarcem textul brut
+  // ca titlu — ar salva „azi la 8" ca nume de sarcină. Apelantul decide: quick
+  // add blochează Enter și cere ce e de făcut.
+  return { title, dueAt: base, allDay: !time, rrule, spans: merged };
+}
+
+/** Intervale sortate și unite — două tipare se pot suprapune („în fiecare luni"). */
+function mergeSpans(spans) {
+  const out = [];
+  for (const sp of [...spans].sort((a, b) => a[0] - b[0])) {
+    const last = out[out.length - 1];
+    if (last && sp[0] <= last[1]) last[1] = Math.max(last[1], sp[1]);
+    else out.push([sp[0], sp[1]]);
+  }
+  return out;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Date de mock
+   ══════════════════════════════════════════════════════════════════════════ */
+const PROJECTS = [
+  { id:'hz', name:'Horizontal', accent:'#0EA5E9', pct:68, type:'work' },
+  { id:'ms', name:'mateSimo',   accent:'#8b5cf6', pct:41, type:'personal' },
+  { id:'lb', name:'Libra API',  accent:'#f59e0b', pct:12, type:'work' },
+  { id:'pv', name:'Personal',   accent:'#3ecf8e', pct:0,  type:'personal' },
+];
+const P = Object.fromEntries(PROJECTS.map(p=>[p.id,p]));
+const d = (dayOffset,h,mi) => { const x = addDays(startOfDay(NOW), dayOffset); if (h!=null) x.setHours(h,mi||0); return x };
+
+let TASKS = [
+  { id:'PV-11', t:'Plătește factura la gaze',        due:d(-1,12,0),  proj:'pv', done:false, bell:true },
+  { id:'HZ-40', t:'Răspunde la mailul de la Andrei', due:d(-2,null),  proj:'hz', done:false },
+  { id:'PV-12', t:'Mergi la cumpărături',            due:d(0,14,0),   proj:'pv', done:false, bell:true },
+  { id:'HZ-41', t:'Review PR attachments',           due:d(0,16,30),  proj:'hz', done:false, urgent:true },
+  { id:'MS-88', t:'Pregătește exercițiile pentru Simo', due:d(0,18,0),proj:'ms', done:false },
+  { id:'PV-13', t:'Sună la cabinet pentru programare', due:d(0,null), proj:'pv', done:false },
+  { id:'LB-07', t:'Trimite estimarea pentru Libra',  due:d(0,null),   proj:'lb', done:false },
+  { id:'PV-09', t:'Du câinele la veterinar',         due:d(0,9,0),    proj:'pv', done:true },
+  { id:'HZ-38', t:'Merge branch-ul de push',         due:d(0,11,0),   proj:'hz', done:true },
+  { id:'PV-14', t:'Du mașina la ITP',                due:d(1,9,0),    proj:'pv', done:false, bell:true },
+  { id:'HZ-43', t:'Scrie spec-ul de mod To-Do',      due:d(1,null),   proj:'hz', done:false },
+  { id:'MS-89', t:'Ședință cu Mihai',                due:d(2,15,0),   proj:'ms', done:false, bell:true },
+  { id:'LB-08', t:'Deploy staging',                  due:d(2,null),   proj:'lb', done:false },
+  { id:'PV-15', t:'Cumpără cadou aniversare',        due:d(3,null),   proj:'pv', done:false, urgent:true },
+  { id:'HZ-44', t:'Curăță reminder_queue vechi',     due:d(5,10,0),   proj:'hz', done:false },
+  { id:'PV-16', t:'Plătește chiria',                 due:d(6,null),   proj:'pv', done:false, bell:true },
+];
+
+/* ── ajutoare de dată ─────────────────────────────────────────────────────── */
+const MON = ['ian','feb','mar','apr','mai','iun','iul','aug','sep','oct','noi','dec'];
+const MONF = ['ianuarie','februarie','martie','aprilie','mai','iunie','iulie','august','septembrie','octombrie','noiembrie','decembrie'];
+const DAYF = ['duminică','luni','marți','miercuri','joi','vineri','sâmbătă'];
+const DAYS = ['Dum','Lun','Mar','Mie','Joi','Vin','Sâm'];
+const hhmm = (x) => String(x.getHours()).padStart(2,'0')+':'+String(x.getMinutes()).padStart(2,'0');
+const sameDay = (a,b) => startOfDay(a).getTime() === startOfDay(b).getTime();
+const dayIdx = (x) => Math.round((startOfDay(x) - startOfDay(NOW)) / 86400000);
+const isAllDay = (x) => x.getHours() === 0 && x.getMinutes() === 0;
+
+/* ── randare rând ─────────────────────────────────────────────────────────── */
+const BELL = `<span class="t-bell" title="are memento"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></span>`;
+
+function rowHTML(t, opts = {}) {
+  const p = P[t.proj];
+  const late = !t.done && t.due < NOW && !(isAllDay(t.due) && dayIdx(t.due) >= 0);
+  const time = isAllDay(t.due)
+    ? `<span class="t-time allday">${opts.lateLabel && late ? DAYS[t.due.getDay()]+' '+t.due.getDate() : '—'}</span>`
+    : `<span class="t-time">${hhmm(t.due)}</span>`;
+  return `<div class="list-row ${t.done?'done':''} ${late?'late':''}" data-id="${t.id}">
+    <span class="list-check">✓</span>
+    ${time}
+    <span class="list-title">${t.t}</span>
+    <span class="t-tail">
+      ${t.urgent?'<span class="t-urgent">🔥</span>':''}
+      ${t.bell?BELL:''}
+      <span class="t-proj"><span class="t-dot" style="background:${p.accent}"></span><span>${p.name}</span></span>
+    </span>
+  </div>`;
+}
+function groupHTML(label, date, tasks, color, extra='') {
+  if (!tasks.length && !extra) return '';
+  return `<div class="list-group" style="--gc:${color||'var(--txt-dim)'}">
+    <div class="list-group-head">
+      <span class="list-group-num">${tasks.length}</span>
+      <span class="list-group-label">${label}</span>
+      ${date?`<span class="list-group-date">${date}</span>`:''}
+    </div>
+    ${tasks.map(t=>rowHTML(t,{lateLabel:true})).join('')||extra}
+  </div>`;
+}
+
+/* ── liste inteligente ────────────────────────────────────────────────────── */
+const overdue = () => TASKS.filter(t=>!t.done && t.due < NOW && dayIdx(t.due) < 0);
+const onDay   = (n) => TASKS.filter(t=>!t.done && dayIdx(t.due)===n).sort((a,b)=>a.due-b.due);
+const doneToday = () => TASKS.filter(t=>t.done && dayIdx(t.due)===0);
+const week = () => TASKS.filter(t=>!t.done && dayIdx(t.due)>=0 && dayIdx(t.due)<7);
+
+let showDone = false;
+
+function renderToday(el, phone) {
+  const late = overdue(), today = onDay(0), fin = doneToday();
+  el.innerHTML =
+    groupHTML('Restanțe', null, late, 'var(--blocked)') +
+    groupHTML('Azi', `${DAYF[NOW.getDay()]}, ${NOW.getDate()} ${MONF[NOW.getMonth()]}`, today, 'var(--accent)',
+      '<p class="day-empty">Nimic pe azi. Frumos.</p>') +
+    (fin.length ? `<button class="done-toggle" id="dt">${showDone?'▾':'▸'} Terminate azi (${fin.length})</button>
+      ${showDone?fin.map(t=>rowHTML(t)).join(''):''}` : '');
+  const dt = el.querySelector('#dt');
+  if (dt) dt.onclick = () => { showDone = !showDone; renderToday(el, phone) };
+  el.querySelectorAll('.list-row').forEach(r => r.onclick = () => {
+    const t = TASKS.find(x=>x.id===r.dataset.id); t.done = !t.done; renderAll();
+  });
+}
+
+function renderWeek(el) {
+  let html = '';
+  for (let i = 0; i < 7; i++) {
+    const t = onDay(i);
+    const dt = addDays(startOfDay(NOW), i);
+    const label = i===0 ? 'Azi' : i===1 ? 'Mâine' : DAYF[dt.getDay()][0].toUpperCase()+DAYF[dt.getDay()].slice(1);
+    const date = `${dt.getDate()} ${MON[dt.getMonth()]}`;
+    const color = i===0 ? 'var(--accent)' : i===1 ? 'var(--active)' : null;
+    html += `<div class="list-group" style="--gc:${color||'var(--txt-faint)'}">
+      <div class="list-group-head">
+        <span class="list-group-num">${t.length}</span>
+        <span class="list-group-label">${label}</span>
+        <span class="list-group-date">${date}</span>
+      </div>
+      ${t.length ? t.map(x=>rowHTML(x)).join('') : '<p class="day-empty">—</p>'}
+    </div>`;
+  }
+  el.innerHTML = html;
+  el.querySelectorAll('.list-row').forEach(r => r.onclick = () => {
+    const t = TASKS.find(x=>x.id===r.dataset.id); t.done = !t.done; renderAll();
+  });
+}
+
+/* ── sidebar ──────────────────────────────────────────────────────────────── */
+const SL = [
+  { key:'today', icon:'★', label:'Azi',          count:()=>onDay(0).length, late:()=>overdue().length },
+  { key:'tmr',   icon:'→', label:'Mâine',        count:()=>onDay(1).length },
+  { key:'week',  icon:'▤', label:'Next 7 days',  count:()=>week().length },
+];
+function renderNav() {
+  document.getElementById('slNav').innerHTML = SL.map((s,i)=>`
+    <button class="sidebar-nav-item ${i===0?'on':''}">
+      <span class="sidebar-nav-icon">${s.icon}</span>
+      <span>${s.label}</span>
+      ${s.late&&s.late()?`<span class="sl-late">${s.late()}</span>`:''}
+      <span class="sl-count">${s.count()}</span>
+    </button>`).join('');
+  document.getElementById('projNav').innerHTML = PROJECTS.map(p=>`
+    <div class="sidebar-proj-item">
+      <span class="sidebar-drag-handle">⠿</span>
+      <button class="sidebar-proj-btn">
+        <span class="sidebar-proj-dot" style="background:${p.accent}"></span>
+        <span class="sidebar-proj-name">${p.name}</span>
+        <span class="sidebar-proj-pct">${p.pct}%</span>
+      </button>
+    </div>`).join('');
+  document.getElementById('hCount').textContent = onDay(0).length;
+}
+
+/* ── quick add ────────────────────────────────────────────────────────────── */
+const qa = document.getElementById('qa'), input = document.getElementById('qaInput');
+const mirror = document.getElementById('qaMirror'), meta = document.getElementById('qaMeta');
+let lastProj = 'pv', dropped = false;
+
+const esc = (s)=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+function fmtDue(r) {
+  if (!r.dueAt) return null;
+  const i = dayIdx(r.dueAt);
+  const day = i===0?'Azi':i===1?'Mâine':i===-1?'Ieri':`${DAYS[r.dueAt.getDay()]} ${r.dueAt.getDate()} ${MON[r.dueAt.getMonth()]}`;
+  return r.allDay ? day : `${day} ${hhmm(r.dueAt)}`;
+}
+function renderQA() {
+  const raw = input.value, r = parseDue(raw);
+  if (r.spans.length && !dropped) {
+    let html = '', at = 0;
+    for (const [s,e] of r.spans) { html += esc(raw.slice(at,s)) + '<mark>' + esc(raw.slice(s,e)) + '</mark>'; at = e }
+    mirror.innerHTML = html + esc(raw.slice(at));
+  } else mirror.innerHTML = esc(raw);
+
+  const chips = [];
+  if (r.dueAt && !dropped) chips.push(`<span class="chip date">▤ ${fmtDue(r)}<button class="chip-x" id="drop">✕</button></span>`);
+  if (r.dueAt && !r.allDay && !dropped) chips.push(`<span class="chip bell">${BELL} memento la scadență</span>`);
+  if (r.rrule && !dropped) chips.push(`<span class="chip">↻ ${r.rrule==='FREQ=DAILY'?'zilnic':'săptămânal'}</span>`);
+  if (raw.trim()) chips.push(`<span class="qa-proj"><span class="t-dot" style="background:${P[lastProj].accent}"></span>${P[lastProj].name} ▾</span>`);
+  // Numai dată, fără ce e de făcut → nu se salvează nimic.
+  const bare = !!raw.trim() && !dropped && !r.title;
+  const hint = !raw.trim() ? ''
+    : bare ? '<span class="qa-hint warn">și ce ai de făcut?</span>'
+           : '<span class="qa-hint"><kbd>↵</kbd> adaugă</span>';
+  meta.innerHTML = chips.join('') + hint;
+  meta.classList.toggle('hide', !chips.length);
+  const drop = document.getElementById('drop');
+  if (drop) drop.onclick = (ev) => { ev.preventDefault(); dropped = true; renderQA(); input.focus() };
+}
+input.addEventListener('input', () => { dropped = false; renderQA() });
+input.addEventListener('focus', () => qa.classList.add('focus'));
+input.addEventListener('blur',  () => qa.classList.remove('focus'));
+input.addEventListener('keydown', (ev) => {
+  if (ev.key !== 'Enter') return;
+  const raw = input.value.trim(); if (!raw) return;
+  const r = parseDue(raw);
+  if (!dropped && !r.title) { qa.classList.add('shake'); setTimeout(()=>qa.classList.remove('shake'),320); return }
+  const due = (dropped || !r.dueAt) ? d(0,null) : r.dueAt;
+  TASKS.push({ id:P[lastProj].name.slice(0,2).toUpperCase()+'-'+(90+TASKS.length), t:(dropped?raw:r.title), due,
+               proj:lastProj, done:false, bell:!(dropped||r.allDay) });
+  input.value = ''; dropped = false; renderAll(); renderQA();
+});
+
+/* ── fixtures ─────────────────────────────────────────────────────────────── */
+const FIXTURES = [
+  'mergi la cumpărături la 14:00',
+  'mâine la 9 du mașina la ITP',
+  'vineri 18:30 cinema cu Simo',
+  'peste 2 zile sună la bancă',
+  'luni viitoare ședință de sprint',
+  'tomorrow 9am standup',
+  'în fiecare luni raport săptămânal',
+  'plătește chiria poimâine',
+  'Întâlnire la Podul 5',
+  'azi la 8',
+];
+document.querySelector('#fxTable tbody').innerHTML = FIXTURES.map(f => {
+  const r = parseDue(f);
+  return `<tr>
+    <td><code>${esc(f)}</code></td>
+    <td>${r.title ? esc(r.title) : '<span class="no">gol — Enter blocat</span>'}</td>
+    <td>${r.dueAt ? `<span class="ok">${fmtDue(r)}</span>${r.rrule?` <span class="chip" style="font-size:10px">↻</span>`:''}`
+                  : '<span class="no">— fără dată, titlu neatins</span>'}</td>
+  </tr>`;
+}).join('');
+
+/* ── temă ─────────────────────────────────────────────────────────────────── */
+document.getElementById('themeBtn').onclick = () => {
+  const h = document.documentElement;
+  const dark = h.getAttribute('data-theme') === 'dark';
+  h.setAttribute('data-theme', dark ? 'light' : 'dark');
+  document.getElementById('themeBtn').textContent = dark ? '☾ Temă' : '☀ Temă';
+};
+
+function renderAll() {
+  renderNav();
+  renderToday(document.getElementById('listBody'));
+  renderToday(document.getElementById('phoneBody'), true);
+  renderWeek(document.getElementById('weekBody'));
+}
+renderAll(); renderQA();
+</script>
+</body>
+</html>
