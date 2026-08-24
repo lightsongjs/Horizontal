@@ -34,6 +34,17 @@ function fold(s: string): string {
   return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
 }
 
+/**
+ * Cantitatea unui decalaj. Absentă sau scrisă în litere („o oră", „an hour",
+ * „într-o oră") înseamnă 1 — forma cea mai firească în ambele limbi și singura
+ * pe care o scrie cineva care se grăbește.
+ */
+function qty(raw: string | undefined): number {
+  if (!raw) return 1
+  const n = Number(raw)
+  return Number.isFinite(n) ? n : 1
+}
+
 /** Intervale sortate și unite — două tipare se pot suprapune („în fiecare luni"). */
 function mergeSpans(spans: [number, number][]): [number, number][] {
   const out: [number, number][] = []
@@ -75,12 +86,29 @@ export function parseDue(raw: string, now: Date = new Date()): ParsedDue {
   if (m) { day = addDays(startOfLocalDay(now), 1); hit(m) }
   m = hay.match(/\bpoimaine\b/)
   if (m) { day = addDays(startOfLocalDay(now), 2); hit(m) }
-  m = hay.match(/\b(?:peste|in)\s+(\d+)\s*(?:zile|zi|days|day)\b/)
-  if (m) { day = addDays(startOfLocalDay(now), Number(m[1])); hit(m) }
-  m = hay.match(/\b(?:peste|in)\s+(\d+)\s*(?:ore|ora|hours|hour|h)\b/)
+  m = hay.match(/\b(?:peste|in)\s+(\d+|o|una|un)\s*(?:zile|zi|days|day)\b/)
+  if (m) { day = addDays(startOfLocalDay(now), qty(m[1])); hit(m) }
+  // ── decalaje de la ACUM: „peste 3 ore", „in 1 hour", „într-o oră",
+  //    „mergi la baie in 5 min", „peste 20 de minute".
+  //
+  // `setMinutes`/`setHours` cu depășire rostogolesc data corect, deci „in 30
+  // min" la 23:50 cade mâine la 00:20 fără nicio aritmetică de calendar.
+  //
+  // Cantitatea e opțională fiindcă „într-o oră" o poartă în prefix: după
+  // „intr-o" urmează direct unitatea. Prefixul `intr-?o` NU e admis pentru zile,
+  // ca să nu transformăm idiomul „într-o zi" (= cândva) într-o scadență.
+  m = hay.match(/\b(?:peste|in|intr-?o)\s+(?:(\d+|o|una|un|an|a)\s*(?:de\s+)?)?(?:hours|hour|ore|ora|h)\b/)
   if (m) {
     const d = new Date(now)
-    d.setHours(d.getHours() + Number(m[1]), d.getMinutes(), 0, 0)
+    d.setHours(d.getHours() + qty(m[1]), d.getMinutes(), 0, 0)
+    day = d
+    time = [d.getHours(), d.getMinutes()]
+    hit(m)
+  }
+  m = hay.match(/\b(?:peste|in|intr-?o)\s+(?:(\d+|o|una|un|an|a)\s*(?:de\s+)?)?(?:minutes|minute|minut|mins|min|m)\b/)
+  if (m) {
+    const d = new Date(now)
+    d.setMinutes(d.getMinutes() + qty(m[1]), 0, 0)
     day = d
     time = [d.getHours(), d.getMinutes()]
     hit(m)

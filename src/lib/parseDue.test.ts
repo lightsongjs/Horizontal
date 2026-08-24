@@ -89,6 +89,64 @@ describe('parseDue — română', () => {
   })
 })
 
+describe('parseDue — decalaje de la acum', () => {
+  // NOW = luni 24 august 2026, 08:40.
+  it('minute, română și engleză', () => {
+    expect(p('mergi la baie in 5 min')).toMatchObject({
+      title: 'mergi la baie', date: '2026-08-24', time: '08:45',
+    })
+    expect(p('peste 20 de minute sună')).toMatchObject({ title: 'sună', time: '09:00' })
+    expect(p('in 10 minutes call Ana')).toMatchObject({ title: 'call Ana', time: '08:50' })
+  })
+
+  it('ore', () => {
+    expect(p('ședință in 1 hour')).toMatchObject({ title: 'ședință', time: '09:40' })
+    expect(p('ședință in 3 hours')).toMatchObject({ title: 'ședință', time: '11:40' })
+    expect(p('peste 2 ore plecăm')).toMatchObject({ title: 'plecăm', time: '10:40' })
+  })
+
+  it('cantitatea scrisă în litere înseamnă 1', () => {
+    expect(p('plecăm într-o oră')).toMatchObject({ title: 'plecăm', time: '09:40' })
+    expect(p('plecăm peste o oră')).toMatchObject({ title: 'plecăm', time: '09:40' })
+    expect(p('leave in an hour')).toMatchObject({ title: 'leave', time: '09:40' })
+    expect(p('sună peste un minut')).toMatchObject({ title: 'sună', time: '08:41' })
+  })
+
+  it('depășirea de miezul nopții mută ziua', () => {
+    const late = new Date(2026, 7, 24, 23, 50)
+    const r = parseDue('culcare in 30 min', late)
+    expect(toDateInput(r.dueAt!)).toBe('2026-08-25')
+    expect(toTimeInput(r.dueAt!)).toBe('00:20')
+  })
+
+  it('secundele se rotunjesc, ca mementoul să sune la minut întreg', () => {
+    const odd = new Date(2026, 7, 24, 10, 47, 33)
+    const r = parseDue('ceva in 5 min', odd)
+    expect(new Date(r.dueAt!).getSeconds()).toBe(0)
+    expect(toTimeInput(r.dueAt!)).toBe('10:52')
+  })
+
+  it('un decalaj înseamnă o oră anume, deci nu e „toată ziua"', () => {
+    expect(parseDue('ceva in 5 min', NOW).allDay).toBe(false)
+  })
+
+  it('„în 5 mai" rămâne o lună, nu cinci minute', () => {
+    // Aici greșește un `m` prea lacom: „mai" nu e „min".
+    expect(p('in 5 mai ceva')).toMatchObject({ time: null })
+  })
+
+  it('„într-o zi" rămâne idiom, nu scadență', () => {
+    // În română „într-o zi" înseamnă „cândva", nu „peste o zi".
+    expect(p('într-o zi o să învăț germană')).toMatchObject({
+      title: 'într-o zi o să învăț germană', date: null,
+    })
+  })
+
+  it('„peste o zi" e mâine', () => {
+    expect(p('peste o zi ceva')).toMatchObject({ title: 'ceva', date: '2026-08-25' })
+  })
+})
+
 describe('parseDue — oră militară lipită', () => {
   it('„at 1500" e 15:00, iar titlul rămâne curat', () => {
     expect(p('Pleca acasa at 1500')).toMatchObject({
