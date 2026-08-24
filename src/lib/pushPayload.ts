@@ -76,3 +76,24 @@ export function isReminderAction(data: unknown): data is ReminderActionMessage {
     && (m.action === 'done' || m.action === 'snooze')
     && typeof m.id === 'string' && m.id.length > 0
 }
+
+/**
+ * Mesajul trimis paginii când sosește un memento și fila e VIZIBILĂ.
+ *
+ * Există pentru sunet, și numai pentru sunet. Notificările web nu pot avea sunet
+ * propriu: câmpul `sound` a rămas în draftul de spec și niciun browser nu l-a
+ * implementat. Cu aplicația închisă auzi sunetul sistemului și nu se poate
+ * schimba. Cu o filă deschisă, pagina poate cânta ea — de asta workerul o
+ * anunță, iar notificarea pleacă `silent` (vezi `src/sw.ts`): altfel s-ar auzi
+ * de două ori, sunetul sistemului peste al nostru, adică mai rău decât înainte.
+ */
+export interface ReminderArrivedMessage {
+  type: 'reminder-arrived'
+  id: string
+}
+
+export function isReminderArrived(data: unknown): data is ReminderArrivedMessage {
+  if (typeof data !== 'object' || data === null) return false
+  const m = data as Record<string, unknown>
+  return m.type === 'reminder-arrived' && typeof m.id === 'string' && m.id.length > 0
+}

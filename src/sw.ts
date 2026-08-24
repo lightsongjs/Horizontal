@@ -70,18 +70,43 @@ self.addEventListener('push', (event) => {
   }
 
   const plan = planNotification(payload)
+  event.waitUntil(show(plan, payload.id))
+})
+
+/**
+ * Arată notificarea și, dacă aplicația e în față, cere paginii să cânte.
+ *
+ * De ce `silent` când există o filă vizibilă: sunetul notificării e al
+ * sistemului și nu se poate înlocui (`Notification.sound` n-a fost implementat
+ * niciodată). Singurul mod de a avea un sunet propriu e ca PAGINA să-l cânte —
+ * dar atunci sunetul sistemului ar veni peste el. Deci ori unul, ori altul.
+ *
+ * Nu se face `silent` necondiționat: cu aplicația închisă pagina nu poate cânta
+ * nimic, iar o notificare mută la 7 dimineața e un memento ratat.
+ */
+async function show(plan: ReturnType<typeof planNotification>, id: string): Promise<void> {
+  // `includeUncontrolled`, ca și în restul fișierului: imediat după un build nou
+  // fila încă nu e revendicată de workerul activat, dar e pe ecran.
+  const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+  const visible = clients.filter((c) => c.visibilityState === 'visible')
+
   const options: SwNotificationOptions = {
     body: plan.body,
     tag: plan.tag,
     icon: '/pwa-192x192.png',
     badge: '/pwa-192x192.png',
-    data: { url: plan.url, id: payload.id },
+    data: { url: plan.url, id },
     actions: plan.actions,
     // Un memento care dispare singur e un memento ratat.
     requireInteraction: true,
+    silent: visible.length > 0,
   }
-  event.waitUntil(self.registration.showNotification(plan.title, options))
-})
+  await self.registration.showNotification(plan.title, options)
+
+  // DUPĂ notificare, nu înainte: dacă `showNotification` aruncă, nu vrem un
+  // sunet fără nimic pe ecran — userul ar auzi ceva și n-ar găsi ce.
+  for (const c of visible) c.postMessage({ type: 'reminder-arrived', id })
+}
 
 self.addEventListener('notificationclick', (event) => {
   const data = (event.notification.data ?? {}) as { url?: string; id?: string }

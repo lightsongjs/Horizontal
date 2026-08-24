@@ -12,9 +12,11 @@ import { Sidebar } from './components/Sidebar'
 import { QuickSearch } from './components/QuickSearch'
 import { UsersView } from './components/UsersView'
 import { SmartListView, SMART_LISTS, type SmartListKind } from './components/SmartListView'
+import { InfoPanel } from './components/InfoPanel'
 import { Toast } from './components/Toast'
 import { deepLinkNotice, parseTicketPath, resolveTicketProject, ticketPath } from './lib/deepLink'
-import { isReminderAction, SNOOZE_MINUTES } from './lib/pushPayload'
+import { isReminderAction, isReminderArrived, SNOOZE_MINUTES } from './lib/pushPayload'
+import { playChime, unlockChime } from './lib/chime'
 import type { Project } from './lib/types'
 
 function ThemeToggle({ className }: { className?: string }) {
@@ -61,7 +63,7 @@ function smartCrumb(kind: SmartListKind, now: Date): string {
   return `${DAYS_FULL[d.getDay()]}, ${d.getDate()} ${MON_FULL[d.getMonth()]}`
 }
 
-function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, canWrite, smartList, onExitSmartList }: { onNewIssue: () => void; onSearch: () => void; onProjectSettings: () => void; onRefresh: () => void; canWrite: boolean; smartList: SmartListKind | null; onExitSmartList: () => void }) {
+function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, canWrite, smartList, onExitSmartList }: { onNewIssue: () => void; onSearch: () => void; onProjectSettings: () => void; onRefresh: () => void; onInfo: () => void; canWrite: boolean; smartList: SmartListKind | null; onExitSmartList: () => void }) {
   const { project, completion, selectProject, smartLists } = useHorizontal()
   const pct = project ? Math.round(completion(project.id) * 100) : 0
   const list = smartList ? SMART_LISTS.find((s) => s.kind === smartList) : null
@@ -114,6 +116,15 @@ function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, canWrite, 
           </svg>
         </button>
       )}
+      {/* Fără el, panoul de referință ar exista doar pentru cine are tastatură —
+          adică pentru nimeni pe telefon, unde sidebar-ul e ascuns. */}
+      <button className="header-info-btn" onClick={onInfo} aria-label="Referință" title="Referință (Ctrl+,)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M9.6 9a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .9-1 1.6v.4" />
+          <line x1="12" y1="17" x2="12" y2="17.01" />
+        </svg>
+      </button>
       <button className="header-refresh-btn" onClick={onRefresh} aria-label="Reîncarcă">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
@@ -157,21 +168,6 @@ function TabBar({ smartList, onSmartList, onProjects, onQuickAdd, inProjects }: 
   )
 }
 
-const SHORTCUTS = [
-  { key: 'C', action: 'Tichet nou' },
-  { key: 'O', action: 'Caută tichet' },
-  { key: 'P', action: 'Proiect nou' },
-  { key: '1', action: 'Tab → List' },
-  { key: '2', action: 'Tab → Cards' },
-  { key: '3', action: 'Tab → Graf' },
-  { key: '4', action: 'Tab → Teme' },
-  { key: 'T', action: 'Tree View (în Cards)' },
-  { key: 'Ctrl+S', action: 'Salvează cardul (rămâne deschis)' },
-  { key: 'Ctrl+↵', action: 'Salvează și închide cardul' },
-  { key: '?', action: 'Afișează shortcuts' },
-  { key: 'Esc', action: 'Închide modal' },
-]
-
 /** Adâncimea intrării curente din istoric, din history.state. */
 const readDepth = () => (window.history.state as { hzDepth?: number } | null)?.hzDepth ?? 0
 
@@ -206,7 +202,7 @@ function Shell() {
     const saved = localStorage.getItem('horizontal:last-tab')
     return saved === 'ordine' || saved === 'list' || saved === 'graf' || saved === 'teme' ? saved : 'list'
   })
-  const [showShortcuts, setShowShortcuts] = useState(false)
+  const [showInfo, setShowInfo] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
   // ─────────────────────────────────────────────────────────────────────────
   // Mașina de stări a URL-ului. Cine deține URL-ul, și când:
@@ -541,11 +537,23 @@ function Shell() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Panoul de referință se deschide de ORIUNDE, inclusiv din mijlocul unui
+      // câmp de text sau peste un card deschis: e o combinație cu modificator,
+      // deci nu poate fi confundată cu tastarea. De asta stă înaintea gărzilor
+      // de mai jos, care există pentru tastele simple.
+      if ((e.ctrlKey || e.metaKey) && e.key === ',') {
+        e.preventDefault()
+        setShowInfo((v) => !v)
+        return
+      }
+      // Escape e tratat DE PANOU, în faza de captură — vezi InfoPanel. Aici ar
+      // fi doar pe jumătate: un `return` nu oprește ascultătorul cardului, care
+      // s-ar închide și el.
+
       const target = e.target as HTMLElement
       if (['INPUT', 'TEXTAREA'].includes(target.tagName) || target.isContentEditable) return
       if (e.metaKey || e.ctrlKey || e.altKey) return
 
-      if (e.key === 'Escape' && showShortcuts) { setShowShortcuts(false); return }
       if (e.key === 'Escape' && showSearch) { setShowSearch(false); return }
       if (sheet.kind !== 'none') return  // don't fire shortcuts when modal is open
       if (showSearch) return
@@ -554,7 +562,7 @@ function Shell() {
       if (e.key === 'c' || e.key === 'C') { e.preventDefault(); if (!canWrite) return; project && openNewIssue() }
       else if (e.key === 'o' || e.key === 'O') { e.preventDefault(); project && setShowSearch(true) }
       else if (e.key === 'p' || e.key === 'P') { e.preventDefault(); if (!isAdmin) return; openNewProject() }
-      else if (e.key === '?') { e.preventDefault(); setShowShortcuts(v => !v) }
+      else if (e.key === '?') { e.preventDefault(); setShowInfo(v => !v) }
       else if (e.key === '1' && project) { e.preventDefault(); setTab('list') }
       else if (e.key === '2' && project) { e.preventDefault(); setTab('ordine') }
       else if (e.key === '3' && project) { e.preventDefault(); setTab('graf') }
@@ -562,7 +570,7 @@ function Shell() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [project, openNewIssue, openNewProject, sheet, showShortcuts, showSearch, showUsers, canWrite, isAdmin])
+  }, [project, openNewIssue, openNewProject, sheet, showInfo, showSearch, showUsers, canWrite, isAdmin])
 
   /**
    * Butoanele notificării („Gata", „Amână 10 min"). Service worker-ul nu poate
@@ -573,6 +581,9 @@ function Shell() {
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return
     const onMessage = (e: MessageEvent) => {
+      // Mementoul a sosit și fila e vizibilă, deci notificarea a plecat `silent`
+      // și sunetul e treaba noastră. Vezi `src/lib/chime.ts`.
+      if (isReminderArrived(e.data)) { playChime(); return }
       if (!isReminderAction(e.data)) return
       const { action, id } = e.data
       if (action === 'done') void toggleDone(id)
@@ -583,6 +594,20 @@ function Shell() {
     navigator.serviceWorker.addEventListener('message', onMessage)
     return () => navigator.serviceWorker.removeEventListener('message', onMessage)
   }, [toggleDone, updateIssue])
+
+  // Contextul audio se deblochează la PRIMA atingere a paginii, nu la primul
+  // memento: politica de autoplay cere un gest al utilizatorului, iar mesajul
+  // service worker-ului nu e un gest — `resume()` ar fi refuzat în silență, și
+  // primul memento ar veni mut. `once: true`, fiindcă o dată e de ajuns.
+  useEffect(() => {
+    const unlock = () => unlockChime()
+    document.addEventListener('pointerdown', unlock, { once: true })
+    document.addEventListener('keydown', unlock, { once: true })
+    return () => {
+      document.removeEventListener('pointerdown', unlock)
+      document.removeEventListener('keydown', unlock)
+    }
+  }, [])
 
   // Un drop care aterizează în afara zonei de fișiere lovește comportamentul
   // implicit al browserului și scoate utilizatorul din SPA — deschide fișierul
@@ -612,7 +637,7 @@ function Shell() {
         onSmartList={openSmartList}
       />
       <div className="app-body">
-        <Header onNewIssue={openNewIssue} onSearch={() => setShowSearch(true)} onProjectSettings={openProjectSettings} onRefresh={refresh} canWrite={canWrite} smartList={smartList} onExitSmartList={exitSmartList} />
+        <Header onNewIssue={openNewIssue} onSearch={() => setShowSearch(true)} onProjectSettings={openProjectSettings} onRefresh={refresh} onInfo={() => setShowInfo(true)} canWrite={canWrite} smartList={smartList} onExitSmartList={exitSmartList} />
         <main ref={mainRef}>
           {pullY > 0 && (
             <div style={{ textAlign: 'center', padding: '6px 0', fontSize: '13px', color: 'var(--txt-dim)', transform: `translateY(${pullY * 0.4}px)`, transition: pullY === 0 ? 'transform 0.3s' : 'none' }}>
@@ -654,24 +679,7 @@ function Shell() {
       <Toast message={notice} onDone={clearNotice} />
       <SheetHost />
       {showSearch && <QuickSearch onClose={() => setShowSearch(false)} />}
-      {showShortcuts && (
-        <div className="shortcuts-overlay" onClick={() => setShowShortcuts(false)}>
-          <div className="shortcuts-card" onClick={(e) => e.stopPropagation()}>
-            <div className="shortcuts-title">Keyboard shortcuts</div>
-            <table className="shortcuts-table">
-              <tbody>
-                {SHORTCUTS.map(({ key, action }) => (
-                  <tr key={key}>
-                    <td><kbd>{key}</kbd></td>
-                    <td>{action}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <button className="shortcuts-close" onClick={() => setShowShortcuts(false)}>Închide</button>
-          </div>
-        </div>
-      )}
+      {showInfo && <InfoPanel onClose={() => setShowInfo(false)} />}
     </div>
   )
 }

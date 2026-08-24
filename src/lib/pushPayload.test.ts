@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isReminderAction, planNotification } from './pushPayload'
+import { isReminderAction, isReminderArrived, planNotification } from './pushPayload'
 
 describe('planNotification', () => {
   it('ora și proiectul, în fusul dispozitivului', () => {
@@ -55,5 +55,25 @@ describe('isReminderAction', () => {
     expect(isReminderAction({ type: 'reminder-action', action: 'done' })).toBe(false)
     expect(isReminderAction({ type: 'reminder-action', action: 'done', id: '' })).toBe(false)
     expect(isReminderAction({ type: 'vite:ping' })).toBe(false)
+  })
+})
+
+describe('isReminderArrived', () => {
+  it('acceptă doar mesajele bine formate', () => {
+    expect(isReminderArrived({ type: 'reminder-arrived', id: 'EX-01' })).toBe(true)
+  })
+
+  it('respinge orice altceva — un worker străin poate trimite orice', () => {
+    expect(isReminderArrived(null)).toBe(false)
+    expect(isReminderArrived('reminder-arrived')).toBe(false)
+    expect(isReminderArrived({ type: 'reminder-arrived' })).toBe(false)
+    expect(isReminderArrived({ type: 'reminder-arrived', id: '' })).toBe(false)
+    expect(isReminderArrived({ type: 'vite:ping' })).toBe(false)
+  })
+
+  it('nu se confundă cu mesajul de acțiune — sunetul n-are voie să bifeze o sarcină', () => {
+    const action = { type: 'reminder-action', action: 'done', id: 'EX-01' }
+    expect(isReminderArrived(action)).toBe(false)
+    expect(isReminderAction({ type: 'reminder-arrived', id: 'EX-01' })).toBe(false)
   })
 })
