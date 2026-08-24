@@ -4,7 +4,7 @@
 import { requireSupabase } from '../lib/supabase'
 import type { Assignee, Issue, Project, Theme, Wave } from '../lib/types'
 import { pathsForIssues, pathsForProject, removeObjects } from './attachments'
-import { themeKey, type NewIssue, type NewProject, type Repository } from './repository'
+import { themeKey, type DueRange, type NewIssue, type NewProject, type Repository } from './repository'
 
 interface IssueRow {
   id: string
@@ -20,6 +20,19 @@ interface IssueRow {
   notes: string
   assignee_id: string | null
   urgent: boolean
+  due_at: string | null
+  all_day: boolean
+  remind_at: string | null
+  rrule: string | null
+}
+
+/**
+ * Postgres întoarce `2026-08-24T14:00:00+00:00`, iar `toISOString()` produce
+ * `...000Z`. Canonizăm la ISO-Z la intrare, ca modelul să aibă UN format și
+ * comparațiile pe text (bucketizarea pe zile) să nu depindă de backend.
+ */
+function isoOrNull(v: string | null | undefined): string | null {
+  return v ? new Date(v).toISOString() : null
 }
 
 function rowToIssue(row: IssueRow, depsByIssue: Record<string, string[]>): Issue {
@@ -37,6 +50,10 @@ function rowToIssue(row: IssueRow, depsByIssue: Record<string, string[]>): Issue
     notes: row.notes ?? '',
     assigneeId: row.assignee_id ?? null,
     urgent: row.urgent ?? false,
+    dueAt: isoOrNull(row.due_at),
+    allDay: row.all_day ?? true,
+    remindAt: isoOrNull(row.remind_at),
+    rrule: row.rrule ?? null,
   }
 }
 
@@ -236,6 +253,23 @@ export function createSupabaseRepository(): Repository {
       return (data as IssueRow[]).map((row) => rowToIssue(row, deps))
     },
 
+    async listDueIssues({ to, doneFrom }: DueRange) {
+      // O singură interogare pentru toate cele trei liste. `or` ține regula din
+      // `DueRange`: nefinalizatele fără limită în jos, bifatele doar recente.
+      // Indexul parțial `issues_due_idx` acoperă `lt('due_at', …)`.
+      const { data, error } = await db
+        .from('issues')
+        .select('*')
+        .not('due_at', 'is', null)
+        .lt('due_at', to)
+        .or(`done.eq.false,due_at.gte.${doneFrom}`)
+        .order('due_at')
+      if (error) throw error
+      const rows = (data ?? []) as IssueRow[]
+      const deps = await loadDeps(rows.map((r) => r.id))
+      return rows.map((row) => rowToIssue(row, deps))
+    },
+
     async createIssue(input: NewIssue) {
       const { data: existing, error: exErr } = await db.from('issues').select('id').eq('project_id', input.projectId)
       if (exErr) throw exErr
@@ -261,6 +295,10 @@ export function createSupabaseRepository(): Repository {
         notes: input.notes ?? '',
         assigneeId: input.assigneeId ?? null,
         urgent: input.urgent ?? false,
+        dueAt: isoOrNull(input.dueAt),
+        allDay: input.allDay ?? true,
+        remindAt: isoOrNull(input.remindAt),
+        rrule: input.rrule ?? null,
       }
       const { error } = await db.from('issues').insert({
         id: issue.id,
@@ -275,6 +313,10 @@ export function createSupabaseRepository(): Repository {
         notes: issue.notes,
         assignee_id: input.assigneeId ?? null,
         urgent: issue.urgent,
+        due_at: issue.dueAt,
+        all_day: issue.allDay,
+        remind_at: issue.remindAt,
+        rrule: issue.rrule,
       })
       if (error) throw error
       if (issue.deps.length) {
@@ -298,6 +340,12 @@ export function createSupabaseRepository(): Repository {
       if (patch.notes !== undefined) row.notes = patch.notes
       if ('assigneeId' in patch) row.assignee_id = patch.assigneeId ?? null
       if ('urgent' in patch) row.urgent = patch.urgent ?? false
+      // `in patch`, nu `!== undefined`: ștergerea unei scadențe trimite `null`,
+      // iar un câmp absent nu trebuie confundat cu unul golit intenționat.
+      if ('dueAt' in patch) row.due_at = patch.dueAt ?? null
+      if ('allDay' in patch) row.all_day = patch.allDay ?? true
+      if ('remindAt' in patch) row.remind_at = patch.remindAt ?? null
+      if ('rrule' in patch) row.rrule = patch.rrule ?? null
       if (Object.keys(row).length) {
         const { error } = await db.from('issues').update(row).eq('id', id)
         if (error) throw error

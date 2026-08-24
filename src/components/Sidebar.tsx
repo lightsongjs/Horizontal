@@ -4,6 +4,7 @@ import { useUI } from '../ui'
 import { useTheme } from '../theme'
 import { useAuth } from '../auth'
 import { useCanWrite } from '../hooks'
+import { SMART_LISTS, type SmartListKind } from './SmartListView'
 
 function getBuildAgo(): string {
   const diff = Math.floor((Date.now() - new Date(__BUILD_TIME__).getTime()) / 1000)
@@ -18,10 +19,12 @@ interface SidebarProps {
   showUsers?: boolean
   onShowUsers?: () => void
   onNavigate?: () => void
+  smartList?: SmartListKind | null
+  onSmartList?: (kind: SmartListKind) => void
 }
 
-export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNavigate }: SidebarProps = {}) {
-  const { projects, project, completion, selectProject, reorderProjects } = useHorizontal()
+export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNavigate, smartList = null, onSmartList }: SidebarProps = {}) {
+  const { projects, project, completion, selectProject, reorderProjects, smartLists } = useHorizontal()
 
   // Navigate away from any overlay (e.g. Users) then select a project.
   const goToProject = (id: string | null) => { onNavigate?.(); selectProject(id) }
@@ -37,6 +40,19 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
 
   const visibleProjects = filter === 'all' ? projects : projects.filter((p) => p.type === filter)
 
+  // Chipsurile filtrează și numerele listelor inteligente: „nu-mi arăta
+  // serviciul în weekend" e exact motivul pentru care există.
+  const inFilter = (projectId: string) => {
+    if (filter === 'all') return true
+    return projects.find((p) => p.id === projectId)?.type === filter
+  }
+  const counts: Record<SmartListKind, number> = {
+    today: smartLists.today.filter((i) => inFilter(i.projectId)).length,
+    tomorrow: smartLists.tomorrow.filter((i) => inFilter(i.projectId)).length,
+    week: smartLists.week.reduce((n, d) => n + d.issues.filter((i) => inFilter(i.projectId)).length, 0),
+  }
+  const overdueCount = smartLists.overdue.filter((i) => inFilter(i.projectId)).length
+
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
@@ -48,7 +64,7 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
       </div>
 
       <button
-        className={`sidebar-nav-item ${!project && !showUsers ? 'on' : ''}`}
+        className={`sidebar-nav-item ${!project && !showUsers && !smartList ? 'on' : ''}`}
         onClick={() => goToProject(null)}
       >
         <span className="sidebar-nav-icon">
@@ -79,6 +95,27 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
         </button>
       )}
 
+      <div className="sidebar-section-label">Sarcini</div>
+
+      {SMART_LISTS.map(({ kind, label, icon }) => (
+        <button
+          key={kind}
+          className={`sidebar-nav-item ${smartList === kind ? 'on' : ''}`}
+          onClick={() => onSmartList?.(kind)}
+        >
+          <span className="sidebar-nav-icon" aria-hidden="true">{icon}</span>
+          <span>{label}</span>
+          {/* Restanțele nu au rând propriu: ar fi un rând gol în ziua bună.
+              Trăiesc ca badge pe „Azi", fiindcă sunt o problemă de azi. */}
+          {kind === 'today' && overdueCount > 0 && (
+            <span className="sl-late" title={`${overdueCount} restanțe`}>{overdueCount}</span>
+          )}
+          {counts[kind] > 0 && <span className="sl-count">{counts[kind]}</span>}
+        </button>
+      ))}
+
+      <div className="sidebar-section-label">Proiecte</div>
+
       <div style={{ display: 'flex', gap: 4, margin: '6px 0 2px', padding: '0 2px' }}>
         {(['all', 'personal', 'work'] as const).map((f) => (
           <button key={f} onClick={() => setFilter(f)}
@@ -89,10 +126,6 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
           </button>
         ))}
       </div>
-
-      {visibleProjects.length > 0 && (
-        <div className="sidebar-section-label">Proiecte</div>
-      )}
 
       <div className="sidebar-proj-list">
         {visibleProjects.map((p) => {

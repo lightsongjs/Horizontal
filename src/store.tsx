@@ -22,6 +22,7 @@ import {
   projectCompletion,
   unblocks,
 } from './lib/engine'
+import { buildSmartLists, smartListRange, type SmartLists } from './lib/schedule'
 import type { Assignee, Issue, IssueState, Layers, Project, Theme, Wave } from './lib/types'
 
 interface HorizontalState {
@@ -47,6 +48,13 @@ interface HorizontalState {
    */
   issuesLoadFailedFor: string | null
   activeWave: number
+  /**
+   * Tichetele cu scadență din TOATE proiectele, tăiate în liste inteligente.
+   * Derivat, nu stocat separat — vezi `dueIssues` în implementare.
+   */
+  smartLists: SmartLists
+  /** Fereastra de scadențe a fost adusă cel puțin o dată. */
+  dueLoaded: boolean
   assignees: Assignee[]
   myAssigneeId: string | null
   setMyAssigneeId(id: string | null): void
@@ -96,6 +104,19 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
   const [issuesLoadedFor, setIssuesLoadedFor] = useState<string | null>(null)
   const [issuesLoadFailedFor, setIssuesLoadFailedFor] = useState<string | null>(null)
   const [activeWave, setActiveWave] = useState(1)
+  // Rezultatul brut al lui listDueIssues. NU e sursa de adevăr: `dueIssues` mai
+  // jos preferă versiunea din `allIssues` pentru tichetele unui proiect
+  // încărcat, ca o bifă dată într-o listă inteligentă să nu trebuiască scrisă
+  // în două locuri (și deci să nu se poată desincroniza).
+  const [dueRaw, setDueRaw] = useState<Issue[]>([])
+  const [dueLoaded, setDueLoaded] = useState(false)
+  /**
+   * Proiectele pentru care listIssues() a adus TOATE tichetele. Doar pentru
+   * ele se poate calcula un procent de completare: listele inteligente aduc
+   * tichete izolate din proiecte neîncărcate, iar un „1 din 1 bifat" dintr-un
+   * proiect de 40 de tichete ar arăta 100%.
+   */
+  const [loadedProjects, setLoadedProjects] = useState<Set<string>>(() => new Set())
   const [assignees, setAssignees] = useState<Assignee[]>([])
   const [myAssigneeId, setMyAssigneeIdState] = useState<string | null>(
     () => localStorage.getItem('horizontal-my-assignee-id')
@@ -107,9 +128,25 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     else localStorage.removeItem('horizontal-my-assignee-id')
   }, [])
 
+  /**
+   * Aduce fereastra de scadențe. Eșecul e tăcut în afară de `error`: listele
+   * inteligente sunt o secțiune a aplicației, nu o condiție de pornire, deci un
+   * Supabase indisponibil nu are voie să blocheze deschiderea unui proiect.
+   */
+  const loadDue = useCallback(async () => {
+    try {
+      const rows = await repository.listDueIssues(smartListRange(new Date()))
+      setDueRaw(rows)
+      setDueLoaded(true)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    }
+  }, [])
+
   const refresh = useCallback(async () => {
     setLoading(true)
     setIssuesLoadFailedFor(null)
+    void loadDue()
     try {
       const p = await repository.listProjects()
       setRawProjects(p)
@@ -123,6 +160,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
         setAllThemes((prev) => [...prev.filter((x) => x.projectId !== projectId), ...t])
         setAllIssues((prev) => [...prev.filter((i) => i.projectId !== projectId), ...loaded])
         setIssuesLoadedFor(projectId)
+        setLoadedProjects((prev) => new Set(prev).add(projectId))
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -133,7 +171,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false)
     }
-  }, [projectId])
+  }, [projectId, loadDue])
 
   useEffect(() => {
     let alive = true
@@ -141,6 +179,9 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
       try {
         const [p, a] = await Promise.all([repository.listProjects(), repository.listAssignees()])
         if (alive) { setRawProjects(p); setAssignees(a) }
+        // Listele inteligente se cer în paralel cu proiectele: sunt prima
+        // secțiune din sidebar și trebuie să aibă numere de la primul cadru.
+        if (alive) void loadDue()
       } catch (e) {
         if (alive) setError(e instanceof Error ? e.message : String(e))
       } finally {
@@ -148,7 +189,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
       }
     })()
     return () => { alive = false }
-  }, [])
+  }, [loadDue])
 
   useEffect(() => {
     const onVisible = () => { if (document.visibilityState === 'visible') refresh() }
@@ -164,6 +205,26 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     [allWaves, projectId],
   )
   const themes = useMemo(() => allThemes.filter((t) => t.projectId === projectId), [allThemes, projectId])
+
+  /**
+   * Tichetele cu scadență, cu O SINGURĂ sursă de adevăr pentru fiecare.
+   *
+   * `allIssues` e mai proaspăt pentru proiectele deschise (acolo ajung toate
+   * mutațiile prin `upsertIssue`), deci versiunea de acolo câștigă. Iar un
+   * tichet care a primit scadență chiar acum, într-un proiect deschis, apare
+   * imediat în liste fără să reinterogăm serverul. Rezultatul e derivat, deci
+   * nu există al doilea loc de scris și nimic nu se poate desincroniza.
+   */
+  const dueIssues = useMemo(() => {
+    const fresh = new Map(allIssues.map((i) => [i.id, i]))
+    const known = new Set(dueRaw.map((i) => i.id))
+    const merged = dueRaw.map((i) => fresh.get(i.id) ?? i)
+    for (const i of allIssues) if (i.dueAt && !known.has(i.id)) merged.push(i)
+    return merged.filter((i) => i.dueAt)
+  }, [dueRaw, allIssues])
+
+  const smartLists = useMemo(() => buildSmartLists(dueIssues, new Date()), [dueIssues])
+
 
   const selectProject = useCallback(
     (id: string | null) => {
@@ -181,6 +242,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
           setAllThemes((prev) => [...prev.filter((x) => x.projectId !== id), ...t])
           setAllIssues((prev) => [...prev.filter((i) => i.projectId !== id), ...loaded])
           setIssuesLoadedFor(id)
+          setLoadedProjects((prev) => new Set(prev).add(id))
           if (w.length && !w.some((x) => x.number === (proj?.currentWave ?? 1))) {
             setActiveWave(w[0].number)
           }
@@ -236,6 +298,8 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     setAllWaves((prev) => prev.filter((w) => w.projectId !== id))
     setAllThemes((prev) => prev.filter((t) => t.projectId !== id))
     setAllIssues((prev) => prev.filter((i) => i.projectId !== id))
+    setDueRaw((prev) => prev.filter((i) => i.projectId !== id))
+    setLoadedProjects((prev) => { const n = new Set(prev); n.delete(id); return n })
     setProjectId((cur) => (cur === id ? null : cur))
     setIssuesLoadedFor((cur) => (cur === id ? null : cur))
   }, [])
@@ -305,7 +369,9 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
 
   const toggleDone = useCallback(
     async (id: string) => {
-      const current = allIssues.find((i) => i.id === id)
+      // Și în `dueIssues`: o sarcină dintr-o listă inteligentă poate aparține
+      // unui proiect care nu a fost deschis niciodată, deci nu e în `allIssues`.
+      const current = allIssues.find((i) => i.id === id) ?? dueIssues.find((i) => i.id === id)
       if (!current) return
       const done = !current.done
       upsertIssue({ ...current, done })
@@ -317,7 +383,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
         setError(e instanceof Error ? e.message : String(e))
       }
     },
-    [allIssues, upsertIssue],
+    [allIssues, dueIssues, upsertIssue],
   )
 
   const createIssue = useCallback(
@@ -339,6 +405,9 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
 
   const deleteIssue = useCallback(async (id: string) => {
     await repository.deleteIssue(id)
+    // `dueRaw` nu trece prin upsertIssue, deci ștergerea trebuie curățată și
+    // aici — altfel sarcina ar rămâne în listele inteligente până la refresh.
+    setDueRaw((prev) => prev.filter((i) => i.id !== id))
     setAllIssues((prev) =>
       prev
         .filter((i) => i.id !== id)
@@ -350,6 +419,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     if (ids.length === 0) return
     await repository.deleteIssues(ids)
     const gone = new Set(ids)
+    setDueRaw((prev) => prev.filter((i) => !gone.has(i.id)))
     setAllIssues((prev) =>
       prev
         .filter((i) => !gone.has(i.id))
@@ -373,9 +443,13 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
 
   const stateOf = useCallback((id: string) => deriveState(byId[id], byId), [byId])
   const unblockedBy = useCallback((id: string) => unblocks(id, issues), [issues])
+  // Doar proiectele încărcate integral au un procent care înseamnă ceva; vezi
+  // `loadedProjects`. Pentru restul, 0 e onest (și e ce arăta și înainte, când
+  // `allIssues` conținea numai proiecte încărcate complet).
   const completion = useCallback(
-    (pid: string) => projectCompletion(allIssues.filter((i) => i.projectId === pid)),
-    [allIssues],
+    (pid: string) =>
+      loadedProjects.has(pid) ? projectCompletion(allIssues.filter((i) => i.projectId === pid)) : 0,
+    [allIssues, loadedProjects],
   )
   const themeOf = useCallback((key: string) => themes.find((t) => t.key === key), [themes])
 
@@ -391,6 +465,8 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     issuesLoadedFor,
     issuesLoadFailedFor,
     activeWave,
+    smartLists,
+    dueLoaded,
     assignees,
     myAssigneeId,
     setMyAssigneeId,

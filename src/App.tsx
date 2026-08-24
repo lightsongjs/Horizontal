@@ -11,8 +11,10 @@ import { SheetHost } from './components/SheetHost'
 import { Sidebar } from './components/Sidebar'
 import { QuickSearch } from './components/QuickSearch'
 import { UsersView } from './components/UsersView'
+import { SmartListView, SMART_LISTS, type SmartListKind } from './components/SmartListView'
 import { Toast } from './components/Toast'
 import { deepLinkNotice, parseTicketPath, resolveTicketProject, ticketPath } from './lib/deepLink'
+import { isReminderAction, SNOOZE_MINUTES } from './lib/pushPayload'
 import type { Project } from './lib/types'
 
 function ThemeToggle({ className }: { className?: string }) {
@@ -43,24 +45,46 @@ function getBuildAgo(): string {
   const d = Math.floor(diff / 86400); return `${d} day${d > 1 ? 's' : ''} ago`
 }
 
-function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, canWrite }: { onNewIssue: () => void; onSearch: () => void; onProjectSettings: () => void; onRefresh: () => void; canWrite: boolean }) {
-  const { project, completion, selectProject } = useHorizontal()
+const DAYS_FULL = ['duminică', 'luni', 'marți', 'miercuri', 'joi', 'vineri', 'sâmbătă']
+const MON_FULL = ['ianuarie', 'februarie', 'martie', 'aprilie', 'mai', 'iunie', 'iulie', 'august', 'septembrie', 'octombrie', 'noiembrie', 'decembrie']
+
+/** Subtitlul unei liste inteligente: ziua ei, sau intervalul, în litere. */
+function smartCrumb(kind: SmartListKind, now: Date): string {
+  const d = new Date(now)
+  if (kind === 'tomorrow') d.setDate(d.getDate() + 1)
+  if (kind === 'week') {
+    const end = new Date(now)
+    end.setDate(end.getDate() + 6)
+    const from = now.getMonth() === end.getMonth() ? `${now.getDate()}` : `${now.getDate()} ${MON_FULL[now.getMonth()]}`
+    return `${from} – ${end.getDate()} ${MON_FULL[end.getMonth()]}`
+  }
+  return `${DAYS_FULL[d.getDay()]}, ${d.getDate()} ${MON_FULL[d.getMonth()]}`
+}
+
+function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, canWrite, smartList, onExitSmartList }: { onNewIssue: () => void; onSearch: () => void; onProjectSettings: () => void; onRefresh: () => void; canWrite: boolean; smartList: SmartListKind | null; onExitSmartList: () => void }) {
+  const { project, completion, selectProject, smartLists } = useHorizontal()
   const pct = project ? Math.round(completion(project.id) * 100) : 0
+  const list = smartList ? SMART_LISTS.find((s) => s.kind === smartList) : null
+  const listCount = smartList === 'today' ? smartLists.today.length
+    : smartList === 'tomorrow' ? smartLists.tomorrow.length
+    : smartList === 'week' ? smartLists.week.reduce((n, d) => n + d.issues.length, 0)
+    : 0
   return (
     <header>
-      {project && (
-        <button className="back" aria-label="Înapoi" onClick={() => selectProject(null)}>
+      {(project || list) && (
+        <button className="back" aria-label="Înapoi" onClick={() => (list ? onExitSmartList() : selectProject(null))}>
           ‹
         </button>
       )}
-      <div className="logo">{project ? project.prefix.slice(0, 2) : 'H'}</div>
+      <div className="logo">{list ? list.icon : project ? project.prefix.slice(0, 2) : 'H'}</div>
       <div className="htxt">
-        <h1>{project ? project.name : 'Horizontal'}</h1>
+        <h1>{list ? list.label : project ? project.name : 'Horizontal'}</h1>
         <div className="crumb">
-          {project ? project.description : 'Toate proiectele tale'}
-          {!project && <span style={{ display: 'block', fontSize: '10px', opacity: 0.5, marginTop: '1px' }}>Built: {getBuildAgo()}</span>}
+          {list ? smartCrumb(list.kind, new Date()) : project ? project.description : 'Toate proiectele tale'}
+          {!project && !list && <span style={{ display: 'block', fontSize: '10px', opacity: 0.5, marginTop: '1px' }}>Built: {getBuildAgo()}</span>}
         </div>
       </div>
+      {list && listCount > 0 && <div className="hcount">{listCount}</div>}
       {project && (
         <div className="hprog">
           <span className="dot" />
@@ -101,6 +125,38 @@ function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, canWrite }
   )
 }
 
+/**
+ * Bara de jos, numai pe telefon (vezi `.tabbar` în styles.css). Pe mobil
+ * sidebar-ul e ascuns, deci fără ea listele inteligente n-ar avea drum.
+ *
+ * Patru tab-uri, nu cinci: „Caută" ar fi fost al cincilea, dar QuickSearch
+ * caută în proiectul deschis, iar de aici nu există unul.
+ */
+function TabBar({ smartList, onSmartList, onProjects, onQuickAdd, inProjects }: {
+  smartList: SmartListKind | null
+  onSmartList(kind: SmartListKind): void
+  onProjects(): void
+  onQuickAdd(): void
+  inProjects: boolean
+}) {
+  return (
+    <nav className="tabbar">
+      <button className={smartList === 'today' ? 'on' : ''} onClick={() => onSmartList('today')}>
+        <span className="tb-ico" aria-hidden="true">★</span>Azi
+      </button>
+      <button className={smartList === 'week' ? 'on' : ''} onClick={() => onSmartList('week')}>
+        <span className="tb-ico" aria-hidden="true">▤</span>7 zile
+      </button>
+      <button className="tb-add" onClick={onQuickAdd} aria-label="Sarcină nouă">
+        <span className="tb-ico" aria-hidden="true">+</span>
+      </button>
+      <button className={inProjects ? 'on' : ''} onClick={onProjects}>
+        <span className="tb-ico" aria-hidden="true">⊞</span>Proiecte
+      </button>
+    </nav>
+  )
+}
+
 const SHORTCUTS = [
   { key: 'C', action: 'Tichet nou' },
   { key: 'O', action: 'Caută tichet' },
@@ -119,15 +175,33 @@ const SHORTCUTS = [
 /** Adâncimea intrării curente din istoric, din history.state. */
 const readDepth = () => (window.history.state as { hzDepth?: number } | null)?.hzDepth ?? 0
 
+const LAST_VIEW_KEY = 'horizontal:last-view'
+
+/** `smart:today` → `today`. Orice altceva → null. */
+function parseLastView(raw: string | null): SmartListKind | null {
+  const kind = raw?.startsWith('smart:') ? raw.slice(6) : null
+  return kind === 'today' || kind === 'tomorrow' || kind === 'week' ? kind : null
+}
+
 const slugify = (name: string) =>
   name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '')
 
 function Shell() {
-  const { loading, error, project, projects, issuesLoadedFor, issuesLoadFailedFor, byId, selectProject, refresh } = useHorizontal()
+  const { loading, error, project, projects, issuesLoadedFor, issuesLoadFailedFor, byId, selectProject, refresh, toggleDone, updateIssue } = useHorizontal()
   const { openNewIssue, openNewProject, openProjectSettings, openIssue, closeSheet, sheet, ticketId } = useUI()
   const { isAdmin } = useAuth()
   const canWrite = useCanWrite()
   const [showUsers, setShowUsers] = useState(false)
+  /**
+   * Lista inteligentă deschisă. Ca `showUsers`, e un strat peste conținut care
+   * NU deține URL-ul: mașinăria de mai jos e scrisă în jurul a două stări
+   * (proiect, ticket) și nu merită atinsă pentru asta. Ce contează practic —
+   * PWA-ul să se deschidă unde ai rămas — se rezolvă cu `last-view`.
+   */
+  const [smartList, setSmartList] = useState<SmartListKind | null>(null)
+  // Contor, nu boolean: fiecare apăsare pe „+" trebuie să refocuseze inputul,
+  // chiar dacă lista era deja deschisă. Un boolean ar fi „true" a doua oară.
+  const [focusQuickAdd, setFocusQuickAdd] = useState(0)
   const [tab, setTab] = useState<Tab>(() => {
     const saved = localStorage.getItem('horizontal:last-tab')
     return saved === 'ordine' || saved === 'list' || saved === 'graf' || saved === 'teme' ? saved : 'list'
@@ -241,6 +315,24 @@ function Shell() {
     }
   }, [refresh])
 
+  // Ce secțiune era deschisă la ultima folosire. Fără asta, un PWA deschis de pe
+  // ecranul de start ar ateriza mereu în proiecte, nu în lista de azi.
+  useEffect(() => {
+    if (smartList) localStorage.setItem(LAST_VIEW_KEY, `smart:${smartList}`)
+    else if (project) localStorage.removeItem(LAST_VIEW_KEY)
+  }, [smartList, project])
+
+  const openSmartList = useCallback((kind: SmartListKind) => {
+    setShowUsers(false)
+    setSmartList(kind)
+    selectProject(null)
+  }, [selectProject])
+
+  const exitSmartList = useCallback(() => {
+    setSmartList(null)
+    localStorage.removeItem(LAST_VIEW_KEY)
+  }, [])
+
   // Remember the active tab globally — persists across refreshes AND across
   // project switches. The chosen view stays until the user changes it.
   useEffect(() => { localStorage.setItem('horizontal:last-tab', tab) }, [tab])
@@ -262,9 +354,11 @@ function Shell() {
    * issues. Dacă nu există (prefix necunoscut sau ticket șters), anunță și
    * așază URL-ul pe destinația reală, ca să nu rămână agățat pe /XX-01.
    *
-   * Se apelează numai din `popstate`, *după* ce stiva de sheet-uri a fost
-   * închisă (vezi `onPop`). De asta ramurile de eșec pot așeza URL-ul pe
-   * proiect fără să rămână un sheet de ticket deschis sub un URL de proiect.
+   * Se apelează din `popstate` (după ce stiva de sheet-uri a fost închisă, vezi
+   * `onPop`) și din `openTaskAnywhere`, unde stiva e oricum goală — suntem
+   * într-o listă inteligentă. În ambele cazuri precondiția e aceeași, deci
+   * ramurile de eșec pot așeza URL-ul pe proiect fără să rămână un sheet de
+   * ticket deschis sub un URL de proiect.
    */
   const resolveTicketUrl = (target: string) => {
     const current = projectRef.current
@@ -284,6 +378,17 @@ function Shell() {
     }
     deepLinkPending.current = target
     selectProject(owner.id)
+  }
+
+  /**
+   * Deschide o sarcină dintr-o listă inteligentă. Poate aparține oricărui
+   * proiect, inclusiv unuia nedeschis niciodată — exact situația unui deep link.
+   * Deci refolosim `resolveTicketUrl`: comută proiectul, iar efectul de
+   * rezolvare deschide sheet-ul când sosesc tichetele. Zero mașinărie nouă.
+   */
+  const openTaskAnywhere = (id: string) => {
+    setSmartList(null)
+    resolveTicketUrl(id)
   }
 
   // Step 1 — on load: read path, select project, then unlock URL sync.
@@ -311,7 +416,11 @@ function Shell() {
         const found = findBySlug(match[1])
         if (found) selectProject(found.id)
       } else {
-        selectLastUsedProject()
+        // O listă inteligentă memorată bate ultimul proiect: userul a plecat de
+        // acolo, deci acolo se întoarce.
+        const lastView = parseLastView(localStorage.getItem(LAST_VIEW_KEY))
+        if (lastView) setSmartList(lastView)
+        else selectLastUsedProject()
       }
     }
     urlSyncReady.current = true
@@ -442,6 +551,26 @@ function Shell() {
     return () => window.removeEventListener('keydown', onKey)
   }, [project, openNewIssue, openNewProject, sheet, showShortcuts, showSearch, showUsers, canWrite, isAdmin])
 
+  /**
+   * Butoanele notificării („Gata", „Amână 10 min"). Service worker-ul nu poate
+   * scrie singur — n-are nici sesiunea userului, nici o cheie de API pe care
+   * s-o poată ține secretă. Deci trimite mesajul aici, iar pagina face
+   * mutația cu drepturile utilizatorului. Vezi `src/sw.ts`.
+   */
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return
+    const onMessage = (e: MessageEvent) => {
+      if (!isReminderAction(e.data)) return
+      const { action, id } = e.data
+      if (action === 'done') void toggleDone(id)
+      // Amânarea mută mementoul, nu scadența: sarcina rămâne când era, doar
+      // sună din nou peste zece minute.
+      else void updateIssue(id, { remindAt: new Date(Date.now() + SNOOZE_MINUTES * 60_000).toISOString() })
+    }
+    navigator.serviceWorker.addEventListener('message', onMessage)
+    return () => navigator.serviceWorker.removeEventListener('message', onMessage)
+  }, [toggleDone, updateIssue])
+
   // Un drop care aterizează în afara zonei de fișiere lovește comportamentul
   // implicit al browserului și scoate utilizatorul din SPA — deschide fișierul
   // ca pagină, pierzând starea nesalvată. O pereche inertă la nivel de document
@@ -464,11 +593,13 @@ function Shell() {
       <Sidebar
         isAdmin={isAdmin}
         showUsers={showUsers && isAdmin}
-        onShowUsers={() => setShowUsers(true)}
-        onNavigate={() => setShowUsers(false)}
+        onShowUsers={() => { setShowUsers(true); setSmartList(null) }}
+        onNavigate={() => { setShowUsers(false); exitSmartList() }}
+        smartList={smartList}
+        onSmartList={openSmartList}
       />
       <div className="app-body">
-        <Header onNewIssue={openNewIssue} onSearch={() => setShowSearch(true)} onProjectSettings={openProjectSettings} onRefresh={refresh} canWrite={canWrite} />
+        <Header onNewIssue={openNewIssue} onSearch={() => setShowSearch(true)} onProjectSettings={openProjectSettings} onRefresh={refresh} canWrite={canWrite} smartList={smartList} onExitSmartList={exitSmartList} />
         <main ref={mainRef}>
           {pullY > 0 && (
             <div style={{ textAlign: 'center', padding: '6px 0', fontSize: '13px', color: 'var(--txt-dim)', transform: `translateY(${pullY * 0.4}px)`, transition: pullY === 0 ? 'transform 0.3s' : 'none' }}>
@@ -480,6 +611,8 @@ function Shell() {
             <div className="view">
               <p className="empty">Se încarcă…</p>
             </div>
+          ) : smartList ? (
+            <SmartListView kind={smartList} onOpenTask={openTaskAnywhere} focusSignal={focusQuickAdd} />
           ) : showUsers && isAdmin ? (
             <UsersView />
           ) : project ? (
@@ -488,7 +621,7 @@ function Shell() {
             <ProjectsView />
           )}
         </main>
-        {(project ? canWrite : isAdmin) && (
+        {!smartList && (project ? canWrite : isAdmin) && (
           <button
             className="fab"
             aria-label={project ? 'Adaugă tichet' : 'Adaugă proiect'}
@@ -497,6 +630,13 @@ function Shell() {
             +
           </button>
         )}
+        <TabBar
+          smartList={smartList}
+          onSmartList={openSmartList}
+          onProjects={() => { exitSmartList(); setShowUsers(false); selectProject(null) }}
+          onQuickAdd={() => { openSmartList('today'); setFocusQuickAdd((n) => n + 1) }}
+          inProjects={!smartList && !showUsers}
+        />
       </div>
       <Toast message={notice} onDone={clearNotice} />
       <SheetHost />

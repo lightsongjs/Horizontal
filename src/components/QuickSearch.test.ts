@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { rankIssues } from './QuickSearch'
+import { NO_SCHEDULE } from '../lib/schedule'
 import type { Issue } from '../lib/types'
 
 function makeIssue(id: string, title: string): Issue {
@@ -17,6 +18,7 @@ function makeIssue(id: string, title: string): Issue {
     notes: '',
     assigneeId: null,
     urgent: false,
+    ...NO_SCHEDULE,
   }
 }
 

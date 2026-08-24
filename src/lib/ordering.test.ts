@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { orderIdsByUrgency, buildOrderedLayers } from './ordering'
+import { NO_SCHEDULE } from './schedule'
 import type { Issue, Layers } from './types'
 
 function issue(id: string, patch: Partial<Issue> = {}): Issue {
-  return { id, projectId: 'p', title: id, desc: '', theme: '', wave: 1, deps: [], done: false, selectors: [], scenarios: [], notes: '', assigneeId: null, urgent: false, ...patch }
+  return { id, projectId: 'p', title: id, desc: '', theme: '', wave: 1, deps: [], done: false, selectors: [], scenarios: [], notes: '', assigneeId: null, urgent: false, ...NO_SCHEDULE, ...patch }
 }
 
 describe('orderIdsByUrgency', () => {

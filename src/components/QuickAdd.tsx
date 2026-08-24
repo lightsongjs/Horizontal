@@ -1,0 +1,199 @@
+import { useEffect, useRef, useState } from 'react'
+import { useHorizontal } from '../store'
+import { useWritableProjects } from '../hooks'
+import { parseDue } from '../lib/parseDue'
+import { dayOffset, defaultReminder, reminderAt, toTimeInput } from '../lib/schedule'
+
+const LAST_PROJECT_KEY = 'horizontal:last-task-project'
+const DAYS = ['Dum', 'Lun', 'Mar', 'Mie', 'Joi', 'Vin', 'Sâm']
+const MON = ['ian', 'feb', 'mar', 'apr', 'mai', 'iun', 'iul', 'aug', 'sep', 'oct', 'noi', 'dec']
+
+function dueLabel(iso: string, allDay: boolean, now: Date): string {
+  const d = new Date(iso)
+  const off = dayOffset(iso, now)
+  const day =
+    off === 0 ? 'Azi' : off === 1 ? 'Mâine' : off === -1 ? 'Ieri' : `${DAYS[d.getDay()]} ${d.getDate()} ${MON[d.getMonth()]}`
+  return allDay ? day : `${day} ${toTimeInput(iso)}`
+}
+
+interface Props {
+  /** Scadența implicită când textul nu conține niciuna (ziua listei deschise). */
+  defaultDueAt: string
+  onAdded?(): void
+  /** Se schimbă la fiecare cerere de focus din afară (butonul „+" din bara de jos). */
+  focusSignal?: number
+}
+
+/**
+ * Rândul de adăugare rapidă. Parsează data din titlu pe măsură ce se scrie și
+ * o arată în două locuri: fragmentul recunoscut, evidențiat CHIAR ÎN input
+ * printr-un strat-oglindă poziționat identic, și un jeton cu ce a înțeles, cu
+ * un × care îl respinge.
+ *
+ * Fără cele două, un parser bun devine dușman la primul „Întâlnire la Podul 5":
+ * userul trebuie să vadă ce s-a interpretat înainte să apese Enter, și să poată
+ * spune nu.
+ *
+ * Fără Inbox, fiecare sarcină are un proiect — de asta rândul poartă un
+ * selector care ține minte ultima alegere.
+ */
+export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0 }: Props) {
+  const { createIssue } = useHorizontal()
+  // Numai proiectele în care se poate scrie: un selector care oferă un proiect
+  // read-only ar produce o salvare respinsă de RLS, după ce userul a scris tot.
+  const projects = useWritableProjects()
+  const [text, setText] = useState('')
+  const [focus, setFocus] = useState(false)
+  // Data recunoscută a fost respinsă manual pentru textul curent. Se resetează
+  // la orice tastă: o nouă intenție merită o nouă propunere.
+  const [rejected, setRejected] = useState(false)
+  const [shake, setShake] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [projectId, setProjectId] = useState<string>(() => {
+    const saved = localStorage.getItem(LAST_PROJECT_KEY)
+    return saved ?? ''
+  })
+  const inputRef = useRef<HTMLInputElement>(null)
+  const mirrorRef = useRef<HTMLSpanElement>(null)
+
+  // Focus cerut din afară. Sare peste primul randare (`focusSignal` 0) ca
+  // deschiderea listei să nu ridice tastatura pe telefon nechemată.
+  useEffect(() => {
+    if (focusSignal > 0) inputRef.current?.focus()
+  }, [focusSignal])
+
+  const project = projects.find((p) => p.id === projectId)
+    ?? projects.find((p) => p.type === 'personal')
+    ?? projects[0]
+
+  const parsed = parseDue(text)
+  const useParsed = !rejected && parsed.dueAt !== null
+  const dueAt = useParsed ? parsed.dueAt! : defaultDueAt
+  const allDay = useParsed ? parsed.allDay : true
+  const title = (rejected ? text : parsed.title).trim()
+  // Text numai-dată: „azi la 8" n-are ce să salveze.
+  const bare = text.trim() !== '' && title === ''
+
+  const reset = () => { setText(''); setRejected(false) }
+
+  const submit = async () => {
+    if (saving || !project) return
+    if (!text.trim()) return
+    if (bare) { setShake(true); setTimeout(() => setShake(false), 320); return }
+    setSaving(true)
+    try {
+      await createIssue({
+        projectId: project.id,
+        title,
+        dueAt,
+        allDay,
+        remindAt: reminderAt(dueAt, defaultReminder(allDay)),
+        rrule: useParsed ? parsed.rrule : null,
+      })
+      localStorage.setItem(LAST_PROJECT_KEY, project.id)
+      reset()
+      onAdded?.()
+      inputRef.current?.focus()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (!project) {
+    // Fie nu există niciun proiect, fie userul e read-only în toate. Ambele
+    // înseamnă același lucru aici: nu se poate adăuga nimic.
+    return (
+      <p className="qa-noproject">
+        O sarcină are nevoie de un proiect în care poți scrie.
+      </p>
+    )
+  }
+
+  // Straturile: oglinda desenează evidențierea, inputul stă transparent deasupra.
+  const spans = useParsed ? parsed.spans : []
+  const pieces: { text: string; mark: boolean }[] = []
+  let at = 0
+  for (const [s, e] of spans) {
+    if (s > at) pieces.push({ text: text.slice(at, s), mark: false })
+    pieces.push({ text: text.slice(s, e), mark: true })
+    at = e
+  }
+  if (at < text.length) pieces.push({ text: text.slice(at), mark: false })
+
+  return (
+    <div className={`qa ${focus ? 'focus' : ''} ${shake ? 'shake' : ''}`}>
+      <div className="qa-row">
+        <span className="qa-plus" aria-hidden="true">+</span>
+        <span className="qa-wrap">
+          <span className="qa-mirror" ref={mirrorRef} aria-hidden="true">
+            {pieces.map((p, i) => (p.mark ? <mark key={i}>{p.text}</mark> : <span key={i}>{p.text}</span>))}
+          </span>
+          <input
+            ref={inputRef}
+            className="qa-input"
+            value={text}
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck={false}
+            placeholder="Adaugă o sarcină… încearcă „mâine la 9”"
+            onChange={(e) => { setText(e.target.value); setRejected(false) }}
+            onFocus={() => setFocus(true)}
+            onBlur={() => setFocus(false)}
+            // Oglinda nu se derulează singură: fără asta, evidențierea rămâne
+            // în urmă la un titlu mai lung decât inputul.
+            onScroll={(e) => {
+              if (mirrorRef.current) mirrorRef.current.scrollLeft = e.currentTarget.scrollLeft
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') { e.preventDefault(); void submit() }
+              else if (e.key === 'Escape' && text) { e.preventDefault(); reset() }
+            }}
+          />
+        </span>
+      </div>
+
+      {text.trim() !== '' && (
+        <div className="qa-meta">
+          <span className="chip date">
+            <span className="chip-ico" aria-hidden="true">▤</span>
+            {dueLabel(dueAt, allDay, new Date())}
+            {useParsed && (
+              <button
+                className="chip-x"
+                title="Nu e o dată — lasă textul în titlu"
+                aria-label="Respinge data recunoscută"
+                onClick={() => { setRejected(true); inputRef.current?.focus() }}
+              >
+                ✕
+              </button>
+            )}
+          </span>
+
+          {!allDay && (
+            <span className="chip bell">
+              <span className="chip-ico" aria-hidden="true">◔</span> memento la oră
+            </span>
+          )}
+
+          {useParsed && parsed.rrule && (
+            <span className="chip">↻ {parsed.rrule === 'FREQ=DAILY' ? 'zilnic' : 'săptămânal'}</span>
+          )}
+
+          <label className="qa-proj" title="Proiectul sarcinii">
+            <span className="t-dot" style={{ background: project.accent }} />
+            <select
+              value={project.id}
+              onChange={(e) => { setProjectId(e.target.value); localStorage.setItem(LAST_PROJECT_KEY, e.target.value) }}
+            >
+              {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </label>
+
+          <span className={`qa-hint ${bare ? 'warn' : ''}`}>
+            {bare ? 'și ce ai de făcut?' : saving ? 'se salvează…' : <><kbd>↵</kbd> adaugă</>}
+          </span>
+        </div>
+      )}
+    </div>
+  )
+}

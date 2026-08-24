@@ -24,6 +24,10 @@
   --r: 14px;
   --mono: 'JetBrains Mono', ui-monospace, monospace;
   --display: 'IBM Plex Sans', sans-serif;
+  /* Spune browserului în ce temă e pagina, ca widgeturile NATIVE (calendarul
+     lui <input type=date>, ceasul lui type=time, scrollbar-ele) să se randeze
+     în tonul corect. Fără asta, selectorul de dată apare alb pe tema închisă. */
+  color-scheme: dark;
 }
 * {
   margin: 0;
@@ -90,6 +94,7 @@ button {
   --shadow-sm: 0 1px 3px rgba(15,25,35,0.07), 0 1px 2px rgba(15,25,35,0.04);
   --shadow-md: 0 8px 24px rgba(15,25,35,0.09), 0 2px 8px rgba(15,25,35,0.05);
   --shadow-lg: 0 24px 64px rgba(15,25,35,0.11), 0 4px 16px rgba(15,25,35,0.06);
+  color-scheme: light;
 }
 
 /* SIDEBAR — hidden on mobile, shown on desktop */
@@ -2829,6 +2834,7 @@ svg.graph {
 .meta-col-theme { flex: 1; }
 .meta-col-wave  { flex: 1; }
 .meta-col-assign { flex: 1; }
+.meta-col-due { flex: 1; }
 .meta-vsep {
   width: 1px;
   background: var(--line-soft);
@@ -3580,7 +3586,8 @@ svg.graph {
   .meta-col,
   .meta-col-theme,
   .meta-col-wave,
-  .meta-col-assign {
+  .meta-col-assign,
+  .meta-col-due {
     flex: none;
   }
   .meta-col {
@@ -3844,3 +3851,390 @@ svg.graph {
 .lb-bar button { border: 1px solid rgba(255, 255, 255, 0.35); background: transparent; color: #fff; border-radius: 8px; padding: 5px 10px; cursor: pointer; font-size: 13px; }
 .lb-body { display: grid; place-items: center; overflow: auto; padding: 8px; }
 .lb-body img { max-width: 100%; max-height: 100%; object-fit: contain; }
+
+/* ── SCADENȚĂ în formularul de tichet ─────────────────────────────
+   Inputuri native (calendarul și ceasul sistemului, gratis pe telefon)
+   îmbrăcate în aceleași jetoane ca restul rândului de meta. */
+.due-inputs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.due-input {
+  background: var(--field-bg, var(--surface-3));
+  border: 1.5px solid var(--line);
+  border-radius: 99px;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--mono);
+  color: var(--txt);
+  min-width: 0;
+  transition: border-color 0.13s, color 0.13s;
+}
+.due-input:hover:not(:disabled) { border-color: var(--accent); }
+.due-input:focus-visible { border-color: var(--accent); }
+.due-input-date { flex: 0 1 132px; }
+.due-input-time { flex: 0 0 78px; }
+/* Fără dată, ora nu poate însemna nimic — inertă, nu ascunsă, ca rândul să nu
+   sară când apare. */
+.due-input:disabled { opacity: 0.4; cursor: not-allowed; }
+/* Un input de dată gol arată `zz.ll.aaaa` în gri de sistem; îl aducem la
+   paleta noastră ca să nu strige mai tare decât o valoare reală. */
+.due-input:invalid,
+.due-input:not(:valid) { color: var(--txt-faint); font-weight: 500; }
+.due-input::-webkit-calendar-picker-indicator {
+  opacity: 0.5;
+  cursor: pointer;
+  filter: var(--cal-icon-filter, invert(1));
+}
+[data-theme='light'] .due-input::-webkit-calendar-picker-indicator { filter: none; }
+.due-input::-webkit-calendar-picker-indicator:hover { opacity: 1; }
+.due-clear {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid var(--line);
+  color: var(--txt-faint);
+  font-size: 13px; line-height: 1;
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.due-clear:hover { border-color: var(--blocked); color: var(--blocked); }
+.due-reminder { margin-top: 2px; }
+.if-meta-pill.reminder-pill {
+  padding: 2px 8px;
+  font-size: 11px;
+  font-family: var(--mono);
+}
+.due-hint {
+  font-size: 11px;
+  color: var(--txt-faint);
+  font-style: italic;
+  white-space: nowrap;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MOD TO-DO — liste inteligente (Azi / Mâine / Next 7 days)
+   Gramatica de clase e cea din ListView (.list-row, .list-group), ca
+   cele două liste ale aplicației să arate ca una. Ce e nou aici e ce
+   n-are echivalent în modul proiecte: ora, sarcina restantă, proiectul
+   pe rând, și quick add-ul.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* O lățime de citit, nu toată fereastra: pe un monitor lat, un rând întins
+   complet aruncă numele proiectului la un metru de titlu. Grila de proiecte
+   vrea toată lățimea; o listă nu. */
+.smart-list { max-width: 760px; }
+
+/* ── numere pe rândurile din sidebar ─────────────────────────────── */
+.sl-count {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--txt-faint);
+}
+.sidebar-nav-item.on .sl-count { color: var(--accent); }
+/* Restanțele n-au rând propriu — sunt un badge pe „Azi". */
+.sl-late {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--blocked);
+  border-radius: 20px;
+  padding: 1px 6px;
+  line-height: 1.5;
+  margin-left: 2px;
+}
+.sidebar-nav-item .sl-late + .sl-count { margin-left: 6px; }
+
+/* ── capul unui grup de zi ───────────────────────────────────────── */
+/* Data stă LÂNGĂ eticheta zilei, nu împinsă în marginea dreaptă. `.list-group-label`
+   are `flex: 1` din modul proiecte (unde numărătoarea trebuie să stea la capăt);
+   într-o listă de zile, ziua și data sunt un singur lucru. */
+.smart-list .list-group-label { flex: 0 0 auto; }
+.list-group-date { color: var(--txt-faint); font-weight: 500; margin-left: 2px; }
+.list-group-num { min-width: 18px; padding: 0 4px; }
+.day-empty {
+  font-size: 12.5px;
+  color: var(--txt-faint);
+  font-style: italic;
+  padding: 0 4px 2px;
+}
+/* O zi goală n-are voie să ocupe cât una plină — altfel o săptămână liberă e
+   un ecran de derulat prin nimic. */
+.smart-list .list-group:has(.day-empty) { margin-bottom: 4px; }
+.done-toggle {
+  width: 100%;
+  text-align: left;
+  font-size: 12px;
+  color: var(--txt-faint);
+  padding: 8px 4px;
+  font-weight: 600;
+  font-family: var(--mono);
+}
+.done-toggle:hover { color: var(--txt-dim); }
+
+/* ── rândul de sarcină ───────────────────────────────────────────── */
+.task-row.done .list-title { text-decoration: line-through; }
+.task-row.late .list-check { border-color: var(--blocked); }
+/* Ora e ancora vizuală a unei sarcini, așa cum id-ul e ancora unui tichet:
+   lățime fixă, ca titlurile să se alinieze pe coloană. */
+.t-time {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--txt-dim);
+  flex: 0 0 auto;
+  min-width: 38px;
+}
+.task-row.late .t-time { color: var(--blocked); }
+.t-time.allday { color: var(--txt-faint); font-weight: 500; }
+.task-row .list-title { flex: 1; min-width: 0; }
+.t-tail { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.t-urgent { font-size: 11px; line-height: 1; }
+.t-bell { color: var(--active); display: inline-flex; align-items: center; }
+.t-proj {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--txt-faint);
+  max-width: 130px;
+}
+.t-proj-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.t-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+/* ── QUICK ADD ───────────────────────────────────────────────────────
+   Evidențierea fragmentului de dată se face cu un strat-oglindă sub un
+   input transparent. Cele două TREBUIE să aibă metrici identice — orice
+   diferență de font, mărime sau spațiere decalează marcajul. */
+.qa {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  padding: 8px 10px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.qa.focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.qa.shake { animation: qa-shake 0.3s; }
+@keyframes qa-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+.qa-row { display: flex; align-items: center; gap: 9px; }
+.qa-plus {
+  width: 20px; height: 20px;
+  border-radius: 6px;
+  border: 1px dashed var(--line);
+  color: var(--txt-faint);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.qa-wrap { position: relative; flex: 1; min-width: 0; height: 24px; }
+.qa-mirror,
+.qa-input {
+  position: absolute;
+  inset: 0;
+  font-family: inherit;
+  font-size: 14.5px;
+  line-height: 24px;
+  letter-spacing: normal;
+  white-space: pre;
+  border: none;
+  padding: 0;
+}
+.qa-mirror {
+  pointer-events: none;
+  color: transparent;
+  overflow: hidden;
+}
+.qa-mirror mark {
+  background: var(--accent-soft);
+  color: transparent;
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.qa-input {
+  background: none;
+  outline: none;
+  color: var(--txt);
+  width: 100%;
+}
+.qa-input::placeholder { color: var(--placeholder, var(--txt-faint)); }
+.qa-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line-soft);
+  flex-wrap: wrap;
+}
+.qa-hint { margin-left: auto; font-size: 11px; color: var(--txt-faint); white-space: nowrap; }
+.qa-hint.warn { color: var(--blocked); font-weight: 600; }
+.qa-hint kbd {
+  font-family: var(--mono);
+  font-size: 10px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 1px 4px;
+  background: var(--surface-2);
+}
+.qa-noproject {
+  color: var(--txt-faint);
+  font-size: 14px;
+  font-style: italic;
+  padding: 10px 2px 16px;
+}
+.qa-proj {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 3px 8px 3px 9px;
+  border-radius: 20px;
+  border: 1px dashed var(--line);
+  color: var(--txt-dim);
+  cursor: pointer;
+}
+.qa-proj:hover { border-color: var(--accent); color: var(--accent); }
+.qa-proj select {
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  outline: none;
+  max-width: 130px;
+}
+
+/* ── jetoane de scadență din quick add ───────────────────────────── */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--txt-dim);
+  font-family: var(--mono);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+.chip.date {
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+  color: var(--accent);
+}
+.chip.bell {
+  background: var(--active-soft);
+  border-color: color-mix(in srgb, var(--active) 35%, transparent);
+  color: var(--active);
+}
+.chip-ico { opacity: 0.75; }
+.chip-x { opacity: 0.6; font-weight: 700; padding: 0 1px; color: inherit; }
+.chip-x:hover { opacity: 1; }
+
+/* ── TELEFON: bara de tab-uri, în locul sidebar-ului ─────────────── */
+.tabbar { display: none; }
+@media (max-width: 899px) {
+  .tabbar {
+    display: flex;
+    border-top: 1px solid var(--line-soft);
+    background: var(--surface);
+    flex-shrink: 0;
+    padding: 6px 4px calc(9px + env(safe-area-inset-bottom));
+    position: relative;
+    z-index: 20;
+  }
+  .tabbar button {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--txt-faint);
+    padding: 4px 0;
+    border-radius: 9px;
+  }
+  .tabbar button.on { color: var(--accent); }
+  .tabbar .tb-ico { font-size: 16px; line-height: 1; }
+  .tabbar .tb-add {
+    color: #fff;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    border-radius: 12px;
+    margin: 0 4px;
+    max-width: 52px;
+    flex: 0 0 52px;
+  }
+  .tabbar .tb-add .tb-ico { font-size: 20px; font-weight: 300; }
+
+  /* Numele proiectului costă exact lățimea care taie titlul, iar titlul e
+     singurul lucru care contează într-o listă. Rămâne punctul colorat;
+     numele întreg se vede în sheet-ul sarcinii, unde există loc. */
+  .t-proj-name { display: none; }
+  .t-proj { gap: 0; }
+
+  /* Bara de jos acoperă capătul listei; FAB-ul e ascuns în liste, dar
+     padding-ul de sub conținut trebuie să țină cont de ea. */
+  .smart-list-open main { padding-bottom: 0; }
+}
+
+/* ── invitația de activare a mementourilor ───────────────────────────
+   Apare în capul listei „Azi", unde întrebarea are sens, și dispare de la
+   sine odată activată. */
+.push-cta {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  background: var(--active-soft);
+  border: 1px solid color-mix(in srgb, var(--active) 32%, transparent);
+  border-radius: 11px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+}
+.push-cta-ico {
+  font-size: 15px;
+  color: var(--active);
+  flex-shrink: 0;
+}
+.push-cta-txt { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+.push-cta-txt strong { font-size: 13.5px; font-weight: 600; }
+.push-cta-txt span { font-size: 12px; color: var(--txt-dim); }
+.push-cta-btn {
+  flex-shrink: 0;
+  border-radius: 8px;
+  border: 1px solid var(--active);
+  background: var(--active);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 6px 12px;
+}
+.push-cta-btn:disabled { opacity: 0.6; cursor: default; }
+.push-cta-x {
+  flex-shrink: 0;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  color: var(--txt-faint);
+  font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+}
+.push-cta-x:hover { color: var(--txt); background: var(--surface-2); }

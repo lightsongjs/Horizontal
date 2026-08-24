@@ -3,7 +3,7 @@
 
 import { SEED_ISSUES, SEED_PROJECTS, SEED_THEMES, SEED_WAVES } from '../lib/seed'
 import type { Assignee, Issue, Project, Theme, Wave } from '../lib/types'
-import { themeKey, type NewIssue, type NewProject, type Repository } from './repository'
+import { themeKey, type DueRange, type NewIssue, type NewProject, type Repository } from './repository'
 
 const KEY = 'horizontal:v2'
 
@@ -28,7 +28,18 @@ function load(): DB {
         projects: db.projects ?? [],
         waves: db.waves ?? [],
         themes: db.themes ?? [],
-        issues: (db.issues ?? []).map((i) => ({ ...i, urgent: i.urgent ?? false })),
+        // Câmpurile adăugate după ce cineva avea deja date în localStorage se
+        // completează la citire. Fără asta, un tichet vechi ar avea `dueAt`
+        // undefined, iar `dueAt === null` (testul „are scadență") ar fi fals
+        // în ambele sensuri.
+        issues: (db.issues ?? []).map((i) => ({
+          ...i,
+          urgent: i.urgent ?? false,
+          dueAt: i.dueAt ?? null,
+          allDay: i.allDay ?? true,
+          remindAt: i.remindAt ?? null,
+          rrule: i.rrule ?? null,
+        })),
         assignees: db.assignees ?? [],
       }
     }
@@ -183,6 +194,22 @@ export function createLocalRepository(): Repository {
       return clone(load().issues.filter((i) => i.projectId === projectId))
     },
 
+    async listDueIssues({ to, doneFrom }: DueRange) {
+      // Comparăm timpi, nu string-uri: Supabase întoarce `+00:00` iar
+      // `toISOString()` produce `.000Z`, deci un `<` pe text ar minți. Backend-ul
+      // Supabase face aceeași comparație în Postgres — asta e paritatea.
+      const toT = Date.parse(to)
+      const doneT = Date.parse(doneFrom)
+      return clone(
+        load().issues.filter((i) => {
+          if (!i.dueAt) return false
+          const t = Date.parse(i.dueAt)
+          if (!(t < toT)) return false
+          return !i.done || t >= doneT
+        }),
+      )
+    },
+
     async createIssue(input: NewIssue) {
       const db = load()
       const project = db.projects.find((p) => p.id === input.projectId)
@@ -201,6 +228,10 @@ export function createLocalRepository(): Repository {
         notes: '',
         assigneeId: input.assigneeId ?? null,
         urgent: input.urgent ?? false,
+        dueAt: input.dueAt ?? null,
+        allDay: input.allDay ?? true,
+        remindAt: input.remindAt ?? null,
+        rrule: input.rrule ?? null,
       }
       db.issues.push(issue)
       save(db)

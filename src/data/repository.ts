@@ -23,6 +23,22 @@ export interface NewIssue {
   notes?: string
   assigneeId?: string | null
   urgent?: boolean
+  dueAt?: string | null
+  allDay?: boolean
+  remindAt?: string | null
+  rrule?: string | null
+}
+
+/**
+ * Fereastra cerută de listele inteligente. `to` e limita superioară, exclusivă.
+ *
+ * Nefinalizatele vin **fără limită în jos**: o restanță de acum o lună e tot o
+ * problemă de azi. Cele bifate vin numai de la `doneFrom` încolo — altfel
+ * „Terminate azi" ar trage după el tot istoricul, care crește la infinit.
+ */
+export interface DueRange {
+  to: string
+  doneFrom: string
 }
 
 export interface Repository {
@@ -45,6 +61,11 @@ export interface Repository {
   deleteTheme(projectId: string, key: string): Promise<void>
 
   listIssues(projectId: string): Promise<Issue[]>
+  /**
+   * Tichete cu scadență din TOATE proiectele — singura interogare a aplicației
+   * care taie transversal proiectele. Vezi `DueRange` pentru regula ferestrei.
+   */
+  listDueIssues(range: DueRange): Promise<Issue[]>
   createIssue(input: NewIssue): Promise<Issue>
   updateIssue(id: string, patch: Partial<Issue>): Promise<Issue>
   /** Deletes the issue and any dependency edges referencing it. */

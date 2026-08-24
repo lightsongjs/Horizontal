@@ -67,6 +67,23 @@ export interface Issue {
   assigneeId: string | null
   /** Urgent issues sort left within their layer. Default false. */
   urgent: boolean
+  /**
+   * Scadență, ISO 8601. `null` = tichet fără scadență (cazul normal pentru
+   * munca de proiect). Model-ul ține string, nu `Date`: trece prin
+   * JSON.stringify în localRepository și vine ca string din Supabase, deci un
+   * `Date` ar supraviețui doar până la primul round-trip.
+   */
+  dueAt: string | null
+  /**
+   * Sarcină de zi întreagă. Ora din `dueAt` e atunci convenția „00:00 local" și
+   * nu se afișează niciodată. Fără flag, „mâine" ar sări de zi la schimbarea
+   * fusului sau a orei de vară.
+   */
+  allDay: boolean
+  /** Când sună mementoul, ISO. `null` = fără memento. */
+  remindAt: string | null
+  /** RRULE pentru recurență. Rezervat — motorul vine mai târziu. */
+  rrule: string | null
 }
 
 /** Output of computeLayers: layer depth -> issue ids, ordered within layer. */

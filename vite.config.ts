@@ -11,6 +11,17 @@ export default defineConfig(({ command: _command }) => ({
       // state instead of activating mid-session. src/pwa.ts decides when to
       // apply it (on app open / focus), avoiding reloads while a user edits.
       registerType: 'prompt',
+      // `injectManifest`, nu `generateSW`: avem nevoie de `push` și
+      // `notificationclick`, adică de cod propriu în worker. `src/sw.ts`
+      // reproduce exact ce genera workbox (precache + clientsClaim +
+      // cleanupOutdatedCaches + ascultătorul de SKIP_WAITING) — contractul de
+      // care depinde strategia din src/pwa.ts. Acoperit de `npm run test:upgrade`.
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
+      injectManifest: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+      },
       includeAssets: ['icon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: 'Horizontal',
@@ -28,34 +39,22 @@ export default defineConfig(({ command: _command }) => ({
           { src: 'icon.svg', sizes: 'any', type: 'image/svg+xml' },
         ],
       },
-      workbox: {
-        // No skipWaiting here — the new SW must wait so we can apply it at a
-        // safe moment. clientsClaim lets the activated SW control the page on
-        // reload; cleanupOutdatedCaches purges stale precaches from old builds.
-        clientsClaim: true,
-        cleanupOutdatedCaches: true,
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        runtimeCaching: [
-          {
-            // URL-urile semnate expiră, iar tokenul stă în query string. Azi
-            // nimic nu le-ar prinde oricum (nicio regulă nu se potrivește pe
-            // *.supabase.co), dar o viitoare regulă CacheFirst pe imagini ar
-            // servi URL-uri expirate din cache. Regula asta e documentație în cod.
-            urlPattern: /\/storage\/v1\/object\/sign\//,
-            handler: 'NetworkOnly',
-          },
-          {
-            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: { cacheName: 'google-fonts-cache', expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 } },
-          },
-          {
-            urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: { cacheName: 'gstatic-fonts-cache', expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 } },
-          },
-        ],
-      },
+      // Ce s-a pierdut trecând de la `generateSW` la `injectManifest`, și de ce
+      // nu contează:
+      //
+      //  • `clientsClaim` / `cleanupOutdatedCaches` / absența lui skipWaiting —
+      //    scrise explicit în `src/sw.ts`, fiindcă de ele depinde strategia de
+      //    update din `src/pwa.ts`.
+      //  • regulile de `runtimeCaching` pentru fonturile Google — nu mai sunt
+      //    generate. Fonturile continuă să funcționeze: erau prinse la prima
+      //    cerere, nu precache-uite, iar browserul le ține oricum în HTTP cache.
+      //  • regula `NetworkOnly` pe URL-urile semnate din Supabase Storage era
+      //    documentație în cod: nicio regulă nu se potrivea pe *.supabase.co,
+      //    deci nu se cachea nimic. Fără reguli de runtime, nici nu se poate.
+      //
+      // Blocul `workbox: { ... }` a fost ȘTERS în loc de comentat: cu
+      // `injectManifest` nu se aplică, iar configurație moartă care arată vie e
+      // mai rea decât o notă.
     }),
   ],
   define: {

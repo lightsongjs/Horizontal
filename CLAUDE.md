@@ -69,6 +69,65 @@ const supabase = createClient(
 3. Promovează-ți propriul cont la admin: `node scripts/set-admin.mjs <email>`.
 4. (Opțional) Verifică izolarea RLS: `node scripts/test-rls.mjs` după ce ai creat conturile de test.
 
+## Mod To-Do — ce e și ce cere ca setup
+
+Pe lângă proiecte cu layere și valuri, aplicația e și listă de sarcini: un tichet
+poate avea **scadență** (`due_at`, `all_day`, `remind_at`), iar listele
+inteligente **Azi / Mâine / Next 7 days** taie transversal toate proiectele.
+Decizii și de-ce-uri: `docs/superpowers/brainstorm/2026-08-24-mod-todo.md`.
+Mockup vizual: `prototype-todo.html`.
+
+**Nu există Inbox.** Fiecare sarcină are un proiect; quick add poartă un selector
+care ține minte ultima alegere (`horizontal:last-task-project`).
+
+Cod: `src/lib/schedule.ts` (bucketizare pe zile locale, restanțe, sortare),
+`src/lib/parseDue.ts` (data din titlu, RO+EN), `src/lib/pushPayload.ts`
+(contractul cu service worker-ul). Toate trei sunt pure și au fixtures — la fel
+ca `engine.ts`. Nu pune logică de dată în componente.
+
+### Pașii de setup pentru scadențe
+
+```bash
+npm run migrate supabase/migration-todo.sql
+```
+
+### Pașii de setup pentru notificări (web push)
+
+Merg făcuți în ordine; până la pasul 4, comutatorul din lista „Azi" raportează
+onest că nu se poate.
+
+1. `npm run migrate supabase/migration-push.sql`
+2. `npm run vapid` → pune cheia publică în `.env` ca `VITE_VAPID_PUBLIC_KEY`.
+3. `supabase functions deploy send-reminders` și apoi
+   `supabase secrets set VAPID_PUBLIC_KEY=... VAPID_PRIVATE_KEY=... VAPID_SUBJECT=mailto:tu@exemplu.ro`
+4. În SQL editor, o dată, pentru ca pg_cron să poată chema funcția:
+   `select vault.create_secret('https://<ref>.supabase.co', 'project_url');`
+   `select vault.create_secret('<SERVICE_ROLE_KEY>', 'service_role_key');`
+5. `npm run migrate supabase/migration-cron.sql` (dacă `pg_cron`/`pg_net` nu sunt
+   activate, activează-le din Dashboard → Database → Extensions).
+6. Pe iPhone: **adaugă aplicația pe ecranul de start**, altfel Push API nu există
+   deloc. Permisiunea se cere din butonul „Activează" — niciodată la pornire.
+
+Verificare: `select status, return_message, start_time from cron.job_run_details
+where jobname = 'send-reminders' order by start_time desc limit 10;`
+
+### Service worker-ul e scris de mână
+
+`src/sw.ts` + `strategies: 'injectManifest'`, pentru `push` și
+`notificationclick`. El reproduce explicit contractul de care depinde strategia
+de update din `src/pwa.ts` (precache, `clientsClaim`, **fără** `skipWaiting` la
+instalare, ascultător de `SKIP_WAITING`).
+
+> **După orice modificare în `src/sw.ts`, `src/pwa.ts` sau blocul VitePWA din
+> `vite.config.ts`: `npm run test:upgrade`.** Testul acela e singurul care prinde
+> clasa de bug „userul rămâne pe buildul vechi și trebuie să dea refresh".
+
+Butoanele notificării („Gata", „Amână 10 min") NU lovesc `functions/api`: acela
+cere `X-API-Key`, iar un service worker livrat browserului nu poate ține un
+secret. Workerul trimite un mesaj paginii, iar pagina face mutația cu drepturile
+utilizatorului (vezi ascultătorul din `App.tsx`). Fără nicio filă deschisă,
+workerul deschide tichetul — o atingere în loc de zero, dar onest.
+
 ## ticket-kit — sync (repo git separat)
 
 `ticket-kit/` are **propriul `.git`** (remote `github.com/lightsongjs/horizontal-ticket-kit`),

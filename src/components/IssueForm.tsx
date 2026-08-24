@@ -4,6 +4,10 @@ import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { useCanWrite } from '../hooks'
 import { ticketUrl } from '../lib/deepLink'
+import {
+  NO_SCHEDULE, defaultReminder, fromInputs, reminderAt, reminderKindOf, toDateInput, toTimeInput,
+  type ReminderKind,
+} from '../lib/schedule'
 import { Attachments } from './Attachments'
 import type { Issue, ScenarioKind, TestScenario } from '../lib/types'
 
@@ -212,6 +216,23 @@ export function IssueForm({ issueId }: { issueId?: string }) {
   const [scenarios, setScenarios] = useState<TestScenario[]>(existing?.scenarios ?? [])
   const [notes, setNotes] = useState(existing?.notes ?? '')
   const [urgent, setUrgent] = useState(existing?.urgent ?? false)
+  // Scadența trăiește în formular ca cele două valori pe care le scrie userul,
+  // nu ca ISO: inputurile native vorbesc local, iar conversia stă în
+  // `lib/schedule`. Ora goală = toată ziua, deci `allDay` nu are stare proprie.
+  const [dueDate, setDueDate] = useState(existing?.dueAt ? toDateInput(existing.dueAt) : '')
+  const [dueTime, setDueTime] = useState(
+    existing?.dueAt && !existing.allDay ? toTimeInput(existing.dueAt) : '',
+  )
+  const [reminder, setReminder] = useState<ReminderKind>(
+    existing ? reminderKindOf(existing.dueAt, existing.remindAt) : 'none',
+  )
+  // Mementoul implicit urmează forma scadenței cât timp userul nu l-a atins.
+  const [reminderTouched, setReminderTouched] = useState(false)
+  const schedule = (() => {
+    const { dueAt, allDay } = fromInputs(dueDate, dueTime)
+    const kind = reminderTouched ? reminder : defaultReminder(allDay)
+    return { dueAt, allDay, remindAt: reminderAt(dueAt, kind), kind }
+  })()
 
   const [showNewTheme, setShowNewTheme] = useState(false)
   const [newThemeName, setNewThemeName] = useState('')
@@ -274,9 +295,12 @@ export function IssueForm({ issueId }: { issueId?: string }) {
       JSON.stringify(selectors) !== JSON.stringify(existing?.selectors ?? []) ||
       JSON.stringify(scenarios) !== JSON.stringify(existing?.scenarios ?? []) ||
       notes !== (existing?.notes ?? '') ||
-      urgent !== (existing?.urgent ?? false)
+      urgent !== (existing?.urgent ?? false) ||
+      schedule.dueAt !== (existing?.dueAt ?? null) ||
+      schedule.remindAt !== (existing?.remindAt ?? null)
     : title.trim() !== '' || desc.trim() !== '' || deps.length > 0 || blocks.length > 0 ||
-      selectors.length > 0 || scenarios.length > 0 || notes.trim() !== '' || urgent
+      selectors.length > 0 || scenarios.length > 0 || notes.trim() !== '' || urgent ||
+      schedule.dueAt !== null
 
   useEffect(() => {
     if (isDirty) {
@@ -398,7 +422,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
     const prospective: Issue[] = issues.map((i) => ({ ...i, deps: [...(i.deps ?? [])] }))
     let target = prospective.find((i) => i.id === targetId)
     if (!target) {
-      target = { id: targetId, projectId: project.id, title, desc: '', theme, wave, deps: [], done: false, selectors: [], scenarios: [], notes: '', assigneeId: null, urgent: false }
+      target = { id: targetId, projectId: project.id, title, desc: '', theme, wave, deps: [], done: false, selectors: [], scenarios: [], notes: '', assigneeId: null, urgent: false, ...NO_SCHEDULE }
       prospective.push(target)
     }
     target.deps = [...deps.filter((d) => !d.startsWith('__draft_'))]
@@ -435,7 +459,10 @@ export function IssueForm({ issueId }: { issueId?: string }) {
         }
       }
       const realDeps = deps.map((id) => draftDepMap[id] ?? (id.startsWith('__draft_') ? null : id)).filter(Boolean) as string[]
-      const qaPayload = { selectors: selectors.filter(Boolean), scenarios, notes: notes.trim(), assigneeId, urgent }
+      const qaPayload = {
+        selectors: selectors.filter(Boolean), scenarios, notes: notes.trim(), assigneeId, urgent,
+        dueAt: schedule.dueAt, allDay: schedule.allDay, remindAt: schedule.remindAt,
+      }
       const targetId = isEdit
         ? (await updateIssue(existing!.id, { title: title.trim(), desc: desc.trim(), theme, wave, deps: realDeps, ...qaPayload }), existing!.id)
         : (await createIssue({ projectId: project.id, title: title.trim(), desc: desc.trim(), theme, wave, deps: realDeps, ...qaPayload })).id
@@ -460,7 +487,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
         return i
       })
       if (!snap.find((i) => i.id === targetId)) {
-        snap = [...snap, { id: targetId, projectId: project.id, title: title.trim(), desc: desc.trim(), theme, wave, deps: realDeps, done: false, selectors: selectors.filter(Boolean), scenarios, notes: notes.trim(), assigneeId, urgent }]
+        snap = [...snap, { id: targetId, projectId: project.id, title: title.trim(), desc: desc.trim(), theme, wave, deps: realDeps, done: false, selectors: selectors.filter(Boolean), scenarios, notes: notes.trim(), assigneeId, urgent, dueAt: schedule.dueAt, allDay: schedule.allDay, remindAt: schedule.remindAt, rrule: null }]
       }
       const cascadeQueue = [...realDeps]
       const cascadeSeen = new Set<string>()
@@ -665,6 +692,69 @@ export function IssueForm({ issueId }: { issueId?: string }) {
                   {showAssigneeInline ? '×' : '+'}
                 </button>
               </div>
+            </div>
+
+            <div className="meta-vsep" />
+
+            <div className="meta-col meta-col-due">
+              <span className="meta-row-label">Scadență</span>
+              <div className="due-inputs">
+                <input
+                  tabIndex={-1}
+                  type="date"
+                  className="due-input due-input-date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  aria-label="Data scadenței"
+                />
+                <input
+                  tabIndex={-1}
+                  type="time"
+                  className="due-input due-input-time"
+                  value={dueTime}
+                  onChange={(e) => setDueTime(e.target.value)}
+                  disabled={!dueDate}
+                  placeholder="--:--"
+                  aria-label="Ora scadenței"
+                  title={dueDate ? 'Lasă gol pentru toată ziua' : 'Alege întâi o zi'}
+                />
+                {dueDate && (
+                  <button
+                    tabIndex={-1}
+                    type="button"
+                    className="due-clear"
+                    onClick={() => { setDueDate(''); setDueTime(''); setReminderTouched(false) }}
+                    title="Scoate scadența"
+                    aria-label="Scoate scadența"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+              {/* Mementoul apare numai când are ce să însemne. Pentru o sarcină de
+                  zi întreagă ar suna la miezul nopții, deci acolo tace și treaba
+                  o face rezumatul de dimineață. */}
+              {dueDate && dueTime && (
+                <div className="pills-row due-reminder">
+                  {([
+                    ['due', 'la oră'],
+                    ['m30', '−30m'],
+                    ['d1', '−1 zi'],
+                    ['none', 'fără'],
+                  ] as const).map(([kind, label]) => (
+                    <button
+                      key={kind}
+                      tabIndex={-1}
+                      type="button"
+                      className={`if-meta-pill reminder-pill ${schedule.kind === kind ? 'active' : ''}`}
+                      onClick={() => { setReminder(kind); setReminderTouched(true) }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {dueDate && !dueTime && <span className="due-hint">toată ziua</span>}
             </div>
 
             <div className="meta-vsep" />
