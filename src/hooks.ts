@@ -4,21 +4,50 @@ import { useUI } from './ui'
 import { useAuth } from './auth'
 import { getRelatedIds } from './lib/treeTraversal'
 import { buildOrderedLayers, type OrderedLayer } from './lib/ordering'
+import type { Project } from './lib/types'
 
 const HIDE_DONE_KEY = 'horizontal:hide-done'
 
 /**
- * Whether the signed-in user may mutate the currently selected project.
+ * Whether the signed-in user may mutate a GIVEN project.
  * Admins can always write; a member can write only projects where their role
  * is 'write'. Read-only members (role 'read') see the project but cannot edit.
+ *
+ * Pe id, nu pe proiectul deschis: o sarcină din listele inteligente poate
+ * aparține oricărui proiect, iar în listă nu e deschis niciunul — evaluat pe
+ * proiectul curent, dreptul de scriere ar fi ieșit mereu fals.
  *
  * This is UX gating ONLY — the real boundary is Supabase RLS + the edge
  * function. Hiding a button never guarantees the mutation is refused server-side.
  */
+export function useCanWriteIn(projectId: string | null): boolean {
+  const { enabled, isAdmin, access } = useAuth()
+  // Fără autentificare configurată nu există utilizator de restrâns: modul
+  // local seeded, fără credențiale, e al tău în întregime. Altfel `isAdmin` e
+  // fals și `access` gol, deci dezvoltarea locală ar fi read-only — adică
+  // exact opusul a ce e modul ăla bun.
+  if (!enabled) return true
+  return isAdmin || (projectId ? access[projectId] === 'write' : false)
+}
+
+/** Dreptul de scriere în proiectul deschis. */
 export function useCanWrite(): boolean {
-  const { isAdmin, access } = useAuth()
   const { project } = useHorizontal()
-  return isAdmin || (project ? access[project.id] === 'write' : false)
+  return useCanWriteIn(project?.id ?? null)
+}
+
+/**
+ * Proiectele în care utilizatorul poate crea. Sursa selectorului din quick add:
+ * fără Inbox, fiecare sarcină are un proiect, deci lista de acolo n-are voie să
+ * ofere unul în care salvarea ar fi respinsă de RLS.
+ */
+export function useWritableProjects(): Project[] {
+  const { enabled, isAdmin, access } = useAuth()
+  const { projects } = useHorizontal()
+  return useMemo(() => {
+    if (!enabled || isAdmin) return projects
+    return projects.filter((p) => access[p.id] === 'write')
+  }, [enabled, isAdmin, access, projects])
 }
 
 /** True when a keyboard shortcut should be ignored: focus is in a text field,
