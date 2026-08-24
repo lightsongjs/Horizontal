@@ -3918,6 +3918,26 @@ svg.graph {
 .due-pick:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
 .due-pick:disabled { opacity: 0.4; cursor: not-allowed; }
 .due-hint.warn { color: var(--active); font-style: normal; font-weight: 600; }
+
+/* Scadența dedusă din titlu: jetonul spune de unde vine, iar cele două butoane
+   sunt ieșirile. O recunoaștere pe care n-o poți contrazice devine dușman la
+   primul „Întâlnire la Podul 5". */
+.due-from-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.due-clean-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--txt-faint);
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+}
+.due-clean-title:hover { color: var(--accent); }
 .due-input-time { flex: 0 0 62px; text-align: center; letter-spacing: 0.02em; }
 .due-input-time::placeholder { color: var(--txt-faint); font-weight: 500; letter-spacing: 0; }
 /* Fără dată, ora nu poate însemna nimic — inertă, nu ascunsă, ca rândul să nu

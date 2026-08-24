@@ -4,6 +4,7 @@ import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { useCanWrite } from '../hooks'
 import { ticketUrl } from '../lib/deepLink'
+import { parseDue } from '../lib/parseDue'
 import {
   DATE_PLACEHOLDER, NO_SCHEDULE, TIME_PLACEHOLDER, defaultReminder, displayFromInputDate,
   fromDisplayDate, fromInputs, fromTimeText, maskDateInput, maskTimeInput, reminderAt,
@@ -236,6 +237,21 @@ export function IssueForm({ issueId }: { issueId?: string }) {
   const dueTime = fromTimeText(timeText) ?? ''
   const timeIncomplete = timeText.trim() !== '' && dueTime === ''
   const nativeTimeRef = useRef<HTMLInputElement>(null)
+  /**
+   * Scadența e „a utilizatorului": a fost pusă din câmpuri, nu dedusă din titlu.
+   * Cât e adevărat, titlul NU o mai atinge — altfel o dată aleasă din calendar
+   * ar fi ștearsă de un cuvânt scris o secundă mai târziu în titlu.
+   *
+   * Un tichet care ARE deja scadență pornește așa: la editare, titlul existent
+   * n-are voie să rescrie o dată pusă cândva anume.
+   */
+  const [dueOwned, setDueOwned] = useState(!!existing?.dueAt)
+  /** Utilizatorul a spus „nu e o dată". Se oprește recunoașterea din titlu. */
+  const [titleDateRefused, setTitleDateRefused] = useState(false)
+  /** Ce am scris noi din titlu, ca să știm ce avem dreptul să retragem. */
+  const autoFilled = useRef<{ date: string; time: string } | null>(null)
+  /** Fragmentele recunoscute în titlu, pentru butonul „curăță titlul". */
+  const [titleSpans, setTitleSpans] = useState<[number, number][]>([])
   const [reminder, setReminder] = useState<ReminderKind>(
     existing ? reminderKindOf(existing.dueAt, existing.remindAt) : 'none',
   )
@@ -294,6 +310,78 @@ export function IssueForm({ issueId }: { issueId?: string }) {
       titleInputRef.current.scrollLeft = 0
     }
   }, [])
+
+  /**
+   * Recunoașterea datei din titlu — partea care lipsea: până acum `parseDue`
+   * era legat numai la rândul de adăugare rapidă din listele de sarcini, deci
+   * un tichet deschis din formular nu-și completa niciodată scadența.
+   *
+   * Completează câmpurile pe măsură ce se scrie, dar NU umblă la titlu: aici,
+   * spre deosebire de adăugarea rapidă, utilizatorul vede textul și cursorul în
+   * el, iar o tăietură automată la fiecare tastă ar muta cursorul sub degete.
+   * Curățarea titlului e un buton, nu un reflex.
+   *
+   * NUMAI la tichete noi. La editare, o retușare de titlu n-are voie să schimbe
+   * planificarea: „fix login at 500 errors" ar fi pus în silență o scadență la
+   * 05:00 pe un tichet care exista de luni. Recunoașterea e o scurtătură de
+   * scris, nu un rescriitor de tichete — iar la editare câmpul de dată e la
+   * două degete distanță.
+   */
+  useEffect(() => {
+    if (isEdit || dueOwned || titleDateRefused || !canWrite) return
+    const parsed = parseDue(title)
+    if (parsed.dueAt) {
+      const date = toDisplayDate(parsed.dueAt)
+      const time = parsed.allDay ? '' : toTimeInput(parsed.dueAt)
+      autoFilled.current = { date, time }
+      setDueText(date)
+      setTimeText(time)
+      setTitleSpans(parsed.spans)
+      return
+    }
+    // Titlul nu mai conține o dată. Retragem numai ce am pus noi: o valoare
+    // scrisă de om are `dueOwned`, deci nu ajunge niciodată aici.
+    const auto = autoFilled.current
+    if (auto && dueText === auto.date && timeText === auto.time) {
+      setDueText('')
+      setTimeText('')
+    }
+    autoFilled.current = null
+    setTitleSpans([])
+    // `dueText`/`timeText` se citesc din randarea curentă, dar NU sunt
+    // dependențe: efectul trebuie să reacționeze la titlu, nu la propriile
+    // scrieri, altfel se învârte.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [title, isEdit, dueOwned, titleDateRefused, canWrite])
+
+  /** Scoate din titlu fragmentele care au devenit scadență. */
+  const cleanTitleFromDate = () => {
+    let next = title
+    for (let i = titleSpans.length - 1; i >= 0; i--) {
+      next = next.slice(0, titleSpans[i][0]) + next.slice(titleSpans[i][1])
+    }
+    next = next.replace(/\s{2,}/g, ' ').trim().replace(/^[,–-]\s*|[,–-]\s*$/g, '').trim()
+    // Uităm ce am completat, NU marcăm scadența ca a utilizatorului. Uitarea e
+    // de ajuns ca efectul să nu retragă valorile când titlul rămâne fără dată —
+    // iar dacă omul scrie mai târziu o altă dată în titlu, ea se aplică. Un
+    // `dueOwned = true` aici ar fi omorât recunoașterea pentru tot restul
+    // cardului, după o singură curățare.
+    autoFilled.current = null
+    setTitleSpans([])
+    setTitle(next)
+  }
+
+  /** „Nu e o dată." Retrage ce am completat și tace până la închiderea cardului. */
+  const refuseTitleDate = () => {
+    const auto = autoFilled.current
+    if (auto && dueText === auto.date && timeText === auto.time) {
+      setDueText('')
+      setTimeText('')
+    }
+    autoFilled.current = null
+    setTitleSpans([])
+    setTitleDateRefused(true)
+  }
 
   const isDirty = isEdit
     ? title !== (existing?.title ?? '') ||
@@ -736,7 +824,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
                     inputMode="numeric"
                     className={`due-input due-input-date ${dueIncomplete ? 'incomplete' : ''}`}
                     value={dueText}
-                    onChange={(e) => setDueText(maskDateInput(e.target.value))}
+                    onChange={(e) => { setDueOwned(true); setDueText(maskDateInput(e.target.value)) }}
                     placeholder={DATE_PLACEHOLDER}
                     maxLength={10}
                     aria-label="Data scadenței, zi-lună-an"
@@ -782,7 +870,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
                     inputMode="numeric"
                     className={`due-input due-input-time ${timeIncomplete ? 'incomplete' : ''}`}
                     value={timeText}
-                    onChange={(e) => setTimeText(maskTimeInput(e.target.value))}
+                    onChange={(e) => { setDueOwned(true); setTimeText(maskTimeInput(e.target.value)) }}
                     disabled={!dueDate}
                     placeholder={TIME_PLACEHOLDER}
                     maxLength={5}
@@ -823,7 +911,11 @@ export function IssueForm({ issueId }: { issueId?: string }) {
                       tabIndex={-1}
                       type="button"
                       className="due-clear"
-                      onClick={() => { setDueText(''); setTimeText(''); setReminderTouched(false) }}
+                      onClick={() => {
+                      setDueText(''); setTimeText(''); setReminderTouched(false)
+                      // Golirea redă titlului dreptul de a propune o dată.
+                      setDueOwned(false); autoFilled.current = null; setTitleSpans([])
+                    }}
                       title="Scoate scadența"
                       aria-label="Scoate scadența"
                     >
@@ -854,7 +946,36 @@ export function IssueForm({ issueId }: { issueId?: string }) {
                     ))}
                   </div>
                 )}
-                {(dueIncomplete || timeIncomplete) && (
+                {/* Semnalul că scadența a venit din titlu, cu cele două ieșiri:
+                  curăță textul rămas în titlu, sau refuză de tot. Fără ele,
+                  recunoașterea ar fi o ghicire pe care n-o poți contrazice. */}
+              {titleSpans.length > 0 && !dueOwned && !isEdit && (
+                <span className="due-from-title">
+                  <span className="chip date">
+                    <span className="chip-ico" aria-hidden="true">✦</span> din titlu
+                    <button
+                      tabIndex={-1}
+                      type="button"
+                      className="chip-x"
+                      title="Nu e o dată — lasă titlul în pace"
+                      aria-label="Refuză data din titlu"
+                      onClick={refuseTitleDate}
+                    >
+                      ✕
+                    </button>
+                  </span>
+                  <button
+                    tabIndex={-1}
+                    type="button"
+                    className="due-clean-title"
+                    title="Scoate textul datei din titlu"
+                    onClick={cleanTitleFromDate}
+                  >
+                    curăță titlul
+                  </button>
+                </span>
+              )}
+              {(dueIncomplete || timeIncomplete) && (
                   <span className="due-hint warn">{dueIncomplete ? 'zi-lună-an' : 'oră 0–23'}</span>
                 )}
                 {dueDate && !dueTime && <span className="due-hint">toată ziua</span>}
