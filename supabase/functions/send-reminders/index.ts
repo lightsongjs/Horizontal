@@ -41,8 +41,14 @@ Deno.serve(async (req) => {
 
   const publicKey = Deno.env.get('VAPID_PUBLIC_KEY')
   const privateKey = Deno.env.get('VAPID_PRIVATE_KEY')
-  const subject = Deno.env.get('VAPID_SUBJECT') ?? 'mailto:admin@example.com'
+  // Fără valoare de rezervă, deliberat. Un `?? 'mailto:admin@example.com'` ar
+  // trece validarea din `web-push` și ar ascunde un secret nesetat: notificările
+  // ar pleca cu un contact fals, iar pe iPhone Apple poate răspunde
+  // `403 BadJwtToken` — un eșec care arată ca o problemă de dispozitiv, nu de
+  // configurare. RFC 8292 §2.1 cere `mailto:` sau `https:`.
+  const subject = Deno.env.get('VAPID_SUBJECT')
   if (!publicKey || !privateKey) return json({ error: 'VAPID keys missing' }, 500)
+  if (!subject) return json({ error: 'VAPID_SUBJECT missing' }, 500)
   webpush.setVapidDetails(subject, publicKey, privateKey)
 
   const db = createClient(

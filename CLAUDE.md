@@ -108,8 +108,24 @@ onest că nu se poate.
 6. Pe iPhone: **adaugă aplicația pe ecranul de start**, altfel Push API nu există
    deloc. Permisiunea se cere din butonul „Activează" — niciodată la pornire.
 
-Verificare: `select status, return_message, start_time from cron.job_run_details
-where jobname = 'send-reminders' order by start_time desc limit 10;`
+Verificare, în două locuri — și al doilea e cel care contează:
+
+```sql
+-- 1. A pornit cronul? (`job_run_details` n-are `jobname` — join pe `jobid`)
+select d.status, d.return_message, d.start_time
+from cron.job_run_details d join cron.job j using (jobid)
+where j.jobname = 'send-reminders' order by d.start_time desc limit 10;
+
+-- 2. Ce a răspuns funcția? `succeeded` mai sus înseamnă doar „cererea a intrat
+--    în coadă": pg_net e asincron. Aici se vede dacă s-a trimis ceva.
+select status_code, content, created from net._http_response
+order by created desc limit 5;   -- se păstrează ~6h (pg_net.ttl)
+```
+
+Un `{"reminders":1,"sent":0}` înseamnă „am găsit mementoul, dar niciun dispozitiv
+nu e abonat" — și tichetul se marchează oricum ca trimis, deliberat (vezi
+comentariul din funcție). Deci **abonează-te din browser înainte** de a testa cu
+un memento la care ții.
 
 ### Service worker-ul e scris de mână
 

@@ -27,4 +27,15 @@ select cron.schedule('send-reminders', '* * * * *', $$
 $$);
 
 -- Verificare:  select jobname, schedule, active from cron.job;
--- Istoric:     select status, return_message, start_time from cron.job_run_details where jobname = 'send-reminders' order by start_time desc limit 10;
+--
+-- Istoric: `cron.job_run_details` NU are coloana `jobname` (pg_cron 1.4+), deci
+-- filtrarea cere un join pe `jobid`:
+--   select d.status, d.return_message, d.start_time
+--   from cron.job_run_details d join cron.job j using (jobid)
+--   where j.jobname = 'send-reminders' order by d.start_time desc limit 10;
+--
+-- Dar `status = 'succeeded'` aici înseamnă doar că `net.http_post` a fost PUS ÎN
+-- COADĂ — pg_net e asincron, cererea pleacă după commit. Răspunsul real al
+-- funcției edge e altundeva, și numai el spune dacă s-a trimis ceva:
+--   select status_code, content, created from net._http_response
+--   order by created desc limit 5;   -- se păstrează ~6h (pg_net.ttl)
