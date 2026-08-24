@@ -80,6 +80,14 @@ Mockup vizual: `prototype-todo.html`.
 **Nu există Inbox.** Fiecare sarcină are un proiect; quick add poartă un selector
 care ține minte ultima alegere (`horizontal:last-task-project`).
 
+Scadența se vede și în **modul proiecte**, pe card („Ordine") și pe rând
+(„Listă"): `src/components/DueChip.tsx` — ziua, ora **doar dacă** are una,
+clopoțelul **doar dacă** are memento, roșu dacă e restanță. Un tichet fără
+scadență nu arată nimic: acolo absența e informația, iar în modul proiecte
+scadența e excepția. (În listele inteligente e invers, de asta `TaskRow` arată
+un „—" în coloana de oră.) Clopoțelul e exportat din `DueChip` și folosit de
+ambele, ca „are memento" să arate identic în cele două moduri.
+
 Cod: `src/lib/schedule.ts` (bucketizare pe zile locale, restanțe, sortare),
 `src/lib/parseDue.ts` (data din titlu, RO+EN), `src/lib/pushPayload.ts`
 (contractul cu service worker-ul). Toate trei sunt pure și au fixtures — la fel

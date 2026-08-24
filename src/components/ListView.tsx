@@ -6,6 +6,7 @@ import { WaveActionsBar } from './WaveActionsBar'
 import { BulkBar } from './BulkBar'
 import { useHideDone, useOrderedLayers, useWaveActions, useVimNav, useCanWrite } from '../hooks'
 import { LAYER_COLORS } from '../lib/layerColors'
+import { DueChip } from './DueChip'
 
 export function ListView() {
   const { waves, activeWave, byId, stateOf, themeOf, toggleDone } = useHorizontal()
@@ -104,7 +105,11 @@ export function ListView() {
                   {theme && <span className="theme-dot" style={{ background: theme.color }} />}
                   <span className="list-id">{id}</span>
                   <span className="list-title">{it.title}</span>
-                  {it.urgent && <span className="tk-urgent" title="Urgent">⚡</span>}
+                  {/* Coada rândului: aceeași ordine ca `.t-tail` din TaskRow. */}
+                  <span className="row-tail">
+                    {it.urgent && <span className="tk-urgent" title="Urgent">⚡</span>}
+                    <DueChip issue={it} />
+                  </span>
                 </button>
               )
             })}

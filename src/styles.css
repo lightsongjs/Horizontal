@@ -693,6 +693,45 @@ main {
   border: 1px solid var(--line);
 }
 
+/* ── scadența pe un tichet din modul proiecte ──────────────────────
+   Aceleași metrici ca ora din listele inteligente (`.t-time`): ziua e mono,
+   ora e îngroșată, restanța e roșie. Clopoțelul (`.t-bell`) e componenta
+   comună cu TaskRow — „are memento" arată la fel în ambele moduri. */
+.due-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--txt-dim);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+.due-chip .dc-time { color: var(--txt); font-weight: 700; }
+.due-chip.late {
+  color: var(--blocked);
+  background: var(--blocked-soft);
+  border-color: #ff6b6b44;
+}
+.due-chip.late .dc-time { color: var(--blocked); }
+.due-chip .t-bell { color: var(--active); }
+/* Într-un rând de listă scadența stă la capăt, lângă fulgerul de urgent. */
+.row-tail {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+.list-row .row-tail .tk-urgent { margin-left: 0; }
+/* Pe card, chipul se lipește la dreapta lui `.tk-sub`, după dependențe. */
+.tk-sub .due-chip { margin-left: auto; }
+
 /* WAVE SELECTOR */
 .wave-sel {
   display: flex;
