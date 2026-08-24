@@ -104,19 +104,40 @@ export function parseDue(raw: string, now: Date = new Date()): ParsedDue {
     }
   }
 
-  // ── oră: „la 14:00", „la 14", „ora 9", „9:30", „9am", „at 5pm"
+  // ── oră militară lipită: „at 1500", „la 0830", „ora 900".
+  //
+  // Se încearcă ÎNAINTE de forma cu două puncte: aceea nu poate prinde „1500"
+  // oricum (`\b` nu există între cifre), deci ordinea nu ia nimic de la ea.
+  //
+  // Prefixul `la|ora|at` e OBLIGATORIU aici, spre deosebire de „14:30" care se
+  // recunoaște singur: patru cifre lipite sunt de obicei o cantitate, nu o oră.
+  // „cumpără 1500 de șuruburi" n-are voie să devină o scadență.
+  m = hay.match(/\b(?:la|ora|at)\s*(\d{3,4})\b/)
+  if (m) {
+    const digits = m[1]
+    const h = Number(digits.length === 4 ? digits.slice(0, 2) : digits.slice(0, 1))
+    const min = Number(digits.slice(-2))
+    // Validarea e ce ține „at 2500" în afara scadențelor.
+    if (h < 24 && min < 60) { time = [h, min]; hit(m) }
+  }
+
+  // ── oră cu separator sau cu am/pm: „la 14:00", „la 14", „ora 9", „9:30",
+  //    „9am", „at 5pm", „at 8 am".
+  //
   // `(?:\s*(am|pm))?` și nu `\s*(am|pm)?`: al doilea consumă spațiul de după oră
   // chiar și când nu urmează am/pm, iar span-ul ar evidenția un caracter în plus.
-  m = hay.match(/\b(?:la|ora|at)\s*(\d{1,2})(?::(\d{2}))?(?:\s*(am|pm))?\b/)
-    ?? hay.match(/\b(\d{1,2}):(\d{2})\b/)
-    ?? hay.match(/\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/)
-  if (m) {
-    let h = Number(m[1])
-    const min = m[2] ? Number(m[2]) : 0
-    const ap = m[3]
-    if (ap === 'pm' && h < 12) h += 12
-    if (ap === 'am' && h === 12) h = 0
-    if (h <= 24 && min < 60) { time = [h % 24, min]; hit(m) }
+  if (!time) {
+    m = hay.match(/\b(?:la|ora|at)\s*(\d{1,2})(?::(\d{2}))?(?:\s*(am|pm))?\b/)
+      ?? hay.match(/\b(\d{1,2}):(\d{2})\b/)
+      ?? hay.match(/\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/)
+    if (m) {
+      let h = Number(m[1])
+      const min = m[2] ? Number(m[2]) : 0
+      const ap = m[3]
+      if (ap === 'pm' && h < 12) h += 12
+      if (ap === 'am' && h === 12) h = 0
+      if (h <= 24 && min < 60) { time = [h % 24, min]; hit(m) }
+    }
   }
 
   if (spans.length === 0) {

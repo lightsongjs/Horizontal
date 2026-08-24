@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   NO_SCHEDULE, buildSmartLists, compareDue, dayOffset, defaultReminder, fromInputs, isOverdue,
   reminderAt, reminderKindOf, smartListRange, startOfLocalDay, toDateInput, toTimeInput,
+  toDisplayDate, fromDisplayDate, maskDateInput, displayFromInputDate,
+  maskTimeInput, fromTimeText,
 } from './schedule'
 import type { Issue } from './types'
 
@@ -158,5 +160,80 @@ describe('memento', () => {
 
   it('fără scadență nu există memento', () => {
     expect(reminderAt(null, 'due')).toBeNull()
+  })
+})
+
+describe('data în forma zz-ll-aaaa', () => {
+  it('dus-întors', () => {
+    const iso = new Date(2026, 7, 24, 15, 0).toISOString()
+    expect(toDisplayDate(iso)).toBe('24-08-2026')
+    expect(fromDisplayDate('24-08-2026')).toBe('2026-08-24')
+    expect(displayFromInputDate('2026-08-24')).toBe('24-08-2026')
+  })
+
+  it('o dată incompletă nu e o dată', () => {
+    for (const bad of ['', '24', '24-08', '24-08-20', 'zz-ll-aaaa', '2026-08-24']) {
+      expect(fromDisplayDate(bad)).toBeNull()
+    }
+  })
+
+  it('respinge datele care nu există în calendar', () => {
+    // Aici greșește o verificare naivă: JS mută 31 februarie pe 3 martie fără să
+    // se plângă, deci „acceptat" ar însemna „salvat cu altă zi".
+    expect(fromDisplayDate('31-02-2026')).toBeNull()
+    expect(fromDisplayDate('32-01-2026')).toBeNull()
+    expect(fromDisplayDate('01-13-2026')).toBeNull()
+    // 2028 e bisect, 2026 nu.
+    expect(fromDisplayDate('29-02-2026')).toBeNull()
+    expect(fromDisplayDate('29-02-2028')).toBe('2028-02-29')
+  })
+
+  it('masca pune cratimele și taie ce nu e cifră', () => {
+    expect(maskDateInput('2')).toBe('2')
+    expect(maskDateInput('24')).toBe('24-')
+    expect(maskDateInput('2408')).toBe('24-08-')
+    expect(maskDateInput('24082026')).toBe('24-08-2026')
+    expect(maskDateInput('24-08-2026')).toBe('24-08-2026')
+    expect(maskDateInput('2a4/b08')).toBe('24-08-')
+    // Nu se scurge peste anul de patru cifre.
+    expect(maskDateInput('240820261234')).toBe('24-08-2026')
+  })
+
+  it('nu completează cifrele: primul 1 nu devine 01, altfel ziua 14 e imposibilă', () => {
+    expect(maskDateInput('1')).toBe('1')
+    expect(maskDateInput('14')).toBe('14-')
+  })
+
+  it('ștergerea nu reintroduce cratima peste care ai dat backspace', () => {
+    // Utilizatorul a șters cratima: rămân două cifre, deci masca o pune înapoi —
+    // dar dacă mai șterge o cifră, nu revine.
+    expect(maskDateInput('240')).toBe('24-0')
+    expect(maskDateInput('24')).toBe('24-')
+    expect(maskDateInput('2')).toBe('2')
+  })
+})
+
+describe('ora în forma hh:mm', () => {
+  it('masca pune două puncte și taie ce nu e cifră', () => {
+    expect(maskTimeInput('1')).toBe('1')
+    expect(maskTimeInput('15')).toBe('15:')
+    expect(maskTimeInput('1530')).toBe('15:30')
+    expect(maskTimeInput('15:30')).toBe('15:30')
+    expect(maskTimeInput('15h30m99')).toBe('15:30')
+    expect(maskTimeInput('3 PM')).toBe('3')
+  })
+
+  it('validează 24 de ore, nu 12', () => {
+    expect(fromTimeText('15:30')).toBe('15:30')
+    expect(fromTimeText('9:05')).toBe('09:05')
+    expect(fromTimeText('00:00')).toBe('00:00')
+    expect(fromTimeText('23:59')).toBe('23:59')
+  })
+
+  it('respinge orele care nu există', () => {
+    // 24:00 ar fi ziua următoare — nu-l salvăm ca oră a zilei curente.
+    for (const bad of ['24:00', '25:00', '12:60', '', '15', '15:3', 'hh:mm']) {
+      expect(fromTimeText(bad)).toBeNull()
+    }
   })
 })

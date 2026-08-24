@@ -89,9 +89,48 @@ describe('parseDue — română', () => {
   })
 })
 
+describe('parseDue — oră militară lipită', () => {
+  it('„at 1500" e 15:00, iar titlul rămâne curat', () => {
+    expect(p('Pleca acasa at 1500')).toMatchObject({
+      title: 'Pleca acasa', date: '2026-08-24', time: '15:00',
+    })
+  })
+
+  it('merge la fel cu „la" și cu „ora"', () => {
+    expect(p('Pleca acasa la 1500')).toMatchObject({ title: 'Pleca acasa', time: '15:00' })
+    expect(p('ora 900 ședință')).toMatchObject({ title: 'ședință', time: '09:00' })
+    expect(p('la 0830 alergare')).toMatchObject({ title: 'alergare', time: '08:30' })
+  })
+
+  it('o oră imposibilă nu devine scadență', () => {
+    expect(p('at 2500 ceva')).toMatchObject({ title: 'at 2500 ceva', date: null })
+    expect(p('la 1099 ceva')).toMatchObject({ date: null })
+  })
+
+  it('patru cifre FĂRĂ prefix rămân o cantitate', () => {
+    // Ăsta e motivul pentru care prefixul e obligatoriu la forma lipită.
+    expect(p('cumpără 1500 de șuruburi')).toMatchObject({
+      title: 'cumpără 1500 de șuruburi', date: null,
+    })
+  })
+
+  it('nu strică forma cu două puncte', () => {
+    expect(p('at 15:00 ceva')).toMatchObject({ time: '15:00' })
+  })
+})
+
 describe('parseDue — engleză', () => {
   it('tomorrow 9am', () => {
     expect(p('tomorrow 9am standup')).toMatchObject({ title: 'standup', date: '2026-08-25', time: '09:00' })
+  })
+
+  it('„at 8 am" cu spațiu, și trece pe mâine dacă ora a trecut', () => {
+    // NOW e 08:40, deci 08:00 de azi e trecut.
+    expect(p('at 8 am plimbare')).toMatchObject({
+      title: 'plimbare', date: '2026-08-25', time: '08:00',
+    })
+    // Iar dacă ora e în viitor, rămâne azi.
+    expect(p('at 9 am plimbare')).toMatchObject({ date: '2026-08-24', time: '09:00' })
   })
 
   it('at 5pm', () => {

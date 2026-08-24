@@ -217,3 +217,91 @@ export function reminderKindOf(dueAt: string | null, remindAt: string | null): R
   if (delta === 24 * 60 * 60_000) return 'd1'
   return 'due'
 }
+
+// ── Data în forma zz-ll-aaaa ────────────────────────────────────────────────
+// Un `<input type="date">` nativ își afișează data în formatul BROWSERULUI, iar
+// acela nu se poate impune: nici `lang`, nici CSS, nici un atribut nu-l schimbă.
+// Un browser în engleză arată `mm/dd/yyyy`, ceea ce pentru o dată românească e
+// ambiguu până la periculos — 03-04 e 3 aprilie sau 4 martie?
+//
+// De asta câmpul de dată e un text mascat, iar conversia stă aici.
+
+/** ISO → `zz-ll-aaaa`, în ziua locală. */
+export function toDisplayDate(iso: string): string {
+  const d = new Date(iso)
+  return `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${d.getFullYear()}`
+}
+
+/** Ce scrie în câmpul gol. Literele sunt cele românești: zi, lună, an. */
+export const DATE_PLACEHOLDER = 'zz-ll-aaaa'
+
+/**
+ * `zz-ll-aaaa` → `aaaa-ll-zz` (forma pe care o consumă `fromInputs`), sau null
+ * dacă data nu e completă ori nu există în calendar.
+ *
+ * Validarea e prin dus-întors, nu prin comparat numere: `new Date(2026, 1, 31)`
+ * nu aruncă, se mută liniștit pe 3 martie. Verificăm că ziua ieșită e ziua
+ * cerută — altfel „31-02-2026" ar fi acceptat ca o dată care nu există.
+ */
+export function fromDisplayDate(text: string): string | null {
+  const m = /^(\d{2})-(\d{2})-(\d{4})$/.exec(text.trim())
+  if (!m) return null
+  const [, dd, mm, yyyy] = m
+  const day = Number(dd), month = Number(mm), year = Number(yyyy)
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null
+  const d = new Date(year, month - 1, day)
+  if (d.getDate() !== day || d.getMonth() !== month - 1 || d.getFullYear() !== year) return null
+  return `${yyyy}-${mm}-${dd}`
+}
+
+/**
+ * Ce se vede în câmp după fiecare tastă: cifrele primite, cu cratimele puse
+ * automat. Nimic altceva nu trece — o literă tastată din greșeală nu are ce să
+ * caute într-o dată, iar șase cifre nu pot deveni o dată de patru cifre pe an.
+ *
+ * Nu completează și nu ghicește: `4` rămâne `4`, nu devine `04`. Altfel n-ai
+ * putea scrie ziua 14, fiindcă primul `1` s-ar transforma în `01`.
+ */
+export function maskDateInput(raw: string): string {
+  const digits = raw.replace(/\D/g, '').slice(0, 8)
+  const parts = [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4, 8)].filter((p) => p !== '')
+  // Cratima se pune doar DUPĂ ce grupul e complet, ca ștergerea să funcționeze
+  // firesc: un backspace peste „24-" lasă „24", nu „24-" din nou.
+  let out = parts.join('-')
+  if (digits.length === 2 || digits.length === 4) out += '-'
+  return out
+}
+
+/** `aaaa-ll-zz` (valoarea unui input nativ de dată) → `zz-ll-aaaa`. */
+export function displayFromInputDate(value: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : ''
+}
+
+// ── Ora în forma hh:mm, 24 de ore ───────────────────────────────────────────
+// Același motiv ca la dată: un `<input type="time">` nativ afișează 12 sau 24 de
+// ore după locale-ul browserului. „3:30 PM" într-o interfață românească e la fel
+// de nelalocul lui ca „08/24/2026", și încape mai greu.
+
+export const TIME_PLACEHOLDER = 'hh:mm'
+
+/** Ce se vede în câmp după fiecare tastă. Ca `maskDateInput`: nu ghicește. */
+export function maskTimeInput(raw: string): string {
+  const digits = raw.replace(/\D/g, '').slice(0, 4)
+  if (digits.length <= 2) return digits.length === 2 ? `${digits}:` : digits
+  return `${digits.slice(0, 2)}:${digits.slice(2)}`
+}
+
+/**
+ * `hh:mm` → aceeași valoare normalizată, sau null dacă nu e o oră.
+ *
+ * `24:00` e respins: o zi are orele 0–23, iar „24:00" ar fi de fapt ziua
+ * următoare — exact confuzia pe care nu vrem s-o salvăm.
+ */
+export function fromTimeText(text: string): string | null {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(text.trim())
+  if (!m) return null
+  const h = Number(m[1]), min = Number(m[2])
+  if (h > 23 || min > 59) return null
+  return `${pad(h)}:${pad(min)}`
+}

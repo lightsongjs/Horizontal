@@ -2,17 +2,26 @@ import { useEffect, useRef, useState } from 'react'
 import { useHorizontal } from '../store'
 import { useWritableProjects } from '../hooks'
 import { parseDue } from '../lib/parseDue'
-import { dayOffset, defaultReminder, reminderAt, toTimeInput } from '../lib/schedule'
+import { dayOffset, defaultReminder, reminderAt, toDisplayDate, toTimeInput } from '../lib/schedule'
 
 const LAST_PROJECT_KEY = 'horizontal:last-task-project'
 const DAYS = ['Dum', 'Lun', 'Mar', 'Mie', 'Joi', 'Vin', 'Sâm']
-const MON = ['ian', 'feb', 'mar', 'apr', 'mai', 'iun', 'iul', 'aug', 'sep', 'oct', 'noi', 'dec']
 
+/**
+ * Ce scrie jetonul de scadență.
+ *
+ * Pentru zilele apropiate, cuvântul e mai clar decât cifrele: „Azi 15:00" se
+ * citește dintr-o privire, „24-08-2026 15:00" cere o secundă de socoteală.
+ * Mai departe de mâine, data numerică e cea neambiguă — cu ziua săptămânii
+ * înaintea ei, fiindcă întrebarea reală e adesea „în ce zi cade?".
+ */
 function dueLabel(iso: string, allDay: boolean, now: Date): string {
-  const d = new Date(iso)
   const off = dayOffset(iso, now)
   const day =
-    off === 0 ? 'Azi' : off === 1 ? 'Mâine' : off === -1 ? 'Ieri' : `${DAYS[d.getDay()]} ${d.getDate()} ${MON[d.getMonth()]}`
+    off === 0 ? 'Azi'
+      : off === 1 ? 'Mâine'
+        : off === -1 ? 'Ieri'
+          : `${DAYS[new Date(iso).getDay()]} ${toDisplayDate(iso)}`
   return allDay ? day : `${day} ${toTimeInput(iso)}`
 }
 

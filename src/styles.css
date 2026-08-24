@@ -2834,7 +2834,19 @@ svg.graph {
 .meta-col-theme { flex: 1; }
 .meta-col-wave  { flex: 1; }
 .meta-col-assign { flex: 1; }
-.meta-col-due { flex: 1; }
+/* Scadența are trei controale plus jetoane de memento — prea mult pentru o a
+   cincea coloană într-un rând care avea deja patru. Rând propriu, pe toată
+   lățimea, cu eticheta la fel ca la vecini. */
+.sh-due-row {
+  display: flex;
+  border-top: 1px solid var(--line-soft);
+}
+.sh-due-row .meta-col-due {
+  flex: 1;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+}
+
 .meta-vsep {
   width: 1px;
   background: var(--line-soft);
@@ -3586,10 +3598,12 @@ svg.graph {
   .meta-col,
   .meta-col-theme,
   .meta-col-wave,
-  .meta-col-assign,
-  .meta-col-due {
+  .meta-col-assign {
     flex: none;
   }
+  /* Pe telefon rândul de meta e deja stivuit, deci rândul de scadență e doar
+     încă o secțiune — bordura de sus ar fi dublată de cea a coloanei. */
+  .sh-due-row { border-top: none; }
   .meta-col {
     padding: 10px 18px;
     border-bottom: 1px solid var(--line-soft);
@@ -3861,6 +3875,8 @@ svg.graph {
   gap: 6px;
   flex-wrap: wrap;
   min-width: 0;
+  /* Ancora pentru `.due-native`, care e poziționat absolut. */
+  position: relative;
 }
 .due-input {
   background: var(--field-bg, var(--surface-3));
@@ -3876,8 +3892,34 @@ svg.graph {
 }
 .due-input:hover:not(:disabled) { border-color: var(--accent); }
 .due-input:focus-visible { border-color: var(--accent); }
-.due-input-date { flex: 0 1 132px; }
-.due-input-time { flex: 0 0 78px; }
+.due-input-date { flex: 0 1 116px; text-align: center; letter-spacing: 0.02em; }
+.due-input-date::placeholder { color: var(--txt-faint); font-weight: 500; letter-spacing: 0; }
+/* Text scris pe jumătate: un semnal, nu o ceartă. Cineva care a apăsat prima
+   cifră nu a greșit încă nimic. */
+.due-input-date.incomplete { border-color: color-mix(in srgb, var(--active) 55%, transparent); }
+/* Inputul nativ există doar ca să-i putem cere `showPicker()`. Ascuns, dar în
+   document și în fluxul de layout la lățime zero — `display:none` ar face
+   `showPicker()` să arunce. */
+.due-native {
+  position: absolute;
+  width: 1px; height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  border: 0; padding: 0;
+}
+.due-pick {
+  width: 26px; height: 26px;
+  border-radius: 7px;
+  border: 1.5px solid var(--line);
+  color: var(--txt-faint);
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.due-pick:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.due-pick:disabled { opacity: 0.4; cursor: not-allowed; }
+.due-hint.warn { color: var(--active); font-style: normal; font-weight: 600; }
+.due-input-time { flex: 0 0 62px; text-align: center; letter-spacing: 0.02em; }
+.due-input-time::placeholder { color: var(--txt-faint); font-weight: 500; letter-spacing: 0; }
 /* Fără dată, ora nu poate însemna nimic — inertă, nu ascunsă, ca rândul să nu
    sară când apare. */
 .due-input:disabled { opacity: 0.4; cursor: not-allowed; }

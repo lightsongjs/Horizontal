@@ -5,8 +5,9 @@ import { useUI } from '../ui'
 import { useCanWrite } from '../hooks'
 import { ticketUrl } from '../lib/deepLink'
 import {
-  NO_SCHEDULE, defaultReminder, fromInputs, reminderAt, reminderKindOf, toDateInput, toTimeInput,
-  type ReminderKind,
+  DATE_PLACEHOLDER, NO_SCHEDULE, TIME_PLACEHOLDER, defaultReminder, displayFromInputDate,
+  fromDisplayDate, fromInputs, fromTimeText, maskDateInput, maskTimeInput, reminderAt,
+  reminderKindOf, toDisplayDate, toTimeInput, type ReminderKind,
 } from '../lib/schedule'
 import { Attachments } from './Attachments'
 import type { Issue, ScenarioKind, TestScenario } from '../lib/types'
@@ -219,10 +220,22 @@ export function IssueForm({ issueId }: { issueId?: string }) {
   // Scadența trăiește în formular ca cele două valori pe care le scrie userul,
   // nu ca ISO: inputurile native vorbesc local, iar conversia stă în
   // `lib/schedule`. Ora goală = toată ziua, deci `allDay` nu are stare proprie.
-  const [dueDate, setDueDate] = useState(existing?.dueAt ? toDateInput(existing.dueAt) : '')
-  const [dueTime, setDueTime] = useState(
+  // Textul scris de utilizator, în `zz-ll-aaaa`. Valoarea canonică se derivă din
+  // el — o singură stare, deci textul din câmp și data salvată nu pot diverge.
+  const [dueText, setDueText] = useState(existing?.dueAt ? toDisplayDate(existing.dueAt) : '')
+  const dueDate = fromDisplayDate(dueText) ?? ''
+  // Text scris pe jumătate: nu e o eroare, doar nu e încă o dată. Semnalul e
+  // discret, ca să nu certe pe cineva care tocmai a apăsat prima cifră.
+  const dueIncomplete = dueText.trim() !== '' && dueDate === ''
+  const nativeDateRef = useRef<HTMLInputElement>(null)
+  // Ca la dată: textul e starea, valoarea validată se derivă. `dueTime` rămâne
+  // numele valorii validate, ca `fromInputs` să primească exact ce primea.
+  const [timeText, setTimeText] = useState(
     existing?.dueAt && !existing.allDay ? toTimeInput(existing.dueAt) : '',
   )
+  const dueTime = fromTimeText(timeText) ?? ''
+  const timeIncomplete = timeText.trim() !== '' && dueTime === ''
+  const nativeTimeRef = useRef<HTMLInputElement>(null)
   const [reminder, setReminder] = useState<ReminderKind>(
     existing ? reminderKindOf(existing.dueAt, existing.remindAt) : 'none',
   )
@@ -696,69 +709,6 @@ export function IssueForm({ issueId }: { issueId?: string }) {
 
             <div className="meta-vsep" />
 
-            <div className="meta-col meta-col-due">
-              <span className="meta-row-label">Scadență</span>
-              <div className="due-inputs">
-                <input
-                  tabIndex={-1}
-                  type="date"
-                  className="due-input due-input-date"
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                  aria-label="Data scadenței"
-                />
-                <input
-                  tabIndex={-1}
-                  type="time"
-                  className="due-input due-input-time"
-                  value={dueTime}
-                  onChange={(e) => setDueTime(e.target.value)}
-                  disabled={!dueDate}
-                  placeholder="--:--"
-                  aria-label="Ora scadenței"
-                  title={dueDate ? 'Lasă gol pentru toată ziua' : 'Alege întâi o zi'}
-                />
-                {dueDate && (
-                  <button
-                    tabIndex={-1}
-                    type="button"
-                    className="due-clear"
-                    onClick={() => { setDueDate(''); setDueTime(''); setReminderTouched(false) }}
-                    title="Scoate scadența"
-                    aria-label="Scoate scadența"
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
-              {/* Mementoul apare numai când are ce să însemne. Pentru o sarcină de
-                  zi întreagă ar suna la miezul nopții, deci acolo tace și treaba
-                  o face rezumatul de dimineață. */}
-              {dueDate && dueTime && (
-                <div className="pills-row due-reminder">
-                  {([
-                    ['due', 'la oră'],
-                    ['m30', '−30m'],
-                    ['d1', '−1 zi'],
-                    ['none', 'fără'],
-                  ] as const).map(([kind, label]) => (
-                    <button
-                      key={kind}
-                      tabIndex={-1}
-                      type="button"
-                      className={`if-meta-pill reminder-pill ${schedule.kind === kind ? 'active' : ''}`}
-                      onClick={() => { setReminder(kind); setReminderTouched(true) }}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {dueDate && !dueTime && <span className="due-hint">toată ziua</span>}
-            </div>
-
-            <div className="meta-vsep" />
-
             <div className="meta-col meta-col-urgent">
               <span className="meta-row-label">Prioritate</span>
               <div className="pills-row">
@@ -775,6 +725,142 @@ export function IssueForm({ issueId }: { issueId?: string }) {
             </div>
 
           </div>
+
+            <div className="sh-due-row">
+              <div className="meta-col meta-col-due">
+                <span className="meta-row-label">Scadență</span>
+                <div className="due-inputs">
+                  <input
+                    tabIndex={-1}
+                    type="text"
+                    inputMode="numeric"
+                    className={`due-input due-input-date ${dueIncomplete ? 'incomplete' : ''}`}
+                    value={dueText}
+                    onChange={(e) => setDueText(maskDateInput(e.target.value))}
+                    placeholder={DATE_PLACEHOLDER}
+                    maxLength={10}
+                    aria-label="Data scadenței, zi-lună-an"
+                  />
+                  {/* Selectorul nativ rămâne la un click distanță — pe telefon e
+                      calendarul sistemului, care bate orice am construi noi. E
+                      ascuns vizual, nu absent: `showPicker()` are nevoie de el în
+                      document. */}
+                  <input
+                    ref={nativeDateRef}
+                    type="date"
+                    className="due-native"
+                    tabIndex={-1}
+                    aria-hidden="true"
+                    value={dueDate}
+                    onChange={(e) => setDueText(displayFromInputDate(e.target.value))}
+                  />
+                  <button
+                    tabIndex={-1}
+                    type="button"
+                    className="due-pick"
+                    title="Alege din calendar"
+                    aria-label="Alege data din calendar"
+                    onClick={() => {
+                      const el = nativeDateRef.current
+                      if (!el) return
+                      // `showPicker` lipsește în browsere mai vechi; atunci un
+                      // click pe inputul nativ face aceeași treabă.
+                      if (typeof el.showPicker === 'function') el.showPicker()
+                      else el.click()
+                    }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                      <rect x="3" y="4" width="18" height="18" rx="2" />
+                      <line x1="16" y1="2" x2="16" y2="6" />
+                      <line x1="8" y1="2" x2="8" y2="6" />
+                      <line x1="3" y1="10" x2="21" y2="10" />
+                    </svg>
+                  </button>
+                  <input
+                    tabIndex={-1}
+                    type="text"
+                    inputMode="numeric"
+                    className={`due-input due-input-time ${timeIncomplete ? 'incomplete' : ''}`}
+                    value={timeText}
+                    onChange={(e) => setTimeText(maskTimeInput(e.target.value))}
+                    disabled={!dueDate}
+                    placeholder={TIME_PLACEHOLDER}
+                    maxLength={5}
+                    aria-label="Ora scadenței, 24 de ore"
+                    title={dueDate ? 'Lasă gol pentru toată ziua' : 'Alege întâi o zi'}
+                  />
+                  {/* Ceasul nativ, la un click distanță — pe telefon e cel al sistemului. */}
+                  <input
+                    ref={nativeTimeRef}
+                    type="time"
+                    className="due-native"
+                    tabIndex={-1}
+                    aria-hidden="true"
+                    value={dueTime}
+                    onChange={(e) => setTimeText(e.target.value)}
+                  />
+                  <button
+                    tabIndex={-1}
+                    type="button"
+                    className="due-pick"
+                    title="Alege ora"
+                    aria-label="Alege ora din ceas"
+                    disabled={!dueDate}
+                    onClick={() => {
+                      const el = nativeTimeRef.current
+                      if (!el) return
+                      if (typeof el.showPicker === 'function') el.showPicker()
+                      else el.click()
+                    }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                      <circle cx="12" cy="12" r="9" />
+                      <polyline points="12 7 12 12 15.5 14" />
+                    </svg>
+                  </button>
+                  {dueText && (
+                    <button
+                      tabIndex={-1}
+                      type="button"
+                      className="due-clear"
+                      onClick={() => { setDueText(''); setTimeText(''); setReminderTouched(false) }}
+                      title="Scoate scadența"
+                      aria-label="Scoate scadența"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+                {/* Mementoul apare numai când are ce să însemne. Pentru o sarcină de
+                    zi întreagă ar suna la miezul nopții, deci acolo tace și treaba
+                    o face rezumatul de dimineață. */}
+                {dueDate && dueTime && (
+                  <div className="pills-row due-reminder">
+                    {([
+                      ['due', 'la oră'],
+                      ['m30', '−30m'],
+                      ['d1', '−1 zi'],
+                      ['none', 'fără'],
+                    ] as const).map(([kind, label]) => (
+                      <button
+                        key={kind}
+                        tabIndex={-1}
+                        type="button"
+                        className={`if-meta-pill reminder-pill ${schedule.kind === kind ? 'active' : ''}`}
+                        onClick={() => { setReminder(kind); setReminderTouched(true) }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {(dueIncomplete || timeIncomplete) && (
+                  <span className="due-hint warn">{dueIncomplete ? 'zi-lună-an' : 'oră 0–23'}</span>
+                )}
+                {dueDate && !dueTime && <span className="due-hint">toată ziua</span>}
+              </div>
+  
+            </div>
 
           {showNewTheme && (
             <div className="inline-search-wrap" style={{ padding: '6px 12px 8px' }}>
