@@ -99,7 +99,12 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0 }: Props) {
   const rejectDate = () => {
     date.rejectAll()
     setTip(false)
-    inputRef.current?.focus()
+    const el = inputRef.current
+    if (!el) return
+    // Cursorul la sfârșit, ca după atingerea pe fragment: refuzul e o comandă,
+    // iar de aici se scrie mai departe.
+    el.focus()
+    el.setSelectionRange(el.value.length, el.value.length)
   }
 
   const submit = async () => {

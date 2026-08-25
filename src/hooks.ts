@@ -428,7 +428,16 @@ export function useTitleDate(text: string, enabled = true): TitleDate {
       onPointerDown(e) {
         if (!active) return
         const i = markAt(e.clientX, e.clientY)
-        if (i >= 0 && spans[i]) reject([text.slice(spans[i][0], spans[i][1])])
+        if (i < 0 || !spans[i]) return
+        const el = e.currentTarget
+        // Atingerea a fost o COMANDĂ, nu o poziționare de cursor. Fără
+        // `preventDefault`, cursorul rămâne unde a nimerit degetul — între „1"
+        // și „0" din „la 10" — adică în mijlocul textului tocmai eliberat.
+        // Sfârșitul rândului e locul din care se scrie mai departe.
+        e.preventDefault()
+        reject([text.slice(spans[i][0], spans[i][1])])
+        el.focus()
+        el.setSelectionRange(el.value.length, el.value.length)
       },
       // Numai maus: pe atingere n-are ce să însemne „stau deasupra".
       onPointerMove(e) {
