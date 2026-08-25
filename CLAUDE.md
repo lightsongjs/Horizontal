@@ -2,6 +2,23 @@
 
 You are building **DepFlow**, a mobile-first project-planning tool for developers.
 
+## Push pe master = publicare în producție
+
+**Nu există „doar commit".** Cloudflare Pages e legat de repo: orice `git push`
+pe `master` publică imediat pe <https://horizontal-dyx.pages.dev>, adică pe
+pagina pe care o folosește omul de pe telefon. Nu e un pas separat de deploy și
+nu există mediu de test.
+
+Consecințe practice:
+
+- Înainte de push: `npm test`, `npm run typecheck` și — dacă s-a atins
+  `src/sw.ts`, `src/pwa.ts` sau blocul VitePWA — `npm run test:upgrade`.
+- Un push e singurul mod în care un service worker nou ajunge pe dispozitive.
+  Funcțiile edge se deployează separat (`supabase functions deploy`), deci o
+  schimbare care le atinge pe amândouă cere ambele, iar ordinea contează: mai
+  întâi funcția, apoi pushul.
+- Nu face push „ca să vezi dacă merge".
+
 ## Start here
 1. Read `REQUIREMENTS.md` — full functional spec, build order, design tokens.
 2. Read `data-model.json` — entity shapes, seed data, the layer/wave algorithm, and expected test outputs.
@@ -117,6 +134,12 @@ onest că nu se poate.
 2. `npm run vapid` → pune cheia publică în `.env` ca `VITE_VAPID_PUBLIC_KEY`.
 3. `supabase functions deploy send-reminders` și apoi
    `supabase secrets set VAPID_PUBLIC_KEY=... VAPID_PRIVATE_KEY=... VAPID_SUBJECT=mailto:tu@exemplu.ro`
+   - Și, ca butoanele notificării să meargă **fără nicio filă deschisă**:
+     `supabase functions deploy reminder-action --no-verify-jwt` — fără flag nu
+     pornește, fiindcă tokenul ESTE autorizarea, nu un JWT de Supabase. Apoi
+     `supabase secrets set REMINDER_ACTION_SECRET=$(openssl rand -hex 32) APP_ORIGINS=https://domeniul-tau`.
+     Dacă sari peste asta, mementourile merg în continuare — doar butoanele cad
+     pe comportamentul vechi (cer o filă deschisă).
 4. În SQL editor, o dată, pentru ca pg_cron să poată chema funcția:
    `select vault.create_secret('https://<ref>.supabase.co', 'project_url');`
    `select vault.create_secret('<SERVICE_ROLE_KEY>', 'service_role_key');`
@@ -155,11 +178,28 @@ instalare, ascultător de `SKIP_WAITING`).
 > `vite.config.ts`: `npm run test:upgrade`.** Testul acela e singurul care prinde
 > clasa de bug „userul rămâne pe buildul vechi și trebuie să dea refresh".
 
-Butoanele notificării („Gata", „Amână 10 min") NU lovesc `functions/api`: acela
+Butoanele notificării („Gata", „Amână 5 min") NU lovesc `functions/api`: acela
 cere `X-API-Key`, iar un service worker livrat browserului nu poate ține un
-secret. Workerul trimite un mesaj paginii, iar pagina face mutația cu drepturile
-utilizatorului (vezi ascultătorul din `App.tsx`). Fără nicio filă deschisă,
-workerul deschide tichetul — o atingere în loc de zero, dar onest.
+secret. Ordinea de preferință e în `resolveAction` din `src/sw.ts`:
+
+1. **Cu o filă deschisă** — workerul trimite un mesaj paginii, iar pagina face
+   mutația (ascultătorul din `App.tsx`). Preferată nu din constrângere, ci
+   fiindcă pagina își reîmprospătează și interfața.
+2. **Fără nicio filă** — cererea semnată către `supabase/functions/reminder-action`,
+   cu un token HMAC pe care `send-reminders` l-a pus în payload. Payload-ul de
+   push e criptat pentru abonament (RFC 8291), deci tokenul e un secret pe care
+   workerul îl **primește**, nu unul pe care îl ține. Format și de-ce-uri:
+   `supabase/functions/_shared/reminderToken.ts`.
+3. **Dacă și asta cade** (offline, token expirat, secret nesetat) — se deschide
+   tichetul. O atingere în loc de zero, dar onest: mai bine decât o acțiune care
+   pare făcută și nu s-a întâmplat.
+
+Ce nu repară niciun header: **Doze și managerele de baterie de pe Android.**
+Chrome nu trezește un dispozitiv adormit nici cu `urgency: high`, iar
+MIUI/Samsung pot întârzia livrarea cu ore. `TTL: 3600` există exact pentru asta
+— un memento răsuflat nu mai e informație, e zgomot care învață omul să ignore
+notificările. Plafonul, măsurat, și ce ar cere o garanție reală:
+`docs/superpowers/brainstorm/2026-08-25-clienti-nativi.md`.
 
 ### Sunetul mementoului
 

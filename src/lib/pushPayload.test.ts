@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isReminderAction, isReminderArrived, planNotification } from './pushPayload'
+import { isReminderAction, isReminderArrived, planNotification, SNOOZE_MINUTES } from './pushPayload'
 
 describe('planNotification', () => {
   it('ora și proiectul, în fusul dispozitivului', () => {
@@ -75,5 +75,32 @@ describe('isReminderArrived', () => {
     const action = { type: 'reminder-action', action: 'done', id: 'EX-01' }
     expect(isReminderArrived(action)).toBe(false)
     expect(isReminderAction({ type: 'reminder-arrived', id: 'EX-01' })).toBe(false)
+  })
+})
+
+describe('planNotification — cererea semnată', () => {
+  const base = { id: 'EX-10', title: 'X' }
+
+  it('nu produce nicio cerere fără token: workerul cade pe pagină', () => {
+    expect(planNotification(base).request).toBeNull()
+    expect(planNotification({ ...base, actionUrl: 'https://x.fn/reminder-action' }).request).toBeNull()
+    expect(planNotification({ ...base, actionToken: 'tok' }).request).toBeNull()
+  })
+
+  it('duce tokenul și adresa mai departe când serverul le-a trimis pe amândouă', () => {
+    const plan = planNotification({
+      ...base,
+      actionToken: 'tok',
+      actionUrl: 'https://x.fn/reminder-action',
+    })
+    expect(plan.request).toEqual({ url: 'https://x.fn/reminder-action', token: 'tok', id: 'EX-10' })
+  })
+
+  it('eticheta lui „Amână" spune același număr ca SNOOZE_MINUTES', () => {
+    // Un buton care scrie 10 și amână 5 e mai rău decât niciun buton: userul
+    // învață să nu creadă interfața. De asta eticheta se construiește din
+    // constantă, și de asta testul o compară cu ea, nu cu un text scris de mână.
+    const snooze = planNotification(base).actions.find((a) => a.action === 'snooze')
+    expect(snooze?.title).toBe(`Amână ${SNOOZE_MINUTES} min`)
   })
 })

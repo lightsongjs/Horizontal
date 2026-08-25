@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { disablePush, enablePush, pushHint, readPushState, type PushState } from '../lib/push'
 import { errorMessage } from '../lib/errorMessage'
+import { announceChime, playChime, unlockChime } from '../lib/chime'
 
 /**
  * Comutatorul de notificări. Trăiește în capul listei „Azi" fiindcă acolo e
@@ -28,8 +29,18 @@ export function PushToggle() {
   const act = async () => {
     setBusy(true)
     setErr(null)
+    // ÎNAINTE de `await`: deblocarea audio are nevoie de gestul utilizatorului,
+    // iar după prima așteptare browserul nu mai consideră că suntem în el.
+    const enabling = state === 'off'
+    if (enabling) unlockChime()
     try {
-      setState(state === 'off' ? await enablePush() : await disablePush())
+      const next = enabling ? await enablePush() : await disablePush()
+      setState(next)
+      // Sunetul se aude O DATĂ, aici, la activare. Nu e o floare: e singurul
+      // moment în care userul află cum sună mementoul ȘI în care se confirmă că
+      // sunetul funcționează deloc. Altfel prima dovadă ar veni la prima
+      // scadență — iar dacă ar fi mută, n-ar avea de unde să știe că e mută.
+      if (next === 'on') { playChime(); void announceChime() }
     } catch (e) {
       setErr(errorMessage(e))
     } finally {

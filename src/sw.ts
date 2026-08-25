@@ -18,7 +18,13 @@
 
 import { clientsClaim } from 'workbox-core'
 import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching'
-import { planNotification, type ReminderPayload } from './lib/pushPayload'
+import {
+  CHIME_READY_CACHE,
+  CHIME_READY_KEY,
+  planNotification,
+  type ActionRequest,
+  type ReminderPayload,
+} from './lib/pushPayload'
 
 declare const self: ServiceWorkerGlobalScope & {
   __WB_MANIFEST: (string | { url: string; revision: string | null })[]
@@ -34,6 +40,7 @@ type SwNotificationOptions = NotificationOptions & {
   actions?: { action: string; title: string }[]
   badge?: string
   requireInteraction?: boolean
+  renotify?: boolean
 }
 
 // ── precache (echivalentul a ce genera `generateSW`) ────────────────────────
@@ -74,15 +81,36 @@ self.addEventListener('push', (event) => {
 })
 
 /**
- * Arată notificarea și, dacă aplicația e în față, cere paginii să cânte.
+ * A anunțat pagina că poate cânta?
  *
- * De ce `silent` când există o filă vizibilă: sunetul notificării e al
- * sistemului și nu se poate înlocui (`Notification.sound` n-a fost implementat
- * niciodată). Singurul mod de a avea un sunet propriu e ca PAGINA să-l cânte —
- * dar atunci sunetul sistemului ar veni peste el. Deci ori unul, ori altul.
+ * Se CITEȘTE, nu se întreabă: cât timp promisiunea din `waitUntil` e în
+ * așteptare, workerul nu primește evenimente `message`, deci orice
+ * întrebare-și-răspuns aici se blochează. Detaliile și ce s-a încercat înainte
+ * sunt la constantele din `lib/pushPayload.ts`.
+ */
+async function pageAnnouncedChime(): Promise<boolean> {
+  try {
+    const c = await caches.open(CHIME_READY_CACHE)
+    return (await c.match(CHIME_READY_KEY)) !== undefined
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Arată notificarea și, dacă aplicația e în față ȘI poate cânta, îi dă ei
+ * sunetul.
  *
- * Nu se face `silent` necondiționat: cu aplicația închisă pagina nu poate cânta
- * nimic, iar o notificare mută la 7 dimineața e un memento ratat.
+ * De ce `silent` doar atunci: sunetul unei notificări e al sistemului și nu se
+ * poate înlocui (`Notification.sound` n-a fost implementat de nimeni). Singurul
+ * mod de a avea un sunet propriu e ca PAGINA să-l cânte — dar atunci sunetul
+ * sistemului ar veni peste el. Deci ori unul, ori altul.
+ *
+ * Regula, învățată prin regresie: **nu se tace pe presupunere.** O primă
+ * versiune făcea `silent` de îndată ce exista o filă vizibilă. Dacă pagina nu
+ * avea contextul audio deblocat — un refresh fără niciun click e de ajuns — nu
+ * se auzea NIMIC, iar defectul se vedea exact o dată, la ora mementoului. Acum
+ * liniștea se cumpără doar cu un anunț explicit al paginii.
  */
 async function show(plan: ReturnType<typeof planNotification>, id: string): Promise<void> {
   // `includeUncontrolled`, ca și în restul fișierului: imediat după un build nou
@@ -90,32 +118,57 @@ async function show(plan: ReturnType<typeof planNotification>, id: string): Prom
   const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
   const visible = clients.filter((c) => c.visibilityState === 'visible')
 
+  // Ambele condiții, și fiecare acoperă altceva: anunțul spune că EXISTĂ o
+  // pagină cu audio deblocat, fila vizibilă spune că mai e cineva acolo. Un
+  // anunț rămas de la o filă închisă nu poate produce liniște, fiindcă atunci
+  // nu există nicio filă vizibilă.
+  const sing = visible.length > 0 && await pageAnnouncedChime()
+
   const options: SwNotificationOptions = {
     body: plan.body,
     tag: plan.tag,
     icon: '/pwa-192x192.png',
     badge: '/pwa-192x192.png',
-    data: { url: plan.url, id },
+    // `request` merge în `data` fiindcă tokenul ajunge la noi la `push`, iar
+    // butonul se apasă mai târziu, în alt eveniment: `data` e singura punte.
+    data: { url: plan.url, id, request: plan.request },
     actions: plan.actions,
-    // Un memento care dispare singur e un memento ratat.
+    // Un memento care dispare singur e un memento ratat. Pe desktop asta ține
+    // notificarea pe ecran; pe **Android e ignorat în silență** (totul intră în
+    // tavă, indiferent). Se pune oricum: nu costă nimic și e corect unde e
+    // respectat. Doar nu te baza pe el ca garanție.
     requireInteraction: true,
-    silent: visible.length > 0,
+    // Cu `tag` = id-ul tichetului, o reapariție ÎNLOCUIEȘTE notificarea
+    // precedentă — iar o înlocuire e MUTĂ dacă nu ceri altfel. Fără asta, un
+    // memento amânat care revine peste cinci minute putea ajunge fără sunet și
+    // fără vibrație, adică invizibil exact când conta.
+    renotify: true,
+    silent: sing,
   }
   await self.registration.showNotification(plan.title, options)
 
   // DUPĂ notificare, nu înainte: dacă `showNotification` aruncă, nu vrem un
   // sunet fără nimic pe ecran — userul ar auzi ceva și n-ar găsi ce.
-  for (const c of visible) c.postMessage({ type: 'reminder-arrived', id })
+  //
+  // Către TOATE filele vizibile, deși anunțul e unul singur și nu spune care
+  // filă l-a scris. Cu două file, alternativa ar fi să ghicim — iar dacă
+  // ghicim greșit iese liniște. Un unison în cazul rar cu două file deschise e
+  // paguba mai mică; fiecare pagină cântă numai dacă poate.
+  if (sing) for (const c of visible) c.postMessage({ type: 'reminder-arrived', id })
 }
 
 self.addEventListener('notificationclick', (event) => {
-  const data = (event.notification.data ?? {}) as { url?: string; id?: string }
+  const data = (event.notification.data ?? {}) as {
+    url?: string
+    id?: string
+    request?: ActionRequest | null
+  }
   event.notification.close()
 
   // Acțiunile se rezolvă FĂRĂ să deschidă aplicația — asta le face utile. Dacă
   // nu există nicio filă deschisă, cererea pleacă direct către API.
   if (event.action === 'done' || event.action === 'snooze') {
-    event.waitUntil(resolveAction(event.action, data.id))
+    event.waitUntil(resolveAction(event.action, data.id, data.request))
     return
   }
 
@@ -145,18 +198,53 @@ self.addEventListener('notificationclick', (event) => {
  * NU trece prin `functions/api` — acela cere `X-API-Key`, iar un service worker
  * livrat browserului nu poate ține un secret; cheia ar fi publică în bundle.
  * Sesiunea Supabase a userului stă în `localStorage`, la care un worker nu are
- * acces. Deci singurul executant legitim e PAGINA.
+ * acces. Mult timp asta a însemnat că singurul executant e PAGINA, iar fără
+ * nicio filă butonul doar deschidea tichetul.
  *
- * Cu o filă deschisă, acțiunea se rezolvă fără ca userul să vadă nimic. Fără
- * filă, deschidem tichetul: e o atingere în loc de zero, dar e onest — mai bine
- * decât o acțiune care pare făcută și nu s-a întâmplat.
+ * Ce a deblocat cazul „aplicația e închisă": un token HMAC de scurtă durată,
+ * trimis în payload-ul de push. Payload-ul e criptat pentru abonament (RFC
+ * 8291), deci tokenul e o dovadă pe care numai acest dispozitiv o poate citi —
+ * un secret pe care workerul îl PRIMEȘTE, nu unul pe care îl ține. Cu el,
+ * `supabase/functions/reminder-action` acceptă scrierea fără sesiune.
+ *
+ * Ordinea de preferință, și de ce: pagina întâi (își reîmprospătează și
+ * ecranul), apoi cererea semnată, apoi deschiderea tichetului.
  */
-async function resolveAction(action: 'done' | 'snooze', id?: string): Promise<void> {
+async function resolveAction(
+  action: 'done' | 'snooze',
+  id?: string,
+  request?: ActionRequest | null,
+): Promise<void> {
   if (!id) return
+
+  // Cu o filă deschisă, PAGINA rămâne executantul preferat — nu din
+  // constrângere, ci fiindcă ea își actualizează și interfața pe loc. O cerere
+  // de aici ar reuși, dar ar lăsa ecranul arătând starea veche.
   const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
   if (clients.length > 0) {
     for (const c of clients) c.postMessage({ type: 'reminder-action', action, id })
     return
   }
+
+  // Fără nicio filă: cererea semnată. Tokenul a venit criptat în payload-ul de
+  // push (RFC 8291), deci e o dovadă pe care numai acest dispozitiv o are — vezi
+  // `supabase/functions/_shared/reminderToken.ts`.
+  if (request) {
+    try {
+      const res = await fetch(request.url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: request.id, action, token: request.token }),
+      })
+      if (res.ok) return
+      console.error(`reminder-action a răspuns ${res.status} pentru ${id}`)
+    } catch (e) {
+      // Offline, sau token expirat: se cade pe deschiderea tichetului. Regula e
+      // aceeași ca la sunet — mai bine o atingere în plus decât o acțiune care
+      // pare făcută și nu s-a întâmplat.
+      console.error(`reminder-action a eșuat pentru ${id}: ${String(e)}`)
+    }
+  }
+
   await self.clients.openWindow(`/${id}`)
 }

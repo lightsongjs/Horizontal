@@ -15,6 +15,14 @@ export interface ReminderPayload {
   dueAt?: string | null
   allDay?: boolean
   projectName?: string
+  /**
+   * Cheia care lasă workerul să rezolve „Gata"/„Amână" fără nicio filă deschisă.
+   * Absentă = comportamentul vechi (prin pagină, sau deschide tichetul).
+   * Formatul și de ce e sigur: `supabase/functions/_shared/reminderToken.ts`.
+   */
+  actionToken?: string
+  /** Adresa absolută a funcției care acceptă tokenul. Serverul o știe, workerul nu. */
+  actionUrl?: string
 }
 
 export interface NotificationPlan {
@@ -29,7 +37,29 @@ export interface NotificationPlan {
    */
   tag: string
   actions: { action: 'done' | 'snooze'; title: string }[]
+  /**
+   * Cererea pe care workerul o face când nu există nicio filă. `null` dacă
+   * serverul n-a trimis token — atunci se cade pe deschiderea tichetului.
+   */
+  request: ActionRequest | null
 }
+
+/** Ce trimite workerul către `reminder-action`. Pur, ca să fie testabil. */
+export interface ActionRequest {
+  url: string
+  token: string
+  id: string
+}
+
+/**
+ * Cât amână butonul „Amână". Aici, ca serverul și clientul să spună la fel —
+ * eticheta butonului se construiește din constantă exact ca să nu poată minți.
+ *
+ * Cinci, nu zece: o amânare e „nu acum, imediat". Cronul rulează la fiecare
+ * minut (`supabase/migration-cron.sql`), deci întârzierea până la reapariție e
+ * de ordinul unui minut peste ce scrie pe buton — acceptabil la cinci.
+ */
+export const SNOOZE_MINUTES = 5
 
 const pad = (n: number) => String(n).padStart(2, '0')
 
@@ -54,13 +84,13 @@ export function planNotification(p: ReminderPayload): NotificationPlan {
     tag: p.id,
     actions: [
       { action: 'done', title: 'Gata' },
-      { action: 'snooze', title: 'Amână 10 min' },
+      { action: 'snooze', title: `Amână ${SNOOZE_MINUTES} min` },
     ],
+    request: p.actionToken && p.actionUrl
+      ? { url: p.actionUrl, token: p.actionToken, id: p.id }
+      : null,
   }
 }
-
-/** Cât amână butonul „Amână". Aici, ca serverul și clientul să spună la fel. */
-export const SNOOZE_MINUTES = 10
 
 /** Mesajul pe care service worker-ul îl trimite paginii pentru butoanele notificării. */
 export interface ReminderActionMessage {
@@ -97,3 +127,34 @@ export function isReminderArrived(data: unknown): data is ReminderArrivedMessage
   const m = data as Record<string, unknown>
   return m.type === 'reminder-arrived' && typeof m.id === 'string' && m.id.length > 0
 }
+
+// ── „poate pagina să cânte?" ────────────────────────────────────────────────
+//
+// Workerul are nevoie de răspuns înainte de a face notificarea mută, fiindcă
+// costul unei greșeli e asimetric: un „nu" greșit dă două sunete (al sistemului
+// peste al nostru), enervant; un „da" greșit dă LINIȘTE, adică mementoul ratat
+// — exact defectul pe care toată mașinăria asta există ca să-l prevină.
+//
+// PRIMA VARIANTĂ, care nu funcționează, ca să nu fie rescrisă: workerul întreba
+// pagina la sosirea mementoului și aștepta răspunsul. Nici pe un `MessagePort`
+// atașat întrebării, nici printr-un mesaj separat cu `nonce` pe canalul obișnuit.
+// Cauza, măsurată cu `npm run test:chime`: **cât timp promisiunea dată lui
+// `waitUntil` din `push` e în așteptare, workerul nu primește evenimente
+// `message`.** Pagina răspundea (verificat interceptând `postMessage`), dar
+// răspunsul nu era livrat nici după trei secunde. Orice formă de întrebare-și-
+// răspuns în timpul unui `push` se blochează identic.
+//
+// DECI: pagina ANUNȚĂ din timp, workerul doar citește. Anunțul e o intrare în
+// `Cache`, singura memorie la care ajung amândoi și care supraviețuiește
+// repornirii workerului.
+//
+// Ce ține minciuna sub control — pagina ȘTERGE intrarea la fiecare pornire,
+// înainte de orice deblocare. Un refresh fără niciun click lasă deci intrarea
+// ștearsă, iar notificarea sună normal. O filă închisă nu mai e vizibilă, și
+// workerul cere ambele: intrarea prezentă ȘI o filă vizibilă.
+
+/** Numele cache-ului. Separat de precache, ca `cleanupOutdatedCaches` să nu-l atingă. */
+export const CHIME_READY_CACHE = 'horizontal-chime-v1'
+
+/** Cheia din cache. O cerere fictivă — contează doar prezența ei. */
+export const CHIME_READY_KEY = '/__chime-ready'

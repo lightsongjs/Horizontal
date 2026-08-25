@@ -16,7 +16,8 @@
     "test:shrink": "node scripts/test-shrink-image.mjs",
     "storage:report": "node scripts/storage-report.mjs",
     "migrate": "node scripts/apply-migration.mjs",
-    "vapid": "node scripts/generate-vapid.mjs"
+    "vapid": "node scripts/generate-vapid.mjs",
+    "test:chime": "node scripts/test-chime.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",

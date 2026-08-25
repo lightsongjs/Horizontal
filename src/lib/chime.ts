@@ -9,6 +9,8 @@
 // iar un sunet care începe brusc e exact ce înseamnă „strident". Atacul de 12ms
 // și stingerea exponențială sunt toată diferența dintre un clopoțel și un bip.
 
+import { CHIME_READY_CACHE, CHIME_READY_KEY } from './pushPayload'
+
 /** Vârful amplitudinii. Sub 0.15, altfel devine notificare de bancă. */
 const PEAK = 0.11
 
@@ -76,6 +78,46 @@ function context(): AudioContext | null {
 export function unlockChime(): void {
   const c = context()
   if (c && c.state === 'suspended') void c.resume()
+}
+
+/**
+ * Poate pagina să cânte ACUM?
+ *
+ * Răspunsul e starea reală a contextului, nu „am înregistrat un ascultător de
+ * deblocare". `suspended` întoarce `false` deliberat, deși un `start()` pe un
+ * context suspendat s-ar auzi la următorul `resume()`: adică peste minute, fără
+ * nicio legătură cu mementoul. Un sunet la ora nepotrivită e mai rău decât
+ * niciunul.
+ */
+export function chimeReady(): boolean {
+  return ctx !== null && ctx.state === 'running'
+}
+
+/**
+ * Pune în cache răspunsul la „poate pagina să cânte?", pentru `src/sw.ts`.
+ *
+ * De ce prin `Cache` și nu întrebând la sosire: workerul nu primește mesaje cât
+ * timp tratează un `push`. Explicația completă e la constantele din
+ * `pushPayload.ts` — inclusiv ce s-a încercat înainte și de ce a picat.
+ *
+ * Se cheamă în trei momente, și toate trei contează:
+ *  - la PORNIREA paginii, când șterge (`chimeReady()` e încă `false`) — asta
+ *    invalidează anunțul unei sesiuni anterioare, deci un refresh fără click nu
+ *    poate moșteni un „da" mincinos;
+ *  - la deblocare, când scrie;
+ *  - la fiecare `visibilitychange`, fiindcă un context poate fi suspendat de
+ *    browser cât fila e ascunsă, iar la revenire trebuie spus adevărul nou.
+ */
+export async function announceChime(): Promise<void> {
+  if (!('caches' in globalThis)) return
+  try {
+    const c = await caches.open(CHIME_READY_CACHE)
+    if (chimeReady()) await c.put(CHIME_READY_KEY, new Response('1'))
+    else await c.delete(CHIME_READY_KEY)
+  } catch {
+    // Un cache indisponibil (mod privat, cotă plină) înseamnă „nu pot cânta",
+    // adică exact starea în care lipsa intrării duce workerul. Nimic de făcut.
+  }
 }
 
 /** Cântă clopoțelul. Nu aruncă niciodată — un memento mut e mai bun decât o eroare. */

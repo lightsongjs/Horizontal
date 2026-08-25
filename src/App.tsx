@@ -16,7 +16,7 @@ import { InfoPanel } from './components/InfoPanel'
 import { Toast } from './components/Toast'
 import { deepLinkNotice, parseTicketPath, resolveTicketProject, ticketPath } from './lib/deepLink'
 import { isReminderAction, isReminderArrived, SNOOZE_MINUTES } from './lib/pushPayload'
-import { playChime, unlockChime } from './lib/chime'
+import { announceChime, playChime, unlockChime } from './lib/chime'
 import type { Project } from './lib/types'
 
 function ThemeToggle({ className }: { className?: string }) {
@@ -573,22 +573,24 @@ function Shell() {
   }, [project, openNewIssue, openNewProject, sheet, showInfo, showSearch, showUsers, canWrite, isAdmin])
 
   /**
-   * Butoanele notificării („Gata", „Amână 10 min"). Service worker-ul nu poate
-   * scrie singur — n-are nici sesiunea userului, nici o cheie de API pe care
-   * s-o poată ține secretă. Deci trimite mesajul aici, iar pagina face
-   * mutația cu drepturile utilizatorului. Vezi `src/sw.ts`.
+   * Butoanele notificării („Gata", „Amână"). Cu o filă deschisă, PAGINA e
+   * executantul preferat: nu doar poate scrie cu drepturile userului, ci își și
+   * actualizează interfața pe loc. Fără nicio filă, workerul se descurcă singur
+   * cu un token semnat (vezi `resolveAction` din `src/sw.ts`) — deci ăsta nu mai
+   * e singurul drum, doar cel mai bun când e disponibil.
    */
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return
     const onMessage = (e: MessageEvent) => {
-      // Mementoul a sosit și fila e vizibilă, deci notificarea a plecat `silent`
-      // și sunetul e treaba noastră. Vezi `src/lib/chime.ts`.
+      // Mementoul a sosit și anunțaserăm că putem cânta, deci notificarea a
+      // plecat `silent` și sunetul e treaba noastră. Vezi `src/lib/chime.ts`.
       if (isReminderArrived(e.data)) { playChime(); return }
       if (!isReminderAction(e.data)) return
       const { action, id } = e.data
       if (action === 'done') void toggleDone(id)
       // Amânarea mută mementoul, nu scadența: sarcina rămâne când era, doar
-      // sună din nou peste zece minute.
+      // sună din nou peste `SNOOZE_MINUTES` minute. Aceeași constantă o folosesc
+      // eticheta butonului și `supabase/functions/reminder-action`.
       else void updateIssue(id, { remindAt: new Date(Date.now() + SNOOZE_MINUTES * 60_000).toISOString() })
     }
     navigator.serviceWorker.addEventListener('message', onMessage)
@@ -600,12 +602,28 @@ function Shell() {
   // service worker-ului nu e un gest — `resume()` ar fi refuzat în silență, și
   // primul memento ar veni mut. `once: true`, fiindcă o dată e de ajuns.
   useEffect(() => {
-    const unlock = () => unlockChime()
-    document.addEventListener('pointerdown', unlock, { once: true })
-    document.addEventListener('keydown', unlock, { once: true })
+    // La pornire ȘTERGEM anunțul: audio nu e deblocat încă, iar un anunț rămas
+    // din sesiunea de dinaintea unui refresh ar face workerul să tacă degeaba.
+    // Asta e ce ține minciuna imposibilă, nu un termen de expirare.
+    void announceChime()
+
+    const unlock = () => { unlockChime(); void announceChime() }
+    // `capture: true` nu e decorativ: în faza de bubble, orice `stopPropagation`
+    // dintr-un handler al aplicației ar înghiți gestul, contextul audio n-ar fi
+    // deblocat niciodată, și mementourile ar veni mute pentru totdeauna. Captura
+    // pe document rulează înaintea oricui ar putea opri propagarea.
+    const opts = { once: true, capture: true } as const
+    document.addEventListener('pointerdown', unlock, opts)
+    document.addEventListener('keydown', unlock, opts)
+    // Browserul poate suspenda contextul cât fila e ascunsă. La revenire se
+    // reanunță starea REALĂ — altfel anunțul ar rămâne un „da" învechit.
+    const onVis = () => { void announceChime() }
+    document.addEventListener('visibilitychange', onVis)
     return () => {
-      document.removeEventListener('pointerdown', unlock)
-      document.removeEventListener('keydown', unlock)
+      // `capture` trebuie repetat la scoatere, altfel nu se potrivește ascultătorul.
+      document.removeEventListener('pointerdown', unlock, { capture: true })
+      document.removeEventListener('keydown', unlock, { capture: true })
+      document.removeEventListener('visibilitychange', onVis)
     }
   }, [])
 

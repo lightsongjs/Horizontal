@@ -16,6 +16,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 // Dacă un deploy eșuează la import, alternativa e `https://esm.sh/web-push@3.6.7`
 // (același pachet, alt rezolvator).
 import webpush from 'npm:web-push@3.6.7'
+import { mintToken } from '../_shared/reminderToken.ts'
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -50,6 +51,16 @@ Deno.serve(async (req) => {
   if (!publicKey || !privateKey) return json({ error: 'VAPID keys missing' }, 500)
   if (!subject) return json({ error: 'VAPID_SUBJECT missing' }, 500)
   webpush.setVapidDetails(subject, publicKey, privateKey)
+
+  // Absența lui NU oprește mementourile: fără token, butoanele cad pe
+  // comportamentul vechi (prin pagină, sau deschid tichetul). Un memento
+  // nelivrat ar fi o pagubă mai mare decât un buton mai puțin comod, deci asta
+  // e un avertisment, nu o eroare 500.
+  const actionSecret = Deno.env.get('REMINDER_ACTION_SECRET')
+  if (!actionSecret) {
+    console.warn('REMINDER_ACTION_SECRET nesetat — butoanele notificării vor cere o filă deschisă')
+  }
+  const actionUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/reminder-action`
 
   const db = createClient(
     Deno.env.get('SUPABASE_URL')!,
@@ -118,12 +129,18 @@ Deno.serve(async (req) => {
       ...adminIds,
       ...(membersByProject.get(issue.project_id) ?? []),
     ])
+    // Un token pe TICHET, nu pe dispozitiv: fiecare payload pleacă criptat
+    // pentru abonamentul lui (RFC 8291), deci nu se scurge de la un dispozitiv
+    // la altul, iar toate aparțin oricum aceluiași om.
     const payload = JSON.stringify({
       id: issue.id,
       title: issue.title,
       dueAt: issue.due_at,
       allDay: issue.all_day,
       projectName: projectName.get(issue.project_id) ?? '',
+      ...(actionSecret
+        ? { actionToken: await mintToken(actionSecret, issue.id, Date.now()), actionUrl }
+        : {}),
     })
 
     // Un tichet fără niciun dispozitiv abonat se marchează TOT ca trimis:
@@ -136,6 +153,19 @@ Deno.serve(async (req) => {
           await webpush.sendNotification(
             { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
             payload,
+            {
+              // `high`, fiindcă un memento la ora cerută E urgent, iar implicitul
+              // (`normal`) permite serviciului de push să-l amâne. Nu e o
+              // garanție: Chrome pe Android NU trezește un dispozitiv adormit
+              // nici cu asta, iar managerele de baterie ale producătorilor pot
+              // întârzia livrarea cu ore. Ajută unde se poate, nu unde nu.
+              urgency: 'high',
+              // O oră, nu implicitul de patru săptămâni. Un telefon închis peste
+              // noapte n-are voie să primească dimineața mementourile de ieri:
+              // un memento răsuflat nu mai e informație, e zgomot care învață
+              // omul să ignore notificările. Aceeași durată ca a tokenului.
+              TTL: 3600,
+            },
           )
           sent++
         } catch (e) {
