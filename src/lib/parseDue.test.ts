@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { maskRejected, parseDue, stripSpans } from './parseDue'
+import { liveRejections, maskRejected, parseDue, stripSpans } from './parseDue'
 import { toDateInput, toTimeInput } from './schedule'
 
 // Luni, 24 august 2026, 08:40 local. Toate așteptările sunt relative la ea.
@@ -300,5 +300,42 @@ describe('refuzul unui fragment', () => {
   it('stripSpans e chiar tăietura pe care o face parserul', () => {
     const r = parseDue('vineri sună la bancă la 10', NOW)
     expect(stripSpans('vineri sună la bancă la 10', r.spans)).toBe(r.title)
+  })
+})
+
+describe('refuzul se uită când fragmentul dispare', () => {
+  /**
+   * Secvența pe care o trăiește omul, pas cu pas: fiecare pas primește textul
+   * de acum și întoarce ce vede parserul, cu refuzurile curățate de cele care
+   * nu mai au acoperire — exact regula din `useTitleDate`.
+   */
+  function run(steps: { text: string; reject?: string }[]) {
+    let rejected: string[] = []
+    return steps.map(({ text, reject }) => {
+      rejected = liveRejections(text, rejected)
+      const r = parseDue(maskRejected(text, rejected), NOW)
+      const seen = r.spans.map(([a, b]) => text.slice(a, b))
+      if (reject) rejected = [...rejected, reject]
+      return seen
+    })
+  }
+
+  it('șterg fragmentul refuzat și îl scriu la loc: se recunoaște din nou', () => {
+    expect(run([
+      { text: 'reminder la 10', reject: 'la 10' }, // îl văd, îl refuz
+      { text: 'reminder la 10 ' },                 // refuzat: nu se mai vede
+      { text: 'reminder ' },                       // l-am șters: refuzul se uită
+      { text: 'reminder la 12' },                  // altă oră, recunoscută
+      { text: 'reminder ' },                       // șters și el
+      { text: 'reminder la 10' },                  // vechiul fragment, din nou viu
+    ])).toEqual([['la 10'], [], [], ['la 12'], [], ['la 10']])
+  })
+
+  it('cât timp fragmentul stă în text, refuzul ține', () => {
+    expect(run([
+      { text: 'test la 11', reject: 'la 11' },
+      { text: 'test la 11 ' },
+      { text: 'test la 11 la 12' },
+    ])).toEqual([['la 11'], [], ['la 12']])
   })
 })

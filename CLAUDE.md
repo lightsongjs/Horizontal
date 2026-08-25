@@ -111,6 +111,8 @@ tichetului din formular. El ține și refuzul, iar refuzul e pe **fragment**, nu
 stare: fragmentele refuzate se ascund de parser cu `maskRejected`, care păstrează
 lungimea textului, deci indicii rămân valizi. Un refuz global se stinge la
 următoarea tastă și fragmentul respins se reaprinde singur — de-aia nu mai există.
+Refuzul ține însă doar cât ține fragmentul în text (`liveRejections`): ștergi
+„la 10", refuzul se uită; îl scrii din nou, se recunoaște din nou.
 
 Cod: `src/lib/schedule.ts` (bucketizare pe zile locale, restanțe, sortare),
 `src/lib/parseDue.ts` (data din titlu, RO+EN), `src/lib/pushPayload.ts`

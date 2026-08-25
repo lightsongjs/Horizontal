@@ -4,7 +4,7 @@ import { useHorizontal } from './store'
 import { useUI } from './ui'
 import { useAuth } from './auth'
 import { getRelatedIds } from './lib/treeTraversal'
-import { maskRejected, parseDue, stripSpans, type ParsedDue } from './lib/parseDue'
+import { liveRejections, maskRejected, parseDue, stripSpans, type ParsedDue } from './lib/parseDue'
 import { buildOrderedLayers, type OrderedLayer } from './lib/ordering'
 import type { Project } from './lib/types'
 
@@ -372,12 +372,31 @@ export interface TitleDate {
   rejectedKey: string
 }
 
-export function useTitleDate(text: string, enabled = true): TitleDate {
+export function useTitleDate(
+  text: string,
+  { enabled = true, onChange }: { enabled?: boolean; onChange?(next: string): void } = {},
+): TitleDate {
   const [rejected, setRejected] = useState<string[]>([])
   const [onDate, setOnDate] = useState(false)
   const mirrorRef = useRef<HTMLSpanElement>(null)
 
-  const parsed = parseDue(maskRejected(text, rejected))
+  /**
+   * Refuzul ține cât ține fragmentul în text. Ștergi „la 10", refuzul lui se
+   * uită; îl scrii din nou, se recunoaște din nou.
+   *
+   * Fără uitare, refuzul ar fi o pedeapsă pe viață pentru un șir de caractere:
+   * ai refuzat o dată „la 10" într-un titlu, și nu mai poți pune niciodată o
+   * scadență la 10 în ACELAȘI titlu fără să golești tot.
+   */
+  const live = liveRejections(text, rejected)
+  const liveKey = live.join('\u0001')
+  useEffect(() => {
+    // Identic ca lungime înseamnă identic: `live` e filtrat chiar din `prev`.
+    setRejected((prev) => (prev.length === live.length ? prev : live))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveKey, rejected.length])
+
+  const parsed = parseDue(maskRejected(text, live))
   const active = enabled && parsed.dueAt !== null
   const spans = active ? parsed.spans : []
   // Titlul se taie din textul ORIGINAL, nu din cel mascat: masca are aceeași
@@ -410,9 +429,13 @@ export function useTitleDate(text: string, enabled = true): TitleDate {
   }
 
   const reject = (frags: string[]) => {
-    const fresh = frags.filter((f) => f && !rejected.includes(f))
-    if (fresh.length) setRejected([...rejected, ...fresh])
+    const fresh = frags.filter((f) => f && !live.includes(f))
+    if (fresh.length) setRejected([...live, ...fresh])
     setOnDate(false)
+    // Un spațiu la coadă, ca scrisul să continue de unde s-a oprit. Refuzul
+    // vine aproape întotdeauna în mijlocul unei propoziții neterminate, iar
+    // fără el primul lucru de făcut după refuz ar fi o apăsare de spațiu.
+    if (fresh.length && onChange && !/\s$/.test(text)) onChange(text + ' ')
   }
 
   return {
@@ -437,7 +460,9 @@ export function useTitleDate(text: string, enabled = true): TitleDate {
         e.preventDefault()
         reject([text.slice(spans[i][0], spans[i][1])])
         el.focus()
-        el.setSelectionRange(el.value.length, el.value.length)
+        // După randare: textul tocmai a crescut cu spațiul de mai sus, iar o
+        // poziționare pe valoarea veche ar cădea înaintea lui.
+        requestAnimationFrame(() => el.setSelectionRange(el.value.length, el.value.length))
       },
       // Numai maus: pe atingere n-are ce să însemne „stau deasupra".
       onPointerMove(e) {
@@ -449,6 +474,6 @@ export function useTitleDate(text: string, enabled = true): TitleDate {
     },
     rejectAll: () => reject(spans.map(([s, e]) => text.slice(s, e))),
     reset: () => { setRejected([]); setOnDate(false) },
-    rejectedKey: rejected.join('\u0001'),
+    rejectedKey: liveKey,
   }
 }

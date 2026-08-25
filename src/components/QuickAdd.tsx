@@ -63,7 +63,7 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0 }: Props) {
   })
   const inputRef = useRef<HTMLInputElement>(null)
   // Recunoașterea datei, cu refuzul legat de fragment — vezi `useTitleDate`.
-  const date = useTitleDate(text)
+  const date = useTitleDate(text, { onChange: setText })
 
   // Focus cerut din afară. Sare peste primul randare (`focusSignal` 0) ca
   // deschiderea listei să nu ridice tastatura pe telefon nechemată.
@@ -104,7 +104,7 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0 }: Props) {
     // Cursorul la sfârșit, ca după atingerea pe fragment: refuzul e o comandă,
     // iar de aici se scrie mai departe.
     el.focus()
-    el.setSelectionRange(el.value.length, el.value.length)
+    requestAnimationFrame(() => el.setSelectionRange(el.value.length, el.value.length))
   }
 
   const submit = async () => {

@@ -254,7 +254,10 @@ export function IssueForm({ issueId }: { issueId?: string }) {
    * aplicația. Se stinge când scadența e a utilizatorului sau la editare: acolo
    * o evidențiere ar promite o completare care oricum nu se mai întâmplă.
    */
-  const titleDate = useTitleDate(title, !isEdit && !dueOwned && canWrite)
+  const titleDate = useTitleDate(title, {
+    enabled: !isEdit && !dueOwned && canWrite,
+    onChange: setTitle,
+  })
   const [reminder, setReminder] = useState<ReminderKind>(
     existing ? reminderKindOf(existing.dueAt, existing.remindAt) : 'none',
   )

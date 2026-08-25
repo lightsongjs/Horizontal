@@ -91,6 +91,18 @@ export function maskRejected(raw: string, rejected: string[]): string {
 }
 
 /**
+ * Refuzurile care mai au acoperire în text.
+ *
+ * Un refuz ține cât ține fragmentul: ștergi „la 10", refuzul lui se uită; îl
+ * scrii din nou, se recunoaște din nou. Altfel refuzul ar fi o pedeapsă pe
+ * viață pentru un șir de caractere — un „la 10" refuzat o dată n-ar mai putea
+ * deveni niciodată scadență în același titlu fără să golești tot.
+ */
+export function liveRejections(text: string, rejected: string[]): string[] {
+  return rejected.filter((f) => text.includes(f))
+}
+
+/**
  * Textul fără intervalele date, curățat de spațiile și de semnele rămase
  * atârnate. Aceeași funcție e folosită de parser pentru titlu și de interfață
  * pentru „curăță titlul" — două tăieturi diferite ar fi divergent în tăcere.
