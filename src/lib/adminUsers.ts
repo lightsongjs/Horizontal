@@ -1,14 +1,37 @@
 import { supabase } from './supabase'
+import { errorMessage } from './errorMessage'
 import type { ProjectRole } from './access'
 
 export interface AccessEntry { project_id: string; role: ProjectRole }
 export interface AdminUser { id: string; email: string; access: AccessEntry[] }
 
+/**
+ * Ce a spus de fapt funcția edge.
+ *
+ * `functions.invoke` aruncă un `FunctionsHttpError` cu mesajul fix „Edge
+ * Function returned a non-2xx status code" pentru ORICE răspuns non-2xx, iar
+ * motivul adevărat („Password should be at least 6 characters.") stă în corpul
+ * răspunsului, agățat de eroare ca `context`. Fără despachetarea asta, orice
+ * greșeală de administrare arată identic și nu se poate repara.
+ */
+async function edgeMessage(error: unknown): Promise<string> {
+  const ctx = (error as { context?: unknown }).context
+  if (ctx instanceof Response) {
+    try {
+      const msg = errorMessage(await ctx.json())
+      if (msg !== 'Eroare necunoscută') return msg
+    } catch {
+      // Corp gol sau non-JSON: rămâne mesajul generic, tot mai bun decât nimic.
+    }
+  }
+  return errorMessage(error)
+}
+
 async function call<T>(action: string, payload?: unknown): Promise<T> {
   if (!supabase) throw new Error('Supabase indisponibil.')
   const body = payload === undefined ? { action } : { action, payload }
   const { data, error } = await supabase.functions.invoke('admin-users', { body })
-  if (error) throw new Error(error.message)
+  if (error) throw new Error(await edgeMessage(error))
   if (data && typeof data === 'object' && 'error' in data && data.error)
     throw new Error(String((data as { error: unknown }).error))
   return data as T

@@ -60,3 +60,32 @@ describe('mutations send correct action + payload', () => {
     await expect(deleteUser('u1')).rejects.toThrow('forbidden')
   })
 })
+
+describe('mesajul erorii vine din corpul răspunsului', () => {
+  /** Cum arată o eroare aruncată de `functions.invoke` la un răspuns non-2xx. */
+  const httpError = (status: number, body: unknown) =>
+    Object.assign(new Error('Edge Function returned a non-2xx status code'), {
+      name: 'FunctionsHttpError',
+      context: new Response(JSON.stringify(body), {
+        status, headers: { 'Content-Type': 'application/json' },
+      }),
+    })
+
+  it('scoate motivul adevărat din corp, nu mesajul generic', async () => {
+    invoke.mockResolvedValue({
+      data: null,
+      error: httpError(400, { error: 'Password should be at least 6 characters.' }),
+    })
+    await expect(resetPassword('u1', 'abc')).rejects.toThrow('Password should be at least 6 characters.')
+  })
+
+  it('fără corp folositor rămâne mesajul erorii', async () => {
+    invoke.mockResolvedValue({
+      data: null,
+      error: Object.assign(new Error('Edge Function returned a non-2xx status code'), {
+        context: new Response('', { status: 500 }),
+      }),
+    })
+    await expect(resetPassword('u1', 'parola-lunga')).rejects.toThrow('Edge Function returned a non-2xx status code')
+  })
+})

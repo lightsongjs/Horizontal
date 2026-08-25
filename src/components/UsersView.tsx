@@ -4,10 +4,18 @@ import {
   listUsers, createUser, setAccess, resetPassword, deleteUser,
   type AdminUser, type AccessEntry,
 } from '../lib/adminUsers'
+import { errorMessage } from '../lib/errorMessage'
 import type { ProjectRole } from '../lib/access'
 import type { Project } from '../lib/types'
 
 type Draft = Record<string, ProjectRole | undefined>
+
+/**
+ * Lungimea minimă a parolei, cea implicită din GoTrue. Dacă în Supabase e pusă
+ * una mai mare, serverul refuză oricum, iar mesajul lui ajunge acum la ecran —
+ * verificarea de aici scutește drumul dus-întors, nu îl înlocuiește.
+ */
+const MIN_PASSWORD = 6
 
 const ROLE_OPTIONS: { value: ProjectRole | undefined; label: string }[] = [
   { value: undefined, label: 'Fără' },
@@ -70,12 +78,12 @@ export function UsersView() {
   const [draft, setDraft] = useState<Draft>({})
 
   async function reload() {
-    try { setUsers(await listUsers()) } catch (e) { setError(String(e)) } finally { setLoading(false) }
+    try { setUsers(await listUsers()) } catch (e) { setError(errorMessage(e)) } finally { setLoading(false) }
   }
   useEffect(() => { void reload() }, [])
 
   const grantCount = useMemo(() => Object.values(draft).filter(Boolean).length, [draft])
-  const canSubmit = email.trim() !== '' && password.trim() !== '' && !busy
+  const canSubmit = email.trim() !== '' && password.length >= MIN_PASSWORD && !busy
 
   async function onAdd() {
     setBusy(true); setError(null)
@@ -83,7 +91,7 @@ export function UsersView() {
       await createUser(email.trim(), password, draftToAccess(draft))
       setEmail(''); setPassword(''); setDraft({})
       await reload()
-    } catch (e) { setError(String(e)) } finally { setBusy(false) }
+    } catch (e) { setError(errorMessage(e)) } finally { setBusy(false) }
   }
 
   return (
@@ -121,7 +129,7 @@ export function UsersView() {
               className="users-input"
               type="text"
               autoComplete="off"
-              placeholder="parola inițială"
+              placeholder={`parola inițială (min. ${MIN_PASSWORD} caractere)`}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
@@ -193,16 +201,19 @@ function UserCard({
   async function save() {
     setBusy(true)
     try { await setAccess(user.id, draftToAccess(draft)); await onChanged() }
-    catch (e) { onError(String(e)) } finally { setBusy(false) }
+    catch (e) { onError(errorMessage(e)) } finally { setBusy(false) }
   }
   async function resetPw() {
-    const pw = prompt(`Parolă nouă pentru ${user.email}`)
+    const pw = prompt(`Parolă nouă pentru ${user.email} (minimum ${MIN_PASSWORD} caractere)`)
     if (!pw) return
-    try { await resetPassword(user.id, pw); alert('Parolă schimbată.') } catch (e) { onError(String(e)) }
+    // Verificat aici, nu numai pe server: serverul răspunde corect, dar în
+    // engleză și după un drum dus-întors, pentru o regulă care se știe dinainte.
+    if (pw.length < MIN_PASSWORD) return onError(`Parola trebuie să aibă cel puțin ${MIN_PASSWORD} caractere.`)
+    try { await resetPassword(user.id, pw); alert('Parolă schimbată.') } catch (e) { onError(errorMessage(e)) }
   }
   async function remove() {
     if (!confirm(`Ștergi definitiv ${user.email}?`)) return
-    try { await deleteUser(user.id); await onChanged() } catch (e) { onError(String(e)) }
+    try { await deleteUser(user.id); await onChanged() } catch (e) { onError(errorMessage(e)) }
   }
 
   return (
