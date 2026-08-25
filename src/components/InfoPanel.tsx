@@ -151,7 +151,8 @@ export function InfoPanel({ onClose }: { onClose: () => void }) {
             <h3>Recunoașterea datei din titlu</h3>
             <p className="info-lead">
               Scrii data în titlu, iar scadența se completează singură. Fragmentul recunoscut se
-              evidențiază, iar <strong>✕</strong> îl refuză — parserul propune, tu confirmi.
+              evidențiază; o atingere pe el sau pe <strong>✕</strong> îl refuză, și atunci
+              rămâne text în titlu — parserul propune, tu confirmi.
               Tabelul de mai jos e calculat acum, de parserul care rulează în aplicație.
             </p>
             {GROUPS.map((g) => (

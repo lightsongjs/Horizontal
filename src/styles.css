@@ -4249,6 +4249,36 @@ svg.graph {
   border-radius: 4px;
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent);
 }
+/* Mausul stă peste fragmentul recunoscut: cursorul și culoarea spun ce se
+   întâmplă la apăsare — fragmentul dispare din scadență și rămâne text. */
+.qa-wrap.on-date .qa-input { cursor: pointer; }
+.qa-wrap.on-date .qa-mirror mark {
+  background: color-mix(in srgb, var(--blocked) 16%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--blocked) 38%, transparent);
+}
+/* Indiciul de deasupra rândului. `pointer-events: none` fiindcă stă chiar peste
+   locul în care omul trebuie să poată atinge — el explică gestul, nu-l blochează. */
+.qa-tip {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 9px);
+  z-index: 5;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 5px 8px;
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: var(--txt-dim);
+  box-shadow: var(--shadow-md);
+  white-space: nowrap;
+  pointer-events: none;
+  animation: qa-tip-in 0.16s ease-out;
+}
+@keyframes qa-tip-in {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 .qa-input {
   background: none;
   outline: none;
