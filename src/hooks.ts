@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type React from 'react'
 import { useHorizontal } from './store'
 import { useUI } from './ui'
 import { useAuth } from './auth'
 import { getRelatedIds } from './lib/treeTraversal'
+import { maskRejected, parseDue, stripSpans, type ParsedDue } from './lib/parseDue'
 import { buildOrderedLayers, type OrderedLayer } from './lib/ordering'
 import type { Project } from './lib/types'
 
@@ -330,4 +332,114 @@ export function useCoarsePointer(): boolean {
   }, [])
 
   return coarse
+}
+
+/**
+ * Recunoașterea datei din text, cu refuz pe fragment.
+ *
+ * Un singur loc pentru cele două inputuri care o folosesc — adăugarea rapidă și
+ * titlul tichetului — fiindcă partea grea nu e parsarea, ci refuzul: el trebuie
+ * să se lipească de FRAGMENT, nu de starea „am zis nu o dată". Un refuz global
+ * se stinge la următoarea tastă, iar fragmentul respins se reaprinde singur.
+ *
+ * Refuzatele se ascund de parser (`maskRejected`), deci parserul e liber să
+ * recunoască altă dată din același text: refuzi „la 11", scrii „la 12", se
+ * evidențiază „la 12".
+ */
+export interface TitleDate {
+  /** Ce a înțeles parserul, cu fragmentele refuzate ascunse. */
+  parsed: ParsedDue
+  /** Textul fără fragmentele recunoscute — ce se salvează ca titlu. */
+  title: string
+  /** Există o dată recunoscută și nerefuzată. */
+  active: boolean
+  /** Bucățile pentru stratul-oglindă care desenează evidențierea. */
+  pieces: { text: string; mark: boolean }[]
+  mirrorRef: React.RefObject<HTMLSpanElement>
+  /** Mausul stă peste un fragment evidențiat (pentru cursor și culoare). */
+  onDate: boolean
+  /** Legăturile inputului transparent de deasupra oglinzii. */
+  inputProps: {
+    onPointerDown(e: React.PointerEvent<HTMLInputElement>): void
+    onPointerMove(e: React.PointerEvent<HTMLInputElement>): void
+    onPointerLeave(): void
+  }
+  /** „Nu e o dată" pentru tot ce e evidențiat acum. */
+  rejectAll(): void
+  /** Uită refuzurile — la golirea inputului sau după salvare. */
+  reset(): void
+  /** Cheie stabilă a refuzurilor, pentru listele de dependențe ale efectelor. */
+  rejectedKey: string
+}
+
+export function useTitleDate(text: string, enabled = true): TitleDate {
+  const [rejected, setRejected] = useState<string[]>([])
+  const [onDate, setOnDate] = useState(false)
+  const mirrorRef = useRef<HTMLSpanElement>(null)
+
+  const parsed = parseDue(maskRejected(text, rejected))
+  const active = enabled && parsed.dueAt !== null
+  const spans = active ? parsed.spans : []
+  // Titlul se taie din textul ORIGINAL, nu din cel mascat: masca are aceeași
+  // lungime, deci indicii se potrivesc, dar conținutul ei nu e text de-al omului.
+  const title = active ? stripSpans(text, spans) : text.trim()
+
+  const pieces: { text: string; mark: boolean }[] = []
+  let at = 0
+  for (const [s, e] of spans) {
+    if (s > at) pieces.push({ text: text.slice(at, s), mark: false })
+    pieces.push({ text: text.slice(s, e), mark: true })
+    at = e
+  }
+  if (at < text.length) pieces.push({ text: text.slice(at), mark: false })
+
+  /**
+   * Al câtelea fragment evidențiat cade sub punctul atins, sau −1.
+   *
+   * Se măsoară dreptunghiurile REALE ale marcajelor din oglindă, nu poziția
+   * cursorului din input: un click pe marginea fragmentului dă același indice
+   * pentru „înainte" și „după", iar geometria nu are ambiguitatea asta.
+   */
+  const markAt = (x: number, y: number): number => {
+    const marks = mirrorRef.current?.querySelectorAll('mark')
+    if (!marks) return -1
+    return Array.from(marks).findIndex((el) => {
+      const r = el.getBoundingClientRect()
+      return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom
+    })
+  }
+
+  const reject = (frags: string[]) => {
+    const fresh = frags.filter((f) => f && !rejected.includes(f))
+    if (fresh.length) setRejected([...rejected, ...fresh])
+    setOnDate(false)
+  }
+
+  return {
+    parsed,
+    title,
+    active,
+    pieces,
+    mirrorRef,
+    onDate,
+    inputProps: {
+      // `pointerdown`, nu `click`: pe telefon degetul ridicat mai la stânga ar
+      // rata marcajul pe care a apăsat.
+      onPointerDown(e) {
+        if (!active) return
+        const i = markAt(e.clientX, e.clientY)
+        if (i >= 0 && spans[i]) reject([text.slice(spans[i][0], spans[i][1])])
+      },
+      // Numai maus: pe atingere n-are ce să însemne „stau deasupra".
+      onPointerMove(e) {
+        if (e.pointerType !== 'mouse') return
+        const over = active && markAt(e.clientX, e.clientY) >= 0
+        if (over !== onDate) setOnDate(over)
+      },
+      onPointerLeave() { if (onDate) setOnDate(false) },
+    },
+    rejectAll: () => reject(spans.map(([s, e]) => text.slice(s, e))),
+    reset: () => { setRejected([]); setOnDate(false) },
+    rejectedKey: rejected.join('\u0001'),
+  }
 }

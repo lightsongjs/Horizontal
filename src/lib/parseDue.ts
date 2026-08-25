@@ -56,6 +56,54 @@ function mergeSpans(spans: [number, number][]): [number, number][] {
   return out
 }
 
+/**
+ * Caracterul cu care se ascund fragmentele refuzate. Nu se poate tasta, deci nu
+ * poate veni din text, și e non-cuvânt pentru regex — adică `\b` din tipare
+ * continuă să funcționeze de-o parte și de alta a măștii.
+ */
+const MASK = '\u0001'
+
+/**
+ * Ascunde de parser fragmentele pe care omul le-a refuzat.
+ *
+ * Lungimea se PĂSTREAZĂ, ca indicii întorși de `parseDue` să rămână valizi în
+ * textul original. Se maschează după conținut, nu după poziție: textul se
+ * editează în continuare, iar un interval memorat ar aluneca la prima literă
+ * scrisă înaintea lui.
+ *
+ * Consecința asumată: după ce ai refuzat „la 11", scrierea lui „la 11" mai
+ * târziu în ACELAȘI titlu rămâne text. E prețul pentru ca refuzul să nu se
+ * anuleze singur la următoarea tastă — bug-ul pe care îl repară.
+ */
+export function maskRejected(raw: string, rejected: string[]): string {
+  let out = raw
+  for (const frag of rejected) {
+    if (!frag) continue
+    let from = 0
+    for (;;) {
+      const i = out.indexOf(frag, from)
+      if (i < 0) break
+      out = out.slice(0, i) + MASK.repeat(frag.length) + out.slice(i + frag.length)
+      from = i + frag.length
+    }
+  }
+  return out
+}
+
+/**
+ * Textul fără intervalele date, curățat de spațiile și de semnele rămase
+ * atârnate. Aceeași funcție e folosită de parser pentru titlu și de interfață
+ * pentru „curăță titlul" — două tăieturi diferite ar fi divergent în tăcere.
+ */
+export function stripSpans(raw: string, spans: [number, number][]): string {
+  let out = raw
+  // De la dreapta la stânga, ca indicii să rămână valizi după fiecare tăietură.
+  for (let i = spans.length - 1; i >= 0; i--) {
+    out = out.slice(0, spans[i][0]) + out.slice(spans[i][1])
+  }
+  return out.replace(/\s{2,}/g, ' ').trim().replace(/^[,–-]\s*|[,–-]\s*$/g, '').trim()
+}
+
 export function parseDue(raw: string, now: Date = new Date()): ParsedDue {
   const hay = fold(raw)
   const spans: [number, number][] = []
@@ -179,12 +227,7 @@ export function parseDue(raw: string, now: Date = new Date()): ParsedDue {
   if (!day && time && base.getTime() < now.getTime()) base.setDate(base.getDate() + 1)
 
   const merged = mergeSpans(spans)
-  let title = raw
-  // De la dreapta la stânga, ca indicii să rămână valizi după fiecare tăietură.
-  for (let i = merged.length - 1; i >= 0; i--) {
-    title = title.slice(0, merged[i][0]) + title.slice(merged[i][1])
-  }
-  title = title.replace(/\s{2,}/g, ' ').trim().replace(/^[,–-]\s*|[,–-]\s*$/g, '').trim()
+  const title = stripSpans(raw, merged)
 
   // Titlul are voie să rămână GOL: „azi la 8" e numai dată. NU întoarcem textul
   // brut ca titlu — ar salva o sarcină numită „azi la 8". Apelantul decide;

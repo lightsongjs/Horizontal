@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseDue } from './parseDue'
+import { maskRejected, parseDue, stripSpans } from './parseDue'
 import { toDateInput, toTimeInput } from './schedule'
 
 // Luni, 24 august 2026, 08:40 local. Toate așteptările sunt relative la ea.
@@ -257,5 +257,48 @@ describe('parseDue — spans', () => {
     const r = parseDue('vineri sună la bancă la 10', NOW)
     expect(r.title).toBe('sună la bancă')
     expect(r.spans).toHaveLength(2)
+  })
+})
+
+describe('refuzul unui fragment', () => {
+  /** Ce vede parserul după ce omul a spus „nu e o dată" despre un fragment. */
+  function afterReject(text: string, rejected: string[]) {
+    const r = parseDue(maskRejected(text, rejected), NOW)
+    return {
+      spans: r.spans.map(([a, b]) => text.slice(a, b)),
+      time: r.dueAt && !r.allDay ? toTimeInput(r.dueAt) : null,
+      title: stripSpans(text, r.spans),
+    }
+  }
+
+  it('fragmentul refuzat rămâne text, oricât se mai scrie după el', () => {
+    // Bug-ul reparat: refuzul era o stare globală, ștearsă la următoarea tastă,
+    // deci „la 11" se reaprindea singur imediat ce se scria mai departe.
+    expect(afterReject('test la 11', ['la 11'])).toMatchObject({ spans: [], time: null })
+    expect(afterReject('test la 11 la 12', ['la 11'])).toMatchObject({
+      spans: ['la 12'], time: '12:00', title: 'test la 11',
+    })
+  })
+
+  it('masca păstrează lungimea, deci indicii rămân valizi în textul original', () => {
+    const text = 'sună la 11 pe Andrei mâine'
+    expect(maskRejected(text, ['la 11'])).toHaveLength(text.length)
+    expect(afterReject(text, ['la 11'])).toMatchObject({
+      spans: ['mâine'], title: 'sună la 11 pe Andrei',
+    })
+  })
+
+  it('masca prinde toate aparițiile aceluiași fragment', () => {
+    expect(afterReject('la 11 și la 11', ['la 11'])).toMatchObject({ spans: [] })
+  })
+
+  it('fără refuzuri, textul trece neatins', () => {
+    expect(maskRejected('mâine la 9', [])).toBe('mâine la 9')
+    expect(maskRejected('mâine la 9', [''])).toBe('mâine la 9')
+  })
+
+  it('stripSpans e chiar tăietura pe care o face parserul', () => {
+    const r = parseDue('vineri sună la bancă la 10', NOW)
+    expect(stripSpans('vineri sună la bancă la 10', r.spans)).toBe(r.title)
   })
 })

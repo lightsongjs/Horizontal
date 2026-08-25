@@ -2918,19 +2918,42 @@ svg.graph {
   background: var(--blocked-soft);
 }
 
-.sh-title-input {
+/* Titlul tichetului: aceleași două straturi ca la adăugarea rapidă. Inputul
+   rămâne în flux (el dă înălțimea), oglinda se suprapune peste el. */
+.sh-title-wrap {
+  position: relative;
   flex: 1;
   min-width: 0;
+}
+.sh-title-mirror,
+.sh-title-input {
   font-family: var(--display);
   font-size: 18px;
   font-weight: 500;
+  line-height: 26px;
+  letter-spacing: -0.015em;
+  white-space: pre;
+  padding: 0;
+  border: none;
+}
+.sh-title-mirror {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  color: transparent;
+  overflow: hidden;
+}
+.sh-title-input {
+  display: block;
+  position: relative;
+  width: 100%;
+  height: 26px;
   color: var(--txt);
   background: transparent;
-  border: none;
   outline: none;
-  letter-spacing: -0.015em;
   caret-color: #0EA5E9;
 }
+.sh-title-wrap.on-date .sh-title-input { cursor: pointer; }
 .sh-title-input::placeholder { color: var(--txt-faint); }
 
 /* ── META SECTION (theme/val/assignee) ──────────── */
@@ -4243,7 +4266,8 @@ svg.graph {
   color: transparent;
   overflow: hidden;
 }
-.qa-mirror mark {
+.qa-mirror mark,
+.sh-title-mirror mark {
   background: var(--accent-soft);
   color: transparent;
   border-radius: 4px;
@@ -4252,7 +4276,8 @@ svg.graph {
 /* Mausul stă peste fragmentul recunoscut: cursorul și culoarea spun ce se
    întâmplă la apăsare — fragmentul dispare din scadență și rămâne text. */
 .qa-wrap.on-date .qa-input { cursor: pointer; }
-.qa-wrap.on-date .qa-mirror mark {
+.qa-wrap.on-date .qa-mirror mark,
+.sh-title-wrap.on-date .sh-title-mirror mark {
   background: color-mix(in srgb, var(--blocked) 16%, transparent);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--blocked) 38%, transparent);
 }

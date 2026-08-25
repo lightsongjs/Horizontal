@@ -105,6 +105,13 @@ scadența e excepția. (În listele inteligente e invers, de asta `TaskRow` arat
 un „—" în coloana de oră.) Clopoțelul e exportat din `DueChip` și folosit de
 ambele, ca „are memento" să arate identic în cele două moduri.
 
+Recunoașterea datei din text e legată de interfață printr-un singur hook,
+`useTitleDate` din `src/hooks.ts` — folosit și de adăugarea rapidă, și de titlul
+tichetului din formular. El ține și refuzul, iar refuzul e pe **fragment**, nu pe
+stare: fragmentele refuzate se ascund de parser cu `maskRejected`, care păstrează
+lungimea textului, deci indicii rămân valizi. Un refuz global se stinge la
+următoarea tastă și fragmentul respins se reaprinde singur — de-aia nu mai există.
+
 Cod: `src/lib/schedule.ts` (bucketizare pe zile locale, restanțe, sortare),
 `src/lib/parseDue.ts` (data din titlu, RO+EN), `src/lib/pushPayload.ts`
 (contractul cu service worker-ul). Toate trei sunt pure și au fixtures — la fel

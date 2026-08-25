@@ -2,9 +2,9 @@ import { useRef, useState, useEffect, useCallback, forwardRef } from 'react'
 import { detectCycle, requiredDepWave } from '../lib/engine'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
-import { useCanWrite } from '../hooks'
+import { useCanWrite, useTitleDate } from '../hooks'
 import { ticketUrl } from '../lib/deepLink'
-import { parseDue } from '../lib/parseDue'
+import { stripSpans } from '../lib/parseDue'
 import {
   DATE_PLACEHOLDER, NO_SCHEDULE, TIME_PLACEHOLDER, defaultReminder, displayFromInputDate,
   fromDisplayDate, fromInputs, fromTimeText, maskDateInput, maskTimeInput, reminderAt,
@@ -246,12 +246,15 @@ export function IssueForm({ issueId }: { issueId?: string }) {
    * n-are voie să rescrie o dată pusă cândva anume.
    */
   const [dueOwned, setDueOwned] = useState(!!existing?.dueAt)
-  /** Utilizatorul a spus „nu e o dată". Se oprește recunoașterea din titlu. */
-  const [titleDateRefused, setTitleDateRefused] = useState(false)
   /** Ce am scris noi din titlu, ca să știm ce avem dreptul să retragem. */
   const autoFilled = useRef<{ date: string; time: string } | null>(null)
-  /** Fragmentele recunoscute în titlu, pentru butonul „curăță titlul". */
-  const [titleSpans, setTitleSpans] = useState<[number, number][]>([])
+  /**
+   * Recunoașterea datei din titlu, cu evidențiere în input și refuz pe fragment
+   * — același hook ca la adăugarea rapidă, ca gestul să fie unul singur în toată
+   * aplicația. Se stinge când scadența e a utilizatorului sau la editare: acolo
+   * o evidențiere ar promite o completare care oricum nu se mai întâmplă.
+   */
+  const titleDate = useTitleDate(title, !isEdit && !dueOwned && canWrite)
   const [reminder, setReminder] = useState<ReminderKind>(
     existing ? reminderKindOf(existing.dueAt, existing.remindAt) : 'none',
   )
@@ -328,15 +331,14 @@ export function IssueForm({ issueId }: { issueId?: string }) {
    * două degete distanță.
    */
   useEffect(() => {
-    if (isEdit || dueOwned || titleDateRefused || !canWrite) return
-    const parsed = parseDue(title)
-    if (parsed.dueAt) {
+    if (isEdit || dueOwned || !canWrite) return
+    const parsed = titleDate.parsed
+    if (titleDate.active && parsed.dueAt) {
       const date = toDisplayDate(parsed.dueAt)
       const time = parsed.allDay ? '' : toTimeInput(parsed.dueAt)
       autoFilled.current = { date, time }
       setDueText(date)
       setTimeText(time)
-      setTitleSpans(parsed.spans)
       return
     }
     // Titlul nu mai conține o dată. Retragem numai ce am pus noi: o valoare
@@ -347,41 +349,32 @@ export function IssueForm({ issueId }: { issueId?: string }) {
       setTimeText('')
     }
     autoFilled.current = null
-    setTitleSpans([])
     // `dueText`/`timeText` se citesc din randarea curentă, dar NU sunt
     // dependențe: efectul trebuie să reacționeze la titlu, nu la propriile
-    // scrieri, altfel se învârte.
+    // scrieri, altfel se învârte. `rejectedKey` E dependență: un fragment
+    // refuzat trebuie să retragă imediat ce completase.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [title, isEdit, dueOwned, titleDateRefused, canWrite])
+  }, [title, titleDate.rejectedKey, isEdit, dueOwned, canWrite])
 
   /** Scoate din titlu fragmentele care au devenit scadență. */
   const cleanTitleFromDate = () => {
-    let next = title
-    for (let i = titleSpans.length - 1; i >= 0; i--) {
-      next = next.slice(0, titleSpans[i][0]) + next.slice(titleSpans[i][1])
-    }
-    next = next.replace(/\s{2,}/g, ' ').trim().replace(/^[,–-]\s*|[,–-]\s*$/g, '').trim()
+    const next = stripSpans(title, titleDate.parsed.spans)
     // Uităm ce am completat, NU marcăm scadența ca a utilizatorului. Uitarea e
     // de ajuns ca efectul să nu retragă valorile când titlul rămâne fără dată —
     // iar dacă omul scrie mai târziu o altă dată în titlu, ea se aplică. Un
     // `dueOwned = true` aici ar fi omorât recunoașterea pentru tot restul
     // cardului, după o singură curățare.
     autoFilled.current = null
-    setTitleSpans([])
     setTitle(next)
   }
 
-  /** „Nu e o dată." Retrage ce am completat și tace până la închiderea cardului. */
-  const refuseTitleDate = () => {
-    const auto = autoFilled.current
-    if (auto && dueText === auto.date && timeText === auto.time) {
-      setDueText('')
-      setTimeText('')
-    }
-    autoFilled.current = null
-    setTitleSpans([])
-    setTitleDateRefused(true)
-  }
+  /**
+   * „Nu e o dată." Refuză fragmentele evidențiate ACUM, nu recunoașterea în
+   * general: efectul de mai sus retrage singur ce completase, iar o dată scrisă
+   * mai târziu în titlu se recunoaște din nou. Un refuz global s-ar fi întins
+   * peste tot restul cardului, după un singur „Podul 5".
+   */
+  const refuseTitleDate = () => titleDate.rejectAll()
 
   const isDirty = isEdit
     ? title !== (existing?.title ?? '') ||
@@ -688,25 +681,41 @@ export function IssueForm({ issueId }: { issueId?: string }) {
             )}
           </button>
         )}
-        <input
-          ref={titleInputRef}
-          className="sh-title-input"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          readOnly={!canWrite}
-          placeholder={isEdit ? `✎ ${existing!.id}` : 'Titlu tichet…'}
-          autoFocus
-          autoComplete="off"
-          autoCorrect="off"
-          inputMode="text"
-          spellCheck={false}
-          onKeyDown={(e) => {
-            if (e.key === 'Tab' && !e.shiftKey) {
-              e.preventDefault()
-              descRef.current?.focus()
-            }
-          }}
-        />
+        {/* Aceleași două straturi ca la adăugarea rapidă: oglinda desenează
+            evidențierea sub un input transparent. Metricile TREBUIE să fie
+            identice — orice diferență de font decalează marcajul. */}
+        <span
+          className={`sh-title-wrap ${titleDate.onDate ? 'on-date' : ''}`}
+          title={titleDate.onDate ? 'Nu e o dată — atinge ca să rămână text în titlu' : undefined}
+        >
+          <span className="sh-title-mirror" ref={titleDate.mirrorRef} aria-hidden="true">
+            {titleDate.pieces.map((p, i) => (p.mark ? <mark key={i}>{p.text}</mark> : <span key={i}>{p.text}</span>))}
+          </span>
+          <input
+            ref={titleInputRef}
+            className="sh-title-input"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            readOnly={!canWrite}
+            placeholder={isEdit ? `✎ ${existing!.id}` : 'Titlu tichet…'}
+            autoFocus
+            autoComplete="off"
+            autoCorrect="off"
+            inputMode="text"
+            spellCheck={false}
+            // O atingere PE fragmentul recunoscut înseamnă „nu e o dată".
+            {...titleDate.inputProps}
+            onScroll={(e) => {
+              if (titleDate.mirrorRef.current) titleDate.mirrorRef.current.scrollLeft = e.currentTarget.scrollLeft
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Tab' && !e.shiftKey) {
+                e.preventDefault()
+                descRef.current?.focus()
+              }
+            }}
+          />
+        </span>
         {canWrite && (
           <button
             tabIndex={-1}
@@ -914,7 +923,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
                       onClick={() => {
                       setDueText(''); setTimeText(''); setReminderTouched(false)
                       // Golirea redă titlului dreptul de a propune o dată.
-                      setDueOwned(false); autoFilled.current = null; setTitleSpans([])
+                      setDueOwned(false); autoFilled.current = null
                     }}
                       title="Scoate scadența"
                       aria-label="Scoate scadența"
@@ -949,7 +958,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
                 {/* Semnalul că scadența a venit din titlu, cu cele două ieșiri:
                   curăță textul rămas în titlu, sau refuză de tot. Fără ele,
                   recunoașterea ar fi o ghicire pe care n-o poți contrazice. */}
-              {titleSpans.length > 0 && !dueOwned && !isEdit && (
+              {titleDate.active && !dueOwned && !isEdit && (
                 <span className="due-from-title">
                   <span className="chip date">
                     <span className="chip-ico" aria-hidden="true">✦</span> din titlu
