@@ -2968,13 +2968,27 @@ svg.graph {
   display: none;
   width: 100%;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   padding: 12px 18px;
-  background: none;
+  background: var(--surface-2);
   border: none;
   text-align: left;
   font-family: inherit;
   cursor: pointer;
+}
+/* Statică — un rezumat scurt (un singur val, fără temă/assignee/scadență) nu
+   citește singur ca rând cu care poți interacționa; eticheta îl ancorează. */
+.meta-recap-label {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--txt-faint);
+}
+.meta-recap-sep {
+  flex-shrink: 0;
+  color: var(--txt-faint);
 }
 .meta-recap-text {
   flex: 1;

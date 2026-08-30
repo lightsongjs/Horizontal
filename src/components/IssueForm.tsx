@@ -781,6 +781,8 @@ export function IssueForm({ issueId }: { issueId?: string }) {
             onClick={() => setMetaOpen((v) => !v)}
             aria-expanded={metaOpen}
           >
+            <span className="meta-recap-label">Detalii</span>
+            <span className="meta-recap-sep" aria-hidden="true">·</span>
             <span className="meta-recap-text">{metaRecap}</span>
             <svg className={`acc-chevron${metaOpen ? ' open' : ''}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="6 9 12 15 18 9"/>
