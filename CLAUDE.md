@@ -37,6 +37,13 @@ Build through step 5 of the build order in REQUIREMENTS.md (data layer → layer
 ## Stack notes
 Mobile-first, dark theme, bottom sheets. Persistence target: Supabase fits the example. Adjust to your team's stack.
 
+## Mockups — fișier local, nu Artifact
+
+Pentru orice mockup/design vizual (comparații before/after, explorare de layout):
+scrie un fișier `.html` obișnuit în repo (ca `prototype.html` / `prototype-todo.html`),
+deschis direct în browser. **Nu folosi tool-ul Artifact** pentru asta — omul preferă
+fișierul local.
+
 ## Supabase — connection details
 
 Pentru scripturi directe cu `pg` (nu supabase-js), folosește parametri separați ca să eviți problema cu `@` din parolă:

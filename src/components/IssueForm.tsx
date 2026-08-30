@@ -7,8 +7,8 @@ import { ticketUrl } from '../lib/deepLink'
 import { stripSpans } from '../lib/parseDue'
 import {
   DATE_PLACEHOLDER, NO_SCHEDULE, TIME_PLACEHOLDER, defaultReminder, displayFromInputDate,
-  fromDisplayDate, fromInputs, fromTimeText, maskDateInput, maskTimeInput, reminderAt,
-  reminderKindOf, toDisplayDate, toTimeInput, type ReminderKind,
+  fromDisplayDate, fromInputs, fromTimeText, hasTime, maskDateInput, maskTimeInput, reminderAt,
+  reminderKindOf, toDisplayDate, toShortDate, toTimeInput, type ReminderKind,
 } from '../lib/schedule'
 import { Attachments } from './Attachments'
 import type { Issue, ScenarioKind, TestScenario } from '../lib/types'
@@ -20,6 +20,24 @@ const BADGE_CYCLE: { kind: ScenarioKind; icon: string }[] = [
   { kind: 'fail',    icon: '✕' },
   { kind: 'neutral', icon: '○' },
 ]
+
+export interface MetaRecapInput {
+  themeName: string | null
+  waveName: string
+  assigneeName: string | null
+  urgent: boolean
+  dueLabel: string | null
+}
+
+/**
+ * Rezumatul pe un rând al meta colapsate pe mobil — doar ce e deja setat.
+ * Valul e mereu prezent (fiecare tichet are unul); restul apar condiționat.
+ */
+export function buildMetaRecap(input: MetaRecapInput): string {
+  return [input.themeName, input.waveName, input.assigneeName, input.urgent ? '⚡ Urgent' : null, input.dueLabel]
+    .filter((part): part is string => !!part)
+    .join(' · ')
+}
 
 type DraftIssue = { tempId: string; title: string }
 let draftCounter = 0
@@ -269,6 +287,11 @@ export function IssueForm({ issueId }: { issueId?: string }) {
     return { dueAt, allDay, remindAt: reminderAt(dueAt, kind), kind }
   })()
 
+  // Pe mobil, blocul de meta pornește colapsat într-un rezumat pe un rând —
+  // altfel Temă/Val/Assigned/Prioritate/Scadență stivuite împing Descrierea
+  // sub fold. Pe desktop CSS-ul ignoră starea asta și ține blocul mereu deschis.
+  const [metaOpen, setMetaOpen] = useState(false)
+
   const [showNewTheme, setShowNewTheme] = useState(false)
   const [newThemeName, setNewThemeName] = useState('')
   const [saving, setSaving] = useState(false)
@@ -491,6 +514,16 @@ export function IssueForm({ issueId }: { issueId?: string }) {
   }
 
   const qaCount = selectors.filter(Boolean).length + scenarios.length
+
+  const metaRecap = buildMetaRecap({
+    themeName: theme ? (themes.find((t) => t.key === theme)?.name ?? null) : null,
+    waveName: waves.find((w) => w.number === wave)?.name ?? `Val ${wave}`,
+    assigneeName: assigneeId ? (assignees.find((a) => a.id === assigneeId)?.name ?? null) : null,
+    urgent,
+    dueLabel: schedule.dueAt
+      ? `${toShortDate(schedule.dueAt)}${hasTime({ dueAt: schedule.dueAt, allDay: schedule.allDay }) ? ` ${toTimeInput(schedule.dueAt)}` : ''}`
+      : null,
+  })
 
   const addTheme = async () => {
     if (!canWrite) return
@@ -739,7 +772,21 @@ export function IssueForm({ issueId }: { issueId?: string }) {
       <div className="sheet-scroll if-body">
 
         {/* META — Temă · Val · Assigned to */}
-        <div className="sh-meta-section">
+        <div className={`sh-meta-section${metaOpen ? '' : ' meta-collapsed'}`}>
+          {/* Doar pe mobil (CSS-ul de desktop îl ascunde): rezumatul înlocuiește
+              blocul întreg cât timp e colaps, ca Descrierea să urce sub titlu. */}
+          <button
+            type="button"
+            className="meta-recap"
+            onClick={() => setMetaOpen((v) => !v)}
+            aria-expanded={metaOpen}
+          >
+            <span className="meta-recap-text">{metaRecap}</span>
+            <svg className={`acc-chevron${metaOpen ? ' open' : ''}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </button>
+          <div className="meta-body">
           <div className="sh-meta-inline-row">
 
             <div className="meta-col meta-col-theme">
@@ -1027,6 +1074,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
               />
             </div>
           )}
+          </div>
         </div>
 
         {/* MAIN FORM — 2 cols */}

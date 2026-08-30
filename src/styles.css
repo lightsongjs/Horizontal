@@ -2961,6 +2961,31 @@ svg.graph {
   border-bottom: 1px solid var(--line-soft);
   margin: 0 -18px 14px;
 }
+/* Rezumatul colapsat — ascuns implicit; pe mobil (regulile din secțiunea
+   responsive) e singurul lucru vizibil cât timp .meta-collapsed e activ, ca
+   Descrierea să nu mai stea sub 5 rânduri de meta stivuită. */
+.meta-recap {
+  display: none;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px;
+  background: none;
+  border: none;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+}
+.meta-recap-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--txt);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .sh-meta-inline-row {
   display: flex;
   align-items: center;
@@ -3757,6 +3782,15 @@ svg.graph {
     border-bottom: none;
   }
   .meta-vsep {
+    display: none;
+  }
+
+  /* ── Meta colapsată: rezumat pe un rând, Descrierea urcă imediat sub el.
+     `.meta-collapsed` vine din React (`metaOpen`); implicit colapsat pe mobil. */
+  .meta-recap {
+    display: flex;
+  }
+  .meta-collapsed .meta-body {
     display: none;
   }
 
