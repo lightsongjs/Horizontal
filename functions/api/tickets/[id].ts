@@ -27,6 +27,59 @@ export function buildIssueUpdate(body: Record<string, unknown>): Record<string, 
   return update
 }
 
+// ── Atașamente ──────────────────────────────────────────────────────────────
+// Cel care citește un tichet pe API e un agent, iar un agent nu vede un URL: își
+// descarcă fișierul și îl citește. Deci răspunsul dă linkul direct, semnat, și
+// se oprește acolo — unde salvează e treaba lui.
+
+/** 8 ore, ca `SIGNED_TTL_SECONDS` din src/data/attachments.ts. */
+const SIGNED_TTL_SECONDS = 8 * 60 * 60
+
+export interface AttachmentRow {
+  id: string
+  path: string
+  filename: string
+  size: number
+  content_type: string
+  created_at: string
+}
+
+interface SignedRow {
+  path?: string | null
+  signedURL?: string | null
+}
+
+/**
+ * Storage întoarce `signedURL` **relativ** (`/object/sign/attachments/...?token=`),
+ * deci trebuie prefixat cu `${SUPABASE_URL}/storage/v1` — asta face și supabase-js
+ * pe dinăuntru, și e singura parte care se poate strica silențios.
+ *
+ * Un fișier pentru care semnarea a eșuat se întoarce **fără** `url`, nu deloc:
+ * „există o poză, n-am putut să ți-o dau" e informație, iar restul listei rămâne
+ * bună.
+ */
+export function attachmentsPayload(
+  rows: readonly AttachmentRow[],
+  signed: readonly SignedRow[],
+  storageBase: string,
+): Array<Record<string, unknown>> {
+  const urls = new Map<string, string>()
+  for (const s of signed) {
+    if (s.path && s.signedURL) urls.set(s.path, `${storageBase}${s.signedURL}`)
+  }
+  return rows.map(r => {
+    const url = urls.get(r.path)
+    return {
+      id: r.id,
+      filename: r.filename,
+      contentType: r.content_type,
+      size: r.size,
+      createdAt: r.created_at,
+      ...(url ? { url } : {}),
+    }
+  })
+}
+
 export const onRequestGet: PagesFunction<Env> = async (context) => {
   const id = context.params.id as string
   const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = context.env
@@ -53,6 +106,32 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   }
   const depsRows = await depsRes.json() as Array<{ depends_on_id: string }>
 
+  const attRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/attachments?issue_id=eq.${encodeURIComponent(id)}` +
+      `&select=id,path,filename,size,content_type,created_at&order=created_at`,
+    { headers }
+  )
+  if (!attRes.ok) {
+    return Response.json({ error: 'db_error' }, { status: 502 })
+  }
+  const attRows = await attRes.json() as AttachmentRow[]
+
+  // Zero atașamente ⇒ zero apeluri la Storage. Semnarea se cere într-un singur
+  // apel pentru toate căile, nu unul per fișier.
+  let signed: SignedRow[] = []
+  if (attRows.length) {
+    const signRes = await fetch(`${SUPABASE_URL}/storage/v1/object/sign/attachments`, {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        expiresIn: SIGNED_TTL_SECONDS,
+        paths: attRows.map(r => r.path),
+      }),
+    })
+    // Semnarea căzută nu strică tichetul: metadatele pleacă fără `url`.
+    if (signRes.ok) signed = await signRes.json().catch(() => []) as SignedRow[]
+  }
+
   const row = issues[0]
   return Response.json({
     id: row.id,
@@ -66,6 +145,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     selectors: row.selectors ?? [],
     scenarios: row.scenarios ?? [],
     deps: depsRows.map(r => r.depends_on_id),
+    attachments: attachmentsPayload(attRows, signed, `${SUPABASE_URL}/storage/v1`),
   })
 }
 

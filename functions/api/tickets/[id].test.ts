@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest'
-import { buildIssueUpdate, onRequestPatch } from './[id]'
+import { attachmentsPayload, buildIssueUpdate, onRequestGet, onRequestPatch } from './[id]'
 
 describe('buildIssueUpdate', () => {
   it('maps desc to details', () => {
@@ -454,6 +454,132 @@ describe('onRequestPatch failed write surfaces detail', () => {
         { method: 'PATCH', ok: false, status: 502, jsonRejects: true }),
     ])
     const res = await onRequestPatch(patchCtx('HZ-07', { title: 'New title' }))
+    expect(res.status).toBe(502)
+    expect(await res.json()).toEqual({ error: 'db_error' })
+  })
+})
+
+// ---- attachments ----
+
+const ATT_ROW = {
+  id: 'a1',
+  path: 'horizontal/HZ-07/a1',
+  filename: 'eroare-login.png',
+  size: 84213,
+  content_type: 'image/png',
+  created_at: '2026-09-03T18:22:04.113Z',
+}
+
+describe('attachmentsPayload', () => {
+  it('renames the DB columns and prefixes the relative signed URL', () => {
+    expect(attachmentsPayload(
+      [ATT_ROW],
+      [{ path: 'horizontal/HZ-07/a1', signedURL: '/object/sign/attachments/horizontal/HZ-07/a1?token=t' }],
+      `${SB}/storage/v1`,
+    )).toEqual([{
+      id: 'a1',
+      filename: 'eroare-login.png',
+      contentType: 'image/png',
+      size: 84213,
+      createdAt: '2026-09-03T18:22:04.113Z',
+      url: `${SB}/storage/v1/object/sign/attachments/horizontal/HZ-07/a1?token=t`,
+    }])
+  })
+
+  it('keeps the metadata but omits url when that path was not signed', () => {
+    const [out] = attachmentsPayload([ATT_ROW], [], `${SB}/storage/v1`)
+    expect(out).not.toHaveProperty('url')
+    expect(out.filename).toBe('eroare-login.png')
+  })
+
+  it('omits url for the failed file only, not for its neighbours', () => {
+    const other = { ...ATT_ROW, id: 'a2', path: 'horizontal/HZ-07/a2', filename: 'b.png' }
+    const out = attachmentsPayload(
+      [ATT_ROW, other],
+      [
+        { path: 'horizontal/HZ-07/a1', signedURL: null },
+        { path: 'horizontal/HZ-07/a2', signedURL: '/object/sign/attachments/horizontal/HZ-07/a2?token=t' },
+      ],
+      `${SB}/storage/v1`,
+    )
+    expect(out[0]).not.toHaveProperty('url')
+    expect(out[1].url).toBe(`${SB}/storage/v1/object/sign/attachments/horizontal/HZ-07/a2?token=t`)
+  })
+
+  it('returns an empty list for a ticket with no attachments', () => {
+    expect(attachmentsPayload([], [], `${SB}/storage/v1`)).toEqual([])
+  })
+})
+
+function getCtx(id: string): any {
+  return {
+    params: { id },
+    env: {
+      SUPABASE_URL: SB,
+      SUPABASE_SERVICE_ROLE_KEY: 'service-key',
+      TICKETS_API_KEY: 'api-key',
+    },
+    request: new Request(`https://app.test/api/tickets/${id}`),
+  }
+}
+
+const ISSUE_ROUTES = [
+  route('/rest/v1/issues?id=eq.HZ-07&select=id,title,details',
+    [{ id: 'HZ-07', title: 'Login picat', details: 'nu intru', wave: 3, done: false }]),
+  route('/rest/v1/dependencies?issue_id=eq.HZ-07', []),
+]
+
+describe('onRequestGet attachments', () => {
+  it('signs every path in one call and returns downloadable URLs', async () => {
+    const calls = mockFetch([
+      ...ISSUE_ROUTES,
+      route('/rest/v1/attachments?issue_id=eq.HZ-07', [ATT_ROW]),
+      route('/storage/v1/object/sign/attachments',
+        [{ path: 'horizontal/HZ-07/a1', signedURL: '/object/sign/attachments/horizontal/HZ-07/a1?token=t' }],
+        { method: 'POST' }),
+    ])
+    const res = await onRequestGet(getCtx('HZ-07'))
+    expect(res.status).toBe(200)
+    const body = await res.json() as any
+    expect(body.attachments).toHaveLength(1)
+    expect(body.attachments[0].url).toContain('token=t')
+
+    const signCalls = calls.filter(c => c.url.includes('/object/sign/'))
+    expect(signCalls).toHaveLength(1)
+    expect(signCalls[0].body).toEqual({ expiresIn: 8 * 60 * 60, paths: ['horizontal/HZ-07/a1'] })
+  })
+
+  it('does not touch Storage at all when the ticket has no attachments', async () => {
+    const calls = mockFetch([
+      ...ISSUE_ROUTES,
+      route('/rest/v1/attachments?issue_id=eq.HZ-07', []),
+    ])
+    const res = await onRequestGet(getCtx('HZ-07'))
+    const body = await res.json() as any
+    expect(body.attachments).toEqual([])
+    expect(calls.some(c => c.url.includes('/storage/'))).toBe(false)
+  })
+
+  it('still returns the ticket when signing fails, minus the URLs', async () => {
+    mockFetch([
+      ...ISSUE_ROUTES,
+      route('/rest/v1/attachments?issue_id=eq.HZ-07', [ATT_ROW]),
+      route('/storage/v1/object/sign/attachments', { error: 'nope' },
+        { method: 'POST', ok: false, status: 500 }),
+    ])
+    const res = await onRequestGet(getCtx('HZ-07'))
+    expect(res.status).toBe(200)
+    const body = await res.json() as any
+    expect(body.desc).toBe('nu intru')
+    expect(body.attachments[0]).not.toHaveProperty('url')
+  })
+
+  it('surfaces a db_error when the attachments query fails', async () => {
+    mockFetch([
+      ...ISSUE_ROUTES,
+      route('/rest/v1/attachments?issue_id=eq.HZ-07', null, { ok: false, status: 502 }),
+    ])
+    const res = await onRequestGet(getCtx('HZ-07'))
     expect(res.status).toBe(502)
     expect(await res.json()).toEqual({ error: 'db_error' })
   })
