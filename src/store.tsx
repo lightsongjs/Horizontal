@@ -229,6 +229,12 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
 
   const selectProject = useCallback(
     (id: string | null) => {
+      // Reselectarea proiectului DEJA deschis nu e o navigare, deci nu resetează
+      // nimic. Contează fiindcă închiderea unui ticket trece prin `history.back()`
+      // → `popstate` → `onPop` (App.tsx), care aterizează pe `/project/<slug>`-ul
+      // proiectului curent și chema selectProject cu același id: valul activ
+      // sărea de pe II pe `currentWave` (mereu 1), plus o reîncărcare inutilă.
+      if (id === projectId) return
       setProjectId(id)
       // La schimbarea proiectului, „încărcat” redevine fals până sosesc datele,
       // ca un consumator să nu citească snapshot-ul altui proiect.
@@ -256,7 +262,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
           setIssuesLoadFailedFor(id)
         })
     },
-    [projects],
+    [projects, projectId],
   )
 
   const upsertIssue = useCallback((issue: Issue) => {
