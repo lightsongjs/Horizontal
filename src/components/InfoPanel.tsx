@@ -58,6 +58,7 @@ const SHORTCUTS: { keys: string; action: string; where?: string }[] = [
   { keys: 'Y', action: 'Copiază linkul tichetului', where: 'card deschis' },
   { keys: 'Ctrl+S', action: 'Salvează, cardul rămâne deschis', where: 'card deschis' },
   { keys: 'Ctrl+↵', action: 'Salvează și închide', where: 'card deschis' },
+  { keys: '[', action: 'Ascunde / arată bara laterală', where: 'desktop' },
   { keys: 'Esc', action: 'Închide ce e deasupra' },
 ]
 

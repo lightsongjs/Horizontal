@@ -9,6 +9,7 @@ import { buildOrderedLayers, type OrderedLayer } from './lib/ordering'
 import type { Project } from './lib/types'
 
 const HIDE_DONE_KEY = 'horizontal:hide-done'
+const SIDEBAR_KEY = 'horizontal:sidebar-collapsed'
 
 /**
  * Whether the signed-in user may mutate a GIVEN project.
@@ -79,6 +80,27 @@ export function useHideDone(): [boolean, () => void] {
   }, [hideDone])
   const toggle = useCallback(() => setHideDone((h) => !h), [])
   return [hideDone, toggle]
+}
+
+/**
+ * Sidebar-ul colapsat, pe desktop. Persistat, fiindcă e o preferință de
+ * suprafață de lucru, nu o stare de navigare: cine îl închide ca să aibă
+ * lățime nu vrea să-l regăsească deschis la următoarea pornire.
+ *
+ * Starea trăiește în App, nu în Sidebar: clasa se pune pe `#app`, fiindcă
+ * gridul de două coloane e definit acolo, iar butonul care o comută stă în
+ * header — altă ramură a arborelui. Sub 900px CSS-ul ignoră clasa complet;
+ * pe telefon sidebar-ul nu există, deci nici colapsarea lui.
+ */
+export function useSidebarCollapsed(): [boolean, () => void] {
+  const [collapsed, setCollapsed] = useState(
+    () => localStorage.getItem(SIDEBAR_KEY) === '1',
+  )
+  useEffect(() => {
+    localStorage.setItem(SIDEBAR_KEY, collapsed ? '1' : '0')
+  }, [collapsed])
+  const toggle = useCallback(() => setCollapsed((c) => !c), [])
+  return [collapsed, toggle]
 }
 
 /** Layer groups for the active wave, urgent-first, optionally hiding done. */

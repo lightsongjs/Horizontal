@@ -29,10 +29,15 @@ export function SheetHost() {
     return () => window.removeEventListener('keydown', onKey)
   }, [open, canGoBack, closeSheet, goBack])
 
+  // Vizualizarea unui tichet primește o clasă proprie ca să poată fi mai lată
+  // și mai înaltă pe desktop decât un sheet obișnuit: conținutul ei e text de
+  // citit (descrierea), nu un formular cu câmpuri de lățime fixă.
+  const view = sheet.kind === 'issue'
+
   return (
     <>
       <div className={`sheet-bg ${open ? 'on' : ''}`} onClick={closeSheet} />
-      <div className={`sheet ${open ? 'on' : ''} ${tall ? 'tall' : ''}`} role="dialog" aria-modal="true">
+      <div className={`sheet ${open ? 'on' : ''} ${tall ? 'tall' : ''} ${view ? 'sheet-view' : ''}`} role="dialog" aria-modal="true">
         <div className="grip" />
         {canGoBack && (
           <button className="sheet-back" onClick={goBack}>

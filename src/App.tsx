@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from './auth'
-import { useCanWrite } from './hooks'
+import { useCanWrite, useSidebarCollapsed } from './hooks'
 import { HorizontalProvider, useHorizontal } from './store'
 import { UIProvider, useUI } from './ui'
 import { ThemeProvider, useTheme } from './theme'
@@ -63,7 +63,7 @@ function smartCrumb(kind: SmartListKind, now: Date): string {
   return `${DAYS_FULL[d.getDay()]}, ${d.getDate()} ${MON_FULL[d.getMonth()]}`
 }
 
-function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, canWrite, smartList, onExitSmartList }: { onNewIssue: () => void; onSearch: () => void; onProjectSettings: () => void; onRefresh: () => void; onInfo: () => void; canWrite: boolean; smartList: SmartListKind | null; onExitSmartList: () => void }) {
+function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, canWrite, smartList, onExitSmartList, sidebarCollapsed, onToggleSidebar }: { onNewIssue: () => void; onSearch: () => void; onProjectSettings: () => void; onRefresh: () => void; onInfo: () => void; canWrite: boolean; smartList: SmartListKind | null; onExitSmartList: () => void; sidebarCollapsed: boolean; onToggleSidebar: () => void }) {
   const { project, completion, selectProject, smartLists } = useHorizontal()
   const pct = project ? Math.round(completion(project.id) * 100) : 0
   const list = smartList ? SMART_LISTS.find((s) => s.kind === smartList) : null
@@ -73,6 +73,21 @@ function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, ca
     : 0
   return (
     <header>
+      {/* Comutatorul sidebar-ului: primul în header, fiindcă pe desktop `.back`
+          și logo-ul sunt ascunse — el ocupă colțul din care oricum pornește
+          navigarea. Ascuns sub 900px de CSS: acolo nu există sidebar. */}
+      <button
+        className="header-sidebar-btn"
+        onClick={onToggleSidebar}
+        aria-pressed={sidebarCollapsed}
+        aria-label={sidebarCollapsed ? 'Arată bara laterală' : 'Ascunde bara laterală'}
+        title={sidebarCollapsed ? 'Arată bara laterală ([)' : 'Ascunde bara laterală ([)'}
+      >
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="4" width="18" height="16" rx="2" />
+          <line x1="9" y1="4" x2="9" y2="20" />
+        </svg>
+      </button>
       {(project || list) && (
         <button className="back" aria-label="Înapoi" onClick={() => (list ? onExitSmartList() : selectProject(null))}>
           ‹
@@ -187,6 +202,7 @@ function Shell() {
   const { openNewIssue, openNewProject, openProjectSettings, openIssue, closeSheet, sheet, ticketId } = useUI()
   const { isAdmin } = useAuth()
   const canWrite = useCanWrite()
+  const [sidebarCollapsed, toggleSidebar] = useSidebarCollapsed()
   const [showUsers, setShowUsers] = useState(false)
   /**
    * Lista inteligentă deschisă. Ca `showUsers`, e un strat peste conținut care
@@ -563,6 +579,7 @@ function Shell() {
       else if (e.key === 'o' || e.key === 'O') { e.preventDefault(); project && setShowSearch(true) }
       else if (e.key === 'p' || e.key === 'P') { e.preventDefault(); if (!isAdmin) return; openNewProject() }
       else if (e.key === '?') { e.preventDefault(); setShowInfo(v => !v) }
+      else if (e.key === '[') { e.preventDefault(); toggleSidebar() }
       else if (e.key === '1' && project) { e.preventDefault(); setTab('list') }
       else if (e.key === '2' && project) { e.preventDefault(); setTab('ordine') }
       else if (e.key === '3' && project) { e.preventDefault(); setTab('graf') }
@@ -570,7 +587,7 @@ function Shell() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [project, openNewIssue, openNewProject, sheet, showInfo, showSearch, showUsers, canWrite, isAdmin])
+  }, [project, openNewIssue, openNewProject, sheet, showInfo, showSearch, showUsers, canWrite, isAdmin, toggleSidebar])
 
   /**
    * Butoanele notificării („Gata", „Amână"). Cu o filă deschisă, PAGINA e
@@ -645,7 +662,7 @@ function Shell() {
   }, [])
 
   return (
-    <div id="app">
+    <div id="app" className={sidebarCollapsed ? 'sidebar-collapsed' : undefined}>
       <Sidebar
         isAdmin={isAdmin}
         showUsers={showUsers && isAdmin}
@@ -655,7 +672,7 @@ function Shell() {
         onSmartList={openSmartList}
       />
       <div className="app-body">
-        <Header onNewIssue={openNewIssue} onSearch={() => setShowSearch(true)} onProjectSettings={openProjectSettings} onRefresh={refresh} onInfo={() => setShowInfo(true)} canWrite={canWrite} smartList={smartList} onExitSmartList={exitSmartList} />
+        <Header onNewIssue={openNewIssue} onSearch={() => setShowSearch(true)} onProjectSettings={openProjectSettings} onRefresh={refresh} onInfo={() => setShowInfo(true)} canWrite={canWrite} smartList={smartList} onExitSmartList={exitSmartList} sidebarCollapsed={sidebarCollapsed} onToggleSidebar={toggleSidebar} />
         <main ref={mainRef}>
           {pullY > 0 && (
             <div style={{ textAlign: 'center', padding: '6px 0', fontSize: '13px', color: 'var(--txt-dim)', transform: `translateY(${pullY * 0.4}px)`, transition: pullY === 0 ? 'transform 0.3s' : 'none' }}>

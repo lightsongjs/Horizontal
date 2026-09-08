@@ -37,10 +37,15 @@ export function IssueSheet({ issueId }: { issueId: string }) {
           {it.done && <>{' · '}<span style={{ color: 'var(--ok)' }}>✓ Gata</span></>}
         </div>
         <h2>{it.title}</h2>
-        {it.desc && <p>{it.desc}</p>}
       </div>
 
       <div className="sheet-scroll">
+        {/* Descrierea stă în zona care se derulează, nu în `.sheet-head`.
+            Headerul e fix: o descriere de douăzeci de rânduri l-ar fi umflat
+            până când dependențele și atașamentele de mai jos rămâneau o fâșie
+            de câțiva pixeli. Aici crește cât are nevoie și folosește toată
+            înălțimea modalului. */}
+        {it.desc && <p className="issue-desc">{it.desc}</p>}
         <button
           className="add-dep"
           style={{ borderStyle: 'solid', width: '100%', marginBottom: 12 }}
