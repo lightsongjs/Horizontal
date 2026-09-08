@@ -2875,8 +2875,8 @@ svg.graph {
      din conținutul coloanei drepte, adică din câte dependențe are tichetul —
      iar descrierea ar fi crescut sau scăzut după ele. */
   .sheet:has(.form-cols) {
-    width: 90vw;
-    max-width: 1400px;
+    width: 94vw;
+    max-width: 1800px;
     height: 94dvh;
     max-height: 94dvh;
   }
@@ -2921,6 +2921,17 @@ svg.graph {
   .form-col-right {
     overflow-y: auto;
     min-height: 0;
+  }
+}
+
+/* ─── ECRANE FOARTE LATE (≥ 1600px) ─────────────────────────────────────
+   Peste 1600px modalul e destul de lat încât coloana din dreapta să aibă mai
+   mult spațiu decât are conținut: notele și zona de fișiere nu se lățesc la
+   nesfârșit. Surplusul se duce în descriere. Sub prag rămâne 55/45, unde
+   dependențele și QA chiar au nevoie de lățimea aia. */
+@media (min-width: 1600px) {
+  .form-cols {
+    grid-template-columns: 62% 38%;
   }
 }
 
