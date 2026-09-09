@@ -1,0 +1,10 @@
+{
+  "project": { "name": "Travel App", "prefix": "TRV", "type": "work" },
+  "waves": [{ "number": 1, "name": "Val 1", "label": "MVP" }],
+  "themes": [{ "name": "Auth", "color": "#6e7bff" }],
+  "tickets": [
+    { "key": "T1", "title": "Setup DB schema", "wave": 1 },
+    { "key": "T2", "title": "Auth flow", "wave": 1, "deps": ["T1"], "theme": "Auth" },
+    { "key": "T3", "title": "User settings page", "wave": 1, "deps": ["T2"] }
+  ]
+}

@@ -22,7 +22,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     document.documentElement.setAttribute('data-theme', theme)
     localStorage.setItem('horizontal-theme', theme)
     const meta = document.querySelector('meta[name="theme-color"]')
-    if (meta) meta.setAttribute('content', theme === 'dark' ? '#0c0d12' : '#EEF2F7')
+    if (meta) meta.setAttribute('content', theme === 'dark' ? '#0B0B0E' : '#F7F9FC')
   }, [theme])
 
   return (
