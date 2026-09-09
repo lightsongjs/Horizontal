@@ -718,10 +718,16 @@ export function IssueForm({ issueId }: { issueId?: string }) {
           <input
             ref={titleInputRef}
             className="sh-title-input"
+            // `search`, nu `text`: e singura pârghie din pagină peste bara de
+            // „completează manual" a Chrome (parolă / card / adresă), care
+            // apare pe orice câmp de text. Costul e că un cititor de ecran
+            // anunță „câmp de căutare" — de-aia stă aici cu un comentariu, nu
+            // ca alegere de la sine înțeleasă.
+            type="search"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             readOnly={!canWrite}
-            placeholder={isEdit ? `✎ ${existing!.id}` : 'Titlu tichet…'}
+            placeholder={isEdit ? existing!.id : 'Titlu tichet…'}
             autoFocus
             autoComplete="off"
             autoCorrect="off"

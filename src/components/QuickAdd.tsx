@@ -176,6 +176,10 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0 }: Props) {
           <input
             ref={inputRef}
             className="qa-input"
+            // Vezi comentariul din IssueForm: `search` e ultima pârghie peste
+            // bara de autofill a Chrome. Butonul nativ de golire e ascuns din
+            // CSS — ar fi stat peste stratul-oglindă care desenează data.
+            type="search"
             value={text}
             name="titlu-sarcina"
             autoComplete="off"

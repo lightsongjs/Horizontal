@@ -4445,6 +4445,17 @@ svg.graph {
   25% { transform: translateX(-4px); }
   75% { transform: translateX(4px); }
 }
+/* `type="search"` aduce un buton nativ de golire care ar sta peste
+   stratul-oglindă și peste jetonul de dată. Nu ne trebuie: golirea se face
+   din Escape și din × pe jeton. */
+.qa-input::-webkit-search-cancel-button,
+.sh-title-input::-webkit-search-cancel-button,
+.qa-input::-webkit-search-decoration,
+.sh-title-input::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
 .qa-form { display: contents; }
 .qa-row { display: flex; align-items: center; gap: 9px; }
 .qa-plus {
