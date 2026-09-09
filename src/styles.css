@@ -205,6 +205,9 @@ header {
   letter-spacing: -0.025em;
   line-height: 1.2;
   font-family: var(--display);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .htxt .crumb {
   font-size: 12px;
@@ -328,7 +331,7 @@ main {
 .bar {
   flex: 1;
   height: 4px;
-  background: var(--surface-3);
+  background: color-mix(in srgb, var(--proj, var(--txt-faint)) 22%, var(--surface-3));
   border-radius: 4px;
   overflow: hidden;
 }
@@ -336,7 +339,7 @@ main {
   display: block;
   height: 100%;
   border-radius: 4px;
-  background: var(--accent);
+  background: var(--proj, var(--accent));
   transition: width 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .pct {
@@ -1261,8 +1264,8 @@ main {
   white-space: nowrap;
 }
 .chip.on {
-  background: var(--txt);
-  color: var(--bg);
+  background: var(--accent-soft);
+  color: var(--accent);
   font-weight: 700;
 }
 .chip.add {
@@ -1851,14 +1854,6 @@ svg.graph {
   border-bottom: 1px solid var(--line);
   gap: 14px;
   flex-shrink: 0;
-}
-.if-header::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  width: 4px;
-  background: var(--accent);
-  border-radius: 0 2px 2px 0;
 }
 .if-header-left { display: flex; flex-direction: column; gap: 3px; }
 .if-eyebrow {
@@ -3002,14 +2997,6 @@ svg.graph {
   border-bottom: 1px solid var(--line-soft);
   background: var(--card);
   position: relative;
-}
-.sh-header::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 8px; bottom: 8px;
-  width: 3px;
-  background: var(--accent);
-  border-radius: 0 2px 2px 0;
 }
 .sh-close {
   flex-shrink: 0;
@@ -4643,6 +4630,10 @@ svg.graph {
   /* Bara de jos acoperă capătul listei; FAB-ul e ascuns în liste, dar
      padding-ul de sub conținut trebuie să țină cont de ea. */
   .smart-list-open main { padding-bottom: 0; }
+
+  /* Și trebuie să treacă PESTE bara de jos, nu prin ea: cu bottom: 24px
+     acoperea iconița „Proiecte". */
+  .fab { bottom: calc(78px + env(safe-area-inset-bottom)); }
 }
 
 /* ── invitația de activare a mementourilor ───────────────────────────

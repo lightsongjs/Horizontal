@@ -1,3 +1,4 @@
+import type React from 'react'
 import { useHorizontal } from '../store'
 
 export function ProjectsView() {
@@ -22,8 +23,8 @@ export function ProjectsView() {
                 {/* Culoarea proiectului trăiește în umplerea barei — singurul loc
                     unde spune ceva. Înainte era o șină de 2.5px pe marginea
                     cardului, adică decor. */}
-                <div className="bar">
-                  <i style={{ width: `${pct}%`, background: p.accent }} />
+                <div className="bar" style={{ '--proj': p.accent } as React.CSSProperties}>
+                  <i style={{ width: `${pct}%` }} />
                 </div>
                 <span className="pct">{pct}%</span>
               </div>

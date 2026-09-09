@@ -1,5 +1,6 @@
 import {
   ArrowLeft,
+  ArrowRight,
   Crosshair,
   Star,
   Clock,
@@ -98,6 +99,7 @@ const ICONS = {
   fileDoc: FileText,
   fileImage: Image,
   fileVideo: Film,
+  forward: ArrowRight,
   graph: Share2,
   help: CircleQuestionMark,
   hide: EyeOff,

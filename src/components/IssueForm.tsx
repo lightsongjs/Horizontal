@@ -851,7 +851,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
                   onClick={() => setUrgent((v) => !v)}
                   title={urgent ? 'Scoate urgența' : 'Marchează urgent'}
                 >
-                  ⚡ Urgent
+                  <Icon name="urgent" size={13} /> Urgent
                 </button>
               </div>
             </div>
@@ -1080,13 +1080,13 @@ export function IssueForm({ issueId }: { issueId?: string }) {
                   className={`dep-tab-btn ${depTab === 'necesita' ? 'on' : ''}`}
                   onClick={() => { setDepTab('necesita'); setDepSearchQ(''); setDepDropdownOpen(false) }}
                 >
-                  ← Necesită{necCount > 0 && <span className="dep-tab-count">{necCount}</span>}
+                  <Icon name="back" size={13} /> Necesită{necCount > 0 && <span className="dep-tab-count">{necCount}</span>}
                 </button>
                 <button
                   className={`dep-tab-btn ${depTab === 'permite' ? 'on' : ''}`}
                   onClick={() => { setDepTab('permite'); setDepSearchQ(''); setDepDropdownOpen(false) }}
                 >
-                  → Permite{perCount > 0 && <span className="dep-tab-count">{perCount}</span>}
+                  <Icon name="forward" size={13} /> Permite{perCount > 0 && <span className="dep-tab-count">{perCount}</span>}
                 </button>
                 <div className="dep-search-wrap-rel">
                   <div className="dep-search-field">
