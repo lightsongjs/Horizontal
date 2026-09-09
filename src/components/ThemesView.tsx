@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { useCanWrite } from '../hooks'
+import { Icon } from './Icon'
 
 export function ThemesView() {
   const { themes, issues, stateOf } = useHorizontal()
@@ -73,7 +74,7 @@ export function ThemesView() {
           </div>
           {untagged.map((it) => (
             <button key={it.id} className={`tk ${stateOf(it.id)}`} onClick={() => openIssue(it.id)}>
-              <span className="check">{it.done ? '✓' : ''}</span>
+              <span className="check"><Icon name={it.done ? 'done' : 'notDone'} size={16} /></span>
               <span className="tk-body">
                 <span className="tk-top">
                   <span className="tk-id">{it.id}</span>
@@ -95,7 +96,7 @@ function ThemeIssueRow({ id, color }: { id: string; color: string }) {
   if (!it) return null
   return (
     <button className={`tk ${stateOf(id)}`} onClick={() => openIssue(id)}>
-      <span className="check">{it.done ? '✓' : ''}</span>
+      <span className="check"><Icon name={it.done ? 'done' : 'notDone'} size={16} /></span>
       <span className="tk-body">
         <span className="tk-top">
           <span className="theme-dot" style={{ background: color }} />

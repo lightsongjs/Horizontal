@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { disablePush, enablePush, pushHint, readPushState, type PushState } from '../lib/push'
 import { errorMessage } from '../lib/errorMessage'
 import { announceChime, playChime, unlockChime } from '../lib/chime'
+import { Icon } from './Icon'
 
 /**
  * Comutatorul de notificări. Trăiește în capul listei „Azi" fiindcă acolo e
@@ -50,7 +51,7 @@ export function PushToggle() {
 
   return (
     <div className="push-cta">
-      <span className="push-cta-ico" aria-hidden="true">◔</span>
+      <span className="push-cta-ico"><Icon name="bell" size={20} /></span>
       <div className="push-cta-txt">
         <strong>Activează mementourile</strong>
         <span>{err ?? pushHint(state)}</span>

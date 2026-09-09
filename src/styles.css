@@ -42,6 +42,16 @@
   --layer-2: #77ADC4;
   --layer-3: #74B4AC;
   --layer-4: #7BB79A;
+  /* Textul care stă PE accent (sau pe o culoare semantică). Fundalul paginii,
+     nu alb: #FAFAF9 pe #818CF8 dă 2,98:1, iar #0B0B0E pe #818CF8 dă ~8:1.
+     Pe tema deschisă --bg e oricum cvasi-alb, deci merge în ambele. */
+  --on-accent: var(--bg);
+  /* Aliasuri pentru jetoane pe care CSS-ul le cerea fără ca ele să existe. */
+  --card: var(--surface);
+  --card-hi: var(--surface-2);
+  --surface-raised: var(--surface-2);
+  --sans: var(--display);
+  --font: var(--display);
   --mono: 'IBM Plex Mono', ui-monospace, monospace;
   --display: 'Literata', 'Iowan Old Style', Georgia, serif;
   /* Spune browserului in ce tema e pagina, ca widgeturile NATIVE (calendarul
@@ -87,13 +97,20 @@ button {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+/* Iconițele (vezi src/components/Icon.tsx) sunt SVG, nu glife: `block` ca să
+   nu adauge înălțimea de rând a unui font sub ele, `flex-shrink: 0` ca să nu
+   se turtească într-un rând strâmt. Moștenesc `currentColor`. */
+svg {
+  display: block;
+  flex-shrink: 0;
+}
 
 /* LIGHT THEME */
 [data-theme='light'] {
   --bg: #F7F9FC;
-  --field-bg: #FFFFFF;
+  --field-bg: #F0F4F8;
   --surface: #FFFFFF;
-  --surface-2: #FFFFFF;
+  --surface-2: #F0F4F8;
   --surface-3: #E8EFF4;
   --line: rgba(168,179,187,0.38);
   --line-soft: rgba(168,179,187,0.18);
@@ -160,16 +177,15 @@ header {
 .logo {
   width: 32px;
   height: 32px;
-  border-radius: 10px;
   flex-shrink: 0;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
   display: flex;
   align-items: center;
   justify-content: center;
+  color: var(--accent);
+  font-family: var(--display);
   font-weight: 700;
-  font-size: 15px;
-  color: #fff;
-  letter-spacing: -0.02em;
+  font-size: 19px;
+  letter-spacing: -0.04em;
 }
 .htxt {
   flex: 1;
@@ -194,18 +210,16 @@ header {
 .back {
   width: 32px;
   height: 32px;
-  border-radius: 9px;
-  border: 1px solid var(--line);
-  background: var(--surface-2);
-  color: var(--txt-dim);
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 21px;
   flex-shrink: 0;
 }
 .back:active {
-  background: var(--surface-3);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
 }
 .hprog {
   display: flex;
@@ -324,7 +338,7 @@ main {
   display: block;
   height: 100%;
   border-radius: 4px;
-  background: linear-gradient(90deg, var(--accent), var(--done));
+  background: var(--accent);
   transition: width 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .pct {
@@ -376,7 +390,7 @@ main {
 }
 .tab.on {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 .panel {
   animation: fade 0.22s ease;
@@ -498,10 +512,10 @@ main {
   background: color-mix(in srgb, var(--layer-color, var(--accent)) 8%, var(--surface));
 }
 .tk.active {
-  border-left: 2px solid rgba(62, 207, 142, 0.5);
+  border-left: 2px solid color-mix(in srgb, var(--done) 50%, transparent);
 }
 .tk.blocked {
-  border-left: 2px solid rgba(242, 92, 92, 0.45);
+  border-left: 2px solid color-mix(in srgb, var(--blocked) 45%, transparent);
 }
 .tk.selected {
   background: var(--accent-soft);
@@ -514,34 +528,23 @@ main {
   right: 10px;
   width: 18px;
   height: 18px;
-  border-radius: 5px;
-  border: 1.5px solid var(--line);
-  background: var(--bg);
+  color: var(--txt-faint);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
-  font-family: var(--mono);
   color: transparent;
   transition: all 0.18s;
   cursor: pointer;
   flex-shrink: 0;
 }
 .tk.done .tk-check {
-  background: var(--done);
-  border-color: var(--done);
-  color: var(--bg);
-  font-weight: 700;
+  color: var(--done);
 }
 .tk.in-select .tk-check {
-  color: transparent;
-  background: var(--bg);
-  border-color: var(--line);
+  color: var(--txt-faint);
 }
 .tk.selected .tk-check {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
+  color: var(--accent);
 }
 .tk-meta {
   display: flex;
@@ -552,9 +555,8 @@ main {
 }
 .tk-urgent {
   margin-left: auto;
-  font-size: 12px;
-  line-height: 1;
-  filter: saturate(1.2);
+  display: inline-flex;
+  color: var(--active);
 }
 .list-group { margin-bottom: 14px; }
 .list-group-head {
@@ -583,9 +585,9 @@ main {
 .list-row.blocked { opacity: 0.8; }
 .list-check {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 18px; height: 18px; border-radius: 5px;
-  border: 1px solid var(--line); font-size: 11px; flex: 0 0 auto;
+  width: 18px; height: 18px; color: var(--txt-faint); flex: 0 0 auto;
 }
+.list-row.done .list-check { color: var(--done); }
 .list-id { font-size: 11px; color: var(--txt-dim); flex: 0 0 auto; }
 .list-title { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .list-row .tk-urgent { margin-left: auto; }
@@ -607,7 +609,7 @@ main {
 .list-row.selected .list-check {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 .list-row.tree-dim {
   opacity: 0.18;
@@ -668,7 +670,7 @@ main {
   position: absolute;
   bottom: calc(100% + 7px);
   left: 0;
-  background: var(--surface-3);
+  background: var(--surface-2);
   color: var(--txt);
   font-size: 13px;
   font-weight: 400;
@@ -703,13 +705,16 @@ main {
   flex-wrap: wrap;
 }
 .tk-sub .dep {
-  color: var(--blocked);
-  background: var(--blocked-soft);
-  padding: 1px 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--layer-color, var(--txt-dim));
+  background: color-mix(in srgb, var(--layer-color, var(--txt-faint)) 14%, transparent);
+  padding: 2px 7px 2px 5px;
   border-radius: 4px;
-  font-weight: 600;
-  font-size: 11px;
-  border: 1px solid color-mix(in srgb, var(--blocked) 20%, transparent);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.03em;
 }
 .tk-children {
   font-size: 11px;
@@ -918,6 +923,12 @@ main {
   padding: 8px 18px 13px;
   border-bottom: 1px solid var(--line-soft);
 }
+.sheet-done {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--done);
+}
 .sheet-head .eyebrow {
   font-size: 11px;
   font-weight: 700;
@@ -994,16 +1005,13 @@ main {
   font-size: 14px;
 }
 .dep-row .ic {
-  width: 18px;
-  height: 18px;
-  border-radius: 5px;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--r-s);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
   flex-shrink: 0;
-  font-weight: 700;
-  font-family: var(--mono);
 }
 .dep-row .ic.ext {
   background: var(--accent-soft);
@@ -1092,7 +1100,7 @@ main {
 .fld textarea:focus {
   outline: none;
   border-color: color-mix(in srgb, var(--accent) 53%, transparent);
-  background: var(--surface-3);
+  background: var(--surface-2);
 }
 .fld textarea {
   min-height: 90px;
@@ -1122,7 +1130,7 @@ main {
 }
 .inline-new button {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border-radius: 8px;
   padding: 0 15px;
   font-weight: 700;
@@ -1137,8 +1145,8 @@ main {
 }
 .save-bar button {
   width: 100%;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  color: #fff;
+  background: var(--accent);
+  color: var(--on-accent);
   border-radius: 11px;
   padding: 14px;
   font-weight: 700;
@@ -1158,8 +1166,8 @@ main {
   width: 52px;
   height: 52px;
   border-radius: 16px;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  color: #fff;
+  background: var(--accent);
+  color: var(--on-accent);
   font-size: 24px;
   font-weight: 300;
   display: flex;
@@ -1504,7 +1512,7 @@ svg.graph {
   transition: color 0.12s, opacity 0.12s;
 }
 .dep-chip-x-btn:hover {
-  color: #f87171;
+  color: var(--blocked);
   opacity: 1;
 }
 .dep-chip-id {
@@ -1552,7 +1560,7 @@ svg.graph {
 .dep-search-input:focus {
   outline: none;
   border-color: color-mix(in srgb, var(--accent) 53%, transparent);
-  background: var(--surface-3);
+  background: var(--surface-2);
 }
 .dep-search-input::placeholder {
   color: var(--txt-faint);
@@ -1763,7 +1771,7 @@ svg.graph {
 .bulk-confirm-del {
   background: var(--blocked-soft); border: 1px solid color-mix(in srgb, var(--blocked) 20%, transparent); color: var(--blocked);
 }
-.bulk-confirm-del:hover { background: rgba(242,92,92,.22); }
+.bulk-confirm-del:hover { background: color-mix(in srgb, var(--blocked) 22%, transparent); }
 
 /* THEME TOGGLE — mobile header */
 .theme-toggle {
@@ -1822,13 +1830,13 @@ svg.graph {
   width: 7px; height: 7px;
   border-radius: 50%;
   background: var(--done);
-  box-shadow: 0 0 0 2px rgba(16,185,129,0.2);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--done) 20%, transparent);
   animation: if-ping 2.2s ease-in-out infinite;
   flex-shrink: 0;
 }
 @keyframes if-ping {
-  0%,100% { box-shadow: 0 0 0 2px rgba(16,185,129,0.2); }
-  50%      { box-shadow: 0 0 0 4px rgba(16,185,129,0.1); }
+  0%,100% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--done) 20%, transparent); }
+  50%      { box-shadow: 0 0 0 4px color-mix(in srgb, var(--done) 10%, transparent); }
 }
 .if-title {
   font-size: 21px;
@@ -1878,7 +1886,7 @@ svg.graph {
   color: var(--accent);
 }
 .if-meta-pill.urgent-pill.active {
-  background: rgba(255, 107, 107, 0.16);
+  background: var(--blocked-soft);
   border-color: var(--blocked);
   color: var(--blocked);
 }
@@ -1935,7 +1943,7 @@ svg.graph {
   border-radius: 99px;
   border: none;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   cursor: pointer;
 }
 
@@ -1992,7 +2000,7 @@ svg.graph {
 .if-btn-primary {
   background: var(--accent);
   border: none;
-  color: #fff;
+  color: var(--on-accent);
   border-radius: 8px;
   padding: 7px 20px;
   font-size: 15px; font-weight: 600;
@@ -2051,10 +2059,10 @@ svg.graph {
 }
 .if-badge:hover { transform: scale(1.15); }
 .if-badge:active { transform: scale(0.9); }
-.if-badge.pass    { background: rgba(5,150,105,0.15);  color: #059669; }
-.if-badge.fail    { background: rgba(225,29,72,0.12);  color: #E11D48; }
-.if-badge.neutral { background: var(--accent-soft);  color: var(--accent-2); }
-.if-badge.selector { background: var(--accent-soft); color: var(--accent-2); font-size: 10px; }
+.if-badge.pass    { background: color-mix(in srgb, var(--done) 15%, transparent);  color: var(--done); }
+.if-badge.fail    { background: color-mix(in srgb, var(--blocked) 12%, transparent);  color: var(--blocked); }
+.if-badge.neutral { background: var(--accent-soft);  color: var(--accent); }
+.if-badge.selector { background: var(--accent-soft); color: var(--accent); font-size: 10px; }
 
 .if-add-btn {
   display: flex; align-items: center; gap: 8px;
@@ -2111,7 +2119,7 @@ svg.graph {
   border-radius: 8px;
   border: 1px solid var(--accent);
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
@@ -2149,7 +2157,7 @@ svg.graph {
 }
 .header-new-btn:hover {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 /* ─── HEADER SETTINGS BUTTON ────────────────────────────────────────── */
@@ -2619,7 +2627,8 @@ svg.graph {
   .sidebar-drag-handle {
     padding: 7px 4px 7px 8px;
     color: var(--txt-faint);
-    font-size: 15px;
+    display: flex;
+    align-items: center;
     opacity: 0;
     transition: opacity 0.13s;
     flex-shrink: 0;
@@ -2994,7 +3003,7 @@ svg.graph {
   font-size: 18px; font-weight: 300;
   transition: all 0.15s;
 }
-.sh-close:hover { background: var(--blocked-soft); color: var(--blocked); border-color: rgba(225,29,72,0.25); }
+.sh-close:hover { background: var(--blocked-soft); color: var(--blocked); border-color: color-mix(in srgb, var(--blocked) 25%, transparent); }
 
 .sh-save {
   flex-shrink: 0;
@@ -3010,10 +3019,10 @@ svg.graph {
 }
 .sh-save.dirty {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 30%, transparent);
 }
-.sh-save.dirty:hover { background: var(--accent); box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 45%, transparent); }
+.sh-save.dirty:hover { background: var(--accent-2); box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 45%, transparent); }
 .sh-save:disabled { background: var(--surface-3); color: var(--txt-faint); box-shadow: none; cursor: not-allowed; }
 
 .sh-delete {
@@ -3027,16 +3036,16 @@ svg.graph {
   cursor: pointer;
   transition: all 0.15s;
 }
-.sh-delete:hover { background: var(--blocked-soft); color: var(--blocked); border-color: rgba(225,29,72,0.25); }
+.sh-delete:hover { background: var(--blocked-soft); color: var(--blocked); border-color: color-mix(in srgb, var(--blocked) 25%, transparent); }
 .sh-delete.confirming {
-  background: rgba(225,29,72,0.12);
+  background: color-mix(in srgb, var(--blocked) 12%, transparent);
   color: var(--blocked);
-  border-color: rgba(225,29,72,0.45);
+  border-color: color-mix(in srgb, var(--blocked) 45%, transparent);
   animation: sh-del-pulse 0.9s ease-in-out infinite alternate;
 }
 @keyframes sh-del-pulse {
-  from { box-shadow: 0 0 0 0 rgba(225,29,72,0.1); }
-  to   { box-shadow: 0 0 0 5px rgba(225,29,72,0.22); }
+  from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--blocked) 10%, transparent); }
+  to   { box-shadow: 0 0 0 5px color-mix(in srgb, var(--blocked) 22%, transparent); }
 }
 
 .sh-copy {
@@ -3215,7 +3224,7 @@ svg.graph {
   border-radius: 50%;
   background: var(--accent);
   display: flex; align-items: center; justify-content: center;
-  font-size: 10px; font-weight: 700; color: #fff; flex-shrink: 0;
+  font-size: 10px; font-weight: 700; color: var(--on-accent); flex-shrink: 0;
 }
 .assignee-name-sm { font-size: 14px; font-weight: 500; color: var(--txt); }
 .assignee-x-sm { font-size: 15px; color: var(--txt-faint); cursor: pointer; margin-left: 2px; }
@@ -3398,8 +3407,8 @@ svg.graph {
   font-weight: 700;
 }
 .qs-item-done {
-  font-size: 12px;
   color: var(--done);
+  display: inline-flex;
   flex-shrink: 0;
 }
 .qs-empty {
@@ -3502,7 +3511,7 @@ svg.graph {
   overflow-y: auto;
   transition: border-color 0.14s;
 }
-.desc-fixed:focus { border-color: rgba(14, 165, 233, 0.3); background: rgba(14, 165, 233, 0.02); }
+.desc-fixed:focus { border-color: color-mix(in srgb, var(--accent) 30%, transparent); background: color-mix(in srgb, var(--accent) 2%, transparent); }
 .desc-fixed::placeholder { color: var(--txt-faint); font-style: italic; }
 
 /* ── DEPS ZONE ─────────────────────────────────── */
@@ -3538,14 +3547,14 @@ svg.graph {
 }
 .dep-tab-btn:hover { background: var(--surface-2); color: var(--txt-dim); }
 .dep-tab-btn.on {
-  background: rgba(14, 165, 233, 0.08);
-  border-color: rgba(14, 165, 233, 0.3);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
   color: var(--accent);
 }
 
 .dep-tab-count {
   font-size: 10px;
-  background: rgba(14, 165, 233, 0.15);
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
   color: var(--accent);
   border-radius: 99px;
   padding: 1px 5px;
@@ -3569,7 +3578,7 @@ svg.graph {
   background: rgba(0, 0, 0, 0.15);
   transition: border-color 0.12s;
 }
-.dep-search-field:focus-within { border-color: rgba(14, 165, 233, 0.35); }
+.dep-search-field:focus-within { border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
 
 .dep-search-icon { color: var(--txt-faint); flex-shrink: 0; }
 
@@ -3604,7 +3613,7 @@ svg.graph {
   height: 30px;
   transition: border-color 0.12s;
 }
-.dep-card:hover { border-color: rgba(14, 165, 233, 0.3); }
+.dep-card:hover { border-color: color-mix(in srgb, var(--accent) 30%, transparent); }
 .dep-card--draft { border-style: dashed; }
 
 .dep-card-body {
@@ -3691,7 +3700,7 @@ svg.graph {
   transition: background 0.1s;
 }
 .dep-dd-item:last-child { border-bottom: none; }
-.dep-dd-item:hover, .dep-dd-item.hl { background: rgba(14, 165, 233, 0.08); }
+.dep-dd-item:hover, .dep-dd-item.hl { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 
 .dep-dd-ic { color: var(--accent); font-size: 13px; flex-shrink: 0; }
 .dep-dd-title { font-size: 12px; color: var(--txt); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -3714,7 +3723,7 @@ svg.graph {
   color: var(--accent);
   transition: background 0.1s;
 }
-.dep-dd-create:hover, .dep-dd-create.hl { background: rgba(14, 165, 233, 0.08); }
+.dep-dd-create:hover, .dep-dd-create.hl { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .dep-dd-plus { font-size: 15px; font-weight: 700; line-height: 1; }
 .dep-dd-create strong { font-weight: 700; }
 
@@ -3752,8 +3761,8 @@ svg.graph {
 
 .acc-count {
   font-size: 10px;
-  background: rgba(14, 165, 233, 0.12);
-  border: 1px solid rgba(14, 165, 233, 0.2);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
   color: var(--accent);
   border-radius: 99px;
   padding: 1px 6px;
@@ -3828,7 +3837,7 @@ svg.graph {
   overflow-y: auto;
   transition: border-color 0.14s;
 }
-.notes-section textarea:focus { border-color: rgba(14, 165, 233, 0.3); }
+.notes-section textarea:focus { border-color: color-mix(in srgb, var(--accent) 30%, transparent); }
 .notes-section textarea::placeholder { color: var(--txt-faint); font-style: italic; }
 
 .notes-label {
@@ -3846,7 +3855,7 @@ svg.graph {
 [data-theme='light'] .notes-section textarea,
 [data-theme='light'] .dep-search-field {
   background: var(--field-bg);
-  border-color: #C3DDF5;
+  border-color: var(--accent-soft);
 }
 [data-theme='light'] .desc-fixed:focus,
 [data-theme='light'] .notes-section textarea:focus {
@@ -4015,8 +4024,8 @@ svg.graph {
 }
 .ttl-ico {
   display: grid; place-items: center; width: 24px; height: 24px;
-  border-radius: 8px; font-size: 15px; line-height: 1; color: #fff;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border-radius: 8px; font-size: 15px; line-height: 1; color: var(--on-accent);
+  background: var(--accent);
 }
 
 .users-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
@@ -4067,12 +4076,12 @@ svg.graph {
 .acc-opt:hover { color: var(--txt); }
 .acc-opt.on.is-none  { background: var(--surface); color: var(--txt); box-shadow: 0 1px 2px rgba(0,0,0,0.25); }
 .acc-opt.on.is-read  { background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--accent); }
-.acc-opt.on.is-write { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; }
+.acc-opt.on.is-write { background: var(--accent); color: var(--on-accent); }
 
 .btn-primary {
   border: none; cursor: pointer; font-family: inherit;
-  font-size: 14px; font-weight: 600; color: #fff;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  font-size: 14px; font-weight: 600; color: var(--on-accent);
+  background: var(--accent);
   padding: 11px 20px; border-radius: 10px;
   box-shadow: 0 4px 14px -6px var(--accent);
   transition: transform 0.12s, box-shadow 0.15s, opacity 0.15s;
@@ -4090,8 +4099,8 @@ svg.graph {
   transition: background 0.14s, color 0.14s, border-color 0.14s;
 }
 .btn-ghost:hover { background: var(--accent-soft); color: var(--accent); }
-.btn-danger { color: #ef6b6b; border-color: color-mix(in srgb, #ef4444 35%, var(--line)); }
-.btn-danger:hover { background: color-mix(in srgb, #ef4444 16%, transparent); color: #ff8080; border-color: #ef4444; }
+.btn-danger { color: var(--blocked); border-color: color-mix(in srgb, var(--blocked) 35%, var(--line)); }
+.btn-danger:hover { background: color-mix(in srgb, var(--blocked) 16%, transparent); color: var(--blocked); border-color: var(--blocked); }
 
 .users-add-foot { margin-top: 18px; display: flex; justify-content: flex-end; }
 
@@ -4105,8 +4114,8 @@ svg.graph {
 .user-avatar {
   flex: none; display: grid; place-items: center;
   width: 38px; height: 38px; border-radius: 11px;
-  font-family: var(--display); font-size: 16px; font-weight: 700; color: #fff;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  font-family: var(--display); font-size: 16px; font-weight: 700; color: var(--on-accent);
+  background: var(--accent);
 }
 .user-id { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .user-email {
@@ -4179,7 +4188,7 @@ svg.graph {
 .att-size { font-size: 11px; color: var(--txt-dim); }
 .att-offline { display: grid; place-items: center; width: 100%; height: 100%; font-size: 10px; color: var(--txt-dim); text-align: center; padding: 4px; }
 .att-del { position: absolute; top: 3px; right: 3px; border: 0; border-radius: 6px; padding: 2px 6px; font-size: 11px; line-height: 1.6; cursor: pointer; background: color-mix(in srgb, var(--bg) 75%, transparent); color: var(--txt); }
-.att-del.armed { background: var(--blocked); color: #fff; }
+.att-del.armed { background: var(--blocked); color: var(--on-accent); }
 .att-msg { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: var(--accent-soft); font-size: 13px; }
 .att-msg-x { margin-left: auto; border: 0; background: none; cursor: pointer; color: inherit; }
 
@@ -4345,7 +4354,7 @@ svg.graph {
   font-family: var(--mono);
   font-size: 10px;
   font-weight: 700;
-  color: #fff;
+  color: var(--on-accent);
   background: var(--blocked);
   border-radius: 20px;
   padding: 1px 6px;
@@ -4373,6 +4382,9 @@ svg.graph {
 .done-toggle {
   width: 100%;
   text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 12px;
   color: var(--txt-faint);
   padding: 8px 4px;
@@ -4398,7 +4410,7 @@ svg.graph {
 .t-time.allday { color: var(--txt-faint); font-weight: 500; }
 .task-row .list-title { flex: 1; min-width: 0; }
 .t-tail { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
-.t-urgent { font-size: 11px; line-height: 1; }
+.t-urgent { display: inline-flex; color: var(--active); }
 .t-bell { color: var(--active); display: inline-flex; align-items: center; }
 .t-proj {
   display: inline-flex;
@@ -4581,7 +4593,7 @@ svg.graph {
   border-color: color-mix(in srgb, var(--active) 35%, transparent);
   color: var(--active);
 }
-.chip-ico { opacity: 0.75; }
+.chip-ico { opacity: 0.75; display: inline-flex; align-items: center; }
 .chip-x { opacity: 0.6; font-weight: 700; padding: 0 1px; color: inherit; }
 .chip-x:hover { opacity: 1; }
 
@@ -4610,16 +4622,16 @@ svg.graph {
     border-radius: 9px;
   }
   .tabbar button.on { color: var(--accent); }
-  .tabbar .tb-ico { font-size: 16px; line-height: 1; }
+  .tabbar .tb-ico { display: inline-flex; align-items: center; justify-content: center; }
   .tabbar .tb-add {
-    color: #fff;
-    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: var(--on-accent);
+    background: var(--accent);
     border-radius: 12px;
     margin: 0 4px;
     max-width: 52px;
     flex: 0 0 52px;
   }
-  .tabbar .tb-add .tb-ico { font-size: 20px; font-weight: 300; }
+  .tabbar .tb-add .tb-ico { color: var(--accent); }
 
   /* Numele proiectului costă exact lățimea care taie titlul, iar titlul e
      singurul lucru care contează într-o listă. Rămâne punctul colorat;
@@ -4646,8 +4658,8 @@ svg.graph {
   margin-bottom: 14px;
 }
 .push-cta-ico {
-  font-size: 15px;
   color: var(--active);
+  display: inline-flex;
   flex-shrink: 0;
 }
 .push-cta-txt { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
@@ -4658,7 +4670,7 @@ svg.graph {
   border-radius: 8px;
   border: 1px solid var(--active);
   background: var(--active);
-  color: #fff;
+  color: var(--on-accent);
   font-size: 12.5px;
   font-weight: 600;
   padding: 6px 12px;

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useHorizontal } from '../store'
 import { useTitleDate, useWritableProjects } from '../hooks'
 import { dayOffset, defaultReminder, reminderAt, toDisplayDate, toTimeInput } from '../lib/schedule'
+import { Icon } from './Icon'
 
 const LAST_PROJECT_KEY = 'horizontal:last-task-project'
 const DAYS = ['Dum', 'Lun', 'Mar', 'Mie', 'Joi', 'Vin', 'Sâm']
@@ -189,7 +190,7 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0 }: Props) {
       {text.trim() !== '' && (
         <div className="qa-meta">
           <span className="chip date">
-            <span className="chip-ico" aria-hidden="true">▤</span>
+            <span className="chip-ico"><Icon name="today" size={13} /></span>
             {dueLabel(dueAt, allDay, new Date())}
             {useParsed && (
               <button
@@ -198,19 +199,19 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0 }: Props) {
                 aria-label="Respinge data recunoscută"
                 onClick={rejectDate}
               >
-                ✕
+                <Icon name="close" size={12} />
               </button>
             )}
           </span>
 
           {!allDay && (
             <span className="chip bell">
-              <span className="chip-ico" aria-hidden="true">◔</span> memento la oră
+              <span className="chip-ico"><Icon name="reminder" size={13} /></span> memento la oră
             </span>
           )}
 
           {useParsed && parsed.rrule && (
-            <span className="chip">↻ {parsed.rrule === 'FREQ=DAILY' ? 'zilnic' : 'săptămânal'}</span>
+            <span className="chip"><Icon name="recurring" size={12} /> {parsed.rrule === 'FREQ=DAILY' ? 'zilnic' : 'săptămânal'}</span>
           )}
 
           <label className="qa-proj" title="Proiectul sarcinii">

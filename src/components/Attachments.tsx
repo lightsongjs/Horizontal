@@ -12,6 +12,7 @@ import { carriesFiles, pickFiles, rejectMessage } from '../lib/pickFiles'
 import { attachmentFilename, shrinkImage } from '../lib/shrinkImage'
 import { Lightbox } from './Lightbox'
 import { AttachmentPicker } from './AttachmentPicker'
+import { Icon } from './Icon'
 
 /** Doar în modul Supabase: attachment-urile n-au sens în modul local seeded. */
 const ENABLED = import.meta.env.VITE_DATA_SOURCE === 'supabase'
@@ -295,7 +296,7 @@ export function Attachments({
       {message && (
         <div className="att-msg" role="status">
           {message}
-          <button className="att-msg-x" onClick={() => setMessage(null)} aria-label="Închide mesajul">✕</button>
+          <button className="att-msg-x" onClick={() => setMessage(null)} aria-label="Închide mesajul"><Icon name="close" size={16} /></button>
         </div>
       )}
 

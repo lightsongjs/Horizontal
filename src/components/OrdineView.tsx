@@ -37,7 +37,7 @@ export function OrdineView() {
       </div>
 
       {waves.length === 0 ? (
-        <p className="empty">Niciun val încă. Apasă ⚙ ca să adaugi primul val (sprint).</p>
+        <p className="empty">Niciun val încă. Apasă rotița din bara de valuri ca să adaugi primul (sprint).</p>
       ) : orderedLayers.length === 0 ? (
         <p className="empty">Niciun tichet în acest val. Apasă + ca să adaugi unul.</p>
       ) : (

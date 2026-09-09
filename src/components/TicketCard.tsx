@@ -2,6 +2,7 @@ import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { useCanWrite } from '../hooks'
 import { DueChip } from './DueChip'
+import { Icon } from './Icon'
 
 interface Props {
   id: string
@@ -66,18 +67,18 @@ export function TicketCard({ id, contextWave, selectMode, isSelected, onToggleSe
           else if (canWrite) void toggleDone(id)
         }}
       >
-        {(selectMode ? isSelected : it.done) ? '✓' : ''}
+        <Icon name={(selectMode ? isSelected : it.done) ? 'done' : 'notDone'} size={17} />
       </span>
       <div className="tk-meta">
         {theme && <span className="theme-dot" style={{ background: theme.color }} />}
         <span className="tk-id">{id}</span>
         {theme && <span className="tk-theme">{theme.name}</span>}
-        {it.urgent && <span className="tk-urgent" title="Urgent">⚡</span>}
+        {it.urgent && <span className="tk-urgent" title="Urgent"><Icon name="urgent" size={13} /></span>}
       </div>
       <h5>{it.title}</h5>
       {(sameWave.length > 0 || crossWave.length > 0 || it.dueAt) && (
         <span className="tk-sub">
-          {sameWave.length > 0 && <span className="dep">↳ {sameWave.join(', ')}</span>}
+          {sameWave.length > 0 && <span className="dep"><Icon name="dep" size={13} /> {sameWave.join(', ')}</span>}
           {crossWave.length > 0 && <span className="tk-children">+{crossWave.length} din alt val</span>}
           <DueChip issue={it} />
         </span>

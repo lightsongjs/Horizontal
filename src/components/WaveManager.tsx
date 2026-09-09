@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { toRoman } from '../lib/roman'
 import { useHorizontal } from '../store'
+import { Icon } from './Icon'
 
 export function WaveManager() {
   const { waves, issues, createWave, renameWave, deleteWave } = useHorizontal()
@@ -42,7 +43,7 @@ export function WaveManager() {
   return (
     <>
       <div className="sheet-head">
-        <div className="eyebrow">⚙ Valuri</div>
+        <div className="eyebrow"><Icon name="settings" size={13} /> Valuri</div>
         <h2>Gestionează valurile</h2>
         <p>Valurile sunt sprinturile proiectului. Numerotarea (I, II, III…) e automată; eticheta e opțională.</p>
       </div>
@@ -68,7 +69,7 @@ export function WaveManager() {
               title={count(w.number) > 0 ? `${count(w.number)} tichete în acest val` : 'Șterge'}
               onClick={() => onDelete(w.number)}
             >
-              {confirmDel === w.number ? 'Sigur?' : '🗑'}
+              {confirmDel === w.number ? 'Sigur?' : <Icon name="delete" size={15} label="Șterge" />}
             </button>
           </div>
         ))}

@@ -1,14 +1,19 @@
 import { hasTime, isOverdue, reminderKindOf, toDisplayDate, toShortDate, toTimeInput } from '../lib/schedule'
 import type { Issue } from '../lib/types'
+import { Icon } from './Icon'
 
-/** Clopoțel: „are memento". Inline, ca să moștenească `currentColor`. */
+/**
+ * Clopoțel: „are memento".
+ *
+ * Exportat de aici și folosit și de `TaskRow`, ca „are memento" să arate
+ * identic în modul proiecte și în listele inteligente. Desenul vine din
+ * vocabularul comun (`Icon`), nu dintr-un SVG scris pe loc: două clopoțele cu
+ * grosimi de linie diferite s-ar vedea imediat.
+ */
 export function Bell() {
   return (
-    <span className="t-bell" title="Are memento" aria-label="Are memento">
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-        <path d="M13.7 21a2 2 0 0 1-3.4 0" />
-      </svg>
+    <span className="t-bell" title="Are memento">
+      <Icon name="bell" size={12} label="Are memento" />
     </span>
   )
 }

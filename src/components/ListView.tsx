@@ -7,6 +7,7 @@ import { BulkBar } from './BulkBar'
 import { useHideDone, useOrderedLayers, useWaveActions, useVimNav, useCanWrite } from '../hooks'
 import { layerVar } from '../lib/layerColors'
 import { DueChip } from './DueChip'
+import { Icon } from './Icon'
 
 export function ListView() {
   const { waves, activeWave, byId, stateOf, themeOf, toggleDone } = useHorizontal()
@@ -40,7 +41,7 @@ export function ListView() {
       </div>
 
       {waves.length === 0 ? (
-        <p className="empty">Niciun val încă. Apasă ⚙ ca să adaugi primul val (sprint).</p>
+        <p className="empty">Niciun val încă. Apasă rotița din bara de valuri ca să adaugi primul (sprint).</p>
       ) : orderedLayers.length === 0 ? (
         <p className="empty">Niciun tichet în acest val. Apasă + ca să adaugi unul.</p>
       ) : (
@@ -107,7 +108,7 @@ export function ListView() {
                   <span className="list-title">{it.title}</span>
                   {/* Coada rândului: aceeași ordine ca `.t-tail` din TaskRow. */}
                   <span className="row-tail">
-                    {it.urgent && <span className="tk-urgent" title="Urgent">⚡</span>}
+                    {it.urgent && <span className="tk-urgent" title="Urgent"><Icon name="urgent" size={13} /></span>}
                     <DueChip issue={it} />
                   </span>
                 </button>

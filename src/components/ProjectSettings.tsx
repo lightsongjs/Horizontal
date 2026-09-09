@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { errorMessage } from '../lib/errorMessage'
+import { Icon } from './Icon'
 
 const ACCENTS = ['#0EA5E9', '#3ecf8e', '#ffb454', '#a06eff', '#ff6b6b', '#46d1d9']
 
@@ -52,7 +53,7 @@ export function ProjectSettings() {
   return (
     <>
       <div className="sheet-head">
-        <div className="eyebrow">⚙ Setări proiect</div>
+        <div className="eyebrow"><Icon name="settings" size={13} /> Setări proiect</div>
         <h2>{project.name}</h2>
         <p>Modifică detaliile proiectului sau șterge-l definitiv.</p>
       </div>

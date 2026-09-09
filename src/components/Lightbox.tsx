@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { signedDownloadUrl, type Attachment } from '../data/attachments'
+import { Icon } from './Icon'
 
 /**
  * Imaginea pe tot ecranul, în aplicație. Nu într-un tab nou: Horizontal e PWA
@@ -50,7 +51,7 @@ export function Lightbox({
         <span className="lb-name">{attachment.filename}</span>
         <div className="lb-actions">
           <button onClick={() => void download()}>Descarcă</button>
-          <button onClick={onClose} aria-label="Închide">✕</button>
+          <button onClick={onClose} aria-label="Închide"><Icon name="close" size={16} /></button>
         </div>
       </div>
       <div className="lb-body">

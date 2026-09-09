@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { errorMessage } from '../lib/errorMessage'
+import { Icon } from './Icon'
 
 const ACCENTS = ['#0EA5E9', '#3ecf8e', '#ffb454', '#a06eff', '#ff6b6b', '#46d1d9']
 
@@ -52,7 +53,7 @@ export function ProjectForm() {
     <>
       {/* NEW HEADER */}
       <div className="sh-header">
-        <button className="sh-close" onClick={closeSheet} aria-label="Închide">✕</button>
+        <button className="sh-close" onClick={closeSheet} aria-label="Închide"><Icon name="close" size={16} /></button>
         <input
           className="sh-title-input"
           value={name}

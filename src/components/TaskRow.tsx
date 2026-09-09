@@ -3,6 +3,7 @@ import { useCanWriteIn } from '../hooks'
 import { hasTime, toShortDate, toTimeInput } from '../lib/schedule'
 import type { Issue } from '../lib/types'
 import { Bell } from './DueChip'
+import { Icon } from './Icon'
 
 interface Props {
   issue: Issue
@@ -42,7 +43,7 @@ export function TaskRow({ issue, onOpen, late = false }: Props) {
           if (canWrite) void toggleDone(issue.id)
         }}
       >
-        {issue.done ? '✓' : ''}
+        <Icon name={issue.done ? 'done' : 'notDone'} size={17} />
       </span>
 
       {timed ? (
@@ -58,7 +59,7 @@ export function TaskRow({ issue, onOpen, late = false }: Props) {
       <span className="list-title">{issue.title}</span>
 
       <span className="t-tail">
-        {issue.urgent && <span className="t-urgent" title="Urgent">⚡</span>}
+        {issue.urgent && <span className="t-urgent" title="Urgent"><Icon name="urgent" size={13} /></span>}
         {issue.remindAt && <Bell />}
         {project && (
           <span className="t-proj" title={project.name}>

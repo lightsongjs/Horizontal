@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { parseDue } from '../lib/parseDue'
 import { dayOffset, toDisplayDate, toTimeInput } from '../lib/schedule'
+import { Icon } from './Icon'
 
 /**
  * Panoul de referință (Ctrl+,): ce scurtături există și ce înțelege
@@ -125,7 +126,7 @@ export function InfoPanel({ onClose }: { onClose: () => void }) {
           <span className="info-now">
             calculat acum, {now.getDate()}/{String(now.getMonth() + 1).padStart(2, '0')} {toTimeInput(now.toISOString())}
           </span>
-          <button className="info-close" onClick={onClose} aria-label="Închide">✕</button>
+          <button className="info-close" onClick={onClose} aria-label="Închide"><Icon name="close" size={16} /></button>
         </div>
 
         <div className="info-body">
@@ -152,7 +153,7 @@ export function InfoPanel({ onClose }: { onClose: () => void }) {
             <h3>Recunoașterea datei din titlu</h3>
             <p className="info-lead">
               Scrii data în titlu, iar scadența se completează singură. Fragmentul recunoscut se
-              evidențiază; o atingere pe el sau pe <strong>✕</strong> îl refuză, și atunci
+              evidențiază; o atingere pe el sau pe <strong><Icon name="close" size={16} /></strong> îl refuză, și atunci
               rămâne text în titlu — parserul propune, tu confirmi.
               Tabelul de mai jos e calculat acum, de parserul care rulează în aplicație.
             </p>

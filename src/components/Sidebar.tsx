@@ -5,6 +5,7 @@ import { useTheme } from '../theme'
 import { useAuth } from '../auth'
 import { useCanWrite } from '../hooks'
 import { SMART_LISTS, type SmartListKind } from './SmartListView'
+import { Icon } from './Icon'
 
 function getBuildAgo(): string {
   const diff = Math.floor((Date.now() - new Date(__BUILD_TIME__).getTime()) / 1000)
@@ -103,7 +104,7 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
           className={`sidebar-nav-item ${smartList === kind ? 'on' : ''}`}
           onClick={() => onSmartList?.(kind)}
         >
-          <span className="sidebar-nav-icon" aria-hidden="true">{icon}</span>
+          <span className="sidebar-nav-icon"><Icon name={icon} size={17} /></span>
           <span>{label}</span>
           {/* Restanțele nu au rând propriu: ar fi un rând gol în ziua bună.
               Trăiesc ca badge pe „Azi", fiindcă sunt o problemă de azi. */}
@@ -160,7 +161,7 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
               }}
               onDragEnd={() => { setDragOver(null); dragId.current = null }}
             >
-              <span className="sidebar-drag-handle" title="Trage pentru a reordona">⠿</span>
+              <span className="sidebar-drag-handle" title="Trage pentru a reordona"><Icon name="drag" size={15} /></span>
               <button className="sidebar-proj-btn" onClick={() => goToProject(p.id)}>
                 <span className="sidebar-proj-dot" style={{ background: p.accent }} />
                 <span className="sidebar-proj-name">{p.name}</span>

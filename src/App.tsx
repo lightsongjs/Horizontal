@@ -18,6 +18,7 @@ import { deepLinkNotice, parseTicketPath, resolveTicketProject, ticketPath } fro
 import { isReminderAction, isReminderArrived, SNOOZE_MINUTES } from './lib/pushPayload'
 import { announceChime, playChime, unlockChime } from './lib/chime'
 import type { Project } from './lib/types'
+import { Icon } from './components/Icon'
 
 function ThemeToggle({ className }: { className?: string }) {
   const { theme, toggle } = useTheme()
@@ -90,10 +91,10 @@ function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, ca
       </button>
       {(project || list) && (
         <button className="back" aria-label="Înapoi" onClick={() => (list ? onExitSmartList() : selectProject(null))}>
-          ‹
+          <Icon name="back" size={20} />
         </button>
       )}
-      <div className="logo">{list ? list.icon : project ? project.prefix.slice(0, 2) : 'H'}</div>
+      <div className="logo">{list ? <Icon name={list.icon} size={18} /> : project ? project.prefix.slice(0, 2) : 'H'}</div>
       <div className="htxt">
         <h1>{list ? list.label : project ? project.name : 'Horizontal'}</h1>
         <div className="crumb">
@@ -168,16 +169,16 @@ function TabBar({ smartList, onSmartList, onProjects, onQuickAdd, inProjects }: 
   return (
     <nav className="tabbar">
       <button className={smartList === 'today' ? 'on' : ''} onClick={() => onSmartList('today')}>
-        <span className="tb-ico" aria-hidden="true">★</span>Azi
+        <span className="tb-ico"><Icon name="today" size={21} /></span>Azi
       </button>
       <button className={smartList === 'week' ? 'on' : ''} onClick={() => onSmartList('week')}>
-        <span className="tb-ico" aria-hidden="true">▤</span>7 zile
+        <span className="tb-ico"><Icon name="list" size={21} /></span>7 zile
       </button>
       <button className="tb-add" onClick={onQuickAdd} aria-label="Sarcină nouă">
-        <span className="tb-ico" aria-hidden="true">+</span>
+        <span className="tb-ico"><Icon name="add" size={25} /></span>
       </button>
       <button className={inProjects ? 'on' : ''} onClick={onProjects}>
-        <span className="tb-ico" aria-hidden="true">⊞</span>Proiecte
+        <span className="tb-ico"><Icon name="projects" size={21} /></span>Proiecte
       </button>
     </nav>
   )

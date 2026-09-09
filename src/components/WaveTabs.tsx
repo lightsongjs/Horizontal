@@ -1,6 +1,7 @@
 import { toRoman } from '../lib/roman'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
+import { Icon } from './Icon'
 
 /**
  * The wave selector row (wave buttons + manage gear). Shared by board + list.
@@ -24,7 +25,7 @@ export function WaveTabs({ onWaveChange, canWrite = true }: { onWaveChange?: () 
             title={w.name}
             aria-label={w.name}
           >
-            <span className="wname">{isScratch ? '📝' : roman}</span>
+            <span className="wname">{isScratch ? <Icon name="scratch" size={18} /> : roman}</span>
             <span className="wsub">
               {isScratch ? cnt : `${w.label ? `${w.label} · ` : ''}${cnt}`}
             </span>
@@ -33,7 +34,7 @@ export function WaveTabs({ onWaveChange, canWrite = true }: { onWaveChange?: () 
       })}
       {canWrite && (
         <button className="wbtn wmanage" aria-label="Gestionează valuri" onClick={openWaveManage}>
-          <span className="wname">⚙</span>
+          <span className="wname"><Icon name="settings" size={18} /></span>
           <span className="wsub">valuri</span>
         </button>
       )}

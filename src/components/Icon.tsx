@@ -1,0 +1,111 @@
+import {
+  ArrowLeft,
+  Bell,
+  CalendarCheck,
+  CalendarClock,
+  CalendarRange,
+  Check,
+  CheckCheck,
+  ChevronDown,
+  ChevronRight,
+  Circle,
+  CircleCheck,
+  Clock,
+  CornerDownRight,
+  ExternalLink,
+  GripVertical,
+  LayoutGrid,
+  LoaderCircle,
+  NotepadText,
+  Plus,
+  RotateCw,
+  Search,
+  Settings2,
+  Sparkles,
+  Trash2,
+  TriangleAlert,
+  X,
+  Zap,
+} from 'lucide-react'
+
+/**
+ * Vocabularul de iconițe al aplicației.
+ *
+ * Înainte erau glife și emoji puse direct în JSX (`★ ▤ ⊞ ⚡ ⚙ 🗑 📝 ◔ ⠿`). Trei
+ * probleme, în ordinea gravității: emoji-ul se randează cu paleta sistemului,
+ * deci nu se poate colora și arată altfel pe fiecare telefon; glifele
+ * tipografice cad pe fonturi diferite, deci n-au grosime de linie comună; iar
+ * împreună sunt primul semn că ecranul n-a fost desenat de nimeni.
+ *
+ * **De ce SVG inline și nu fontul Material Symbols.** Aplicația e un PWA
+ * offline-first. Un font de iconițe luat de la Google ar da pătrate de tofu
+ * exact când omul e în metrou — iar unul găzduit local ar intra în manifestul de
+ * precache al service workerului, adică în contractul de update din `pwa.ts`.
+ * `lucide-react` intră în bundle, se scutură la build (numai iconițele de mai
+ * jos) și e desenat pe grilă de 24px cu o singură grosime de linie.
+ *
+ * Numele sunt ale rolului din aplicație, nu ale desenului: `urgent`, nu `zap`.
+ * Așa se schimbă desenul o singură dată, aici.
+ */
+const ICONS = {
+  add: Plus,
+  back: ArrowLeft,
+  bell: Bell,
+  close: X,
+  collapse: ChevronDown,
+  danger: TriangleAlert,
+  delete: Trash2,
+  dep: CornerDownRight,
+  done: CircleCheck,
+  drag: GripVertical,
+  expand: ChevronRight,
+  external: ExternalLink,
+  fromTitle: Sparkles,
+  list: CalendarRange,
+  loading: LoaderCircle,
+  notDone: Circle,
+  projects: LayoutGrid,
+  recurring: RotateCw,
+  reminder: Clock,
+  scratch: NotepadText,
+  search: Search,
+  settings: Settings2,
+  check: Check,
+  checkAll: CheckCheck,
+  today: CalendarCheck,
+  tomorrow: CalendarClock,
+  urgent: Zap,
+} as const
+
+export type IconName = keyof typeof ICONS
+
+interface Props {
+  name: IconName
+  /** Latura, în px. Implicit 18 — potrivit lângă un rând de text de 15px. */
+  size?: number
+  className?: string
+  /** Pus doar când iconița e singura etichetă a controlului. */
+  label?: string
+}
+
+/**
+ * O iconiță. Moștenește `currentColor`, deci se colorează din CSS ca și textul
+ * pe care îl însoțește.
+ *
+ * Grosimea de linie e fixată aici, nu lăsată pe implicitul librăriei: două
+ * iconițe de grosimi diferite în același rând se văd imediat.
+ */
+export function Icon({ name, size = 18, className, label }: Props) {
+  const Glyph = ICONS[name]
+  return (
+    <Glyph
+      size={size}
+      strokeWidth={1.75}
+      className={className}
+      aria-hidden={label ? undefined : true}
+      aria-label={label}
+      role={label ? 'img' : undefined}
+      focusable="false"
+    />
+  )
+}

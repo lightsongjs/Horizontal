@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useHorizontal } from '../store'
+import { Icon } from './Icon'
 
 const PALETTE = ['#0EA5E9', '#3ecf8e', '#ffb454', '#a06eff', '#ff6b6b', '#46d1d9', '#f78fb3', '#9aa0b4']
 
@@ -27,7 +28,7 @@ export function ThemeManager() {
   return (
     <>
       <div className="sheet-head">
-        <div className="eyebrow">⚙ Teme</div>
+        <div className="eyebrow"><Icon name="settings" size={13} /> Teme</div>
         <h2>Gestionează temele</h2>
         <p>Temele sunt categorii colorate pentru tichete. Adaugă, redenumește, recolorează sau șterge.</p>
       </div>
@@ -56,7 +57,7 @@ export function ThemeManager() {
               title={count(t.key) > 0 ? `${count(t.key)} tichete rămân fără temă` : 'Șterge'}
               onClick={() => (confirmDel === t.key ? void deleteTheme(t.key) : setConfirmDel(t.key))}
             >
-              {confirmDel === t.key ? 'Sigur?' : '🗑'}
+              {confirmDel === t.key ? 'Sigur?' : <Icon name="delete" size={15} label="Șterge" />}
             </button>
           </div>
         ))}

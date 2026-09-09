@@ -12,6 +12,7 @@ import {
 } from '../lib/schedule'
 import { Attachments } from './Attachments'
 import type { Issue, ScenarioKind, TestScenario } from '../lib/types'
+import { Icon } from './Icon'
 
 const PALETTE = ['#0284C7', '#059669', '#D97706', '#EA580C', '#E11D48', '#7C3AED', '#06B6D4']
 
@@ -668,7 +669,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
     <>
       {/* HEADER */}
       <div className="sh-header">
-        <button className="sh-close" onClick={closeSheet} aria-label="Închide">✕</button>
+        <button className="sh-close" onClick={closeSheet} aria-label="Închide"><Icon name="close" size={16} /></button>
         {isEdit && (
           <button
             tabIndex={-1}

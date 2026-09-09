@@ -1,4 +1,5 @@
 import type { Wave } from '../lib/types'
+import { Icon } from './Icon'
 
 interface Props {
   selCount: number
@@ -37,7 +38,7 @@ export function BulkBar({
             )}
             <div className="bulk-sep" />
             <button className="bulk-btn danger" onClick={onRequestDelete}>
-              🗑 Șterge
+              <Icon name="delete" size={15} /> Șterge
             </button>
           </div>
         </div>

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import type { Issue } from '../lib/types'
+import { Icon } from './Icon'
 
 interface Props {
   onClose: () => void
@@ -168,7 +169,7 @@ export function QuickSearch({ onClose }: Props) {
               >
                 <span className="qs-item-id">{issue.id}</span>
                 <span className="qs-item-title">{highlight(query, issue.title)}</span>
-                {issue.done && <span className="qs-item-done">✓</span>}
+                {issue.done && <span className="qs-item-done"><Icon name="check" size={14} /></span>}
               </button>
             ))}
           </div>

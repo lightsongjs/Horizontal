@@ -5,13 +5,14 @@ import { QuickAdd } from './QuickAdd'
 import { TaskRow } from './TaskRow'
 import { addDays, startOfLocalDay, toShortDate } from '../lib/schedule'
 import type { Issue } from '../lib/types'
+import { Icon, type IconName } from './Icon'
 
 export type SmartListKind = 'today' | 'tomorrow' | 'week'
 
-export const SMART_LISTS: { kind: SmartListKind; label: string; icon: string }[] = [
-  { kind: 'today', label: 'Azi', icon: '★' },
-  { kind: 'tomorrow', label: 'Mâine', icon: '→' },
-  { kind: 'week', label: 'Next 7 days', icon: '▤' },
+export const SMART_LISTS: { kind: SmartListKind; label: string; icon: IconName }[] = [
+  { kind: 'today', label: 'Azi', icon: 'today' },
+  { kind: 'tomorrow', label: 'Mâine', icon: 'tomorrow' },
+  { kind: 'week', label: 'Next 7 days', icon: 'list' },
 ]
 
 const DAYS_FULL = ['duminică', 'luni', 'marți', 'miercuri', 'joi', 'vineri', 'sâmbătă']
@@ -98,7 +99,7 @@ export function SmartListView({ kind, onOpenTask, focusSignal = 0 }: Props) {
           {smartLists.doneToday.length > 0 && (
             <>
               <button className="done-toggle" onClick={() => setShowDone((v) => !v)}>
-                {showDone ? '▾' : '▸'} Terminate azi ({smartLists.doneToday.length})
+                <Icon name={showDone ? 'collapse' : 'expand'} size={15} /> Terminate azi ({smartLists.doneToday.length})
               </button>
               {showDone && smartLists.doneToday.map((it) => (
                 <TaskRow key={it.id} issue={it} onOpen={onOpenTask} />

@@ -1,6 +1,7 @@
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { Attachments } from './Attachments'
+import { Icon } from './Icon'
 
 export function IssueSheet({ issueId }: { issueId: string }) {
   const { byId, waves, unblockedBy, themeOf, assignees, myAssigneeId } = useHorizontal()
@@ -31,10 +32,10 @@ export function IssueSheet({ issueId }: { issueId: string }) {
           {assignee && (
             <>
               {' · '}
-              {'👤 '}{assignee.name}{assignee.id === myAssigneeId ? ' (eu)' : ''}
+              {assignee.name}{assignee.id === myAssigneeId ? ' (eu)' : ''}
             </>
           )}
-          {it.done && <>{' · '}<span style={{ color: 'var(--ok)' }}>✓ Gata</span></>}
+          {it.done && <>{' · '}<span className="sheet-done"><Icon name="check" size={13} /> Gata</span></>}
         </div>
         <h2>{it.title}</h2>
       </div>
@@ -90,7 +91,7 @@ export function IssueSheet({ issueId }: { issueId: string }) {
                 style={{ width: '100%', textAlign: 'left' }}
                 onClick={() => navigateTo(b.id)}
               >
-                <span className="ic ext">⌁</span>
+                <span className="ic ext"><Icon name="external" size={14} /></span>
                 <span>{b.title}</span>
                 <span className="wtag pending">{waveName(b.wave)}</span>
               </button>
