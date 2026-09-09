@@ -231,7 +231,6 @@ header {
   background: var(--done-soft);
   padding: 4px 9px;
   border-radius: 20px;
-  border: 1px solid color-mix(in srgb, var(--done) 20%, transparent);
 }
 .hprog .dot {
   width: 5px;
@@ -279,7 +278,6 @@ main {
   font-weight: 600;
   color: var(--txt-faint);
   background: var(--surface-2);
-  border: 1px solid var(--line);
   padding: 1px 8px;
   border-radius: 10px;
   text-transform: none;
@@ -287,7 +285,6 @@ main {
 }
 .proj {
   background: var(--surface);
-  border: 1px solid var(--line-soft);
   border-radius: var(--r);
   padding: 15px 15px 13px;
   margin-bottom: 10px;
@@ -297,17 +294,10 @@ main {
   width: 100%;
   display: block;
   transition: transform 0.13s ease, border-color 0.2s;
+  box-shadow: var(--amb);
 }
 .proj:active {
   transform: scale(0.984);
-  border-color: var(--line);
-}
-.proj .glow {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 2.5px;
-  height: 100%;
 }
 .proj h3 {
   font-size: 18px;
@@ -362,35 +352,49 @@ main {
   border-radius: 5px;
   background: var(--surface-3);
   color: var(--txt-faint);
-  border: 1px solid var(--line);
 }
 
 /* TABS */
 .tabs {
   display: flex;
   gap: 3px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 3px;
+  background: none;
+  border-radius: 0;
+  padding: 0;
   margin-bottom: 14px;
   position: sticky;
   top: 0;
   z-index: 5;
+  box-shadow: inset 0 -1px 0 var(--line);
+  gap: 20px;
 }
 .tab {
-  flex: 1;
-  text-align: center;
-  font-size: 14px;
+  flex: 0 0 auto;
+  text-align: left;
+  font-size: 15px;
   font-weight: 600;
   color: var(--txt-faint);
-  padding: 9px 4px;
-  border-radius: 7px;
+  padding: 0 0 9px;
+  border-radius: 0;
   transition: all 0.16s;
+  font-family: var(--display);
+  position: relative;
 }
 .tab.on {
+  color: var(--txt);
+}
+/* Fila activă: text plin plus o linie de 2px pe firul de sub fâșie.
+   Aceeași gramatică ca la filele de val — o casetă umplută era al treilea
+   lucru numit de designer. */
+.tab.on::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 2px;
   background: var(--accent);
-  color: var(--on-accent);
 }
 .panel {
   animation: fade 0.22s ease;
@@ -399,7 +403,6 @@ main {
 /* LAYER INTRO */
 .layer-intro {
   background: var(--surface);
-  border: 1px solid var(--line);
   border-radius: var(--r);
   padding: 12px 14px;
   margin-bottom: 16px;
@@ -408,6 +411,7 @@ main {
   line-height: 1.55;
   position: relative;
   overflow: hidden;
+  box-shadow: var(--amb);
 }
 .layer-intro b {
   color: var(--txt);
@@ -502,7 +506,6 @@ main {
 /* TICKET CARD */
 .tk {
   background: var(--surface);
-  border: 1px solid var(--line-soft);
   border-radius: 10px;
   padding: 11px 13px;
   margin-bottom: 7px;
@@ -511,9 +514,10 @@ main {
   text-align: left;
   width: 100%;
   transition: transform 0.1s, border-color 0.18s, background 0.15s;
+  box-shadow: var(--amb);
 }
 .tk:hover {
-  border-color: var(--line);
+  background: var(--surface-2);
 }
 .tk:active {
   transform: scale(0.988);
@@ -527,14 +531,14 @@ main {
   background: color-mix(in srgb, var(--layer-color, var(--accent)) 8%, var(--surface));
 }
 .tk.active {
-  border-left: 2px solid color-mix(in srgb, var(--done) 50%, transparent);
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--done) 60%, transparent), var(--amb);
 }
 .tk.blocked {
-  border-left: 2px solid color-mix(in srgb, var(--blocked) 45%, transparent);
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--blocked) 55%, transparent), var(--amb);
 }
 .tk.selected {
   background: var(--accent-soft);
-  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 55%, transparent);
 }
 /* top-right checkbox — done toggle in normal mode, selection in bulk mode */
 .tk-check {
@@ -582,7 +586,6 @@ main {
   width: 18px; height: 18px; border-radius: 6px;
   font-size: 11px; font-weight: 700; font-family: var(--mono);
   background: color-mix(in srgb, var(--layer-color, var(--txt-faint)) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--layer-color, var(--line)) 35%, transparent);
   color: var(--layer-color, var(--txt-faint));
 }
 .list-group-label { flex: 1; color: var(--layer-color, var(--txt-dim)); font-weight: 600; }
@@ -590,11 +593,11 @@ main {
 .list-row {
   display: flex; align-items: center; gap: 10px;
   min-height: 40px; padding: 8px 10px;
-  border: 1px solid var(--line-soft); border-radius: 8px;
   margin-bottom: 6px; cursor: pointer; background: var(--surface);
   width: 100%; text-align: left; font: inherit; color: inherit;
+  box-shadow: var(--amb);
 }
-.list-row:hover { border-color: var(--line); }
+.list-row:hover { background: var(--surface-2); }
 .list-row.done { opacity: 0.55; }
 .list-row.blocked { opacity: 0.8; }
 .list-check {
@@ -631,7 +634,7 @@ main {
 }
 .list-row.selected {
   background: var(--accent-soft);
-  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 55%, transparent);
 }
 .list-row.in-select .list-check {
   color: var(--txt-faint);
@@ -676,12 +679,10 @@ main {
   border-radius: 4px;
   color: var(--accent);
   background: var(--accent-soft);
-  border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
 }
 .type-badge.ext {
   color: var(--txt-faint);
   background: var(--surface-3);
-  border-color: var(--line);
 }
 .tk h5 {
   font-size: 12px;
@@ -707,8 +708,7 @@ main {
   max-width: 280px;
   padding: 7px 11px;
   border-radius: 8px;
-  border: 1px solid var(--line);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+  box-shadow: var(--amb);
   pointer-events: none;
   opacity: 0;
   transform: translateY(4px);
@@ -751,7 +751,6 @@ main {
   padding: 1px 6px;
   border-radius: 4px;
   font-weight: 600;
-  border: 1px solid var(--line);
 }
 
 /* ── scadența pe un tichet din modul proiecte ──────────────────────
@@ -768,8 +767,7 @@ main {
   font-weight: 500;
   line-height: 1.5;
   color: var(--txt-dim);
-  background: var(--surface-2);
-  border: 1px solid var(--line);
+  background: var(--surface-3);
   border-radius: 4px;
   padding: 1px 6px;
 }
@@ -777,7 +775,6 @@ main {
 .due-chip.late {
   color: var(--blocked);
   background: var(--blocked-soft);
-  border-color: color-mix(in srgb, var(--blocked) 27%, transparent);
 }
 .due-chip.late .dc-time { color: var(--blocked); }
 .due-chip .t-bell { color: var(--active); }
@@ -805,9 +802,9 @@ main {
 .wave-tabs {
   display: flex;
   flex-wrap: wrap;
-  gap: 0 22px;
+  align-items: flex-end;
+  gap: 6px 18px;
   flex: 1;
-  box-shadow: inset 0 -1px 0 var(--line);
 }
 .wave-actions {
   display: flex;
@@ -844,7 +841,7 @@ main {
 /* All delivery-wave tabs share one standard width; long labels truncate. */
 .wbtn:not(.wscratch):not(.wmanage) {
   box-sizing: border-box;
-  width: 100px;
+  width: 92px;
 }
 .wbtn:not(.wscratch):not(.wmanage) .wsub {
   max-width: 100%;
@@ -864,7 +861,7 @@ main {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: -1px;
+  bottom: 0;
   height: 2px;
   border-radius: 2px;
   background: var(--accent);
@@ -1036,7 +1033,6 @@ main {
   align-items: center;
   gap: 9px;
   background: var(--surface-2);
-  border: 1px solid var(--line-soft);
   border-radius: 8px;
   padding: 9px 11px;
   margin-bottom: 6px;
@@ -1078,13 +1074,11 @@ main {
   background: var(--done-soft);
   color: var(--done);
   white-space: nowrap;
-  border: 1px solid color-mix(in srgb, var(--done) 20%, transparent);
   font-family: var(--mono);
 }
 .dep-row .wtag.pending {
   background: var(--surface-3);
   color: var(--txt-faint);
-  border: 1px solid var(--line);
 }
 .add-dep {
   display: flex;
@@ -1237,7 +1231,6 @@ main {
   padding: 6px 12px;
   border-radius: 20px;
   background: var(--surface);
-  border: 1px solid var(--line);
   color: var(--txt-dim);
   display: flex;
   align-items: center;
@@ -1247,7 +1240,6 @@ main {
 .chip.on {
   background: var(--txt);
   color: var(--bg);
-  border-color: var(--txt);
   font-weight: 700;
 }
 .chip.add {
@@ -1282,7 +1274,6 @@ svg.graph {
 }
 
 .wbtn.wmanage {
-  margin-left: auto;
   align-items: center;
   justify-content: center;
   color: var(--txt-faint);
@@ -1344,8 +1335,7 @@ svg.graph {
   font-weight: 700;
   font-size: 15px;
   color: var(--txt-dim);
-  background: var(--surface-2);
-  border: 1px solid var(--line);
+  background: var(--surface-3);
   border-radius: 8px;
   padding: 9px 8px;
 }
@@ -1378,7 +1368,6 @@ svg.graph {
 .wave-del {
   flex-shrink: 0;
   background: var(--surface-2);
-  border: 1px solid var(--line);
   border-radius: 8px;
   padding: 9px 11px;
   color: var(--blocked);
@@ -1398,10 +1387,10 @@ svg.graph {
   width: 100%;
   max-width: 340px;
   background: var(--surface);
-  border: 1px solid var(--line);
   border-radius: var(--r);
   padding: 28px 22px 22px;
   text-align: center;
+  box-shadow: var(--amb-lg);
 }
 .login-card .logo {
   margin: 0 auto 14px;
@@ -1429,7 +1418,6 @@ svg.graph {
 }
 .banner {
   background: var(--blocked-soft);
-  border: 1px solid color-mix(in srgb, var(--blocked) 27%, transparent);
   color: var(--blocked);
   border-radius: 10px;
   padding: 10px 12px;
@@ -1493,8 +1481,7 @@ svg.graph {
   display: flex;
   align-items: center;
   border-radius: 6px;
-  border: 1px solid var(--line);
-  background: var(--surface-2);
+  background: var(--surface-3);
   font-size: 11.5px;
   font-weight: 500;
   color: var(--txt-dim);
@@ -1503,7 +1490,6 @@ svg.graph {
 }
 .dep-chip.on {
   background: var(--accent-soft);
-  border-color: color-mix(in srgb, var(--accent) 33%, transparent);
   color: var(--accent);
 }
 .dep-chip.draft {
@@ -1607,10 +1593,10 @@ svg.graph {
 /* Search results dropdown */
 .dep-results {
   background: var(--surface-2);
-  border: 1px solid var(--line);
   border-radius: 10px;
   overflow: hidden;
   margin-bottom: 4px;
+  box-shadow: var(--amb);
 }
 .dep-result-row {
   display: flex;
@@ -1688,8 +1674,7 @@ svg.graph {
   gap: 5px;
   padding: 5px 10px;
   border-radius: 7px;
-  border: 1px solid var(--line);
-  background: transparent;
+  background: var(--surface-2);
   color: var(--txt-faint);
   font-size: 12px;
   font-weight: 500;
@@ -1698,10 +1683,9 @@ svg.graph {
   flex-shrink: 0;
   white-space: nowrap;
 }
-.wave-action-btn:hover { color: var(--txt); border-color: var(--txt-faint); }
+.wave-action-btn:hover { color: var(--txt); background: var(--surface-3); }
 .wave-action-btn.active {
   background: var(--accent-soft);
-  border-color: var(--accent);
   color: var(--accent);
 }
 
@@ -1716,10 +1700,9 @@ svg.graph {
   align-items: center;
   gap: 10px;
   background: var(--surface-2);
-  border: 1px solid var(--line);
   border-radius: 14px;
   padding: 10px 14px;
-  box-shadow: 0 16px 48px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.04);
+  box-shadow: 0 16px 48px rgba(0,0,0,.6);
   animation: slideUp 0.2s cubic-bezier(.18,.9,.24,1);
   white-space: nowrap;
 }
@@ -1766,8 +1749,7 @@ svg.graph {
   gap: 6px;
   padding: 6px 12px;
   border-radius: 7px;
-  border: 1px solid var(--line);
-  background: transparent;
+  background: var(--surface-3);
   color: var(--txt);
   font-family: var(--sans);
   font-size: 14px;
@@ -1776,7 +1758,7 @@ svg.graph {
   transition: all 0.12s;
 }
 .bulk-btn:hover { background: var(--surface-2); }
-.bulk-btn.danger { color: var(--blocked); border-color: color-mix(in srgb, var(--blocked) 20%, transparent); }
+.bulk-btn.danger { color: var(--blocked); background: var(--blocked-soft); }
 .bulk-btn.danger:hover { background: var(--blocked-soft); }
 
 /* ── Bulk confirm overlay ── */
@@ -1789,10 +1771,10 @@ svg.graph {
   align-items: center;
   justify-content: center;
   z-index: 200;
+  background: var(--blocked-soft);
 }
 .bulk-confirm-box {
   background: var(--surface-2);
-  border: 1px solid var(--line);
   border-radius: 16px;
   padding: 28px;
   width: min(340px, 90vw);
@@ -1806,11 +1788,11 @@ svg.graph {
   font-family: var(--sans); font-size: 15px; font-weight: 500; cursor: pointer; transition: all 0.12s;
 }
 .bulk-confirm-cancel {
-  background: transparent; border: 1px solid var(--line); color: var(--txt-faint);
+  background: var(--surface-3); color: var(--txt-faint);
 }
 .bulk-confirm-cancel:hover { color: var(--txt); }
 .bulk-confirm-del {
-  background: var(--blocked-soft); border: 1px solid color-mix(in srgb, var(--blocked) 20%, transparent); color: var(--blocked);
+  background: var(--blocked-soft); color: var(--blocked);
 }
 .bulk-confirm-del:hover { background: color-mix(in srgb, var(--blocked) 22%, transparent); }
 
@@ -1818,9 +1800,8 @@ svg.graph {
 .theme-toggle {
   width: 32px;
   height: 32px;
-  border-radius: 9px;
-  border: 1px solid var(--line);
-  background: var(--surface-2);
+  border-radius: var(--r-s);
+  background: none;
   color: var(--txt-dim);
   display: flex;
   align-items: center;
@@ -1829,8 +1810,8 @@ svg.graph {
   transition: border-color 0.15s, color 0.15s;
 }
 .theme-toggle:hover {
-  border-color: var(--accent);
   color: var(--accent);
+  background: var(--accent-soft);
 }
 /* Hide on desktop — sidebar has its own toggle */
 .theme-toggle-mobile {
@@ -1887,7 +1868,6 @@ svg.graph {
 }
 .if-close {
   background: var(--surface-3);
-  border: 1px solid var(--line);
   color: var(--txt-faint);
   width: 32px; height: 32px;
   border-radius: 8px;
@@ -1914,21 +1894,18 @@ svg.graph {
   padding: 3px 10px;
   font-size: 12px; font-weight: 600;
   cursor: pointer;
-  border: 1.5px solid var(--line);
   background: var(--surface-3);
   color: var(--txt-faint);
   transition: all 0.13s;
   white-space: nowrap;
 }
-.if-meta-pill:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.if-meta-pill:hover { color: var(--accent); background: var(--accent-soft); }
 .if-meta-pill.active {
   background: var(--accent-soft);
-  border-color: var(--accent);
   color: var(--accent);
 }
 .if-meta-pill.urgent-pill.active {
   background: var(--blocked-soft);
-  border-color: var(--blocked);
   color: var(--blocked);
 }
 .if-meta-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
@@ -1938,16 +1915,14 @@ svg.graph {
   padding: 3px 10px;
   font-size: 12px; font-weight: 600;
   cursor: pointer;
-  border: 1.5px solid var(--line);
   background: var(--surface-3);
   color: var(--txt-faint);
   transition: all 0.13s;
   white-space: nowrap;
 }
-.if-meta-wave:hover { border-color: var(--done); color: var(--done); }
+.if-meta-wave:hover { color: var(--done); background: var(--done-soft); }
 .if-meta-wave.active {
   background: var(--done-soft);
-  border-color: var(--done);
   color: var(--done);
 }
 .if-meta-add {
@@ -2028,8 +2003,7 @@ svg.graph {
 }
 .if-footer-actions { display: flex; gap: 8px; }
 .if-btn-ghost {
-  background: var(--surface);
-  border: 1.5px solid var(--line);
+  background: var(--surface-3);
   color: var(--txt-dim);
   border-radius: 8px;
   padding: 7px 16px;
@@ -2037,7 +2011,7 @@ svg.graph {
   cursor: pointer;
   transition: border-color 0.15s, color 0.15s;
 }
-.if-btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+.if-btn-ghost:hover { color: var(--accent); background: var(--accent-soft); }
 .if-btn-primary {
   background: var(--accent);
   border: none;
@@ -2060,8 +2034,7 @@ svg.graph {
   display: flex;
   align-items: center;
   gap: 9px;
-  background: var(--surface-2);
-  border: 1px solid var(--line);
+  background: var(--surface-3);
   border-radius: 9px;
   padding: 7px 11px;
   font-size: 15px;
@@ -2133,7 +2106,6 @@ svg.graph {
 }
 .ccm-box {
   background: var(--surface-2);
-  border: 1px solid var(--line);
   border-radius: 14px;
   padding: 22px 24px 18px;
   min-width: 260px;
@@ -2158,7 +2130,6 @@ svg.graph {
   flex: 1;
   padding: 7px 12px;
   border-radius: 8px;
-  border: 1px solid var(--accent);
   background: var(--accent);
   color: var(--on-accent);
   font-size: 13px;
@@ -2171,15 +2142,14 @@ svg.graph {
   flex: 1;
   padding: 7px 12px;
   border-radius: 8px;
-  border: 1px solid var(--line);
-  background: none;
+  background: var(--surface-3);
   color: var(--txt-dim);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   transition: color 0.12s, border-color 0.12s;
 }
-.ccm-exit:hover { color: var(--txt); border-color: var(--txt-dim); }
+.ccm-exit:hover { color: var(--txt); background: var(--surface-2); }
 
 /* ─── HEADER NEW BUTTON ──────────────────────────────────────────────── */
 .header-new-btn {
@@ -2187,8 +2157,7 @@ svg.graph {
   margin-left: auto;
   padding: 5px 12px;
   border-radius: 8px;
-  border: 1px solid var(--accent);
-  background: none;
+  background: var(--accent-soft);
   color: var(--accent);
   font-size: 14px;
   font-weight: 600;
@@ -2209,7 +2178,6 @@ svg.graph {
   width: 30px;
   height: 30px;
   border-radius: 8px;
-  border: 1px solid var(--line);
   background: none;
   color: var(--txt-dim);
   cursor: pointer;
@@ -2217,9 +2185,8 @@ svg.graph {
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 .header-settings-btn:hover {
-  background: var(--surface-raised);
-  color: var(--txt);
-  border-color: var(--line-soft);
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 /* Same shape as the settings gear. Like it, hidden by default and re-shown
    per breakpoint below — see both the min-width:900px and max-width:899px
@@ -2231,7 +2198,6 @@ svg.graph {
   width: 30px;
   height: 30px;
   border-radius: 8px;
-  border: 1px solid var(--line);
   background: none;
   color: var(--txt-dim);
   cursor: pointer;
@@ -2239,9 +2205,8 @@ svg.graph {
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 .header-search-btn:hover {
-  background: var(--surface-raised);
-  color: var(--txt);
-  border-color: var(--line-soft);
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 /* Comutatorul barei laterale. Aceeași formă pătrată ca vecinii, dar ascuns
    până la 900px: sub breakpointul de desktop nu există sidebar de colapsat. */
@@ -2252,7 +2217,6 @@ svg.graph {
   width: 30px;
   height: 30px;
   border-radius: 8px;
-  border: 1px solid var(--line);
   background: none;
   color: var(--txt-dim);
   cursor: pointer;
@@ -2261,13 +2225,12 @@ svg.graph {
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 .header-sidebar-btn:hover {
-  background: var(--surface-raised);
-  color: var(--txt);
-  border-color: var(--line-soft);
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 .header-sidebar-btn[aria-pressed='true'] {
   color: var(--accent);
-  border-color: var(--accent);
+  background: var(--accent-soft);
 }
 
 /* Butonul de referință împarte forma cu cel de reîncărcare — aceeași
@@ -2280,7 +2243,6 @@ svg.graph {
   width: 30px;
   height: 30px;
   border-radius: 8px;
-  border: 1px solid var(--line);
   background: none;
   color: var(--txt-dim);
   cursor: pointer;
@@ -2290,9 +2252,8 @@ svg.graph {
 }
 .header-info-btn:hover,
 .header-refresh-btn:hover {
-  background: var(--surface-raised);
-  color: var(--txt);
-  border-color: var(--line-soft);
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 /* ─── KEYBOARD SHORTCUTS OVERLAY ────────────────────────────────────── */
@@ -2315,7 +2276,6 @@ svg.graph {
 }
 .info-card {
   background: var(--surface);
-  border: 1px solid var(--line);
   border-radius: 16px;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
   width: min(920px, 100%);
@@ -2348,13 +2308,13 @@ svg.graph {
 .info-close {
   width: 26px; height: 26px;
   border-radius: 50%;
-  border: 1px solid var(--line);
   color: var(--txt-faint);
   font-size: 12px;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
+  background: var(--surface-3);
 }
-.info-close:hover { border-color: var(--blocked); color: var(--blocked); }
+.info-close:hover { color: var(--blocked); background: var(--blocked-soft); }
 .info-body {
   overflow-y: auto;
   padding: 18px 22px 24px;
@@ -2484,7 +2444,6 @@ svg.graph {
   color: var(--accent);
 }
 .qa-scenario {
-  border: 1px solid var(--line-soft);
   border-radius: 10px;
   padding: 10px 10px 10px 12px;
   margin-bottom: 8px;
@@ -2748,7 +2707,6 @@ svg.graph {
     padding: 9px 12px;
     border-radius: 9px;
     background: var(--surface-2);
-    border: 1px solid var(--line);
     color: var(--txt-dim);
     font-size: 14px;
     font-weight: 600;
@@ -2757,9 +2715,9 @@ svg.graph {
     transition: border-color 0.15s, color 0.15s, background 0.15s;
   }
   .sidebar-new-btn:hover {
-    border-color: var(--accent);
     color: var(--accent);
     background: var(--accent-soft);
+  background: var(--accent-soft);
   }
   .sidebar-new-plus {
     font-size: 18px;
@@ -2773,7 +2731,6 @@ svg.graph {
     flex-shrink: 0;
     border-radius: 9px;
     background: var(--surface-2);
-    border: 1px solid var(--line);
     color: var(--txt-dim);
     display: flex;
     align-items: center;
@@ -2781,9 +2738,9 @@ svg.graph {
     transition: border-color 0.15s, color 0.15s, background 0.15s;
   }
   .sidebar-theme-btn:hover {
-    border-color: var(--accent);
     color: var(--accent);
     background: var(--accent-soft);
+  background: var(--accent-soft);
   }
 
   /* Hide mobile theme toggle on desktop */
@@ -2862,13 +2819,12 @@ svg.graph {
     max-width: 580px;
     margin: 0;
     border-radius: 20px;
-    border: 1px solid var(--line);
-    border-top: 1px solid var(--line);
+    box-shadow: var(--amb-lg);
     max-height: 82dvh;
     transform: translate(-50%, calc(-50% + 28px)) scale(0.96);
     opacity: 0;
     transition: transform 0.28s cubic-bezier(0.18, 0.9, 0.24, 1), opacity 0.22s ease;
-    box-shadow: 0 32px 80px -8px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255,255,255,0.04);
+    box-shadow: 0 32px 80px -8px rgba(0, 0, 0, 0.6);
   }
   .sheet.on {
     transform: translate(-50%, -50%) scale(1);
@@ -3036,15 +2992,14 @@ svg.graph {
   flex-shrink: 0;
   width: 34px; height: 34px;
   border-radius: 50%;
-  border: 1px solid var(--line);
-  background: rgba(255,255,255,0.04);
+  background: var(--surface-3);
   color: var(--txt-dim);
   display: flex; align-items: center; justify-content: center;
   cursor: pointer;
   font-size: 18px; font-weight: 300;
   transition: all 0.15s;
 }
-.sh-close:hover { background: var(--blocked-soft); color: var(--blocked); border-color: color-mix(in srgb, var(--blocked) 25%, transparent); }
+.sh-close:hover { background: var(--blocked-soft); color: var(--blocked); }
 
 .sh-save {
   flex-shrink: 0;
@@ -3070,18 +3025,16 @@ svg.graph {
   flex-shrink: 0;
   width: 34px; height: 34px;
   border-radius: 50%;
-  border: 1px solid var(--line);
-  background: transparent;
+  background: var(--surface-3);
   color: var(--txt-faint);
   display: flex; align-items: center; justify-content: center;
   cursor: pointer;
   transition: all 0.15s;
 }
-.sh-delete:hover { background: var(--blocked-soft); color: var(--blocked); border-color: color-mix(in srgb, var(--blocked) 25%, transparent); }
+.sh-delete:hover { background: var(--blocked-soft); color: var(--blocked); }
 .sh-delete.confirming {
   background: color-mix(in srgb, var(--blocked) 12%, transparent);
   color: var(--blocked);
-  border-color: color-mix(in srgb, var(--blocked) 45%, transparent);
   animation: sh-del-pulse 0.9s ease-in-out infinite alternate;
 }
 @keyframes sh-del-pulse {
@@ -3096,9 +3049,8 @@ svg.graph {
   width: 30px;
   height: 30px;
   border-radius: 8px;
-  background: transparent;
+  background: var(--surface-3);
   color: var(--txt-faint);
-  border: 1px solid var(--line);
   cursor: pointer;
   transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
 }
@@ -3108,11 +3060,10 @@ svg.graph {
 }
 .sh-copy.copied {
   color: var(--accent);
-  border-color: var(--accent);
+  background: var(--accent-soft);
 }
 .sh-copy.copy-failed {
   color: var(--blocked);
-  border-color: var(--blocked);
   background: var(--blocked-soft);
 }
 
@@ -3255,8 +3206,7 @@ svg.graph {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  background: var(--card-hi);
-  border: 1px solid var(--line);
+  background: var(--surface-3);
   border-radius: 20px;
   padding: 3px 8px 3px 4px;
 }
@@ -3319,7 +3269,6 @@ svg.graph {
   font-weight: 500;
   padding: 5px 12px;
   border-radius: 20px;
-  border: 1px solid var(--line);
   background: var(--card-hi);
   color: var(--txt-dim);
   cursor: pointer;
@@ -3327,7 +3276,6 @@ svg.graph {
 }
 .sh-dep-tab.on {
   background: color-mix(in srgb, var(--accent) 10%, transparent);
-  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
   color: var(--accent);
 }
 .dep-count {
@@ -3364,9 +3312,8 @@ svg.graph {
 .qs-card {
   width: min(600px, 92vw);
   background: var(--surface);
-  border: 1px solid var(--line);
   border-radius: 16px;
-  box-shadow: 0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04);
+  box-shadow: 0 32px 80px rgba(0,0,0,0.6);
   overflow: hidden;
   animation: qsSlideIn 0.15s cubic-bezier(0.18, 0.9, 0.24, 1);
 }
@@ -3402,8 +3349,7 @@ svg.graph {
   font-size: 11px;
   font-family: var(--mono);
   color: var(--txt-faint);
-  background: var(--surface-2);
-  border: 1px solid var(--line);
+  background: var(--surface-3);
   border-radius: 5px;
   padding: 2px 6px;
   flex-shrink: 0;
@@ -3575,9 +3521,8 @@ svg.graph {
   align-items: center;
   gap: 5px;
   padding: 5px 12px;
-  border: 1px solid var(--line);
   border-radius: 7px;
-  background: transparent;
+  background: var(--surface-3);
   color: var(--txt-faint);
   font-family: var(--font);
   font-size: 12px;
@@ -3589,7 +3534,6 @@ svg.graph {
 .dep-tab-btn:hover { background: var(--surface-2); color: var(--txt-dim); }
 .dep-tab-btn.on {
   background: color-mix(in srgb, var(--accent) 8%, transparent);
-  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
   color: var(--accent);
 }
 
@@ -3648,13 +3592,12 @@ svg.graph {
   display: flex;
   align-items: center;
   background: var(--surface-2);
-  border: 1px solid var(--line);
   border-radius: 7px;
   overflow: hidden;
   height: 30px;
   transition: border-color 0.12s;
 }
-.dep-card:hover { border-color: color-mix(in srgb, var(--accent) 30%, transparent); }
+.dep-card:hover { background: var(--surface-3); }
 .dep-card--draft { border-style: dashed; }
 
 .dep-card-body {
@@ -3720,9 +3663,8 @@ svg.graph {
   right: 0;
   z-index: 60;
   background: var(--surface-2);
-  border: 1px solid var(--line);
   border-radius: 8px;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
   overflow: hidden;
 }
 
@@ -3803,7 +3745,6 @@ svg.graph {
 .acc-count {
   font-size: 10px;
   background: color-mix(in srgb, var(--accent) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
   color: var(--accent);
   border-radius: 99px;
   padding: 1px 6px;
@@ -4047,13 +3988,12 @@ svg.graph {
   flex: none; min-width: 40px; text-align: center;
   font-family: var(--mono); font-size: 15px; font-weight: 600;
   color: var(--accent); background: var(--accent-soft);
-  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
   border-radius: 10px; padding: 6px 12px;
 }
 
 .users-card, .user-card {
-  border: 1px solid var(--line); border-radius: 16px; padding: 18px;
   animation: users-rise 0.4s ease both;
+  box-shadow: var(--amb);
 }
 .users-add { background: var(--surface-2); margin-bottom: 26px; }
 .user-card { background: var(--surface); margin-bottom: 14px; }
@@ -4093,7 +4033,7 @@ svg.graph {
 
 .acc-grid {
   display: flex; flex-direction: column;
-  border: 1px solid var(--line-soft); border-radius: 12px; overflow: hidden;
+  background: var(--surface-2);
 }
 .acc-row { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--surface); }
 .acc-row + .acc-row { border-top: 1px solid var(--line-soft); }
@@ -4105,7 +4045,7 @@ svg.graph {
 
 .acc-toggle {
   flex: none; display: inline-flex; gap: 2px;
-  background: var(--surface-3); border: 1px solid var(--line);
+  background: var(--surface-3);
   border-radius: 9px; padding: 2px;
 }
 .acc-opt {
@@ -4133,15 +4073,14 @@ svg.graph {
 .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
 
 .btn-ghost, .btn-danger {
-  border: 1px solid var(--line); cursor: pointer; font-family: inherit;
   font-size: 12.5px; font-weight: 600;
   background: var(--surface-2); color: var(--txt-dim);
   padding: 7px 13px; border-radius: 9px;
   transition: background 0.14s, color 0.14s, border-color 0.14s;
 }
 .btn-ghost:hover { background: var(--accent-soft); color: var(--accent); }
-.btn-danger { color: var(--blocked); border-color: color-mix(in srgb, var(--blocked) 35%, var(--line)); }
-.btn-danger:hover { background: color-mix(in srgb, var(--blocked) 16%, transparent); color: var(--blocked); border-color: var(--blocked); }
+.btn-danger { color: var(--blocked); background: var(--blocked-soft); }
+.btn-danger:hover { background: color-mix(in srgb, var(--blocked) 16%, transparent); color: var(--blocked); }
 
 .users-add-foot { margin-top: 18px; display: flex; justify-content: flex-end; }
 
@@ -4195,7 +4134,6 @@ svg.graph {
   border-radius: 10px;
   background: var(--surface);
   color: var(--txt);
-  border: 1px solid var(--line);
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.22);
   font-size: 13px;
   font-weight: 500;
@@ -4220,7 +4158,7 @@ svg.graph {
 .att-item.img { width: 84px; height: 84px; }
 .att-item.file { width: 100%; }
 .att-item.busy { width: 100%; padding: 10px; font-size: 13px; color: var(--txt-dim); }
-.att-open { display: block; width: 100%; height: 100%; padding: 0; border: 1px solid var(--line); background: var(--surface-2); color: var(--txt); cursor: pointer; text-align: left; }
+.att-open { display: block; width: 100%; height: 100%; padding: 0; background: var(--surface-2); color: var(--txt); cursor: pointer; text-align: left; }
 .att-item.img .att-open { padding: 0; }
 .att-item.img img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .att-item.file .att-open { display: grid; grid-template-columns: 24px 1fr auto; align-items: center; gap: 8px; padding: 10px; }
@@ -4242,8 +4180,8 @@ svg.graph {
 .att-pick-ic { display: grid; place-items: center; width: 36px; height: 36px; margin-bottom: 3px; border-radius: 9px; background: var(--accent-soft); color: var(--accent); }
 .att-pick-t { font-size: 13px; font-weight: 600; }
 .att-pick-d { font-size: 11px; line-height: 1.3; color: var(--txt-dim); }
-.att-pick-more { display: block; width: 100%; min-height: 44px; margin-top: 8px; border: 1px solid var(--line); border-radius: 8px; background: none; color: var(--txt); font-size: 13px; cursor: pointer; }
-.att-pick-more:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.att-pick-more { display: block; width: 100%; min-height: 44px; margin-top: 8px; border-radius: 8px; background: var(--surface-2); color: var(--txt); font-size: 13px; cursor: pointer; }
+.att-pick-more:hover:not(:disabled) { color: var(--accent); background: var(--accent-soft); }
 .att-pick-more:disabled { opacity: 0.5; cursor: default; }
 .att-pick-hint { margin: 8px 0 0; font-size: 11px; line-height: 1.5; color: var(--txt-dim); text-align: center; }
 .att-pick-input { display: none; }
@@ -4268,6 +4206,7 @@ svg.graph {
   min-width: 0;
   /* Ancora pentru `.due-native`, care e poziționat absolut. */
   position: relative;
+  background: var(--surface-2);
 }
 .due-input {
   background: var(--field-bg, var(--surface-3));
@@ -4301,12 +4240,12 @@ svg.graph {
 .due-pick {
   width: 26px; height: 26px;
   border-radius: 7px;
-  border: 1.5px solid var(--line);
   color: var(--txt-faint);
   display: inline-flex; align-items: center; justify-content: center;
   flex-shrink: 0;
+  background: var(--surface-3);
 }
-.due-pick:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.due-pick:hover:not(:disabled) { color: var(--accent); background: var(--accent-soft); }
 .due-pick:disabled { opacity: 0.4; cursor: not-allowed; }
 .due-hint.warn { color: var(--active); font-style: normal; font-weight: 600; }
 
@@ -4348,13 +4287,13 @@ svg.graph {
 .due-clear {
   width: 20px; height: 20px;
   border-radius: 50%;
-  border: 1.5px solid var(--line);
   color: var(--txt-faint);
   font-size: 13px; line-height: 1;
   display: inline-flex; align-items: center; justify-content: center;
   flex-shrink: 0;
+  background: var(--surface-3);
 }
-.due-clear:hover { border-color: var(--blocked); color: var(--blocked); }
+.due-clear:hover { color: var(--blocked); background: var(--blocked-soft); }
 .due-reminder { margin-top: 2px; }
 .if-meta-pill.reminder-pill {
   padding: 2px 8px;
@@ -4538,7 +4477,6 @@ svg.graph {
   bottom: calc(100% + 9px);
   z-index: 5;
   background: var(--surface-2);
-  border: 1px solid var(--line);
   border-radius: 7px;
   padding: 5px 8px;
   font-size: 11.5px;
@@ -4617,7 +4555,6 @@ svg.graph {
   font-weight: 600;
   padding: 3px 8px;
   border-radius: 20px;
-  border: 1px solid var(--line);
   background: var(--surface-2);
   color: var(--txt-dim);
   font-family: var(--mono);
@@ -4626,12 +4563,10 @@ svg.graph {
 }
 .chip.date {
   background: var(--accent-soft);
-  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
   color: var(--accent);
 }
 .chip.bell {
   background: var(--active-soft);
-  border-color: color-mix(in srgb, var(--active) 35%, transparent);
   color: var(--active);
 }
 .chip-ico { opacity: 0.75; display: inline-flex; align-items: center; }
@@ -4692,7 +4627,6 @@ svg.graph {
   align-items: center;
   gap: 11px;
   background: var(--active-soft);
-  border: 1px solid color-mix(in srgb, var(--active) 32%, transparent);
   border-radius: 11px;
   padding: 10px 12px;
   margin-bottom: 14px;
@@ -4708,7 +4642,6 @@ svg.graph {
 .push-cta-btn {
   flex-shrink: 0;
   border-radius: 8px;
-  border: 1px solid var(--active);
   background: var(--active);
   color: var(--on-accent);
   font-size: 12.5px;

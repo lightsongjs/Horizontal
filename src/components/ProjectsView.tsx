@@ -16,12 +16,14 @@ export function ProjectsView() {
           const pct = Math.round(completion(p.id) * 100)
           return (
             <button key={p.id} className={`proj p${(i % 3) + 1}`} onClick={() => selectProject(p.id)}>
-              <span className="glow" style={{ background: p.accent }} />
               <h3>{p.name}</h3>
               {p.description && <p>{p.description}</p>}
               <div className="proj-meta">
+                {/* Culoarea proiectului trăiește în umplerea barei — singurul loc
+                    unde spune ceva. Înainte era o șină de 2.5px pe marginea
+                    cardului, adică decor. */}
                 <div className="bar">
-                  <i style={{ width: `${pct}%` }} />
+                  <i style={{ width: `${pct}%`, background: p.accent }} />
                 </div>
                 <span className="pct">{pct}%</span>
               </div>
