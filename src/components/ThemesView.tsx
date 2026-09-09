@@ -33,7 +33,7 @@ export function ThemesView() {
         ))}
         {canWrite && (
           <button className="chip add" onClick={openThemeManage}>
-            ⚙ Gestionează
+            <Icon name="settings" size={14} /> Gestionează
           </button>
         )}
       </div>

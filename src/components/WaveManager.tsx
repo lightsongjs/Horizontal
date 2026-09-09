@@ -75,7 +75,7 @@ export function WaveManager() {
         ))}
         {blocked !== null && (
           <div className="banner">
-            ⚠ Valul are {count(blocked)} tichete. Mută-le pe alt val (din editarea tichetului)
+            <Icon name="danger" size={15} /> Valul are {count(blocked)} tichete. Mută-le pe alt val (din editarea tichetului)
             înainte să-l poți șterge.
           </div>
         )}

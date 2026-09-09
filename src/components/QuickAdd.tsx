@@ -190,7 +190,7 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0 }: Props) {
       {text.trim() !== '' && (
         <div className="qa-meta">
           <span className="chip date">
-            <span className="chip-ico"><Icon name="today" size={13} /></span>
+            <span className="chip-ico"><Icon name="due" size={13} /></span>
             {dueLabel(dueAt, allDay, new Date())}
             {useParsed && (
               <button

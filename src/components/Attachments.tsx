@@ -12,7 +12,7 @@ import { carriesFiles, pickFiles, rejectMessage } from '../lib/pickFiles'
 import { attachmentFilename, shrinkImage } from '../lib/shrinkImage'
 import { Lightbox } from './Lightbox'
 import { AttachmentPicker } from './AttachmentPicker'
-import { Icon } from './Icon'
+import { Icon, type IconName } from './Icon'
 
 /** Doar în modul Supabase: attachment-urile n-au sens în modul local seeded. */
 const ENABLED = import.meta.env.VITE_DATA_SOURCE === 'supabase'
@@ -24,14 +24,14 @@ function humanSize(bytes: number): string {
 }
 
 /** Iconiță după tip. Nu încercăm să fim exhaustivi — doar să nu arate toate la fel. */
-function iconFor(contentType: string, filename: string): string {
-  if (contentType === 'application/pdf') return '📄'
-  if (contentType.startsWith('image/')) return '🖼'
-  if (contentType.startsWith('video/')) return '🎬'
-  if (contentType.startsWith('audio/')) return '🎵'
-  if (/\.(zip|rar|7z|tar|gz)$/i.test(filename)) return '🗜'
-  if (/\.(json|ts|tsx|js|jsx|css|html|sql|sh|py|md)$/i.test(filename)) return '📝'
-  return '📎'
+function iconFor(contentType: string, filename: string): IconName {
+  if (contentType === 'application/pdf') return 'fileDoc'
+  if (contentType.startsWith('image/')) return 'fileImage'
+  if (contentType.startsWith('video/')) return 'fileVideo'
+  if (contentType.startsWith('audio/')) return 'fileAudio'
+  if (/\.(zip|rar|7z|tar|gz)$/i.test(filename)) return 'fileArchive'
+  if (/\.(json|ts|tsx|js|jsx|css|html|sql|sh|py|md)$/i.test(filename)) return 'fileCode'
+  return 'attachment'
 }
 
 export function Attachments({
@@ -272,7 +272,7 @@ export function Attachments({
                   <span className="att-offline">indisponibil offline</span>
                 ) : (
                   <>
-                    <span className="att-ic">{iconFor(a.contentType, a.filename)}</span>
+                    <span className="att-ic"><Icon name={iconFor(a.contentType, a.filename)} size={16} /></span>
                     <span className="att-name">{a.filename}</span>
                     <span className="att-size">{humanSize(a.size)}</span>
                   </>
@@ -284,7 +284,7 @@ export function Attachments({
                   aria-label={armed === a.id ? `Confirmă ștergerea ${a.filename}` : `Șterge ${a.filename}`}
                   onClick={() => (armed === a.id ? void remove(a) : arm(a.id))}
                 >
-                  {armed === a.id ? 'Șterg?' : '✕'}
+                  {armed === a.id ? 'Șterg?' : <Icon name="close" size={14} />}
                 </button>
               )}
             </div>

@@ -12,8 +12,8 @@ import { Icon } from './Icon'
  */
 export function Bell() {
   return (
-    <span className="t-bell" title="Are memento">
-      <Icon name="bell" size={12} label="Are memento" />
+    <span className="t-bell" aria-label="Are memento">
+      <Icon name="bell" size={12} />
     </span>
   )
 }

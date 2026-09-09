@@ -52,7 +52,7 @@ export function IssueSheet({ issueId }: { issueId: string }) {
           style={{ borderStyle: 'solid', width: '100%', marginBottom: 12 }}
           onClick={() => openEditIssue(issueId)}
         >
-          ✎ Editează
+          <Icon name="edit" size={15} /> Editează
         </button>
 
         {deps.length > 0 && (
@@ -69,7 +69,7 @@ export function IssueSheet({ issueId }: { issueId: string }) {
                   style={{ width: '100%', textAlign: 'left' }}
                   onClick={() => navigateTo(d)}
                 >
-                  <span className={`ic ${dep.done ? 'ok' : 'ext'}`}>{dep.done ? '✓' : '↳'}</span>
+                  <span className={`ic ${dep.done ? 'ok' : 'ext'}`}><Icon name={dep.done ? 'check' : 'dep'} size={14} /></span>
                   <span>{dep.title}</span>
                   <span className={`wtag ${dep.done ? '' : 'pending'}`}>
                     {waveName(dep.wave)}

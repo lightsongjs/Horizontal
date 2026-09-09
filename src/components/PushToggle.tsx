@@ -68,7 +68,7 @@ export function PushToggle() {
         aria-label="Ascunde"
         onClick={() => { setDismissed(true); sessionStorage.setItem('horizontal:push-dismissed', '1') }}
       >
-        ✕
+        <Icon name="close" size={15} />
       </button>
     </div>
   )

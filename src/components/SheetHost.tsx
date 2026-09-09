@@ -6,6 +6,7 @@ import { ProjectForm } from './ProjectForm'
 import { ProjectSettings } from './ProjectSettings'
 import { WaveManager } from './WaveManager'
 import { ThemeManager } from './ThemeManager'
+import { Icon } from './Icon'
 
 export function SheetHost() {
   const { sheet, canGoBack, closeSheet, goBack } = useUI()
@@ -41,7 +42,7 @@ export function SheetHost() {
         <div className="grip" />
         {canGoBack && (
           <button className="sheet-back" onClick={goBack}>
-            ← Înapoi
+            <Icon name="back" size={15} /> Înapoi
           </button>
         )}
         {sheet.kind === 'issue' && <IssueSheet key={sheet.issueId} issueId={sheet.issueId} />}

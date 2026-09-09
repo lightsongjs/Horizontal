@@ -142,9 +142,7 @@ export function QuickSearch({ onClose }: Props) {
     <div className="qs-overlay" onClick={onClose}>
       <div className="qs-card" onClick={(e) => e.stopPropagation()} onKeyDown={onKey}>
         <div className="qs-input-wrap">
-          <svg className="qs-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          </svg>
+          <Icon name="search" size={16} className="qs-icon" />
           <input
             ref={inputRef}
             className="qs-input"
@@ -169,7 +167,7 @@ export function QuickSearch({ onClose }: Props) {
               >
                 <span className="qs-item-id">{issue.id}</span>
                 <span className="qs-item-title">{highlight(query, issue.title)}</span>
-                {issue.done && <span className="qs-item-done"><Icon name="check" size={14} /></span>}
+                {issue.done && <span className="qs-item-done"><Icon name="check" size={14} label="Gata" /></span>}
               </button>
             ))}
           </div>

@@ -418,6 +418,22 @@ main {
 .layer {
   margin-bottom: 20px;
   position: relative;
+  padding-left: 34px;
+}
+/* Coloana: din numărul layerului, în jos, până sub ultimul tichet. */
+.layer::before {
+  content: '';
+  position: absolute;
+  left: 11px;
+  top: 33px;
+  bottom: 8px;
+  width: 2px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--layer-color, var(--line)) 34%, transparent);
+}
+/* Ultimul grup n-are ce să lege mai jos. */
+.layer:last-child::before {
+  display: none;
 }
 .layer-head {
   display: flex;
@@ -428,11 +444,13 @@ main {
   z-index: 1;
 }
 .layer-num {
-  width: 25px;
-  height: 25px;
-  border-radius: 7px;
-  background: color-mix(in srgb, var(--layer-color, var(--txt-faint)) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--layer-color, var(--line)) 35%, transparent);
+  position: absolute;
+  left: -34px;
+  top: 5px;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--r-s);
+  background: color-mix(in srgb, var(--layer-color, var(--txt-faint)) 16%, transparent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -442,16 +460,11 @@ main {
   font-family: var(--mono);
   flex-shrink: 0;
 }
-/* Layer color applied to cards and dep indicators within each layer */
-.layer .tk,
-.layer .tk.active,
-.layer .tk.blocked {
-  border-left: 2px solid color-mix(in srgb, var(--layer-color, var(--line)) 45%, transparent);
-}
+/* Culoarea layerului trăiește în coloană, în numărul lui și în jetonul de
+   dependență — nu pe conturul fiecărui card. */
 .layer .tk-sub .dep {
-  color: var(--layer-color, var(--blocked));
-  background: color-mix(in srgb, var(--layer-color, var(--blocked)) 12%, transparent);
-  border-color: color-mix(in srgb, var(--layer-color, var(--blocked)) 30%, transparent);
+  color: var(--layer-color, var(--txt-dim));
+  background: color-mix(in srgb, var(--layer-color, var(--txt-faint)) 14%, transparent);
 }
 .layer .tk-children {
   color: var(--layer-color, var(--txt-faint));
@@ -459,29 +472,31 @@ main {
 }
 
 .layer-head h4 {
-  font-size: 15px;
-  font-weight: 700;
+  font-family: var(--display);
+  font-size: 16px;
+  font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--txt);
 }
 .layer-head .sub {
-  font-size: 12px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
   color: var(--txt-faint);
-  font-weight: 500;
-  margin-top: 1px;
+  margin-top: 2px;
 }
 .badge-now {
   margin-left: auto;
   flex-shrink: 0;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--active);
   background: var(--active-soft);
-  padding: 3px 8px;
-  border-radius: 5px;
-  border: 1px solid color-mix(in srgb, var(--active) 27%, transparent);
+  padding: 4px 8px;
+  border-radius: 4px;
 }
 
 /* TICKET CARD */
@@ -532,8 +547,7 @@ main {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: transparent;
-  transition: all 0.18s;
+  transition: color 0.18s;
   cursor: pointer;
   flex-shrink: 0;
 }
@@ -588,6 +602,24 @@ main {
   width: 18px; height: 18px; color: var(--txt-faint); flex: 0 0 auto;
 }
 .list-row.done .list-check { color: var(--done); }
+.tk > .check {
+  position: absolute;
+  top: 11px;
+  left: 13px;
+  display: flex;
+  color: var(--txt-faint);
+}
+.tk.done > .check { color: var(--done); }
+.tk > .tk-body {
+  display: block;
+  padding-left: 24px;
+}
+.tk .tk-top {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 3px;
+}
 .list-id { font-size: 11px; color: var(--txt-dim); flex: 0 0 auto; }
 .list-title { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .list-row .tk-urgent { margin-left: auto; }
@@ -602,14 +634,10 @@ main {
   border-color: var(--accent);
 }
 .list-row.in-select .list-check {
-  color: transparent;
-  background: var(--bg);
-  border-color: var(--line);
+  color: var(--txt-faint);
 }
 .list-row.selected .list-check {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--on-accent);
+  color: var(--accent);
 }
 .list-row.tree-dim {
   opacity: 0.18;
@@ -777,8 +805,9 @@ main {
 .wave-tabs {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 0 22px;
   flex: 1;
+  box-shadow: inset 0 -1px 0 var(--line);
 }
 .wave-actions {
   display: flex;
@@ -788,31 +817,34 @@ main {
 }
 .wbtn {
   flex-shrink: 0;
-  font-size: 14px;
-  font-weight: 700;
-  padding: 9px 14px;
-  border-radius: 10px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  color: var(--txt-dim);
+  padding: 2px 2px 10px;
+  background: none;
+  color: var(--txt-faint);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 2px;
+  gap: 3px;
   line-height: 1.1;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  position: relative;
+  transition: color 0.15s;
+}
+.wbtn .wname {
+  font-family: var(--display);
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 .wbtn .wsub {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.13em;
   text-transform: uppercase;
-  color: var(--txt-faint);
+  color: inherit;
 }
 /* All delivery-wave tabs share one standard width; long labels truncate. */
 .wbtn:not(.wscratch):not(.wmanage) {
   box-sizing: border-box;
-  width: 112px;
+  width: 100px;
 }
 .wbtn:not(.wscratch):not(.wmanage) .wsub {
   max-width: 100%;
@@ -821,39 +853,45 @@ main {
   white-space: nowrap;
 }
 .wbtn.on {
-  background: var(--accent-soft);
-  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
   color: var(--txt);
 }
-.wbtn.on .wsub,
-.wbtn.on .wname {
+.wbtn.on .wsub {
   color: var(--accent);
 }
-/* Scratchpad: not a delivery wave — compact, dashed, de-emphasized. */
+/* Linia care marchează valul activ, pe firul de sub fâșie. */
+.wbtn.on::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+/* Scratchpad: not a delivery wave — quiet, centered, no numeral. */
 .wbtn.wscratch {
-  padding: 9px 11px;
+  padding: 4px 8px 10px;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 3px;
   color: var(--txt-faint);
-  border-style: dashed;
 }
 .wbtn.wscratch .wname {
-  font-size: 16px;
+  display: flex;
 }
 .wbtn.wscratch .wsub {
-  letter-spacing: 0;
+  letter-spacing: 0.06em;
 }
-/* Selected Scratchpad stays quiet: solid border to show focus, no accent gradient. */
+/* Selectat, notițele rămân potolite: linia da, accentul nu. */
 .wbtn.wscratch.on {
-  background: var(--surface);
-  border-style: solid;
-  border-color: var(--line);
   color: var(--txt-dim);
 }
-.wbtn.wscratch.on .wsub,
-.wbtn.wscratch.on .wname {
+.wbtn.wscratch.on .wsub {
   color: var(--txt-dim);
+}
+.wbtn.wscratch.on::after {
+  background: var(--txt-faint);
 }
 
 /* BOTTOM SHEET */
@@ -1244,13 +1282,13 @@ svg.graph {
 }
 
 .wbtn.wmanage {
+  margin-left: auto;
   align-items: center;
   justify-content: center;
   color: var(--txt-faint);
-  border-style: dashed;
 }
 .wbtn.wmanage .wname {
-  font-size: 17px;
+  display: flex;
 }
 
 .tk-theme {
@@ -1723,6 +1761,9 @@ svg.graph {
   background: var(--line);
 }
 .bulk-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 6px 12px;
   border-radius: 7px;
   border: 1px solid var(--line);
@@ -4183,7 +4224,7 @@ svg.graph {
 .att-item.img .att-open { padding: 0; }
 .att-item.img img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .att-item.file .att-open { display: grid; grid-template-columns: 24px 1fr auto; align-items: center; gap: 8px; padding: 10px; }
-.att-ic { font-size: 16px; }
+.att-ic { display: flex; color: var(--txt-faint); }
 .att-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
 .att-size { font-size: 11px; color: var(--txt-dim); }
 .att-offline { display: grid; place-items: center; width: 100%; height: 100%; font-size: 10px; color: var(--txt-dim); text-align: center; padding: 4px; }
@@ -4395,7 +4436,7 @@ svg.graph {
 
 /* ── rândul de sarcină ───────────────────────────────────────────── */
 .task-row.done .list-title { text-decoration: line-through; }
-.task-row.late .list-check { border-color: var(--blocked); }
+.task-row.late .list-check { color: var(--blocked); }
 /* Ora e ancora vizuală a unei sarcini, așa cum id-ul e ancora unui tichet:
    lățime fixă, ca titlurile să se alinieze pe coloană. */
 .t-time {
@@ -4631,7 +4672,6 @@ svg.graph {
     max-width: 52px;
     flex: 0 0 52px;
   }
-  .tabbar .tb-add .tb-ico { color: var(--accent); }
 
   /* Numele proiectului costă exact lățimea care taie titlul, iar titlul e
      singurul lucru care contează într-o listă. Rămâne punctul colorat;
