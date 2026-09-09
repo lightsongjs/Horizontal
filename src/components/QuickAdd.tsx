@@ -66,10 +66,17 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0 }: Props) {
   // Recunoașterea datei, cu refuzul legat de fragment — vezi `useTitleDate`.
   const date = useTitleDate(text, { onChange: setText })
 
-  // Focus cerut din afară. Sare peste primul randare (`focusSignal` 0) ca
-  // deschiderea listei să nu ridice tastatura pe telefon nechemată.
+  // Focus cerut din afară, prin butonul „+". Reținem valoarea de la montare
+  // și focusăm numai când se SCHIMBĂ față de ea — nu la montare.
+  //
+  // Altfel: contorul din `Shell` rămâne ≥1 după primul „+", deci fiecare
+  // revenire pe listă remonta componenta cu un semnal deja pozitiv și ridica
+  // tastatura nechemată. Deschiderea unei liste nu e o cerere de a scrie.
+  const signalAtMount = useRef(focusSignal)
   useEffect(() => {
-    if (focusSignal > 0) inputRef.current?.focus()
+    if (focusSignal === signalAtMount.current) return
+    signalAtMount.current = focusSignal
+    inputRef.current?.focus()
   }, [focusSignal])
 
   const project = projects.find((p) => p.id === projectId)
@@ -143,6 +150,11 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0 }: Props) {
 
   return (
     <div className={`qa ${focus ? 'focus' : ''} ${shake ? 'shake' : ''}`}>
+      <form
+        className="qa-form"
+        autoComplete="off"
+        onSubmit={(e) => { e.preventDefault(); void submit() }}
+      >
       <div className="qa-row">
         <span className="qa-plus" aria-hidden="true">+</span>
         <span
@@ -165,8 +177,10 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0 }: Props) {
             ref={inputRef}
             className="qa-input"
             value={text}
+            name="titlu-sarcina"
             autoComplete="off"
             autoCorrect="off"
+            enterKeyHint="done"
             spellCheck={false}
             placeholder="Adaugă o sarcină… încearcă „mâine la 9”"
             onChange={(e) => setText(e.target.value)}
@@ -229,6 +243,7 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0 }: Props) {
           </span>
         </div>
       )}
+      </form>
     </div>
   )
 }

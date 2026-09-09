@@ -4445,6 +4445,7 @@ svg.graph {
   25% { transform: translateX(-4px); }
   75% { transform: translateX(4px); }
 }
+.qa-form { display: contents; }
 .qa-row { display: flex; align-items: center; gap: 9px; }
 .qa-plus {
   width: 20px; height: 20px;
