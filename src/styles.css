@@ -8,9 +8,12 @@
   --bg: #0B0B0E;
   --surface: #16161A;
   --surface-2: #1E1E23;
-  /* Adancit, nu ridicat: piste de progres, jetoane, fundal de camp. Inainte
-     era mai deschis decat --surface, fiindca delimita prin contur. */
-  --surface-3: #101014;
+  /* Al treilea ton: jetoane, piste, fundal de camp — pus PE un card, nu pe
+     pagina. Pe tema inchisa URCA (sub --surface nu mai e loc pana la fundalul
+     paginii, deci un ton „adancit" da 1,05:1 si jetonul e invizibil), pe cea
+     deschisa coboara. In ambele, „mai departe de pagina" = „mai mult contrast
+     cu cardul". */
+  --surface-3: #26262C;
   /* --line a ramas doar unde o linie e obligatorie: tabbar, tabele, separatoare.
      --line-soft e cvasi-invizibila — pentru regulile care n-au fost traduse. */
   --line: #2A2A2E;
@@ -32,8 +35,13 @@
   --r-m: 10px;
   --r-s: 6px;
   /* Umbra ambientala — 24px de blur, o singura data. Inlocuieste chenarele. */
-  --amb: 0 6px 24px rgba(0,0,0,0.42);
-  --amb-lg: 0 18px 48px rgba(0,0,0,0.55);
+  /* Muchia de sus primeste LUMINA, nu un inel. O umbra neagra pe un fundal
+     aproape negru nu poate ridica nimic: cel mult intuneca in jurul
+     cardului, si atunci citeste ca murdarie. Fara insetul de sus,
+     delimitarea venea exclusiv din #16161A peste #0B0B0E — 1,09:1, sub
+     pragul practic, iar pe OLED dispare in black-crush. */
+  --amb: inset 0 1px 0 rgba(255,255,255,0.055), 0 6px 24px rgba(0,0,0,0.42);
+  --amb-lg: inset 0 1px 0 rgba(255,255,255,0.07), 0 18px 48px rgba(0,0,0,0.55);
   /* Rampa de layere: o singura familie de nuante care se raceste, fiindca
      adancimea dependentelor E o secventa. Indexata din JSX prin var(--layer-N),
      ca fiecare tema sa aiba valorile ei (vezi src/lib/layerColors.ts). */
@@ -293,7 +301,7 @@ main {
   text-align: left;
   width: 100%;
   display: block;
-  transition: transform 0.13s ease, border-color 0.2s;
+  transition: transform 0.13s ease;
   box-shadow: var(--amb);
 }
 .proj:active {
@@ -513,7 +521,7 @@ main {
   position: relative;
   text-align: left;
   width: 100%;
-  transition: transform 0.1s, border-color 0.18s, background 0.15s;
+  transition: transform 0.1s, background 0.15s;
   box-shadow: var(--amb);
 }
 .tk:hover {
@@ -530,15 +538,29 @@ main {
   outline-offset: 2px;
   background: color-mix(in srgb, var(--layer-color, var(--accent)) 8%, var(--surface));
 }
-.tk.active {
-  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--done) 60%, transparent), var(--amb);
+/* Sina de stare e un pseudo-element, nu o umbra inset: `.selected` si
+   `.active` au aceeasi specificitate, deci ultimul scria peste celalalt si un
+   tichet selectat SI gata-de-start pierdea sina. Asa nu poate fi suprascrisa
+   de nicio umbra. */
+.tk.active::before,
+.tk.blocked::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  border-radius: var(--r-m) 0 0 var(--r-m);
 }
-.tk.blocked {
-  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--blocked) 55%, transparent), var(--amb);
+.tk.active::before {
+  background: color-mix(in srgb, var(--done) 60%, transparent);
+}
+.tk.blocked::before {
+  background: color-mix(in srgb, var(--blocked) 55%, transparent);
 }
 .tk.selected {
   background: var(--accent-soft);
-  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 55%, transparent);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 55%, transparent), var(--amb);
 }
 /* top-right checkbox — done toggle in normal mode, selection in bulk mode */
 .tk-check {
@@ -593,6 +615,7 @@ main {
 .list-row {
   display: flex; align-items: center; gap: 10px;
   min-height: 40px; padding: 8px 10px;
+  border-radius: var(--r-m);
   margin-bottom: 6px; cursor: pointer; background: var(--surface);
   width: 100%; text-align: left; font: inherit; color: inherit;
   box-shadow: var(--amb);
@@ -634,7 +657,7 @@ main {
 }
 .list-row.selected {
   background: var(--accent-soft);
-  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 55%, transparent);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 55%, transparent), var(--amb);
 }
 .list-row.in-select .list-check {
   color: var(--txt-faint);
@@ -1243,7 +1266,7 @@ main {
   font-weight: 700;
 }
 .chip.add {
-  border-style: dashed;
+  border: 1px dashed color-mix(in srgb, var(--accent) 45%, transparent);
   color: var(--accent);
   font-weight: 700;
 }
@@ -1493,7 +1516,7 @@ svg.graph {
   color: var(--accent);
 }
 .dep-chip.draft {
-  border-style: dashed;
+  border: 1px dashed var(--line);
 }
 .dep-chip-body {
   display: flex;
@@ -1807,7 +1830,7 @@ svg.graph {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: border-color 0.15s, color 0.15s;
+  transition: color 0.15s;
 }
 .theme-toggle:hover {
   color: var(--accent);
@@ -2009,7 +2032,7 @@ svg.graph {
   padding: 7px 16px;
   font-size: 15px; font-weight: 500;
   cursor: pointer;
-  transition: border-color 0.15s, color 0.15s;
+  transition: color 0.15s;
 }
 .if-btn-ghost:hover { color: var(--accent); background: var(--accent-soft); }
 .if-btn-primary {
@@ -2147,7 +2170,7 @@ svg.graph {
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: color 0.12s, border-color 0.12s;
+  transition: color 0.12s;
 }
 .ccm-exit:hover { color: var(--txt); background: var(--surface-2); }
 
@@ -2182,7 +2205,7 @@ svg.graph {
   color: var(--txt-dim);
   cursor: pointer;
   flex-shrink: 0;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition: background 0.15s, color 0.15s;
 }
 .header-settings-btn:hover {
   background: var(--accent-soft);
@@ -2202,7 +2225,7 @@ svg.graph {
   color: var(--txt-dim);
   cursor: pointer;
   flex-shrink: 0;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition: background 0.15s, color 0.15s;
 }
 .header-search-btn:hover {
   background: var(--accent-soft);
@@ -2222,7 +2245,7 @@ svg.graph {
   cursor: pointer;
   flex-shrink: 0;
   margin-right: 4px;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition: background 0.15s, color 0.15s;
 }
 .header-sidebar-btn:hover {
   background: var(--accent-soft);
@@ -2247,7 +2270,7 @@ svg.graph {
   color: var(--txt-dim);
   cursor: pointer;
   flex-shrink: 0;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition: background 0.15s, color 0.15s;
   margin-left: 6px;
 }
 .header-info-btn:hover,
@@ -2712,7 +2735,7 @@ svg.graph {
     font-weight: 600;
     flex: 1;
     text-align: left;
-    transition: border-color 0.15s, color 0.15s, background 0.15s;
+    transition: color 0.15s, background 0.15s;
   }
   .sidebar-new-btn:hover {
     color: var(--accent);
@@ -2735,7 +2758,7 @@ svg.graph {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: border-color 0.15s, color 0.15s, background 0.15s;
+    transition: color 0.15s, background 0.15s;
   }
   .sidebar-theme-btn:hover {
     color: var(--accent);
@@ -3052,7 +3075,7 @@ svg.graph {
   background: var(--surface-3);
   color: var(--txt-faint);
   cursor: pointer;
-  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+  transition: background 140ms ease, color 140ms ease;
 }
 .sh-copy:hover {
   background: var(--surface-2);
@@ -3595,10 +3618,10 @@ svg.graph {
   border-radius: var(--r-m);
   overflow: hidden;
   height: 30px;
-  transition: border-color 0.12s;
+  transition: background 0.15s, color 0.15s;
 }
 .dep-card:hover { background: var(--surface-3); }
-.dep-card--draft { border-style: dashed; }
+.dep-card--draft { border: 1px dashed var(--line); }
 
 .dep-card-body {
   flex: 1;
@@ -3992,6 +4015,7 @@ svg.graph {
 }
 
 .users-card, .user-card {
+  border-radius: var(--r); padding: 18px;
   animation: users-rise 0.4s ease both;
   box-shadow: var(--amb);
 }
@@ -4033,6 +4057,7 @@ svg.graph {
 
 .acc-grid {
   display: flex; flex-direction: column;
+  border-radius: var(--r-m); overflow: hidden;
   background: var(--surface-2);
 }
 .acc-row { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--surface); }
@@ -4073,10 +4098,11 @@ svg.graph {
 .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
 
 .btn-ghost, .btn-danger {
+  cursor: pointer; font-family: inherit;
   font-size: 12.5px; font-weight: 600;
   background: var(--surface-2); color: var(--txt-dim);
   padding: 7px 13px; border-radius: var(--r-s);
-  transition: background 0.14s, color 0.14s, border-color 0.14s;
+  transition: background 0.14s, color 0.14s;
 }
 .btn-ghost:hover { background: var(--accent-soft); color: var(--accent); }
 .btn-danger { color: var(--blocked); background: var(--blocked-soft); }
