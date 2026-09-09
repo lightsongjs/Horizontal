@@ -37,6 +37,71 @@ Build through step 5 of the build order in REQUIREMENTS.md (data layer → layer
 ## Stack notes
 Mobile-first, dark theme, bottom sheets. Persistence target: Supabase fits the example. Adjust to your team's stack.
 
+## Sistemul vizual — „Scholarly Editorial"
+
+Aplicația a primit feedback de designer: „arată AI-generated". Diagnosticul
+concret era fundal aproape negru cu accent neon, chenar de 1px pe fiecare bloc,
+rotunjiri la întâmplare, gradient pe orice element activ, și emoji în loc de
+iconițe. Sistemul de acum e preluat din Apologetica
+(`/OneDrive/01-Proiecte-Main/2026-02-11_apologetica`, vezi
+`stitch_extracted/stitch/oxford_scholarly/DESIGN.md`).
+
+**Mockup-ul aprobat: `design/index.html`** — jetoanele, comparația înainte/după
+și tabelul de migrare. Deschide-l în browser înainte să atingi stiluri.
+
+### Cele cinci reguli
+
+1. **Fără linii.** Un chenar de 1px nu delimitează nimic. Secțiunile se despart
+   prin salt de fundal (`--surface` peste `--bg`) plus `box-shadow: var(--amb)`.
+   Linia rămâne doar unde nu e decor: separatoare de rând, inele de focus,
+   chenarul câmpurilor de input (un câmp fără delimitare nu se mai citește ca
+   un câmp), afordanțele punctate („adaugă aici") și legendele de tastă.
+2. **Serif pentru tot ce e limbă, mono pentru tot ce e cifră.** Literata pe
+   titluri, nume, corp; IBM Plex Mono pe ID-uri, procente, ore, etichete
+   majuscule. Regula practică: *dacă e cifră sau cod, e mono*.
+3. **Un singur accent, potolit.** `--accent` (`#818CF8` închis / `#1A237E`
+   deschis). Niciun gradient pe stări active: se marchează cu text plin plus o
+   linie de 2px, nu cu o casetă umplută.
+4. **Umbră ambientală, nu digitală.** `--amb` / `--amb-lg`, o singură dată pe
+   element. Nimic nu are și umbră, și chenar, și rotunjire mare.
+5. **Iconițe, nu emoji.** `src/components/Icon.tsx` — un vocabular cu nume de
+   ROL (`urgent`, nu `zap`), ca desenul să se schimbe într-un loc. SVG inline
+   (lucide-react, scuturat la build), nu fontul Material Symbols: aplicația e
+   PWA offline-first, iar un font de iconițe de la Google ar da pătrate de tofu
+   fără rețea, unul local ar intra în manifestul de precache. Excepțiile de la
+   regulă sunt `↵`, `↑↓`, `Ctrl+↵` — acolo glifa **e** tasta.
+
+### Raze, pe rol
+
+`--r-s` 6px butoane/jetoane · `--r-m` 10px tichete/rânduri/câmpuri ·
+`--r` 16px carduri/panouri/foi · `50%` ce e cu adevărat rotund. **Nu adăuga o
+a patra valoare.** Înainte erau 22, iar 7px/8px/9px arătau identic.
+
+### Layere și culori de temă
+
+Rampa de layere e **secvențială** (indigo → verdigris), definită per temă în
+`:root` ca `--layer-0..4`, fiindcă o culoare care se citește pe `#0B0B0E` nu se
+citește pe `#F7F9FC`. `src/lib/layerColors.ts` întoarce `var(--layer-N)`, nu
+hex. Culoarea layerului trăiește în coloana verticală a grupului, în numărul
+layerului și în jetonul de dependență — **nu** pe conturul fiecărui card.
+Culorile de temă și accentele de proiect sunt date de utilizator (DB), deci
+rămân cum sunt.
+
+### Bancul de probă
+
+`design/preview.html` scoate CSS-ul **real** peste DOM-ul real al aplicației,
+fără server și fără login în Supabase. Are patru ecrane, iar al patrulea,
+„Controale", e o galerie cu fiecare clasă care și-a pierdut chenarul, în starea
+normală și în cea activă — acolo se vede dacă un buton a rămas invizibil.
+
+```bash
+python3 design/build-preview.py   # regenerează, dacă s-a schimbat markup-ul
+```
+
+> **După orice schimbare de stil, deschide bancul în ambele teme.** Cea mai
+> ușoară regresie de făcut e un control care rămâne fără fundal ȘI fără chenar:
+> typecheck-ul și testele trec, iar butonul e invizibil.
+
 ## Mockups — fișier local, nu Artifact
 
 Pentru orice mockup/design vizual (comparații before/after, explorare de layout):
