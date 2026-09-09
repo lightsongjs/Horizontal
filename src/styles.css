@@ -4331,7 +4331,13 @@ svg.graph {
 /* O lățime de citit, nu toată fereastra: pe un monitor lat, un rând întins
    complet aruncă numele proiectului la un metru de titlu. Grila de proiecte
    vrea toată lățimea; o listă nu. */
-.smart-list { max-width: 760px; }
+/* Listele inteligente nu trec prin `.view`, deci nu moșteneau padding-ul lui:
+   totul stătea lipit de marginea ecranului. Cu chenar de 1px se vedea mai
+   puțin; cu rază și umbră, un card lipit de margine își pierde colțurile. */
+.smart-list {
+  max-width: 760px;
+  padding: 14px 14px 0;
+}
 
 /* ── numere pe rândurile din sidebar ─────────────────────────────── */
 .sl-count {
@@ -4612,14 +4618,6 @@ svg.graph {
   }
   .tabbar button.on { color: var(--accent); }
   .tabbar .tb-ico { display: inline-flex; align-items: center; justify-content: center; }
-  .tabbar .tb-add {
-    color: var(--on-accent);
-    background: var(--accent);
-    border-radius: var(--r-m);
-    margin: 0 4px;
-    max-width: 52px;
-    flex: 0 0 52px;
-  }
 
   /* Numele proiectului costă exact lățimea care taie titlul, iar titlul e
      singurul lucru care contează într-o listă. Rămâne punctul colorat;
@@ -4627,9 +4625,9 @@ svg.graph {
   .t-proj-name { display: none; }
   .t-proj { gap: 0; }
 
-  /* Bara de jos acoperă capătul listei; FAB-ul e ascuns în liste, dar
-     padding-ul de sub conținut trebuie să țină cont de ea. */
-  .smart-list-open main { padding-bottom: 0; }
+  /* Butonul plutitor stă și peste liste acum, deci ultimul rând are nevoie
+     de loc sub el — altfel se termină exact acolo unde începe butonul. */
+  .smart-list-open main { padding-bottom: 84px; }
 
   /* Și trebuie să treacă PESTE bara de jos, nu prin ea: cu bottom: 24px
      acoperea iconița „Proiecte". */

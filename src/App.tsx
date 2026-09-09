@@ -133,14 +133,17 @@ function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, ca
  * Bara de jos, numai pe telefon (vezi `.tabbar` în styles.css). Pe mobil
  * sidebar-ul e ascuns, deci fără ea listele inteligente n-ar avea drum.
  *
- * Patru tab-uri, nu cinci: „Caută" ar fi fost al cincilea, dar QuickSearch
- * caută în proiectul deschis, iar de aici nu există unul.
+ * Trei tab-uri, nu patru: „+" a ieșit din bară. O bară de navigație spune
+ * UNDE ești, nu CE faci — un buton de acțiune între două destinații se
+ * citește ca a treia destinație. Acțiunea e butonul plutitor de deasupra.
+ *
+ * Și nu patru destinații: „Caută" ar fi fost a patra, dar QuickSearch caută
+ * în proiectul deschis, iar de aici nu există unul.
  */
-function TabBar({ smartList, onSmartList, onProjects, onQuickAdd, inProjects }: {
+function TabBar({ smartList, onSmartList, onProjects, inProjects }: {
   smartList: SmartListKind | null
   onSmartList(kind: SmartListKind): void
   onProjects(): void
-  onQuickAdd(): void
   inProjects: boolean
 }) {
   return (
@@ -150,9 +153,6 @@ function TabBar({ smartList, onSmartList, onProjects, onQuickAdd, inProjects }: 
       </button>
       <button className={smartList === 'week' ? 'on' : ''} onClick={() => onSmartList('week')}>
         <span className="tb-ico"><Icon name="list" size={21} /></span>7 zile
-      </button>
-      <button className="tb-add" onClick={onQuickAdd} aria-label="Sarcină nouă">
-        <span className="tb-ico"><Icon name="add" size={25} /></span>
       </button>
       <button className={inProjects ? 'on' : ''} onClick={onProjects}>
         <span className="tb-ico"><Icon name="projects" size={21} /></span>Proiecte
@@ -672,20 +672,21 @@ function Shell() {
             <ProjectsView />
           )}
         </main>
-        {!smartList && (project ? canWrite : isAdmin) && (
+        {(smartList || (project ? canWrite : isAdmin)) && (
           <button
             className="fab"
-            aria-label={project ? 'Adaugă tichet' : 'Adaugă proiect'}
-            onClick={project ? openNewIssue : openNewProject}
+            aria-label={smartList ? 'Sarcină nouă' : project ? 'Adaugă tichet' : 'Adaugă proiect'}
+            onClick={smartList
+              ? () => setFocusQuickAdd((n) => n + 1)
+              : project ? openNewIssue : openNewProject}
           >
-            +
+            <Icon name="add" size={24} />
           </button>
         )}
         <TabBar
           smartList={smartList}
           onSmartList={openSmartList}
           onProjects={() => { exitSmartList(); setShowUsers(false); selectProject(null) }}
-          onQuickAdd={() => { openSmartList('today'); setFocusQuickAdd((n) => n + 1) }}
           inProjects={!smartList && !showUsers}
         />
       </div>
