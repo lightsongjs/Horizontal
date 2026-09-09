@@ -1,5 +1,7 @@
 import {
   ArrowLeft,
+  Crosshair,
+  Star,
   Clock,
   Copy,
   ArrowUp,
@@ -104,8 +106,10 @@ const ICONS = {
   members: Users,
   refresh: RefreshCw,
   selectAll: SquareCheck,
+  selector: Crosshair,
   selectNone: Square,
   show: Eye,
+  star: Star,
   sidebar: PanelLeft,
   fromTitle: Sparkles,
   list: CalendarRange,

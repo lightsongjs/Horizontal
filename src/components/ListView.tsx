@@ -101,7 +101,7 @@ export function ListView() {
                       else if (canWrite) void toggleDone(id)
                     }}
                   >
-                    {(inSelect ? isSelected : it.done) ? '✓' : ''}
+                    <Icon name={(inSelect ? isSelected : it.done) ? 'done' : 'notDone'} size={17} />
                   </span>
                   {theme && <span className="theme-dot" style={{ background: theme.color }} />}
                   <span className="list-id">{id}</span>

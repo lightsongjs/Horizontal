@@ -73,7 +73,7 @@ export function IssueSheet({ issueId }: { issueId: string }) {
                   <span>{dep.title}</span>
                   <span className={`wtag ${dep.done ? '' : 'pending'}`}>
                     {waveName(dep.wave)}
-                    {dep.done ? ' · ✓' : ''}
+                    {dep.done ? ' · gata' : ''}
                   </span>
                 </button>
               )

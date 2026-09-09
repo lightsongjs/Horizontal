@@ -183,7 +183,7 @@ export function GraphView() {
 
                 {/* Done checkmark */}
                 {state === 'done' && (
-                  <text x={x + NW - 20} y={y + 21} fontSize="11" fill="var(--done)" fontWeight="700">✓</text>
+                  <path d={`M${x + NW - 24} ${y + 17}l3 3 5-6`} fill="none" stroke="var(--done)" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
                 )}
                 {/* Active pulse dot */}
                 {state === 'active' && (

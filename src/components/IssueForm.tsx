@@ -12,14 +12,14 @@ import {
 } from '../lib/schedule'
 import { Attachments } from './Attachments'
 import type { Issue, ScenarioKind, TestScenario } from '../lib/types'
-import { Icon } from './Icon'
+import { Icon, type IconName } from './Icon'
 
 const PALETTE = ['#0284C7', '#059669', '#D97706', '#EA580C', '#E11D48', '#7C3AED', '#06B6D4']
 
-const BADGE_CYCLE: { kind: ScenarioKind; icon: string }[] = [
-  { kind: 'pass',    icon: '✓' },
-  { kind: 'fail',    icon: '✕' },
-  { kind: 'neutral', icon: '○' },
+const BADGE_CYCLE: { kind: ScenarioKind; icon: IconName }[] = [
+  { kind: 'pass',    icon: 'check' },
+  { kind: 'fail',    icon: 'close' },
+  { kind: 'neutral', icon: 'notDone' },
 ]
 
 export interface MetaRecapInput {
@@ -123,7 +123,7 @@ function AssigneeSearch({ assigneeId, assignees, myAssigneeId, onSelect, onSetMe
         <div className="dep-selected">
           <button className="dep-chip on" onClick={() => onSelect(null)}>
             <span className="dep-chip-title">{selected.name}{selected.id === myAssigneeId ? ' (me)' : ''}</span>
-            <span className="dep-chip-x">×</span>
+            <span className="dep-chip-x"><Icon name="close" size={12} /></span>
           </button>
         </div>
       )}
@@ -138,12 +138,13 @@ function AssigneeSearch({ assigneeId, assignees, myAssigneeId, onSelect, onSetMe
           {filtered.map((a, idx) => (
             <button key={a.id} className={`dep-result-row ${a.id === assigneeId ? 'on' : ''} ${idx === hlIdx ? 'hl' : ''}`}
               onClick={() => { onSelect(a.id); setQ(''); setHlIdx(0) }}>
-              <span className={`ic ${a.id === assigneeId ? 'ok' : 'ext'}`}>{a.id === assigneeId ? '✓' : '+'}</span>
+              <span className={`ic ${a.id === assigneeId ? 'ok' : 'ext'}`}><Icon name={a.id === assigneeId ? 'check' : 'add'} size={14} /></span>
               <span className="dep-result-title">{a.name}{a.id === myAssigneeId ? ' (me)' : ''}</span>
               {a.id !== myAssigneeId && (
                 <button style={{ marginLeft: 'auto', fontSize: 10, opacity: 0.5, padding: '0 4px' }}
-                  onClick={(e) => { e.stopPropagation(); onSetMe(a.id) }} title="This is me">
-                  ★
+                  onClick={(e) => { e.stopPropagation(); onSetMe(a.id) }} title="This is me"
+                  aria-label="Setează ca fiind eu">
+                  <Icon name="star" size={13} />
                 </button>
               )}
             </button>
@@ -663,7 +664,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
     finally { setSaving(false) }
   }
 
-  const badgeIcon = (kind: ScenarioKind) => BADGE_CYCLE.find((b) => b.kind === kind)?.icon ?? '○'
+  const badgeIcon = (kind: ScenarioKind): IconName => BADGE_CYCLE.find((b) => b.kind === kind)?.icon ?? 'notDone'
 
   return (
     <>
@@ -784,7 +785,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
                 ))}
                 {canWrite && (
                   <button tabIndex={-1} className="if-meta-add" onClick={() => setShowNewTheme((v) => !v)} title="Temă nouă">
-                    {showNewTheme ? '×' : '+'}
+                    <Icon name={showNewTheme ? 'close' : 'add'} size={13} />
                   </button>
                 )}
               </div>
@@ -828,12 +829,12 @@ export function IssueForm({ issueId }: { issueId?: string }) {
                     <div className="assignee-chip-inline">
                       <div className="assignee-avatar-sm">{a.name.slice(0, 2).toUpperCase()}</div>
                       <span className="assignee-name-sm">{a.name}{a.id === myAssigneeId ? ' (me)' : ''}</span>
-                      <span className="assignee-x-sm" tabIndex={-1} onClick={() => setAssigneeId(null)}>×</span>
+                      <span className="assignee-x-sm" tabIndex={-1} onClick={() => setAssigneeId(null)}><Icon name="close" size={12} /></span>
                     </div>
                   ) : null
                 })()}
                 <button tabIndex={-1} className="if-meta-add" onClick={() => setShowAssigneeInline((v) => !v)}>
-                  {showAssigneeInline ? '×' : '+'}
+                  <Icon name={showAssigneeInline ? 'close' : 'add'} size={13} />
                 </button>
               </div>
             </div>
@@ -987,7 +988,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
               {titleDate.active && !dueOwned && !isEdit && (
                 <span className="due-from-title">
                   <span className="chip date">
-                    <span className="chip-ico" aria-hidden="true">✦</span> din titlu
+                    <span className="chip-ico"><Icon name="fromTitle" size={13} /></span> din titlu
                     <button
                       tabIndex={-1}
                       type="button"
@@ -1151,7 +1152,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
                           <span className="dep-card-id">{id}</span>
                           <span className="dep-card-title">{issue.title}</span>
                         </button>
-                        <button className="dep-card-x" onClick={() => removeCurrentDep(id)}>×</button>
+                        <button className="dep-card-x" onClick={() => removeCurrentDep(id)} aria-label="Scoate dependența"><Icon name="close" size={12} /></button>
                       </div>
                     )
                   })}
@@ -1161,7 +1162,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
                         <span className="dep-card-id">nou</span>
                         <span className="dep-card-title">{d.title}</span>
                       </div>
-                      <button className="dep-card-x" onClick={() => removeCurrentDraft(d)}>×</button>
+                      <button className="dep-card-x" onClick={() => removeCurrentDraft(d)} aria-label="Scoate dependența"><Icon name="close" size={12} /></button>
                     </div>
                   ))}
                 </div>
@@ -1190,12 +1191,12 @@ export function IssueForm({ issueId }: { issueId?: string }) {
                   <div className="if-sc-list">
                     {selectors.map((s, i) => (
                       <div key={i} className="if-sc-item">
-                        <span className="if-badge selector">⬡</span>
+                        <span className="if-badge selector"><Icon name="selector" size={12} /></span>
                         <input value={s} onChange={(e) => updateSelector(i, e.target.value)}
                           placeholder="getByRole('button', { name: 'Login' })"
                           style={{ fontFamily: 'var(--mono)', fontSize: 11 }}
                           autoComplete="off" autoCorrect="off" inputMode="text" />
-                        <button className="if-sc-del" onClick={() => removeSelector(i)}>×</button>
+                        <button className="if-sc-del" onClick={() => removeSelector(i)} aria-label="Șterge selectorul"><Icon name="close" size={13} /></button>
                       </div>
                     ))}
                   </div>
@@ -1210,12 +1211,12 @@ export function IssueForm({ issueId }: { issueId?: string }) {
                     {scenarios.map((s, i) => (
                       <div key={i} className="if-sc-item">
                         <span className={`if-badge ${s.kind}`} onClick={() => cycleScenarioBadge(i)} title="Click schimbă tipul">
-                          {badgeIcon(s.kind)}
+                          <Icon name={badgeIcon(s.kind)} size={13} />
                         </span>
                         <input value={s.text} onChange={(e) => updateScenarioText(i, e.target.value)}
                           placeholder="Ex: Login reușit cu date valide"
                           autoComplete="off" autoCorrect="off" inputMode="text" />
-                        <button className="if-sc-del" onClick={() => removeScenario(i)}>×</button>
+                        <button className="if-sc-del" onClick={() => removeScenario(i)} aria-label="Șterge scenariul"><Icon name="close" size={13} /></button>
                       </div>
                     ))}
                   </div>

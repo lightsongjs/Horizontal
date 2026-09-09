@@ -40,7 +40,7 @@ export function ThemesView() {
 
       {themes.length === 0 && (
         <p className="empty">
-          {canWrite ? 'Nicio temă încă. Apasă „⚙ Gestionează" ca să adaugi.' : 'Nicio temă încă.'}
+          {canWrite ? 'Nicio temă încă. Apasă „Gestionează" ca să adaugi.' : 'Nicio temă încă.'}
         </p>
       )}
 
