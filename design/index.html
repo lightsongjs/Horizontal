@@ -1,0 +1,1133 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Horizontal — Scholarly Editorial</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;0,7..72,700;1,7..72,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0..1,0&display=block" />
+<!-- Numai pentru replica „Înainte" din secțiunea de comparație. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" />
+<style>
+/* ═══════════════════════════════════════════════════════════════════════
+   JETOANE — dark-first, fiindcă Horizontal e o aplicație pe temă închisă.
+   Perechea deschisă e paleta „Scholarly Editorial" din Apologetica.
+   ═══════════════════════════════════════════════════════════════════════ */
+:root {
+  --ground:   #0B0B0E;
+  --surface:  #16161A;
+  --raise:    #1E1E23;
+  --sunken:   #101014;
+  --hairline: #2A2A2E;
+  --ink:      #FAFAF9;
+  --ink-2:    #9C9CA2;
+  --ink-3:    #6B6B70;
+
+  --accent:      #818CF8;
+  --accent-dim:  #6366F1;
+  --accent-wash: rgba(129,140,248,.13);
+
+  --done: #63B79F;  --done-wash: rgba(99,183,159,.13);
+  --stop: #DF8B84;  --stop-wash: rgba(223,139,132,.13);
+  --now:  #D9A661;  --now-wash:  rgba(217,166,97,.13);
+
+  --l1:#8B93F7; --l2:#7FA0DE; --l3:#77ADC4; --l4:#74B4AC; --l5:#7BB79A;
+
+  --t-auth:#8B93F7; --t-email:#D9A661; --t-db:#6FB894;
+  --t-users:#B08BD4; --t-expense:#DF8B84;
+
+  /* Umbră ambientală: 24px blur, foarte joasă opacitate. Niciodată drop shadow. */
+  --amb:    0 6px 24px rgba(0,0,0,.42);
+  --amb-lg: 0 18px 48px rgba(0,0,0,.55);
+
+  --r-s: 6px; --r-m: 10px; --r-l: 16px;
+
+  --serif: "Literata", "Iowan Old Style", Georgia, serif;
+  --mono:  "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --ground:#f7f9fc; --surface:#ffffff; --raise:#ffffff; --sunken:#e8eff4;
+    --hairline: rgba(168,179,187,.38);
+    --ink:#29343a; --ink-2:#566168; --ink-3:#717c84;
+    --accent:#1A237E; --accent-dim:#151b60; --accent-wash:rgba(26,35,126,.08);
+    --done:#2F6B4F; --done-wash:rgba(47,107,79,.10);
+    --stop:#A0333F; --stop-wash:rgba(160,51,63,.09);
+    --now:#8A5A18;  --now-wash:rgba(138,90,24,.10);
+    --l1:#3A43A8; --l2:#2F5C93; --l3:#2A6E7E; --l4:#2A756A; --l5:#33795C;
+    --t-auth:#3A43A8; --t-email:#8A5A18; --t-db:#2F6B4F;
+    --t-users:#6B3F96; --t-expense:#A0333F;
+    --amb:    0 6px 24px rgba(41,52,58,.06);
+    --amb-lg: 0 18px 48px rgba(41,52,58,.10);
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --ground:#f7f9fc; --surface:#ffffff; --raise:#ffffff; --sunken:#e8eff4;
+  --hairline: rgba(168,179,187,.38);
+  --ink:#29343a; --ink-2:#566168; --ink-3:#717c84;
+  --accent:#1A237E; --accent-dim:#151b60; --accent-wash:rgba(26,35,126,.08);
+  --done:#2F6B4F; --done-wash:rgba(47,107,79,.10);
+  --stop:#A0333F; --stop-wash:rgba(160,51,63,.09);
+  --now:#8A5A18;  --now-wash:rgba(138,90,24,.10);
+  --l1:#3A43A8; --l2:#2F5C93; --l3:#2A6E7E; --l4:#2A756A; --l5:#33795C;
+  --t-auth:#3A43A8; --t-email:#8A5A18; --t-db:#2F6B4F;
+  --t-users:#6B3F96; --t-expense:#A0333F;
+  --amb:    0 6px 24px rgba(41,52,58,.06);
+  --amb-lg: 0 18px 48px rgba(41,52,58,.10);
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-tap-highlight-color: transparent; }
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 16px;
+  line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+}
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
+
+.ms {
+  font-family: "Material Symbols Outlined";
+  font-weight: normal; font-style: normal;
+  line-height: 1; letter-spacing: normal; text-transform: none;
+  display: inline-block; white-space: nowrap; direction: ltr;
+  -webkit-font-feature-settings: "liga"; font-feature-settings: "liga";
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+  user-select: none;
+}
+.ms.fill { font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 24; }
+
+/* ── schelet pagină ─────────────────────────────────────────────────── */
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 28px 120px; }
+.band { padding: 56px 0 0; }
+.band + .band { padding-top: 68px; }
+
+.eyebrow {
+  font-family: var(--mono); font-size: 11px; font-weight: 500;
+  letter-spacing: .18em; text-transform: uppercase; color: var(--ink-3);
+  margin: 0 0 14px;
+}
+h1, h2, h3, h4 { font-family: var(--serif); text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(34px, 5vw, 52px); font-weight: 700; letter-spacing: -.02em; line-height: 1.12; }
+h2 { font-size: 27px; font-weight: 700; letter-spacing: -.012em; line-height: 1.25; }
+h3 { font-size: 18px; font-weight: 600; }
+.lede { max-width: 64ch; font-size: 18px; color: var(--ink-2); margin: 18px 0 0; }
+.note { max-width: 66ch; font-size: 15px; color: var(--ink-2); margin: 12px 0 0; }
+.note code, .inline-code {
+  font-family: var(--mono); font-size: .86em;
+  background: var(--accent-wash); color: var(--accent);
+  padding: 1px 5px; border-radius: 4px;
+}
+em { font-style: italic; color: var(--ink); }
+
+/* masthead */
+.masthead { padding: 64px 0 0; }
+.masthead .rule {
+  height: 1px; background: var(--hairline); margin: 34px 0 0; border: 0;
+}
+.byline {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 22px;
+  font-family: var(--mono); font-size: 12px; color: var(--ink-3);
+  letter-spacing: .04em; margin-top: 26px;
+}
+.byline b { color: var(--ink-2); font-weight: 500; }
+
+.toggle {
+  position: fixed; top: 18px; right: 18px; z-index: 40;
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--mono); font-size: 11px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--ink-2);
+  background: var(--surface); box-shadow: var(--amb);
+  padding: 9px 14px; border: 0; border-radius: var(--r-m); cursor: pointer;
+}
+.toggle:hover { color: var(--ink); }
+.toggle .ms { font-size: 17px; }
+
+/* ── regulile împrumutate ───────────────────────────────────────────── */
+.rules { display: grid; gap: 2px; margin-top: 30px; border-radius: var(--r-m); overflow: hidden; }
+.rule-row {
+  display: grid; grid-template-columns: 34px minmax(0, 15rem) minmax(0, 1fr);
+  gap: 20px; align-items: start;
+  background: var(--surface); padding: 20px 22px;
+}
+.rule-row .n {
+  font-family: var(--mono); font-size: 12px; font-weight: 600;
+  color: var(--accent); padding-top: 4px;
+}
+.rule-row .what { font-weight: 600; font-size: 16px; }
+.rule-row .how { color: var(--ink-2); font-size: 15px; }
+.rule-row .how s { color: var(--ink-3); text-decoration-color: var(--stop); }
+@media (max-width: 720px) {
+  .rule-row { grid-template-columns: 28px 1fr; }
+  .rule-row .how { grid-column: 2; }
+}
+
+/* ── jetoane: culoare ───────────────────────────────────────────────── */
+.swatches { display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 14px; margin-top: 28px; }
+.sw { background: var(--surface); border-radius: var(--r-m); padding: 12px; box-shadow: var(--amb); }
+.sw .chip { height: 54px; border-radius: var(--r-s); }
+.sw .nm { font-size: 14px; font-weight: 600; margin-top: 10px; }
+.sw .hex, .sw .role { font-family: var(--mono); font-size: 11px; color: var(--ink-3); letter-spacing: .02em; }
+.sw .role { display: block; margin-top: 3px; }
+
+.ramp { display: flex; gap: 0; margin-top: 22px; border-radius: var(--r-m); overflow: hidden; }
+.ramp > div { flex: 1; padding: 16px 14px 18px; }
+.ramp .rn { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; color: rgba(0,0,0,.55); font-weight: 600; }
+.ramp .rt { font-size: 13px; color: rgba(0,0,0,.72); margin-top: 2px; }
+
+.dots { display: flex; flex-wrap: wrap; gap: 10px 8px; margin-top: 22px; }
+.dot-chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--surface); border-radius: 999px; padding: 6px 14px 6px 10px;
+  font-size: 14px; box-shadow: var(--amb);
+}
+.dot-chip i { width: 8px; height: 8px; border-radius: 50%; display: block; }
+.dot-chip span { font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
+
+/* ── jetoane: tipografie ────────────────────────────────────────────── */
+.type-spec { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 320px); gap: 34px; margin-top: 28px; align-items: start; }
+@media (max-width: 860px) { .type-spec { grid-template-columns: 1fr; } }
+.spec-row {
+  display: grid; grid-template-columns: 108px 1fr; gap: 20px;
+  padding: 16px 0; align-items: baseline;
+}
+.spec-row + .spec-row { box-shadow: inset 0 1px 0 var(--hairline); }
+.spec-row .tag { font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); }
+.s-display { font-size: 30px; font-weight: 700; letter-spacing: -.02em; }
+.s-title   { font-size: 20px; font-weight: 600; letter-spacing: -.01em; }
+.s-card    { font-size: 15px; font-weight: 600; }
+.s-body    { font-size: 15px; color: var(--ink-2); }
+.s-mono    { font-family: var(--mono); font-size: 12px; letter-spacing: .02em; color: var(--ink-2); }
+.s-label   { font-family: var(--mono); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-3); }
+.why { background: var(--surface); border-radius: var(--r-m); padding: 22px; box-shadow: var(--amb); }
+.why h3 { font-size: 16px; }
+.why p { font-size: 14.5px; color: var(--ink-2); margin: 10px 0 0; }
+
+/* ═══ ECRANE ════════════════════════════════════════════════════════ */
+.screens { display: flex; flex-wrap: wrap; gap: 40px; margin-top: 32px; align-items: flex-start; }
+.screen-col { width: 344px; flex: 0 0 auto; }
+.screen-cap { margin-top: 16px; }
+.screen-cap b { display: block; font-size: 15px; font-weight: 600; }
+.screen-cap p { font-size: 14px; color: var(--ink-2); margin: 4px 0 0; }
+
+.phone {
+  width: 344px; height: 706px;
+  background: var(--ground); border-radius: 26px;
+  box-shadow: var(--amb-lg), 0 0 0 1px var(--hairline);
+  overflow: hidden; position: relative;
+  display: flex; flex-direction: column;
+  font-size: 15px;
+}
+.ph-status {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 9px 20px 3px; font-family: var(--mono); font-size: 10.5px; color: var(--ink-3);
+  letter-spacing: .04em; flex: 0 0 auto;
+}
+.ph-status .rt { display: flex; gap: 5px; }
+
+/* cap de ecran — fără chenar, doar deplasare tonală */
+.ph-head { padding: 8px 18px 14px; flex: 0 0 auto; display: flex; align-items: center; gap: 12px; }
+.ph-head .mark {
+  font-family: var(--serif); font-size: 21px; font-weight: 700;
+  color: var(--accent); line-height: 1; letter-spacing: -.04em; flex: 0 0 auto;
+}
+.ph-head .back {
+  width: 30px; height: 30px; border-radius: 50%; flex: 0 0 auto;
+  display: grid; place-items: center; color: var(--accent); background: var(--accent-wash);
+}
+.ph-head .back .ms { font-size: 20px; }
+.ph-head .htxt { flex: 1; min-width: 0; }
+.ph-head h4 { font-size: 19px; font-weight: 700; letter-spacing: -.02em; line-height: 1.2; }
+.ph-head .crumb { font-family: var(--mono); font-size: 10.5px; color: var(--ink-3); letter-spacing: .05em; margin-top: 3px; }
+.ph-head .icon-btn { color: var(--ink-3); display: grid; place-items: center; width: 30px; height: 30px; }
+.ph-head .icon-btn .ms { font-size: 20px; }
+
+.prog-pill {
+  display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto;
+  font-family: var(--mono); font-size: 11px; font-weight: 500;
+  color: var(--done); background: var(--done-wash);
+  padding: 4px 10px; border-radius: var(--r-s);
+}
+.prog-pill i { width: 5px; height: 5px; border-radius: 50%; background: var(--done); display: block; }
+
+.ph-body { flex: 1; overflow: hidden; padding: 4px 16px 0; position: relative; }
+.ph-body.fade::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 96px;
+  background: linear-gradient(to top, var(--ground), transparent); pointer-events: none;
+}
+
+.sec-label {
+  display: flex; align-items: baseline; justify-content: space-between;
+  font-family: var(--mono); font-size: 10px; letter-spacing: .18em;
+  text-transform: uppercase; color: var(--ink-3);
+  margin: 10px 2px 12px;
+}
+.sec-label.stop { color: var(--stop); }
+
+/* card de proiect — ridicat tonal, fără chenar, fără șină de accent */
+.proj {
+  background: var(--surface); border-radius: var(--r-l);
+  box-shadow: var(--amb); padding: 17px 18px 15px; margin-bottom: 12px;
+  text-align: left; width: 100%; display: block;
+}
+.proj h5 { font-family: var(--serif); font-size: 19px; font-weight: 700; letter-spacing: -.02em; margin: 0; }
+.proj > p { font-size: 14px; color: var(--ink-2); line-height: 1.45; margin: 4px 0 15px; }
+.proj-meta { display: flex; align-items: center; gap: 12px; }
+.bar { flex: 1; height: 3px; background: var(--sunken); border-radius: 3px; overflow: hidden; }
+.bar i { display: block; height: 100%; border-radius: 3px; }
+.pct { font-family: var(--mono); font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; min-width: 38px; text-align: right; }
+.proj-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 13px; }
+.mini {
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: .04em;
+  padding: 3px 8px; border-radius: 4px; background: var(--sunken); color: var(--ink-3);
+}
+
+/* valuri — nu casete, o fâșie editorială */
+.waves { display: flex; align-items: flex-end; gap: 22px; margin: 6px 2px 20px; box-shadow: inset 0 -1px 0 var(--hairline); }
+.wbtn {
+  padding: 0 0 10px; background: none; border: 0; text-align: left;
+  color: var(--ink-3); position: relative; cursor: pointer;
+}
+.wbtn .wn { font-family: var(--serif); font-size: 20px; font-weight: 700; letter-spacing: -.02em; display: block; line-height: 1.1; }
+.wbtn .ws { font-family: var(--mono); font-size: 9.5px; letter-spacing: .13em; text-transform: uppercase; display: block; margin-top: 3px; }
+.wbtn.on { color: var(--ink); }
+.wbtn.on .ws { color: var(--accent); }
+.wbtn.on::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px;
+  background: var(--accent); border-radius: 2px;
+}
+.wbtn.pad { margin-left: auto; padding-bottom: 12px; color: var(--ink-3); }
+.wbtn.pad .ms { font-size: 19px; }
+
+/* layer — coloană verticală în culoarea layerului, nu șină pe card */
+.layer { position: relative; padding-left: 34px; padding-bottom: 22px; }
+.layer::before {
+  content: ""; position: absolute; left: 11px; top: 26px; bottom: 30px; width: 2px;
+  background: color-mix(in srgb, var(--lc) 38%, transparent); border-radius: 2px;
+}
+.layer:last-child::before { display: none; }
+.layer-head { display: flex; align-items: center; gap: 10px; margin-bottom: 11px; }
+.layer-num {
+  position: absolute; left: 0; width: 24px; height: 24px; border-radius: var(--r-s);
+  display: grid; place-items: center;
+  font-family: var(--mono); font-size: 11.5px; font-weight: 600;
+  color: var(--lc); background: color-mix(in srgb, var(--lc) 16%, transparent);
+}
+.layer-head h6 { font-family: var(--serif); font-size: 16px; font-weight: 600; margin: 0; letter-spacing: -.01em; }
+.layer-head .sub { font-family: var(--mono); font-size: 10px; color: var(--ink-3); letter-spacing: .06em; margin-top: 1px; }
+.badge-now {
+  margin-left: auto; font-family: var(--mono); font-size: 9.5px; font-weight: 600;
+  letter-spacing: .14em; text-transform: uppercase;
+  color: var(--now); background: var(--now-wash); padding: 4px 8px; border-radius: 4px;
+}
+
+/* tichet — suprafață ridicată, zero chenar */
+.tk {
+  background: var(--surface); border-radius: var(--r-m); box-shadow: var(--amb);
+  padding: 12px 14px 13px 40px; margin-bottom: 8px; position: relative;
+  text-align: left; width: 100%; display: block;
+}
+.tk .tk-check { position: absolute; left: 13px; top: 13px; color: var(--ink-3); line-height: 1; }
+.tk .tk-check .ms { font-size: 19px; }
+.tk.done { background: transparent; box-shadow: none; }
+.tk.done .tk-check { color: var(--done); }
+.tk.done h6 { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--ink-3); }
+.tk-meta { display: flex; align-items: center; gap: 7px; }
+.tk-meta .theme-dot { width: 6px; height: 6px; border-radius: 50%; display: block; }
+.tk-id { font-family: var(--mono); font-size: 10px; letter-spacing: .07em; color: var(--ink-3); }
+.tk-theme { font-family: var(--mono); font-size: 10px; color: var(--ink-3); letter-spacing: .03em; }
+.tk-meta .ms.bolt { font-size: 14px; color: var(--now); margin-left: -2px; }
+.tk h6 { font-family: var(--serif); font-size: 15px; font-weight: 600; line-height: 1.35; margin: 3px 0 0; letter-spacing: -.005em; }
+.tk-sub { display: flex; align-items: center; gap: 7px; margin-top: 8px; }
+.dep {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-family: var(--mono); font-size: 10px; letter-spacing: .04em;
+  color: var(--lc, var(--ink-3)); background: color-mix(in srgb, var(--lc, #888) 14%, transparent);
+  padding: 3px 7px 3px 5px; border-radius: 4px;
+}
+.dep .ms { font-size: 13px; }
+.cross { font-family: var(--mono); font-size: 10px; color: var(--ink-3); letter-spacing: .03em; }
+.due {
+  margin-left: auto; display: inline-flex; align-items: center; gap: 5px;
+  font-family: var(--mono); font-size: 10.5px; color: var(--ink-2); letter-spacing: .03em;
+  font-variant-numeric: tabular-nums;
+}
+.due.late { color: var(--stop); }
+.due .ms { font-size: 13px; }
+
+/* rând de sarcină — listele inteligente */
+.trow {
+  display: grid; grid-template-columns: 20px 42px minmax(0, 1fr) auto; gap: 8px;
+  align-items: center; padding: 11px 10px; border-radius: var(--r-m);
+  background: var(--surface); box-shadow: var(--amb); margin-bottom: 7px;
+  text-align: left; width: 100%;
+}
+.trow .tk-check { position: static; color: var(--ink-3); }
+.trow .t-time { font-family: var(--mono); font-size: 12px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.trow .t-time.none { color: var(--ink-3); }
+.trow.late .t-time { color: var(--stop); }
+.trow .t-title { font-family: var(--serif); font-size: 14.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trow .t-tail { display: flex; align-items: center; gap: 6px; color: var(--ink-3); flex: 0 0 auto; }
+.trow .t-tail .ms { font-size: 15px; }
+.trow .t-proj { display: inline-flex; align-items: center; gap: 4px; font-family: var(--mono); font-size: 9.5px; letter-spacing: .03em; }
+.trow .t-proj i { width: 6px; height: 6px; border-radius: 50%; display: block; }
+
+/* bara de jos — sticlă mată, o linie-fantomă deasupra */
+.tabbar {
+  flex: 0 0 auto; display: grid; grid-template-columns: repeat(4, 1fr);
+  align-items: center; padding: 7px 8px 12px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  backdrop-filter: blur(18px) saturate(1.2);
+  box-shadow: inset 0 1px 0 var(--hairline);
+}
+.tabbar button {
+  background: none; border: 0; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--ink-3); padding: 4px 0;
+}
+.tabbar button .ms { font-size: 21px; }
+.tabbar button.on { color: var(--accent); }
+.tabbar .tb-add { color: var(--accent); }
+.tabbar .tb-add .ms { font-size: 25px; }
+
+/* ═══ ÎNAINTE / DUPĂ ════════════════════════════════════════════════ */
+.ba { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin-top: 30px; }
+.ba-panel { background: var(--surface); border-radius: var(--r-l); padding: 24px; box-shadow: var(--amb); }
+.ba-panel > .eyebrow { margin-bottom: 18px; }
+.ba-stage { background: var(--ground); border-radius: var(--r-m); padding: 18px; }
+.ba-notes { margin: 18px 0 0; padding: 0; list-style: none; display: grid; gap: 9px; }
+.ba-notes li { display: grid; grid-template-columns: 18px 1fr; gap: 8px; font-size: 14px; color: var(--ink-2); }
+.ba-notes .ms { font-size: 16px; margin-top: 3px; }
+.ba-notes .minus { color: var(--stop); }
+.ba-notes .plus { color: var(--done); }
+
+/* replica stilului vechi, pentru comparație — nu folosi în aplicație */
+.old {
+  --o-bg:#0c0d12; --o-surface:#14151c; --o-line:#262833; --o-line-soft:#1f212b;
+  --o-txt:#e8e9ee; --o-dim:#9296a6; --o-faint:#5d6173; --o-accent:#0EA5E9;
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  background: var(--o-bg); color: var(--o-txt);
+}
+.old .o-tk {
+  background: var(--o-surface); border: 1px solid var(--o-line-soft);
+  border-left: 2px solid rgba(14,165,233,.45);
+  border-radius: 10px; padding: 11px 13px; display: block; text-align: left;
+}
+.old .o-meta { display: flex; align-items: center; gap: 6px; font-size: 11px; }
+.old .o-check {
+  width: 18px; height: 18px; border-radius: 5px; border: 1px solid var(--o-line);
+  display: inline-grid; place-items: center; font-size: 11px; color: var(--o-faint);
+  float: left; margin-right: 9px;
+}
+.old .o-id { font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--o-faint); background: #1b1d27; padding: 1px 5px; border-radius: 4px; border: 1px solid var(--o-line); }
+.old .o-th { font-size: 11px; color: var(--o-faint); }
+.old .o-title { font-size: 15px; font-weight: 600; letter-spacing: -.02em; margin: 5px 0 0; }
+.old .o-sub { display: flex; gap: 5px; margin-top: 7px; }
+.old .o-dep { font-size: 11px; font-weight: 600; color: #ff6b6b; background: rgba(255,107,107,.12); border: 1px solid rgba(255,107,107,.3); padding: 2px 6px; border-radius: 5px; }
+.old .o-cross { font-size: 11px; font-weight: 600; color: var(--o-faint); background: #1b1d27; border: 1px solid var(--o-line); padding: 2px 6px; border-radius: 5px; }
+.old .o-wtabs { display: flex; gap: 6px; margin-top: 14px; }
+.old .o-wb {
+  width: 104px; font-size: 14px; font-weight: 700; padding: 9px 12px; border-radius: 10px;
+  background: var(--o-surface); border: 1px solid var(--o-line); color: var(--o-dim);
+  display: flex; flex-direction: column; gap: 2px; line-height: 1.1;
+}
+.old .o-wb .s { font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--o-faint); }
+.old .o-wb.on { background: linear-gradient(135deg,#0EA5E922,#06B6D411); border-color: #0EA5E966; color: var(--o-txt); }
+.old .o-wb.on .s { color: var(--o-accent); }
+
+/* ═══ COMPONENTE ════════════════════════════════════════════════════ */
+.comp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(258px, 1fr)); gap: 18px; margin-top: 28px; }
+.comp { background: var(--surface); border-radius: var(--r-m); padding: 18px; box-shadow: var(--amb); }
+.comp .eyebrow { margin-bottom: 14px; }
+.comp .row { display: flex; flex-wrap: wrap; gap: 9px; align-items: center; }
+.comp .cap { font-size: 13.5px; color: var(--ink-2); margin: 14px 0 0; }
+
+.btn {
+  font-family: var(--serif); font-size: 15px; font-weight: 600;
+  padding: 9px 18px; border-radius: var(--r-s); border: 0; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 7px;
+}
+.btn .ms { font-size: 18px; }
+.btn-primary { background: var(--accent); color: var(--ground); }
+:root[data-theme="light"] .btn-primary, :root:not([data-theme="dark"]) .btn-primary { }
+.btn-quiet { background: var(--accent-wash); color: var(--accent); }
+.btn-ghost { background: none; color: var(--accent); padding-left: 6px; padding-right: 6px; font-style: italic; }
+.btn-danger { background: var(--stop-wash); color: var(--stop); }
+
+.pill {
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em;
+  padding: 4px 9px; border-radius: 4px; text-transform: uppercase;
+}
+.p-done { color: var(--done); background: var(--done-wash); }
+.p-stop { color: var(--stop); background: var(--stop-wash); }
+.p-now  { color: var(--now);  background: var(--now-wash); }
+.p-mute { color: var(--ink-3); background: var(--sunken); }
+
+.field {
+  width: 100%; background: var(--raise); border: 0; border-radius: var(--r-m);
+  box-shadow: var(--amb); padding: 12px 14px; color: var(--ink);
+  font-family: var(--serif); font-size: 15px;
+}
+.field::placeholder { color: var(--ink-3); }
+
+.sheet {
+  background: var(--surface); border-radius: var(--r-l) var(--r-l) 0 0;
+  box-shadow: var(--amb-lg); padding: 8px 18px 20px; margin-top: 4px;
+}
+.sheet .grab { width: 34px; height: 4px; border-radius: 4px; background: var(--hairline); margin: 0 auto 14px; }
+.sheet h5 { font-family: var(--serif); font-size: 18px; font-weight: 700; margin: 0; letter-spacing: -.015em; }
+.sheet .meta { font-family: var(--mono); font-size: 10.5px; color: var(--ink-3); letter-spacing: .06em; margin-top: 4px; }
+.sheet p { font-size: 14.5px; color: var(--ink-2); margin: 12px 0 0; }
+
+/* ═══ TABEL DE MIGRARE ══════════════════════════════════════════════ */
+.tbl-scroll { overflow-x: auto; margin-top: 28px; border-radius: var(--r-m); }
+table { border-collapse: collapse; width: 100%; min-width: 660px; background: var(--surface); }
+th, td { text-align: left; padding: 12px 16px; font-size: 14px; vertical-align: top; }
+th {
+  font-family: var(--mono); font-size: 10px; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--ink-3); font-weight: 500;
+  box-shadow: inset 0 -1px 0 var(--hairline);
+}
+tbody tr + tr td { box-shadow: inset 0 1px 0 var(--hairline); }
+td.v { font-family: var(--mono); font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+td.v b { color: var(--ink); font-weight: 500; }
+td .sq { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 7px; vertical-align: -1px; }
+
+.checklist { margin: 26px 0 0; padding: 0; list-style: none; display: grid; gap: 11px; max-width: 74ch; }
+.checklist li { display: grid; grid-template-columns: 20px 1fr; gap: 10px; font-size: 15px; color: var(--ink-2); }
+.checklist .ms { font-size: 17px; color: var(--accent); margin-top: 4px; }
+.checklist b { color: var(--ink); font-weight: 600; }
+
+footer { margin-top: 76px; padding-top: 26px; box-shadow: inset 0 1px 0 var(--hairline); }
+footer p { font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); letter-spacing: .05em; margin: 0; }
+</style>
+</head>
+<body>
+
+<button class="toggle" id="theme-toggle" type="button" aria-label="Comută tema">
+  <span class="ms" id="theme-icon">light_mode</span><span id="theme-label">Temă deschisă</span>
+</button>
+
+<div class="wrap">
+
+  <!-- ════════════════ MASTHEAD ════════════════ -->
+  <header class="masthead">
+    <p class="eyebrow">Propunere de identitate vizuală · Horizontal</p>
+    <h1>Mai puțin panou de control,<br />mai mult caiet de lucru.</h1>
+    <p class="lede">
+      Feedbackul a fost „arată AI". Diagnosticul concret: fundal aproape negru cu un
+      albastru neon, un chenar de 1px pe fiecare bloc, aceeași rotunjire peste tot,
+      gradient pe orice element activ și emoji în loc de iconițe. Fiecare decizie
+      separat e inofensivă; împreună sunt exact combinația pe care o scoate un model
+      când nu i s-a cerut nimic anume.
+    </p>
+    <p class="note">
+      Leacul nu e o paletă nouă la întâmplare — e un sistem care există deja și
+      funcționează: <em>Scholarly Editorial</em>, din Apologetica. Literata pentru tot ce se
+      citește, indigo/navy ca singură culoare de accent, ierarhie prin
+      <em>deplasare tonală</em> în loc de linii, și umbre ambientale în loc de umbre
+      digitale. Adaptat aici pentru un instrument de planificare: culorile semantice
+      (gata / blocat / acum) și rampa de layere rămân, fiindcă ele codifică informație.
+    </p>
+    <div class="byline">
+      <span><b>Sursă</b> 2026-02-11_apologetica · stitch/oxford_scholarly/DESIGN.md</span>
+      <span><b>Litere</b> Literata + IBM Plex Mono</span>
+      <span><b>Iconițe</b> Material Symbols Outlined</span>
+    </div>
+    <hr class="rule" />
+  </header>
+
+  <!-- ════════════════ REGULILE ════════════════ -->
+  <section class="band">
+    <p class="eyebrow">Cinci reguli împrumutate</p>
+    <h2>Ce se schimbă, în cinci propoziții</h2>
+    <div class="rules">
+      <div class="rule-row">
+        <span class="n">01</span>
+        <span class="what">Regula „fără linii"</span>
+        <span class="how">Un chenar de 1px nu mai delimitează nimic. Secțiunile se despart
+          prin salt de fundal: <code>#16161A</code> peste <code>#0B0B0E</code>. Linia
+          rămâne doar unde e obligatorie — sub bara de jos, între rândurile unui tabel — și atunci la 38% opacitate.</span>
+      </div>
+      <div class="rule-row">
+        <span class="n">02</span>
+        <span class="what">Serif pentru tot ce se citește</span>
+        <span class="how">Literata pe nume de proiect, titlu de tichet, cap de layer, butoane.
+          <s>IBM Plex Sans</s> dispare. Plex Mono preia exact ce e cifră sau cod:
+          ID-uri, procente, ore, etichete majuscule.</span>
+      </div>
+      <div class="rule-row">
+        <span class="n">03</span>
+        <span class="what">Un singur accent, potolit</span>
+        <span class="how"><s>#0EA5E9</s> neon → <code>#818CF8</code> pe închis,
+          <code>#1A237E</code> pe deschis. Fără gradient pe stări active: un val
+          selectat se vede din culoarea textului și o linie de 2px, nu dintr-o casetă umplută.</span>
+      </div>
+      <div class="rule-row">
+        <span class="n">04</span>
+        <span class="what">Umbră ambientală, nu digitală</span>
+        <span class="how">24px de blur la opacitate mică, o singură dată. Cardurile se ridică
+          de pe fundal — nu se conturează pe el. Nimic nu are și umbră, și chenar, și rotunjire mare.</span>
+      </div>
+      <div class="rule-row">
+        <span class="n">05</span>
+        <span class="what">Iconițe, nu emoji</span>
+        <span class="how"><s>★ ▤ ⊞ ⚡ ✓ ⚙ ↳ 📝</s> → Material Symbols Outlined, aceeași
+          grosime de linie ca textul. Emoji-ul se randează diferit pe fiecare sistem și
+          e primul semn că ecranul n-a fost desenat de nimeni.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════ CULOARE ════════════════ -->
+  <section class="band">
+    <p class="eyebrow">Jetoane · culoare</p>
+    <h2>Suprafețe, accent, stări</h2>
+    <p class="note">Valorile de mai jos sunt cele din tema închisă. Comutatorul din
+      dreapta-sus schimbă pagina pe paleta deschisă, unde aceleași roluri iau valorile
+      Scholarly Editorial (<code>#f7f9fc</code> / <code>#ffffff</code> / <code>#29343a</code>).</p>
+
+    <div class="swatches">
+      <div class="sw"><div class="chip" style="background:#0B0B0E"></div><div class="nm">Fundal</div><div class="hex">#0B0B0E</div><span class="role">--ground</span></div>
+      <div class="sw"><div class="chip" style="background:#16161A"></div><div class="nm">Suprafață</div><div class="hex">#16161A</div><span class="role">card, bară</span></div>
+      <div class="sw"><div class="chip" style="background:#1E1E23"></div><div class="nm">Ridicat</div><div class="hex">#1E1E23</div><span class="role">câmp, foaie</span></div>
+      <div class="sw"><div class="chip" style="background:#101014"></div><div class="nm">Adâncit</div><div class="hex">#101014</div><span class="role">pistă, jeton</span></div>
+      <div class="sw"><div class="chip" style="background:#FAFAF9"></div><div class="nm">Text</div><div class="hex">#FAFAF9</div><span class="role">niciodată #fff pur pe deschis</span></div>
+      <div class="sw"><div class="chip" style="background:#9C9CA2"></div><div class="nm">Text secundar</div><div class="hex">#9C9CA2</div><span class="role">descrieri</span></div>
+      <div class="sw"><div class="chip" style="background:#6B6B70"></div><div class="nm">Text terț</div><div class="hex">#6B6B70</div><span class="role">etichete, ID</span></div>
+      <div class="sw"><div class="chip" style="background:#818CF8"></div><div class="nm">Accent</div><div class="hex">#818CF8</div><span class="role">un singur accent</span></div>
+      <div class="sw"><div class="chip" style="background:#63B79F"></div><div class="nm">Gata</div><div class="hex">#63B79F</div><span class="role">semantic</span></div>
+      <div class="sw"><div class="chip" style="background:#DF8B84"></div><div class="nm">Blocat</div><div class="hex">#DF8B84</div><span class="role">semantic</span></div>
+      <div class="sw"><div class="chip" style="background:#D9A661"></div><div class="nm">Acum / urgent</div><div class="hex">#D9A661</div><span class="role">semantic</span></div>
+    </div>
+
+    <h3 style="margin-top:38px">Rampa de layere</h3>
+    <p class="note">Adâncimea dependențelor <em>este</em> o secvență, deci merită o rampă
+      secvențială — o singură familie de nuanțe care se răcește, nu cinci culori
+      categorice. Layerul se citește ca distanță, nu ca etichetă.</p>
+    <div class="ramp">
+      <div style="background:#8B93F7"><div class="rn">L1</div><div class="rt">începe aici</div></div>
+      <div style="background:#7FA0DE"><div class="rn">L2</div><div class="rt">după L1</div></div>
+      <div style="background:#77ADC4"><div class="rn">L3</div><div class="rt">după L2</div></div>
+      <div style="background:#74B4AC"><div class="rn">L4</div><div class="rt">după L3</div></div>
+      <div style="background:#7BB79A"><div class="rn">L5</div><div class="rt">după L4</div></div>
+    </div>
+
+    <h3 style="margin-top:38px">Teme (categorii — aici da, culori distincte)</h3>
+    <div class="dots">
+      <span class="dot-chip"><i style="background:var(--t-auth)"></i>Auth <span>#8B93F7</span></span>
+      <span class="dot-chip"><i style="background:var(--t-email)"></i>Email <span>#D9A661</span></span>
+      <span class="dot-chip"><i style="background:var(--t-db)"></i>Supabase / DB <span>#6FB894</span></span>
+      <span class="dot-chip"><i style="background:var(--t-users)"></i>Utilizatori <span>#B08BD4</span></span>
+      <span class="dot-chip"><i style="background:var(--t-expense)"></i>Expense <span>#DF8B84</span></span>
+    </div>
+  </section>
+
+  <!-- ════════════════ TIPOGRAFIE ════════════════ -->
+  <section class="band">
+    <p class="eyebrow">Jetoane · tipografie</p>
+    <h2>Literata face treaba grea</h2>
+    <div class="type-spec">
+      <div>
+        <div class="spec-row"><span class="tag">Display 30/700</span><span class="s-display">Aplicație Turism</span></div>
+        <div class="spec-row"><span class="tag">Titlu 20/600</span><span class="s-title">Val II · Dashboard &amp; users</span></div>
+        <div class="spec-row"><span class="tag">Card 15/600</span><span class="s-card">Webhook Supabase → Mailjet (verificare)</span></div>
+        <div class="spec-row"><span class="tag">Corp 15/400</span><span class="s-body">La înregistrare, trimite email de verificare. Tichetul părinte e gata doar când toate sub-tichetele sunt gata.</span></div>
+        <div class="spec-row"><span class="tag">Mono 12/400</span><span class="s-mono">TUR-04 · 3/5 gata · 09:30 · 62%</span></div>
+        <div class="spec-row"><span class="tag">Etichetă 11/500</span><span class="s-label">Proiecte active</span></div>
+      </div>
+      <div class="why">
+        <h3>De ce serif într-o aplicație de developeri</h3>
+        <p>Fiindcă tichetele sunt <em>propoziții scrise de om</em>, nu date. Literata are
+          x-height mare și e tăiată pentru ecran, deci un titlu de 15px rămâne la fel de
+          lizibil ca un sans — dar aduce un ton care nu seamănă cu nicio altă unealtă de
+          project management.</p>
+        <p>Contrastul îl dă Plex Mono, și numai unde e onest: ID de tichet, procent, oră,
+          numărul layerului. Regula practică — <em>dacă e cifră sau cod, e mono; dacă e
+          limbă, e Literata</em>.</p>
+        <p>Perechea vine din Apologetica (Literata peste tot) plus mono-ul de care are
+          nevoie Horizontal și pe care aceea nu-l folosește.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════ ECRANE ════════════════ -->
+  <section class="band">
+    <p class="eyebrow">Ecrane · date reale din data-model.json</p>
+    <h2>Cum arată sistemul aplicat</h2>
+    <p class="note">Trei ecrane, cu tichetele din seed: proiectul <em>tur</em>, valurile I–III și
+      layerele din <code>_EXPECTED_LAYERS</code>.</p>
+
+    <div class="screens">
+
+      <!-- ─── Ecran 1: Proiecte ─── -->
+      <div class="screen-col">
+        <div class="phone">
+          <div class="ph-status"><span>9:41</span><span class="rt"><span class="ms" style="font-size:12px">wifi</span><span class="ms" style="font-size:12px">battery_full</span></span></div>
+          <div class="ph-head">
+            <span class="mark">H</span>
+            <div class="htxt">
+              <h4>Horizontal</h4>
+              <div class="crumb">3 proiecte · 41 tichete</div>
+            </div>
+            <span class="prog-pill"><i></i>38%</span>
+          </div>
+          <div class="ph-body fade">
+            <div class="sec-label"><span>Proiecte active</span><span>3</span></div>
+
+            <div class="proj">
+              <h5>Aplicație Turism</h5>
+              <p>Expense tracker + bilete + auth pentru călătorii</p>
+              <div class="proj-meta">
+                <div class="bar"><i style="width:22%;background:var(--l1)"></i></div>
+                <span class="pct">22%</span>
+              </div>
+              <div class="proj-tags">
+                <span class="mini">TUR</span><span class="mini">val I / III</span><span class="mini">9 tichete</span>
+              </div>
+            </div>
+
+            <div class="proj">
+              <h5>Horizontal</h5>
+              <p>Aplicația asta. Mementouri, listele inteligente, modul desktop.</p>
+              <div class="proj-meta">
+                <div class="bar"><i style="width:64%;background:var(--l3)"></i></div>
+                <span class="pct">64%</span>
+              </div>
+              <div class="proj-tags">
+                <span class="mini">HZ</span><span class="mini">val IV / V</span><span class="mini">24 tichete</span>
+              </div>
+            </div>
+
+            <div class="proj">
+              <h5>Apologetica</h5>
+              <p>Conținut, biblie, taxonomie. Sursa sistemului vizual de aici.</p>
+              <div class="proj-meta">
+                <div class="bar"><i style="width:81%;background:var(--l5)"></i></div>
+                <span class="pct">81%</span>
+              </div>
+            </div>
+          </div>
+          <nav class="tabbar">
+            <button type="button"><span class="ms">today</span>Azi</button>
+            <button type="button"><span class="ms">date_range</span>7 zile</button>
+            <button type="button" class="tb-add" aria-label="Sarcină nouă"><span class="ms">add</span></button>
+            <button type="button" class="on"><span class="ms fill">grid_view</span>Proiecte</button>
+          </nav>
+        </div>
+        <div class="screen-cap">
+          <b>Proiecte</b>
+          <p>Cardul nu mai are nici chenar, nici șina de accent de 2.5px din stânga —
+            culoarea proiectului trăiește acum în umplerea barei de progres, singurul loc
+            unde spune ceva.</p>
+        </div>
+      </div>
+
+      <!-- ─── Ecran 2: Ordine ─── -->
+      <div class="screen-col">
+        <div class="phone">
+          <div class="ph-status"><span>9:41</span><span class="rt"><span class="ms" style="font-size:12px">wifi</span><span class="ms" style="font-size:12px">battery_full</span></span></div>
+          <div class="ph-head">
+            <span class="back"><span class="ms">arrow_back</span></span>
+            <div class="htxt">
+              <h4>Aplicație Turism</h4>
+              <div class="crumb">Ordine · val I</div>
+            </div>
+            <span class="icon-btn"><span class="ms">search</span></span>
+          </div>
+          <div class="ph-body fade">
+            <div class="waves">
+              <button type="button" class="wbtn on"><span class="wn">I</span><span class="ws">MVP</span></button>
+              <button type="button" class="wbtn"><span class="wn">II</span><span class="ws">Dashboard</span></button>
+              <button type="button" class="wbtn"><span class="wn">III</span><span class="ws">Polish</span></button>
+              <button type="button" class="wbtn pad" aria-label="Notițe"><span class="ms">sticky_note_2</span></button>
+            </div>
+
+            <div class="layer" style="--lc:var(--l1)">
+              <div class="layer-head">
+                <span class="layer-num">1</span>
+                <div>
+                  <h6>Începe aici</h6>
+                  <div class="sub">1 tichet · 1 gata</div>
+                </div>
+                <span class="badge-now">Acum</span>
+              </div>
+              <div class="tk done">
+                <span class="tk-check"><span class="ms fill">check_circle</span></span>
+                <div class="tk-meta"><i class="theme-dot" style="background:var(--t-email)"></i><span class="tk-id">TUR-01</span><span class="tk-theme">Email</span></div>
+                <h6>Adresă email nouă pentru proiect</h6>
+              </div>
+            </div>
+
+            <div class="layer" style="--lc:var(--l2)">
+              <div class="layer-head">
+                <span class="layer-num">2</span>
+                <div>
+                  <h6>Layer 2</h6>
+                  <div class="sub">2 tichete · 0 gata</div>
+                </div>
+              </div>
+              <div class="tk">
+                <span class="tk-check"><span class="ms">radio_button_unchecked</span></span>
+                <div class="tk-meta"><i class="theme-dot" style="background:var(--t-db)"></i><span class="tk-id">TUR-02</span><span class="tk-theme">Supabase / DB</span><span class="ms bolt">bolt</span></div>
+                <h6>Cont Supabase (DB + Auth)</h6>
+                <div class="tk-sub">
+                  <span class="dep"><span class="ms">subdirectory_arrow_right</span>TUR-01</span>
+                  <span class="due"><span class="ms">event</span>mie 09:30<span class="ms">notifications</span></span>
+                </div>
+              </div>
+              <div class="tk">
+                <span class="tk-check"><span class="ms">radio_button_unchecked</span></span>
+                <div class="tk-meta"><i class="theme-dot" style="background:var(--t-email)"></i><span class="tk-id">TUR-03</span><span class="tk-theme">Email</span></div>
+                <h6>Cont Mailjet (trimitere email)</h6>
+                <div class="tk-sub">
+                  <span class="dep"><span class="ms">subdirectory_arrow_right</span>TUR-01</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="layer" style="--lc:var(--l3)">
+              <div class="layer-head">
+                <span class="layer-num">3</span>
+                <div>
+                  <h6>Layer 3</h6>
+                  <div class="sub">2 tichete · 0 gata</div>
+                </div>
+              </div>
+              <div class="tk">
+                <span class="tk-check"><span class="ms">radio_button_unchecked</span></span>
+                <div class="tk-meta"><i class="theme-dot" style="background:var(--t-email)"></i><span class="tk-id">TUR-04</span><span class="tk-theme">Email</span></div>
+                <h6>Webhook Supabase → Mailjet (verificare)</h6>
+                <div class="tk-sub">
+                  <span class="dep"><span class="ms">subdirectory_arrow_right</span>TUR-02, TUR-03</span>
+                  <span class="due late"><span class="ms">event_busy</span>ieri</span>
+                </div>
+              </div>
+              <div class="tk">
+                <span class="tk-check"><span class="ms">radio_button_unchecked</span></span>
+                <div class="tk-meta"><i class="theme-dot" style="background:var(--t-db)"></i><span class="tk-id">TUR-05</span><span class="tk-theme">Supabase / DB</span></div>
+                <h6>Deploy pe Cloudflare + domeniu</h6>
+                <div class="tk-sub">
+                  <span class="dep"><span class="ms">subdirectory_arrow_right</span>TUR-02</span>
+                  <span class="cross">+1 din alt val</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <nav class="tabbar">
+            <button type="button"><span class="ms">today</span>Azi</button>
+            <button type="button"><span class="ms">date_range</span>7 zile</button>
+            <button type="button" class="tb-add" aria-label="Tichet nou"><span class="ms">add</span></button>
+            <button type="button" class="on"><span class="ms fill">grid_view</span>Proiecte</button>
+          </nav>
+        </div>
+        <div class="screen-cap">
+          <b>Ordine</b>
+          <p>Culoarea layerului nu mai e o șină pe fiecare card: e o coloană verticală care
+            pornește din numărul layerului și coboară până la ultimul tichet al grupului.
+            Structura chiar e secvențială — desenul o spune.</p>
+        </div>
+      </div>
+
+      <!-- ─── Ecran 3: Azi ─── -->
+      <div class="screen-col">
+        <div class="phone">
+          <div class="ph-status"><span>9:41</span><span class="rt"><span class="ms" style="font-size:12px">wifi</span><span class="ms" style="font-size:12px">battery_full</span></span></div>
+          <div class="ph-head">
+            <div class="htxt">
+              <h4>Azi</h4>
+              <div class="crumb">Miercuri, 9 septembrie</div>
+            </div>
+            <span class="icon-btn"><span class="ms">notifications_active</span></span>
+            <span class="icon-btn"><span class="ms">tune</span></span>
+          </div>
+          <div class="ph-body fade">
+            <div class="sec-label stop"><span>Restanțe</span><span>2</span></div>
+
+            <div class="trow late">
+              <span class="tk-check"><span class="ms">radio_button_unchecked</span></span>
+              <span class="t-time">8 sep</span>
+              <span class="t-title">Webhook Supabase → Mailjet</span>
+              <span class="t-tail"><span class="ms">notifications</span><span class="t-proj"><i style="background:var(--l1)"></i>TUR</span></span>
+            </div>
+            <div class="trow late">
+              <span class="tk-check"><span class="ms">radio_button_unchecked</span></span>
+              <span class="t-time">7 sep</span>
+              <span class="t-title">Deploy funcția reminder-action</span>
+              <span class="t-tail"><span class="t-proj"><i style="background:var(--l3)"></i>HZ</span></span>
+            </div>
+
+            <div class="sec-label"><span>Azi</span><span>4</span></div>
+
+            <div class="trow">
+              <span class="tk-check"><span class="ms">radio_button_unchecked</span></span>
+              <span class="t-time">09:30</span>
+              <span class="t-title">Cont Supabase (DB + Auth)</span>
+              <span class="t-tail"><span class="ms" style="color:var(--now)">bolt</span><span class="ms">notifications</span><span class="t-proj"><i style="background:var(--l1)"></i>TUR</span></span>
+            </div>
+            <div class="trow">
+              <span class="tk-check"><span class="ms">radio_button_unchecked</span></span>
+              <span class="t-time">14:00</span>
+              <span class="t-title">Split datorii (sora: 40 cor.)</span>
+              <span class="t-tail"><span class="t-proj"><i style="background:var(--l1)"></i>TUR</span></span>
+            </div>
+            <div class="trow">
+              <span class="tk-check"><span class="ms">radio_button_unchecked</span></span>
+              <span class="t-time none">—</span>
+              <span class="t-title">Atașează bilete / chitanțe</span>
+              <span class="t-tail"><span class="t-proj"><i style="background:var(--l1)"></i>TUR</span></span>
+            </div>
+            <div class="trow">
+              <span class="tk-check"><span class="ms fill" style="color:var(--done)">check_circle</span></span>
+              <span class="t-time none">—</span>
+              <span class="t-title" style="color:var(--ink-3);text-decoration:line-through">Bump versiune service worker</span>
+              <span class="t-tail"><span class="t-proj"><i style="background:var(--l3)"></i>HZ</span></span>
+            </div>
+
+            <div class="sec-label"><span>Mâine</span><span>1</span></div>
+            <div class="trow">
+              <span class="tk-check"><span class="ms">radio_button_unchecked</span></span>
+              <span class="t-time">07:00</span>
+              <span class="t-title">Pagină SignUp / Înregistrare</span>
+              <span class="t-tail"><span class="ms">notifications</span><span class="t-proj"><i style="background:var(--l1)"></i>TUR</span></span>
+            </div>
+          </div>
+          <nav class="tabbar">
+            <button type="button" class="on"><span class="ms fill">today</span>Azi</button>
+            <button type="button"><span class="ms">date_range</span>7 zile</button>
+            <button type="button" class="tb-add" aria-label="Sarcină nouă"><span class="ms">add</span></button>
+            <button type="button"><span class="ms">grid_view</span>Proiecte</button>
+          </nav>
+        </div>
+        <div class="screen-cap">
+          <b>Azi</b>
+          <p>Ora în mono cu cifre tabulare, deci coloana se aliniază singură. Restanța se
+            vede din culoarea orei, nu dintr-un fundal roșu pe tot rândul — starea e o
+            informație, nu o alarmă.</p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ════════════════ ÎNAINTE / DUPĂ ════════════════ -->
+  <section class="band">
+    <p class="eyebrow">Comparație</p>
+    <h2>Același tichet, două sisteme</h2>
+    <div class="ba">
+      <div class="ba-panel">
+        <p class="eyebrow">Înainte</p>
+        <div class="ba-stage old">
+          <div class="o-tk">
+            <span class="o-check">✓</span>
+            <div class="o-meta">
+              <span class="o-id">TUR-02</span><span class="o-th">● Supabase / DB</span><span>⚡</span>
+            </div>
+            <div class="o-title">Cont Supabase (DB + Auth)</div>
+            <div class="o-sub"><span class="o-dep">↳ TUR-01</span><span class="o-cross">+1 din alt val</span></div>
+          </div>
+          <div class="o-wtabs">
+            <span class="o-wb on">I<span class="s">MVP</span></span>
+            <span class="o-wb">II<span class="s">Dashboard</span></span>
+          </div>
+        </div>
+        <ul class="ba-notes">
+          <li><span class="ms minus">remove</span>Trei chenare pe un singur card: exterior, stânga colorat, plus câte unul pe fiecare jeton.</li>
+          <li><span class="ms minus">remove</span>Dependența e roșie — culoarea de „blocat" — deși e doar o legătură.</li>
+          <li><span class="ms minus">remove</span>Gradient pe valul activ, într-o casetă cu bordură luminoasă.</li>
+          <li><span class="ms minus">remove</span>Emoji ⚡ ✓ ↳ ● amestecate cu textul.</li>
+        </ul>
+      </div>
+
+      <div class="ba-panel">
+        <p class="eyebrow">După</p>
+        <div class="ba-stage" style="--lc:var(--l2)">
+          <div class="tk">
+            <span class="tk-check"><span class="ms">radio_button_unchecked</span></span>
+            <div class="tk-meta"><i class="theme-dot" style="background:var(--t-db)"></i><span class="tk-id">TUR-02</span><span class="tk-theme">Supabase / DB</span><span class="ms bolt">bolt</span></div>
+            <h6>Cont Supabase (DB + Auth)</h6>
+            <div class="tk-sub">
+              <span class="dep"><span class="ms">subdirectory_arrow_right</span>TUR-01</span>
+              <span class="cross">+1 din alt val</span>
+            </div>
+          </div>
+          <div class="waves" style="margin-bottom:0">
+            <button type="button" class="wbtn on"><span class="wn">I</span><span class="ws">MVP</span></button>
+            <button type="button" class="wbtn"><span class="wn">II</span><span class="ws">Dashboard</span></button>
+          </div>
+        </div>
+        <ul class="ba-notes">
+          <li><span class="ms plus">add</span>Zero chenare. Cardul se ridică din umbră ambientală și din saltul de fundal.</li>
+          <li><span class="ms plus">add</span>Dependența preia culoarea layerului: spune „de unde vine", nu „e o problemă".</li>
+          <li><span class="ms plus">add</span>Valul activ = text plin plus o linie de 2px. Fără umplere, fără gradient.</li>
+          <li><span class="ms plus">add</span>Iconițe de o singură grosime; titlul în Literata îi dă cardului voce.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════ COMPONENTE ════════════════ -->
+  <section class="band">
+    <p class="eyebrow">Inventar</p>
+    <h2>Componente</h2>
+    <div class="comp-grid">
+
+      <div class="comp">
+        <p class="eyebrow">Butoane</p>
+        <div class="row">
+          <button type="button" class="btn btn-primary"><span class="ms">add</span>Tichet nou</button>
+          <button type="button" class="btn btn-quiet">Salvează</button>
+        </div>
+        <div class="row" style="margin-top:9px">
+          <button type="button" class="btn btn-ghost">Vezi toate dependențele</button>
+          <button type="button" class="btn btn-danger"><span class="ms">delete</span>Șterge</button>
+        </div>
+        <p class="cap">Rotunjire 6px, nu pastilă: mai arhitectural, mai puțin „app store".
+          Butonul fantomă e în italic, ca în Apologetica.</p>
+      </div>
+
+      <div class="comp">
+        <p class="eyebrow">Stări &amp; jetoane</p>
+        <div class="row">
+          <span class="pill p-done">Gata</span>
+          <span class="pill p-now">Acum</span>
+          <span class="pill p-stop">Blocat</span>
+          <span class="pill p-mute">Val III</span>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <span class="due"><span class="ms">event</span>mie 09:30<span class="ms">notifications</span></span>
+          <span class="due late"><span class="ms">event_busy</span>ieri</span>
+        </div>
+        <p class="cap">Fundal spălăcit la 13%, text în culoarea plină, fără contur.
+          Clopoțelul apare numai dacă există memento — absența e informație.</p>
+      </div>
+
+      <div class="comp">
+        <p class="eyebrow">Câmp de căutare</p>
+        <input class="field" type="text" placeholder="Caută în Aplicație Turism…" aria-label="Caută" />
+        <p class="cap">Suprafață ridicată cu umbră ambientală, ca un locaș fizic în
+          interfață. Fără bordură până la focus, când apare inelul de accent.</p>
+      </div>
+
+      <div class="comp" style="padding-bottom:0;overflow:hidden">
+        <p class="eyebrow">Foaie de jos</p>
+        <div class="sheet">
+          <div class="grab"></div>
+          <h5>Cont Supabase (DB + Auth)</h5>
+          <div class="meta">TUR-02 · VAL I · LAYER 2</div>
+          <p>Bază de date + Auth. Aici trăiesc utilizatorii.</p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ════════════════ MIGRARE ════════════════ -->
+  <section class="band">
+    <p class="eyebrow">Implementare · src/styles.css</p>
+    <h2>Ce se rescrie la rădăcină</h2>
+    <p class="note">Cea mai mare parte a schimbării intră prin blocul <code>:root</code> —
+      numele variabilelor rămân, ca să nu se atingă 4600 de linii de CSS. Doar cele patru
+      rânduri marcate cer și intervenție în reguli.</p>
+
+    <div class="tbl-scroll">
+      <table>
+        <thead>
+          <tr><th>Jeton</th><th>Acum</th><th>Propus</th><th>Notă</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="v">--bg</td><td class="v"><span class="sq" style="background:#0c0d12"></span>#0c0d12</td><td class="v"><span class="sq" style="background:#0B0B0E"></span><b>#0B0B0E</b></td><td>Neutru cu urmă de indigo, nu gri-albastru.</td></tr>
+          <tr><td class="v">--surface</td><td class="v"><span class="sq" style="background:#14151c"></span>#14151c</td><td class="v"><span class="sq" style="background:#16161A"></span><b>#16161A</b></td><td>Saltul față de fundal e singura delimitare.</td></tr>
+          <tr><td class="v">--surface-2</td><td class="v"><span class="sq" style="background:#1b1d27"></span>#1b1d27</td><td class="v"><span class="sq" style="background:#1E1E23"></span><b>#1E1E23</b></td><td>Câmpuri, foi de jos.</td></tr>
+          <tr><td class="v">--surface-3</td><td class="v"><span class="sq" style="background:#232532"></span>#232532</td><td class="v"><span class="sq" style="background:#101014"></span><b>#101014</b></td><td>Devine <em>mai închis</em>: piste și jetoane se scufundă, nu se ridică.</td></tr>
+          <tr><td class="v">--line</td><td class="v"><span class="sq" style="background:#262833"></span>#262833</td><td class="v"><span class="sq" style="background:#2A2A2E"></span><b>#2A2A2E</b></td><td><b>Rămâne doar la bara de jos și în tabele.</b></td></tr>
+          <tr><td class="v">--line-soft</td><td class="v"><span class="sq" style="background:#1f212b"></span>#1f212b</td><td class="v">—</td><td><b>Se scoate</b> de pe <code>.tk</code>, <code>.proj</code>, <code>.mini</code>, <code>.tabs</code>.</td></tr>
+          <tr><td class="v">--txt</td><td class="v">#e8e9ee</td><td class="v"><b>#FAFAF9</b></td><td>Alb cald, nu alb-albăstrui.</td></tr>
+          <tr><td class="v">--txt-dim</td><td class="v">#9296a6</td><td class="v"><b>#9C9CA2</b></td><td>Neutru, fără tentă rece.</td></tr>
+          <tr><td class="v">--txt-faint</td><td class="v">#5d6173</td><td class="v"><b>#6B6B70</b></td><td>Puțin mai lizibil.</td></tr>
+          <tr><td class="v">--accent</td><td class="v"><span class="sq" style="background:#0EA5E9"></span>#0EA5E9</td><td class="v"><span class="sq" style="background:#818CF8"></span><b>#818CF8</b></td><td>Indigo Apologetica. <code>--accent-2</code> → <code>#6366F1</code>.</td></tr>
+          <tr><td class="v">--done</td><td class="v"><span class="sq" style="background:#3ecf8e"></span>#3ecf8e</td><td class="v"><span class="sq" style="background:#63B79F"></span><b>#63B79F</b></td><td>Aceeași informație, cu 30% mai puțină saturație.</td></tr>
+          <tr><td class="v">--blocked</td><td class="v"><span class="sq" style="background:#ff6b6b"></span>#ff6b6b</td><td class="v"><span class="sq" style="background:#DF8B84"></span><b>#DF8B84</b></td><td>Nu se mai folosește pentru dependențe — doar pentru blocaj real.</td></tr>
+          <tr><td class="v">--active</td><td class="v"><span class="sq" style="background:#ffb454"></span>#ffb454</td><td class="v"><span class="sq" style="background:#D9A661"></span><b>#D9A661</b></td><td>„Acum" și urgent.</td></tr>
+          <tr><td class="v">--r</td><td class="v">14px</td><td class="v"><b>16 / 10 / 6px</b></td><td>Trei raze după rol: card, tichet, buton. <b>Nu una singură.</b></td></tr>
+          <tr><td class="v">--display</td><td class="v">IBM Plex Sans</td><td class="v"><b>Literata</b></td><td>Și <code>body</code>, nu doar titlurile.</td></tr>
+          <tr><td class="v">--mono</td><td class="v">JetBrains Mono</td><td class="v"><b>IBM Plex Mono</b></td><td>Se potrivește mai bine cu Literata.</td></tr>
+          <tr><td class="v">--amb</td><td class="v">— (inexistent)</td><td class="v"><b>0 6px 24px rgba(0,0,0,.42)</b></td><td>Umbra ambientală. Înlocuiește chenarele scoase mai sus.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="margin-top:40px">Cele patru locuri unde nu ajunge un jeton</h3>
+    <ul class="checklist">
+      <li><span class="ms">chevron_right</span><b><code>.wbtn.on</code></b> — se scoate
+        <code>linear-gradient</code> și <code>border-color</code>; se pune text plin plus un
+        <code>::after</code> de 2px în accent. Butonul devine o filă editorială, nu o casetă.</li>
+      <li><span class="ms">chevron_right</span><b><code>.layer .tk</code></b> — se scoate
+        <code>border-left</code> per card; culoarea layerului trece pe un
+        <code>.layer::before</code> vertical, între numărul layerului și ultimul tichet.</li>
+      <li><span class="ms">chevron_right</span><b><code>.layer .tk-sub .dep</code></b> — își
+        pierde <code>var(--blocked)</code> ca implicit și moștenește
+        <code>--layer-color</code>; fără <code>border-color</code>.</li>
+      <li><span class="ms">chevron_right</span><b>Emoji în JSX</b> —
+        <code>★ ▤ ⊞ + ⚡ ✓ ⚙ 📝 ↳</code> din <code>App.tsx</code>, <code>TicketCard.tsx</code>,
+        <code>TaskRow.tsx</code>, <code>WaveTabs.tsx</code> se înlocuiesc cu Material Symbols.
+        Fontul se încarcă local, nu de la Google, ca să nu intre în manifestul de precache
+        al service workerului.</li>
+    </ul>
+    <p class="note" style="margin-top:20px">
+      Tema deschisă din <code>[data-theme='light']</code> se aliniază pe paleta Scholarly
+      Editorial: <code>#f7f9fc</code> fundal, <code>#ffffff</code> card,
+      <code>#e8eff4</code> adâncit, text <code>#29343a</code> — niciodată negru pur — și
+      accent <code>#1A237E</code>. Umbra scade la <code>rgba(41,52,58,.06)</code>.
+    </p>
+  </section>
+
+  <footer>
+    <p>design/index.html · Horizontal · sistem preluat din 2026-02-11_apologetica</p>
+  </footer>
+
+</div>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  var btn = document.getElementById('theme-toggle');
+  var icon = document.getElementById('theme-icon');
+  var label = document.getElementById('theme-label');
+
+  function prefersLight() {
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+  }
+  function isLight() {
+    var stamped = root.getAttribute('data-theme');
+    if (stamped === 'light') return true;
+    if (stamped === 'dark') return false;
+    return prefersLight();
+  }
+  function paint() {
+    var light = isLight();
+    icon.textContent = light ? 'dark_mode' : 'light_mode';
+    label.textContent = light ? 'Temă închisă' : 'Temă deschisă';
+  }
+  btn.addEventListener('click', function () {
+    root.setAttribute('data-theme', isLight() ? 'dark' : 'light');
+    paint();
+  });
+  paint();
+})();
+</script>
+</body>
+</html>

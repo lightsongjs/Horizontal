@@ -5,7 +5,7 @@ import { WaveTabs } from './WaveTabs'
 import { WaveActionsBar } from './WaveActionsBar'
 import { BulkBar } from './BulkBar'
 import { useHideDone, useOrderedLayers, useWaveActions, useVimNav, useCanWrite } from '../hooks'
-import { LAYER_COLORS } from '../lib/layerColors'
+import { layerVar } from '../lib/layerColors'
 import { DueChip } from './DueChip'
 
 export function ListView() {
@@ -48,7 +48,7 @@ export function ListView() {
           <div
             key={g.L}
             className="list-group"
-            style={{ '--layer-color': LAYER_COLORS[i % LAYER_COLORS.length] } as React.CSSProperties}
+            style={{ '--layer-color': layerVar(i) } as React.CSSProperties}
           >
             <div className="list-group-head">
               <span className="list-group-num">{g.L + 1}</span>

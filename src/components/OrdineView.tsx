@@ -5,7 +5,7 @@ import { WaveTabs } from './WaveTabs'
 import { WaveActionsBar } from './WaveActionsBar'
 import { BulkBar } from './BulkBar'
 import { useHideDone, useOrderedLayers, useWaveActions, useVimNav, useCanWrite } from '../hooks'
-import { LAYER_COLORS } from '../lib/layerColors'
+import { layerVar } from '../lib/layerColors'
 
 export function OrdineView() {
   const { waves, activeWave } = useHorizontal()
@@ -43,7 +43,7 @@ export function OrdineView() {
       ) : (
         orderedLayers.map((g, i) => {
           const ready = i === 0
-          const color = LAYER_COLORS[i % LAYER_COLORS.length]
+          const color = layerVar(i)
           return (
             <div key={g.L} className={`layer ${ready ? 'ready' : ''}`} style={{ '--layer-color': color } as React.CSSProperties}>
               <div className="layer-head">

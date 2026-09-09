@@ -1,32 +1,52 @@
 ﻿/* Horizontal — dark theme. Tokens from REQUIREMENTS.md §4; layout/interactions
    adapted from prototype.html. */
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;0,7..72,600;0,7..72,700;1,7..72,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
 :root {
-  --bg: #0c0d12;
-  --surface: #14151c;
-  --surface-2: #1b1d27;
-  --surface-3: #232532;
-  --line: #262833;
-  --line-soft: #1f212b;
-  --txt: #e8e9ee;
-  --txt-dim: #9296a6;
-  --txt-faint: #5d6173;
-  --accent: #0EA5E9;
-  --accent-2: #0284C7;
-  --accent-soft: rgba(14,165,233,0.15);
-  --done: #3ecf8e;
-  --done-soft: #3ecf8e1c;
-  --blocked: #ff6b6b;
-  --blocked-soft: #ff6b6b1c;
-  --active: #ffb454;
-  --active-soft: #ffb4541c;
-  --r: 14px;
-  --mono: 'JetBrains Mono', ui-monospace, monospace;
-  --display: 'IBM Plex Sans', sans-serif;
-  /* Spune browserului în ce temă e pagina, ca widgeturile NATIVE (calendarul
-     lui <input type=date>, ceasul lui type=time, scrollbar-ele) să se randeze
-     în tonul corect. Fără asta, selectorul de dată apare alb pe tema închisă. */
+  /* Suprafete — ierarhia se face prin SALT TONAL, nu prin linii de 1px.
+     Vezi design/index.html: „regula fara linii", preluata din Apologetica. */
+  --bg: #0B0B0E;
+  --surface: #16161A;
+  --surface-2: #1E1E23;
+  /* Adancit, nu ridicat: piste de progres, jetoane, fundal de camp. Inainte
+     era mai deschis decat --surface, fiindca delimita prin contur. */
+  --surface-3: #101014;
+  /* --line a ramas doar unde o linie e obligatorie: tabbar, tabele, separatoare.
+     --line-soft e cvasi-invizibila — pentru regulile care n-au fost traduse. */
+  --line: #2A2A2E;
+  --line-soft: #1B1B1F;
+  --txt: #FAFAF9;
+  --txt-dim: #9C9CA2;
+  --txt-faint: #6B6B70;
+  --accent: #818CF8;
+  --accent-2: #6366F1;
+  --accent-soft: rgba(129,140,248,0.13);
+  --done: #63B79F;
+  --done-soft: rgba(99,183,159,0.13);
+  --blocked: #DF8B84;
+  --blocked-soft: rgba(223,139,132,0.13);
+  --active: #D9A661;
+  --active-soft: rgba(217,166,97,0.13);
+  /* Trei raze dupa rol, nu una peste tot: card / tichet-buton / jeton. */
+  --r: 16px;
+  --r-m: 10px;
+  --r-s: 6px;
+  /* Umbra ambientala — 24px de blur, o singura data. Inlocuieste chenarele. */
+  --amb: 0 6px 24px rgba(0,0,0,0.42);
+  --amb-lg: 0 18px 48px rgba(0,0,0,0.55);
+  /* Rampa de layere: o singura familie de nuante care se raceste, fiindca
+     adancimea dependentelor E o secventa. Indexata din JSX prin var(--layer-N),
+     ca fiecare tema sa aiba valorile ei (vezi src/lib/layerColors.ts). */
+  --layer-0: #8B93F7;
+  --layer-1: #7FA0DE;
+  --layer-2: #77ADC4;
+  --layer-3: #74B4AC;
+  --layer-4: #7BB79A;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --display: 'Literata', 'Iowan Old Style', Georgia, serif;
+  /* Spune browserului in ce tema e pagina, ca widgeturile NATIVE (calendarul
+     lui <input type=date>, ceasul lui type=time, scrollbar-ele) sa se randeze
+     in tonul corect. Fara asta, selectorul de data apare alb pe tema inchisa. */
   color-scheme: dark;
 }
 * {
@@ -43,7 +63,7 @@ body,
 body {
   background: var(--bg);
   color: var(--txt);
-  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-family: var(--display);
   font-size: 17px;
   line-height: 1.5;
   overflow: hidden;
@@ -70,30 +90,38 @@ button {
 
 /* LIGHT THEME */
 [data-theme='light'] {
-  --bg: #EEF2F7;
-  --field-bg: #EBF5FF;
+  --bg: #F7F9FC;
+  --field-bg: #FFFFFF;
   --surface: #FFFFFF;
-  --surface-2: #F5F8FC;
-  --surface-3: #F0F4F9;
-  --line: #D8E2EE;
-  --line-soft: #E8EFF7;
-  --txt: #0F1923;
-  --txt-dim: #374151;
-  --txt-faint: #6B7A8F;
-  --accent: #0284C7;
-  --accent-2: #0369A1;
-  --accent-soft: rgba(2,132,199,0.12);
-  --done: #059669;
-  --done-soft: rgba(5,150,105,0.12);
-  --blocked: #E11D48;
-  --blocked-soft: rgba(225,29,72,0.10);
-  --active: #D97706;
-  --active-soft: rgba(217,119,6,0.12);
-  --border-strong: #B8C9DF;
-  --placeholder: #9DAFC4;
-  --shadow-sm: 0 1px 3px rgba(15,25,35,0.07), 0 1px 2px rgba(15,25,35,0.04);
-  --shadow-md: 0 8px 24px rgba(15,25,35,0.09), 0 2px 8px rgba(15,25,35,0.05);
-  --shadow-lg: 0 24px 64px rgba(15,25,35,0.11), 0 4px 16px rgba(15,25,35,0.06);
+  --surface-2: #FFFFFF;
+  --surface-3: #E8EFF4;
+  --line: rgba(168,179,187,0.38);
+  --line-soft: rgba(168,179,187,0.18);
+  /* Niciodata negru pur: #29343A e textul „savant" din Apologetica. */
+  --txt: #29343A;
+  --txt-dim: #566168;
+  --txt-faint: #717C84;
+  --accent: #1A237E;
+  --accent-2: #151B60;
+  --accent-soft: rgba(26,35,126,0.08);
+  --done: #2F6B4F;
+  --done-soft: rgba(47,107,79,0.10);
+  --blocked: #A0333F;
+  --blocked-soft: rgba(160,51,63,0.09);
+  --active: #8A5A18;
+  --active-soft: rgba(138,90,24,0.10);
+  --border-strong: rgba(113,124,132,0.45);
+  --placeholder: #8B98A5;
+  --amb: 0 6px 24px rgba(41,52,58,0.06);
+  --amb-lg: 0 18px 48px rgba(41,52,58,0.10);
+  --shadow-sm: 0 1px 3px rgba(41,52,58,0.05);
+  --shadow-md: var(--amb);
+  --shadow-lg: var(--amb-lg);
+  --layer-0: #3A43A8;
+  --layer-1: #2F5C93;
+  --layer-2: #2A6E7E;
+  --layer-3: #2A756A;
+  --layer-4: #33795C;
   color-scheme: light;
 }
 
