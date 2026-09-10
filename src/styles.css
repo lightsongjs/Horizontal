@@ -4906,6 +4906,25 @@ svg.graph {
   box-shadow: none;
   opacity: 0.72;
 }
+/* Pe deschis, --surface-2 (#F0F4F8) e la doar (7,5,4)/255 de --bg (#F7F9FC) —
+   sub pragul de percepție ÎNAINTE de opacity. La un card normal diferența
+   brută e la fel de mică (--surface vs --bg), dar acolo separă --amb, umbra;
+   aici umbra tocmai a fost scoasă, iar opacity 0.72 mai amestecă înapoi 28%
+   din pagină, ducând diferența compusă la (5,4,3)/255 — fundal tehnic
+   ne-transparent, dar un spectru invizibil (vezi raportul Task 6 pentru
+   calculul complet). Fără chenar și fără umbră ca leviere aici, soluția
+   folosește celelalte două: continuăm rampa proprie a temei (mai închis) cu
+   color-mix DINCOLO de --surface-3 — ca la hover-ul lui .obst-row — și
+   cerem un opacity mai mare, ca diluția să nu mai toace exact separarea
+   câștigată. Compus: ~(211,216,220) pe (247,249,252) = diferență de
+   (36,33,32)/255, comod vizibil și tot mai stins decât un card normal (alb,
+   cu umbră) — deci rămâne „mai în spate", nu devine mai proeminent. */
+[data-theme='light'] .tk.blocat,
+[data-theme='light'] .list-row.blocat,
+[data-theme='light'] .card.blocat {
+  background: color-mix(in srgb, black 12%, var(--surface-3));
+  opacity: 0.85;
+}
 
 /* Jetonul de obstacol. Numele e `.obst-chip`, NU `.chip` — `.chip` există deja
    mai sus în acest fișier și e folosit de ThemesView, ProjectForm,
