@@ -52,7 +52,7 @@ const SHORTCUTS: { keys: string; action: string; where?: string }[] = [
   { keys: 'C', action: 'Tichet nou', where: 'în proiect' },
   { keys: 'O', action: 'Caută tichet', where: 'în proiect' },
   { keys: 'P', action: 'Proiect nou', where: 'admin' },
-  { keys: '1 2 3 4', action: 'Taburile List / Cards / Graf / Teme', where: 'în proiect' },
+  { keys: '1 2 3 4', action: 'Taburile List / Cards / Hartă / Teme', where: 'în proiect' },
   { keys: 'T', action: 'Tree view', where: 'în Cards' },
   { keys: 'H J K L', action: 'Navighează între tichete', where: 'în Cards / List' },
   { keys: '↵', action: 'Deschide tichetul focusat', where: 'în navigare' },
@@ -87,6 +87,26 @@ const RULES: { title: string; body: string }[] = [
   {
     title: 'Data din titlu',
     body: 'În adăugarea rapidă, fragmentul recunoscut se scoate din titlu. În formularul unui tichet NOU, câmpurile se completează dar titlul rămâne cum l-ai scris — ai butonul „curăță titlul". La editarea unui tichet existent recunoașterea tace, ca o retușare de titlu să nu schimbe planificarea.',
+  },
+  {
+    title: 'Obstacol vs. dependență',
+    body: 'Un obstacol nu are val și nu are layer — nu intră în calculul layerelor. E o condiție din afara muncii, nu muncă: layerul unui tichet nu se mișcă niciodată la depășirea unui obstacol.',
+  },
+  {
+    title: 'Obstacol depășit',
+    body: 'Rămâne pe hartă, tăiat, nu dispare. Harta arată tot ce a fost, nu doar ce mai blochează acum.',
+  },
+  {
+    title: '„Blochează" = nu',
+    body: 'Un obstacol poate exista fără să blocheze: se vede pe hartă și în foaia lui, dar nu stinge niciun tichet legat.',
+  },
+  {
+    title: 'Fără răspuns de N zile',
+    body: 'Se calculează de la prima trecere în starea „în așteptare", nu de la crearea obstacolului — un obstacol creat direct „depășit" nu are zile de așteptare.',
+  },
+  {
+    title: 'Ocolire goală',
+    body: 'Câmpul de ocolire gol înseamnă „nu are ocolire" — de-aia colțul din dreapta-sus al porții, pe hartă, nu e retezat decât atunci când chiar există un text de ocolire.',
   },
 ]
 

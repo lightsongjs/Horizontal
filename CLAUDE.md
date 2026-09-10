@@ -329,6 +329,37 @@ Pentru a itera pe sunet fără deploy: `tmp-calibrare/sunet/` (gitignorat) conț
 variantele randate în WAV cu aceeași sinteză. Nota actuală (E5, o singură notă) a
 fost aleasă prin ascultare comparativă.
 
+## Obstacole — a doua axă de blocare
+
+Un obstacol e o condiție din AFARA muncii, care trebuie să cadă înainte ca
+tichetele legate să pornească — nu e muncă. **N-are val și n-are layer:**
+`computeLayers` din `src/lib/engine.ts` rămâne neatins de întregul plan al
+obstacolelor — layerul unui tichet nu se mișcă niciodată la depășirea unui
+obstacol, altfel singurul lucru stabil din aplicație ar depinde de viteza cu
+care răspund alte echipe. Obstacolele sunt orthogonale pe axa val/layer: se
+văd pe hartă și în poarta valului, dar nu intră în niciun calcul de layer.
+
+Patru stări, nu trei și nu cinci: `necunoscut` (nu s-a întrebat încă),
+`asteptare` (s-a întrebat, se așteaptă răspuns — de aici pornește „fără
+răspuns de N zile"), `depasit` (condiția a căzut) și `ocolit` (condiția n-a
+căzut, dar munca poate porni pe altă cale). „Depășit" și „ocolit" sunt stări
+separate, nu un singur „rezolvat", fiindcă răspund la întrebări diferite: una
+spune „obstacolul nu mai există", cealaltă „există încă, dar l-am ocolit" — un
+raport care le-ar contopi ar minți despre ce chiar s-a rezolvat.
+
+`bypass !== null` e sursa unică a colțului retezat de pe hartă (`gatePath` din
+`MapView.tsx`). La salvare, `ObstacleForm.tsx` normalizează un câmp de ocolire
+gol (`''`) la `null` — gol înseamnă „nu are ocolire", nu „ocolire cu text
+gol", și de-aia un obstacol fără ocolire nu are colțul retezat.
+
+`blockedBy` din `src/lib/obstacles.ts` e **singura poartă** prin care UI-ul
+află că un tichet e blocat de un obstacol — nicio componentă nu recalculează
+asta pe cont propriu. Store-ul o memoizează în `blockedByObstacle`, iar
+`ObstacleChip`, `TicketCard`, `ListView` și titlul de layer din „Ordine" citesc
+toate doar rezultatul ei.
+
+Setup: `npm run migrate supabase/migration-obstacles.sql`.
+
 ## ticket-kit — sync (repo git separat)
 
 `ticket-kit/` are **propriul `.git`** (remote `github.com/lightsongjs/horizontal-ticket-kit`),

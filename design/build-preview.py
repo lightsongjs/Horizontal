@@ -56,7 +56,7 @@ def ic(name, size=18, cls=None):
 
 # ── Bucăți de DOM, cu aceleași clase ca în componente ────────────────────────
 def tk(tid, theme, theme_color, title, done=False, urgent=False, deps=None,
-       cross=0, due=None, late=False, state=''):
+       cross=0, due=None, late=False, state='', obst=None):
     cls = ' '.join(x for x in ('tk', state, 'done' if done else '') if x)
     meta = ('<span class="theme-dot" style="background:%s"></span>'
             '<span class="tk-id">%s</span><span class="tk-theme">%s</span>' % (theme_color, tid, theme))
@@ -73,6 +73,11 @@ def tk(tid, theme, theme_color, title, done=False, urgent=False, deps=None,
                 % (' late' if late else '', d,
                    '<span class="dc-time">%s</span>' % t if t else '',
                    '<span class="t-bell" aria-label="Are memento">%s</span>' % ic('bell', 12)))
+    if obst:
+        # `.obst-chip.blk` — ObstacleChip.tsx: aceeași informație pe card ȘI pe
+        # rând. Icon-ul e rolul „obstacle" din Icon.tsx, care rezolvă la
+        # octagon-alert.
+        sub += '<span class="obst-chip blk">%s%s</span>' % (ic('octagon-alert', 10), obst)
     return ('<button class="%s" data-title="%s">'
             '<span class="tk-check" role="checkbox" aria-checked="%s">%s</span>'
             '<div class="tk-meta">%s</div><h5>%s</h5>%s</button>'
@@ -118,7 +123,25 @@ WAVES = ('<div class="wave-sel"><div class="wave-tabs">'
          '<button class="wbtn wmanage" aria-label="Gestionează valuri"><span class="wname">%s</span><span class="wsub">valuri</span></button>'
          '</div></div>' % (ic('notepad-text', 18), ic('settings-2', 18)))
 
-ORDINE = WAVES + ''.join([
+# Poarta valului (WaveGate.tsx): obstacolele deschise ale valului activ, peste
+# layere — un obstacol deschis (TUR-B1, blochează) și unul depășit (TUR-B3,
+# arhiva „ce am depășit deja").
+WAVE_GATE = (
+    '<div class="wave-gate"><div class="wave-gate-top">%s'
+    '<span class="wave-gate-n">1</span>'
+    '<span class="wave-gate-l">obstacol deschis în acest val</span>'
+    '<span class="wave-gate-c">1 la alții</span></div>'
+    '<div class="obst-list">'
+    '<button class="obst-row"><span class="obst-row-id">TUR-B1</span>'
+    '<span class="obst-row-title">API key provider extern</span>'
+    '<span class="obst-row-own">Echipa API</span></button>'
+    '<button class="obst-row ok"><span class="obst-row-id">TUR-B3</span>'
+    '<span class="obst-row-title">Acces VPN clienți</span>'
+    '<span class="obst-row-own">depășit</span></button>'
+    '</div></div>' % ic('octagon-alert', 15)
+)
+
+ORDINE = WAVES + WAVE_GATE + ''.join([
     layer(0, '1', 'Începe aici', 'Nu depinde de nimic din acest val · 1 tichete',
           tk('TUR-01', 'Email', T['email'], 'Adresă email nouă pentru proiect', done=True), now=True),
     layer(1, '2', 'Layer 2', 'Depinde de layer 1 · 2 tichete',
@@ -128,10 +151,97 @@ ORDINE = WAVES + ''.join([
     layer(2, '3', 'Layer 3', 'Depinde de layer 2 · 2 tichete',
           tk('TUR-04', 'Email', T['email'], 'Webhook Supabase → Mailjet (verificare)',
              deps='TUR-02, TUR-03', due=('8 sep', None), late=True, state='blocked')
-          + tk('TUR-05', 'Supabase / DB', T['db'], 'Deploy pe Cloudflare + domeniu', deps='TUR-02', cross=1)),
+          # Card `.blocat` — blocat de obstacol, o axă independentă de starea
+          # de dependențe: același tichet ar putea fi ȘI „active"/„blocked" pe
+          # axa layerelor, ȘI „blocat" pe axa obstacolelor.
+          + tk('TUR-05', 'Supabase / DB', T['db'], 'Deploy pe Cloudflare + domeniu',
+               deps='TUR-02', cross=1, state='blocat', obst='TUR-B1 · Echipa API')),
     layer(3, '4', 'Layer 4', 'Depinde de layer 3 · 1 tichete',
           tk('TUR-06', 'Auth', T['auth'], 'Pagină SignUp / Înregistrare', deps='TUR-04', state='selected')),
 ])
+
+# ═══ ECRANUL „HARTĂ" ═════════════════════════════════════════════════════════
+# DOM real al MapView.tsx: o poartă deschisă, una cu ocolire (colț retezat),
+# una depășită (tăiată), două tichete, o muchie din fiecare ton (dep/blk/don)
+# și linia „azi". Coordonatele sunt puse de mână, nu prin layoutMap — bancul
+# arată markup-ul și clasele reale, nu reproduce algoritmul de layout.
+M_NODE_W, M_NODE_H, M_COL_GAP, M_ROW_GAP, M_PAD, M_TOP = 196, 52, 68, 24, 36, 112
+
+
+def gate_path(x, y, has_bypass):
+    """Port 1:1 al `gatePath` din MapView.tsx: muchia stângă teșită; colțul
+    dreapta-sus retezat doar dacă `bypass !== null`."""
+    c = 13
+    if has_bypass:
+        return ('M%d %d H%d L%d %d V%d H%d L%d %g Z'
+                 % (x + c, y, x + M_NODE_W - 14, x + M_NODE_W, y + 14, y + M_NODE_H, x + c, x, y + M_NODE_H / 2))
+    return ('M%d %d H%d V%d H%d L%d %g Z'
+             % (x + c, y, x + M_NODE_W, y + M_NODE_H, x + c, x, y + M_NODE_H / 2))
+
+
+def map_node(kind, nid, title, owner, x, y, bar, bypass=None, closed=False):
+    id_x = x + (26 if kind == 'obstacle' else 14)
+    disp = title if len(title) <= 24 else title[:23] + '…'
+    strike_end = min(id_x + len(disp) * 6.05, x + M_NODE_W - 12)
+    shape = ('<path class="map-obst" d="%s" />' % gate_path(x, y, bypass is not None)) if kind == 'obstacle' else (
+        '<rect class="map-tick" x="%d" y="%d" width="%d" height="%d" rx="10" />' % (x, y, M_NODE_W, M_NODE_H))
+    bar_x = x + 13 if kind == 'obstacle' else x
+    strike = ('<line class="map-strike" x1="%g" y1="%d" x2="%g" y2="%d" />' % (id_x, y + 34, strike_end, y + 34)
+               if closed else '')
+    return ('<g class="map-node" filter="url(#amb)">%s'
+            '<rect x="%d" y="%d" width="2.5" height="%d" fill="%s" />'
+            '<text class="map-id" x="%g" y="%d">%s</text>'
+            '<text class="map-own" x="%d" y="%d">%s</text>'
+            '<text class="map-title%s" x="%g" y="%d">%s</text>%s</g>'
+            % (shape, bar_x, y, M_NODE_H, bar, id_x, y + 19, nid, x + M_NODE_W - 12, y + 19, owner,
+               ' dim' if closed else '', id_x, y + 38, disp, strike))
+
+
+def map_edge(a, b, tone):
+    x1, y1 = a['x'] + M_NODE_W, a['y'] + M_NODE_H / 2
+    x2, y2 = b['x'], b['y'] + M_NODE_H / 2
+    dx = max(46, (x2 - x1) / 2.3)
+    d = 'M%g %g C%g %g %g %g %g %g' % (x1, y1, x1 + dx, y1, x2 - dx, y2, x2 - 9, y2)
+    head = 'M%g %g L%g %g L%g %g Z' % (x2 - 9, y2 - 4.5, x2 - 1, y2, x2 - 9, y2 + 4.5)
+    return '<g><path class="map-edge %s" d="%s" /><path class="map-head %s" d="%s" /></g>' % (tone, d, tone, head)
+
+
+def mnode(kind, nid, title, owner, x, y, bar, bypass=None, closed=False):
+    return {'kind': kind, 'id': nid, 'title': title, 'owner': owner, 'x': x, 'y': y,
+            'bar': bar, 'bypass': bypass, 'closed': closed}
+
+
+_M_COL1 = M_PAD + M_NODE_W + M_COL_GAP
+_M_O1 = mnode('obstacle', 'TUR-B1', 'API key provider extern', 'Echipa API', M_PAD, M_TOP, 'var(--blocked)')
+_M_O2 = mnode('obstacle', 'TUR-B2', 'Aviz juridic date personale', 'Juridic', M_PAD,
+               M_TOP + (M_NODE_H + M_ROW_GAP), 'var(--blocked)', bypass='Pornim cu date mock')
+_M_O3 = mnode('obstacle', 'TUR-B3', 'Acces VPN clienți', 'IT', M_PAD,
+               M_TOP + 2 * (M_NODE_H + M_ROW_GAP), 'var(--done)', closed=True)
+_M_I1 = mnode('issue', 'TUR-07', 'Config webhook plăți', '', _M_COL1, M_TOP, 'var(--active)')
+_M_I2 = mnode('issue', 'TUR-08', 'Trimite draft ofertă', '', _M_COL1, M_TOP + (M_NODE_H + M_ROW_GAP), 'var(--layer-1)')
+_M_NODES = [_M_O1, _M_O2, _M_O3, _M_I1, _M_I2]
+# O muchie din fiecare ton: dep (tichet → tichet), blk (obstacol deschis →
+# tichet), don (obstacol depășit → tichet).
+_M_EDGES = [(_M_I1, _M_I2, 'dep'), (_M_O1, _M_I1, 'blk'), (_M_O3, _M_I2, 'don')]
+
+_M_MAX_ROWS = 3
+_M_WIDTH = M_PAD * 2 + 1 * (M_NODE_W + M_COL_GAP) + M_NODE_W
+_M_HEIGHT = M_TOP + _M_MAX_ROWS * (M_NODE_H + M_ROW_GAP) + M_PAD
+_M_TODAY_X = _M_COL1 - 34
+
+HARTA = (
+    '<div class="map-wrap"><svg width="%d" height="%d" viewBox="0 0 %d %d">'
+    % (_M_WIDTH, _M_HEIGHT, _M_WIDTH, _M_HEIGHT)
+    + '<defs><filter id="amb" x="-25%" y="-40%" width="150%" height="190%">'
+      '<feDropShadow dx="0" dy="3" stdDeviation="7" flood-opacity="0.30" /></filter></defs>'
+    + '<line x1="%g" y1="16" x2="%g" y2="%d" stroke="var(--accent)" stroke-width="2" stroke-dasharray="2 5" />'
+      % (_M_TODAY_X, _M_TODAY_X, _M_HEIGHT - 12)
+    + '<text class="map-bandtxt" x="%g" y="14">AZI · 10 sept</text>' % (_M_TODAY_X + 8)
+    + ''.join(map_edge(a, b, tone) for a, b, tone in _M_EDGES)
+    + ''.join(map_node(n['kind'], n['id'], n['title'], n['owner'], n['x'], n['y'], n['bar'],
+                        bypass=n['bypass'], closed=n['closed']) for n in _M_NODES)
+    + '</svg></div>'
+)
 
 # ═══ ECRANUL „PROIECTE" ══════════════════════════════════════════════════════
 def proj(i, name, desc, pct, accent, tags=()):
@@ -363,7 +473,7 @@ CONTROALE = ''.join([
 
     g('File',
       '<div class="tabs"><button class="tab on">Ordine</button><button class="tab">Listă</button>'
-      '<button class="tab">Graf</button><button class="tab">Teme</button></div>'
+      '<button class="tab">Hartă</button><button class="tab">Teme</button></div>'
       '<button class="sh-dep-tab on">Depinde de</button><button class="sh-dep-tab">Blochează</button>'
       '<button class="dep-tab-btn on">Curente</button><button class="dep-tab-btn">Toate</button>'),
 
@@ -400,21 +510,58 @@ CONTROALE = ''.join([
       '<span class="qs-esc-badge">esc</span>'
       '<span class="qa-hint"><kbd>↵</kbd> adaugă</span>'
       '<div class="qs-footer"><kbd>↑↓</kbd> navighează <kbd>↵</kbd> deschide</div>'),
+
+    # CARRY-FORWARD (Task 9 → Task 12): `.seg`/`.seg.on`/`.srow`/`.skey`/`.sval`
+    # nu erau pe „Controale" — regresia „control fără fundal ȘI fără chenar"
+    # nu se putea vedea cu ochii pentru foaia obstacolului. Grupul de mai jos
+    # arată `.obst-row` (normal și `.ok`), `.obst-chip.blk` și `.card.blocat`.
+    g('Obstacole',
+      '<button class="obst-row"><span class="obst-row-id">TUR-B1</span>'
+      '<span class="obst-row-title">API key provider extern</span>'
+      '<span class="obst-row-own">Echipa API</span></button>'
+      '<button class="obst-row ok"><span class="obst-row-id">TUR-B3</span>'
+      '<span class="obst-row-title">Acces VPN clienți</span>'
+      '<span class="obst-row-own">depășit</span></button>'
+      '<span class="obst-chip blk">' + ic('octagon-alert', 10) + 'TUR-B1 · Echipa API</span>'
+      '<div class="card blocat" style="border-radius:var(--r-m);padding:10px 14px;min-width:210px">'
+      '<strong style="font-family:var(--display);font-size:13px">TUR-09 · card generic .card.blocat</strong></div>'),
+
+    # `.seg`/`.seg.on` — ambele stări, nu doar cea apăsată: neapăsat e cel mai
+    # probabil control invizibil din tot task-ul (fundal --surface-2, fără
+    # chenar). `.srow`/`.skey`/`.sval` — rândul „Blochează" din ObstacleForm,
+    # cu varianta mică `.seg.sm`.
+    g('Comutator segmentat',
+      '<div class="seg-row">'
+      '<button class="seg">necunoscut</button>'
+      '<button class="seg on">în așteptare</button>'
+      '<button class="seg">depășit</button>'
+      '<button class="seg">ocolit</button>'
+      '</div>'
+      '<div class="srow"><span class="skey">Blochează</span><span class="sval">'
+      '<button class="seg sm on">Da</button><button class="seg sm">Nu</button>'
+      '</span></div>'),
 ])
 
 SCREENS = {
     'ordine': ('Aplicație Turism', 'Ordine · val I', 'TU', True, True,
                '<div class="tabs"><button class="tab on">Ordine</button><button class="tab">Listă</button>'
-               '<button class="tab">Graf</button><button class="tab">Teme</button></div>'
+               '<button class="tab">Hartă</button><button class="tab">Teme</button></div>'
                '<div class="panel">' + ORDINE + '</div>'),
     'proiecte': ('Horizontal', 'Toate proiectele tale', 'H', False, True, PROIECTE),
     'azi': ('Azi', 'miercuri, 9 septembrie', None, False, False, '<div class="panel smart-list">' + AZI + '</div>'),
     'lista': ('Aplicație Turism', 'Listă · val I · panou lateral', 'TU', True, True,
               '<div class="tabs"><button class="tab">Ordine</button><button class="tab on">Listă</button>'
-              '<button class="tab">Graf</button><button class="tab">Teme</button></div>' + LISTA),
+              '<button class="tab">Hartă</button><button class="tab">Teme</button></div>' + LISTA),
     'lista-gol': ('Aplicație Turism', 'Listă · niciun tichet ales', 'TU', True, True,
                   '<div class="tabs"><button class="tab">Ordine</button><button class="tab on">Listă</button>'
-                  '<button class="tab">Graf</button><button class="tab">Teme</button></div>' + LISTA_GOL),
+                  '<button class="tab">Hartă</button><button class="tab">Teme</button></div>' + LISTA_GOL),
+    # MapView.tsx randează `.map-wrap` direct, fără `.panel` în jur — screen()
+    # pune deja tot corpul într-un singur `.view` (ca ProjectDetail.tsx), deci
+    # aici nu se mai adaugă alt înveliș.
+    'harta': ('Aplicație Turism', 'Hartă · toate valurile', 'TU', True, True,
+              '<div class="tabs"><button class="tab">Ordine</button><button class="tab">Listă</button>'
+              '<button class="tab on">Hartă</button><button class="tab">Teme</button></div>'
+              + HARTA),
     'controale': ('Controale', 'fiecare clasă, normal și activ', None, False, False,
                   '<div class="panel bench-gallery">' + CONTROALE + '</div>'),
 }
@@ -479,7 +626,8 @@ SHELL = """<!doctype html>
   .bench-row { display: flex; flex-wrap: wrap; gap: 9px; align-items: center; }
   .bench-row > .tabs, .bench-row > .bulk-bar, .bench-row > .toast,
   .bench-row > .banner, .bench-row > .layer-intro, .bench-row > .dep-card,
-  .bench-row > .fld, .bench-row > .qs-footer { width: 100%; }
+  .bench-row > .fld, .bench-row > .qs-footer,
+  .bench-row > .seg-row, .bench-row > .srow { width: 100%; }
   .bench-gallery .toast { position: static; transform: none; opacity: 1; }
   .bench-gallery .bulk-bar { position: static; transform: none; }
 </style>
@@ -491,6 +639,7 @@ SHELL = """<!doctype html>
   <button data-go="azi">Azi</button>
   <button data-go="lista">Listă</button>
   <button data-go="lista-gol">Listă · gol</button>
+  <button data-go="harta">Hartă</button>
   <button data-go="controale">Controale</button>
   <span class="sep"></span>
   <button id="bench-theme">Temă</button>
@@ -525,7 +674,7 @@ __TABBAR__
 """
 
 html = (SHELL
-        .replace('__SCREENS__', ''.join(screen(k) for k in ('ordine', 'proiecte', 'azi', 'lista', 'lista-gol', 'controale')))
+        .replace('__SCREENS__', ''.join(screen(k) for k in ('ordine', 'proiecte', 'azi', 'lista', 'lista-gol', 'harta', 'controale')))
         .replace('__TABBAR__', TABBAR))
 out = os.path.join(ROOT, 'design/preview.html')
 io.open(out, 'w', encoding='utf-8').write(html)
