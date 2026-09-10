@@ -2078,7 +2078,7 @@ describe('layoutMap', () => {
     expect(todayX).toBeLessThan(b.x)
   })
 
-  it('desenează o bandă per val prezent, în ordine', () => {
+  it('desenează o etichetă de val per val prezent, în ordine', () => {
     const issues = [mkIssue('A', [], 1), mkIssue('B', [], 2)]
     const waves = [
       { projectId: 'p', number: 1, name: 'Faza 0', label: '', position: 0 },
@@ -2148,7 +2148,18 @@ const d = `M${x1} ${y1} C${x1 + dx} ${y1} ${x2 - dx} ${y2} ${x2 - 9} ${y2}`
 
 - Linia „azi": `<line stroke="var(--accent)" strokeWidth="2" strokeDasharray="2 5">` plus eticheta „AZI · <dd luna>" în mono. **E informație, nu decor** — de-aia are voie să fie o linie.
 - Click pe un nod: `openIssue(id)` pentru tichete, `pushSheet({ kind: 'obstacle-form', obstacleId: id })` pentru obstacole.
-- Fără `feDropShadow`, fără gradient, fără chenar pe noduri. Umbra e pe `.map-wrap`, o singură dată.
+- **Valul e o ETICHETĂ, nu o cutie.** Un strip de 26px sus, `--surface-2`, cu numele în mono majuscule. **Nu** un dreptunghi pe toată înălțimea: ar avea exact tonul nodurilor de tichet (`--surface-2` și ele), iar pe tema închisă cardul ar rămâne fără fundal ȘI fără chenar — invizibil. Văzut prin randare în `prototype-web.html`, nu dedus.
+- **O umbră ambientală pe noduri**, o singură dată, fiindcă în SVG nu există `box-shadow` și `--surface-2` peste `--surface` singur nu ridică nimic:
+
+```tsx
+<defs>
+  <filter id="amb" x="-25%" y="-40%" width="150%" height="190%">
+    <feDropShadow dx="0" dy="3" stdDeviation="7" floodOpacity="0.30" />
+  </filter>
+</defs>
+```
+
+  Umbră NEUTRĂ, aplicată pe grupul nodului. Nu cele două `feDropShadow` colorate din vechiul `GraphView` — acelea erau strălucire, adică decor. Fără gradient și fără chenar pe noduri.
 - Pe proiect gol: `<p className="empty">Niciun tichet de afișat pe hartă. Adaugă tichete în „Ordine".</p>`
 - Containerul: `<div className="map-wrap">` cu `overflow-x: auto` — harta are voie să fie mai lată decât ecranul, ca tabelele și diagramele; pagina nu.
 
