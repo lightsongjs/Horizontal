@@ -4949,6 +4949,101 @@ svg.graph {
 .obst-chip.ok { background: var(--done-soft); color: var(--done); }
 .obst-chip.acc { background: var(--accent-soft); color: var(--accent); }
 
+/* ── FOAIA OBSTACOLULUI (ObstacleForm) ──────────────────────────────
+   Titlul unui tichet legat poate fi lung — spre deosebire de un id scurt,
+   deci textul jetonului capătă propriul span cu elipsă, ca × să nu fie
+   împins în afara jetonului sau să rupă rândul. */
+.dep-selected .obst-chip { max-width: 100%; padding-right: 4px; }
+.obst-chip-t {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 240px;
+}
+.obst-chip-x {
+  display: inline-flex;
+  align-items: center;
+  background: none;
+  border: none;
+  color: inherit;
+  opacity: 0.55;
+  padding: 1px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.obst-chip-x:hover { opacity: 1; }
+
+/* .seg — buton segmentat (Stare, Dovadă, Blochează). Regula 3
+   (design/index.html): starea activă se marchează cu text plin pe --accent
+   plus o linie de 2px dedesubt, NICIODATĂ cu o casetă umplută sau gradient —
+   fundalul rămâne identic în repaus și selectat. Fundalul de repaus e
+   --surface-2, un salt față de --surface pe care stă foaia: fără saltul
+   ăsta, un buton neselectat n-ar avea nici fundal, nici chenar — exact
+   regresia de care se leagă bancul de probă. */
+.seg-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.seg {
+  padding: 7px 12px;
+  border-radius: var(--r-s);
+  background: var(--surface-2);
+  color: var(--txt-dim);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: background 0.13s, color 0.13s, border-color 0.13s;
+}
+.seg:hover { background: var(--surface-3); color: var(--txt); }
+.seg.on {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 700;
+}
+.seg.sm { padding: 5px 14px; }
+
+/* .srow/.skey/.sval — rând de setare simplă (etichetă + control). Singura
+   linie decorativă e separatorul de rând — permis de regula 1 (separator de
+   rând, nu chenar de bloc). */
+.srow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+.srow:last-child { border-bottom: none; }
+.skey {
+  font-family: var(--display);
+  font-size: 14.5px;
+  color: var(--txt);
+}
+.sval {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.obst-wait {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--txt-faint);
+  margin: 6px 0 4px;
+}
+.obst-help {
+  font-size: 12.5px;
+  color: var(--txt-faint);
+  margin: 2px 0 4px;
+  line-height: 1.5;
+}
+
 /* HARTĂ */
 .map-wrap {
   background: var(--surface);

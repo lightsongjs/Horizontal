@@ -6,6 +6,7 @@ import { ProjectForm } from './ProjectForm'
 import { ProjectSettings } from './ProjectSettings'
 import { WaveManager } from './WaveManager'
 import { ThemeManager } from './ThemeManager'
+import { ObstacleForm } from './ObstacleForm'
 import { Icon } from './Icon'
 
 export function SheetHost() {
@@ -19,7 +20,8 @@ export function SheetHost() {
     sheet.kind === 'project-form' ||
     sheet.kind === 'project-settings' ||
     sheet.kind === 'wave-manage' ||
-    sheet.kind === 'theme-manage'
+    sheet.kind === 'theme-manage' ||
+    sheet.kind === 'obstacle-form'
 
   useEffect(() => {
     if (!open) return
@@ -54,6 +56,9 @@ export function SheetHost() {
         {sheet.kind === 'project-settings' && <ProjectSettings />}
         {sheet.kind === 'wave-manage' && <WaveManager />}
         {sheet.kind === 'theme-manage' && <ThemeManager />}
+        {sheet.kind === 'obstacle-form' && (
+          <ObstacleForm key={sheet.obstacleId ?? '__new__'} obstacleId={sheet.obstacleId} />
+        )}
       </div>
     </>
   )
