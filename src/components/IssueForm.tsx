@@ -323,6 +323,7 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
   const [confirmDel, setConfirmDel] = useState(false)
   const [cycleMsg, setCycleMsg] = useState<string | null>(null)
   const [waveError, setWaveError] = useState<string | null>(null)
+  const [obstacleError, setObstacleError] = useState<string | null>(null)
   const [confirmClose, setConfirmClose] = useState(false)
   const [depTab, setDepTab] = useState<'necesita' | 'permite' | 'obstacole'>('necesita')
   const [showAssigneeInline, setShowAssigneeInline] = useState(false)
@@ -646,7 +647,7 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
     if (!canWrite || !title.trim() || saving || waves.length === 0) return
     const cyc = cycleAfterSave()
     if (cyc) { setCycleMsg(cyc); return }
-    setCycleMsg(null); setSaving(true)
+    setCycleMsg(null); setObstacleError(null); setSaving(true)
     try {
       const draftDepMap: Record<string, string> = {}
       for (const d of draftDeps) {
@@ -662,6 +663,24 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
           draftBlockMap[d.tempId] = created.id
         }
       }
+      // Obstacolele ciornă se creează înaintea tichetului însuși — la fel ca
+      // draftDeps/draftBlocks mai sus — ca un eșec aici să oprească salvarea
+      // înainte ca tichetul să fi fost scris, nu la jumătate de mutație.
+      // `createObstacle` întoarce `null` doar când n-are proiect activ (store,
+      // `if (!projectId) return null`) — practic inatins cât timp formularul e
+      // randat (`if (!project) return null` mai sus îl garantează), dar tot nu
+      // trecem tăcut peste: titlul tastat rămâne exact cum l-a scris userul
+      // (nu atingem `obstIds`/`draftObstacles`), iar `setIssueObstacles` nu se
+      // mai cheamă deloc — tichetul nu iese legat de un set parțial.
+      const realObstIds: string[] = []
+      for (const id of obstIds) {
+        const draft = draftObstacles.find((d) => d.tempId === id)
+        if (!draft) { realObstIds.push(id); continue }
+        const created = await createObstacle({ title: draft.title })
+        if (created) { realObstIds.push(created.id); continue }
+        setObstacleError(`Nu am putut crea obstacolul „${draft.title}". Tichetul nu s-a salvat — încearcă din nou.`)
+        return
+      }
       const realDeps = deps.map((id) => draftDepMap[id] ?? (id.startsWith('__draft_') ? null : id)).filter(Boolean) as string[]
       const qaPayload = {
         selectors: selectors.filter(Boolean), scenarios, notes: notes.trim(), assigneeId, urgent,
@@ -670,14 +689,6 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
       const targetId = isEdit
         ? (await updateIssue(existing!.id, { title: title.trim(), desc: desc.trim(), theme, wave, deps: realDeps, ...qaPayload }), existing!.id)
         : (await createIssue({ projectId: project.id, title: title.trim(), desc: desc.trim(), theme, wave, deps: realDeps, ...qaPayload })).id
-      // Obstacolele ciornă se creează întâi, ca setul final să fie de id-uri reale.
-      const realObstIds: string[] = []
-      for (const id of obstIds) {
-        const draft = draftObstacles.find((d) => d.tempId === id)
-        if (!draft) { realObstIds.push(id); continue }
-        const created = await createObstacle({ title: draft.title })
-        if (created) realObstIds.push(created.id)
-      }
       await setIssueObstacles(targetId, realObstIds)
       const realBlocks = blocks.map((id) => draftBlockMap[id] ?? (id.startsWith('__draft_') ? null : id)).filter(Boolean) as string[]
       const currentBlockers = issues.filter((i) => i.deps?.includes(targetId)).map((i) => i.id)
@@ -1275,7 +1286,7 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
                         <span className="dep-card-id">nou</span>
                         <span className="dep-card-title">{d.title}</span>
                       </div>
-                      <button className="dep-card-x" onClick={() => removeCurrentDraft(d)} aria-label="Scoate dependența"><Icon name="close" size={12} /></button>
+                      <button className="dep-card-x" onClick={() => removeCurrentDraft(d)} aria-label={depTab === 'obstacole' ? 'Scoate obstacolul' : 'Scoate dependența'}><Icon name="close" size={12} /></button>
                     </div>
                   ))}
                 </div>
@@ -1356,6 +1367,9 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
         )}
         {waveError && (
           <div className="banner" style={{ marginTop: 12 }}>⚠ {waveError}</div>
+        )}
+        {obstacleError && (
+          <div className="banner" style={{ marginTop: 12 }}>⚠ {obstacleError}</div>
         )}
       </div>
 
