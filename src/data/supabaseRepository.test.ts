@@ -100,13 +100,33 @@ const { fakeDb } = vi.hoisted(() => {
     reset() { this.removed = [] }
   }
   class FakeDB {
-    tables: Record<string, Row[]> = { projects: [], waves: [], themes: [], issues: [], dependencies: [], attachments: [] }
+    tables: Record<string, Row[]> = {
+      projects: [],
+      waves: [],
+      themes: [],
+      issues: [],
+      dependencies: [],
+      attachments: [],
+      obstacles: [],
+      obstacle_issues: [],
+      obstacle_deps: [],
+    }
     storage = new FakeStorage()
     from(table: string) {
       return new Query(this.tables, table)
     }
     reset() {
-      this.tables = { projects: [], waves: [], themes: [], issues: [], dependencies: [], attachments: [] }
+      this.tables = {
+        projects: [],
+        waves: [],
+        themes: [],
+        issues: [],
+        dependencies: [],
+        attachments: [],
+        obstacles: [],
+        obstacle_issues: [],
+        obstacle_deps: [],
+      }
       this.storage.reset()
     }
   }
@@ -258,6 +278,52 @@ describe('supabaseRepository', () => {
 
     expect(fakeDb.tables.projects).toEqual([])
     expect(fakeDb.storage.removed.flat().sort()).toEqual(['p/P-01/a1', 'p/P-02/a2'])
+  })
+
+  it('updateObstacle NU rescrie resolved_at când obstacolul e deja închis', async () => {
+    fakeDb.tables.obstacles.push({
+      id: 'P-O01',
+      project_id: 'p',
+      title: 'Cine e utilizatorul',
+      detail: '',
+      owner: '',
+      state: 'depasit',
+      blocking: true,
+      bypass: null,
+      evidence: 'necunoscut',
+      asked_at: null,
+      resolved_at: '2026-01-01T00:00:00.000Z',
+      position: 0,
+    })
+    const repo = createSupabaseRepository()
+
+    const updated = await repo.updateObstacle('P-O01', { title: 'Cine e utilizatorul, mai clar', state: 'depasit' })
+
+    expect(updated.resolvedAt).toBe('2026-01-01T00:00:00.000Z')
+    expect(fakeDb.tables.obstacles[0].resolved_at).toBe('2026-01-01T00:00:00.000Z')
+  })
+
+  it('updateObstacle pune resolved_at la tranziția în stare închisă', async () => {
+    fakeDb.tables.obstacles.push({
+      id: 'P-O01',
+      project_id: 'p',
+      title: 'Cine e utilizatorul',
+      detail: '',
+      owner: '',
+      state: 'asteptare',
+      blocking: true,
+      bypass: null,
+      evidence: 'necunoscut',
+      asked_at: null,
+      resolved_at: null,
+      position: 0,
+    })
+    const repo = createSupabaseRepository()
+
+    const updated = await repo.updateObstacle('P-O01', { state: 'depasit' })
+
+    expect(updated.resolvedAt).not.toBeNull()
+    expect(fakeDb.tables.obstacles[0].resolved_at).not.toBeNull()
   })
 
   it('un eșec la ștergerea octeților NU face ștergerea tichetului să pară eșuată', async () => {

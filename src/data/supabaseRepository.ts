@@ -444,9 +444,10 @@ export function createSupabaseRepository(): Repository {
     },
 
     async listObstacleLinks(projectId: string): Promise<ObstacleLink[]> {
-      // Un singur round trip: filtrăm pe project_id prin join implicit, ca la
-      // `dependencies`. RLS ar întoarce oricum doar proiectele accesibile, dar
-      // fără filtru am aduce obstacolele TUTUROR proiectelor userului.
+      // Două interogări secvențiale, nu una: filtrul pe project_id trăiește pe
+      // `obstacles`, nu pe `obstacle_issues`, deci trebuie aflate întâi id-urile
+      // obstacolelor proiectului — altfel am aduce legăturile TUTUROR
+      // proiectelor userului.
       const { data: mine, error: oErr } = await db.from('obstacles').select('id').eq('project_id', projectId)
       if (oErr) throw oErr
       const ids = (mine ?? []).map((r) => r.id)
@@ -517,7 +518,15 @@ export function createSupabaseRepository(): Repository {
       if (patch.state !== undefined) {
         row.state = patch.state
         const closed = patch.state === 'depasit' || patch.state === 'ocolit'
-        row.resolved_at = closed ? new Date().toISOString() : null
+        // `resolved_at` e răspunsul la „când s-a depășit" — o rescriere la
+        // fiecare salvare transformă o dată într-o minciună. Se citește
+        // rândul curent, ca resend-ul aceleiași stări închise să păstreze
+        // timestamp-ul, nu doar tranziția în stare închisă să-l pună.
+        const { data: cur, error: cErr } = await db.from('obstacles').select('state, resolved_at').eq('id', id).single()
+        if (cErr) throw cErr
+        const prev = cur as { state: string; resolved_at: string | null } | null
+        const wasClosed = prev?.state === 'depasit' || prev?.state === 'ocolit'
+        row.resolved_at = closed ? (wasClosed && prev?.resolved_at ? prev.resolved_at : new Date().toISOString()) : null
       }
       if (Object.keys(row).length) {
         const { error } = await db.from('obstacles').update(row).eq('id', id)
