@@ -45,3 +45,27 @@ describe('buildOrderedLayers', () => {
     ])
   })
 })
+
+describe('tichetele blocate de obstacol', () => {
+  it('coboară la finalul layerului, sub cele libere', () => {
+    const byId = { A: issue('A'), B: issue('B'), C: issue('C'), D: issue('D') }
+    const layers: Layers = { 0: ['A', 'B', 'C', 'D'] }
+    const blocked = new Set(['A', 'C'])
+    expect(buildOrderedLayers(layers, byId, false, blocked)[0].ids).toEqual(['B', 'D', 'A', 'C'])
+  })
+
+  it('urgența bate ordinea de blocare doar între tichete libere', () => {
+    // Un tichet urgent DAR blocat nu are ce să facă sus: e o promisiune pe care
+    // lista n-o poate ține. Urgența ordonează în interiorul fiecărei grupe.
+    const byId = { A: issue('A'), U: issue('U', { urgent: true }), V: issue('V', { urgent: true }) }
+    const layers: Layers = { 0: ['A', 'U', 'V'] }
+    const blocked = new Set(['U'])
+    expect(buildOrderedLayers(layers, byId, false, blocked)[0].ids).toEqual(['V', 'A', 'U'])
+  })
+
+  it('fără al patrulea argument se comportă exact ca înainte', () => {
+    const byId = { A: issue('A'), B: issue('B') }
+    const layers: Layers = { 0: ['A', 'B'] }
+    expect(buildOrderedLayers(layers, byId, false)[0].ids).toEqual(['A', 'B'])
+  })
+})

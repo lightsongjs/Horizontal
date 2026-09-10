@@ -111,8 +111,12 @@ export function useSidebarCollapsed(): [boolean, () => void] {
 
 /** Layer groups for the active wave, urgent-first, optionally hiding done. */
 export function useOrderedLayers(hideDone: boolean): OrderedLayer[] {
-  const { layers, byId } = useHorizontal()
-  return useMemo(() => buildOrderedLayers(layers, byId, hideDone), [layers, byId, hideDone])
+  const { layers, byId, blockedByObstacle } = useHorizontal()
+  const blockedIds = useMemo(() => new Set(Object.keys(blockedByObstacle)), [blockedByObstacle])
+  return useMemo(
+    () => buildOrderedLayers(layers, byId, hideDone, blockedIds),
+    [layers, byId, hideDone, blockedIds],
+  )
 }
 
 export interface WaveActions {
