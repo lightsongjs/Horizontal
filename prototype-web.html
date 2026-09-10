@@ -1,0 +1,603 @@
+<!doctype html>
+<html lang="ro" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Horizontal — obstacole, desktop</title>
+<!-- CSS-ul REAL al aplicației. Ce se vede aici e ce se vede în aplicație. -->
+<link rel="stylesheet" href="src/styles.css">
+<style>
+/* ══ DOAR clasele care nu există încă în src/styles.css ══════════════ */
+
+/* Poarta valului */
+.wave-gate{background:var(--surface);border-radius:var(--r);box-shadow:var(--amb);
+  padding:13px 16px;margin:0 0 22px}
+.wave-gate-top{display:flex;align-items:center;gap:9px;color:var(--blocked)}
+.wave-gate-n{font-family:var(--mono);font-size:13px;font-weight:600}
+.wave-gate-l{flex:1;font-size:14px;color:var(--txt)}
+.wave-gate-c{font-family:var(--mono);font-size:10px;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--txt-faint)}
+.obst-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));
+  gap:6px;margin:12px 0 0}
+.obst-row{display:flex;align-items:center;gap:10px;width:100%;padding:9px 11px;
+  border:0;border-radius:var(--r-s);background:var(--surface-3);color:var(--txt);
+  font-family:inherit;text-align:left;cursor:pointer}
+.obst-row:hover{background:var(--surface-2)}
+.obst-row-id{font-family:var(--mono);font-size:10.5px;font-weight:600;
+  color:var(--blocked);min-width:62px}
+.obst-row.ok .obst-row-id{color:var(--done)}
+.obst-row-title{flex:1;font-size:13.5px;min-width:0;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.obst-row.ok .obst-row-title{color:var(--txt-faint);text-decoration:line-through}
+.obst-row-own{font-family:var(--mono);font-size:9.5px;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--txt-faint);flex:none}
+
+/* Cardul și rândul blocate: salt de fundal, fără chenar */
+.tk.blocat,.list-row.blocat{background:var(--surface-2);box-shadow:none;opacity:.74}
+.tk.blocat h5{color:var(--txt-dim)}
+
+/* Jetonul „blocat de" */
+.ochip{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);
+  font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;padding:3px 7px;
+  border-radius:var(--r-s);background:var(--blocked-soft);color:var(--blocked)}
+.ochip.acc{background:var(--accent-soft);color:var(--accent)}
+.ochip.ok{background:var(--done-soft);color:var(--done)}
+
+/* Harta */
+.map-wrap{background:var(--surface);border-radius:var(--r);box-shadow:var(--amb);
+  overflow-x:auto;overflow-y:hidden}
+.map-band{fill:var(--surface-2)}
+.map-bandtxt{font-family:var(--mono);font-size:10px;letter-spacing:.14em;
+  text-transform:uppercase;fill:var(--txt-faint)}
+.map-id{font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;
+  text-transform:uppercase;fill:var(--txt-faint)}
+.map-own{font-family:var(--mono);font-size:9px;letter-spacing:.07em;
+  text-transform:uppercase;fill:var(--txt-faint);text-anchor:end}
+.map-title{font-family:var(--display);font-size:12.5px;fill:var(--txt)}
+.map-title.dim{fill:var(--txt-dim)}
+.map-tick{fill:var(--surface-2)}
+.map-obst{fill:var(--surface-3)}
+.map-edge{fill:none;stroke-width:1.5}
+.map-edge.dep{stroke:var(--txt-faint);opacity:.4}
+.map-edge.blk{stroke:var(--blocked);opacity:.6;stroke-dasharray:5 4}
+.map-edge.don{stroke:var(--done);opacity:.45}
+.map-head.dep{fill:var(--txt-faint);opacity:.4}
+.map-head.blk{fill:var(--blocked);opacity:.7}
+.map-head.don{fill:var(--done);opacity:.5}
+.map-strike{stroke:var(--done);stroke-width:1.2;opacity:.8}
+.map-today{stroke:var(--accent);stroke-width:2;stroke-dasharray:2 5;opacity:.85}
+.map-todaytxt{font-family:var(--mono);font-size:10px;letter-spacing:.13em;
+  text-transform:uppercase;fill:var(--accent)}
+.map-node{cursor:pointer}
+.map-node:hover .map-tick,.map-node:hover .map-obst{fill:var(--surface-3)}
+.map-legend{display:flex;flex-wrap:wrap;gap:10px 24px;padding:14px 4px 0}
+.map-legend div{display:flex;align-items:center;gap:8px;font-size:12.5px;
+  color:var(--txt-dim)}
+
+/* Foaia obstacolului */
+.of-row{display:flex;gap:14px;padding:12px 0;border-top:1px solid var(--line-soft)}
+.of-row:first-of-type{border-top:0}
+.of-key{font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--txt-faint);width:112px;flex:none;padding-top:4px}
+.of-val{flex:1;min-width:0;font-size:14.5px}
+.of-val .of-sub{display:block;font-size:13px;color:var(--txt-dim);
+  margin-top:3px;line-height:1.55}
+.of-seg{display:flex;margin:0}
+.of-seg button{font-family:var(--mono);font-size:10px;letter-spacing:.08em;
+  text-transform:uppercase;padding:7px 12px;border:0;background:transparent;
+  color:var(--txt-faint);cursor:pointer;border-bottom:2px solid transparent}
+.of-seg button[aria-pressed=true]{color:var(--txt);border-bottom-color:var(--accent)}
+.of-wait{font-family:var(--mono);font-size:10.5px;color:var(--blocked);
+  letter-spacing:.06em;margin-top:7px;display:block}
+.of-input{width:100%;background:var(--field-bg,var(--surface-2));color:var(--txt);
+  font-family:var(--display);font-size:14.5px;padding:9px 11px;
+  border:1px solid var(--line);border-radius:var(--r-m)}
+.of-input::placeholder{color:var(--txt-faint)}
+textarea.of-input{resize:vertical;min-height:70px;line-height:1.55}
+.of-chips{display:flex;flex-wrap:wrap;gap:6px}
+.of-toggle{display:flex;align-items:center;gap:10px}
+.of-sw{width:38px;height:21px;border-radius:11px;background:var(--accent);
+  position:relative;flex:none;border:0;cursor:pointer}
+.of-sw::after{content:'';position:absolute;top:2.5px;right:2.5px;width:16px;
+  height:16px;border-radius:50%;background:var(--on-accent)}
+.of-sw[aria-pressed=false]{background:var(--surface-3)}
+.of-sw[aria-pressed=false]::after{right:auto;left:2.5px;background:var(--txt-faint)}
+
+/* Selectorul de obstacole din formularul tichetului */
+.dep-drop{position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:30;
+  background:var(--surface);border-radius:var(--r-m);box-shadow:var(--amb-lg);
+  padding:6px;max-height:260px;overflow-y:auto}
+.dep-drop-row{display:flex;align-items:center;gap:9px;width:100%;padding:8px 9px;
+  border:0;border-radius:var(--r-s);background:transparent;color:var(--txt);
+  font-family:inherit;text-align:left;font-size:13.5px;cursor:pointer}
+.dep-drop-row:hover,.dep-drop-row.hl{background:var(--surface-2)}
+.dep-drop-id{font-family:var(--mono);font-size:10px;color:var(--txt-faint);min-width:62px}
+.dep-drop-own{font-family:var(--mono);font-size:9px;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--txt-faint)}
+.dep-drop-new{color:var(--accent);border-top:1px solid var(--line-soft);
+  margin-top:4px;padding-top:10px;border-radius:0}
+.ocard{display:flex;align-items:stretch;background:var(--surface-3);
+  border-radius:var(--r-m);overflow:hidden;margin-bottom:7px}
+.ocard-bar{width:2.5px;flex:none;background:var(--blocked)}
+.ocard-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;
+  padding:9px 11px;border:0;background:transparent;color:var(--txt);
+  font-family:inherit;text-align:left;cursor:pointer}
+.ocard-top{display:flex;align-items:center;gap:8px}
+.ocard-id{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;
+  color:var(--txt-faint)}
+.ocard-own{font-family:var(--mono);font-size:9px;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--txt-faint);margin-left:auto}
+.ocard-title{font-size:13.5px;line-height:1.35}
+.ocard-x{border:0;background:transparent;color:var(--txt-faint);cursor:pointer;
+  padding:0 11px}
+.ocard-x:hover{color:var(--blocked)}
+.ocard.draft .ocard-bar{background:var(--accent)}
+.ocard.draft .ocard-id{color:var(--accent)}
+
+/* ══ cadrul de prezentare (nu face parte din aplicație) ═════════════ */
+.bench{position:fixed;top:0;left:0;right:0;height:42px;z-index:400;display:flex;
+  align-items:center;gap:2px;padding:0 12px;background:var(--surface-2);
+  box-shadow:var(--amb)}
+.bench button{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;
+  text-transform:uppercase;padding:7px 13px;border:0;border-radius:var(--r-s);
+  background:transparent;color:var(--txt-faint);cursor:pointer}
+.bench button:hover{color:var(--txt)}
+.bench button.on{color:var(--txt);background:var(--surface-3)}
+.bench .sp{flex:1}
+body{padding-top:42px}
+#app{height:calc(100dvh - 42px)!important}
+.sidebar{height:calc(100dvh - 42px)!important}
+.app-body{height:calc(100dvh - 42px)!important}
+.bench-screen[hidden]{display:none}
+</style>
+</head>
+<body>
+
+<div class="bench">
+  <button data-go="ordine" class="on">Ordine</button>
+  <button data-go="harta">Hartă</button>
+  <button data-go="lista">Listă · panou</button>
+  <button data-go="foaie">Foaia obstacolului</button>
+  <span class="sp"></span>
+  <button id="bt">Temă</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section class="bench-screen" data-screen="ordine">
+<div id="app">
+  <aside class="sidebar" data-sb></aside>
+  <div class="app-body">
+    <header data-hdr data-crumb="Ordine · Faza 0"></header>
+    <main>
+      <div class="view">
+        <div class="tabs">
+          <button class="tab on">Ordine</button><button class="tab">Listă</button>
+          <button class="tab">Hartă</button><button class="tab">Teme</button>
+        </div>
+        <div class="panel">
+          <div class="wave-sel"><div class="wave-tabs" data-waves data-active="1"></div></div>
+
+          <div class="wave-gate">
+            <div class="wave-gate-top">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16h.01"/><path d="M12 8v4"/><path d="M15.312 2a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586l-4.688-4.688A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2z"/></svg>
+              <span class="wave-gate-n">5</span>
+              <span class="wave-gate-l">obstacole deschise în acest val</span>
+              <span class="wave-gate-c">4 la alții</span>
+            </div>
+            <div class="obst-list">
+              <button class="obst-row"><span class="obst-row-id">MCP-O01</span><span class="obst-row-title">Nu există endpoint de listare a facturilor</span><span class="obst-row-own">16 zile</span></button>
+              <button class="obst-row"><span class="obst-row-id">MCP-O02</span><span class="obst-row-title">Care firmă? CIF la conectare sau parametru</span><span class="obst-row-own">6 zile</span></button>
+              <button class="obst-row"><span class="obst-row-id">MCP-O03</span><span class="obst-row-title">Owner și rotație de gardă nenumite</span><span class="obst-row-own">Management</span></button>
+              <button class="obst-row"><span class="obst-row-id">MCP-O04</span><span class="obst-row-title">Cine e utilizatorul țintă</span><span class="obst-row-own">PM</span></button>
+              <button class="obst-row"><span class="obst-row-id">MCP-O05</span><span class="obst-row-title">DPA permite sub-procesor ales de client?</span><span class="obst-row-own">3 zile</span></button>
+              <button class="obst-row ok"><span class="obst-row-id">MCP-O06</span><span class="obst-row-title">Revizia de protocol 2026-07-28</span><span class="obst-row-own">depășit</span></button>
+            </div>
+          </div>
+
+          <div class="layer ready" style="--layer-color: var(--layer-0)">
+            <div class="layer-head">
+              <div class="layer-num">1</div>
+              <div><h4>Începe aici</h4><div class="sub">Nu depinde de nimic din acest val · se poate începe · 5 din 6</div></div>
+              <span class="badge-now">Acum</span>
+            </div>
+            <button class="tk done"><span class="tk-check" role="checkbox" aria-checked="true" data-ic="done"></span><div class="tk-meta"><span class="theme-dot" style="background:#7BB79A"></span><span class="tk-id">MCP-03</span><span class="tk-theme">Distribuție</span></div><h5>Revendică scope-ul npm @smartbill</h5></button>
+            <button class="tk done"><span class="tk-check" role="checkbox" aria-checked="true" data-ic="done"></span><div class="tk-meta"><span class="theme-dot" style="background:#7BB79A"></span><span class="tk-id">MCP-04</span><span class="tk-theme">Distribuție</span></div><h5>Tichet DNS TXT pentru ro.smartbill</h5></button>
+            <button class="tk done"><span class="tk-check" role="checkbox" aria-checked="true" data-ic="done"></span><div class="tk-meta"><span class="theme-dot" style="background:#818CF8"></span><span class="tk-id">MCP-05</span><span class="tk-theme">Protocol</span></div><h5>Decizie de SDK și de revizie de protocol</h5></button>
+            <button class="tk active"><span class="tk-check" role="checkbox" aria-checked="false" data-ic="circle"></span><div class="tk-meta"><span class="theme-dot" style="background:#818CF8"></span><span class="tk-id">MCP-02</span><span class="tk-theme">Măsurători</span><span class="tk-urgent" data-ic="zap"></span></div><h5>Oracol: convertorul Notion peste specul nostru</h5><span class="tk-sub"><span class="ochip acc" data-ic-pre="bypass">deblochează MCP-O07</span><span class="due-chip"><span class="dc-date">12 sep</span></span></span></button>
+            <button class="tk active"><span class="tk-check" role="checkbox" aria-checked="false" data-ic="circle"></span><div class="tk-meta"><span class="theme-dot" style="background:#77ADC4"></span><span class="tk-id">MCP-06</span><span class="tk-theme">Operare</span></div><h5>Model de cost pentru traficul generat de modele</h5></button>
+            <button class="tk blocat"><span class="tk-check" role="checkbox" aria-checked="false" data-ic="circle"></span><div class="tk-meta"><span class="theme-dot" style="background:#DF8B84"></span><span class="tk-id">MCP-07</span><span class="tk-theme">Juridic</span></div><h5>Pre-citire juridică pe fluxul de date către model</h5><span class="tk-sub"><span class="ochip" data-ic-pre="obstacle">MCP-O05 · Juridic</span></span></button>
+          </div>
+
+          <div class="layer" style="--layer-color: var(--layer-1)">
+            <div class="layer-head">
+              <div class="layer-num">2</div>
+              <div><h4>Layer 2</h4><div class="sub">Depinde de layer 1 · se poate începe · 1 din 2</div></div>
+            </div>
+            <button class="tk active"><span class="tk-check" role="checkbox" aria-checked="false" data-ic="circle"></span><div class="tk-meta"><span class="theme-dot" style="background:#818CF8"></span><span class="tk-id">MCP-01</span><span class="tk-theme">Protocol</span></div><h5>Spike: server de unică folosință, pe 3 clienți</h5><span class="tk-sub"><span class="dep" data-ic-pre="dep">MCP-05</span><span class="due-chip"><span class="dc-date">15 sep</span><span class="dc-time">10:00</span></span></span></button>
+            <button class="tk blocat"><span class="tk-check" role="checkbox" aria-checked="false" data-ic="circle"></span><div class="tk-meta"><span class="theme-dot" style="background:#7FA0DE"></span><span class="tk-id">MCP-08</span><span class="tk-theme">API</span></div><h5>Analiza de goluri pe API: idempotență, credențiale, paginare</h5><span class="tk-sub"><span class="dep" data-ic-pre="dep">MCP-01</span><span class="ochip" data-ic-pre="obstacle">MCP-O01 · Echipa API</span></span></button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section class="bench-screen" data-screen="harta" hidden>
+<div id="app">
+  <aside class="sidebar" data-sb></aside>
+  <div class="app-body">
+    <header data-hdr data-crumb="Hartă · toate valurile"></header>
+    <main>
+      <div class="view">
+        <div class="tabs">
+          <button class="tab">Ordine</button><button class="tab">Listă</button>
+          <button class="tab on">Hartă</button><button class="tab">Teme</button>
+        </div>
+        <div class="map-wrap"><svg id="map" role="img" aria-label="Harta proiectului"></svg></div>
+        <div class="map-legend">
+          <div><svg width="28" height="17"><path d="M7 0 H28 V17 H7 L0 8.5 Z" fill="var(--surface-3)"/><rect x="7" y="0" width="2.5" height="17" fill="var(--blocked)"/></svg> obstacol deschis</div>
+          <div><svg width="28" height="17"><path d="M7 0 H23 L28 5 V17 H7 L0 8.5 Z" fill="var(--surface-3)"/><rect x="7" y="0" width="2.5" height="17" fill="var(--blocked)"/></svg> are ocolire</div>
+          <div><svg width="28" height="17"><path d="M7 0 H28 V17 H7 L0 8.5 Z" fill="var(--surface-3)"/><rect x="7" y="0" width="2.5" height="17" fill="var(--done)"/></svg> obstacol depășit</div>
+          <div><svg width="28" height="17"><rect width="28" height="17" rx="5" fill="var(--surface-2)"/><rect width="2.5" height="17" fill="var(--layer-1)"/></svg> tichet</div>
+          <div><svg width="28" height="17"><rect width="28" height="17" rx="5" fill="var(--surface-2)"/><rect width="2.5" height="17" fill="var(--done)"/></svg> gata</div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section class="bench-screen" data-screen="lista" hidden>
+<div id="app">
+  <aside class="sidebar" data-sb></aside>
+  <div class="app-body">
+    <header data-hdr data-crumb="Listă · Faza 0 · panou lateral"></header>
+    <main>
+      <div class="view">
+        <div class="tabs">
+          <button class="tab">Ordine</button><button class="tab on">Listă</button>
+          <button class="tab">Hartă</button><button class="tab">Teme</button>
+        </div>
+        <div class="split">
+          <div class="split-list">
+            <div class="panel">
+              <div class="wave-sel"><div class="wave-tabs" data-waves data-active="1"></div></div>
+              <div class="list-group" style="--layer-color:var(--layer-0)">
+                <div class="list-group-head"><span class="list-group-num">1</span><span class="list-group-label">Începe aici</span><span class="list-group-count">6</span></div>
+                <button class="list-row done" style="--layer-color:var(--layer-0)"><span class="list-check" data-ic="done"></span><span class="list-id">MCP-03</span><span class="list-title">Revendică scope-ul npm @smartbill</span><span class="row-tail"></span></button>
+                <button class="list-row done" style="--layer-color:var(--layer-0)"><span class="list-check" data-ic="done"></span><span class="list-id">MCP-04</span><span class="list-title">Tichet DNS TXT pentru ro.smartbill</span><span class="row-tail"></span></button>
+                <button class="list-row done" style="--layer-color:var(--layer-0)"><span class="list-check" data-ic="done"></span><span class="list-id">MCP-05</span><span class="list-title">Decizie de SDK și de revizie de protocol</span><span class="row-tail"></span></button>
+                <button class="list-row docked" style="--layer-color:var(--layer-0)"><span class="list-check" data-ic="circle"></span><span class="list-id">MCP-02</span><span class="list-title">Oracol: convertorul Notion peste specul nostru</span><span class="row-tail"><span class="tk-urgent" data-ic="zap"></span><span class="due-chip"><span class="dc-date">12 sep</span></span></span></button>
+                <button class="list-row" style="--layer-color:var(--layer-0)"><span class="list-check" data-ic="circle"></span><span class="list-id">MCP-06</span><span class="list-title">Model de cost pentru traficul generat de modele</span><span class="row-tail"></span></button>
+                <button class="list-row blocat" style="--layer-color:var(--layer-0)"><span class="list-check" data-ic="circle"></span><span class="list-id">MCP-07</span><span class="list-title">Pre-citire juridică pe fluxul de date</span><span class="row-tail"><span class="ochip" data-ic-pre="obstacle">MCP-O05</span></span></button>
+              </div>
+              <div class="list-group" style="--layer-color:var(--layer-1)">
+                <div class="list-group-head"><span class="list-group-num">2</span><span class="list-group-label">Layer 2</span><span class="list-group-count">2</span></div>
+                <button class="list-row" style="--layer-color:var(--layer-1)"><span class="list-check" data-ic="circle"></span><span class="list-id">MCP-01</span><span class="list-title">Spike: server de unică folosință, pe 3 clienți</span><span class="row-tail"><span class="due-chip"><span class="dc-date">15 sep</span><span class="dc-time">10:00</span></span></span></button>
+                <button class="list-row blocat" style="--layer-color:var(--layer-1)"><span class="list-check" data-ic="circle"></span><span class="list-id">MCP-08</span><span class="list-title">Analiza de goluri pe API</span><span class="row-tail"><span class="ochip" data-ic-pre="obstacle">MCP-O01</span></span></button>
+              </div>
+            </div>
+          </div>
+
+          <aside class="split-pane">
+            <div class="sh-header">
+              <button class="sh-close" data-ic="x"></button>
+              <button class="sh-copy" data-ic="copy"></button>
+              <button class="sh-delete" data-ic="trash"></button>
+              <span class="sh-title-wrap"><input class="sh-title-input" type="search" value="Oracol: convertorul Notion peste specul nostru"></span>
+              <button class="sh-save dirty" data-ic="save"></button>
+            </div>
+            <div class="sheet-scroll if-body">
+              <div class="sh-meta-section"><div class="meta-body"><div class="sh-meta-inline-row">
+                <div class="meta-col meta-col-theme"><span class="meta-row-label">Temă</span>
+                  <div class="pills-row"><button class="if-meta-pill">Fără</button><button class="if-meta-pill active"><span class="if-meta-dot" style="background:#818CF8"></span>Măsurători</button><button class="if-meta-add">+</button></div></div>
+                <div class="meta-vsep"></div>
+                <div class="meta-col meta-col-wave"><span class="meta-row-label">Val</span>
+                  <div class="pills-row"><button class="if-meta-wave active">I</button><button class="if-meta-wave">II</button><button class="if-meta-wave">III</button></div></div>
+              </div></div></div>
+              <div class="form-cols">
+                <div class="form-col form-col-desc">
+                  <label class="if-field-label" style="display:block;margin-bottom:8px">Descriere</label>
+                  <textarea class="desc-fixed">Rulează convertorul Notion peste specul nostru, ca oracol. O zi. Nu ca produs: ca măsurătoare. Douăzeci de întrebări reale de contabil, și se vede după ce endpointuri se întinde modelul.</textarea>
+                </div>
+                <div class="form-col form-col-right">
+                  <div class="deps-zone">
+                    <div class="deps-bar">
+                      <button class="dep-tab-btn" data-ic-pre="back">Necesită<span class="dep-tab-count">1</span></button>
+                      <button class="dep-tab-btn" data-ic-pre="fwd">Permite<span class="dep-tab-count">2</span></button>
+                      <button class="dep-tab-btn on" data-ic-pre="obstacle">Obstacole<span class="dep-tab-count">2</span></button>
+                      <div class="dep-search-wrap-rel">
+                        <div class="dep-search-field"><input class="dep-search-input-sm" value="Nu știm întrebările" placeholder="Caută sau creează obstacol…"></div>
+                        <div class="dep-drop">
+                          <button class="dep-drop-row"><span class="dep-drop-id">MCP-O04</span><span style="flex:1;min-width:0">Cine e utilizatorul țintă</span><span class="dep-drop-own">PM</span></button>
+                          <button class="dep-drop-row"><span class="dep-drop-id">MCP-O07</span><span style="flex:1;min-width:0">Câte tool-uri și ce nume</span><span class="dep-drop-own">PM + echipă</span></button>
+                          <button class="dep-drop-row dep-drop-new hl"><span data-ic-pre="add"></span><span>Obstacol nou: „Nu știm întrebările”</span></button>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="ocard">
+                      <span class="ocard-bar"></span>
+                      <button class="ocard-body">
+                        <span class="ocard-top"><span class="ocard-id">MCP-O04</span><span class="ocard-own">PM</span></span>
+                        <span class="ocard-title">Cine e utilizatorul țintă</span>
+                      </button>
+                      <button class="ocard-x" data-ic="x"></button>
+                    </div>
+                    <div class="ocard draft">
+                      <span class="ocard-bar"></span>
+                      <button class="ocard-body">
+                        <span class="ocard-top"><span class="ocard-id">nou</span><span class="ocard-own">fără owner</span></span>
+                        <span class="ocard-title">Nu știm la ce întrebări răspunde serverul</span>
+                      </button>
+                      <button class="ocard-x" data-ic="x"></button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<section class="bench-screen" data-screen="foaie" hidden>
+<div id="app">
+  <aside class="sidebar" data-sb></aside>
+  <div class="app-body">
+    <header data-hdr data-crumb="Ordine · Faza 0"></header>
+    <main>
+      <div class="view">
+        <div class="tabs">
+          <button class="tab on">Ordine</button><button class="tab">Listă</button>
+          <button class="tab">Hartă</button><button class="tab">Teme</button>
+        </div>
+        <div class="panel">
+          <div class="wave-sel"><div class="wave-tabs" data-waves data-active="1"></div></div>
+          <div class="wave-gate">
+            <div class="wave-gate-top">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16h.01"/><path d="M12 8v4"/><path d="M15.312 2a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586l-4.688-4.688A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2z"/></svg>
+              <span class="wave-gate-n">5</span><span class="wave-gate-l">obstacole deschise în acest val</span>
+              <span class="wave-gate-c">4 la alții</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+<div class="sheet-bg on"></div>
+<div class="sheet on tall" role="dialog" aria-modal="true">
+  <div class="grip"></div>
+  <div class="sh-header">
+    <button class="sh-close" data-ic="x"></button>
+    <button class="sh-delete" data-ic="trash"></button>
+    <span class="sh-title-wrap"><input class="sh-title-input" type="search" value="Nu există endpoint de listare a facturilor"></span>
+    <button class="sh-save dirty" data-ic="save"></button>
+  </div>
+  <div class="sheet-scroll" style="padding:4px 22px 24px">
+    <div class="of-row"><span class="of-key">ID</span><span class="of-val" style="font-family:var(--mono);font-size:13px">MCP-O01</span></div>
+    <div class="of-row"><span class="of-key">Detaliu</span><div class="of-val"><textarea class="of-input">V3 are 8 operațiuni de citire — clienți, furnizori, gestiuni, produse. Nicio factură. Singurele tool-uri de facturi sunt V1 și cer să știi deja seria și numărul.</textarea></div></div>
+    <div class="of-row"><span class="of-key">Cine îl scoate</span><div class="of-val"><input class="of-input" value="Echipa de API" placeholder="Echipa de API"></div></div>
+    <div class="of-row"><span class="of-key">Stare</span><div class="of-val">
+      <div class="of-seg">
+        <button>necunoscut</button><button aria-pressed="true">în așteptare</button><button>depășit</button><button>ocolit</button>
+      </div>
+      <span class="of-wait">fără răspuns de 16 zile · întrebat pe 25 aug</span>
+    </div></div>
+    <div class="of-row"><span class="of-key">Ocolire</span><div class="of-val"><textarea class="of-input" placeholder="Nu există"></textarea><span class="of-sub">Gol înseamnă „nu are ocolire”.</span></div></div>
+    <div class="of-row"><span class="of-key">Dovadă</span><div class="of-val"><div class="of-seg"><button aria-pressed="true">verificat</button><button>plauzibil</button><button>nu știu</button></div></div></div>
+    <div class="of-row"><span class="of-key">Blochează</span><div class="of-val"><div class="of-toggle"><button class="of-sw" aria-pressed="true"></button><span style="font-size:13.5px">Da — stinge tichetele legate</span></div></div></div>
+    <div class="of-row"><span class="of-key">Tichete</span><div class="of-val">
+      <div class="of-chips">
+        <span class="ochip">MCP-08</span><span class="ochip">MCP-09</span><span class="ochip">MCP-10</span>
+        <span class="ochip">MCP-12</span><span class="ochip">MCP-13</span><span class="ochip ok">MCP-O07</span>
+      </div>
+      <span class="of-sub">5 tichete, din Faza 0 și Faza 1, plus un obstacol.</span>
+    </div></div>
+  </div>
+</div>
+</section>
+
+<script>
+/* ── iconițele reale (lucide, aceleași ca în Icon.tsx) ─────────────── */
+const IC = {
+  done:  '<circle cx="12" cy="12" r="10"/><path d="m16 9-5.5 5.5L8 12"/>',
+  circle:'<circle cx="12" cy="12" r="10"/>',
+  zap:   '<path d="M15.914 4a1.5 1.5 0 0 0-2.474-1.561l-9 9A1.5 1.5 0 0 0 5.5 14h4.002a.5.5 0 0 1 .471.666L8.086 20a1.5 1.5 0 0 0 2.475 1.56l9-9A1.5 1.5 0 0 0 18.5 10h-3.997a.5.5 0 0 1-.472-.667z"/>',
+  obstacle:'<path d="M12 16h.01"/><path d="M12 8v4"/><path d="M15.312 2a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586l-4.688-4.688A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2z"/>',
+  bypass:'<path d="m15 14 5-5-5-5"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/>',
+  dep:   '<path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><line x1="8" x2="16" y1="12" y2="12"/>',
+  back:  '<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
+  fwd:   '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+  x:     '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  add:   '<path d="M5 12h14"/><path d="M12 5v14"/>',
+  copy:  '<rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+  trash: '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
+  save:  '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+  sidebar:'<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/>',
+  search:'<path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/>',
+  gear:  '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+  help:  '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>',
+  today: '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="m9 16 2 2 4-4"/>',
+  tomorrow:'<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M12 14v4"/><path d="M10 16h4"/>',
+  week:  '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M17 14h-6"/><path d="M13 18H7"/>',
+  moon:  '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+  scratch:'<path d="M8 2v4"/><path d="M12 2v4"/><path d="M16 2v4"/><rect width="16" height="18" x="4" y="4" rx="2"/><path d="M8 10h6"/><path d="M8 14h8"/><path d="M8 18h5"/>',
+  waves: '<path d="M14 17H5"/><path d="M19 7h-9"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/>',
+}
+const svg = (n, s) => `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${IC[n]||''}</svg>`
+
+/* ── bara laterală și headerul, identice pe toate ecranele ─────────── */
+const SB = `
+<div class="sidebar-brand"><div class="logo">H</div><div class="sidebar-brand-txt"><span class="sidebar-app-name">Horizontal</span></div></div>
+<button class="sidebar-nav-item"><span class="sidebar-nav-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="5" height="5" rx="1.5" fill="currentColor" opacity=".8"/><rect x="8" y="1" width="5" height="5" rx="1.5" fill="currentColor" opacity=".8"/><rect x="1" y="8" width="5" height="5" rx="1.5" fill="currentColor" opacity=".8"/><rect x="8" y="8" width="5" height="5" rx="1.5" fill="currentColor" opacity=".8"/></svg></span><span>Toate proiectele</span></button>
+<div class="sidebar-section-label">Sarcini</div>
+<button class="sidebar-nav-item"><span class="sidebar-nav-icon">${svg('today',17)}</span><span>Azi</span><span class="sl-count">3</span></button>
+<button class="sidebar-nav-item"><span class="sidebar-nav-icon">${svg('tomorrow',17)}</span><span>Mâine</span><span class="sl-count">1</span></button>
+<button class="sidebar-nav-item"><span class="sidebar-nav-icon">${svg('week',17)}</span><span>Următoarele 7 zile</span><span class="sl-count">6</span></button>
+<div class="sidebar-section-label">Proiecte</div>
+<div style="display:flex;gap:4px;margin:6px 0 2px;padding:0 2px">
+  <button style="flex:1;font-size:10px;padding:3px 0;border-radius:5px;border:1px solid var(--line-soft);background:transparent;color:var(--txt-dim);cursor:pointer">Toate</button>
+  <button style="flex:1;font-size:10px;padding:3px 0;border-radius:5px;border:1px solid var(--line-soft);background:transparent;color:var(--txt-dim);cursor:pointer">Personal</button>
+  <button style="flex:1;font-size:10px;padding:3px 0;border-radius:5px;border:1px solid var(--line-soft);background:var(--accent);color:#fff;font-weight:600;cursor:pointer">Serviciu</button>
+</div>
+<div class="sidebar-proj-list">
+  <div class="sidebar-proj-item on"><span class="sidebar-drag-handle"></span><button class="sidebar-proj-btn"><span class="sidebar-proj-dot" style="background:#818CF8"></span><span class="sidebar-proj-name">Server MCP</span><span class="sidebar-proj-pct">21%</span></button></div>
+  <div class="sidebar-proj-item"><span class="sidebar-drag-handle"></span><button class="sidebar-proj-btn"><span class="sidebar-proj-dot" style="background:#63B79F"></span><span class="sidebar-proj-name">Portal parteneri</span><span class="sidebar-proj-pct">64%</span></button></div>
+  <div class="sidebar-proj-item"><span class="sidebar-drag-handle"></span><button class="sidebar-proj-btn"><span class="sidebar-proj-dot" style="background:#D9A661"></span><span class="sidebar-proj-name">Migrare facturare</span><span class="sidebar-proj-pct">8%</span></button></div>
+</div>
+<div class="sidebar-spacer"></div>
+<div class="sidebar-footer-row">
+  <button class="sidebar-new-btn"><span class="sidebar-new-plus">+</span>Tichet nou</button>
+  <button class="sidebar-theme-btn">${svg('moon',15)}</button>
+</div>`
+
+const HDR = (crumb) => `
+<button class="header-sidebar-btn">${svg('sidebar',15)}</button>
+<div class="htxt"><h1>Server MCP</h1><div class="crumb">${crumb}</div></div>
+<div class="hprog"><span class="dot"></span><span>21%</span></div>
+<button class="header-new-btn">+ Tichet</button>
+<button class="header-search-btn">${svg('search',15)}</button>
+<button class="header-settings-btn">${svg('gear',15)}</button>
+<button class="header-info-btn">${svg('help',15)}</button>`
+
+const WAVES = `
+<button class="wbtn wscratch"><span class="wname">${svg('scratch',18)}</span><span class="wsub">4</span></button>
+<button class="wbtn on"><span class="wname">I</span><span class="wsub">Deblocare · 8</span></button>
+<button class="wbtn"><span class="wname">II</span><span class="wsub">MVP local · 11</span></button>
+<button class="wbtn"><span class="wname">III</span><span class="wsub">Remote · 6</span></button>
+<button class="wbtn"><span class="wname">IV</span><span class="wsub">Scrieri · 5</span></button>
+<button class="wbtn wmanage"><span class="wname">${svg('waves',18)}</span><span class="wsub">valuri</span></button>`
+
+document.querySelectorAll('[data-sb]').forEach((el) => (el.innerHTML = SB))
+document.querySelectorAll('[data-hdr]').forEach((el) => (el.innerHTML = HDR(el.dataset.crumb)))
+document.querySelectorAll('[data-waves]').forEach((el) => (el.innerHTML = WAVES))
+document.querySelectorAll('[data-ic]').forEach((el) => (el.innerHTML = svg(el.dataset.ic, 17)))
+document.querySelectorAll('[data-ic-pre]').forEach((el) => el.insertAdjacentHTML('afterbegin', svg(el.dataset.icPre, 12)))
+
+/* ── harta ─────────────────────────────────────────────────────────── */
+const W = 196, H = 52, COL = 264, ROW = 76, PAD = 36, TOP = 116
+const N = [
+  {id:'MCP-O06', t:'Revizia 2026-07-28', own:'DEV', k:'o', st:'depasit', col:0, row:1},
+  {id:'MCP-05', t:'Decizie de SDK', own:'DEV', k:'t', st:'gata', col:1, row:1},
+  {id:'MCP-03', t:'Scope npm @smartbill', own:'DEV', k:'t', st:'gata', col:1, row:2},
+  {id:'MCP-04', t:'Tichet DNS ro.smartbill', own:'INFRA', k:'t', st:'gata', col:1, row:3},
+
+  {id:'MCP-O01', t:'Listare de facturi', own:'API',  k:'o', st:'asteptare',  col:2, row:0},
+  {id:'MCP-O02', t:'Care firmă? (CIF)',  own:'PM',   k:'o', st:'asteptare',  col:2, row:1, byp:1},
+  {id:'MCP-O04', t:'Cine e utilizatorul', own:'PM',  k:'o', st:'necunoscut', col:2, row:2},
+  {id:'MCP-O03', t:'Owner și on-call',   own:'MGMT', k:'o', st:'asteptare',  col:2, row:3},
+  {id:'MCP-O05', t:'DPA și sub-procesor', own:'JURIDIC', k:'o', st:'asteptare', col:2, row:4},
+
+  {id:'MCP-01', t:'Spike pe 3 clienți',  own:'DEV', k:'t', st:'lucru', col:3, row:0},
+  {id:'MCP-02', t:'Oracol: convertor Notion', own:'DEV', k:'t', st:'lucru', col:3, row:2},
+  {id:'MCP-06', t:'Model de cost trafic', own:'DEV+INFRA', k:'t', st:'liber', col:3, row:3},
+  {id:'MCP-07', t:'Pre-citire juridică', own:'JURIDIC', k:'t', st:'blocat', col:3, row:4},
+
+  {id:'MCP-08', t:'Analiza de goluri, API', own:'API', k:'t', st:'blocat', col:4, row:0},
+  {id:'MCP-O07', t:'Câte tool-uri, ce nume', own:'PM+ECHIPĂ', k:'o', st:'necunoscut', col:4, row:2},
+  {id:'MCP-O08', t:'Puntea V1 ↔ V3', own:'ECHIPĂ+SEC', k:'o', st:'asteptare', col:4, row:4},
+
+  {id:'MCP-09', t:'6 tool-uri resursă_verb', own:'DEV', k:'t', st:'blocat', col:5, row:0},
+  {id:'MCP-10', t:'invoice_validate',        own:'DEV', k:'t', st:'blocat', col:5, row:1},
+  {id:'MCP-11', t:'Suită de evaluare',       own:'DEV', k:'t', st:'blocat', col:5, row:2},
+  {id:'MCP-12', t:'Proiecția răspunsurilor', own:'DEV', k:'t', st:'blocat', col:5, row:3},
+  {id:'MCP-13', t:'Recrutare piloți',        own:'PM',  k:'t', st:'blocat', col:5, row:4},
+
+  {id:'MCP-O09', t:'OAuth / authz server', own:'AUTH', k:'o', st:'asteptare', col:6, row:1, byp:1},
+  {id:'MCP-20', t:'Remote streamable HTTP', own:'DEV', k:'t', st:'blocat', col:6, row:2},
+]
+const E = [
+  ['MCP-O06','MCP-05'], ['MCP-05','MCP-01'],
+  ['MCP-O01','MCP-08'], ['MCP-O01','MCP-09'], ['MCP-O01','MCP-12'],
+  ['MCP-O02','MCP-09'], ['MCP-O02','MCP-10'],
+  ['MCP-O04','MCP-O07'], ['MCP-02','MCP-O07'], ['MCP-O07','MCP-09'],
+  ['MCP-O05','MCP-07'], ['MCP-O05','MCP-13'],
+  ['MCP-O08','MCP-11'],
+  ['MCP-O03','MCP-20'], ['MCP-O09','MCP-20'],
+]
+const BANDS = [
+  {x1:20,   x2:1308, l:'Faza 0 · deblocare și verificare'},
+  {x1:1336, x2:1572, l:'Faza 1 · MVP local, read-only'},
+  {x1:1600, x2:1836, l:'Faza 2 · remote'},
+]
+const by = {}
+N.forEach((n) => { n.x = PAD + n.col * COL; n.y = TOP + n.row * ROW; by[n.id] = n })
+const esc = (s) => s.replace(/&/g,'&amp;').replace(/</g,'&lt;')
+const isOpen = (n) => n.k === 'o' && n.st !== 'depasit' && n.st !== 'ocolit'
+
+function gate(x, y, byp) {
+  const c = 13
+  return byp
+    ? `M${x+c} ${y} H${x+W-14} L${x+W} ${y+14} V${y+H} H${x+c} L${x} ${y+H/2} Z`
+    : `M${x+c} ${y} H${x+W} V${y+H} H${x+c} L${x} ${y+H/2} Z`
+}
+function node(n) {
+  const bar = n.k === 'o'
+    ? (isOpen(n) ? 'var(--blocked)' : 'var(--done)')
+    : n.st === 'gata' ? 'var(--done)' : n.st === 'lucru' ? 'var(--active)'
+    : n.st === 'blocat' ? 'var(--txt-faint)' : `var(--layer-${Math.min(n.col,4)})`
+  const dim = n.st === 'blocat' || n.st === 'gata' || n.st === 'depasit'
+  let s = '<g class="map-node">'
+  if (n.k === 'o') {
+    s += `<path class="map-obst" d="${gate(n.x, n.y, n.byp)}"/>`
+    s += `<rect x="${n.x+13}" y="${n.y}" width="2.5" height="${H}" fill="${bar}"/>`
+  } else {
+    s += `<rect class="map-tick" x="${n.x}" y="${n.y}" width="${W}" height="${H}" rx="10"/>`
+    s += `<rect x="${n.x}" y="${n.y}" width="2.5" height="${H}" fill="${bar}"/>`
+  }
+  const tx = n.x + (n.k === 'o' ? 26 : 14)
+  s += `<text class="map-id" x="${tx}" y="${n.y+19}">${esc(n.id)}</text>`
+  s += `<text class="map-own" x="${n.x+W-12}" y="${n.y+19}">${esc(n.own)}</text>`
+  s += `<text class="map-title${dim ? ' dim' : ''}" x="${tx}" y="${n.y+38}">${esc(n.t)}</text>`
+  if (n.st === 'depasit' || n.st === 'gata') {
+    const w = n.t.length * 6.05
+    s += `<line class="map-strike" x1="${tx}" y1="${n.y+34}" x2="${Math.min(tx+w, n.x+W-12)}" y2="${n.y+34}"/>`
+  }
+  return s + '</g>'
+}
+function edge([a, b]) {
+  const s = by[a], t = by[b]
+  const x1 = s.x + W, y1 = s.y + H/2, x2 = t.x, y2 = t.y + H/2
+  const cls = isOpen(s) ? 'blk' : (s.st === 'depasit' || s.st === 'gata') ? 'don' : 'dep'
+  const dx = Math.max(46, (x2 - x1) / 2.3)
+  return `<path class="map-edge ${cls}" d="M${x1} ${y1} C${x1+dx} ${y1} ${x2-dx} ${y2} ${x2-9} ${y2}"/>`
+    + `<path class="map-head ${cls}" d="M${x2-9} ${y2-4.5} L${x2-1} ${y2} L${x2-9} ${y2+4.5} Z"/>`
+}
+
+const TX = 530
+let out = ''
+BANDS.forEach((b) => {
+  out += `<rect class="map-band" x="${b.x1}" y="62" width="${b.x2-b.x1}" height="436" rx="14"/>`
+  out += `<text class="map-bandtxt" x="${b.x1+16}" y="88">${esc(b.l.toUpperCase())}</text>`
+})
+out += `<line class="map-today" x1="${TX}" y1="46" x2="${TX}" y2="498"/>`
+out += `<text class="map-todaytxt" x="${TX+10}" y="36">azi · 10 sept</text>`
+out += `<text class="map-bandtxt" x="${PAD}" y="36">de unde am plecat · 21 aug</text>`
+out += E.map(edge).join('') + N.map(node).join('')
+const map = document.getElementById('map')
+map.setAttribute("viewBox", "0 0 1856 516")
+map.setAttribute('width', '1856')
+map.setAttribute("height", "516")
+map.innerHTML = out
+
+/* ── comutatoare ───────────────────────────────────────────────────── */
+const show = (k) => {
+  document.querySelectorAll('.bench-screen').forEach((s) => (s.hidden = s.dataset.screen !== k))
+  document.querySelectorAll('.bench [data-go]').forEach((b) => b.classList.toggle('on', b.dataset.go === k))
+}
+document.querySelectorAll('.bench [data-go]').forEach((b) => (b.onclick = () => show(b.dataset.go)))
+document.getElementById('bt').onclick = () => {
+  const h = document.documentElement
+  h.dataset.theme = h.dataset.theme === 'dark' ? 'light' : 'dark'
+}
+</script>
+</body>
+</html>
