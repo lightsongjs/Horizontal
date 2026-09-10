@@ -4806,3 +4806,170 @@ svg.graph {
   display: flex; align-items: center; justify-content: center;
 }
 .push-cta-x:hover { color: var(--txt); background: var(--surface-2); }
+
+/* OBSTACOLE ─────────────────────────────────────────────────────────────
+   Vocabularul vizual pentru obstacole: poarta valului, rândul de obstacol,
+   cardul/rândul blocat, jetonul de „blocat de" și harta. Fără chenar nicăieri
+   — ierarhia vine din saltul de fundal (--surface → --surface-2/3) și din
+   --amb, ca peste tot în sistem. */
+
+/* Poarta valului: obstacolele deschise ale valului activ, peste layere.
+   Card, deci --r și --amb; fără chenar. */
+.wave-gate {
+  background: var(--surface);
+  border-radius: var(--r);
+  box-shadow: var(--amb);
+  padding: 12px 14px;
+  margin: 0 0 14px;
+}
+.wave-gate-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.wave-gate-n {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--blocked);
+}
+.wave-gate-l {
+  flex: 1;
+  font-size: 13.5px;
+  color: var(--txt);
+}
+.wave-gate-c {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--txt-faint);
+}
+.obst-list {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 0;
+}
+/* Rând, deci --r-m... dar aici e jeton pe un card: --r-s. Fundalul e
+   --surface-3, al treilea ton, pus PE card, nu pe pagină. */
+.obst-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: var(--r-s);
+  background: var(--surface-3);
+  color: var(--txt);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+/* --surface-3 e deja vârful rampei de suprafețe (pagină → --surface →
+   --surface-2 → --surface-3), care urcă (se deschide) pe tema închisă și
+   coboară (se închide) pe cea deschisă — vezi comentariul de la :root. Un
+   hover care sare înapoi pe --surface-2 ar fi un pas ÎNAPOI pe rampă, adică o
+   stingere, în ambele teme. Cum nu există o a patra treaptă, hover-ul
+   continuă direcția proprie a rampei cu color-mix, în loc să schimbe jetonul:
+   mai deschis pe întuneric, mai închis pe deschis — ca rândul să se ridice
+   deasupra cardului în ambele teme, nu doar în una. */
+.obst-row:hover { background: color-mix(in srgb, white 10%, var(--surface-3)); }
+[data-theme='light'] .obst-row:hover { background: color-mix(in srgb, black 6%, var(--surface-3)); }
+.obst-row-id {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--blocked);
+  min-width: 44px;
+}
+.obst-row.ok .obst-row-id { color: var(--done); }
+.obst-row-title { flex: 1; font-size: 13px; min-width: 0; }
+.obst-row.ok .obst-row-title { color: var(--txt-faint); text-decoration: line-through; }
+.obst-row-own {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--txt-faint);
+}
+
+/* Cardul/rândul blocat: se stinge prin SALT DE FUNDAL și pierderea umbrei, nu
+   prin chenar. Rămâne clar un card/rând — dacă ar pierde și fundalul, ar
+   dispărea. `.tk` e rădăcina reală din „Ordine" (TicketCard.tsx), `.list-row`
+   din „Listă" (ListView.tsx); `.card.blocat` rămâne pentru prototipuri și
+   bancul de probă din Task 12. */
+.tk.blocat,
+.list-row.blocat,
+.card.blocat {
+  background: var(--surface-2);
+  box-shadow: none;
+  opacity: 0.72;
+}
+
+/* Jetonul de obstacol. Numele e `.obst-chip`, NU `.chip` — `.chip` există deja
+   mai sus în acest fișier și e folosit de ThemesView, ProjectForm,
+   ProjectSettings, QuickAdd și IssueForm; un al doilea bloc `.chip` le-ar
+   restiliza tăcut pe toate. Folosit identic pe card („Ordine") și pe rând
+   („Listă"), ca „blocat de" să arate la fel în ambele. */
+.obst-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border-radius: var(--r-s);
+  background: var(--surface-3);
+  color: var(--txt-dim);
+}
+.obst-chip.blk { background: var(--blocked-soft); color: var(--blocked); }
+.obst-chip.ok { background: var(--done-soft); color: var(--done); }
+.obst-chip.acc { background: var(--accent-soft); color: var(--accent); }
+
+/* HARTĂ */
+.map-wrap {
+  background: var(--surface);
+  border-radius: var(--r);
+  box-shadow: var(--amb);
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.map-band { fill: var(--surface-2); }
+.map-bandtxt {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  fill: var(--txt-faint);
+}
+.map-id {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  fill: var(--txt-faint);
+}
+.map-own {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  fill: var(--txt-faint);
+  text-anchor: end;
+}
+.map-title { font-family: var(--display); font-size: 12.5px; fill: var(--txt); }
+.map-title.dim { fill: var(--txt-dim); }
+.map-tick { fill: var(--surface-2); }
+.map-obst { fill: var(--surface-3); }
+.map-edge { fill: none; stroke-width: 1.5; }
+.map-edge.dep { stroke: var(--txt-faint); opacity: 0.4; }
+.map-edge.blk { stroke: var(--blocked); opacity: 0.6; stroke-dasharray: 5 4; }
+.map-edge.don { stroke: var(--done); opacity: 0.45; }
+.map-head.dep { fill: var(--txt-faint); opacity: 0.4; }
+.map-head.blk { fill: var(--blocked); opacity: 0.7; }
+.map-head.don { fill: var(--done); opacity: 0.5; }
+.map-strike { stroke: var(--done); stroke-width: 1.2; opacity: 0.8; }
+.map-node { cursor: pointer; }

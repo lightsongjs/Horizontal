@@ -7,6 +7,8 @@ import {
   Copy,
   ArrowUp,
   Camera,
+  OctagonAlert,
+  CornerUpRight,
   CircleQuestionMark,
   Eye,
   EyeOff,
@@ -86,6 +88,10 @@ const ICONS = {
   collapse: ChevronDown,
   danger: TriangleAlert,
   delete: Trash2,
+  // Nume de ROL, nu de desen: „obstacle", nu „octagon". Desenul se schimbă
+  // într-un singur loc. `danger` rămâne pentru avertismente generice.
+  obstacle: OctagonAlert,
+  bypass: CornerUpRight,
   dep: CornerDownRight,
   done: CircleCheck,
   drag: GripVertical,
