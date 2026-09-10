@@ -4979,7 +4979,13 @@ svg.graph {
    fundalul rămâne identic în repaus și selectat. Fundalul de repaus e
    --surface-2, un salt față de --surface pe care stă foaia: fără saltul
    ăsta, un buton neselectat n-ar avea nici fundal, nici chenar — exact
-   regresia de care se leagă bancul de probă. */
+   regresia de care se leagă bancul de probă.
+   Fontul rămâne cel implicit (serif/display), NU mono: etichetele
+   („necunoscut", „în așteptare", „depășit"…) sunt limbă, nu cifră sau cod —
+   regula 2. Precedentul e `.dep-tab-btn` (Necesită/Permite), celălalt
+   control segmentat pe cuvinte din aplicație. Font-size și padding sunt mai
+   strânse decât acolo ca să încapă patru etichete, unele lungi, pe un
+   singur rând la 400px — vezi verificarea din raportul Task 9. */
 .seg-row {
   display: flex;
   flex-wrap: wrap;
@@ -4987,14 +4993,12 @@ svg.graph {
   margin-bottom: 4px;
 }
 .seg {
-  padding: 7px 12px;
+  padding: 6px 10px;
   border-radius: var(--r-s);
   background: var(--surface-2);
   color: var(--txt-dim);
-  font-family: var(--mono);
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.03em;
   border: none;
   border-bottom: 2px solid transparent;
   cursor: pointer;
