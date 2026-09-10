@@ -366,6 +366,26 @@ scriu azi doar direct în bază.
 
 Setup: `npm run migrate supabase/migration-obstacles.sql`.
 
+## Teste care cer un browser
+
+`npm test` (vitest) nu face layout și nu are DOM real, deci nu poate vedea două
+clase de regresii — amândouă au ajuns în producție o dată:
+
+- **`npm run test:layout`** — lățimi măsurate în Chromium, pe CSS-ul real peste
+  DOM-ul real (tiparul din `design/preview.html`, fără server și fără login).
+  A prins bara de dependențe: al treilea tab a strivit câmpul de căutare la
+  **0px** pe telefon, deci nu se putea scrie în el și nici crea un obstacol.
+  Rulează-l după orice schimbare într-un rând de flex cu elemente care nu se
+  micșorează (`flex-shrink: 0`).
+- **`npm run test:nav`** — pornește singur `vite` pe backendul local și verifică
+  în browser că o foaie deschisă nu urmează userul între taburi. A prins un
+  tichet docat în panoul lateral al „Listei" care sărea ca modal peste „Cards".
+  Rulează-l după orice atingere a stivei de foi, a `SplitView` sau a navigării.
+
+Amândouă sunt lente (pornesc un browser), deci nu sunt în `npm test`. Bancul de
+probă din `design/preview.html` rămâne pentru CULOARE; astea două sunt pentru
+GEOMETRIE și NAVIGARE — un banc nu poate arăta un control strivit la zero.
+
 ## ticket-kit — sync (repo git separat)
 
 `ticket-kit/` are **propriul `.git`** (remote `github.com/lightsongjs/horizontal-ticket-kit`),

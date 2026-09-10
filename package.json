@@ -18,7 +18,8 @@
     "migrate": "node scripts/apply-migration.mjs",
     "vapid": "node scripts/generate-vapid.mjs",
     "test:chime": "node scripts/test-chime.mjs",
-    "test:layout": "node scripts/test-layout.mjs"
+    "test:layout": "node scripts/test-layout.mjs",
+    "test:nav": "node scripts/test-nav.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",

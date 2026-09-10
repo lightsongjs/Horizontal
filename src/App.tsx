@@ -232,6 +232,37 @@ function Shell() {
   sheetRef.current = sheet
   const ticketIdRef = useRef(ticketId)
   ticketIdRef.current = ticketId
+  const tabRef = useRef(tab)
+  tabRef.current = tab
+
+  /**
+   * Comutarea tabului de proiect. Închide foaia deschisă înainte de a comuta.
+   *
+   * Fără asta, un tichet deschis pe „Listă" sărea în față ca MODAL peste noul
+   * tab: „Listă" și listele inteligente găzduiesc panoul lateral
+   * (`registerSplitHost` din `SplitView`), „Cards", „Hartă" și „Teme" nu. La
+   * comutare, `dockedIssueId` devine null cu stiva de foi încă plină, deci
+   * `SheetHost` deschide modalul. Iar un formular docat arată ca o parte a
+   * paginii, nu ca o foaie deschisă — de-aia tichetul părea că apare din
+   * senin, iar odată apărut acoperea chiar bara de taburi.
+   *
+   * Redimensionarea ferestrei rămâne cum era, deliberat: acolo mutarea între
+   * panou și modal e exact ce trebuie să se întâmple, fiindcă rămâi în aceeași
+   * vizualizare și n-ai voie să pierzi ce ai scris. Comutarea tabului e o
+   * navigare — formularul nu te urmează.
+   *
+   * Trăiește aici, nu în `ProjectDetail`, fiindcă are DOUĂ intrări: butoanele
+   * de tab și tastele 1–4. Un formular docat nu e un modal, deci scurtăturile
+   * nu sunt oprite de nimic altceva.
+   *
+   * Dacă garda de close refuză (modificări nesalvate), tabul NU se schimbă:
+   * confirmarea ei se vede în formularul care e încă pe ecran.
+   */
+  const changeTab = useCallback((next: Tab) => {
+    if (next === tabRef.current) return
+    if (sheetRef.current.kind !== 'none' && !closeSheet()) return
+    setTab(next)
+  }, [closeSheet])
   const projectRef = useRef(project)
   projectRef.current = project
   const projectsRef = useRef(projects)
@@ -558,14 +589,14 @@ function Shell() {
       else if (e.key === 'p' || e.key === 'P') { e.preventDefault(); if (!isAdmin) return; openNewProject() }
       else if (e.key === '?') { e.preventDefault(); setShowInfo(v => !v) }
       else if (e.key === '[') { e.preventDefault(); toggleSidebar() }
-      else if (e.key === '1' && project) { e.preventDefault(); setTab('list') }
-      else if (e.key === '2' && project) { e.preventDefault(); setTab('ordine') }
-      else if (e.key === '3' && project) { e.preventDefault(); setTab('graf') }
-      else if (e.key === '4' && project) { e.preventDefault(); setTab('teme') }
+      else if (e.key === '1' && project) { e.preventDefault(); changeTab('list') }
+      else if (e.key === '2' && project) { e.preventDefault(); changeTab('ordine') }
+      else if (e.key === '3' && project) { e.preventDefault(); changeTab('graf') }
+      else if (e.key === '4' && project) { e.preventDefault(); changeTab('teme') }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [project, openNewIssue, openNewProject, sheet, showInfo, showSearch, showUsers, canWrite, isAdmin, toggleSidebar])
+  }, [project, openNewIssue, openNewProject, sheet, showInfo, showSearch, showUsers, canWrite, isAdmin, toggleSidebar, changeTab])
 
   /**
    * Butoanele notificării („Gata", „Amână"). Cu o filă deschisă, PAGINA e
@@ -667,7 +698,7 @@ function Shell() {
           ) : showUsers && isAdmin ? (
             <UsersView />
           ) : project ? (
-            <ProjectDetail tab={tab} setTab={setTab} />
+            <ProjectDetail tab={tab} setTab={changeTab} />
           ) : (
             <ProjectsView />
           )}

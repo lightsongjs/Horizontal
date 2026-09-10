@@ -12,6 +12,13 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'teme', label: 'Teme' },
 ]
 
+/**
+ * `setTab` NU e `useState`-ul brut: e `changeTab` din `App.tsx`, care închide
+ * foaia deschisă înainte să comute. Un tichet docat în panoul lateral al
+ * „Listei" ar sări altfel ca modal peste tabul următor. Motivul întreg e
+ * documentat acolo, lângă implementare, fiindcă tastele 1–4 intră pe același
+ * drum.
+ */
 export function ProjectDetail({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
   return (
     <div className="view">
