@@ -90,6 +90,20 @@ function nextObstacleId(db: DB, project: Project): string {
   return `${pre}${String(max + 1).padStart(2, '0')}`
 }
 
+/**
+ * Vârf de apă, nu un count: `listObstacles` și `blockedBy` (`src/lib/obstacles.ts`)
+ * sortează pe `position` ca cheie PRIMARĂ, iar `|| id.localeCompare` e doar
+ * pentru egalități reale. Un `.length` refolosit după o ștergere ar da aceeași
+ * poziție unui obstacol supraviețuitor, degradând tăcut ordinea la un compare
+ * lexicografic de id.
+ */
+function nextObstaclePosition(db: DB, projectId: string): number {
+  const max = db.obstacles
+    .filter((o) => o.projectId === projectId)
+    .reduce((m, o) => Math.max(m, o.position), -1)
+  return max + 1
+}
+
 /** Removes issues by id and strips them from every other issue's `deps`. */
 function deleteIssuesImpl(db: DB, ids: string[]): void {
   if (ids.length === 0) return
@@ -311,7 +325,7 @@ export function createLocalRepository(): Repository {
         askedAt: input.askedAt ?? null,
         resolvedAt: null,
         deps: input.deps ?? [],
-        position: db.obstacles.filter((o) => o.projectId === input.projectId).length,
+        position: nextObstaclePosition(db, input.projectId),
       }
       db.obstacles.push(obstacle)
       for (const issueId of input.issueIds ?? []) {
@@ -325,7 +339,11 @@ export function createLocalRepository(): Repository {
       const db = load()
       const o = db.obstacles.find((x) => x.id === id)
       if (!o) throw new Error(`Unknown obstacle ${id}`)
-      Object.assign(o, patch)
+      // `id`, `projectId` și `resolvedAt` nu se preiau din patch: repository-ul
+      // e singurul loc prin care trece orice apelant, deci e singurul loc unde
+      // invarianta „resolvedAt derivă din state, nu se trimite" poate ține.
+      const { id: _id, projectId: _projectId, resolvedAt: _resolvedAt, ...safePatch } = patch
+      Object.assign(o, safePatch)
       if (patch.state !== undefined) {
         const closed = patch.state === 'depasit' || patch.state === 'ocolit'
         o.resolvedAt = closed ? (o.resolvedAt ?? new Date().toISOString()) : null

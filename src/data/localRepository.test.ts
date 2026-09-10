@@ -236,4 +236,32 @@ describe('localRepository', () => {
     expect(await repo.listObstacles(p.id)).toEqual([])
     expect(await repo.listObstacleLinks(p.id)).toEqual([])
   })
+
+  it('position e vârf de apă, nu un count viu: nu se ciocnește după o ștergere', async () => {
+    const repo = createLocalRepository()
+    const p = await repo.createProject({ name: 'MCP', description: '', prefix: 'MCP' })
+    const o1 = await repo.createObstacle({ projectId: p.id, title: '#1' })
+    const o2 = await repo.createObstacle({ projectId: p.id, title: '#2' })
+    const o3 = await repo.createObstacle({ projectId: p.id, title: '#3' })
+    await repo.deleteObstacle(o2.id)
+    const o4 = await repo.createObstacle({ projectId: p.id, title: '#4' })
+    const left = await repo.listObstacles(p.id)
+    expect(left.map((o) => o.id)).toEqual([o1.id, o3.id, o4.id])
+    const positions = left.map((o) => o.position)
+    expect(new Set(positions).size).toBe(positions.length)
+    expect(left[left.length - 1].id).toBe(o4.id)
+  })
+
+  it('updateObstacle ignoră resolvedAt, id și projectId din patch', async () => {
+    const repo = createLocalRepository()
+    const p = await repo.createProject({ name: 'MCP', description: '', prefix: 'MCP' })
+    const o = await repo.createObstacle({ projectId: p.id, title: 'B1' })
+
+    const withFakeResolved = await repo.updateObstacle(o.id, { resolvedAt: '2020-01-01T00:00:00.000Z' })
+    expect(withFakeResolved.resolvedAt).toBeNull()
+
+    const withFakeIds = await repo.updateObstacle(o.id, { id: 'ALTUL', projectId: 'x' })
+    expect(withFakeIds.id).toBe(o.id)
+    expect(withFakeIds.projectId).toBe(p.id)
+  })
 })
