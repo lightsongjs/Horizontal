@@ -1,6 +1,6 @@
 import { OrdineView } from './OrdineView'
 import { ListView } from './ListView'
-import { GraphView } from './GraphView'
+import { MapView } from './MapView'
 import { ThemesView } from './ThemesView'
 
 export type Tab = 'ordine' | 'list' | 'graf' | 'teme'
@@ -8,7 +8,7 @@ export type Tab = 'ordine' | 'list' | 'graf' | 'teme'
 const TABS: { key: Tab; label: string }[] = [
   { key: 'list', label: 'List' },
   { key: 'ordine', label: 'Cards' },
-  { key: 'graf', label: 'Graf' },
+  { key: 'graf', label: 'Hartă' },
   { key: 'teme', label: 'Teme' },
 ]
 
@@ -24,7 +24,7 @@ export function ProjectDetail({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => v
       </div>
       {tab === 'ordine' && <OrdineView />}
       {tab === 'list' && <ListView />}
-      {tab === 'graf' && <GraphView />}
+      {tab === 'graf' && <MapView />}
       {tab === 'teme' && <ThemesView />}
     </div>
   )
