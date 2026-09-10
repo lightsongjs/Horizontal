@@ -8,10 +8,11 @@ import { useHideDone, useOrderedLayers, useWaveActions, useVimNav, useCanWrite }
 import { layerVar } from '../lib/layerColors'
 import { DueChip } from './DueChip'
 import { Icon } from './Icon'
+import { SplitView } from './SplitView'
 
 export function ListView() {
   const { waves, activeWave, byId, stateOf, themeOf, toggleDone } = useHorizontal()
-  const { openEditIssue } = useUI()
+  const { openEditIssue, dockedIssueId } = useUI()
   const canWrite = useCanWrite()
   const [hideDone, toggleHideDone] = useHideDone()
   const orderedLayers = useOrderedLayers(hideDone)
@@ -25,110 +26,113 @@ export function ListView() {
   const inSelect = !wa.treeViewActive && wa.selectMode
 
   return (
-    <div className="panel">
-      <div className="wave-sel">
-        <WaveTabs onWaveChange={wa.exitSelectMode} canWrite={canWrite} />
-        <WaveActionsBar
-          treeViewActive={wa.treeViewActive}
-          onToggleTree={wa.toggleTree}
-          hideDone={hideDone}
-          onToggleHideDone={toggleHideDone}
-          selectMode={wa.selectMode}
-          onEnterSelect={wa.enterSelectMode}
-          onExitSelect={wa.exitSelectMode}
-          canWrite={canWrite}
-        />
-      </div>
+    <SplitView>
+      <div className="panel">
+        <div className="wave-sel">
+          <WaveTabs onWaveChange={wa.exitSelectMode} canWrite={canWrite} />
+          <WaveActionsBar
+            treeViewActive={wa.treeViewActive}
+            onToggleTree={wa.toggleTree}
+            hideDone={hideDone}
+            onToggleHideDone={toggleHideDone}
+            selectMode={wa.selectMode}
+            onEnterSelect={wa.enterSelectMode}
+            onExitSelect={wa.exitSelectMode}
+            canWrite={canWrite}
+          />
+        </div>
 
-      {waves.length === 0 ? (
-        <p className="empty">Niciun val încă. Apasă rotița din bara de valuri ca să adaugi primul (sprint).</p>
-      ) : orderedLayers.length === 0 ? (
-        <p className="empty">Niciun tichet în acest val. Apasă + ca să adaugi unul.</p>
-      ) : (
-        orderedLayers.map((g, i) => (
-          <div
-            key={g.L}
-            className="list-group"
-            style={{ '--layer-color': layerVar(i) } as React.CSSProperties}
-          >
-            <div className="list-group-head">
-              <span className="list-group-num">{g.L + 1}</span>
-              <span className="list-group-label">{i === 0 ? 'Începe aici' : `Layer ${g.L + 1}`}</span>
-              <span className="list-group-count">{g.ids.length}</span>
+        {waves.length === 0 ? (
+          <p className="empty">Niciun val încă. Apasă rotița din bara de valuri ca să adaugi primul (sprint).</p>
+        ) : orderedLayers.length === 0 ? (
+          <p className="empty">Niciun tichet în acest val. Apasă + ca să adaugi unul.</p>
+        ) : (
+          orderedLayers.map((g, i) => (
+            <div
+              key={g.L}
+              className="list-group"
+              style={{ '--layer-color': layerVar(i) } as React.CSSProperties}
+            >
+              <div className="list-group-head">
+                <span className="list-group-num">{g.L + 1}</span>
+                <span className="list-group-label">{i === 0 ? 'Începe aici' : `Layer ${g.L + 1}`}</span>
+                <span className="list-group-count">{g.ids.length}</span>
+              </div>
+              {g.ids.map((id) => {
+                const it = byId[id]
+                if (!it) return null
+                const state = stateOf(id)
+                const theme = it.theme ? themeOf(it.theme) : undefined
+                const isSelected = wa.selectedIds.has(id)
+                const treeClass = wa.treeViewActive
+                  ? wa.highlightedIds === null
+                    ? ''
+                    : wa.highlightedIds.has(id)
+                      ? ' tree-highlight'
+                      : ' tree-dim'
+                  : ''
+                // Same class grammar as TicketCard.tsx (card variant) — keep in sync.
+                const cls =
+                  `list-row ${state}` +
+                  (isSelected ? ' selected' : '') +
+                  (dockedIssueId === id ? ' docked' : '') +
+                  (inSelect ? ' in-select' : '') +
+                  treeClass +
+                  (focusedId === id ? ' vim-focused' : '')
+
+                const handleClick = () => {
+                  if (wa.treeViewActive) wa.handleTreeSelect(id)
+                  else if (inSelect) wa.toggleSelected(id)
+                  else openEditIssue(id)
+                }
+
+                return (
+                  <button type="button" key={id} className={cls} onClick={handleClick} data-issue-id={id}>
+                    <span
+                      className="list-check"
+                      role="checkbox"
+                      aria-checked={inSelect ? isSelected : it.done}
+                      aria-label={
+                        inSelect
+                          ? (isSelected ? 'Deselectează' : 'Selectează')
+                          : (it.done ? 'Marchează nefăcut' : 'Marchează gata')
+                      }
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (wa.treeViewActive) return
+                        if (inSelect) wa.toggleSelected(id)
+                        else if (canWrite) void toggleDone(id)
+                      }}
+                    >
+                      <Icon name={(inSelect ? isSelected : it.done) ? 'done' : 'notDone'} size={17} />
+                    </span>
+                    {theme && <span className="theme-dot" style={{ background: theme.color }} />}
+                    <span className="list-id">{id}</span>
+                    <span className="list-title">{it.title}</span>
+                    {/* Coada rândului: aceeași ordine ca `.t-tail` din TaskRow. */}
+                    <span className="row-tail">
+                      {it.urgent && <span className="tk-urgent" title="Urgent"><Icon name="urgent" size={13} /></span>}
+                      <DueChip issue={it} />
+                    </span>
+                  </button>
+                )
+              })}
             </div>
-            {g.ids.map((id) => {
-              const it = byId[id]
-              if (!it) return null
-              const state = stateOf(id)
-              const theme = it.theme ? themeOf(it.theme) : undefined
-              const isSelected = wa.selectedIds.has(id)
-              const treeClass = wa.treeViewActive
-                ? wa.highlightedIds === null
-                  ? ''
-                  : wa.highlightedIds.has(id)
-                    ? ' tree-highlight'
-                    : ' tree-dim'
-                : ''
-              // Same class grammar as TicketCard.tsx (card variant) — keep in sync.
-              const cls =
-                `list-row ${state}` +
-                (isSelected ? ' selected' : '') +
-                (inSelect ? ' in-select' : '') +
-                treeClass +
-                (focusedId === id ? ' vim-focused' : '')
+          ))
+        )}
 
-              const handleClick = () => {
-                if (wa.treeViewActive) wa.handleTreeSelect(id)
-                else if (inSelect) wa.toggleSelected(id)
-                else openEditIssue(id)
-              }
-
-              return (
-                <button type="button" key={id} className={cls} onClick={handleClick} data-issue-id={id}>
-                  <span
-                    className="list-check"
-                    role="checkbox"
-                    aria-checked={inSelect ? isSelected : it.done}
-                    aria-label={
-                      inSelect
-                        ? (isSelected ? 'Deselectează' : 'Selectează')
-                        : (it.done ? 'Marchează nefăcut' : 'Marchează gata')
-                    }
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      if (wa.treeViewActive) return
-                      if (inSelect) wa.toggleSelected(id)
-                      else if (canWrite) void toggleDone(id)
-                    }}
-                  >
-                    <Icon name={(inSelect ? isSelected : it.done) ? 'done' : 'notDone'} size={17} />
-                  </span>
-                  {theme && <span className="theme-dot" style={{ background: theme.color }} />}
-                  <span className="list-id">{id}</span>
-                  <span className="list-title">{it.title}</span>
-                  {/* Coada rândului: aceeași ordine ca `.t-tail` din TaskRow. */}
-                  <span className="row-tail">
-                    {it.urgent && <span className="tk-urgent" title="Urgent"><Icon name="urgent" size={13} /></span>}
-                    <DueChip issue={it} />
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-        ))
-      )}
-
-      {wa.selectMode && (
-        <BulkBar
-          selCount={selCount}
-          otherWaves={otherWaves}
-          confirmDel={wa.confirmDel}
-          onBulkMove={(w) => void wa.handleBulkMove(w)}
-          onRequestDelete={wa.openConfirm}
-          onConfirmDelete={() => void wa.handleBulkDelete()}
-          onCancelDelete={wa.cancelConfirm}
-        />
-      )}
-    </div>
+        {wa.selectMode && (
+          <BulkBar
+            selCount={selCount}
+            otherWaves={otherWaves}
+            confirmDel={wa.confirmDel}
+            onBulkMove={(w) => void wa.handleBulkMove(w)}
+            onRequestDelete={wa.openConfirm}
+            onConfirmDelete={() => void wa.handleBulkDelete()}
+            onCancelDelete={wa.cancelConfirm}
+          />
+        )}
+      </div>
+    </SplitView>
   )
 }

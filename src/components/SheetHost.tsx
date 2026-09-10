@@ -9,8 +9,11 @@ import { ThemeManager } from './ThemeManager'
 import { Icon } from './Icon'
 
 export function SheetHost() {
-  const { sheet, canGoBack, closeSheet, goBack } = useUI()
-  const open = sheet.kind !== 'none'
+  const { sheet, canGoBack, closeSheet, goBack, dockedIssueId } = useUI()
+  // Când formularul stă în panoul lateral, stiva e exact el — deci aici nu mai
+  // rămâne nimic de arătat, nici modal, nici fundal. Un card de dependență
+  // împins deasupra lui iese din condiția de docare și modalul revine.
+  const open = sheet.kind !== 'none' && !dockedIssueId
   const tall =
     sheet.kind === 'issue-form' ||
     sheet.kind === 'project-form' ||
@@ -46,7 +49,7 @@ export function SheetHost() {
           </button>
         )}
         {sheet.kind === 'issue' && <IssueSheet key={sheet.issueId} issueId={sheet.issueId} />}
-        {sheet.kind === 'issue-form' && <IssueForm key={sheet.issueId ?? '__new__'} issueId={sheet.issueId} />}
+        {sheet.kind === 'issue-form' && !dockedIssueId && <IssueForm key={sheet.issueId ?? '__new__'} issueId={sheet.issueId} />}
         {sheet.kind === 'project-form' && <ProjectForm />}
         {sheet.kind === 'project-settings' && <ProjectSettings />}
         {sheet.kind === 'wave-manage' && <WaveManager />}

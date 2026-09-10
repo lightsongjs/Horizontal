@@ -102,6 +102,32 @@ python3 design/build-preview.py   # regenerează, dacă s-a schimbat markup-ul
 > ușoară regresie de făcut e un control care rămâne fără fundal ȘI fără chenar:
 > typecheck-ul și testele trec, iar butonul e invizibil.
 
+## Panoul lateral (split view)
+
+Peste 1200px, „Listă" și listele inteligente se împart în două: lista în
+stânga, formularul tichetului ales în dreapta (`src/components/SplitView.tsx`).
+
+**Nimeni nu cheamă „deschide în panou".** Decizia se ia la RANDARE, într-un
+singur loc: `dockedIssueIdFrom` din `src/ui.tsx`. O vizualizare care poate
+găzdui panoul se anunță cu `registerSplitHost` (numai când e destul de lată),
+iar dacă stiva de foi e exact un `issue-form` cu id, formularul apare acolo în
+loc de modal. Trei lucruri ies gratis din asta, și de-aia regula nu se mută în
+handlerul de click: un deep link aterizează direct în panou; redimensionarea
+ferestrei mută formularul între panou și modal fără să piardă ce ai scris; un
+card de dependență împins deasupra rămâne modal, ca „Înapoi" să aibă sens.
+
+**Comutarea nu salvează nimic singură.** Garda de close (`setCloseGuard`) vede
+doar închiderea explicită — un click pe alt rând o ocolește complet. De-aia
+formularul docat își raportează starea murdară (`setDockedDirty`) și
+`openEditIssue` refuză prima atingere pe alt tichet, clipind săgeata de
+salvare. Fără plasa asta, un click în listă ar fi aruncat în tăcere ce tocmai
+ai scris; cu un dialog, fiecare click ar fi cerut un „da".
+
+Panoul nu e un modal, deci nu blochează tastatura listei: `shouldIgnoreKey` din
+`hooks.ts` primește `modalOpen`, nu `sheet.kind`. Ecranele „Listă" și
+„Listă · gol" din `design/preview.html` acoperă panoul, rândul docat și starea
+goală, în ambele teme.
+
 ## Mockups — fișier local, nu Artifact
 
 Pentru orice mockup/design vizual (comparații before/after, explorare de layout):

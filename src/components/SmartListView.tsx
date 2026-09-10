@@ -6,6 +6,7 @@ import { TaskRow } from './TaskRow'
 import { addDays, startOfLocalDay, toShortDate } from '../lib/schedule'
 import type { Issue } from '../lib/types'
 import { Icon, type IconName } from './Icon'
+import { SplitView } from './SplitView'
 
 export type SmartListKind = 'today' | 'tomorrow' | 'week'
 
@@ -75,62 +76,64 @@ export function SmartListView({ kind, onOpenTask, focusSignal = 0 }: Props) {
   if (!dueLoaded) return <p className="empty">Se încarcă…</p>
 
   return (
-    <div className="panel smart-list">
-      <QuickAdd defaultDueAt={defaultDueAt} focusSignal={focusSignal} />
-      {kind === 'today' && <PushToggle />}
+    <SplitView>
+      <div className="panel smart-list">
+        <QuickAdd defaultDueAt={defaultDueAt} focusSignal={focusSignal} />
+        {kind === 'today' && <PushToggle />}
 
-      {kind === 'today' && (
-        <>
+        {kind === 'today' && (
+          <>
+            <Group
+              label="Restanțe"
+              issues={smartLists.overdue}
+              color="var(--blocked)"
+              onOpen={onOpenTask}
+              late
+            />
+            <Group
+              label="Azi"
+              date={longDate(today)}
+              issues={smartLists.today}
+              color="var(--accent)"
+              onOpen={onOpenTask}
+              empty="Nimic pe azi. Frumos."
+            />
+            {smartLists.doneToday.length > 0 && (
+              <>
+                <button className="done-toggle" onClick={() => setShowDone((v) => !v)}>
+                  <Icon name={showDone ? 'collapse' : 'expand'} size={15} /> Terminate azi ({smartLists.doneToday.length})
+                </button>
+                {showDone && smartLists.doneToday.map((it) => (
+                  <TaskRow key={it.id} issue={it} onOpen={onOpenTask} />
+                ))}
+              </>
+            )}
+          </>
+        )}
+
+        {kind === 'tomorrow' && (
           <Group
-            label="Restanțe"
-            issues={smartLists.overdue}
-            color="var(--blocked)"
+            label="Mâine"
+            date={longDate(addDays(today, 1))}
+            issues={smartLists.tomorrow}
+            color="var(--active)"
             onOpen={onOpenTask}
-            late
+            empty="Mâine e liber. Deocamdată."
           />
+        )}
+
+        {kind === 'week' && smartLists.week.map(({ offset, date, issues }) => (
           <Group
-            label="Azi"
-            date={longDate(today)}
-            issues={smartLists.today}
-            color="var(--accent)"
+            key={offset}
+            label={offset === 0 ? 'Azi' : offset === 1 ? 'Mâine' : cap(DAYS_FULL[date.getDay()])}
+            date={toShortDate(date)}
+            issues={issues}
+            color={offset === 0 ? 'var(--accent)' : offset === 1 ? 'var(--active)' : undefined}
             onOpen={onOpenTask}
-            empty="Nimic pe azi. Frumos."
+            empty="—"
           />
-          {smartLists.doneToday.length > 0 && (
-            <>
-              <button className="done-toggle" onClick={() => setShowDone((v) => !v)}>
-                <Icon name={showDone ? 'collapse' : 'expand'} size={15} /> Terminate azi ({smartLists.doneToday.length})
-              </button>
-              {showDone && smartLists.doneToday.map((it) => (
-                <TaskRow key={it.id} issue={it} onOpen={onOpenTask} />
-              ))}
-            </>
-          )}
-        </>
-      )}
-
-      {kind === 'tomorrow' && (
-        <Group
-          label="Mâine"
-          date={longDate(addDays(today, 1))}
-          issues={smartLists.tomorrow}
-          color="var(--active)"
-          onOpen={onOpenTask}
-          empty="Mâine e liber. Deocamdată."
-        />
-      )}
-
-      {kind === 'week' && smartLists.week.map(({ offset, date, issues }) => (
-        <Group
-          key={offset}
-          label={offset === 0 ? 'Azi' : offset === 1 ? 'Mâine' : cap(DAYS_FULL[date.getDay()])}
-          date={toShortDate(date)}
-          issues={issues}
-          color={offset === 0 ? 'var(--accent)' : offset === 1 ? 'var(--active)' : undefined}
-          onOpen={onOpenTask}
-          empty="—"
-        />
-      ))}
-    </div>
+        ))}
+      </div>
+    </SplitView>
   )
 }

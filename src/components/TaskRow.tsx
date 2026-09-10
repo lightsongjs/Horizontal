@@ -1,5 +1,6 @@
 import { useHorizontal } from '../store'
 import { useCanWriteIn } from '../hooks'
+import { useUI } from '../ui'
 import { hasTime, toShortDate, toTimeInput } from '../lib/schedule'
 import type { Issue } from '../lib/types'
 import { Bell } from './DueChip'
@@ -23,13 +24,14 @@ interface Props {
  */
 export function TaskRow({ issue, onOpen, late = false }: Props) {
   const { toggleDone, projects } = useHorizontal()
+  const { dockedIssueId } = useUI()
   const canWrite = useCanWriteIn(issue.projectId)
   const project = projects.find((p) => p.id === issue.projectId)
   const timed = hasTime(issue)
 
   return (
     <button
-      className={`list-row task-row ${issue.done ? 'done' : ''} ${late ? 'late' : ''}`}
+      className={`list-row task-row ${issue.done ? 'done' : ''} ${late ? 'late' : ''}${dockedIssueId === issue.id ? ' docked' : ''}`}
       onClick={() => onOpen(issue.id)}
       data-issue-id={issue.id}
     >

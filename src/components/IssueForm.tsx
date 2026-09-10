@@ -163,9 +163,15 @@ function AssigneeSearch({ assigneeId, assignees, myAssigneeId, onSelect, onSetMe
   )
 }
 
-export function IssueForm({ issueId }: { issueId?: string }) {
+/**
+ * @param docked Formularul stă în panoul lateral, nu în foaia modală. Două
+ *   diferențe, amândouă din faptul că lista rămâne pe ecran lângă el: nu fură
+ *   focusul la fiecare click în listă, și își raportează starea „nesalvat”
+ *   către `ui.tsx`, care oprește prima comutare pe alt tichet.
+ */
+export function IssueForm({ issueId, docked = false }: { issueId?: string; docked?: boolean }) {
   const { project, waves, themes, issues, byId, activeWave, createIssue, updateIssue, deleteIssue, createTheme, assignees, myAssigneeId, setMyAssigneeId, createAssignee } = useHorizontal()
-  const { closeSheet, setCloseGuard, pushSheet, openEditIssue } = useUI()
+  const { closeSheet, setCloseGuard, pushSheet, openEditIssue, setDockedDirty, saveNudge } = useUI()
   const canWrite = useCanWrite()
   const existing = issueId ? byId[issueId] : undefined
   const isEdit = !!existing
@@ -432,6 +438,25 @@ export function IssueForm({ issueId }: { issueId?: string }) {
     }
     return () => setCloseGuard(null)
   }, [isDirty, setCloseGuard])
+
+  // Garda de close de mai sus prinde doar închiderea explicită (X, Escape).
+  // Comutarea pe alt tichet din listă nu trece pe acolo, deci panoul are
+  // nevoie de starea asta separat — vezi `openEditIssue` din `ui.tsx`.
+  useEffect(() => {
+    if (!docked) return
+    setDockedDirty(isDirty)
+    return () => setDockedDirty(false)
+  }, [docked, isDirty, setDockedDirty])
+
+  // Semnalul „ți-am oprit comutarea": săgeata de salvare clipește o dată.
+  // Fără el, refuzul ar fi fost tăcut, adică s-ar fi citit ca un click pierdut.
+  const [nudging, setNudging] = useState(false)
+  useEffect(() => {
+    if (!docked || saveNudge === 0) return
+    setNudging(true)
+    const t = setTimeout(() => setNudging(false), 900)
+    return () => clearTimeout(t)
+  }, [docked, saveNudge])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -728,7 +753,9 @@ export function IssueForm({ issueId }: { issueId?: string }) {
             onChange={(e) => setTitle(e.target.value)}
             readOnly={!canWrite}
             placeholder={isEdit ? existing!.id : 'Titlu tichet…'}
-            autoFocus
+            // În panou, nu: focusul ar sări în titlu la fiecare rând atins din
+            // listă, iar tastele de navigare ar ajunge în câmp în loc de listă.
+            autoFocus={!docked}
             autoComplete="off"
             autoCorrect="off"
             inputMode="text"
@@ -749,7 +776,7 @@ export function IssueForm({ issueId }: { issueId?: string }) {
         {canWrite && (
           <button
             tabIndex={-1}
-            className={`sh-save${isDirty ? ' dirty' : ''}`}
+            className={`sh-save${isDirty ? ' dirty' : ''}${nudging ? ' nudge' : ''}`}
             onClick={() => void save({ close: false })}
             disabled={!title.trim() || saving || waves.length === 0}
             title={saving ? 'Se salvează…' : 'Salvează (Ctrl+S) · Ctrl+Enter salvează și închide'}

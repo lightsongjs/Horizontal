@@ -81,6 +81,10 @@ const RULES: { title: string; body: string }[] = [
     body: 'O sarcină cu oră sună implicit la scadență. Una de zi întreagă nu sună singură — ar suna la miezul nopții. Notificarea are „Gata" și „Amână 10 min", care se rezolvă fără să deschidă aplicația.',
   },
   {
+    title: 'Panoul lateral',
+    body: 'Pe ecran lat (peste 1200px), un tichet ales din „Listă" sau dintr-o listă inteligentă se deschide în dreapta, nu peste tot ecranul; lista rămâne folosibilă, inclusiv de la tastatură. Nu se salvează nimic singur: dacă săgeata din dreapta sus e albastră, ai modificări nesalvate, iar prima atingere pe alt tichet nu comută — doar clipește săgeata. Ctrl+S salvează, Ctrl+Enter salvează și închide.',
+  },
+  {
     title: 'Data din titlu',
     body: 'În adăugarea rapidă, fragmentul recunoscut se scoate din titlu. În formularul unui tichet NOU, câmpurile se completează dar titlul rămâne cum l-ai scris — ai butonul „curăță titlul". La editarea unui tichet existent recunoașterea tace, ca o retușare de titlu să nu schimbe planificarea.',
   },

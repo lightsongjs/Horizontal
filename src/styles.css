@@ -2976,6 +2976,127 @@ svg.graph {
   }
 }
 
+/* ─── PANOU LATERAL (≥ 1200px) ──────────────────────────────────────────
+   Lista în stânga, tichetul deschis în dreapta. Pragul e mai sus decât cel de
+   desktop (900px) fiindcă acolo lățimea abia ajunge pentru bara laterală plus
+   o coloană; aici mai trebuie una de formular.
+
+   Cele două coloane își derulează propriul conținut, iar `main` nu se mai
+   derulează deloc: altfel panoul ar fi urcat afară din ecran în timp ce
+   citeai lista, exact lucrul pe care split-ul îl repară. */
+@media (min-width: 1200px) {
+  main:has(.split) {
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  main:has(.split) > .view {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 20px;
+  }
+  main:has(.split) > .view > .tabs {
+    flex: 0 0 auto;
+  }
+  main:has(.split) > .view > .split,
+  main:has(.split) > .split {
+    flex: 1;
+    min-height: 0;
+  }
+  /* Listele inteligente nu trec prin `.view`, deci nici prin padding-ul lui. */
+  main:has(.split) > .split {
+    padding: 0 24px 20px;
+  }
+
+  .split {
+    display: grid;
+    grid-template-columns: minmax(340px, 1fr) minmax(460px, 1.05fr);
+    gap: 22px;
+    align-items: stretch;
+  }
+  .split-list {
+    min-width: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 2px;
+  }
+  .split-pane {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    /* `relative`, nu decor: caseta de confirmare a închiderii (`.ccm-overlay`)
+       e `absolute; inset: 0` și se aștepta la `.sheet`. Fără asta ar acoperi
+       toată fereastra. */
+    position: relative;
+    background: var(--surface);
+    border-radius: var(--r);
+    box-shadow: var(--amb-lg);
+  }
+
+  /* Formularul, în panou, e o singură coloană care se derulează ca un tot.
+     Gridul 55/45 de la modal e croit pentru 94vw; la 500px ar fi dat două
+     coloane de 250, adică nici descriere, nici dependențe. */
+  .split-pane .sheet-scroll.if-body {
+    display: block;
+    overflow-y: auto;
+    padding-bottom: 20px;
+  }
+  .split-pane .form-cols {
+    display: block;
+  }
+  .split-pane .form-col-right {
+    overflow: visible;
+  }
+  /* Înălțime dată, nu `flex: 1`: aici nu mai există o coloană care să împartă
+     restul înălțimii — panoul se derulează. */
+  .split-pane .form-col-desc .desc-fixed {
+    flex: 0 0 auto;
+    height: 280px;
+    min-height: 280px;
+  }
+
+  .split-empty {
+    margin: auto;
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    text-align: center;
+    color: var(--txt-faint);
+    max-width: 260px;
+  }
+  .split-empty p {
+    font-size: 13px;
+    line-height: 1.6;
+  }
+}
+
+/* Rândul al cărui tichet e deschis în panou. O linie de 2px pe muchie plus un
+   salt de fundal — nu o casetă umplută, care s-ar fi bătut cu `.selected`
+   (selecția în masă) pe același rând. */
+.list-row.docked:not(.selected) {
+  background: var(--surface-2);
+  box-shadow: inset 2px 0 0 var(--accent), var(--amb);
+}
+.list-row.docked .list-title {
+  color: var(--txt);
+  font-weight: 600;
+}
+
+/* „Ți-am oprit comutarea, ai ceva nesalvat." O singură clipire: un refuz tăcut
+   s-ar fi citit ca un click pierdut, iar unul repetitiv ca o eroare. */
+.sh-save.nudge {
+  animation: sh-save-nudge 0.45s ease-in-out 2;
+}
+@keyframes sh-save-nudge {
+  from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent); }
+  to   { box-shadow: 0 0 0 7px color-mix(in srgb, var(--accent) 0%, transparent); }
+}
+
 /* ─── ECRANE FOARTE LATE (≥ 1600px) ─────────────────────────────────────
    Peste 1600px modalul e destul de lat încât coloana din dreapta să aibă mai
    mult spațiu decât are conținut: notele și zona de fișiere nu se lățesc la

@@ -54,12 +54,18 @@ export function useWritableProjects(): Project[] {
 }
 
 /** True when a keyboard shortcut should be ignored: focus is in a text field,
- *  a modifier is held, or a sheet is open. Shared by the keyboard-driven hooks. */
-function shouldIgnoreKey(e: KeyboardEvent, sheetKind: string): boolean {
+ *  a modifier is held, or a MODAL is open. Shared by the keyboard-driven hooks.
+ *
+ *  Formularul din panoul lateral nu se pune: acolo lista rămâne pe ecran, deci
+ *  trebuie să rămână și navigabilă de la tastatură — altfel jumătate din
+ *  ecranul pe care tocmai l-am câștigat ar fi devenit inertă. Cât timp scrii
+ *  în panou nu se ciocnesc oricum: prima condiție prinde orice câmp de text.
+ */
+function shouldIgnoreKey(e: KeyboardEvent, modalOpen: boolean): boolean {
   const target = e.target as HTMLElement
   if (['INPUT', 'TEXTAREA'].includes(target.tagName) || target.isContentEditable) return true
   if (e.metaKey || e.ctrlKey || e.altKey) return true
-  return sheetKind !== 'none'
+  return modalOpen
 }
 
 /**
@@ -137,7 +143,8 @@ export interface WaveActions {
  */
 export function useWaveActions(): WaveActions {
   const { activeWave, deleteIssues, updateIssue, byId } = useHorizontal()
-  const { sheet } = useUI()
+  const { sheet, dockedIssueId } = useUI()
+  const modalOpen = sheet.kind !== 'none' && !dockedIssueId
 
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -197,7 +204,7 @@ export function useWaveActions(): WaveActions {
         return
       }
 
-      if (shouldIgnoreKey(e, sheet.kind)) return
+      if (shouldIgnoreKey(e, modalOpen)) return
 
       if (e.key === 't' || e.key === 'T') {
         e.preventDefault()
@@ -206,7 +213,7 @@ export function useWaveActions(): WaveActions {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [selectMode, confirmDel, treeViewActive, exitSelectMode, exitTreeView, toggleTree, sheet.kind])
+  }, [selectMode, confirmDel, treeViewActive, exitSelectMode, exitTreeView, toggleTree, modalOpen])
 
   // reset tree state when the active wave changes
   useEffect(() => { exitTreeView() }, [activeWave, exitTreeView])
@@ -247,7 +254,8 @@ export interface VimNav {
  */
 export function useVimNav(flatLayers: string[][]): VimNav {
   const { activeWave } = useHorizontal()
-  const { openEditIssue, sheet } = useUI()
+  const { openEditIssue, sheet, dockedIssueId } = useUI()
+  const modalOpen = sheet.kind !== 'none' && !dockedIssueId
   const [focusedId, setFocusedId] = useState<string | null>(null)
 
   // reset focus when the wave changes
@@ -263,7 +271,7 @@ export function useVimNav(flatLayers: string[][]): VimNav {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (shouldIgnoreKey(e, sheet.kind)) return
+      if (shouldIgnoreKey(e, modalOpen)) return
 
       const key = e.key.toLowerCase()
       if (!['h', 'j', 'k', 'l', 'enter', 'escape'].includes(key)) return
@@ -323,7 +331,7 @@ export function useVimNav(flatLayers: string[][]): VimNav {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [focusedId, flatLayers, sheet, openEditIssue])
+  }, [focusedId, flatLayers, modalOpen, openEditIssue])
 
   return { focusedId, setFocusedId }
 }
@@ -354,6 +362,25 @@ export function useCoarsePointer(): boolean {
   }, [])
 
   return coarse
+}
+
+/**
+ * O interogare media ca stare React, resincronizată la montare din același
+ * motiv ca `useCoarsePointer`: între citirea inițială și abonare poate trece o
+ * redimensionare, iar evenimentul acela s-ar pierde.
+ */
+export function useMediaQuery(query: string): boolean {
+  const [matches, setMatches] = useState(() => window.matchMedia(query).matches)
+
+  useEffect(() => {
+    const mq = window.matchMedia(query)
+    setMatches(mq.matches)
+    const onChange = (e: MediaQueryListEvent) => setMatches(e.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [query])
+
+  return matches
 }
 
 /**

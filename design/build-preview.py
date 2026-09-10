@@ -195,6 +195,101 @@ AZI = (QA + PUSH
        + group(1, 'Mâine', 'joi, 10 septembrie',
                trow('07:00', 'Pagină SignUp / Înregistrare', 'TUR', '#6e7bff', bell=True), 'var(--accent)'))
 
+# ═══ ECRANUL „LISTĂ" — panoul lateral ════════════════════════════════════════
+# Singurul ecran al bancului cu două coloane. Se vede doar peste 1200px: sub
+# prag `SplitView` nu randează `.split` deloc, iar formularul se întoarce în
+# foaia de jos — deci o fereastră îngustă aici nu e o regresie, e comportamentul.
+def lrow(tid, title, layer_color, done=False, urgent=False, docked=False, due=None):
+    cls = 'list-row' + (' done' if done else '') + (' docked' if docked else '')
+    tail = ''
+    if urgent:
+        tail += '<span class="tk-urgent">%s</span>' % ic('zap', 13)
+    if due:
+        tail += '<span class="due-chip"><span class="dc-date">%s</span></span>' % due
+    return ('<button class="%s" style="--layer-color:%s">'
+            '<span class="list-check">%s</span>'
+            '<span class="list-id">%s</span>'
+            '<span class="list-title">%s</span>'
+            '<span class="row-tail">%s</span></button>'
+            % (cls, layer_color, ic('circle-check' if done else 'circle', 17), tid, title, tail))
+
+
+def lgroup(num, label, count, color, rows):
+    return ('<div class="list-group" style="--layer-color:%s">'
+            '<div class="list-group-head"><span class="list-group-num">%s</span>'
+            '<span class="list-group-label">%s</span>'
+            '<span class="list-group-count">%s</span></div>%s</div>'
+            % (color, num, label, count, rows))
+
+
+LISTA_STANGA = (
+    '<div class="wave-sel">'
+    '<div class="wave-tabs"><button class="wave-tab on">I</button>'
+    '<button class="wave-tab">II</button><button class="wave-tab">III</button></div>'
+    '<div class="wave-actions">'
+    '<button class="wave-action-btn">%s</button>'
+    '<button class="wave-action-btn active">%s</button>'
+    '<button class="wave-action-btn">%s</button></div></div>'
+    % (ic('share-2', 14), ic('eye-off', 14), ic('check-check', 14))
+    + lgroup(1, 'Începe aici', 2, 'var(--layer-0)',
+             lrow('TUR-01', 'Cont Supabase (DB + Auth)', 'var(--layer-0)', urgent=True, docked=True, due='9 sep')
+             + lrow('TUR-02', 'Schema tabelelor', 'var(--layer-0)', done=True))
+    + lgroup(2, 'Layer 2', 3, 'var(--layer-1)',
+             lrow('TUR-04', 'Pagină SignUp / Înregistrare', 'var(--layer-1)')
+             + lrow('TUR-05', 'Webhook Supabase → Mailjet', 'var(--layer-1)', due='12 sep')
+             + lrow('TUR-06', 'Import bilete din CSV', 'var(--layer-1)'))
+    + lgroup(3, 'Layer 3', 1, 'var(--layer-2)',
+             lrow('TUR-09', 'Split datorii între participanți', 'var(--layer-2)'))
+)
+
+LISTA_PANOU = (
+    '<div class="sh-header">'
+    '<button class="sh-close">%s</button>'
+    '<button class="sh-copy">%s</button>'
+    '<button class="sh-delete">%s</button>'
+    '<span class="sh-title-wrap"><input class="sh-title-input" type="search" '
+    'value="Cont Supabase (DB + Auth)" /></span>'
+    '<button class="sh-save dirty">%s</button></div>'
+    % (ic('x', 16), ic('copy', 15), ic('trash-2', 14), ic('arrow-up', 16))
+    + '<div class="sheet-scroll if-body">'
+      '<div class="sh-meta-section"><div class="meta-body"><div class="sh-meta-inline-row">'
+      '<div class="meta-col meta-col-theme"><span class="meta-row-label">Temă</span>'
+      '<div class="pills-row"><button class="if-meta-pill">Fără</button>'
+      '<button class="if-meta-pill active"><span class="if-meta-dot" style="background:#6e7bff"></span>Auth</button>'
+      '<button class="if-meta-add">+</button></div></div>'
+      '<div class="meta-vsep"></div>'
+      '<div class="meta-col meta-col-wave"><span class="meta-row-label">Val</span>'
+      '<div class="pills-row"><button class="if-meta-wave active">I</button>'
+      '<button class="if-meta-wave">II</button><button class="if-meta-wave">III</button></div></div>'
+      '</div></div></div>'
+      '<div class="form-cols">'
+      '<div class="form-col form-col-desc">'
+      '<label class="if-field-label" style="display:block;margin-bottom:8px">Descriere</label>'
+      '<textarea class="desc-fixed">Proiect nou pe Supabase: baza de date plus Auth cu magic link. '
+      'Fără RLS deocamdată — vine în TUR-04, odată cu pagina de înregistrare.</textarea></div>'
+      '<div class="form-col form-col-right">'
+      '<div class="deps-zone"><div class="deps-bar">'
+      '<button class="dep-tab-btn on">%s Necesită<span class="dep-tab-count">1</span></button>'
+      '<button class="dep-tab-btn">%s Permite<span class="dep-tab-count">2</span></button>'
+      '<div class="dep-search-wrap-rel"><div class="dep-search-field">'
+      '<input class="dep-search-input-sm" placeholder="Caută sau creează tichet…" /></div></div>'
+      '</div>'
+      '<div class="dep-card"><button class="dep-card-body"><span class="dep-card-id">TUR-02</span>'
+      '<span class="dep-card-title">Schema tabelelor</span></button>'
+      '<button class="dep-card-x">%s</button></div>'
+      '</div></div></div></div>'
+      % (ic('arrow-left', 13), ic('arrow-right', 13), ic('x', 12))
+)
+
+LISTA = ('<div class="split">'
+         '<div class="split-list"><div class="panel">' + LISTA_STANGA + '</div></div>'
+         '<aside class="split-pane">' + LISTA_PANOU + '</aside></div>')
+
+LISTA_GOL = ('<div class="split">'
+             '<div class="split-list"><div class="panel">' + LISTA_STANGA.replace(' docked', '') + '</div></div>'
+             '<aside class="split-pane"><div class="split-empty">' + ic('pencil', 22)
+             + '<p>Alege un tichet din listă ca să-l editezi aici.</p></div></aside></div>')
+
 # ═══ ECRANUL „CONTROALE" ═════════════════════════════════════════════════════
 # Fiecare clasă care și-a pierdut chenarul, în starea normală și în cea activă.
 def g(label, html):
@@ -252,6 +347,7 @@ CONTROALE = ''.join([
       '<button class="if-btn-primary">Adaugă tichet</button>'
       '<button class="if-btn-ghost">Anulează</button>'
       '<button class="sh-save dirty">Salvează</button>'
+      '<button class="sh-save dirty nudge">Nesalvat!</button>'
       '<button class="sh-save" disabled>Salvat</button>'
       '<button class="sh-close">' + ic('x', 16) + '</button>'
       '<button class="sh-copy">' + ic('copy', 15) + '</button>'
@@ -291,6 +387,15 @@ CONTROALE = ''.join([
       '<div class="due-input"><span class="due-native">9 sep 2026</span></div>'
       '<div class="dep-search-field"><input class="dep-search-input-sm" placeholder="Caută…" /></div>'),
 
+    g('Rânduri de listă',
+      lrow('TUR-04', 'Rând normal', 'var(--layer-1)')
+      + lrow('TUR-01', 'Deschis în panoul lateral', 'var(--layer-0)', docked=True)
+      + lrow('TUR-02', 'Terminat', 'var(--layer-0)', done=True)),
+
+    g('Panoul gol',
+      '<div class="split-pane" style="height:180px"><div class="split-empty">' + ic('pencil', 22)
+      + '<p>Alege un tichet din listă ca să-l editezi aici.</p></div></div>'),
+
     g('Indicii de tastatură',
       '<span class="qs-esc-badge">esc</span>'
       '<span class="qa-hint"><kbd>↵</kbd> adaugă</span>'
@@ -304,6 +409,12 @@ SCREENS = {
                '<div class="panel">' + ORDINE + '</div>'),
     'proiecte': ('Horizontal', 'Toate proiectele tale', 'H', False, True, PROIECTE),
     'azi': ('Azi', 'miercuri, 9 septembrie', None, False, False, '<div class="panel smart-list">' + AZI + '</div>'),
+    'lista': ('Aplicație Turism', 'Listă · val I · panou lateral', 'TU', True, True,
+              '<div class="tabs"><button class="tab">Ordine</button><button class="tab on">Listă</button>'
+              '<button class="tab">Graf</button><button class="tab">Teme</button></div>' + LISTA),
+    'lista-gol': ('Aplicație Turism', 'Listă · niciun tichet ales', 'TU', True, True,
+                  '<div class="tabs"><button class="tab">Ordine</button><button class="tab on">Listă</button>'
+                  '<button class="tab">Graf</button><button class="tab">Teme</button></div>' + LISTA_GOL),
     'controale': ('Controale', 'fiecare clasă, normal și activ', None, False, False,
                   '<div class="panel bench-gallery">' + CONTROALE + '</div>'),
 }
@@ -378,6 +489,8 @@ SHELL = """<!doctype html>
   <button data-go="ordine">Ordine</button>
   <button data-go="proiecte">Proiecte</button>
   <button data-go="azi">Azi</button>
+  <button data-go="lista">Listă</button>
+  <button data-go="lista-gol">Listă · gol</button>
   <button data-go="controale">Controale</button>
   <span class="sep"></span>
   <button id="bench-theme">Temă</button>
@@ -412,7 +525,7 @@ __TABBAR__
 """
 
 html = (SHELL
-        .replace('__SCREENS__', ''.join(screen(k) for k in ('ordine', 'proiecte', 'azi', 'controale')))
+        .replace('__SCREENS__', ''.join(screen(k) for k in ('ordine', 'proiecte', 'azi', 'lista', 'lista-gol', 'controale')))
         .replace('__TABBAR__', TABBAR))
 out = os.path.join(ROOT, 'design/preview.html')
 io.open(out, 'w', encoding='utf-8').write(html)
