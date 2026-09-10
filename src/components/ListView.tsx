@@ -7,11 +7,12 @@ import { BulkBar } from './BulkBar'
 import { useHideDone, useOrderedLayers, useWaveActions, useVimNav, useCanWrite } from '../hooks'
 import { layerVar } from '../lib/layerColors'
 import { DueChip } from './DueChip'
+import { ObstacleChip } from './ObstacleChip'
 import { Icon } from './Icon'
 import { SplitView } from './SplitView'
 
 export function ListView() {
-  const { waves, activeWave, byId, stateOf, themeOf, toggleDone } = useHorizontal()
+  const { waves, activeWave, byId, stateOf, themeOf, toggleDone, blockedByObstacle } = useHorizontal()
   const { openEditIssue, dockedIssueId } = useUI()
   const canWrite = useCanWrite()
   const [hideDone, toggleHideDone] = useHideDone()
@@ -64,6 +65,7 @@ export function ListView() {
                 const state = stateOf(id)
                 const theme = it.theme ? themeOf(it.theme) : undefined
                 const isSelected = wa.selectedIds.has(id)
+                const obstructed = Boolean(blockedByObstacle[id]?.length)
                 const treeClass = wa.treeViewActive
                   ? wa.highlightedIds === null
                     ? ''
@@ -78,7 +80,8 @@ export function ListView() {
                   (dockedIssueId === id ? ' docked' : '') +
                   (inSelect ? ' in-select' : '') +
                   treeClass +
-                  (focusedId === id ? ' vim-focused' : '')
+                  (focusedId === id ? ' vim-focused' : '') +
+                  (obstructed ? ' blocat' : '')
 
                 const handleClick = () => {
                   if (wa.treeViewActive) wa.handleTreeSelect(id)
@@ -113,6 +116,7 @@ export function ListView() {
                     <span className="row-tail">
                       {it.urgent && <span className="tk-urgent" title="Urgent"><Icon name="urgent" size={13} /></span>}
                       <DueChip issue={it} />
+                      <ObstacleChip issueId={id} />
                     </span>
                   </button>
                 )

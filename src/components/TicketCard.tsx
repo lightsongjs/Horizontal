@@ -2,6 +2,7 @@ import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { useCanWrite } from '../hooks'
 import { DueChip } from './DueChip'
+import { ObstacleChip } from './ObstacleChip'
 import { Icon } from './Icon'
 
 interface Props {
@@ -17,7 +18,7 @@ interface Props {
 }
 
 export function TicketCard({ id, contextWave, selectMode, isSelected, onToggleSelect, treeMode, highlighted, onTreeSelect, focused }: Props) {
-  const { byId, stateOf, toggleDone, themeOf } = useHorizontal()
+  const { byId, stateOf, toggleDone, themeOf, blockedByObstacle } = useHorizontal()
   const { openEditIssue } = useUI()
   const canWrite = useCanWrite()
   const it = byId[id]
@@ -28,6 +29,7 @@ export function TicketCard({ id, contextWave, selectMode, isSelected, onToggleSe
   const deps = it.deps ?? []
   const sameWave = deps.filter((d) => byId[d]?.wave === contextWave)
   const crossWave = deps.filter((d) => byId[d] && byId[d].wave !== contextWave)
+  const obstructed = Boolean(blockedByObstacle[id]?.length)
 
   const handleClick = () => {
     if (treeMode) {
@@ -50,7 +52,7 @@ export function TicketCard({ id, contextWave, selectMode, isSelected, onToggleSe
   return (
     <button
       // Same class grammar as ListView.tsx (row variant) — keep in sync.
-      className={`tk ${state}${isSelected ? ' selected' : ''}${selectMode ? ' in-select' : ''}${treeClass}${focused ? ' vim-focused' : ''}`}
+      className={`tk ${state}${isSelected ? ' selected' : ''}${selectMode ? ' in-select' : ''}${treeClass}${focused ? ' vim-focused' : ''}${obstructed ? ' blocat' : ''}`}
       onClick={handleClick}
       data-title={it.title}
       data-issue-id={id}
@@ -76,11 +78,12 @@ export function TicketCard({ id, contextWave, selectMode, isSelected, onToggleSe
         {it.urgent && <span className="tk-urgent" title="Urgent"><Icon name="urgent" size={13} /></span>}
       </div>
       <h5>{it.title}</h5>
-      {(sameWave.length > 0 || crossWave.length > 0 || it.dueAt) && (
+      {(sameWave.length > 0 || crossWave.length > 0 || it.dueAt || obstructed) && (
         <span className="tk-sub">
           {sameWave.length > 0 && <span className="dep"><Icon name="dep" size={13} /> {sameWave.join(', ')}</span>}
           {crossWave.length > 0 && <span className="tk-children">+{crossWave.length} din alt val</span>}
           <DueChip issue={it} />
+          <ObstacleChip issueId={id} />
         </span>
       )}
     </button>
