@@ -185,16 +185,28 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
         setAllWaves((prev) => [...prev.filter((x) => x.projectId !== projectId), ...w])
         setAllThemes((prev) => [...prev.filter((x) => x.projectId !== projectId), ...t])
         setAllIssues((prev) => [...prev.filter((i) => i.projectId !== projectId), ...loaded])
-        // `ObstacleLink` n-are `projectId` direct — id-urile „vechi" (obstacolele
-        // proiectului dinainte de acest refresh) sunt calculate din `allObstacles`,
-        // ca legăturile lor stale (inclusiv ale unui obstacol între timp șters) să
-        // fie scoase, nu doar completate peste. Altfel un refresh repetat ar
-        // duplica aceleași legături la infinit.
-        const staleObstacleIds = new Set(
-          allObstacles.filter((x) => x.projectId === projectId).map((x) => x.id),
-        )
-        setAllObstacles((prev) => [...prev.filter((x) => x.projectId !== projectId), ...o])
-        setAllObstacleLinks((prev) => [...prev.filter((l) => !staleObstacleIds.has(l.obstacleId)), ...ol])
+        // `ObstacleLink` n-are `projectId` direct, deci legăturile stale ale
+        // acestui proiect (inclusiv ale unui obstacol între timp șters) se scot
+        // pe baza obstacolelor lui VECHI, nu doar completate peste — altfel un
+        // refresh repetat ar duplica aceleași legături la infinit.
+        //
+        // Setul de id-uri „vechi” se citește din `prev`, în interiorul
+        // actualizatorului funcțional al lui `setAllObstacles`, NU dintr-un
+        // `allObstacles` închis peste clojura lui `refresh`: acela ar fi o poză
+        // dinaintea acestui load, iar filtrarea pe o poză veche ar lăsa
+        // legătura orfană a unui obstacol șters chiar în timpul lui Promise.all.
+        // Actualizatorul rămâne pur — fără await, fără citiri din alt state —
+        // fiindcă rulează în faza de randare a lui React.
+        setAllObstacles((prev) => {
+          const staleObstacleIds = new Set(
+            prev.filter((x) => x.projectId === projectId).map((x) => x.id),
+          )
+          setAllObstacleLinks((links) => [
+            ...links.filter((l) => !staleObstacleIds.has(l.obstacleId)),
+            ...ol,
+          ])
+          return [...prev.filter((x) => x.projectId !== projectId), ...o]
+        })
         setIssuesLoadedFor(projectId)
         setLoadedProjects((prev) => new Set(prev).add(projectId))
       }
@@ -207,7 +219,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false)
     }
-  }, [projectId, loadDue, allObstacles])
+  }, [projectId, loadDue])
 
   useEffect(() => {
     let alive = true
@@ -303,11 +315,20 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
           // Ca în `refresh`: `ObstacleLink` n-are `projectId`, deci legăturile
           // stale ale acestui proiect (revizitat după o încărcare anterioară)
           // se scot pe baza obstacolelor lui VECHI, nu doar completate peste.
-          const staleObstacleIds = new Set(
-            allObstacles.filter((x) => x.projectId === id).map((x) => x.id),
-          )
-          setAllObstacles((prev) => [...prev.filter((x) => x.projectId !== id), ...o])
-          setAllObstacleLinks((prev) => [...prev.filter((l) => !staleObstacleIds.has(l.obstacleId)), ...ol])
+          // Id-urile „vechi” vin din `prev`, în interiorul actualizatorului
+          // funcțional al lui `setAllObstacles`, nu dintr-un `allObstacles`
+          // închis peste clojura lui `selectProject` — acela ar fi o poză
+          // dinaintea acestui load, iar un obstacol șters chiar în timpul lui
+          // `Promise.all` ar rămâne cu legătura orfană. Actualizatorul rămâne
+          // pur — fără await, fără citiri din alt state.
+          setAllObstacles((prev) => {
+            const staleObstacleIds = new Set(prev.filter((x) => x.projectId === id).map((x) => x.id))
+            setAllObstacleLinks((links) => [
+              ...links.filter((l) => !staleObstacleIds.has(l.obstacleId)),
+              ...ol,
+            ])
+            return [...prev.filter((x) => x.projectId !== id), ...o]
+          })
           setIssuesLoadedFor(id)
           setLoadedProjects((prev) => new Set(prev).add(id))
           if (w.length && !w.some((x) => x.number === (proj?.currentWave ?? 1))) {
@@ -322,7 +343,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
           setIssuesLoadFailedFor(id)
         })
     },
-    [projects, projectId, allObstacles],
+    [projects, projectId],
   )
 
   const upsertIssue = useCallback((issue: Issue) => {
