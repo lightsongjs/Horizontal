@@ -13,7 +13,7 @@ import {
 } from 'react'
 import { repository } from './data'
 import { applyOrder, loadOrder, saveOrder } from './lib/projectOrder'
-import type { NewIssue, NewProject } from './data/repository'
+import type { NewIssue, NewObstacle, NewProject } from './data/repository'
 import {
   DependencyCycleError,
   computeLayers,
@@ -23,7 +23,8 @@ import {
   unblocks,
 } from './lib/engine'
 import { buildSmartLists, smartListRange, type SmartLists } from './lib/schedule'
-import type { Assignee, Issue, IssueState, Layers, Project, Theme, Wave } from './lib/types'
+import { blockedBy, detectObstacleCycle } from './lib/obstacles'
+import type { Assignee, Issue, IssueState, Layers, Obstacle, ObstacleLink, Project, Theme, Wave } from './lib/types'
 import { errorMessage } from './lib/errorMessage'
 
 interface HorizontalState {
@@ -57,6 +58,10 @@ interface HorizontalState {
   /** Fereastra de scadențe a fost adusă cel puțin o dată. */
   dueLoaded: boolean
   assignees: Assignee[]
+  /** Obstacolele proiectului activ, ordonate după `position`. */
+  obstacles: Obstacle[]
+  /** Muchiile obstacol → tichet ale proiectului activ. */
+  obstacleLinks: ObstacleLink[]
   myAssigneeId: string | null
   setMyAssigneeId(id: string | null): void
 
@@ -82,6 +87,12 @@ interface HorizontalState {
   deleteIssue(id: string): Promise<void>
   deleteIssues(ids: string[]): Promise<void>
 
+  createObstacle(input: Omit<NewObstacle, 'projectId'>): Promise<Obstacle | null>
+  updateObstacle(id: string, patch: Partial<Obstacle>): Promise<void>
+  deleteObstacle(id: string): Promise<void>
+  setObstacleIssues(obstacleId: string, issueIds: string[]): Promise<void>
+  setIssueObstacles(issueId: string, obstacleIds: string[]): Promise<void>
+
   // derived helpers
   byId: Record<string, Issue>
   layers: Layers
@@ -89,6 +100,13 @@ interface HorizontalState {
   unblockedBy(id: string): Issue[]
   completion(projectId: string): number
   themeOf(key: string): Theme | undefined
+  /**
+   * issueId → obstacolele deschise ȘI blocante care îl ating. Singura sursă:
+   * nicio componentă nu recalculează asta. Vezi src/lib/obstacles.ts.
+   */
+  blockedByObstacle: Record<string, string[]>
+  obstaclesOf(issueId: string): Obstacle[]
+  issuesOf(obstacleId: string): Issue[]
 }
 
 const Ctx = createContext<HorizontalState | null>(null)
@@ -101,6 +119,8 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
   const [allWaves, setAllWaves] = useState<Wave[]>([])
   const [allThemes, setAllThemes] = useState<Theme[]>([])
   const [allIssues, setAllIssues] = useState<Issue[]>([])
+  const [allObstacles, setAllObstacles] = useState<Obstacle[]>([])
+  const [allObstacleLinks, setAllObstacleLinks] = useState<ObstacleLink[]>([])
   const [projectId, setProjectId] = useState<string | null>(null)
   const [issuesLoadedFor, setIssuesLoadedFor] = useState<string | null>(null)
   const [issuesLoadFailedFor, setIssuesLoadFailedFor] = useState<string | null>(null)
@@ -152,14 +172,29 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
       const p = await repository.listProjects()
       setRawProjects(p)
       if (projectId) {
-        const [w, t, loaded] = await Promise.all([
+        // Obstacolele vin în ACELAȘI Promise.all cu tichetele: dacă ajungeau o
+        // randare mai târziu, poarta valului apărea goală și apoi sărea la
+        // patru, iar cardurile clipeau din „liber” în „blocat”.
+        const [w, t, loaded, o, ol] = await Promise.all([
           repository.listWaves(projectId),
           repository.listThemes(projectId),
           repository.listIssues(projectId),
+          repository.listObstacles(projectId),
+          repository.listObstacleLinks(projectId),
         ])
         setAllWaves((prev) => [...prev.filter((x) => x.projectId !== projectId), ...w])
         setAllThemes((prev) => [...prev.filter((x) => x.projectId !== projectId), ...t])
         setAllIssues((prev) => [...prev.filter((i) => i.projectId !== projectId), ...loaded])
+        // `ObstacleLink` n-are `projectId` direct — id-urile „vechi" (obstacolele
+        // proiectului dinainte de acest refresh) sunt calculate din `allObstacles`,
+        // ca legăturile lor stale (inclusiv ale unui obstacol între timp șters) să
+        // fie scoase, nu doar completate peste. Altfel un refresh repetat ar
+        // duplica aceleași legături la infinit.
+        const staleObstacleIds = new Set(
+          allObstacles.filter((x) => x.projectId === projectId).map((x) => x.id),
+        )
+        setAllObstacles((prev) => [...prev.filter((x) => x.projectId !== projectId), ...o])
+        setAllObstacleLinks((prev) => [...prev.filter((l) => !staleObstacleIds.has(l.obstacleId)), ...ol])
         setIssuesLoadedFor(projectId)
         setLoadedProjects((prev) => new Set(prev).add(projectId))
       }
@@ -172,7 +207,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false)
     }
-  }, [projectId, loadDue])
+  }, [projectId, loadDue, allObstacles])
 
   useEffect(() => {
     let alive = true
@@ -206,6 +241,14 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     [allWaves, projectId],
   )
   const themes = useMemo(() => allThemes.filter((t) => t.projectId === projectId), [allThemes, projectId])
+  const obstacles = useMemo(
+    () => allObstacles.filter((o) => o.projectId === projectId),
+    [allObstacles, projectId],
+  )
+  const obstacleLinks = useMemo(() => {
+    const mine = new Set(obstacles.map((o) => o.id))
+    return allObstacleLinks.filter((l) => mine.has(l.obstacleId))
+  }, [allObstacleLinks, obstacles])
 
   /**
    * Tichetele cu scadență, cu O SINGURĂ sursă de adevăr pentru fiecare.
@@ -243,11 +286,28 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
       if (!id) return
       const proj = projects.find((p) => p.id === id)
       setActiveWave(proj?.currentWave ?? 1)
-      Promise.all([repository.listWaves(id), repository.listThemes(id), repository.listIssues(id)])
-        .then(([w, t, loaded]) => {
+      // Obstacolele în ACELAȘI Promise.all cu tichetele — vezi motivul din
+      // `refresh`: un `await` separat ar face poarta valului să apară goală și
+      // apoi să sară la patru, cu cardurile clipind din „liber" în „blocat".
+      Promise.all([
+        repository.listWaves(id),
+        repository.listThemes(id),
+        repository.listIssues(id),
+        repository.listObstacles(id),
+        repository.listObstacleLinks(id),
+      ])
+        .then(([w, t, loaded, o, ol]) => {
           setAllWaves((prev) => [...prev.filter((x) => x.projectId !== id), ...w])
           setAllThemes((prev) => [...prev.filter((x) => x.projectId !== id), ...t])
           setAllIssues((prev) => [...prev.filter((i) => i.projectId !== id), ...loaded])
+          // Ca în `refresh`: `ObstacleLink` n-are `projectId`, deci legăturile
+          // stale ale acestui proiect (revizitat după o încărcare anterioară)
+          // se scot pe baza obstacolelor lui VECHI, nu doar completate peste.
+          const staleObstacleIds = new Set(
+            allObstacles.filter((x) => x.projectId === id).map((x) => x.id),
+          )
+          setAllObstacles((prev) => [...prev.filter((x) => x.projectId !== id), ...o])
+          setAllObstacleLinks((prev) => [...prev.filter((l) => !staleObstacleIds.has(l.obstacleId)), ...ol])
           setIssuesLoadedFor(id)
           setLoadedProjects((prev) => new Set(prev).add(id))
           if (w.length && !w.some((x) => x.number === (proj?.currentWave ?? 1))) {
@@ -262,7 +322,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
           setIssuesLoadFailedFor(id)
         })
     },
-    [projects, projectId],
+    [projects, projectId, allObstacles],
   )
 
   const upsertIssue = useCallback((issue: Issue) => {
@@ -305,6 +365,13 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     setAllWaves((prev) => prev.filter((w) => w.projectId !== id))
     setAllThemes((prev) => prev.filter((t) => t.projectId !== id))
     setAllIssues((prev) => prev.filter((i) => i.projectId !== id))
+    // Cascadează și pe backend (vezi deleteProject din localRepository /
+    // supabaseRepository): obstacolele proiectului dispar, deci și legăturile lor.
+    setAllObstacles((prev) => {
+      const gone = new Set(prev.filter((o) => o.projectId === id).map((o) => o.id))
+      setAllObstacleLinks((links) => links.filter((l) => !gone.has(l.obstacleId)))
+      return prev.filter((o) => o.projectId !== id)
+    })
     setDueRaw((prev) => prev.filter((i) => i.projectId !== id))
     setLoadedProjects((prev) => { const n = new Set(prev); n.delete(id); return n })
     setProjectId((cur) => (cur === id ? null : cur))
@@ -434,6 +501,67 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     )
   }, [])
 
+  const createObstacle = useCallback(
+    async (input: Omit<NewObstacle, 'projectId'>) => {
+      if (!projectId) return null
+      const created = await repository.createObstacle({ ...input, projectId })
+      setAllObstacles((prev) => [...prev, created])
+      // `issueIds` de la creare nu se întorc în `created` (nu fac parte din
+      // formatul `Obstacle`) — legătura locală se adaugă separat, ca UI-ul
+      // să nu aștepte un refresh ca să vadă tichetele deja blocate.
+      if (input.issueIds?.length) {
+        const links = input.issueIds
+        setAllObstacleLinks((prev) => [...prev, ...links.map((issueId) => ({ obstacleId: created.id, issueId }))])
+      }
+      return created
+    },
+    [projectId],
+  )
+
+  const updateObstacle = useCallback(
+    async (id: string, patch: Partial<Obstacle>) => {
+      if (patch.deps) {
+        // Ciclul se refuză aici, nu în motor: openObstacles e chemat la fiecare
+        // randare și n-are voie să arunce pe date deja salvate.
+        const prospective = obstacles.map((o) => (o.id === id ? { ...o, deps: patch.deps! } : o))
+        const cycle = detectObstacleCycle(prospective)
+        if (cycle) throw new Error(`Dependență circulară între obstacole: ${cycle.join(' → ')}`)
+      }
+      const updated = await repository.updateObstacle(id, patch)
+      setAllObstacles((prev) => prev.map((o) => (o.id === id ? updated : o)))
+    },
+    [obstacles],
+  )
+
+  const deleteObstacle = useCallback(async (id: string) => {
+    await repository.deleteObstacle(id)
+    // La fel ca `deleteIssue`: obstacolul dispare, legăturile lui la tichete
+    // dispar, și se scoate din `deps`-urile celorlalte obstacole — serverul
+    // face toate trei, starea locală trebuie să oglindească toate trei.
+    setAllObstacles((prev) =>
+      prev
+        .filter((o) => o.id !== id)
+        .map((o) => (o.deps.includes(id) ? { ...o, deps: o.deps.filter((d) => d !== id) } : o)),
+    )
+    setAllObstacleLinks((prev) => prev.filter((l) => l.obstacleId !== id))
+  }, [])
+
+  const setObstacleIssues = useCallback(async (obstacleId: string, issueIds: string[]) => {
+    await repository.setObstacleIssues(obstacleId, issueIds)
+    setAllObstacleLinks((prev) => [
+      ...prev.filter((l) => l.obstacleId !== obstacleId),
+      ...issueIds.map((issueId) => ({ obstacleId, issueId })),
+    ])
+  }, [])
+
+  const setIssueObstacles = useCallback(async (issueId: string, obstacleIds: string[]) => {
+    await repository.setIssueObstacles(issueId, obstacleIds)
+    setAllObstacleLinks((prev) => [
+      ...prev.filter((l) => l.issueId !== issueId),
+      ...obstacleIds.map((obstacleId) => ({ obstacleId, issueId })),
+    ])
+  }, [])
+
   const byId = useMemo(() => indexById(issues), [issues])
   const layers = useMemo(() => {
     try {
@@ -447,6 +575,27 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
       return {}
     }
   }, [issues, activeWave])
+
+  const blockedByObstacle = useMemo(
+    () => blockedBy(issues, obstacles, obstacleLinks),
+    [issues, obstacles, obstacleLinks],
+  )
+
+  const obstaclesOf = useCallback(
+    (issueId: string) => {
+      const ids = new Set(obstacleLinks.filter((l) => l.issueId === issueId).map((l) => l.obstacleId))
+      return obstacles.filter((o) => ids.has(o.id))
+    },
+    [obstacles, obstacleLinks],
+  )
+
+  const issuesOf = useCallback(
+    (obstacleId: string) => {
+      const ids = new Set(obstacleLinks.filter((l) => l.obstacleId === obstacleId).map((l) => l.issueId))
+      return issues.filter((i) => ids.has(i.id))
+    },
+    [issues, obstacleLinks],
+  )
 
   const stateOf = useCallback((id: string) => deriveState(byId[id], byId), [byId])
   const unblockedBy = useCallback((id: string) => unblocks(id, issues), [issues])
@@ -475,6 +624,8 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     smartLists,
     dueLoaded,
     assignees,
+    obstacles,
+    obstacleLinks,
     myAssigneeId,
     setMyAssigneeId,
     selectProject,
@@ -495,12 +646,20 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     updateIssue,
     deleteIssue,
     deleteIssues,
+    createObstacle,
+    updateObstacle,
+    deleteObstacle,
+    setObstacleIssues,
+    setIssueObstacles,
     byId,
     layers,
     stateOf,
     unblockedBy,
     completion,
     themeOf,
+    blockedByObstacle,
+    obstaclesOf,
+    issuesOf,
   }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
