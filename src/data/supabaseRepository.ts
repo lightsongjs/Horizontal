@@ -2,9 +2,9 @@
 // edge table, per-project waves and themes) to/from the app's models.
 
 import { requireSupabase } from '../lib/supabase'
-import type { Assignee, Issue, Project, Theme, Wave } from '../lib/types'
+import type { Assignee, Issue, Obstacle, ObstacleLink, Project, Theme, Wave } from '../lib/types'
 import { pathsForIssues, pathsForProject, removeObjects } from './attachments'
-import { themeKey, type DueRange, type NewIssue, type NewProject, type Repository } from './repository'
+import { themeKey, type DueRange, type NewIssue, type NewObstacle, type NewProject, type Repository } from './repository'
 
 interface IssueRow {
   id: string
@@ -63,6 +63,49 @@ function nextIssueId(existing: string[], prefix: string): string {
     .filter((n) => Number.isFinite(n))
     .reduce((a, b) => Math.max(a, b), 0)
   return `${prefix}-${String(max + 1).padStart(2, '0')}`
+}
+
+interface ObstacleRow {
+  id: string
+  project_id: string
+  title: string
+  detail: string
+  owner: string
+  state: string
+  blocking: boolean
+  bypass: string | null
+  evidence: string
+  asked_at: string | null
+  resolved_at: string | null
+  position: number
+}
+
+function rowToObstacle(row: ObstacleRow, depsById: Record<string, string[]>): Obstacle {
+  return {
+    id: row.id,
+    projectId: row.project_id,
+    title: row.title,
+    detail: row.detail ?? '',
+    owner: row.owner ?? '',
+    state: row.state as Obstacle['state'],
+    blocking: row.blocking ?? true,
+    bypass: row.bypass ?? null,
+    evidence: (row.evidence ?? 'necunoscut') as Obstacle['evidence'],
+    askedAt: isoOrNull(row.asked_at),
+    resolvedAt: isoOrNull(row.resolved_at),
+    deps: depsById[row.id] ?? [],
+    position: row.position ?? 0,
+  }
+}
+
+/** Următorul id liber de obstacol, cu „O" ca la localRepository. */
+function nextObstacleId(existing: string[], prefix: string): string {
+  const pre = `${prefix}-O`
+  const max = existing
+    .map((id) => Number(id.slice(pre.length)))
+    .filter((n) => Number.isFinite(n))
+    .reduce((a, b) => Math.max(a, b), 0)
+  return `${pre}${String(max + 1).padStart(2, '0')}`
 }
 
 export function createSupabaseRepository(): Repository {
@@ -374,6 +417,154 @@ export function createSupabaseRepository(): Repository {
 
     async deleteIssues(ids: string[]) {
       await deleteIssuesImpl(ids)
+    },
+
+    async listObstacles(projectId: string) {
+      const { data, error } = await db
+        .from('obstacles')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('position')
+        .order('id')
+      if (error) throw error
+      const rows = (data ?? []) as ObstacleRow[]
+      const ids = rows.map((r) => r.id)
+      const depsById: Record<string, string[]> = {}
+      if (ids.length) {
+        const { data: deps, error: dErr } = await db
+          .from('obstacle_deps')
+          .select('obstacle_id, depends_on_id')
+          .in('obstacle_id', ids)
+        if (dErr) throw dErr
+        for (const d of deps ?? []) {
+          ;(depsById[d.obstacle_id] ??= []).push(d.depends_on_id)
+        }
+      }
+      return rows.map((row) => rowToObstacle(row, depsById))
+    },
+
+    async listObstacleLinks(projectId: string): Promise<ObstacleLink[]> {
+      // Un singur round trip: filtrăm pe project_id prin join implicit, ca la
+      // `dependencies`. RLS ar întoarce oricum doar proiectele accesibile, dar
+      // fără filtru am aduce obstacolele TUTUROR proiectelor userului.
+      const { data: mine, error: oErr } = await db.from('obstacles').select('id').eq('project_id', projectId)
+      if (oErr) throw oErr
+      const ids = (mine ?? []).map((r) => r.id)
+      if (!ids.length) return []
+      const { data, error } = await db.from('obstacle_issues').select('obstacle_id, issue_id').in('obstacle_id', ids)
+      if (error) throw error
+      return (data ?? []).map((r) => ({ obstacleId: r.obstacle_id, issueId: r.issue_id }))
+    },
+
+    async createObstacle(input: NewObstacle) {
+      const { data: existing, error: exErr } = await db
+        .from('obstacles')
+        .select('id, position')
+        .eq('project_id', input.projectId)
+      if (exErr) throw exErr
+      const { data: proj, error: pErr } = await db.from('projects').select('prefix').eq('id', input.projectId).single()
+      if (pErr) throw pErr
+
+      const id = nextObstacleId((existing ?? []).map((r) => r.id), proj.prefix)
+      // Vârf de apă, nu un count — un `.length` refolosit după o ștergere ar
+      // da aceeași poziție unui obstacol supraviețuitor, degradând tăcut
+      // ordinea. Aceeași regulă ca `nextObstaclePosition` din localRepository.
+      const position = (existing ?? []).reduce((m, o) => Math.max(m, o.position), -1) + 1
+      const { error } = await db.from('obstacles').insert({
+        id,
+        project_id: input.projectId,
+        title: input.title,
+        detail: input.detail ?? '',
+        owner: input.owner ?? '',
+        state: input.state ?? 'necunoscut',
+        blocking: input.blocking ?? true,
+        bypass: input.bypass ?? null,
+        evidence: input.evidence ?? 'necunoscut',
+        asked_at: input.askedAt ?? null,
+        resolved_at: null,
+        position,
+      })
+      if (error) throw error
+
+      if (input.deps?.length) {
+        const { error: dErr } = await db
+          .from('obstacle_deps')
+          .insert(input.deps.map((depends_on_id) => ({ obstacle_id: id, depends_on_id })))
+        if (dErr) throw dErr
+      }
+      if (input.issueIds?.length) {
+        const { error: lErr } = await db
+          .from('obstacle_issues')
+          .insert(input.issueIds.map((issue_id) => ({ obstacle_id: id, issue_id })))
+        if (lErr) throw lErr
+      }
+
+      const { data: back, error: bErr } = await db.from('obstacles').select('*').eq('id', id).single()
+      if (bErr) throw bErr
+      return rowToObstacle(back as ObstacleRow, { [id]: input.deps ?? [] })
+    },
+
+    async updateObstacle(id: string, patch: Partial<Obstacle>) {
+      const row: Record<string, unknown> = {}
+      if (patch.title !== undefined) row.title = patch.title
+      if (patch.detail !== undefined) row.detail = patch.detail
+      if (patch.owner !== undefined) row.owner = patch.owner
+      if (patch.blocking !== undefined) row.blocking = patch.blocking
+      if (patch.bypass !== undefined) row.bypass = patch.bypass
+      if (patch.evidence !== undefined) row.evidence = patch.evidence
+      if (patch.askedAt !== undefined) row.asked_at = patch.askedAt
+      if (patch.position !== undefined) row.position = patch.position
+      if (patch.state !== undefined) {
+        row.state = patch.state
+        const closed = patch.state === 'depasit' || patch.state === 'ocolit'
+        row.resolved_at = closed ? new Date().toISOString() : null
+      }
+      if (Object.keys(row).length) {
+        const { error } = await db.from('obstacles').update(row).eq('id', id)
+        if (error) throw error
+      }
+      if (patch.deps) {
+        const { error: delErr } = await db.from('obstacle_deps').delete().eq('obstacle_id', id)
+        if (delErr) throw delErr
+        if (patch.deps.length) {
+          const { error: insErr } = await db
+            .from('obstacle_deps')
+            .insert(patch.deps.map((depends_on_id) => ({ obstacle_id: id, depends_on_id })))
+          if (insErr) throw insErr
+        }
+      }
+      const { data, error } = await db.from('obstacles').select('*').eq('id', id).single()
+      if (error) throw error
+      const { data: deps, error: dErr } = await db.from('obstacle_deps').select('depends_on_id').eq('obstacle_id', id)
+      if (dErr) throw dErr
+      return rowToObstacle(data as ObstacleRow, { [id]: (deps ?? []).map((d) => d.depends_on_id) })
+    },
+
+    async deleteObstacle(id: string) {
+      // obstacle_issues și obstacle_deps au ON DELETE CASCADE pe ambele capete,
+      // deci un singur delete curăță și legăturile, și `deps` celorlalte.
+      const { error } = await db.from('obstacles').delete().eq('id', id)
+      if (error) throw error
+    },
+
+    async setObstacleIssues(obstacleId: string, issueIds: string[]) {
+      const { error: delErr } = await db.from('obstacle_issues').delete().eq('obstacle_id', obstacleId)
+      if (delErr) throw delErr
+      if (!issueIds.length) return
+      const { error } = await db
+        .from('obstacle_issues')
+        .insert(issueIds.map((issue_id) => ({ obstacle_id: obstacleId, issue_id })))
+      if (error) throw error
+    },
+
+    async setIssueObstacles(issueId: string, obstacleIds: string[]) {
+      const { error: delErr } = await db.from('obstacle_issues').delete().eq('issue_id', issueId)
+      if (delErr) throw delErr
+      if (!obstacleIds.length) return
+      const { error } = await db
+        .from('obstacle_issues')
+        .insert(obstacleIds.map((obstacle_id) => ({ obstacle_id, issue_id: issueId })))
+      if (error) throw error
     },
 
     async listAssignees(): Promise<Assignee[]> {
