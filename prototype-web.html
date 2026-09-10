@@ -17,7 +17,7 @@
 .wave-gate-l{flex:1;font-size:14px;color:var(--txt)}
 .wave-gate-c{font-family:var(--mono);font-size:10px;letter-spacing:.09em;
   text-transform:uppercase;color:var(--txt-faint)}
-.obst-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));
+.obst-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(430px,1fr));
   gap:6px;margin:12px 0 0}
 .obst-row{display:flex;align-items:center;gap:10px;width:100%;padding:9px 11px;
   border:0;border-radius:var(--r-s);background:var(--surface-3);color:var(--txt);
@@ -47,6 +47,7 @@
 .map-wrap{background:var(--surface);border-radius:var(--r);box-shadow:var(--amb);
   overflow-x:auto;overflow-y:hidden}
 .map-band{fill:var(--surface-2)}
+.map-shadow{filter:url(#amb)}
 .map-bandtxt{font-family:var(--mono);font-size:10px;letter-spacing:.14em;
   text-transform:uppercase;fill:var(--txt-faint)}
 .map-id{font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;
@@ -104,7 +105,8 @@ textarea.of-input{resize:vertical;min-height:70px;line-height:1.55}
 .of-sw[aria-pressed=false]::after{right:auto;left:2.5px;background:var(--txt-faint)}
 
 /* Selectorul de obstacole din formularul tichetului */
-.dep-drop{position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:30;
+.dep-drop{position:absolute;top:calc(100% + 6px);right:0;left:auto;
+  width:min(440px,86vw);z-index:30;
   background:var(--surface);border-radius:var(--r-m);box-shadow:var(--amb-lg);
   padding:6px;max-height:260px;overflow-y:auto}
 .dep-drop-row{display:flex;align-items:center;gap:9px;width:100%;padding:8px 9px;
@@ -134,6 +136,21 @@ textarea.of-input{resize:vertical;min-height:70px;line-height:1.55}
 .ocard.draft .ocard-bar{background:var(--accent)}
 .ocard.draft .ocard-id{color:var(--accent)}
 
+.map-hint{font-family:var(--mono);font-size:10px;letter-spacing:.11em;
+  text-transform:uppercase;color:var(--txt-faint);padding:0 2px 8px}
+
+/* Afordanța punctată: „ce împiedică tichetul ăsta?". Linia punctată e
+   permisă de regulă — nu delimitează, invită. */
+.oempty{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;
+  padding:22px 14px;border:1px dashed var(--line);border-radius:var(--r-m);
+  background:transparent;color:var(--txt-faint);font-family:var(--display);
+  font-size:13.5px;cursor:pointer}
+.oempty:hover{border-color:var(--accent);color:var(--accent)}
+.ocard-byp{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);
+  font-size:8.5px;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--txt-faint)}
+[hidden]{display:none!important}
+
 /* ══ cadrul de prezentare (nu face parte din aplicație) ═════════════ */
 .bench{position:fixed;top:0;left:0;right:0;height:42px;z-index:400;display:flex;
   align-items:center;gap:2px;padding:0 12px;background:var(--surface-2);
@@ -159,6 +176,7 @@ body{padding-top:42px}
   <button data-go="lista">Listă · panou</button>
   <button data-go="foaie">Foaia obstacolului</button>
   <span class="sp"></span>
+  <button id="br">Reia fluxul</button>
   <button id="bt">Temă</button>
 </div>
 
@@ -235,13 +253,14 @@ body{padding-top:42px}
           <button class="tab">Ordine</button><button class="tab">Listă</button>
           <button class="tab on">Hartă</button><button class="tab">Teme</button>
         </div>
+        <div class="map-hint">Trage lateral pentru a vedea tot drumul →</div>
         <div class="map-wrap"><svg id="map" role="img" aria-label="Harta proiectului"></svg></div>
         <div class="map-legend">
-          <div><svg width="28" height="17"><path d="M7 0 H28 V17 H7 L0 8.5 Z" fill="var(--surface-3)"/><rect x="7" y="0" width="2.5" height="17" fill="var(--blocked)"/></svg> obstacol deschis</div>
-          <div><svg width="28" height="17"><path d="M7 0 H23 L28 5 V17 H7 L0 8.5 Z" fill="var(--surface-3)"/><rect x="7" y="0" width="2.5" height="17" fill="var(--blocked)"/></svg> are ocolire</div>
-          <div><svg width="28" height="17"><path d="M7 0 H28 V17 H7 L0 8.5 Z" fill="var(--surface-3)"/><rect x="7" y="0" width="2.5" height="17" fill="var(--done)"/></svg> obstacol depășit</div>
-          <div><svg width="28" height="17"><rect width="28" height="17" rx="5" fill="var(--surface-2)"/><rect width="2.5" height="17" fill="var(--layer-1)"/></svg> tichet</div>
-          <div><svg width="28" height="17"><rect width="28" height="17" rx="5" fill="var(--surface-2)"/><rect width="2.5" height="17" fill="var(--done)"/></svg> gata</div>
+          <div><svg width="28" height="17" class="map-shadow"><path d="M9 0 H28 V17 H9 L0 8.5 Z" fill="var(--surface-3)"/><rect x="9" y="0" width="2.5" height="17" fill="var(--blocked)"/></svg> obstacol deschis</div>
+          <div><svg width="28" height="17" class="map-shadow"><path d="M9 0 H23 L28 5 V17 H9 L0 8.5 Z" fill="var(--surface-3)"/><rect x="9" y="0" width="2.5" height="17" fill="var(--blocked)"/></svg> are ocolire</div>
+          <div><svg width="28" height="17" class="map-shadow"><path d="M9 0 H28 V17 H9 L0 8.5 Z" fill="var(--surface-3)"/><rect x="9" y="0" width="2.5" height="17" fill="var(--done)"/></svg> obstacol depășit</div>
+          <div><svg width="28" height="17" class="map-shadow"><rect width="28" height="17" rx="5" fill="var(--surface-2)"/><rect width="2.5" height="17" fill="var(--layer-1)"/></svg> tichet</div>
+          <div><svg width="28" height="17" class="map-shadow"><rect width="28" height="17" rx="5" fill="var(--surface-2)"/><rect width="2.5" height="17" fill="var(--done)"/></svg> gata</div>
         </div>
       </div>
     </main>
@@ -250,7 +269,7 @@ body{padding-top:42px}
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════════ -->
-<section class="bench-screen" data-screen="lista" hidden>
+<section class="bench-screen" id="lista" data-screen="lista" hidden>
 <div id="app">
   <aside class="sidebar" data-sb></aside>
   <div class="app-body">
@@ -270,7 +289,7 @@ body{padding-top:42px}
                 <button class="list-row done" style="--layer-color:var(--layer-0)"><span class="list-check" data-ic="done"></span><span class="list-id">MCP-03</span><span class="list-title">Revendică scope-ul npm @smartbill</span><span class="row-tail"></span></button>
                 <button class="list-row done" style="--layer-color:var(--layer-0)"><span class="list-check" data-ic="done"></span><span class="list-id">MCP-04</span><span class="list-title">Tichet DNS TXT pentru ro.smartbill</span><span class="row-tail"></span></button>
                 <button class="list-row done" style="--layer-color:var(--layer-0)"><span class="list-check" data-ic="done"></span><span class="list-id">MCP-05</span><span class="list-title">Decizie de SDK și de revizie de protocol</span><span class="row-tail"></span></button>
-                <button class="list-row docked" style="--layer-color:var(--layer-0)"><span class="list-check" data-ic="circle"></span><span class="list-id">MCP-02</span><span class="list-title">Oracol: convertorul Notion peste specul nostru</span><span class="row-tail"><span class="tk-urgent" data-ic="zap"></span><span class="due-chip"><span class="dc-date">12 sep</span></span></span></button>
+                <button class="list-row docked" id="row-mcp02" style="--layer-color:var(--layer-0)"><span class="list-check" data-ic="circle"></span><span class="list-id">MCP-02</span><span class="list-title">Oracol: convertorul Notion peste specul nostru</span><span class="row-tail"><span class="tk-urgent" data-ic="zap"></span><span class="due-chip"><span class="dc-date">12 sep</span></span></span></button>
                 <button class="list-row" style="--layer-color:var(--layer-0)"><span class="list-check" data-ic="circle"></span><span class="list-id">MCP-06</span><span class="list-title">Model de cost pentru traficul generat de modele</span><span class="row-tail"></span></button>
                 <button class="list-row blocat" style="--layer-color:var(--layer-0)"><span class="list-check" data-ic="circle"></span><span class="list-id">MCP-07</span><span class="list-title">Pre-citire juridică pe fluxul de date</span><span class="row-tail"><span class="ochip" data-ic-pre="obstacle">MCP-O05</span></span></button>
               </div>
@@ -306,34 +325,15 @@ body{padding-top:42px}
                 <div class="form-col form-col-right">
                   <div class="deps-zone">
                     <div class="deps-bar">
-                      <button class="dep-tab-btn" data-ic-pre="back">Necesită<span class="dep-tab-count">1</span></button>
-                      <button class="dep-tab-btn" data-ic-pre="fwd">Permite<span class="dep-tab-count">2</span></button>
-                      <button class="dep-tab-btn on" data-ic-pre="obstacle">Obstacole<span class="dep-tab-count">2</span></button>
+                      <button class="dep-tab-btn" data-tab="necesita" data-ic-pre="back">Necesită<span class="dep-tab-count" data-c="necesita">1</span></button>
+                      <button class="dep-tab-btn" data-tab="permite" data-ic-pre="fwd">Permite<span class="dep-tab-count" data-c="permite">2</span></button>
+                      <button class="dep-tab-btn on" data-tab="obstacole" data-ic-pre="obstacle">Obstacole<span class="dep-tab-count" data-c="obstacole" hidden>0</span></button>
                       <div class="dep-search-wrap-rel">
-                        <div class="dep-search-field"><input class="dep-search-input-sm" value="Nu știm întrebările" placeholder="Caută sau creează obstacol…"></div>
-                        <div class="dep-drop">
-                          <button class="dep-drop-row"><span class="dep-drop-id">MCP-O04</span><span style="flex:1;min-width:0">Cine e utilizatorul țintă</span><span class="dep-drop-own">PM</span></button>
-                          <button class="dep-drop-row"><span class="dep-drop-id">MCP-O07</span><span style="flex:1;min-width:0">Câte tool-uri și ce nume</span><span class="dep-drop-own">PM + echipă</span></button>
-                          <button class="dep-drop-row dep-drop-new hl"><span data-ic-pre="add"></span><span>Obstacol nou: „Nu știm întrebările”</span></button>
-                        </div>
+                        <div class="dep-search-field"><input class="dep-search-input-sm" id="oq" placeholder="Caută sau creează obstacol…" autocomplete="off"></div>
+                        <div class="dep-drop" id="odrop" hidden></div>
                       </div>
                     </div>
-                    <div class="ocard">
-                      <span class="ocard-bar"></span>
-                      <button class="ocard-body">
-                        <span class="ocard-top"><span class="ocard-id">MCP-O04</span><span class="ocard-own">PM</span></span>
-                        <span class="ocard-title">Cine e utilizatorul țintă</span>
-                      </button>
-                      <button class="ocard-x" data-ic="x"></button>
-                    </div>
-                    <div class="ocard draft">
-                      <span class="ocard-bar"></span>
-                      <button class="ocard-body">
-                        <span class="ocard-top"><span class="ocard-id">nou</span><span class="ocard-own">fără owner</span></span>
-                        <span class="ocard-title">Nu știm la ce întrebări răspunde serverul</span>
-                      </button>
-                      <button class="ocard-x" data-ic="x"></button>
-                    </div>
+                    <div id="obody"></div>
                   </div>
                 </div>
               </div>
@@ -344,6 +344,8 @@ body{padding-top:42px}
     </main>
   </div>
 </div>
+<div class="sheet-bg" id="fbg"></div>
+<div class="sheet tall" id="fsheet" role="dialog" aria-modal="true"></div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════════ -->
@@ -470,10 +472,10 @@ const HDR = (crumb) => `
 
 const WAVES = `
 <button class="wbtn wscratch"><span class="wname">${svg('scratch',18)}</span><span class="wsub">4</span></button>
-<button class="wbtn on"><span class="wname">I</span><span class="wsub">Deblocare · 8</span></button>
-<button class="wbtn"><span class="wname">II</span><span class="wsub">MVP local · 11</span></button>
-<button class="wbtn"><span class="wname">III</span><span class="wsub">Remote · 6</span></button>
-<button class="wbtn"><span class="wname">IV</span><span class="wsub">Scrieri · 5</span></button>
+<button class="wbtn on"><span class="wname">I</span><span class="wsub">Deblocare</span></button>
+<button class="wbtn"><span class="wname">II</span><span class="wsub">MVP local</span></button>
+<button class="wbtn"><span class="wname">III</span><span class="wsub">Remote</span></button>
+<button class="wbtn"><span class="wname">IV</span><span class="wsub">Scrieri</span></button>
 <button class="wbtn wmanage"><span class="wname">${svg('waves',18)}</span><span class="wsub">valuri</span></button>`
 
 document.querySelectorAll('[data-sb]').forEach((el) => (el.innerHTML = SB))
@@ -498,12 +500,12 @@ const N = [
 
   {id:'MCP-01', t:'Spike pe 3 clienți',  own:'DEV', k:'t', st:'lucru', col:3, row:0},
   {id:'MCP-02', t:'Oracol: convertor Notion', own:'DEV', k:'t', st:'lucru', col:3, row:2},
-  {id:'MCP-06', t:'Model de cost trafic', own:'DEV+INFRA', k:'t', st:'liber', col:3, row:3},
+  {id:'MCP-06', t:'Model de cost trafic', own:'DEV+INF', k:'t', st:'liber', col:3, row:3},
   {id:'MCP-07', t:'Pre-citire juridică', own:'JURIDIC', k:'t', st:'blocat', col:3, row:4},
 
   {id:'MCP-08', t:'Analiza de goluri, API', own:'API', k:'t', st:'blocat', col:4, row:0},
-  {id:'MCP-O07', t:'Câte tool-uri, ce nume', own:'PM+ECHIPĂ', k:'o', st:'necunoscut', col:4, row:2},
-  {id:'MCP-O08', t:'Puntea V1 ↔ V3', own:'ECHIPĂ+SEC', k:'o', st:'asteptare', col:4, row:4},
+  {id:'MCP-O07', t:'Câte tool-uri, ce nume', own:'PM+ECH', k:'o', st:'necunoscut', col:4, row:2},
+  {id:'MCP-O08', t:'Puntea V1 ↔ V3', own:'SEC', k:'o', st:'asteptare', col:4, row:4},
 
   {id:'MCP-09', t:'6 tool-uri resursă_verb', own:'DEV', k:'t', st:'blocat', col:5, row:0},
   {id:'MCP-10', t:'invoice_validate',        own:'DEV', k:'t', st:'blocat', col:5, row:1},
@@ -524,7 +526,7 @@ const E = [
   ['MCP-O03','MCP-20'], ['MCP-O09','MCP-20'],
 ]
 const BANDS = [
-  {x1:20,   x2:1308, l:'Faza 0 · deblocare și verificare'},
+  {x1:20,   x2:1324, l:'Faza 0 · deblocare și verificare'},
   {x1:1336, x2:1572, l:'Faza 1 · MVP local, read-only'},
   {x1:1600, x2:1836, l:'Faza 2 · remote'},
 ]
@@ -534,7 +536,7 @@ const esc = (s) => s.replace(/&/g,'&amp;').replace(/</g,'&lt;')
 const isOpen = (n) => n.k === 'o' && n.st !== 'depasit' && n.st !== 'ocolit'
 
 function gate(x, y, byp) {
-  const c = 13
+  const c = 17
   return byp
     ? `M${x+c} ${y} H${x+W-14} L${x+W} ${y+14} V${y+H} H${x+c} L${x} ${y+H/2} Z`
     : `M${x+c} ${y} H${x+W} V${y+H} H${x+c} L${x} ${y+H/2} Z`
@@ -545,15 +547,15 @@ function node(n) {
     : n.st === 'gata' ? 'var(--done)' : n.st === 'lucru' ? 'var(--active)'
     : n.st === 'blocat' ? 'var(--txt-faint)' : `var(--layer-${Math.min(n.col,4)})`
   const dim = n.st === 'blocat' || n.st === 'gata' || n.st === 'depasit'
-  let s = '<g class="map-node">'
+  let s = '<g class="map-node map-shadow">'
   if (n.k === 'o') {
     s += `<path class="map-obst" d="${gate(n.x, n.y, n.byp)}"/>`
-    s += `<rect x="${n.x+13}" y="${n.y}" width="2.5" height="${H}" fill="${bar}"/>`
+    s += `<rect x="${n.x+17}" y="${n.y}" width="2.5" height="${H}" fill="${bar}"/>`
   } else {
     s += `<rect class="map-tick" x="${n.x}" y="${n.y}" width="${W}" height="${H}" rx="10"/>`
     s += `<rect x="${n.x}" y="${n.y}" width="2.5" height="${H}" fill="${bar}"/>`
   }
-  const tx = n.x + (n.k === 'o' ? 26 : 14)
+  const tx = n.x + (n.k === 'o' ? 29 : 14)
   s += `<text class="map-id" x="${tx}" y="${n.y+19}">${esc(n.id)}</text>`
   s += `<text class="map-own" x="${n.x+W-12}" y="${n.y+19}">${esc(n.own)}</text>`
   s += `<text class="map-title${dim ? ' dim' : ''}" x="${tx}" y="${n.y+38}">${esc(n.t)}</text>`
@@ -574,19 +576,220 @@ function edge([a, b]) {
 
 const TX = 530
 let out = ''
+out += `<defs><filter id="amb" x="-25%" y="-40%" width="150%" height="190%">`
+  + `<feDropShadow dx="0" dy="3" stdDeviation="7" flood-opacity="0.30"/></filter></defs>`
 BANDS.forEach((b) => {
-  out += `<rect class="map-band" x="${b.x1}" y="62" width="${b.x2-b.x1}" height="436" rx="14"/>`
-  out += `<text class="map-bandtxt" x="${b.x1+16}" y="88">${esc(b.l.toUpperCase())}</text>`
+  // Etichetă de fază, nu cutie: o bandă pe toată înălțimea în --surface-2 ar
+  // avea exact tonul cardurilor de tichet, iar pe tema închisă cardul ar
+  // rămâne fără fundal ȘI fără chenar — adică invizibil.
+  out += `<rect class="map-band" x="${b.x1}" y="66" width="${b.x2-b.x1}" height="26" rx="6"/>`
+  out += `<text class="map-bandtxt" x="${b.x1+14}" y="83">${esc(b.l.toUpperCase())}</text>`
 })
 out += `<line class="map-today" x1="${TX}" y1="46" x2="${TX}" y2="498"/>`
 out += `<text class="map-todaytxt" x="${TX+10}" y="36">azi · 10 sept</text>`
 out += `<text class="map-bandtxt" x="${PAD}" y="36">de unde am plecat · 21 aug</text>`
 out += E.map(edge).join('') + N.map(node).join('')
 const map = document.getElementById('map')
-map.setAttribute("viewBox", "0 0 1856 516")
+map.setAttribute("viewBox", "0 0 1856 508")
 map.setAttribute('width', '1856')
-map.setAttribute("height", "516")
+map.setAttribute("height", "508")
 map.innerHTML = out
+
+/* ── fluxul: adaugă un obstacol din tichet ────────────────────────── */
+const CATALOG = [
+  {id:'MCP-O01', t:'Nu există endpoint de listare a facturilor', own:'Echipa API', st:'asteptare', wait:16, byp:''},
+  {id:'MCP-O02', t:'Care firmă? CIF la conectare sau parametru', own:'PM', st:'asteptare', wait:6, byp:'Constrângere de conexiune, ~40–200 de linii. Deja în producție la trei vendori.'},
+  {id:'MCP-O03', t:'Owner și rotație de gardă nenumite', own:'Management', st:'asteptare', wait:2, byp:''},
+  {id:'MCP-O04', t:'Cine e utilizatorul țintă', own:'PM', st:'necunoscut', wait:0, byp:''},
+  {id:'MCP-O05', t:'DPA permite sub-procesor ales de client?', own:'Juridic', st:'asteptare', wait:3, byp:''},
+  {id:'MCP-O06', t:'Revizia de protocol 2026-07-28', own:'Dev', st:'depasit', wait:0, byp:''},
+  {id:'MCP-O07', t:'Câte tool-uri și ce nume', own:'PM + echipă', st:'necunoscut', wait:0, byp:''},
+  {id:'MCP-O08', t:'Puntea de credențiale V1 ↔ V3', own:'Echipă + securitate', st:'asteptare', wait:9, byp:''},
+]
+const TABS = {
+  necesita: `<div class="dep-card"><button class="dep-card-body"><span class="dep-card-id">MCP-05</span><span class="dep-card-title">Decizie de SDK și de revizie de protocol</span></button><button class="dep-card-x" data-ic="x"></button></div>`,
+  permite: `<div class="dep-card"><button class="dep-card-body"><span class="dep-card-id">MCP-09</span><span class="dep-card-title">Cele 6 tool-uri resursă_verb</span></button><button class="dep-card-x" data-ic="x"></button></div>`
+    + `<div class="dep-card"><button class="dep-card-body"><span class="dep-card-id">MCP-11</span><span class="dep-card-title">Suită de evaluare, cu poartă de CI</span></button><button class="dep-card-x" data-ic="x"></button></div>`,
+}
+
+let tab = 'obstacole'
+let linked = []          // { id | null, tempId?, t, own, st, wait, byp }
+let nextNew = 9
+let hl = 0
+
+const q = () => document.getElementById('oq')
+const drop = () => document.getElementById('odrop')
+const body = () => document.getElementById('obody')
+
+/** Fără diacritice și fără majuscule: „firma" trebuie să găsească „Care firmă?".
+ *  Aceeași pliere ca `themeKey` din src/data/repository.ts. */
+const fold = (v) => v.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+
+function candidates() {
+  const s = fold(q().value.trim())
+  const taken = new Set(linked.map((o) => o.id).filter(Boolean))
+  const hits = CATALOG.filter((o) => !taken.has(o.id) &&
+    (fold(o.id).includes(s) || fold(o.t).includes(s)))
+  return s ? hits.slice(0, 5) : hits.slice(0, 4)
+}
+
+function renderDrop(open) {
+  const d = drop()
+  if (!open) { d.hidden = true; return }
+  const s = q().value.trim()
+  const hits = candidates()
+  const exact = CATALOG.some((o) => fold(o.t) === fold(s))
+  let h = hits.map((o, i) =>
+    `<button class="dep-drop-row ${i === hl ? 'hl' : ''}" data-pick="${o.id}">` +
+    `<span class="dep-drop-id">${o.id}</span>` +
+    `<span style="flex:1;min-width:0">${esc(o.t)}</span>` +
+    `<span class="dep-drop-own">${esc(o.own)}</span></button>`).join('')
+  if (s && !exact) {
+    h += `<button class="dep-drop-row dep-drop-new ${hl >= hits.length ? 'hl' : ''}" data-new="1">` +
+      `${svg('add', 13)}<span>Obstacol nou: „${esc(s)}”</span></button>`
+  }
+  if (!h) h = `<button class="dep-drop-row" disabled style="color:var(--txt-faint)">Niciun obstacol</button>`
+  d.innerHTML = h
+  d.hidden = false
+}
+
+function renderBody() {
+  document.querySelectorAll('[data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === tab))
+  const cnt = document.querySelector('[data-c="obstacole"]')
+  cnt.textContent = String(linked.length)
+  cnt.hidden = linked.length === 0
+  document.querySelector('.dep-search-wrap-rel').hidden = tab !== 'obstacole'
+
+  if (tab !== 'obstacole') { body().innerHTML = TABS[tab]; paint(); return }
+
+  if (!linked.length) {
+    body().innerHTML =
+      `<button class="oempty">${svg('add', 15)}<span>Ce împiedică tichetul ăsta?</span></button>`
+  } else {
+    body().innerHTML = linked.map((o, i) => {
+      const draft = !o.id
+      const own = o.own || 'fără owner'
+      const meta = draft ? 'nou' : o.id
+      return `<div class="ocard ${draft ? 'draft' : ''}">` +
+        `<span class="ocard-bar"></span>` +
+        `<button class="ocard-body" data-open="${i}">` +
+        `<span class="ocard-top"><span class="ocard-id">${esc(meta)}</span>` +
+        (o.byp ? `<span class="ocard-byp">${svg('bypass', 11)}ocolire</span>` : '') +
+        `<span class="ocard-own">${esc(own)}</span></span>` +
+        `<span class="ocard-title">${esc(o.t)}</span></button>` +
+        `<button class="ocard-x" data-drop="${i}">${svg('x', 15)}</button></div>`
+    }).join('')
+  }
+  paint()
+}
+
+function paint() {
+  document.querySelectorAll('#obody [data-ic]').forEach((el) => (el.innerHTML = svg(el.dataset.ic, 15)))
+}
+
+/** Salvarea: ciornele primesc id-uri reale, iar rândul din listă se stinge. */
+function commit() {
+  let changed = false
+  for (const o of linked) {
+    if (!o.id) { nextNew++; o.id = 'MCP-O' + String(nextNew).padStart(2, '0'); changed = true }
+  }
+  const row = document.getElementById('row-mcp02')
+  const tail = row.querySelector('.row-tail')
+  const blocking = linked.filter((o) => o.st !== 'depasit')
+  if (blocking.length) {
+    row.classList.add('blocat')
+    tail.innerHTML = `<span class="ochip">${svg('obstacle', 12)}` +
+      (blocking.length === 1 ? esc(blocking[0].id) : blocking.length + ' obstacole') + `</span>`
+  } else {
+    row.classList.remove('blocat')
+    tail.innerHTML = `<span class="due-chip"><span class="dc-date">12 sep</span></span>`
+  }
+  document.querySelector('#lista .sh-save').classList.remove('dirty')
+  renderBody()
+  return changed
+}
+
+function openSheet(i) {
+  const o = linked[i]
+  const seg = (states, cur) => `<div class="of-seg">` + states.map(([k, l]) =>
+    `<button ${k === cur ? 'aria-pressed="true"' : ''}>${l}</button>`).join('') + `</div>`
+  document.getElementById('fsheet').innerHTML = `
+  <div class="sh-header">
+    <button class="sh-close" id="fclose">${svg('x', 17)}</button>
+    <button class="sh-delete">${svg('trash', 17)}</button>
+    <span class="sh-title-wrap"><input class="sh-title-input" type="search" value="${esc(o.t)}"></span>
+    <button class="sh-save${o.own ? '' : ' dirty'}">${svg('save', 17)}</button>
+  </div>
+  <div class="sheet-scroll" style="padding:4px 22px 24px">
+    <div class="of-row"><span class="of-key">ID</span><span class="of-val" style="font-family:var(--mono);font-size:13px">${esc(o.id || 'se creează la salvare')}</span></div>
+    <div class="of-row"><span class="of-key">Detaliu</span><div class="of-val"><textarea class="of-input" placeholder="De ce, cu citat din sursă"></textarea></div></div>
+    <div class="of-row"><span class="of-key">Cine îl scoate</span><div class="of-val"><input class="of-input" value="${esc(o.own)}" placeholder="Echipa de API"></div></div>
+    <div class="of-row"><span class="of-key">Stare</span><div class="of-val">
+      ${seg([['necunoscut','necunoscut'],['asteptare','în așteptare'],['depasit','depășit'],['ocolit','ocolit']], o.st || 'necunoscut')}
+      ${o.st === 'asteptare' && o.wait ? `<span class="of-wait">fără răspuns de ${o.wait} zile</span>` : ''}
+    </div></div>
+    <div class="of-row"><span class="of-key">Ocolire</span><div class="of-val"><textarea class="of-input" placeholder="Nu există">${esc(o.byp || '')}</textarea><span class="of-sub">Gol înseamnă „nu are ocolire”.</span></div></div>
+    <div class="of-row"><span class="of-key">Dovadă</span><div class="of-val">${seg([['verificat','verificat'],['plauzibil','plauzibil'],['necunoscut','nu știu']], o.own ? 'verificat' : 'necunoscut')}</div></div>
+    <div class="of-row"><span class="of-key">Blochează</span><div class="of-val"><div class="of-toggle"><button class="of-sw" aria-pressed="true"></button><span style="font-size:13.5px">Da — stinge tichetele legate</span></div></div></div>
+    <div class="of-row"><span class="of-key">Tichete</span><div class="of-val"><div class="of-chips"><span class="ochip">MCP-02</span></div>
+      <span class="of-sub">Legat acum, din formularul tichetului.</span></div></div>
+  </div>`
+  document.getElementById('fsheet').classList.add('on')
+  document.getElementById('fbg').classList.add('on')
+  document.getElementById('fclose').onclick = closeSheet
+}
+function closeSheet() {
+  document.getElementById('fsheet').classList.remove('on')
+  document.getElementById('fbg').classList.remove('on')
+}
+
+/* delegare: un singur ascultător pe ecran, ca la aplicație */
+document.querySelector('[data-screen="lista"]').addEventListener('click', (e) => {
+  const t = e.target.closest('[data-tab],[data-pick],[data-new],[data-drop],[data-open],.oempty,.sh-save')
+  if (!t) return
+  e.preventDefault()
+  if (t.dataset.tab) { tab = t.dataset.tab; q().value = ''; renderDrop(false); renderBody(); return }
+  if (t.classList.contains('oempty')) { q().focus(); hl = 0; renderDrop(true); return }
+  if (t.dataset.pick) {
+    linked.push({ ...CATALOG.find((o) => o.id === t.dataset.pick) })
+    q().value = ''; hl = 0; renderDrop(false); renderBody()
+    document.querySelector('#lista .sh-save').classList.add('dirty')
+    return
+  }
+  if (t.dataset.new) {
+    linked.push({ id: null, t: q().value.trim(), own: '', st: 'necunoscut', wait: 0, byp: '' })
+    q().value = ''; hl = 0; renderDrop(false); renderBody()
+    document.querySelector('#lista .sh-save').classList.add('dirty')
+    return
+  }
+  if (t.dataset.drop) { linked.splice(Number(t.dataset.drop), 1); renderBody(); return }
+  if (t.dataset.open) { openSheet(Number(t.dataset.open)); return }
+  if (t.classList.contains('sh-save')) { commit(); return }
+})
+document.getElementById('fbg').onclick = closeSheet
+
+const qi = q()
+qi.addEventListener('input', () => { hl = 0; renderDrop(true) })
+qi.addEventListener('focus', () => renderDrop(true))
+qi.addEventListener('keydown', (e) => {
+  const rows = [...drop().querySelectorAll('[data-pick],[data-new]')]
+  if (e.key === 'ArrowDown') { hl = Math.min(hl + 1, rows.length - 1); renderDrop(true); e.preventDefault() }
+  else if (e.key === 'ArrowUp') { hl = Math.max(hl - 1, 0); renderDrop(true); e.preventDefault() }
+  else if (e.key === 'Enter') { rows[hl]?.click(); e.preventDefault() }
+  else if (e.key === 'Escape') { renderDrop(false) }
+})
+
+function reset() {
+  linked = []; nextNew = 9; tab = 'obstacole'; q().value = ''
+  const row = document.getElementById('row-mcp02')
+  row.classList.remove('blocat')
+  row.querySelector('.row-tail').innerHTML =
+    `<span class="tk-urgent">${svg('zap', 13)}</span><span class="due-chip"><span class="dc-date">12 sep</span></span>`
+  document.querySelector('#lista .sh-save').classList.remove('dirty')
+  closeSheet(); renderDrop(false); renderBody()
+}
+document.getElementById('br').onclick = () => { show('lista'); reset() }
+reset()
 
 /* ── comutatoare ───────────────────────────────────────────────────── */
 const show = (k) => {

@@ -1897,7 +1897,16 @@ Adaugă al treilea buton, după cel de „Permite" (linia ~1119), în același t
   const [draftObstacles, setDraftObstacles] = useState<{ tempId: string; title: string }[]>([])
 ```
 
-Pe tabul „obstacole", lista de rezultate vine din `obstacles` filtrate pe `depSearchQ` (după `id` și `title`), iar butonul de creare — cel care în tiparul existent face `createDraftDep(t)` — creează un **obstacol** ciornă:
+Pe tabul „obstacole", lista de rezultate vine din `obstacles` filtrate pe `depSearchQ` (după `id` și `title`), **cu diacriticele pliate**:
+
+```tsx
+/** „firma" trebuie să găsească „Care firmă?". Aceeași pliere ca `themeKey`. */
+const fold = (v: string) => v.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+```
+
+Fără pliere, rândul „creează" apare peste un obstacol care există deja — interfața te împinge exact spre duplicat. Folosește `fold` și la testul de potrivire exactă care decide dacă rândul de creare se arată.
+
+Iar butonul de creare — cel care în tiparul existent face `createDraftDep(t)` — creează un **obstacol** ciornă:
 
 ```tsx
   const createDraftObstacle = (title: string) => {

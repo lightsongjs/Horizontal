@@ -179,8 +179,15 @@ descrie întrebarea la care răspunde.
   stângă teșită. Diferența e de formă, nu de chenar; regula „fără linii" ține.
 - **Ocolire documentată = colțul dreapta-sus retezat.** Se vede că există o cale
   pe lângă. `bypass != null` e singura sursă.
-- Bandă de fundal per val (`--surface-2` peste `--surface`), cu numele valului în
-  mono majuscule.
+- Valul se marchează cu o **etichetă**, nu cu o cutie: un strip de 26px sus, în
+  `--surface-2`, cu numele în mono majuscule. O bandă pe toată înălțimea în
+  `--surface-2` ar avea exact tonul nodurilor de tichet, iar pe tema închisă
+  cardul ar rămâne fără fundal **și** fără chenar — invizibil. Verificat prin
+  randare, nu prin raționament.
+- Nodurile primesc o **umbră ambientală** (`feDropShadow`, o singură dată, prin
+  `filter`), fiindcă în SVG nu există `box-shadow` și `--surface-2` peste
+  `--surface` singur nu ridică nimic. Nu e strălucirea colorată din vechiul
+  `GraphView`: e umbră neutră, echivalentul lui `--amb`.
 - **Linia „azi"**, punctată, în accent: la stânga ce e închis, pe ea obstacolele
   deschise, la dreapta ce se poate face în paralel.
 - Ce e închis rămâne desenat, tăiat, în `--done`.
@@ -215,6 +222,10 @@ același gest în două locuri.
 Din tab se poate și **crea** un obstacol nou, tastându-i titlul, ca la `draftDeps`:
 `state: 'necunoscut'`, `blocking: true`, restul gol. Jetonul deschide foaia, ca
 drumul de la „l-am scris" la „i-am pus owner și stare" să fie o atingere.
+
+Căutarea **pliază diacriticele**, ca `themeKey` din `src/data/repository.ts`.
+Fără asta, „firma" nu găsește „Care firmă?", iar rândul „creează" apare peste un
+obstacol care există deja — adică interfața te împinge exact spre duplicat.
 
 Ăsta e drumul principal — obstacolul se descoperă în timp ce te uiți la muncă, nu
 într-o listă separată de obstacole.
