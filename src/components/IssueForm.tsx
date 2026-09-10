@@ -40,6 +40,15 @@ export function buildMetaRecap(input: MetaRecapInput): string {
     .join(' · ')
 }
 
+/**
+ * Formularul e murdar de obstacole când setul de id-uri reale diferă de ce e
+ * salvat — ordinea nu contează. Extrasă pură ca să fie testabilă fără randare,
+ * la fel ca `buildMetaRecap`.
+ */
+export function obstaclesDirty(current: string[], saved: string[]): boolean {
+  return current.slice().sort().join(',') !== saved.slice().sort().join(',')
+}
+
 type DraftIssue = { tempId: string; title: string }
 let draftCounter = 0
 const newTempId = () => `__draft_${++draftCounter}__`
@@ -49,6 +58,9 @@ function depCols(n: number): number {
   if (n <= 4) return 2
   return 3
 }
+
+/** „firma" trebuie să găsească „Care firmă?". Aceeași pliere ca `themeKey`. */
+const fold = (v: string) => v.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 
 const AutoTextarea = forwardRef<HTMLTextAreaElement, {
   value: string; onChange: (v: string) => void; placeholder?: string; minH?: number; maxH?: number
@@ -170,7 +182,7 @@ function AssigneeSearch({ assigneeId, assignees, myAssigneeId, onSelect, onSetMe
  *   către `ui.tsx`, care oprește prima comutare pe alt tichet.
  */
 export function IssueForm({ issueId, docked = false }: { issueId?: string; docked?: boolean }) {
-  const { project, waves, themes, issues, byId, activeWave, createIssue, updateIssue, deleteIssue, createTheme, assignees, myAssigneeId, setMyAssigneeId, createAssignee } = useHorizontal()
+  const { project, waves, themes, issues, byId, activeWave, createIssue, updateIssue, deleteIssue, createTheme, assignees, myAssigneeId, setMyAssigneeId, createAssignee, obstacles, obstaclesOf, createObstacle, setIssueObstacles } = useHorizontal()
   const { closeSheet, setCloseGuard, pushSheet, openEditIssue, setDockedDirty, saveNudge } = useUI()
   const canWrite = useCanWrite()
   const existing = issueId ? byId[issueId] : undefined
@@ -239,6 +251,11 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
   )
   const [draftDeps, setDraftDeps] = useState<DraftIssue[]>([])
   const [draftBlocks, setDraftBlocks] = useState<DraftIssue[]>([])
+  const [obstIds, setObstIds] = useState<string[]>(
+    existing ? obstaclesOf(existing.id).map((o) => o.id) : [],
+  )
+  /** Obstacole scrise în selector dar încă necreate. Același tipar ca DraftIssue. */
+  const [draftObstacles, setDraftObstacles] = useState<DraftIssue[]>([])
 
   const [selectors, setSelectors] = useState<string[]>(existing?.selectors ?? [])
   const [scenarios, setScenarios] = useState<TestScenario[]>(existing?.scenarios ?? [])
@@ -307,7 +324,7 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
   const [cycleMsg, setCycleMsg] = useState<string | null>(null)
   const [waveError, setWaveError] = useState<string | null>(null)
   const [confirmClose, setConfirmClose] = useState(false)
-  const [depTab, setDepTab] = useState<'necesita' | 'permite'>('necesita')
+  const [depTab, setDepTab] = useState<'necesita' | 'permite' | 'obstacole'>('necesita')
   const [showAssigneeInline, setShowAssigneeInline] = useState(false)
 
   const [depSearchQ, setDepSearchQ] = useState('')
@@ -420,13 +437,18 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
       draftDeps.filter((d) => deps.includes(d.tempId)).length > 0 ||
       draftBlocks.filter((d) => blocks.includes(d.tempId)).length > 0 ||
       blocks.filter((b) => !b.startsWith('__draft_')).slice().sort().join(',') !== (existing ? issues.filter((i) => i.deps?.includes(existing.id)).map((i) => i.id) : []).slice().sort().join(',') ||
+      obstaclesDirty(
+        obstIds.filter((o) => !o.startsWith('__obst_draft_')),
+        existing ? obstaclesOf(existing.id).map((o) => o.id) : [],
+      ) ||
+      draftObstacles.filter((d) => obstIds.includes(d.tempId)).length > 0 ||
       JSON.stringify(selectors) !== JSON.stringify(existing?.selectors ?? []) ||
       JSON.stringify(scenarios) !== JSON.stringify(existing?.scenarios ?? []) ||
       notes !== (existing?.notes ?? '') ||
       urgent !== (existing?.urgent ?? false) ||
       schedule.dueAt !== (existing?.dueAt ?? null) ||
       schedule.remindAt !== (existing?.remindAt ?? null)
-    : title.trim() !== '' || desc.trim() !== '' || deps.length > 0 || blocks.length > 0 ||
+    : title.trim() !== '' || desc.trim() !== '' || deps.length > 0 || blocks.length > 0 || obstIds.length > 0 ||
       selectors.length > 0 || scenarios.length > 0 || notes.trim() !== '' || urgent ||
       schedule.dueAt !== null
 
@@ -480,6 +502,17 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
 
   const createDraftDep = (t: string) => { const d = { tempId: newTempId(), title: t }; setDraftDeps((p) => [...p, d]); setDeps((p) => [...p, d.tempId]) }
   const createDraftBlock = (t: string) => { const d = { tempId: newTempId(), title: t }; setDraftBlocks((p) => [...p, d]); setBlocks((p) => [...p, d.tempId]) }
+  /**
+   * Prefixul e `__obst_draft_`, nu `__draft_o_`: `__draft_o_` tot ar începe cu
+   * `__draft_`, adică ar cădea în filtrele care taie ciornele de tichet — o
+   * ciornă de obstacol ar ajunge la `createIssue`. `__obst_draft_` nu e prefixat
+   * de `__draft_`, deci scapă de toate cele opt filtre existente.
+   */
+  const createDraftObstacle = (t: string) => {
+    const tempId = `__obst_draft_${Date.now()}`
+    setDraftObstacles((p) => [...p, { tempId, title: t }])
+    setObstIds((p) => [...p, tempId])
+  }
 
   // Dep section helpers (inline design)
   const necRealIds = deps.filter((d) => !d.startsWith('__draft_'))
@@ -490,38 +523,52 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
   const perDraftItems = draftBlocks.filter((d) => blocks.includes(d.tempId))
   const perCount = perRealIds.length + perDraftItems.length
 
-  const currentRealIds = depTab === 'necesita' ? necRealIds : perRealIds
-  const currentDraftItems = depTab === 'necesita' ? necDraftItems : perDraftItems
+  const obstRealIds = obstIds.filter((o) => !o.startsWith('__obst_draft_'))
+  const obstDraftItems = draftObstacles.filter((d) => obstIds.includes(d.tempId))
+
+  const currentRealIds = depTab === 'necesita' ? necRealIds : depTab === 'permite' ? perRealIds : obstRealIds
+  const currentDraftItems = depTab === 'necesita' ? necDraftItems : depTab === 'permite' ? perDraftItems : obstDraftItems
   const totalCurrentCount = currentRealIds.length + currentDraftItems.length
 
-  const depFiltered = depSearchQ.trim()
-    ? candidates.filter((i) => i.title.toLowerCase().includes(depSearchQ.toLowerCase()))
+  // Sursa de căutare depinde de tab: tichete pentru „Necesită"/„Permite",
+  // obstacole pentru „Obstacole" — amândouă au id/title, deci restul (dropdown,
+  // navigare cu săgeți) rămâne un singur cod, tab-agnostic.
+  const depFiltered: { id: string; title: string }[] = depSearchQ.trim()
+    ? depTab === 'obstacole'
+      ? obstacles.filter((o) => fold(o.title).includes(fold(depSearchQ)) || fold(o.id).includes(fold(depSearchQ)))
+      : candidates.filter((i) => i.title.toLowerCase().includes(depSearchQ.toLowerCase()))
     : []
-  const depHasExact = depFiltered.some((i) => i.title.toLowerCase() === depSearchQ.toLowerCase().trim())
+  const depHasExact = depTab === 'obstacole'
+    ? depFiltered.some((o) => fold(o.title) === fold(depSearchQ.trim()))
+    : depFiltered.some((i) => i.title.toLowerCase() === depSearchQ.toLowerCase().trim())
   const depShowCreate = !!depSearchQ.trim() && !depHasExact
   const depOptionCount = depFiltered.length + (depShowCreate ? 1 : 0)
 
   const addCurrentDep = (id: string) => {
-    const alreadyIn = depTab === 'necesita' ? deps.includes(id) : blocks.includes(id)
+    const alreadyIn = depTab === 'necesita' ? deps.includes(id) : depTab === 'permite' ? blocks.includes(id) : obstIds.includes(id)
     if (alreadyIn) return
     if (depTab === 'necesita') setDeps((p) => [...p, id])
-    else setBlocks((p) => [...p, id])
+    else if (depTab === 'permite') setBlocks((p) => [...p, id])
+    else setObstIds((p) => [...p, id])
     setDepSearchQ(''); setDepDropdownOpen(false); setDepSearchHl(0)
   }
 
   const removeCurrentDep = (id: string) => {
     if (depTab === 'necesita') setDeps(deps.filter((d) => d !== id))
-    else setBlocks(blocks.filter((b) => b !== id))
+    else if (depTab === 'permite') setBlocks(blocks.filter((b) => b !== id))
+    else setObstIds(obstIds.filter((o) => o !== id))
   }
 
   const removeCurrentDraft = (d: DraftIssue) => {
     if (depTab === 'necesita') toggleDraft(draftDeps, setDraftDeps, deps, setDeps, d)
-    else toggleDraft(draftBlocks, setDraftBlocks, blocks, setBlocks, d)
+    else if (depTab === 'permite') toggleDraft(draftBlocks, setDraftBlocks, blocks, setBlocks, d)
+    else toggleDraft(draftObstacles, setDraftObstacles, obstIds, setObstIds, d)
   }
 
   const createCurrentDraft = (t: string) => {
     if (depTab === 'necesita') createDraftDep(t)
-    else createDraftBlock(t)
+    else if (depTab === 'permite') createDraftBlock(t)
+    else createDraftObstacle(t)
     setDepSearchQ(''); setDepDropdownOpen(false); setDepSearchHl(0)
   }
 
@@ -623,6 +670,15 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
       const targetId = isEdit
         ? (await updateIssue(existing!.id, { title: title.trim(), desc: desc.trim(), theme, wave, deps: realDeps, ...qaPayload }), existing!.id)
         : (await createIssue({ projectId: project.id, title: title.trim(), desc: desc.trim(), theme, wave, deps: realDeps, ...qaPayload })).id
+      // Obstacolele ciornă se creează întâi, ca setul final să fie de id-uri reale.
+      const realObstIds: string[] = []
+      for (const id of obstIds) {
+        const draft = draftObstacles.find((d) => d.tempId === id)
+        if (!draft) { realObstIds.push(id); continue }
+        const created = await createObstacle({ title: draft.title })
+        if (created) realObstIds.push(created.id)
+      }
+      await setIssueObstacles(targetId, realObstIds)
       const realBlocks = blocks.map((id) => draftBlockMap[id] ?? (id.startsWith('__draft_') ? null : id)).filter(Boolean) as string[]
       const currentBlockers = issues.filter((i) => i.deps?.includes(targetId)).map((i) => i.id)
       for (const b of realBlocks.filter((b) => !currentBlockers.includes(b))) {
@@ -672,6 +728,8 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
         setBlocks(realBlocks)
         setDraftDeps([])
         setDraftBlocks([])
+        setObstIds(realObstIds)
+        setDraftObstacles([])
         // A brand-new card must adopt the id it was just created under, so a
         // second save updates it instead of creating a duplicate. Switching the
         // sheet's issueId remounts the form in edit mode (SheetHost keys it by
@@ -1121,6 +1179,13 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
                 >
                   <Icon name="forward" size={13} /> Permite{perCount > 0 && <span className="dep-tab-count">{perCount}</span>}
                 </button>
+                <button
+                  className={`dep-tab-btn ${depTab === 'obstacole' ? 'on' : ''}`}
+                  onClick={() => { setDepTab('obstacole'); setDepSearchQ(''); setDepDropdownOpen(false) }}
+                >
+                  <Icon name="obstacle" size={13} /> Obstacole
+                  {obstIds.length > 0 && <span className="dep-tab-count">{obstIds.length}</span>}
+                </button>
                 <div className="dep-search-wrap-rel">
                   <div className="dep-search-field">
                     <Icon name="search" size={13} className="dep-search-icon" />
@@ -1131,7 +1196,7 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
                       onKeyDown={handleDepKeyDown}
                       onFocus={() => { setDepSearchHl(0); if (depSearchQ.trim()) setDepDropdownOpen(true) }}
                       onBlur={() => setTimeout(() => setDepDropdownOpen(false), 150)}
-                      placeholder="Caută sau creează tichet…"
+                      placeholder={depTab === 'obstacole' ? 'Caută sau creează obstacol…' : 'Caută sau creează tichet…'}
                       autoComplete="off"
                       autoCorrect="off"
                     />
@@ -1140,20 +1205,20 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
                   {/* Floating dropdown — anchored under the search field */}
                   {depDropdownOpen && depSearchQ.trim() && (
                     <div className="dep-dropdown">
-                      {depFiltered.map((issue, idx) => (
+                      {depFiltered.map((item, idx) => (
                         <button
-                          key={issue.id}
+                          key={item.id}
                           className={`dep-dd-item${idx === depSearchHl ? ' hl' : ''}`}
                           onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => addCurrentDep(issue.id)}
+                          onClick={() => addCurrentDep(item.id)}
                         >
                           <span className="dep-dd-ic">+</span>
-                          <span className="dep-dd-title">{issue.title}</span>
-                          <span className="dep-dd-id">{issue.id}</span>
+                          <span className="dep-dd-title">{item.title}</span>
+                          <span className="dep-dd-id">{item.id}</span>
                         </button>
                       ))}
                       {depFiltered.length === 0 && !depShowCreate && (
-                        <div className="dep-dd-empty">Niciun tichet găsit.</div>
+                        <div className="dep-dd-empty">{depTab === 'obstacole' ? 'Niciun obstacol găsit.' : 'Niciun tichet găsit.'}</div>
                       )}
                       {depShowCreate && (
                         <button
@@ -1177,6 +1242,21 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
                   style={{ '--dep-cols': depCols(totalCurrentCount) } as React.CSSProperties}
                 >
                   {currentRealIds.map((id) => {
+                    if (depTab === 'obstacole') {
+                      const obstacle = obstacles.find((o) => o.id === id)
+                      if (!obstacle) return null
+                      return (
+                        <div key={id} className="dep-card">
+                          {/* Un obstacol scris chiar acum e gol — titlu și nimic altceva — deci
+                              corpul jetonului deschide direct foaia, ca „owner"/„stare" să fie o atingere. */}
+                          <button className="dep-card-body" onClick={() => pushSheet({ kind: 'obstacle-form', obstacleId: id })}>
+                            <span className="dep-card-id">{id}</span>
+                            <span className="dep-card-title">{obstacle.title}</span>
+                          </button>
+                          <button className="dep-card-x" onClick={() => removeCurrentDep(id)} aria-label="Scoate obstacolul"><Icon name="close" size={12} /></button>
+                        </div>
+                      )
+                    }
                     const issue = byId[id]
                     if (!issue) return null
                     return (
