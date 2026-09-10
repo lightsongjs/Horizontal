@@ -3622,6 +3622,14 @@ main {
 
 .deps-bar {
   display: flex;
+  /* Se înfășoară. Taburile (`.dep-tab-btn`) au `flex-shrink: 0` și
+     `white-space: nowrap`, deci nu cedează niciun pixel; înainte, tot
+     deficitul cădea pe câmpul de căutare, care avea `flex: 1` fără bază și
+     se strivea la ZERO pe telefon. Cu al treilea tab („Obstacole") intrat în
+     rând, câmpul ajungea la 0px pe orice ecran de telefon — invizibil și
+     imposibil de atins, deci și singurul drum de creare a unui obstacol se
+     închidea. Măsurat, nu dedus: `npm run test:layout`. */
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
   margin-bottom: 8px;
@@ -3659,7 +3667,10 @@ main {
 }
 
 .dep-search-wrap-rel {
-  flex: 1;
+  /* Bază proprie, nu doar `flex: 1`: sub 170px de spațiu rămas câmpul coboară
+     pe rândul lui, în loc să fie strivit. Pe ecran lat rămâne pe același rând
+     ca taburile, exact ca înainte. */
+  flex: 1 1 170px;
   min-width: 0;
   position: relative;
 }
