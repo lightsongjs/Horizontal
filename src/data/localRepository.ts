@@ -2,8 +2,8 @@
 // example on first run. Mirrors the Supabase backend's behavior.
 
 import { SEED_ISSUES, SEED_PROJECTS, SEED_THEMES, SEED_WAVES } from '../lib/seed'
-import type { Assignee, Issue, Project, Theme, Wave } from '../lib/types'
-import { themeKey, type DueRange, type NewIssue, type NewProject, type Repository } from './repository'
+import type { Assignee, Issue, Obstacle, ObstacleLink, Project, Theme, Wave } from '../lib/types'
+import { themeKey, type DueRange, type NewIssue, type NewObstacle, type NewProject, type Repository } from './repository'
 
 const KEY = 'horizontal:v2'
 
@@ -13,6 +13,8 @@ interface DB {
   themes: Theme[]
   issues: Issue[]
   assignees: Assignee[]
+  obstacles: Obstacle[]
+  obstacleLinks: ObstacleLink[]
 }
 
 function clone<T>(v: T): T {
@@ -41,6 +43,9 @@ function load(): DB {
           rrule: i.rrule ?? null,
         })),
         assignees: db.assignees ?? [],
+        // Adăugate după ce cineva avea deja date în localStorage.
+        obstacles: (db.obstacles ?? []).map((o) => ({ ...o, deps: o.deps ?? [] })),
+        obstacleLinks: db.obstacleLinks ?? [],
       }
     }
   } catch {
@@ -52,6 +57,8 @@ function load(): DB {
     themes: clone(SEED_THEMES),
     issues: clone(SEED_ISSUES),
     assignees: [],
+    obstacles: [],
+    obstacleLinks: [],
   }
   save(seeded)
   return seeded
@@ -71,6 +78,18 @@ function nextIssueId(db: DB, project: Project): string {
   return `${project.prefix}-${String(max + 1).padStart(2, '0')}`
 }
 
+/** Next free obstacle id for a project, e.g. MCP-O01. Același tipar ca la
+ *  tichete, cu „O" ca să nu se confunde niciodată un obstacol cu un tichet. */
+function nextObstacleId(db: DB, project: Project): string {
+  const pre = `${project.prefix}-O`
+  const max = db.obstacles
+    .filter((o) => o.projectId === project.id)
+    .map((o) => Number(o.id.slice(pre.length)))
+    .filter((n) => Number.isFinite(n))
+    .reduce((a, b) => Math.max(a, b), 0)
+  return `${pre}${String(max + 1).padStart(2, '0')}`
+}
+
 /** Removes issues by id and strips them from every other issue's `deps`. */
 function deleteIssuesImpl(db: DB, ids: string[]): void {
   if (ids.length === 0) return
@@ -78,6 +97,7 @@ function deleteIssuesImpl(db: DB, ids: string[]): void {
   db.issues = db.issues
     .filter((i) => !gone.has(i.id))
     .map((i) => (i.deps?.some((d) => gone.has(d)) ? { ...i, deps: i.deps.filter((d) => !gone.has(d)) } : i))
+  db.obstacleLinks = db.obstacleLinks.filter((l) => !gone.has(l.issueId))
   save(db)
 }
 
@@ -121,6 +141,9 @@ export function createLocalRepository(): Repository {
       db.waves = db.waves.filter((w) => w.projectId !== id)
       db.themes = db.themes.filter((t) => t.projectId !== id)
       db.issues = db.issues.filter((i) => i.projectId !== id)
+      const goneObstacles = new Set(db.obstacles.filter((o) => o.projectId === id).map((o) => o.id))
+      db.obstacles = db.obstacles.filter((o) => o.projectId !== id)
+      db.obstacleLinks = db.obstacleLinks.filter((l) => !goneObstacles.has(l.obstacleId))
       save(db)
     },
 
@@ -255,6 +278,83 @@ export function createLocalRepository(): Repository {
     // nu se randează acolo.
     async deleteIssues(ids: string[]) {
       deleteIssuesImpl(load(), ids)
+    },
+
+    async listObstacles(projectId: string) {
+      return clone(
+        load()
+          .obstacles.filter((o) => o.projectId === projectId)
+          .sort((a, b) => a.position - b.position || a.id.localeCompare(b.id)),
+      )
+    },
+
+    async listObstacleLinks(projectId: string) {
+      const db = load()
+      const mine = new Set(db.obstacles.filter((o) => o.projectId === projectId).map((o) => o.id))
+      return clone(db.obstacleLinks.filter((l) => mine.has(l.obstacleId)))
+    },
+
+    async createObstacle(input: NewObstacle) {
+      const db = load()
+      const project = db.projects.find((p) => p.id === input.projectId)
+      if (!project) throw new Error(`Unknown project ${input.projectId}`)
+      const obstacle: Obstacle = {
+        id: nextObstacleId(db, project),
+        projectId: input.projectId,
+        title: input.title,
+        detail: input.detail ?? '',
+        owner: input.owner ?? '',
+        state: input.state ?? 'necunoscut',
+        blocking: input.blocking ?? true,
+        bypass: input.bypass ?? null,
+        evidence: input.evidence ?? 'necunoscut',
+        askedAt: input.askedAt ?? null,
+        resolvedAt: null,
+        deps: input.deps ?? [],
+        position: db.obstacles.filter((o) => o.projectId === input.projectId).length,
+      }
+      db.obstacles.push(obstacle)
+      for (const issueId of input.issueIds ?? []) {
+        db.obstacleLinks.push({ obstacleId: obstacle.id, issueId })
+      }
+      save(db)
+      return clone(obstacle)
+    },
+
+    async updateObstacle(id: string, patch: Partial<Obstacle>) {
+      const db = load()
+      const o = db.obstacles.find((x) => x.id === id)
+      if (!o) throw new Error(`Unknown obstacle ${id}`)
+      Object.assign(o, patch)
+      if (patch.state !== undefined) {
+        const closed = patch.state === 'depasit' || patch.state === 'ocolit'
+        o.resolvedAt = closed ? (o.resolvedAt ?? new Date().toISOString()) : null
+      }
+      save(db)
+      return clone(o)
+    },
+
+    async deleteObstacle(id: string) {
+      const db = load()
+      db.obstacles = db.obstacles
+        .filter((o) => o.id !== id)
+        .map((o) => (o.deps.includes(id) ? { ...o, deps: o.deps.filter((d) => d !== id) } : o))
+      db.obstacleLinks = db.obstacleLinks.filter((l) => l.obstacleId !== id)
+      save(db)
+    },
+
+    async setObstacleIssues(obstacleId: string, issueIds: string[]) {
+      const db = load()
+      db.obstacleLinks = db.obstacleLinks.filter((l) => l.obstacleId !== obstacleId)
+      for (const issueId of issueIds) db.obstacleLinks.push({ obstacleId, issueId })
+      save(db)
+    },
+
+    async setIssueObstacles(issueId: string, obstacleIds: string[]) {
+      const db = load()
+      db.obstacleLinks = db.obstacleLinks.filter((l) => l.issueId !== issueId)
+      for (const obstacleId of obstacleIds) db.obstacleLinks.push({ obstacleId, issueId })
+      save(db)
     },
 
     async listAssignees() {

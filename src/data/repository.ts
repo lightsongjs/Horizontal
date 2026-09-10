@@ -1,7 +1,7 @@
 // Storage-agnostic data access. The app talks only to this interface; the
 // concrete backend (local or Supabase) is chosen in ./index.ts by env.
 
-import type { Assignee, Issue, Project, Theme, Wave } from '../lib/types'
+import type { Assignee, Issue, Obstacle, ObstacleLink, Project, Theme, Wave } from '../lib/types'
 
 export interface NewProject {
   name: string
@@ -27,6 +27,21 @@ export interface NewIssue {
   allDay?: boolean
   remindAt?: string | null
   rrule?: string | null
+}
+
+export interface NewObstacle {
+  projectId: string
+  title: string
+  detail?: string
+  owner?: string
+  state?: Obstacle['state']
+  blocking?: boolean
+  bypass?: string | null
+  evidence?: Obstacle['evidence']
+  askedAt?: string | null
+  deps?: string[]
+  /** Tichetele blocate, legate la creare. */
+  issueIds?: string[]
 }
 
 /**
@@ -76,6 +91,25 @@ export interface Repository {
    * half-succeed and leave the caller with a partial delete plus an error.
    */
   deleteIssues(ids: string[]): Promise<void>
+
+  listObstacles(projectId: string): Promise<Obstacle[]>
+  /** Muchiile obstacol → tichet ale proiectului. Separat de obstacole ca să
+   *  poată fi încărcate într-un singur round trip, ca `dependencies`. */
+  listObstacleLinks(projectId: string): Promise<ObstacleLink[]>
+  createObstacle(input: NewObstacle): Promise<Obstacle>
+  /**
+   * `resolvedAt` NU se trimite de apelant: se pune automat la trecerea în
+   * `depasit`/`ocolit` și se șterge la ieșire. Altfel fiecare loc care schimbă
+   * starea ar trebui să-și amintească să-l seteze, iar unul l-ar uita.
+   */
+  updateObstacle(id: string, patch: Partial<Obstacle>): Promise<Obstacle>
+  /** Șterge obstacolul, legăturile lui la tichete, și îl scoate din `deps`
+   *  celorlalte obstacole. */
+  deleteObstacle(id: string): Promise<void>
+  /** Înlocuiește complet setul de tichete blocate de un obstacol. */
+  setObstacleIssues(obstacleId: string, issueIds: string[]): Promise<void>
+  /** Înlocuiește complet setul de obstacole ale unui tichet. */
+  setIssueObstacles(issueId: string, obstacleIds: string[]): Promise<void>
 
   listAssignees(): Promise<Assignee[]>
   createAssignee(name: string): Promise<Assignee>

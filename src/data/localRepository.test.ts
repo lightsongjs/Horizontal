@@ -157,4 +157,83 @@ describe('localRepository', () => {
     const issue = (await repo.listIssues('leg')).find((i) => i.id === 'LEG-01')!
     expect(issue.urgent).toBe(false)
   })
+
+  it('creează obstacole cu id derivat din prefixul proiectului', async () => {
+    const repo = createLocalRepository()
+    const p = await repo.createProject({ name: 'MCP', description: '', prefix: 'MCP' })
+    const o1 = await repo.createObstacle({ projectId: p.id, title: 'Listare de facturi', owner: 'Echipa de API' })
+    const o2 = await repo.createObstacle({ projectId: p.id, title: 'Care firmă?', owner: 'PM' })
+    expect(o1.id).toBe('MCP-O01')
+    expect(o2.id).toBe('MCP-O02')
+    expect(o1.state).toBe('necunoscut')
+    expect(o1.blocking).toBe(true)
+    expect(o1.bypass).toBeNull()
+    expect(o2.position).toBe(1)
+  })
+
+  it('leagă obstacolul la tichete și le întoarce ca muchii', async () => {
+    const repo = createLocalRepository()
+    const p = await repo.createProject({ name: 'MCP', description: '', prefix: 'MCP' })
+    const a = await repo.createIssue({ projectId: p.id, title: '6 tool-uri' })
+    const b = await repo.createIssue({ projectId: p.id, title: 'invoice_validate' })
+    const o = await repo.createObstacle({ projectId: p.id, title: 'B1', issueIds: [a.id, b.id] })
+    const links = await repo.listObstacleLinks(p.id)
+    expect(links.filter((l) => l.obstacleId === o.id).map((l) => l.issueId).sort()).toEqual([a.id, b.id].sort())
+  })
+
+  it('pune resolvedAt la depășire și îl șterge la redeschidere', async () => {
+    const repo = createLocalRepository()
+    const p = await repo.createProject({ name: 'MCP', description: '', prefix: 'MCP' })
+    const o = await repo.createObstacle({ projectId: p.id, title: 'B2' })
+    const closed = await repo.updateObstacle(o.id, { state: 'depasit' })
+    expect(closed.resolvedAt).not.toBeNull()
+    const reopened = await repo.updateObstacle(o.id, { state: 'asteptare' })
+    expect(reopened.resolvedAt).toBeNull()
+  })
+
+  it('ștergerea unui tichet curăță legăturile lui de obstacole', async () => {
+    const repo = createLocalRepository()
+    const p = await repo.createProject({ name: 'MCP', description: '', prefix: 'MCP' })
+    const a = await repo.createIssue({ projectId: p.id, title: 'a' })
+    await repo.createObstacle({ projectId: p.id, title: 'B1', issueIds: [a.id] })
+    await repo.deleteIssue(a.id)
+    expect(await repo.listObstacleLinks(p.id)).toEqual([])
+  })
+
+  it('ștergerea unui obstacol curăță legăturile și deps celorlalte', async () => {
+    const repo = createLocalRepository()
+    const p = await repo.createProject({ name: 'MCP', description: '', prefix: 'MCP' })
+    const a = await repo.createIssue({ projectId: p.id, title: 'a' })
+    const root = await repo.createObstacle({ projectId: p.id, title: '#1' })
+    const child = await repo.createObstacle({ projectId: p.id, title: '#19', deps: [root.id], issueIds: [a.id] })
+    await repo.deleteObstacle(root.id)
+    const left = await repo.listObstacles(p.id)
+    expect(left.map((o) => o.id)).toEqual([child.id])
+    expect(left[0].deps).toEqual([])
+    expect((await repo.listObstacleLinks(p.id)).length).toBe(1)
+    await repo.deleteObstacle(child.id)
+    expect(await repo.listObstacleLinks(p.id)).toEqual([])
+  })
+
+  it('setIssueObstacles înlocuiește complet setul tichetului', async () => {
+    const repo = createLocalRepository()
+    const p = await repo.createProject({ name: 'MCP', description: '', prefix: 'MCP' })
+    const a = await repo.createIssue({ projectId: p.id, title: 'a' })
+    const o1 = await repo.createObstacle({ projectId: p.id, title: 'B1', issueIds: [a.id] })
+    const o2 = await repo.createObstacle({ projectId: p.id, title: '#13' })
+    await repo.setIssueObstacles(a.id, [o2.id])
+    const links = await repo.listObstacleLinks(p.id)
+    expect(links.map((l) => l.obstacleId)).toEqual([o2.id])
+    expect(links.map((l) => l.obstacleId)).not.toContain(o1.id)
+  })
+
+  it('ștergerea proiectului șterge obstacolele și legăturile lui', async () => {
+    const repo = createLocalRepository()
+    const p = await repo.createProject({ name: 'MCP', description: '', prefix: 'MCP' })
+    const a = await repo.createIssue({ projectId: p.id, title: 'a' })
+    await repo.createObstacle({ projectId: p.id, title: 'B1', issueIds: [a.id] })
+    await repo.deleteProject(p.id)
+    expect(await repo.listObstacles(p.id)).toEqual([])
+    expect(await repo.listObstacleLinks(p.id)).toEqual([])
+  })
 })
