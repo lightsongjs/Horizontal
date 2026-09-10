@@ -358,6 +358,12 @@ asta pe cont propriu. Store-ul o memoizează în `blockedByObstacle`, iar
 `ObstacleChip`, `TicketCard`, `ListView` și titlul de layer din „Ordine" citesc
 toate doar rezultatul ei.
 
+Dependențele obstacol-obstacol (`obstacle_deps`, cu propagarea `#1 → #19` din
+`openObstacles`) există în model, în migrare și în motor, ciclul e refuzat la
+scriere ca la dependențele de tichete — dar **nu au editor**. `ObstacleForm.tsx`
+nu are câmp de `deps`, deliberat: lista de câmpuri din spec nu-l cere. Se
+scriu azi doar direct în bază.
+
 Setup: `npm run migrate supabase/migration-obstacles.sql`.
 
 ## ticket-kit — sync (repo git separat)

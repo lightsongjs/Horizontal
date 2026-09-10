@@ -3,6 +3,7 @@ import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { openObstacles, waitingDays } from '../lib/obstacles'
 import { Icon } from './Icon'
+import { STATES } from './ObstacleForm'
 import type { Obstacle } from '../lib/types'
 
 /** Câte obstacole depășite se arată în poartă. Restul se văd pe hartă. */
@@ -20,13 +21,23 @@ export function WaveGate() {
   const { pushSheet } = useUI()
 
   const { open, closed, elsewhere } = useMemo(() => {
-    const inWave = new Set(issues.filter((i) => i.wave === activeWave).map((i) => i.id))
+    // Un tichet bifat nu mai cere nimic de la obstacolul lui — `blockedBy`
+    // (obstacles.ts) exclude tichetele `done` de la fel. Fără filtrul ăsta,
+    // un obstacol legat DOAR de tichete bifate ale valului ar mai raporta
+    // „1 obstacol deschis" deasupra unor carduri care nu se sting nicăieri.
+    const inWave = new Set(
+      issues.filter((i) => i.wave === activeWave && !i.done).map((i) => i.id),
+    )
     const touching = new Set(
       obstacleLinks.filter((l) => inWave.has(l.issueId)).map((l) => l.obstacleId),
     )
     const mine = obstacles.filter((o) => touching.has(o.id))
     const openIds = openObstacles(obstacles)
-    const open = mine.filter((o) => openIds.has(o.id) && o.blocking)
+    // Nu se mai filtrează pe `blocking` — spec: un obstacol `blocking: false`
+    // se vede pe hartă ȘI în poartă, doar nu stinge niciun tichet. Rândul lui
+    // capătă `.soft` mai jos, ca lista să nu-l arate identic cu unul care
+    // chiar oprește ceva.
+    const open = mine.filter((o) => openIds.has(o.id))
     // Notă intenționată: `closed`, spre deosebire de `open`, nu filtrează pe
     // `blocking`. E arhiva „ce am depășit deja" — un obstacol retrogradat la
     // neblocant și apoi depășit tot a fost depășit; `blocking` răspunde la
@@ -57,16 +68,26 @@ export function WaveGate() {
 
   const row = (o: Obstacle, ok: boolean) => {
     const days = waitingDays(o, new Date())
+    // Deschis dar `blocking: false`: e listat, dar nu oprește nimic — rândul
+    // ia un ton neutru în loc de roșu-blocant, ca „deschis" să nu se citească
+    // drept „oprește ceva" doar fiindcă apare aici.
+    const soft = !ok && !o.blocking
     return (
       <button
         key={o.id}
-        className={`obst-row ${ok ? 'ok' : ''}`}
+        className={`obst-row ${ok ? 'ok' : ''}${soft ? ' soft' : ''}`}
         onClick={() => pushSheet({ kind: 'obstacle-form', obstacleId: o.id })}
       >
         <span className="obst-row-id">{o.id}</span>
         <span className="obst-row-title">{o.title}</span>
         <span className="obst-row-own">
-          {ok ? (o.state === 'ocolit' ? 'ocolit' : 'depășit') : days !== null ? `${days} zile` : o.owner}
+          {ok
+            ? STATES.find((s) => s.key === o.state)?.label ?? o.state
+            : soft
+              ? 'nu blochează'
+              : days !== null
+                ? <><span className="obst-n">{days}</span> zile</>
+                : o.owner}
         </span>
       </button>
     )

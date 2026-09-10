@@ -167,8 +167,11 @@ export function layoutMap({ issues, obstacles, links, waves }: MapLayoutInput): 
   const isClosed = (kind: 'issue' | 'obstacle', id: string): boolean =>
     kind === 'issue' ? (byId[id]?.done ?? false) : !openSet.has(id)
 
+  // Un obstacol deschis dar `blocking: false` nu oprește nimic — muchia lui
+  // nu are voie să pretindă `blk`. Cade pe `dep`, tonul neutru existent,
+  // fiindcă nu e nici blocant, nici închis; nu se adaugă un al patrulea ton.
   const toneFrom = (kind: 'issue' | 'obstacle', id: string): MapEdge['tone'] => {
-    if (kind === 'obstacle' && openSet.has(id)) return 'blk'
+    if (kind === 'obstacle' && openSet.has(id) && (obstacleById[id]?.blocking ?? true)) return 'blk'
     if (isClosed(kind, id)) return 'don'
     return 'dep'
   }

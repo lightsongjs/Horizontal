@@ -1280,25 +1280,6 @@ main {
   flex-shrink: 0;
 }
 
-/* GRAPH */
-.graph-hint {
-  font-size: 12px;
-  color: var(--txt-faint);
-  margin-bottom: 12px;
-  text-align: center;
-}
-.gwrap {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  padding-bottom: 8px;
-  margin: 0 -14px;
-  padding-left: 14px;
-  padding-right: 14px;
-}
-svg.graph {
-  display: block;
-}
-
 .wbtn.wmanage {
   align-items: center;
   justify-content: center;
@@ -4885,14 +4866,24 @@ svg.graph {
   min-width: 44px;
 }
 .obst-row.ok .obst-row-id { color: var(--done); }
+/* Deschis dar neblocant (spec: `blocking: false` „se vede... dar nu stinge
+   niciun tichet") — id-ul iese din roșu-blocant, la fel de neutru ca un
+   obstacol depășit, dar FĂRĂ tăietură: e încă deschis, doar nu oprește. */
+.obst-row.soft .obst-row-id { color: var(--txt-faint); }
 .obst-row-title { flex: 1; font-size: 13px; min-width: 0; }
 .obst-row.ok .obst-row-title { color: var(--txt-faint); text-decoration: line-through; }
+/* Limbă (stare, nume de owner, „nu blochează"), deci serif, nu mono — regula
+   2. Singurul mono rămas e `.obst-n`, folosit doar pe cifra din „N zile". */
 .obst-row-own {
-  font-family: var(--mono);
-  font-size: 9px;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+  font-family: var(--display);
+  font-size: 10.5px;
   color: var(--txt-faint);
+}
+/* Cifră inline într-o propoziție serif — obst-row-own („N zile") și
+   obst-wait („fără răspuns de N zile") o folosesc pe amândouă. */
+.obst-n {
+  font-family: var(--mono);
+  font-weight: 600;
 }
 
 /* Cardul/rândul blocat: se stinge prin SALT DE FUNDAL și pierderea umbrei, nu
@@ -4946,19 +4937,31 @@ svg.graph {
   color: var(--txt-dim);
 }
 .obst-chip.blk { background: var(--blocked-soft); color: var(--blocked); }
-.obst-chip.ok { background: var(--done-soft); color: var(--done); }
-.obst-chip.acc { background: var(--accent-soft); color: var(--accent); }
 
 /* ── FOAIA OBSTACOLULUI (ObstacleForm) ──────────────────────────────
    Titlul unui tichet legat poate fi lung — spre deosebire de un id scurt,
    deci textul jetonului capătă propriul span cu elipsă, ca × să nu fie
    împins în afara jetonului sau să rupă rândul. */
 .dep-selected .obst-chip { max-width: 100%; padding-right: 4px; }
+/* `.obst-chip` de bază e mono/majuscul — potrivit pentru un id sau un număr
+   (ObstacleChip.tsx), NU pentru un titlu de tichet. Aici conținutul e
+   „ID · Titlu": containerul revine la serif/normal, iar `.obst-chip-id`
+   restaurează mono/majuscul doar pe id. */
 .obst-chip-t {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 240px;
+  font-family: var(--display);
+  font-size: 11.5px;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.obst-chip-t .obst-chip-id {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
 }
 .obst-chip-x {
   display: inline-flex;
@@ -5035,9 +5038,11 @@ svg.graph {
   gap: 6px;
 }
 
+/* „fără răspuns de N zile" — frază, deci serif; doar N e cifră (`.obst-n`,
+   definit lângă `.obst-row-own`). */
 .obst-wait {
-  font-family: var(--mono);
-  font-size: 11.5px;
+  font-family: var(--display);
+  font-size: 12.5px;
   color: var(--txt-faint);
   margin: 6px 0 4px;
 }
@@ -5081,8 +5086,16 @@ svg.graph {
 }
 .map-title { font-family: var(--display); font-size: 12.5px; fill: var(--txt); }
 .map-title.dim { fill: var(--txt-dim); }
-.map-tick { fill: var(--surface-2); }
-.map-obst { fill: var(--surface-3); }
+/* Umbra ambientală se leagă aici, nu pe `.map-node` (grupul), ca textul
+   (`.map-id`, `.map-own`, `.map-title`) să nu fie blurat de ea — regula 4,
+   o singură umbră, pe forma nodului. Filtrul se schimbă cu tema: SVG n-are
+   cum să citească `--amb` direct într-un `feDropShadow`, deci sunt două
+   filtre (`#amb-dark`/`#amb-light`, definite în MapView.tsx / build-preview.py)
+   și CSS-ul alege între ele, ca orice altă proprietate de temă. */
+.map-tick { fill: var(--surface-2); filter: url(#amb-dark); }
+.map-obst { fill: var(--surface-3); filter: url(#amb-dark); }
+[data-theme='light'] .map-tick,
+[data-theme='light'] .map-obst { filter: url(#amb-light); }
 .map-edge { fill: none; stroke-width: 1.5; }
 .map-edge.dep { stroke: var(--txt-faint); opacity: 0.4; }
 .map-edge.blk { stroke: var(--blocked); opacity: 0.6; stroke-dasharray: 5 4; }

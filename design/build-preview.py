@@ -188,7 +188,7 @@ def map_node(kind, nid, title, owner, x, y, bar, bypass=None, closed=False):
     bar_x = x + 13 if kind == 'obstacle' else x
     strike = ('<line class="map-strike" x1="%g" y1="%d" x2="%g" y2="%d" />' % (id_x, y + 34, strike_end, y + 34)
                if closed else '')
-    return ('<g class="map-node" filter="url(#amb)">%s'
+    return ('<g class="map-node">%s'
             '<rect x="%d" y="%d" width="2.5" height="%d" fill="%s" />'
             '<text class="map-id" x="%g" y="%d">%s</text>'
             '<text class="map-own" x="%d" y="%d">%s</text>'
@@ -232,8 +232,16 @@ _M_TODAY_X = _M_COL1 - 34
 HARTA = (
     '<div class="map-wrap"><svg width="%d" height="%d" viewBox="0 0 %d %d">'
     % (_M_WIDTH, _M_HEIGHT, _M_WIDTH, _M_HEIGHT)
-    + '<defs><filter id="amb" x="-25%" y="-40%" width="150%" height="190%">'
-      '<feDropShadow dx="0" dy="3" stdDeviation="7" flood-opacity="0.30" /></filter></defs>'
+    # Umbra e pe forma nodului (.map-tick/.map-obst în styles.css), nu pe
+    # `<g class="map-node">` — la fel ca MapView.tsx, ca textul să nu fie
+    # blurat. Două filtre, unul per temă; CSS-ul alege (styles.css e link-uit
+    # direct de acest bancul, deci regula reală decide, nu ceva duplicat aici).
+    + '<defs>'
+      '<filter id="amb-dark" x="-25%" y="-40%" width="150%" height="190%">'
+      '<feDropShadow dx="0" dy="3" stdDeviation="7" flood-opacity="0.30" /></filter>'
+      '<filter id="amb-light" x="-25%" y="-40%" width="150%" height="190%">'
+      '<feDropShadow dx="0" dy="3" stdDeviation="7" flood-color="#29343A" flood-opacity="0.06" /></filter>'
+      '</defs>'
     + '<line x1="%g" y1="16" x2="%g" y2="%d" stroke="var(--accent)" stroke-width="2" stroke-dasharray="2 5" />'
       % (_M_TODAY_X, _M_TODAY_X, _M_HEIGHT - 12)
     + '<text class="map-bandtxt" x="%g" y="14">AZI · 10 sept</text>' % (_M_TODAY_X + 8)

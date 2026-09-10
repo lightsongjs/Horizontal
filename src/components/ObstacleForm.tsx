@@ -2,10 +2,13 @@ import { useMemo, useState } from 'react'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { waitingDays } from '../lib/obstacles'
+import { fold } from '../lib/text'
 import { Icon } from './Icon'
 import type { ObstacleEvidence, ObstacleState } from '../lib/types'
 
-const STATES: { key: ObstacleState; label: string }[] = [
+/** Exportat — `WaveGate` folosește aceleași etichete la coada „depășit"/
+ * „ocolit", ca o singură sursă de adevăr pentru cuvintele de stare. */
+export const STATES: { key: ObstacleState; label: string }[] = [
   { key: 'necunoscut', label: 'necunoscut' },
   { key: 'asteptare', label: 'în așteptare' },
   { key: 'depasit', label: 'depășit' },
@@ -43,6 +46,7 @@ export function ObstacleForm({ obstacleId }: { obstacleId?: string }) {
   const [q, setQ] = useState('')
   const [saving, setSaving] = useState(false)
   const [confirmDel, setConfirmDel] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const valid = title.trim().length > 0
 
@@ -52,9 +56,7 @@ export function ObstacleForm({ obstacleId }: { obstacleId?: string }) {
     .map((id) => issues.find((i) => i.id === id))
     .filter((i): i is (typeof issues)[number] => !!i)
 
-  const results = q.trim()
-    ? issues.filter((i) => i.title.toLowerCase().includes(q.trim().toLowerCase()))
-    : []
+  const results = q.trim() ? issues.filter((i) => fold(i.title).includes(fold(q.trim()))) : []
 
   const toggleIssue = (id: string) => {
     setIssueIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
@@ -63,6 +65,7 @@ export function ObstacleForm({ obstacleId }: { obstacleId?: string }) {
   const save = async () => {
     if (!valid || saving) return
     setSaving(true)
+    setError(null)
     try {
       const patch = {
         title: title.trim(),
@@ -83,7 +86,10 @@ export function ObstacleForm({ obstacleId }: { obstacleId?: string }) {
         await setObstacleIssues(existing.id, issueIds)
       } else {
         const created = await createObstacle({ ...patch, issueIds })
-        if (!created) return
+        if (!created) {
+          setError('Nu am putut crea obstacolul. Încearcă din nou.')
+          return
+        }
       }
       closeSheet()
     } finally {
@@ -144,7 +150,11 @@ export function ObstacleForm({ obstacleId }: { obstacleId?: string }) {
             </button>
           ))}
         </div>
-        {days !== null && <div className="obst-wait">fără răspuns de {days} zile</div>}
+        {days !== null && (
+          <div className="obst-wait">
+            fără răspuns de <span className="obst-n">{days}</span> zile
+          </div>
+        )}
 
         <div className="fld">
           <label>Ocolire</label>
@@ -180,7 +190,9 @@ export function ObstacleForm({ obstacleId }: { obstacleId?: string }) {
             <div className="dep-selected">
               {linked.map((i) => (
                 <span key={i.id} className="obst-chip blk">
-                  <span className="obst-chip-t">{i.id} · {i.title}</span>
+                  <span className="obst-chip-t">
+                    <span className="obst-chip-id">{i.id}</span> · {i.title}
+                  </span>
                   <button
                     type="button"
                     className="obst-chip-x"
@@ -222,6 +234,8 @@ export function ObstacleForm({ obstacleId }: { obstacleId?: string }) {
             </div>
           )}
         </div>
+
+        {error && <div className="banner" style={{ marginTop: 12 }}>⚠ {error}</div>}
 
         <div className="save-bar">
           <button onClick={save} disabled={!valid || saving}>

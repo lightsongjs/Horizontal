@@ -45,9 +45,13 @@ function isClosed(n: MapNode, openObstacleIds: Set<string>): boolean {
  * poartă separat coloana — e o aproximare onestă, nu „layerul real" al
  * tichetului în vreo vedere filtrată pe val.
  */
-function barColor(n: MapNode, openObstacleIds: Set<string>): string {
+function barColor(n: MapNode, openObstacleIds: Set<string>, blockingById: Record<string, boolean>): string {
   if (n.kind === 'obstacle') {
-    return openObstacleIds.has(n.id) ? 'var(--blocked)' : 'var(--done)'
+    if (!openObstacleIds.has(n.id)) return 'var(--done)'
+    // Deschis dar `blocking: false` nu oprește nimic — bara nu are voie să-l
+    // arate identic cu un obstacol care chiar blochează. Cade pe neutru
+    // (`--txt-faint`), aceeași culoare pe care o ia muchia lui (tonul `dep`).
+    return blockingById[n.id] ? 'var(--blocked)' : 'var(--txt-faint)'
   }
   if (n.state === 'done') return 'var(--done)'
   if (n.state === 'active') return 'var(--active)'
@@ -64,6 +68,11 @@ export function MapView() {
     [issues, obstacles, obstacleLinks, waves],
   )
   const openObstacleIds = useMemo(() => openObstacles(obstacles), [obstacles])
+  const blockingById = useMemo(() => {
+    const m: Record<string, boolean> = {}
+    for (const o of obstacles) m[o.id] = o.blocking
+    return m
+  }, [obstacles])
 
   // Nu „niciun tichet" — un proiect poate avea o fază formată numai din
   // depășire de obstacole, fără niciun tichet (Faza 0 din cazul care a
@@ -72,7 +81,7 @@ export function MapView() {
   if (layout.nodes.length === 0) {
     return (
       <div className="panel">
-        <p className="empty">Nimic de afișat pe hartă. Adaugă tichete în „Ordine".</p>
+        <p className="empty">Nimic de afișat pe hartă. Adaugă un tichet sau un obstacol.</p>
       </div>
     )
   }
@@ -92,9 +101,22 @@ export function MapView() {
   return (
     <div className="map-wrap">
       <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+        {/* Umbra ambientală (regula 4) — o singură dată, pe forma nodului,
+            NU pe grupul întreg: aplicată pe `<g>` ar cădea și pe text, adică
+            l-ar blura. Două filtre, nu unul, fiindcă `feDropShadow` nu poate
+            citi `--amb` din CSS direct — `flood-opacity` e totuși un
+            atribut de prezentare, deci CSS-ul alege între ele (`.map-tick`,
+            `.map-obst` în styles.css), la fel cum orice altă clasă și-ar
+            alege umbra pe temă. Valorile reproduc `--amb`: negru 0.30 pe
+            întuneric (~0.42 în box-shadow, scăzut fiindcă filtrul se vede
+            peste un fundal deja închis), #29343A 0.06 pe deschis — identic
+            cu tonul umbrei din `--amb` acolo. */}
         <defs>
-          <filter id="amb" x="-25%" y="-40%" width="150%" height="190%">
+          <filter id="amb-dark" x="-25%" y="-40%" width="150%" height="190%">
             <feDropShadow dx="0" dy="3" stdDeviation="7" floodOpacity="0.30" />
+          </filter>
+          <filter id="amb-light" x="-25%" y="-40%" width="150%" height="190%">
+            <feDropShadow dx="0" dy="3" stdDeviation="7" floodColor="#29343A" floodOpacity="0.06" />
           </filter>
         </defs>
 
@@ -146,7 +168,7 @@ export function MapView() {
           const title = n.title.length > 24 ? n.title.slice(0, 23) + '…' : n.title
           const strikeEnd = Math.min(idX + title.length * 6.05, n.x + NODE_W - 12)
           return (
-            <g key={n.id} className="map-node" filter="url(#amb)" onClick={() => handleClick(n)}>
+            <g key={n.id} className="map-node" onClick={() => handleClick(n)}>
               {n.kind === 'obstacle' ? (
                 <path className="map-obst" d={gatePath(n.x, n.y, n.bypass !== null)} />
               ) : (
@@ -157,7 +179,7 @@ export function MapView() {
                 y={n.y}
                 width="2.5"
                 height={NODE_H}
-                fill={barColor(n, openObstacleIds)}
+                fill={barColor(n, openObstacleIds, blockingById)}
               />
               <text className="map-id" x={idX} y={n.y + 19}>
                 {n.id}

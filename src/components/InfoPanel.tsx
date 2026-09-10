@@ -98,7 +98,7 @@ const RULES: { title: string; body: string }[] = [
   },
   {
     title: '„Blochează" = nu',
-    body: 'Un obstacol poate exista fără să blocheze: se vede pe hartă și în foaia lui, dar nu stinge niciun tichet legat.',
+    body: 'Un obstacol poate exista fără să blocheze: se vede pe hartă și în poarta valului, dar nu stinge niciun tichet legat.',
   },
   {
     title: 'Fără răspuns de N zile',

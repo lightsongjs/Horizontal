@@ -45,6 +45,14 @@ describe('layoutMap', () => {
     expect(edges).toEqual([{ from: 'B1', to: '1.1', tone: 'blk' }])
   })
 
+  it('muchia care pleacă dintr-un obstacol deschis dar neblocant NU are tonul blk', () => {
+    const issues = [mkIssue('1.1')]
+    const obstacles = [mkObst('B1', 'asteptare', { blocking: false })]
+    const links: ObstacleLink[] = [{ obstacleId: 'B1', issueId: '1.1' }]
+    const { edges } = layoutMap({ issues, obstacles, links, waves: [] })
+    expect(edges).toEqual([{ from: 'B1', to: '1.1', tone: 'dep' }])
+  })
+
   it('muchia care pleacă dintr-un lucru închis are tonul don', () => {
     const issues = [mkIssue('A', [], 1, true), mkIssue('B', ['A'])]
     const { edges } = layoutMap({ issues, obstacles: [], links: [], waves: [] })

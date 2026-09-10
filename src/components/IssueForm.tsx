@@ -5,6 +5,7 @@ import { useUI } from '../ui'
 import { useCanWrite, useTitleDate } from '../hooks'
 import { ticketUrl } from '../lib/deepLink'
 import { stripSpans } from '../lib/parseDue'
+import { fold } from '../lib/text'
 import {
   DATE_PLACEHOLDER, NO_SCHEDULE, TIME_PLACEHOLDER, defaultReminder, displayFromInputDate,
   fromDisplayDate, fromInputs, fromTimeText, hasTime, maskDateInput, maskTimeInput, reminderAt,
@@ -58,9 +59,6 @@ function depCols(n: number): number {
   if (n <= 4) return 2
   return 3
 }
-
-/** „firma" trebuie să găsească „Care firmă?". Aceeași pliere ca `themeKey`. */
-const fold = (v: string) => v.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 
 const AutoTextarea = forwardRef<HTMLTextAreaElement, {
   value: string; onChange: (v: string) => void; placeholder?: string; minH?: number; maxH?: number
