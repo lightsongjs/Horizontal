@@ -27,7 +27,26 @@ export function WaveGate() {
     const mine = obstacles.filter((o) => touching.has(o.id))
     const openIds = openObstacles(obstacles)
     const open = mine.filter((o) => openIds.has(o.id) && o.blocking)
-    const closed = mine.filter((o) => !openIds.has(o.id)).slice(-RECENT_CLOSED)
+    // Notă intenționată: `closed`, spre deosebire de `open`, nu filtrează pe
+    // `blocking`. E arhiva „ce am depășit deja" — un obstacol retrogradat la
+    // neblocant și apoi depășit tot a fost depășit; `blocking` răspunde la
+    // „oprește acum", o întrebare fără sens pentru ceva deja închis.
+    const closed = mine
+      .filter((o) => !openIds.has(o.id))
+      // `position` e ordinea manuală din listă (reordonabilă de utilizator),
+      // fără nicio legătură cu momentul depășirii — sortarea după ea ar
+      // arăta cele trei cele mai SUS în listă, nu cele mai RECENTE. Sortăm
+      // deci după `resolvedAt`, cel mai recent primul; un `resolvedAt` gol
+      // (rânduri vechi sau o cale care nu l-a completat) se duce la coadă.
+      // Egalitatea (inclusiv doi `null`) se rupe pe `id`, ca ordinea să fie
+      // totală și lista să nu se reamestece la re-randări.
+      .sort((a, b) => {
+        if (a.resolvedAt === b.resolvedAt) return a.id.localeCompare(b.id)
+        if (a.resolvedAt === null) return 1
+        if (b.resolvedAt === null) return -1
+        return b.resolvedAt.localeCompare(a.resolvedAt)
+      })
+      .slice(0, RECENT_CLOSED)
     // „La alții": owner scris și diferit de gol. Numărul care răspunde la
     // „de ce nu merge mai repede" fără să-l spui tu.
     const elsewhere = open.filter((o) => o.owner.trim() !== '').length

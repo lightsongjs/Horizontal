@@ -9,7 +9,7 @@ import { useHideDone, useOrderedLayers, useWaveActions, useVimNav, useCanWrite }
 import { layerVar } from '../lib/layerColors'
 
 export function OrdineView() {
-  const { waves, activeWave, blockedByObstacle } = useHorizontal()
+  const { waves, activeWave, blockedByObstacle, byId } = useHorizontal()
   const [hideDone, toggleHideDone] = useHideDone()
   const orderedLayers = useOrderedLayers(hideDone)
   const flatLayers = useMemo(() => orderedLayers.map((g) => g.ids), [orderedLayers])
@@ -47,7 +47,15 @@ export function OrdineView() {
         orderedLayers.map((g, i) => {
           const ready = i === 0
           const color = layerVar(i)
-          const freeCount = g.ids.filter((id) => !blockedByObstacle[id]?.length).length
+          // „Se poate începe" e o afirmație despre lucru de luat ACUM — un
+          // tichet bifat nu mai e asta. `blockedBy` deja îl omite din hartă
+          // (vezi lib/obstacles.ts), dar contorul îl număra ca „liber" în
+          // loc să-l scoată din calcul; îl scoatem din ambele numere. Când
+          // `hideDone` e pornit, `g.ids` deja nu conține tichete bifate, deci
+          // filtrul de mai jos e un no-op — nu numără de două ori și nu dă
+          // „0 din 0".
+          const liveIds = g.ids.filter((id) => !byId[id]?.done)
+          const freeCount = liveIds.filter((id) => !blockedByObstacle[id]?.length).length
           return (
             <div key={g.L} className={`layer ${ready ? 'ready' : ''}`} style={{ '--layer-color': color } as React.CSSProperties}>
               <div className="layer-head">
@@ -56,7 +64,7 @@ export function OrdineView() {
                   <h4>{ready ? 'Începe aici' : `Layer ${g.L + 1}`}</h4>
                   <div className="sub">
                     {ready ? 'Nu depinde de nimic din acest val' : `Depinde de layer ${g.L}`} ·{' '}
-                    {freeCount < g.ids.length ? `se poate începe · ${freeCount} din ${g.ids.length}` : `${g.ids.length} tichete`}
+                    {freeCount < liveIds.length ? `se poate începe · ${freeCount} din ${liveIds.length}` : `${g.ids.length} tichete`}
                   </div>
                 </div>
                 {ready && <span className="badge-now">Acum</span>}
