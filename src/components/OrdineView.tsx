@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useHorizontal } from '../store'
 import { TicketCard } from './TicketCard'
+import { WaveGate } from './WaveGate'
 import { WaveTabs } from './WaveTabs'
 import { WaveActionsBar } from './WaveActionsBar'
 import { BulkBar } from './BulkBar'
@@ -8,7 +9,7 @@ import { useHideDone, useOrderedLayers, useWaveActions, useVimNav, useCanWrite }
 import { layerVar } from '../lib/layerColors'
 
 export function OrdineView() {
-  const { waves, activeWave } = useHorizontal()
+  const { waves, activeWave, blockedByObstacle } = useHorizontal()
   const [hideDone, toggleHideDone] = useHideDone()
   const orderedLayers = useOrderedLayers(hideDone)
   const flatLayers = useMemo(() => orderedLayers.map((g) => g.ids), [orderedLayers])
@@ -36,6 +37,8 @@ export function OrdineView() {
         />
       </div>
 
+      <WaveGate />
+
       {waves.length === 0 ? (
         <p className="empty">Niciun val încă. Apasă rotița din bara de valuri ca să adaugi primul (sprint).</p>
       ) : orderedLayers.length === 0 ? (
@@ -44,6 +47,7 @@ export function OrdineView() {
         orderedLayers.map((g, i) => {
           const ready = i === 0
           const color = layerVar(i)
+          const freeCount = g.ids.filter((id) => !blockedByObstacle[id]?.length).length
           return (
             <div key={g.L} className={`layer ${ready ? 'ready' : ''}`} style={{ '--layer-color': color } as React.CSSProperties}>
               <div className="layer-head">
@@ -51,8 +55,8 @@ export function OrdineView() {
                 <div>
                   <h4>{ready ? 'Începe aici' : `Layer ${g.L + 1}`}</h4>
                   <div className="sub">
-                    {ready ? 'Nu depinde de nimic din acest val' : `Depinde de layer ${g.L}`} · {g.ids.length}{' '}
-                    tichete
+                    {ready ? 'Nu depinde de nimic din acest val' : `Depinde de layer ${g.L}`} ·{' '}
+                    {freeCount < g.ids.length ? `se poate începe · ${freeCount} din ${g.ids.length}` : `${g.ids.length} tichete`}
                   </div>
                 </div>
                 {ready && <span className="badge-now">Acum</span>}

@@ -10,6 +10,7 @@ export type SheetState =
   | { kind: 'project-settings' }
   | { kind: 'wave-manage' }
   | { kind: 'theme-manage' }
+  | { kind: 'obstacle-form'; obstacleId?: string } // creare când n-are id
 
 interface UI {
   sheet: SheetState

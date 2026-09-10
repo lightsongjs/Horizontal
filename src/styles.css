@@ -4826,6 +4826,7 @@ svg.graph {
   display: flex;
   align-items: center;
   gap: 8px;
+  color: var(--blocked);
 }
 .wave-gate-n {
   font-family: var(--mono);
