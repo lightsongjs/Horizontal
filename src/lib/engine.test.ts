@@ -8,6 +8,7 @@ import {
   projectCompletion,
   unblocks,
 } from './engine'
+import engineSrc from './engine.ts?raw'
 import { NO_SCHEDULE } from './schedule'
 import type { Issue } from './types'
 
@@ -105,4 +106,17 @@ describe('unblocks (reverse edges)', () => {
 describe('projectCompletion', () => {
   it('is done/total', () => expect(projectCompletion(ISSUES)).toBeCloseTo(1 / 8))
   it('is 0 for no issues', () => expect(projectCompletion([])).toBe(0))
+})
+
+describe('obstacolele nu ating motorul', () => {
+  it('engine.ts nu pomenește obstacolele: layerul nu depinde de ele', () => {
+    // Afirmație despre DEPENDENȚE, nu despre date: computeLayers și
+    // deriveState nu primesc obstacole ca argument, deci „același rezultat cu
+    // și fără" nu se poate scrie ca o comparație de valori — s-ar compara un
+    // lucru cu el însuși. Dacă cineva bagă obstacole în layere, importul apare
+    // în sursă și testul cade. Sursa vine printr-un import Vite `?raw` (tipat
+    // în vite/client), nu prin node:fs — pachetul n-are @types/node, iar
+    // instalarea uneia noi ar încălca constrângerea „fără biblioteci noi".
+    expect(engineSrc).not.toMatch(/obstacle/i)
+  })
 })

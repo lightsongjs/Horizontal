@@ -88,3 +88,47 @@ export interface Issue {
 
 /** Output of computeLayers: layer depth -> issue ids, ordered within layer. */
 export type Layers = Record<number, string[]>
+
+/** Starea unui obstacol. Vezi docs/superpowers/specs/2026-09-10-obstacole-design.md. */
+export type ObstacleState = 'necunoscut' | 'asteptare' | 'depasit' | 'ocolit'
+
+/** Marcajele [V]/[P]/[?]: cât de sigur e ce scrie în obstacol. */
+export type ObstacleEvidence = 'verificat' | 'plauzibil' | 'necunoscut'
+
+/**
+ * O condiție care trebuie să cadă înainte ca munca să înceapă. NU e muncă: nu
+ * are val, nu are layer, nu se estimează, și de obicei nu o rezolvă cel care
+ * ține tichetul. De-aia `owner` e text liber și nu un `assigneeId`: „echipa de
+ * API", „juridic", „management" nu sunt conturi în aplicație.
+ */
+export interface Obstacle {
+  id: string
+  projectId: string
+  title: string
+  detail: string
+  /** Cine îl scoate. Text liber. */
+  owner: string
+  state: ObstacleState
+  /**
+   * Un obstacol poate exista fără să blocheze. #3 și #4 din dosarul MCP au
+   * fost „nu blochează", apoi promovate — deci e o proprietate care se
+   * schimbă în timp, nu o consecință a existenței obstacolului.
+   */
+  blocking: boolean
+  /** `null` = nu are ocolire. Text = ocolirea, cu costul ei. */
+  bypass: string | null
+  evidence: ObstacleEvidence
+  /** Când s-a întrebat. De aici iese „fără răspuns de N zile". */
+  askedAt: string | null
+  resolvedAt: string | null
+  /** Alte obstacole care trebuie depășite înaintea acestuia. */
+  deps: string[]
+  /** Ordinea în listă, în cadrul proiectului. */
+  position: number
+}
+
+/** Muchia obstacol → tichet. N la N, peste valuri. */
+export interface ObstacleLink {
+  obstacleId: string
+  issueId: string
+}
