@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { COL_GAP, layoutMap, NODE_H, NODE_W, PAD, TOP, type MapNode } from '../lib/mapLayout'
+import { openObstacles } from '../lib/obstacles'
 import { layerVar } from '../lib/layerColors'
 
 const RO_MONTHS = ['ian', 'feb', 'mar', 'apr', 'mai', 'iun', 'iul', 'aug', 'sept', 'oct', 'nov', 'dec']
@@ -17,22 +18,36 @@ function gatePath(x: number, y: number, hasBypass: boolean): string {
     : `M${x + c} ${y} H${x + NODE_W} V${y + NODE_H} H${x + c} L${x} ${y + NODE_H / 2} Z`
 }
 
-/** Închis, în sensul afișat pe hartă: tichet bifat, sau obstacol depășit/ocolit. */
-function isClosed(n: MapNode): boolean {
-  return n.kind === 'issue' ? n.state === 'done' : n.state === 'depasit' || n.state === 'ocolit'
+/**
+ * Închis, în sensul afișat pe hartă: tichet bifat, sau obstacol EFECTIV
+ * închis. „Efectiv" contează, nu starea lui brută: `openObstacles` spune
+ * deschis dacă starea proprie e deschisă SAU dacă orice obstacol de care
+ * depinde e încă deschis — exact cazul din spec, „#19 câte tool-uri" e
+ * depășit în teorie, dar dacă „#1 cine e utilizatorul" e încă deschis,
+ * răspunsul lui nu ține. Un obstacol `depasit`/`ocolit` cu o dependență încă
+ * deschisă tot blochează, deci tot trebuie citit ca deschis pe hartă — altfel
+ * harta s-ar contrazice cu propria muchie (`blk` care pleacă dintr-un nod
+ * desenat ca „gata").
+ */
+function isClosed(n: MapNode, openObstacleIds: Set<string>): boolean {
+  return n.kind === 'issue' ? n.state === 'done' : !openObstacleIds.has(n.id)
 }
 
 /**
- * Culoarea barei din stânga nodului. `layerVar(i)` e indexat, peste tot în
- * restul aplicației, după poziția layerului în vederea ORDONATĂ — aici nu
- * există așa ceva, harta are doar coloane de adâncime. Indexul pe care i-l
- * dăm mai jos e coloana (adâncimea de dependență), reconstruită din `x`,
- * fiindcă `MapNode` nu poartă separat coloana — e o aproximare onestă, nu
- * „layerul real" al tichetului în vreo vedere filtrată pe val.
+ * Culoarea barei din stânga nodului. Pentru obstacole, `--blocked`/`--done`
+ * vine din `openObstacles` (efectiv deschis, cu lanțul de dependențe), nu din
+ * starea brută — vezi comentariul de la `isClosed`.
+ *
+ * Pentru tichete, `layerVar(i)` e indexat, peste tot în restul aplicației,
+ * după poziția layerului în vederea ORDONATĂ — aici nu există așa ceva, harta
+ * are doar coloane de adâncime. Indexul pe care i-l dăm mai jos e coloana
+ * (adâncimea de dependență), reconstruită din `x`, fiindcă `MapNode` nu
+ * poartă separat coloana — e o aproximare onestă, nu „layerul real" al
+ * tichetului în vreo vedere filtrată pe val.
  */
-function barColor(n: MapNode): string {
+function barColor(n: MapNode, openObstacleIds: Set<string>): string {
   if (n.kind === 'obstacle') {
-    return n.state === 'depasit' || n.state === 'ocolit' ? 'var(--done)' : 'var(--blocked)'
+    return openObstacleIds.has(n.id) ? 'var(--blocked)' : 'var(--done)'
   }
   if (n.state === 'done') return 'var(--done)'
   if (n.state === 'active') return 'var(--active)'
@@ -48,11 +63,16 @@ export function MapView() {
     () => layoutMap({ issues, obstacles, links: obstacleLinks, waves }),
     [issues, obstacles, obstacleLinks, waves],
   )
+  const openObstacleIds = useMemo(() => openObstacles(obstacles), [obstacles])
 
-  if (issues.length === 0) {
+  // Nu „niciun tichet" — un proiect poate avea o fază formată numai din
+  // depășire de obstacole, fără niciun tichet (Faza 0 din cazul care a
+  // motivat funcția). Harta se desenează cât timp e ceva de desenat; golul
+  // real e „nici tichet, nici obstacol".
+  if (layout.nodes.length === 0) {
     return (
       <div className="panel">
-        <p className="empty">Niciun tichet de afișat pe hartă. Adaugă tichete în „Ordine".</p>
+        <p className="empty">Nimic de afișat pe hartă. Adaugă tichete în „Ordine".</p>
       </div>
     )
   }
@@ -121,7 +141,7 @@ export function MapView() {
         })}
 
         {nodes.map((n) => {
-          const closed = isClosed(n)
+          const closed = isClosed(n, openObstacleIds)
           const idX = n.x + (n.kind === 'obstacle' ? 26 : 14)
           const title = n.title.length > 24 ? n.title.slice(0, 23) + '…' : n.title
           const strikeEnd = Math.min(idX + title.length * 6.05, n.x + NODE_W - 12)
@@ -137,7 +157,7 @@ export function MapView() {
                 y={n.y}
                 width="2.5"
                 height={NODE_H}
-                fill={barColor(n)}
+                fill={barColor(n, openObstacleIds)}
               />
               <text className="map-id" x={idX} y={n.y + 19}>
                 {n.id}

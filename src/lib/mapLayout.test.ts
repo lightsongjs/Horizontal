@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { layoutMap, NODE_H, NODE_W } from './mapLayout'
+import { COL_GAP, layoutMap, NODE_H, NODE_W } from './mapLayout'
 import { NO_SCHEDULE } from './schedule'
 import type { Issue, Obstacle, ObstacleLink } from './types'
 
@@ -74,5 +74,31 @@ describe('layoutMap', () => {
     const out = layoutMap({ issues: [], obstacles: [], links: [], waves: [] })
     expect(out.nodes).toEqual([])
     expect(out.width).toBeGreaterThan(0)
+  })
+
+  it('lanțul de obstacole câștigă precedența „max" față de tichetul pe care îl blochează', () => {
+    // #19 blochează 1.1 (ar cere o coloană înaintea lui) ȘI depinde de #1
+    // (cere cel puțin o coloană după #1) — cele două jumătăți ale max()
+    // intră în conflict, iar lanțul de dependențe trebuie să câștige.
+    const issues = [mkIssue('1.1')]
+    const obstacles = [mkObst('#1', 'necunoscut'), mkObst('#19', 'necunoscut', { deps: ['#1'] })]
+    const links: ObstacleLink[] = [{ obstacleId: '#19', issueId: '1.1' }]
+    const { nodes } = layoutMap({ issues, obstacles, links, waves: [] })
+    const x1 = nodes.find((n) => n.id === '#1')!.x
+    const x19 = nodes.find((n) => n.id === '#19')!.x
+    const x11 = nodes.find((n) => n.id === '1.1')!.x
+    expect(x19).toBe(x1 + NODE_W + COL_GAP) // exact o coloană după #1 — vine din fromDeps, nu din fromIssues
+    expect(x19).toBeGreaterThanOrEqual(x11) // NU înaintea lui 1.1, deși îl blochează direct
+  })
+
+  it('nu cade pe un ciclu de dependențe între obstacole', () => {
+    const obstacles = [
+      mkObst('OA', 'necunoscut', { deps: ['OB'] }),
+      mkObst('OB', 'necunoscut', { deps: ['OA'] }),
+    ]
+    expect(() => layoutMap({ issues: [], obstacles, links: [], waves: [] })).not.toThrow()
+    const { nodes } = layoutMap({ issues: [], obstacles, links: [], waves: [] })
+    expect(nodes.map((n) => n.id).sort()).toEqual(['OA', 'OB'])
+    for (const n of nodes) expect(Number.isFinite(n.x)).toBe(true)
   })
 })
