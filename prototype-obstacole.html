@@ -1,0 +1,573 @@
+<!doctype html>
+<html lang="ro" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DepFlow — obstacole și hartă</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;0,7..72,600;0,7..72,700;1,7..72,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ─── jetoanele reale ale aplicației (src/styles.css) ─────────────────── */
+:root{
+  --bg:#0B0B0E; --surface:#16161A; --surface-2:#1E1E23; --surface-3:#26262C;
+  --line:#2A2A2E; --line-soft:#1B1B1F;
+  --txt:#FAFAF9; --txt-dim:#9C9CA2; --txt-faint:#6B6B70;
+  --accent:#818CF8; --accent-2:#6366F1; --accent-soft:rgba(129,140,248,.13);
+  --done:#63B79F; --done-soft:rgba(99,183,159,.13);
+  --blocked:#DF8B84; --blocked-soft:rgba(223,139,132,.13);
+  --active:#D9A661; --active-soft:rgba(217,166,97,.13);
+  --r:16px; --r-m:10px; --r-s:6px;
+  --amb:inset 0 1px 0 rgba(255,255,255,.055), 0 6px 24px rgba(0,0,0,.42);
+  --amb-lg:inset 0 1px 0 rgba(255,255,255,.07), 0 18px 48px rgba(0,0,0,.55);
+  --layer-0:#8B93F7; --layer-1:#7FA0DE; --layer-2:#77ADC4; --layer-3:#74B4AC; --layer-4:#7BB79A;
+  --on-accent:var(--bg);
+  --mono:'IBM Plex Mono',ui-monospace,monospace;
+  --display:'Literata','Iowan Old Style',Georgia,serif;
+  color-scheme:dark;
+}
+[data-theme='light']{
+  --bg:#F7F9FC; --surface:#FFFFFF; --surface-2:#F0F4F8; --surface-3:#E8EFF4;
+  --line:rgba(168,179,187,.38); --line-soft:rgba(168,179,187,.18);
+  --txt:#29343A; --txt-dim:#566168; --txt-faint:#717C84;
+  --accent:#1A237E; --accent-2:#151B60; --accent-soft:rgba(26,35,126,.08);
+  --done:#2F6B4F; --done-soft:rgba(47,107,79,.10);
+  --blocked:#A0333F; --blocked-soft:rgba(160,51,63,.09);
+  --active:#8A5A18; --active-soft:rgba(138,90,24,.10);
+  --amb:0 6px 24px rgba(41,52,58,.06); --amb-lg:0 18px 48px rgba(41,52,58,.10);
+  --layer-0:#3A43A8; --layer-1:#2F5C93; --layer-2:#2A6E7E; --layer-3:#2A756A; --layer-4:#33795C;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:var(--display);
+  font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+svg{display:block;flex-shrink:0}
+.wrap{max-width:900px;margin:0 auto;padding:0 20px 96px}
+h1{font-size:27px;font-weight:600;letter-spacing:-.015em;margin:0 0 6px}
+h2{font-size:20px;font-weight:600;margin:0 0 4px;letter-spacing:-.01em}
+h3{font-size:15px;font-weight:600;margin:0 0 6px}
+p{margin:0 0 12px;color:var(--txt-dim);max-width:66ch}
+p strong{color:var(--txt);font-weight:600}
+code,.m{font-family:var(--mono);font-size:.86em}
+code{background:var(--surface-3);padding:1px 5px;border-radius:var(--r-s);color:var(--txt-dim)}
+.kicker{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--txt-faint);margin:0 0 8px}
+header{padding:48px 0 20px}
+.themebtn{position:fixed;top:14px;right:14px;z-index:9;font-family:var(--mono);
+  font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;padding:8px 12px;
+  border:0;border-radius:var(--r-s);background:var(--surface-2);color:var(--txt-dim);
+  box-shadow:var(--amb);cursor:pointer}
+.themebtn:hover{color:var(--txt)}
+section{margin:56px 0 0}
+.panel{background:var(--surface);border-radius:var(--r);box-shadow:var(--amb);
+  padding:20px;margin:16px 0}
+.note{background:var(--surface);border-radius:var(--r);box-shadow:var(--amb);
+  padding:14px 16px;margin:14px 0}
+.note p:last-child{margin:0}
+.note .kicker{margin-bottom:4px}
+
+/* ─── harta ───────────────────────────────────────────────────────────── */
+.mapbox{margin:16px -20px;padding:0;background:var(--surface);
+  box-shadow:var(--amb);border-radius:var(--r);overflow-x:auto;overflow-y:hidden}
+.mapbox svg{min-width:1856px}
+.band{fill:var(--surface-2)}
+.bandtxt{font-family:var(--mono);font-size:10px;letter-spacing:.14em;
+  text-transform:uppercase;fill:var(--txt-faint)}
+.nid{font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;
+  text-transform:uppercase;fill:var(--txt-faint)}
+.nown{font-family:var(--mono);font-size:9px;letter-spacing:.07em;
+  text-transform:uppercase;fill:var(--txt-faint);text-anchor:end}
+.ntitle{font-family:var(--display);font-size:12.5px;fill:var(--txt)}
+.tick{fill:var(--surface-2)}
+.tick.gata{fill:var(--surface-2)}
+.tick.lucru{fill:var(--surface-3)}
+.obst{fill:var(--surface-3)}
+.bar{}
+.edge{fill:none;stroke-width:1.5}
+.edge.dep{stroke:var(--txt-faint);opacity:.4}
+.edge.blk{stroke:var(--blocked);opacity:.6;stroke-dasharray:5 4}
+.edge.don{stroke:var(--done);opacity:.45}
+.head.dep{fill:var(--txt-faint);opacity:.4}
+.head.blk{fill:var(--blocked);opacity:.7}
+.head.don{fill:var(--done);opacity:.5}
+.strike{stroke:var(--done);stroke-width:1.2;opacity:.8}
+.today{stroke:var(--accent);stroke-width:2;stroke-dasharray:2 5;opacity:.8}
+.todaytxt{font-family:var(--mono);font-size:10px;letter-spacing:.13em;
+  text-transform:uppercase;fill:var(--accent)}
+.dimtxt{fill:var(--txt-dim)}
+
+/* ─── legendă ─────────────────────────────────────────────────────────── */
+.leg{display:flex;flex-wrap:wrap;gap:10px 22px;margin:14px 0 0}
+.leg div{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--txt-dim)}
+.leg .sw{width:26px;height:14px;border-radius:var(--r-s);background:var(--surface-3);flex:none}
+
+/* ─── anatomia ────────────────────────────────────────────────────────── */
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(212px,1fr));gap:14px}
+.gal figure{margin:0}
+.gal figcaption{font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--txt-faint);margin:8px 0 0}
+
+/* ─── foaia / rândurile ───────────────────────────────────────────────── */
+.phone{width:390px;max-width:100%;margin:16px auto 0;background:var(--bg);
+  border-radius:22px;box-shadow:var(--amb-lg);padding:14px;overflow:hidden}
+.gate{background:var(--surface);border-radius:var(--r);box-shadow:var(--amb);
+  padding:12px 14px;margin:0 0 14px}
+.gate-top{display:flex;align-items:center;gap:8px}
+.gate-n{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--blocked)}
+.gate-l{font-size:13.5px;color:var(--txt);flex:1}
+.gate-c{font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--txt-faint)}
+.olist{margin:10px 0 0;display:grid;gap:6px}
+.orow{display:flex;align-items:center;gap:9px;background:var(--surface-3);
+  border-radius:var(--r-s);padding:8px 10px}
+.orow .oid{font-family:var(--mono);font-size:10px;font-weight:600;
+  color:var(--blocked);min-width:30px}
+.orow.ok .oid{color:var(--done)}
+.orow .otit{flex:1;font-size:13px}
+.orow.ok .otit{color:var(--txt-faint);text-decoration:line-through}
+.orow .oown{font-family:var(--mono);font-size:9px;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--txt-faint)}
+.lgroup{display:flex;gap:12px;margin:0 0 14px}
+.lcol{width:3px;border-radius:2px;flex:none}
+.lbody{flex:1;min-width:0}
+.lhead{display:flex;align-items:baseline;gap:8px;margin:0 0 8px}
+.lnum{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.1em}
+.lname{font-size:12.5px;color:var(--txt-faint)}
+.card{background:var(--surface);border-radius:var(--r-m);box-shadow:var(--amb);
+  padding:11px 12px;margin:0 0 8px}
+.card.blocat{background:var(--surface-2);box-shadow:none;opacity:.72}
+.card-t{display:flex;align-items:flex-start;gap:9px}
+.card-t .tit{flex:1;font-size:14px;line-height:1.35}
+.card.blocat .tit{color:var(--txt-dim)}
+.cid{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;
+  color:var(--txt-faint);text-transform:uppercase}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0 0}
+.chip{font-family:var(--mono);font-size:9.5px;letter-spacing:.07em;
+  text-transform:uppercase;padding:3px 7px;border-radius:var(--r-s);
+  background:var(--surface-3);color:var(--txt-dim);display:flex;align-items:center;gap:5px}
+.chip.blk{background:var(--blocked-soft);color:var(--blocked)}
+.chip.ok{background:var(--done-soft);color:var(--done)}
+.chip.acc{background:var(--accent-soft);color:var(--accent)}
+.chip.act{background:var(--active-soft);color:var(--active)}
+.sheet{background:var(--surface);border-radius:var(--r);box-shadow:var(--amb-lg);
+  padding:18px;margin:16px auto 0;max-width:460px}
+.srow{display:flex;gap:12px;padding:10px 0;border-top:1px solid var(--line-soft)}
+.srow:first-of-type{border-top:0}
+.skey{font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--txt-faint);width:96px;flex:none;padding-top:3px}
+.sval{flex:1;font-size:14px;min-width:0}
+.sval .sub{display:block;font-size:12.5px;color:var(--txt-dim);margin-top:2px}
+.seg{display:flex;gap:0;margin:2px 0 0}
+.seg button{font-family:var(--mono);font-size:10px;letter-spacing:.08em;
+  text-transform:uppercase;padding:7px 11px;border:0;background:transparent;
+  color:var(--txt-faint);cursor:pointer;border-bottom:2px solid transparent}
+.seg button[aria-pressed=true]{color:var(--txt);border-bottom-color:var(--accent)}
+ul{margin:0 0 12px;padding-left:1.15em;color:var(--txt-dim);max-width:66ch}
+li{margin:0 0 6px}
+li strong{color:var(--txt);font-weight:600}
+pre{background:var(--surface-2);border-radius:var(--r-m);padding:14px 16px;
+  overflow-x:auto;font-family:var(--mono);font-size:12px;line-height:1.6;
+  color:var(--txt-dim);margin:12px 0}
+pre b{color:var(--txt);font-weight:500}
+pre i{color:var(--accent);font-style:normal}
+.q{background:var(--surface);border-radius:var(--r);box-shadow:var(--amb);
+  padding:16px 18px;margin:14px 0}
+.q h3{margin:0 0 4px}
+.q p:last-child{margin:0}
+@media(max-width:640px){
+  .wrap{padding:0 16px 72px}
+  h1{font-size:23px}
+  .mapbox{margin:16px -16px}
+}
+</style>
+</head>
+<body>
+<button class="themebtn" id="tt">temă</button>
+<div class="wrap">
+
+<header>
+  <p class="kicker">DepFlow · propunere de design · 10 septembrie 2026</p>
+  <h1>Obstacole, și harta pe care le arăți șefului</h1>
+  <p>Cazul de probă e real: dosarul <code>SB_MCP</code> — serverul MCP SmartBill. Blocantele
+  B1–B5, cele 30 de decizii cu „cine decide", Faza 0 „Deblocare și verificare", și
+  criteriile de ieșire. Toate numele de mai jos sunt din documentele tale, nu inventate.</p>
+</header>
+
+<section>
+  <p class="kicker">1 · Ce răspunde harta</p>
+  <h2>Trei întrebări, în ordinea în care le pune un director</h2>
+  <p><strong>„De unde am plecat?"</strong> — de-aia obstacolele depășite <em>rămân</em> pe hartă,
+  tăiate. B2, B3 și B5 erau blocante pe 21 august și s-au închis prin verificare până pe 25.
+  Dacă dispar, harta nu mai are cum să arate progres: arată doar cât a mai rămas.</p>
+  <p><strong>„Unde suntem acum?"</strong> — linia punctată. La stânga ei, ce e închis. Pe ea,
+  obstacolele deschise. La dreapta, ce se poate face în paralel <em>fără</em> să le aștepți.</p>
+  <p><strong>„De ce nu merge mai repede?"</strong> — coloana <span class="m">CINE</span>.
+  Patru din cele cinci obstacole deschise nu sunt la tine: API, PM, management, juridic.
+  Harta spune asta fără ca tu s-o spui.</p>
+</section>
+
+<section>
+  <p class="kicker">2 · Harta</p>
+  <h2>Un tichet e o casetă. Un obstacol e o poartă.</h2>
+  <p>Poarta arată altfel prin <strong>formă</strong>, nu prin chenar: muchia stângă e teșită,
+  ca la un semn de drum. Dacă poarta are <strong>ocolire documentată</strong>, colțul din
+  dreapta-sus e retezat — se vede că e o cale pe lângă ea. Săgețile punctate roșietice pleacă
+  numai din obstacole deschise; ele sunt motivul pentru care ceva nu se mișcă.</p>
+  <div class="mapbox"><svg id="map" viewBox="0 0 1856 620" width="1856" height="620" role="img"
+    aria-label="Harta fazelor, tichetelor și obstacolelor proiectului MCP"></svg></div>
+  <div class="leg">
+    <div><svg width="26" height="16"><path d="M6 0 H26 V16 H6 L0 8 Z" fill="var(--surface-3)"/><rect x="6" y="0" width="2" height="16" fill="var(--blocked)"/></svg> obstacol deschis</div>
+    <div><svg width="26" height="16"><path d="M6 0 H21 L26 5 V16 H6 L0 8 Z" fill="var(--surface-3)"/><rect x="6" y="0" width="2" height="16" fill="var(--blocked)"/></svg> are ocolire</div>
+    <div><svg width="26" height="16"><path d="M6 0 H26 V16 H6 L0 8 Z" fill="var(--surface-3)"/><rect x="6" y="0" width="2" height="16" fill="var(--done)"/></svg> obstacol depășit</div>
+    <div><span class="sw" style="background:var(--surface-2)"></span> tichet</div>
+    <div><svg width="26" height="16"><rect x="0" y="0" width="26" height="16" rx="4" fill="var(--surface-3)"/><rect x="0" y="0" width="2.5" height="16" fill="var(--active)"/></svg> în lucru</div>
+  </div>
+  <div class="note">
+    <p class="kicker">Ce se citește din desen și nu se citea din documente</p>
+    <p><strong>Lanțul <span class="m">#1 → #19 → 1.1</span>.</strong> Exemplul tău —
+    „dacă nu știm întrebările, nu știm nici endpointurile" — e un obstacol care blochează alt
+    obstacol. De-aia obstacolele au nevoie de dependențe între ele, nu doar de legături la tichete.
+    Și de-aia <span class="m">0.2</span> (oracolul Notion) are săgeată <em>înspre</em>
+    <span class="m">#19</span>: un tichet de muncă a cărui livrare e depășirea unui obstacol.
+    Muncă → obstacol e o direcție reală, nu o eroare de desen.</p>
+  </div>
+</section>
+
+<section>
+  <p class="kicker">3 · Anatomia</p>
+  <h2>Patru stări, și niciuna nu e „gata"</h2>
+  <p>„Închis / deschis" nu ajunge. Diferența dintre <em>n-am întrebat încă</em> și
+  <em>am întrebat, aștept</em> e singura pe care un PM o poate acționa azi. Iar diferența dintre
+  <em>depășit</em> și <em>ocolit</em> e chiar în dosarul tău: B1 „nu are ocolire", #12 „are
+  ocolire documentată — dar nu e gratuită".</p>
+  <div class="panel">
+    <div class="gal" id="gal"></div>
+  </div>
+  <div class="note">
+    <p class="kicker">De ce nu are val și nu are layer</p>
+    <p>Un obstacol nu e muncă: nu-l estimezi, nu-l bagi în sprint, și de multe ori nu-l poți
+    face tu. Dacă i-ai da val, ar intra în <code>computeLayers</code> și numărul layerului
+    s-ar mișca la fiecare răspuns primit de la altă echipă — iar layerul e singurul lucru din
+    aplicație care are voie să fie stabil. Un obstacol se leagă la <strong>N tichete</strong>,
+    din <strong>oricâte valuri</strong>. B1 blochează șase tichete din Faza 1; îl scrii o dată
+    și îl depășești o dată.</p>
+  </div>
+</section>
+
+<section>
+  <p class="kicker">4 · În aplicație, zi de zi</p>
+  <h2>„În valul 2 am cinci chestii și nu știu în ce ordine"</h2>
+  <p>Asta a fost prima ta durere, și obstacolul o rezolvă direct: din cinci, trei sunt blocate.
+  Rămân două, și alea sunt ordinea. Sus, peste layere, apare <strong>poarta valului</strong> —
+  obstacolele deschise ale valului activ, cu owner. Tichetele blocate <em>nu</em> își schimbă
+  layerul; se sting și coboară la finalul layerului lor.</p>
+  <div class="phone">
+    <div class="gate">
+      <div class="gate-top">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--blocked)" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+        <span class="gate-n">4</span>
+        <span class="gate-l">obstacole deschise în Faza 0</span>
+        <span class="gate-c">3 la alții</span>
+      </div>
+      <div class="olist">
+        <div class="orow"><span class="oid">B1</span><span class="otit">Listare de facturi în API</span><span class="oown">API</span></div>
+        <div class="orow"><span class="oid">#13</span><span class="otit">Care firmă? (CIF)</span><span class="oown">PM</span></div>
+        <div class="orow"><span class="oid">#11</span><span class="otit">Owner și on-call</span><span class="oown">MGMT</span></div>
+        <div class="orow"><span class="oid">#1</span><span class="otit">Cine e utilizatorul</span><span class="oown">PM</span></div>
+        <div class="orow ok"><span class="oid">B2</span><span class="otit">Revizia 2026-07-28</span><span class="oown">depășit</span></div>
+      </div>
+    </div>
+
+    <div class="lgroup">
+      <div class="lcol" style="background:var(--layer-0)"></div>
+      <div class="lbody">
+        <div class="lhead"><span class="lnum" style="color:var(--layer-0)">LAYER 0</span><span class="lname">se poate începe · 2 din 5</span></div>
+        <div class="card">
+          <div class="card-t"><span class="tit">Oracol: rulează convertorul Notion peste specul nostru</span></div>
+          <div class="chips"><span class="chip">0.2</span><span class="chip">DEV · 1 ZI</span><span class="chip acc">DEBLOCHEAZĂ #19</span></div>
+        </div>
+        <div class="card">
+          <div class="card-t"><span class="tit">Model de cost pentru traficul generat de modele</span></div>
+          <div class="chips"><span class="chip">0.6</span><span class="chip">DEV+INFRA</span></div>
+        </div>
+        <div class="card blocat">
+          <div class="card-t"><span class="tit">Schema de intrare a tool-urilor</span></div>
+          <div class="chips"><span class="chip blk">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+            #13 · PM</span><span class="chip">1.2</span></div>
+        </div>
+        <div class="card blocat">
+          <div class="card-t"><span class="tit">Cele 6 tool-uri <span class="m">resursă_verb</span></span></div>
+          <div class="chips"><span class="chip blk">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+            3 obstacole</span><span class="chip">1.1</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="lgroup">
+      <div class="lcol" style="background:var(--layer-1)"></div>
+      <div class="lbody">
+        <div class="lhead"><span class="lnum" style="color:var(--layer-1)">LAYER 1</span><span class="lname">după layer 0</span></div>
+        <div class="card blocat">
+          <div class="card-t"><span class="tit">Suita de evaluare, cu poartă de CI</span></div>
+          <div class="chips"><span class="chip">1.3</span><span class="chip">DEV · 4 ZILE</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="note">
+    <p class="kicker">O întrebare rămasă deschisă aici</p>
+    <p>Am desenat varianta în care <strong>layerul nu se schimbă</strong> și tichetul blocat
+    doar se stinge. Alternativa era ca obstacolele să devină ele layerul 0 și tichetele blocate
+    să coboare în layerul 1 — harta ar citi ca o singură coloană de sus în jos, exact ca Faza 0
+    din dosar, dar numărul layerului n-ar mai fi stabil. Spune-mi care ți se pare corectă când
+    te uiți la telefon.</p>
+  </div>
+</section>
+
+<section>
+  <p class="kicker">5 · Foaia obstacolului</p>
+  <h2>Ce scrii într-un obstacol</h2>
+  <div class="sheet">
+    <div class="srow"><span class="skey">ID</span><span class="sval m">B1</span></div>
+    <div class="srow"><span class="skey">Obstacol</span><span class="sval">Nu există endpoint de listare a facturilor
+      <span class="sub">V3 are 8 operațiuni de citire — clienți, furnizori, gestiuni, produse. Nicio factură.</span></span></div>
+    <div class="srow"><span class="skey">Cine îl scoate</span><span class="sval">Echipa de API
+      <span class="sub">Întrebare trimisă 25 aug · fără răspuns de 16 zile</span></span></div>
+    <div class="srow"><span class="skey">Stare</span><div class="sval"><div class="seg">
+      <button>necunoscut</button><button aria-pressed="true">în așteptare</button><button>depășit</button><button>ocolit</button>
+    </div></div></div>
+    <div class="srow"><span class="skey">Ocolire</span><span class="sval">Nu există
+      <span class="sub">Nu se poate ocoli în serverul MCP. Fără el, Faza 1 nu răspunde la întrebarea care justifică proiectul.</span></span></div>
+    <div class="srow"><span class="skey">Dovadă</span><span class="sval">Verificat
+      <span class="sub m">04-TOOLS-PROPUSE.md · specul V3, 29 operațiuni</span></span></div>
+    <div class="srow"><span class="skey">Blochează</span><div class="sval">
+      <div class="chips" style="margin:0">
+        <span class="chip blk">1.1</span><span class="chip blk">1.2</span><span class="chip blk">1.4</span>
+        <span class="chip blk">1.6</span><span class="chip blk">#19</span><span class="chip">+2</span>
+      </div>
+      <span class="sub">6 tichete din Faza 1 și un obstacol</span></div></div>
+  </div>
+  <div class="note">
+    <p class="kicker">Câmpul care face diferența</p>
+    <p><strong>„Fără răspuns de 16 zile".</strong> Un obstacol al cărui owner e altcineva are o
+    singură metrică utilă: de cât timp aștepți. Se calculează, nu se scrie — ca tabelul de
+    exemple din <code>InfoPanel</code>. Un obstacol care stă în „în așteptare" peste un prag
+    e singurul lucru din aplicație care merită să te bată la umăr singur.</p>
+  </div>
+</section>
+
+<section>
+  <p class="kicker">6 · Modelul de date</p>
+  <h2>O entitate nouă, două tabele de legătură</h2>
+<pre><b>obstacles</b>
+  id            text
+  project_id    uuid
+  title         text        <i>„Nu există endpoint de listare a facturilor"</i>
+  detail        text        <i>de ce, cu citat din sursă</i>
+  owner         text        <i>„Echipa de API" — text liber: de obicei nu e user în aplicație</i>
+  state         enum        <i>necunoscut | asteptare | depasit | ocolit</i>
+  blocking      bool        <i>#3 și #4 au fost „nu blochează", apoi promovate</i>
+  bypass        text|null   <i>null = nu are ocolire. Text = ocolirea, cu costul ei</i>
+  evidence      enum        <i>verificat | plauzibil | necunoscut  (marcajele [V]/[P]/[?])</i>
+  asked_at      timestamptz <i>de aici iese „fără răspuns de 16 zile"</i>
+  resolved_at   timestamptz
+
+<b>obstacle_issues</b>   obstacle_id · issue_id      <i>N la N, peste valuri</i>
+<b>obstacle_deps</b>     obstacle_id · depends_on    <i>#1 → #19: obstacol care blochează obstacol</i></pre>
+  <p>Nimic din motor nu se schimbă. <code>computeLayers</code> rămâne exact cum e — obstacolele
+  nu au val, deci nu intră în el. Ce se adaugă e o funcție pură separată,
+  <code>blockedBy(issues, obstacles)</code>, testată pe fixtures ca <code>engine.ts</code>,
+  <code>schedule.ts</code> și <code>parseDue.ts</code>.</p>
+</section>
+
+<section>
+  <p class="kicker">7 · Ce nu am desenat</p>
+  <h2>Trei lucruri pe care le-am lăsat afară deliberat</h2>
+  <ul>
+    <li><strong>Obstacol la nivel de val.</strong> Faza 0 din dosarul tău e, literal, un val
+    format numai din depășire de obstacole. Se poate exprima și fără câmp nou: un obstacol legat
+    la toate tichetele valului. Am lăsat afară până spui dacă „valul e blocat" e o stare pe care
+    o vrei explicit.</li>
+    <li><strong>Riscul.</strong> „Prompt injection prin rezultate de tool" nu blochează nimic,
+    dar nu se uită. E o a cincea stare sau altă entitate. Am lăsat-o afară ca să nu diluez
+    „obstacol" în „orice notă".</li>
+    <li><strong>Export de hartă.</strong> Harta ca imagine pentru un slide. E cerere reală
+    („să pot arăta șefului"), dar e altă discuție decât modelul.</li>
+  </ul>
+</section>
+
+<section>
+  <div class="q">
+    <h3>Ce aș vrea să-mi spui după ce te uiți</h3>
+    <p>1 · Harta se citește de la stânga la dreapta, sau ai vrea fazele una sub alta?
+    2 · Poarta teșită se citește ca „obstacol", sau arată doar ca un tichet ciudat?
+    3 · Cele patru stări sunt prea multe, sau lipsește una?
+    4 · Tichetul blocat își păstrează layerul, sau obstacolele devin layerul 0?</p>
+  </div>
+</section>
+
+</div>
+
+<script>
+document.getElementById('tt').onclick = () => {
+  const h = document.documentElement;
+  h.dataset.theme = h.dataset.theme === 'dark' ? 'light' : 'dark';
+};
+
+/* ── datele: nume reale din dosarul SB_MCP ──────────────────────────── */
+const W = 196, H = 52, COL = 264, ROW = 76, PAD = 36, TOP = 112;
+
+const N = [
+  // col 0 — obstacole închise prin verificare (21 → 25 august)
+  {id:'B2', t:'Revizia 2026-07-28', own:'DEV', k:'o', st:'depasit', col:0, row:0},
+  {id:'B3', t:'Protocol stateless', own:'DEV', k:'o', st:'depasit', col:0, row:1},
+  {id:'B5', t:'Token passthrough', own:'DEV', k:'o', st:'depasit', col:0, row:2},
+
+  // col 1 — tichete închise
+  {id:'0.5', t:'Decizie SDK + revizie', own:'DEV', k:'t', st:'gata', col:1, row:0},
+  {id:'D2', t:'CIF = constrângere', own:'DEV', k:'t', st:'gata', col:1, row:1},
+  {id:'0.3', t:'Scope npm @smartbill', own:'DEV', k:'t', st:'gata', col:1, row:2},
+  {id:'0.4', t:'Tichet DNS ro.smartbill', own:'INFRA', k:'t', st:'gata', col:1, row:3},
+
+  // col 2 — obstacolele deschise, pe linia de azi
+  {id:'B1',  t:'Listare de facturi', own:'API',  k:'o', st:'asteptare', col:2, row:0},
+  {id:'#13', t:'Care firmă? (CIF)',  own:'PM',   k:'o', st:'asteptare', col:2, row:1, byp:1},
+  {id:'#1',  t:'Cine e utilizatorul',own:'PM',   k:'o', st:'necunoscut',col:2, row:2},
+  {id:'#11', t:'Owner și on-call',   own:'MGMT', k:'o', st:'asteptare', col:2, row:3},
+  {id:'#3',  t:'Ce înseamnă «gata»', own:'PM',   k:'o', st:'necunoscut',col:2, row:4},
+
+  // col 3 — ce se poate face ACUM, în paralel
+  {id:'0.1', t:'Spike pe 3 clienți',  own:'DEV',       k:'t', st:'lucru', col:3, row:0},
+  {id:'0.2', t:'Oracol: convertor Notion', own:'DEV',  k:'t', st:'liber', col:3, row:1},
+  {id:'0.6', t:'Model de cost trafic', own:'DEV+INFRA',k:'t', st:'liber', col:3, row:2},
+  {id:'0.7', t:'Pre-citire juridică',  own:'JURIDIC',  k:'t', st:'asteptare', col:3, row:4},
+
+  // col 4 — obstacole derivate
+  {id:'#19', t:'Câte tool-uri, ce nume', own:'PM+ECHIPĂ', k:'o', st:'necunoscut', col:4, row:1},
+  {id:'#17', t:'Puntea V1 ↔ V3', own:'ECHIPĂ+SEC', k:'o', st:'asteptare', col:4, row:3},
+
+  // col 5 — Faza 1
+  {id:'1.1', t:'6 tool-uri resursă_verb', own:'DEV', k:'t', st:'blocat', col:5, row:0},
+  {id:'1.2', t:'invoice_validate',        own:'DEV', k:'t', st:'blocat', col:5, row:1},
+  {id:'1.3', t:'Suită de evaluare',       own:'DEV', k:'t', st:'blocat', col:5, row:2},
+  {id:'1.4', t:'Proiecția răspunsurilor', own:'DEV', k:'t', st:'blocat', col:5, row:3},
+  {id:'1.6', t:'Recrutare piloți',        own:'PM',  k:'t', st:'blocat', col:5, row:4},
+
+  // col 6 — Faza 2
+  {id:'#12', t:'OAuth / authz server', own:'AUTH', k:'o', st:'asteptare', col:6, row:1, byp:1},
+  {id:'2.1', t:'Remote streamable HTTP', own:'DEV', k:'t', st:'blocat', col:6, row:2},
+];
+
+const E = [
+  ['B2','0.5'], ['B3','D2'],
+  ['0.5','0.1'],
+  ['B1','1.1'], ['B1','1.4'], ['B1','1.6'],
+  ['#13','1.2'], ['#13','1.1'],
+  ['#1','#19'],            // obstacol → obstacol (lanțul din exemplul tău)
+  ['0.2','#19'],           // muncă → depășirea unui obstacol
+  ['#19','1.1'],
+  ['#17','1.1'],
+  ['#3','1.6'],
+  ['0.7','1.6'],
+  ['#11','2.1'], ['#12','2.1'],
+];
+
+const BANDS = [
+  {x1:20,   x2:1308, l:'Faza 0 · deblocare și verificare'},
+  {x1:1320, x2:1588, l:'Faza 1 · MVP local, read-only'},
+  {x1:1604, x2:1836, l:'Faza 2 · remote'},
+];
+
+const by = {};
+N.forEach(n => {
+  n.x = PAD + n.col * COL;
+  n.y = TOP + n.row * ROW;
+  by[n.id] = n;
+});
+
+const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+const isOpen = n => n.k === 'o' && n.st !== 'depasit' && n.st !== 'ocolit';
+
+/** Poarta: muchia stângă teșită. Colț dreapta-sus retezat = are ocolire. */
+function gate(x, y, byp) {
+  const c = 13;
+  return byp
+    ? `M${x+c} ${y} H${x+W-14} L${x+W} ${y+14} V${y+H} H${x+c} L${x} ${y+H/2} Z`
+    : `M${x+c} ${y} H${x+W} V${y+H} H${x+c} L${x} ${y+H/2} Z`;
+}
+
+function node(n) {
+  const barCol = n.k === 'o'
+    ? (isOpen(n) ? 'var(--blocked)' : 'var(--done)')
+    : (n.st === 'gata' ? 'var(--done)' : n.st === 'lucru' ? 'var(--active)'
+      : n.st === 'blocat' ? 'var(--txt-faint)' : `var(--layer-${Math.min(n.col,4)})`);
+  const dim = n.st === 'blocat' || n.st === 'gata' || n.st === 'depasit';
+  let s = '';
+  if (n.k === 'o') {
+    s += `<path class="obst" d="${gate(n.x, n.y, n.byp)}"/>`;
+    s += `<rect x="${n.x+13}" y="${n.y}" width="2.5" height="${H}" fill="${barCol}"/>`;
+  } else {
+    s += `<rect class="tick ${n.st}" x="${n.x}" y="${n.y}" width="${W}" height="${H}" rx="10"/>`;
+    s += `<rect x="${n.x}" y="${n.y}" width="2.5" height="${H}" fill="${barCol}"/>`;
+  }
+  const tx = n.x + (n.k === 'o' ? 26 : 14);
+  s += `<text class="nid" x="${tx}" y="${n.y+19}">${esc(n.id)}</text>`;
+  s += `<text class="nown" x="${n.x+W-12}" y="${n.y+19}">${esc(n.own)}</text>`;
+  s += `<text class="ntitle${dim ? ' dimtxt' : ''}" x="${tx}" y="${n.y+38}">${esc(n.t)}</text>`;
+  if (n.st === 'depasit' || n.st === 'gata') {
+    const w = n.t.length * 6.05;
+    s += `<line class="strike" x1="${tx}" y1="${n.y+34}" x2="${Math.min(tx+w, n.x+W-12)}" y2="${n.y+34}"/>`;
+  }
+  return s;
+}
+
+function edge([a, b]) {
+  const s = by[a], t = by[b];
+  const x1 = s.x + W, y1 = s.y + H/2;
+  const x2 = t.x + (t.k === 'o' ? 0 : 0), y2 = t.y + H/2;
+  const cls = isOpen(s) ? 'blk' : (s.st === 'depasit' || s.st === 'gata') ? 'don' : 'dep';
+  const dx = Math.max(46, (x2 - x1) / 2.3);
+  const p = `M${x1} ${y1} C${x1+dx} ${y1} ${x2-dx} ${y2} ${x2-9} ${y2}`;
+  const hd = `M${x2-9} ${y2-4.5} L${x2-1} ${y2} L${x2-9} ${y2+4.5} Z`;
+  return `<path class="edge ${cls}" d="${p}"/><path class="head ${cls}" d="${hd}"/>`;
+}
+
+const TX = 530;   // linia „azi", între ce e închis și obstacolele deschise
+let svg = '';
+BANDS.forEach(b => {
+  svg += `<rect class="band" x="${b.x1}" y="60" width="${b.x2-b.x1}" height="540" rx="14"/>`;
+  svg += `<text class="bandtxt" x="${b.x1+16}" y="84">${esc(b.l.toUpperCase())}</text>`;
+});
+svg += `<line class="today" x1="${TX}" y1="46" x2="${TX}" y2="600"/>`;
+svg += `<text class="todaytxt" x="${TX+10}" y="36">azi · 10 sept</text>`;
+svg += `<text class="bandtxt" x="${PAD}" y="36">de unde am plecat · 21 aug</text>`;
+svg += E.map(edge).join('');
+svg += N.map(node).join('');
+document.getElementById('map').innerHTML = svg;
+
+/* ── galeria de stări ──────────────────────────────────────────────── */
+const GAL = [
+  {id:'B1',  t:'Listare de facturi', own:'API',  st:'necunoscut', cap:'necunoscut · n-am întrebat'},
+  {id:'B1',  t:'Listare de facturi', own:'API',  st:'asteptare',  cap:'în așteptare · 16 zile'},
+  {id:'#13', t:'Care firmă? (CIF)',  own:'PM',   st:'asteptare',  byp:1, cap:'cu ocolire documentată'},
+  {id:'B2',  t:'Revizia 2026-07-28', own:'DEV',  st:'depasit',    cap:'depășit'},
+  {id:'#12', t:'OAuth / authz server',own:'AUTH',st:'ocolit',     byp:1, cap:'ocolit · cu cost notat'},
+  {id:'#3',  t:'Ce înseamnă «gata»', own:'PM',   st:'necunoscut', nb:1, cap:'nu blochează (încă)'},
+];
+document.getElementById('gal').innerHTML = GAL.map(g => {
+  const n = {...g, k:'o', x:2, y:2, col:0};
+  const open = g.st !== 'depasit' && g.st !== 'ocolit';
+  const bar = g.nb ? 'var(--txt-faint)' : open ? 'var(--blocked)' : 'var(--done)';
+  let s = `<path class="obst" d="${gate(2, 2, g.byp)}"/>`;
+  s += `<rect x="15" y="2" width="2.5" height="${H}" fill="${bar}"/>`;
+  s += `<text class="nid" x="28" y="21">${esc(g.id)}</text>`;
+  s += `<text class="nown" x="${W-10}" y="21">${esc(g.own)}</text>`;
+  s += `<text class="ntitle${g.st==='depasit'?' dimtxt':''}" x="28" y="40">${esc(g.t)}</text>`;
+  if (g.st === 'depasit') s += `<line class="strike" x1="28" y1="36" x2="${Math.min(28+g.t.length*6.05, W-10)}" y2="36"/>`;
+  return `<figure><svg viewBox="0 0 ${W+4} ${H+6}" width="100%">${s}</svg>
+    <figcaption>${esc(g.cap)}</figcaption></figure>`;
+}).join('');
+</script>
+</body>
+</html>
