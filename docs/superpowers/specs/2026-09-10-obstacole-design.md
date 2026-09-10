@@ -67,6 +67,22 @@ Regula derivată: un obstacol e „efectiv deschis" dacă starea lui e deschisă
 oricare obstacol de care depinde e efectiv deschis. Ciclurile se refuză la scriere,
 ca la dependențele de tichete (`detectCycle`).
 
+## De ce nu e tichet
+
+Întrebarea e firească — mecanica de blocare există deja, prin `deps`. Răspunsul
+decisiv vine dintr-o regulă a aplicației, nu dintr-o preferință:
+
+**Un tichet trebuie să aibă val.** B1 ar sta în Faza 0, iar în „Ordine" pe Faza 1
+— unde chiar blochează — n-ar apărea deloc: dependențele între valuri nu blochează
+vizualizarea filtrată pe val (`REQUIREMENTS.md` §1, `CLAUDE.md`). Exact acolo unde
+obstacolul trebuie să se vadă, ar dispărea.
+
+Restul urmează: B1 ar intra în numărătoarea Fazei 1 („7 tichete" când sunt 6 de
+muncă) și în `projectCompletion`, deci o întrebare fără răspuns ar arăta ca muncă
+nefăcută. „Echipa de API" ar trebui să fie cont în `assignees`. Și `ocolit` n-ar
+avea echivalent — un tichet e făcut sau nu, iar „am mers pe lângă el, cu un cost"
+ar trebui bifat ca gata.
+
 ## Ce NU se schimbă
 
 `computeLayers` rămâne neatins. Obstacolele nu au val, deci nu intră în el.
@@ -188,11 +204,20 @@ Foaia obstacolului **nu** intră în panoul lateral (`dockedIssueIdFrom` rămân
 numai pe `issue-form`): un obstacol se deschide de pe hartă sau din poartă, adică
 din contexte unde lista din stânga nu e ce vrei să vezi.
 
-### 4. Formularul tichetului
+### 4. Formularul tichetului — al treilea tab
 
-O secțiune „Obstacole", lângă „Dependențe": legare/dezlegare, cu starea și
-owner-ul fiecăruia. Legarea din tichet e drumul principal — obstacolul se descoperă
-în timp ce te uiți la muncă.
+Selectorul de dependențe are azi două taburi, „Necesită" și „Permite". Obstacolele
+sunt al treilea. Nu fiindcă un obstacol ar fi un fel de dependență — nu e, e altă
+axă — ci fiindcă întrebarea se pune în același moment: *ce împiedică tichetul
+asta?* Un al doilea selector de căutare, în altă parte a formularului, ar pune
+același gest în două locuri.
+
+Din tab se poate și **crea** un obstacol nou, tastându-i titlul, ca la `draftDeps`:
+`state: 'necunoscut'`, `blocking: true`, restul gol. Jetonul deschide foaia, ca
+drumul de la „l-am scris" la „i-am pus owner și stare" să fie o atingere.
+
+Ăsta e drumul principal — obstacolul se descoperă în timp ce te uiți la muncă, nu
+într-o listă separată de obstacole.
 
 ## Ce las afară, deliberat
 

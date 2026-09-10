@@ -1819,15 +1819,30 @@ din poartă, contexte în care lista din stânga nu e ce vrei să vezi."
 
 ---
 
-### Task 10: Secțiunea „Obstacole" din formularul tichetului
+### Task 10: Al treilea tab — „Obstacole" în selectorul de dependențe
 
 **Files:**
-- Modify: `src/components/IssueForm.tsx` (lângă secțiunea de dependențe, ~linia 484 și zona de randare a jetoanelor)
+- Modify: `src/components/IssueForm.tsx` (`depTab` la linia 310; butoanele de tab la 1113-1120; helperii la 477-523; submit la 588-635; dirty la 419-429)
 - Test: `src/components/IssueForm.test.ts`
 
 **Interfaces:**
-- Consumes: `obstacles`, `obstaclesOf`, `setIssueObstacles`, `createObstacle` din Task 4; `<ObstacleChip>` din Task 8; `pushSheet` din Task 9
+- Consumes: `obstacles`, `obstaclesOf`, `setIssueObstacles`, `createObstacle` din Task 4; `pushSheet` din Task 9
 - Produces: nimic nou pentru alte task-uri
+
+**Obstacolul nu e un al treilea fel de dependență — dar stă în același selector.**
+Cele două lucruri nu se contrazic: „Necesită" și „Permite" sunt muchii între
+tichete, „Obstacole" e o axă separată. Ce le unește e întrebarea pe care o pui
+în același moment: *ce împiedică tichetul asta?* Un al doilea selector de
+căutare, în altă parte a formularului, ar pune același gest în două locuri.
+
+Deci: al treilea buton de tab, cu aceleași jetoane, aceeași căutare și același
+drum de creare-din-titlu. Trei diferențe, toate necesare:
+
+1. **Lista de rezultate e de obstacole, nu de tichete.** Aceeași căutare, altă
+   sursă.
+2. **Ce se creează la tastarea unui titlu nou e un obstacol**, nu un tichet.
+   `state: 'necunoscut'`, `blocking: true`, restul gol — se completează în foaie.
+3. **Jetonul deschide foaia obstacolului**, nu cardul tichetului.
 
 - [ ] **Step 1: Scrie testul care picată**
 
@@ -1850,49 +1865,125 @@ Dacă `IssueForm.test.ts` nu are o funcție pură de dirty pe care s-o extinzi, 
 Run: `npx vitest run src/components/IssueForm.test.ts`
 Expected: FAIL cu „obstaclesDirty is not defined"
 
-- [ ] **Step 3: Implementează**
+- [ ] **Step 3: Lărgește `depTab` la trei valori**
 
-În `src/components/IssueForm.tsx`, o secțiune nouă imediat sub „Dependențe":
+În `src/components/IssueForm.tsx:310`:
 
 ```tsx
-      <div className="form-section">
-        <label className="form-label">Obstacole</label>
-        <div className="chips">
-          {linkedObstacles.map((o) => (
-            <button key={o.id} className="chip blk" onClick={() => setObstIds(obstIds.filter((x) => x !== o.id))}>
-              <Icon name="obstacle" size={10} />
-              {o.id} · {o.title}
-              <Icon name="close" size={10} />
-            </button>
-          ))}
-        </div>
-        {/* selector de căutare — refolosește tiparul .dep-search-* de mai sus */}
-      </div>
+const [depTab, setDepTab] = useState<'necesita' | 'permite' | 'obstacole'>('necesita')
 ```
 
-Setul se salvează cu `setIssueObstacles(id, obstIds)` în același `submit` cu restul, **după** ce tichetul există (la creare, id-ul nu e cunoscut înainte) — exact ca `draftDeps`, care rezolvă deja aceeași problemă în acest fișier. Urmează acel tipar.
+TypeScript va marca acum fiecare loc care presupunea două valori — liniile 493–494, 505–507, 513–514, 518–519, 523. **Parcurge-le pe toate;** lista de erori de la `tsc` e harta exactă a ce trebuie extins. Nu adăuga `as never` și nu lăsa un `else` să însemne „obstacole": un `if/else` pe două ramuri devine tăcut greșit când apare a treia valoare.
 
-Include `obstIds` în calculul de `dirty` de la liniile 419–429, altfel garda de close și `setDockedDirty` ratează o schimbare și un click pe alt rând ar arunca în tăcere ce ai legat.
+Adaugă al treilea buton, după cel de „Permite" (linia ~1119), în același tipar:
 
-- [ ] **Step 4: Verifică**
+```tsx
+                <button
+                  className={`dep-tab-btn ${depTab === 'obstacole' ? 'on' : ''}`}
+                  onClick={() => { setDepTab('obstacole'); setDepSearchQ(''); setDepDropdownOpen(false) }}
+                >
+                  <Icon name="obstacle" size={13} /> Obstacole
+                  {obstIds.length > 0 && <span className="dep-tab-count">{obstIds.length}</span>}
+                </button>
+```
+
+- [ ] **Step 4: Starea și crearea din titlu**
+
+```tsx
+  const [obstIds, setObstIds] = useState<string[]>(
+    existing ? obstaclesOf(existing.id).map((o) => o.id) : [],
+  )
+  /** Obstacole scrise în selector dar încă necreate. Același tipar ca DraftIssue. */
+  const [draftObstacles, setDraftObstacles] = useState<{ tempId: string; title: string }[]>([])
+```
+
+Pe tabul „obstacole", lista de rezultate vine din `obstacles` filtrate pe `depSearchQ` (după `id` și `title`), iar butonul de creare — cel care în tiparul existent face `createDraftDep(t)` — creează un **obstacol** ciornă:
+
+```tsx
+  const createDraftObstacle = (title: string) => {
+    const tempId = `__draft_o_${Date.now()}`
+    setDraftObstacles((p) => [...p, { tempId, title }])
+    setObstIds((p) => [...p, tempId])
+  }
+```
+
+**Prefixul e `__draft_o_`, nu `__draft_`:** filtrele existente de la liniile 419, 485, 489, 588 și 626 taie pe `startsWith('__draft_')`, iar un obstacol ciornă care trece prin ele ar fi tratat ca tichet ciornă și ar ajunge în `createIssue`. `__draft_o_` începe tot cu `__draft_`, deci ar cădea în aceeași capcană — **folosește un prefix care NU e prefixat de el:** `__obst_draft_`.
+
+```tsx
+  const createDraftObstacle = (title: string) => {
+    const tempId = `__obst_draft_${Date.now()}`
+    setDraftObstacles((p) => [...p, { tempId, title }])
+    setObstIds((p) => [...p, tempId])
+  }
+```
+
+- [ ] **Step 5: Salvarea**
+
+În `submit`, după ce tichetul există (la creare id-ul nu se știe înainte — `draftDeps` rezolvă deja exact această problemă în acest fișier, la liniile 605–635; urmează acel tipar):
+
+```tsx
+      // Obstacolele ciornă se creează întâi, ca setul final să fie de id-uri reale.
+      const realObstIds: string[] = []
+      for (const id of obstIds) {
+        const draft = draftObstacles.find((d) => d.tempId === id)
+        if (!draft) { realObstIds.push(id); continue }
+        const created = await createObstacle({ title: draft.title })
+        if (created) realObstIds.push(created.id)
+      }
+      await setIssueObstacles(targetId, realObstIds)
+```
+
+- [ ] **Step 6: Include-l în `dirty`**
+
+La liniile 419–429, adaugă comparațiile pentru obstacole:
+
+```tsx
+      obstIds.filter((o) => !o.startsWith('__obst_draft_')).slice().sort().join(',') !==
+        (existing ? obstaclesOf(existing.id).map((o) => o.id) : []).slice().sort().join(',') ||
+      draftObstacles.filter((d) => obstIds.includes(d.tempId)).length > 0 ||
+```
+
+Fără asta, garda de close și `setDockedDirty` ratează o schimbare, iar un click pe alt rând ar arunca în tăcere obstacolul pe care tocmai l-ai scris — garda vede doar închiderea explicită.
+
+- [ ] **Step 7: Jetonul deschide foaia obstacolului**
+
+Pe tabul „obstacole", jetonul selectat trebuie să poată face două lucruri: `×` dezleagă, iar corpul jetonului deschide foaia. Un obstacol scris chiar acum e gol — titlu și nimic altceva — deci drumul de la „l-am scris" la „i-am pus owner și stare" trebuie să fie o atingere:
+
+```tsx
+                  onClick={() => pushSheet({ kind: 'obstacle-form', obstacleId: o.id })}
+```
+
+Doar pentru obstacolele reale; un `__obst_draft_` nu are încă foaie — pentru el, click-ul pe corp nu face nimic.
+
+- [ ] **Step 8: Verifică**
 
 Run: `npm test && npm run typecheck`
 Expected: PASS
 
-Manual: în panoul lateral, leagă un obstacol, apoi dă click pe alt tichet în listă. Prima atingere trebuie **refuzată**, cu clipirea săgeții de salvare.
+Manual, în această ordine — e drumul care contează:
+1. Deschide un tichet, tab „Obstacole", scrie „Nu știm întrebările", creează.
+2. Salvează. Obstacolul trebuie să existe cu id real și să fie legat.
+3. Click pe jeton → foaia se deschide, pui owner „PM" și stare „în așteptare".
+4. Înapoi în „Ordine": tichetul e stins, a coborât în layerul lui, poarta arată 1.
+5. În panoul lateral, scrie alt obstacol și dă click pe alt tichet în listă.
+   Prima atingere trebuie **refuzată**, cu clipirea săgeții de salvare.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
 git add src/components/IssueForm.tsx src/components/IssueForm.test.ts
-git commit -m "feat(obstacole): legare din formularul tichetului
+git commit -m "feat(obstacole): al treilea tab, cu creare din titlu
 
-Legarea din tichet e drumul principal: obstacolul se descoperă în timp ce te
-uiți la muncă, nu într-o listă separată de obstacole.
+Obstacolul nu e un al treilea fel de dependență, dar stă în același selector:
+ce unește „Necesită", „Permite" și „Obstacole" e întrebarea pe care o pui
+în același moment — ce împiedică tichetul asta? Un al doilea selector de
+căutare ar fi pus același gest în două locuri.
 
-Setul intră în calculul de dirty. Fără asta, un click pe alt rând ar fi
-aruncat în tăcere obstacolul pe care tocmai l-ai legat — garda de close vede
-doar închiderea explicită."
+Ciorna are prefixul __obst_draft_, nu __draft_o_: filtrele existente taie pe
+startsWith('__draft_'), deci un obstacol ciornă ar fi ajuns în createIssue.
+
+Jetonul deschide foaia, fiindcă un obstacol scris chiar acum e gol — drumul
+de la „l-am scris" la „i-am pus owner" trebuie să fie o atingere."
 ```
 
 ---
@@ -2178,7 +2269,7 @@ git push origin master
 | Foaia obstacolului | 9 |
 | „fără răspuns de N zile" calculat | 1, 9 |
 | Foaia nu intră în panoul lateral | 9 Step 1 |
-| Secțiunea „Obstacole" din formularul tichetului | 10 |
+| Al treilea tab „Obstacole" din formularul tichetului, cu creare din titlu | 10 |
 | Testare · fixtures MCP | 1, 2, 5, 11 |
 | `design/preview.html` regenerat, ambele teme | 6 Step 4, 12 |
 | Pași de setup | 3 Step 4, 12 Step 6 |
