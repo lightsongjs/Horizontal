@@ -50,6 +50,7 @@ const SHORTCUTS: { keys: string; action: string; where?: string }[] = [
   { keys: 'Ctrl+,', action: 'Deschide panoul acesta' },
   { keys: '?', action: 'Același panou' },
   { keys: 'C', action: 'Tichet nou', where: 'în proiect' },
+  { keys: 'C', action: 'Sare în quick add', where: 'în listele Azi / Mâine / 7 zile' },
   { keys: 'O', action: 'Caută tichet', where: 'în proiect' },
   { keys: 'P', action: 'Proiect nou', where: 'admin' },
   { keys: '1 2 3 4', action: 'Taburile List / Cards / Hartă / Teme', where: 'în proiect' },

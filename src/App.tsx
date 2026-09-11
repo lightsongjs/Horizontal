@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from './auth'
-import { useCanWrite, useSidebarCollapsed } from './hooks'
+import { useCanWrite, useSidebarCollapsed, useWritableProjects } from './hooks'
 import { HorizontalProvider, useHorizontal } from './store'
 import { UIProvider, useUI } from './ui'
 import { ThemeProvider, useTheme } from './theme'
@@ -180,6 +180,9 @@ function Shell() {
   const { openNewIssue, openNewProject, openProjectSettings, openIssue, closeSheet, sheet, ticketId, dockedIssueId } = useUI()
   const { isAdmin } = useAuth()
   const canWrite = useCanWrite()
+  // Sursa dreptului de a crea într-o listă inteligentă, unde nu există proiect
+  // deschis pe care `canWrite` să se pronunțe.
+  const writableProjects = useWritableProjects()
   const [sidebarCollapsed, toggleSidebar] = useSidebarCollapsed()
   const [showUsers, setShowUsers] = useState(false)
   /**
@@ -622,7 +625,20 @@ function Shell() {
       // C / O / P înlocuiesc stiva de foi, deci trec prin `leaveDocked()`:
       // altfel un formular docat cu modificări nesalvate ar dispărea în
       // tăcere, exact ce previne `openEditIssue` la un click în listă.
-      if (e.key === 'c' || e.key === 'C') { e.preventDefault(); if (!canWrite) return; if (!leaveDocked()) return; project && openNewIssue() }
+      // C = „creează", dar „creează" înseamnă altceva în cele două contexte.
+      // Într-o listă inteligentă nu există proiect activ (se alege abia când
+      // deschizi o sarcină), deci vechiul `project && openNewIssue()` nu făcea
+      // NIMIC pe „Azi"/„Mâine". Acolo creare = quick add, cu selectorul lui de
+      // proiect — fără Inbox, fiecare sarcină are un proiect. `canWrite` e
+      // despre proiectul DESCHIS, deci nu se aplică; dreptul îl decide
+      // `useWritableProjects`, care hrănește chiar selectorul acela.
+      if (e.key === 'c' || e.key === 'C') {
+        e.preventDefault()
+        if (smartList) { if (writableProjects.length) setFocusQuickAdd((n) => n + 1); return }
+        if (!canWrite) return
+        if (!leaveDocked()) return
+        project && openNewIssue()
+      }
       else if (e.key === 'o' || e.key === 'O') { e.preventDefault(); if (!leaveDocked()) return; project && setShowSearch(true) }
       else if (e.key === 'p' || e.key === 'P') { e.preventDefault(); if (!isAdmin) return; if (!leaveDocked()) return; openNewProject() }
       else if (e.key === '?') { e.preventDefault(); setShowInfo(v => !v) }
@@ -634,7 +650,7 @@ function Shell() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [project, openNewIssue, openNewProject, modalOpen, showInfo, showSearch, showUsers, canWrite, isAdmin, toggleSidebar, changeTab, leaveDocked])
+  }, [project, openNewIssue, openNewProject, modalOpen, showInfo, showSearch, showUsers, canWrite, isAdmin, toggleSidebar, changeTab, leaveDocked, smartList, writableProjects])
 
   /**
    * Butoanele notificării („Gata", „Amână"). Cu o filă deschisă, PAGINA e

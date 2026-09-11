@@ -141,6 +141,27 @@ try {
   check('„+ Tichet" merge cu un tichet docat', hdrOpen, hdrOpen ? 'formular deschis' : 'totul s-a închis')
   check('„+ Tichet" deschide un formular GOL', hdrVal === '', `titlu="${hdrVal ?? '(niciun input)'}"`)
 
+  // ── C într-o listă inteligentă ──────────────────────────────────────────
+  // „Azi"/„Mâine" n-au proiect activ (se alege abia când deschizi o sarcină),
+  // iar C era condiționat de `project` — deci nu făcea nimic. Acolo „creează"
+  // înseamnă quick add, cu selectorul lui de proiect: fără Inbox, fiecare
+  // sarcină are un proiect.
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(400)
+  const azi = page.locator('.tabbar button, .sidebar-smart-item, .sidebar button').filter({ hasText: /^Azi/ }).first()
+  await azi.click({ timeout: 5000 }).catch(() => {})
+  await page.waitForTimeout(800)
+  const onSmart = await page.locator('.qa-input').count()
+  check('am ajuns pe „Azi"', onSmart > 0, onSmart > 0 ? 'quick add prezent' : 'nu am găsit lista')
+  if (onSmart > 0) {
+    await page.locator('h1').first().click().catch(() => {})
+    await page.waitForTimeout(200)
+    await page.keyboard.press('c')
+    await page.waitForTimeout(600)
+    const focused = await page.evaluate(() => document.activeElement?.classList.contains('qa-input') ?? false)
+    check('C focusează quick add pe „Azi"', focused, focused ? 'cursorul e în câmp' : 'nu s-a întâmplat nimic')
+  }
+
   await page.close()
 } finally {
   if (browser) await browser.close()
