@@ -50,12 +50,16 @@ Cele două excepții dispar, înlocuite de una singură:
 > Recunoașterea e pornită mereu (cât timp `canWrite`), dar se aplică **doar ca
 > urmare a unei tastări în câmpul de titlu**.
 
-Pe un tichet nou nu se schimbă nimic observabil: titlul pornește gol, deci orice
-dată din el vine oricum dintr-o tastare.
+Ridicarea lui `isEdit` nu schimbă nimic la un tichet nou: titlul pornește gol,
+deci orice dată din el vine oricum dintr-o tastare. Ridicarea lui `dueOwned`,
+în schimb, **schimbă** — vezi paragraful următor.
 
 `dueOwned` se șterge complet, inclusiv de pe tichetele noi. E o schimbare de
 comportament acceptată explicit: dacă alegi 8 sept din calendar și *apoi* scrii
-„luni" în titlu, luni câștigă. Alternativa — `dueOwned` păstrat doar la tichete
+„luni" în titlu, luni câștigă. (`setDueOwned` se chema din `onChange`-ul
+câmpului de dată, al celui de oră și din butonul „×" — deci protecția asta
+chiar exista și chiar dispare. O versiune mai veche a specului susținea
+contrariul; era greșită.) Alternativa — `dueOwned` păstrat doar la tichete
 noi — ar fi însemnat două reguli care se contrazic între crearea și editarea
 aceluiași tichet.
 
