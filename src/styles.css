@@ -4276,41 +4276,85 @@ main {
 /* ── Attachments ─────────────────────────────────────────────────────────── */
 /* Variabilele sunt cele care EXISTĂ în :root-ul de la începutul fișierului —
    --accent, --surface-2, --line, --blocked, --txt-dim. Nu inventa altele. */
-.att-section { margin-top: 14px; border-radius: var(--r-m); transition: background 0.15s, outline-color 0.15s; outline: 2px dashed transparent; outline-offset: 4px; }
-.att-section.dragover { outline-color: var(--accent); background: var(--accent-soft); }
-.att-empty { color: var(--txt-dim); font-size: 13px; margin: 4px 0 0; }
-.att-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-.att-item { position: relative; border-radius: var(--r-m); overflow: hidden; }
-.att-item.img { width: 84px; height: 84px; }
-.att-item.file { width: 100%; }
-.att-item.busy { width: 100%; padding: 10px; font-size: 13px; color: var(--txt-dim); }
-.att-open { display: block; width: 100%; height: 100%; padding: 0; background: var(--surface-2); color: var(--txt); cursor: pointer; text-align: left; }
-.att-item.img .att-open { padding: 0; }
-.att-item.img img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.att-item.file .att-open { display: grid; grid-template-columns: 24px 1fr auto; align-items: center; gap: 8px; padding: 10px; }
+/* O bară de o linie, deasupra descrierii. Nu are chenar: se desprinde de
+   coloană prin saltul de fundal (--surface-2), ca orice altă secțiune. */
+.att-zone { flex: none; margin: 0 0 8px; }
+.att-bar {
+  display: flex; align-items: center; gap: 8px;
+  min-height: 36px; padding: 3px 6px 3px 10px;
+  border-radius: var(--r-m); background: var(--surface-2);
+}
+/* Ancora ține locul etichetei „Fișiere": o agrafă care nu pleacă la scroll,
+   plus numărul — cifră, deci mono. Fără fișiere nu apare niciun număr; acolo
+   absența E informația, ca la scadențe. */
+.att-anchor { display: flex; align-items: center; gap: 5px; flex: none; color: var(--txt-faint); }
+.att-n { font-family: var(--mono); font-size: 11px; line-height: 1; color: var(--txt-dim); font-variant-numeric: tabular-nums; }
+
+/* Miniaturile SUNT lista. Se derulează orizontal ca bara să rămână de o linie
+   oricâte fișiere ar fi; bara verticală a coloanei nu se mișcă. */
+.att-strip {
+  display: flex; align-items: center; gap: 4px;
+  flex: 1 1 auto; min-width: 0; overflow-x: auto; overflow-y: hidden;
+  scrollbar-width: none; padding: 2px 0;
+}
+.att-strip::-webkit-scrollbar { display: none; }
+
+.att-chip { position: relative; flex: none; border-radius: var(--r-s); overflow: hidden; }
+.att-chip.img { width: 28px; height: 28px; }
+.att-chip.busy {
+  display: grid; place-items: center; min-width: 28px; height: 28px; padding: 0 8px;
+  background: var(--accent-soft); color: var(--accent);
+  font-family: var(--mono); font-size: 11px;
+}
+.att-open {
+  display: flex; align-items: center; gap: 6px;
+  width: 100%; height: 28px; padding: 0; cursor: pointer;
+  background: color-mix(in srgb, var(--txt) 7%, transparent); color: var(--txt); text-align: left;
+}
+.att-chip.file .att-open { padding: 0 9px; }
+.att-open:hover { background: var(--accent-soft); color: var(--accent); }
+.att-chip.img img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .att-ic { display: flex; color: var(--txt-faint); }
-.att-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
-.att-size { font-size: 11px; color: var(--txt-dim); }
-.att-offline { display: grid; place-items: center; width: 100%; height: 100%; font-size: 10px; color: var(--txt-dim); text-align: center; padding: 4px; }
-.att-del { position: absolute; top: 3px; right: 3px; border: 0; border-radius: var(--r-s); padding: 2px 6px; font-size: 11px; line-height: 1.6; cursor: pointer; background: color-mix(in srgb, var(--bg) 75%, transparent); color: var(--txt); }
+.att-open:hover .att-ic { color: inherit; }
+/* Imagine care n-a putut fi încărcată (tipic: offline). Locul rămâne ocupat cu
+   iconița de tip — un gol ar arăta a fișier pierdut. */
+.att-ic.off { margin: 0 auto; opacity: 0.6; }
+.att-name { max-width: 132px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+
+/* X-ul apare la hover; pe ecran tactil, unde nu există hover, stă permanent.
+   Confirmarea din două atingeri a rămas: prima armează, a doua șterge. */
+.att-del {
+  position: absolute; top: 1px; right: 1px;
+  display: grid; place-items: center; width: 15px; height: 15px;
+  border: 0; border-radius: var(--r-s); padding: 0; cursor: pointer;
+  background: color-mix(in srgb, var(--bg) 82%, transparent); color: var(--txt);
+  opacity: 0; transition: opacity 0.12s;
+}
+.att-chip:hover .att-del, .att-del:focus-visible, .att-del.armed { opacity: 1; }
+@media (pointer: coarse) { .att-del { opacity: 1; } }
 .att-del.armed { background: var(--blocked); color: var(--on-accent); }
-.att-msg { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 8px 10px; border-radius: var(--r-m); background: var(--accent-soft); font-size: 13px; }
+
+/* Acțiunile stau lipite în dreapta: nu pleacă niciodată la derularea benzii. */
+.att-acts { display: flex; align-items: center; gap: 2px; flex: none; }
+.att-act {
+  display: grid; place-items: center; width: 28px; height: 28px;
+  border: 0; border-radius: var(--r-s); padding: 0; cursor: pointer;
+  background: none; color: var(--txt-dim);
+}
+.att-act:hover:not(:disabled) { background: var(--accent-soft); color: var(--accent); }
+.att-act:disabled { opacity: 0.4; cursor: default; }
+.att-pick-input { display: none; }
+
+.att-msg { display: flex; align-items: center; gap: 8px; margin-top: 6px; padding: 8px 10px; border-radius: var(--r-m); background: var(--accent-soft); font-size: 13px; }
 .att-msg-x { margin-left: auto; border: 0; background: none; cursor: pointer; color: inherit; }
 
-/* --- alegerea fișierelor: cameră / galerie / orice --- */
-.att-pick { margin-top: 8px; }
-.att-pick-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
-.att-pick-card { display: grid; justify-items: center; align-content: center; gap: 3px; min-height: 100px; padding: 12px 8px; border: 1px dashed var(--line); border-radius: var(--r-m); background: var(--surface-2); color: var(--txt); cursor: pointer; text-align: center; }
-.att-pick-card:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); }
-.att-pick-card:disabled { opacity: 0.5; cursor: default; }
-.att-pick-ic { display: grid; place-items: center; width: 36px; height: 36px; margin-bottom: 3px; border-radius: var(--r-s); background: var(--accent-soft); color: var(--accent); }
-.att-pick-t { font-size: 13px; font-weight: 600; }
-.att-pick-d { font-size: 11px; line-height: 1.3; color: var(--txt-dim); }
-.att-pick-more { display: block; width: 100%; min-height: 44px; margin-top: 8px; border-radius: var(--r-s); background: var(--surface-2); color: var(--txt); font-size: 13px; cursor: pointer; }
-.att-pick-more:hover:not(:disabled) { color: var(--accent); background: var(--accent-soft); }
-.att-pick-more:disabled { opacity: 0.5; cursor: default; }
-.att-pick-hint { margin: 8px 0 0; font-size: 11px; line-height: 1.5; color: var(--txt-dim); text-align: center; }
-.att-pick-input { display: none; }
+/* Zona de drop e coloana de descriere, nu bara: o bandă de 36px e o țintă
+   proastă pentru un fișier tras cu mouse-ul. Punctat, fiindcă aici linia nu e
+   decor — e afordanța „lasă aici". */
+.form-col-desc.att-dropping {
+  outline: 2px dashed var(--accent); outline-offset: -6px;
+  background: var(--accent-soft);
+}
 
 /* ── Lightbox ────────────────────────────────────────────────────────────── */
 .lb-back { position: fixed; inset: 0; z-index: 60; display: grid; grid-template-rows: auto 1fr; background: rgba(0, 0, 0, 0.92); }

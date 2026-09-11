@@ -414,6 +414,61 @@ def g(label, html):
     return '<div class="bench-group"><div class="bench-label">%s</div><div class="bench-row">%s</div></div>' % (label, html)
 
 
+# ── Bara de fișiere ──────────────────────────────────────────────────────────
+# Miniatura e un SVG inline, nu un fișier: un asset ar fi intrat în repo doar ca
+# să existe o poză de 28px. Atenție la `%`-urile din data URI — grupul de mai jos
+# se construiește prin concatenare, NU prin formatare cu `%`.
+THUMB = ("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='40'%20height='40'%3E"
+         "%3Crect%20width='40'%20height='40'%20fill='%236E7BFF'/%3E"
+         "%3Ccircle%20cx='12'%20cy='12'%20r='5.5'%20fill='%23F2D680'/%3E"
+         "%3Cpath%20d='M0%2040%20L15%2019%20L27%2031%20L33%2025%20L40%2040Z'%20fill='%232E6B52'/%3E%3C/svg%3E")
+
+
+def att_del(armed=False):
+    return ('<button class="att-del armed" aria-label="Confirmă ștergerea">' + ic('trash-2', 11) + '</button>'
+            if armed else
+            '<button class="att-del" aria-label="Șterge">' + ic('x', 11) + '</button>')
+
+
+def att_img(armed=False, del_btn=True):
+    return ('<span class="att-chip img"><button class="att-open" title="poza-1.jpg · 184 KB">'
+            '<img src="' + THUMB + '" alt="poza-1.jpg"></button>'
+            + (att_del(armed) if del_btn else '') + '</span>')
+
+
+def att_file(name='contract-v3.pdf', icon='file-text', del_btn=True):
+    return ('<span class="att-chip file"><button class="att-open" title="' + name + ' · 1.2 MB">'
+            '<span class="att-ic">' + ic(icon, 14) + '</span>'
+            '<span class="att-name">' + name + '</span></button>'
+            + (att_del() if del_btn else '') + '</span>')
+
+
+# Imaginea care n-a putut fi încărcată (offline): locul rămâne ocupat de iconița
+# de tip. Un gol s-ar citi ca fișier pierdut.
+ATT_OFF = ('<span class="att-chip img"><button class="att-open" title="indisponibil offline">'
+           '<span class="att-ic off">' + ic('image', 14) + '</span></button></span>')
+
+ATT_BUSY = '<span class="att-chip busy">2</span>'
+
+
+def att_acts(disabled=False):
+    d = ' disabled' if disabled else ''
+    return ('<div class="att-acts">'
+            '<button class="att-act"' + d + ' aria-label="Fă o poză">' + ic('camera', 15) + '</button>'
+            '<button class="att-act"' + d + ' aria-label="Din galerie">' + ic('image', 15) + '</button>'
+            '<button class="att-act"' + d + ' aria-label="Alt fișier">' + ic('plus', 15) + '</button>'
+            '</div>')
+
+
+def att_bar(chips='', n=None, acts=True, disabled=False):
+    return ('<div class="att-zone"><div class="att-bar">'
+            '<span class="att-anchor" title="Fișiere atașate">' + ic('paperclip', 14)
+            + ('<span class="att-n">' + str(n) + '</span>' if n else '')
+            + '</span><div class="att-strip">' + chips + '</div>'
+            + (att_acts(disabled) if acts else '')
+            + '</div></div>')
+
+
 CONTROALE = ''.join([
     g('Butoane de header',
       '<button class="back" aria-label="Înapoi">%s</button>'
@@ -475,7 +530,6 @@ CONTROALE = ''.join([
       '<button class="wave-action-btn active">' + ic('eye-off', 14) + '</button>'
       '<button class="due-pick">' + ic('calendar-check', 14) + ' Pune o zi</button>'
       '<button class="due-clear">' + ic('x', 13) + '</button>'
-      '<button class="att-open">Deschide</button>'
       '<button class="sidebar-new-btn">+ Proiect nou</button>'
       '<button class="qa-add">+ sub-tichet</button>'),
 
@@ -548,6 +602,31 @@ CONTROALE = ''.join([
       '<div class="srow"><span class="skey">Blochează</span><span class="sval">'
       '<button class="seg sm on">Da</button><button class="seg sm">Nu</button>'
       '</span></div>'),
+
+    # Bara de fișiere de deasupra descrierii. Aproape fiecare clasă de aici e un
+    # control fără chenar (`.att-bar`, `.att-act`, `.att-chip`), deci exact ce
+    # păzește ecranul ăsta. `.att-del` are `opacity: 0` până la hover; bancul îl
+    # forțează vizibil (vezi `.bench-gallery .att-del`), altfel n-ar fi nimic de
+    # văzut.
+    g('Fișiere — bara',
+      att_bar(att_img() + att_file() + ATT_OFF + ATT_BUSY, n=4)
+      + att_bar()),
+
+    g('Fișiere — stări',
+      att_bar(att_img(armed=True) + att_file(name='arhiva-2026.zip', icon='file-archive'), n=2)
+      + att_bar(acts=True, disabled=True)
+      + '<div class="att-msg">Salvează tichetul, apoi atașează fișiere.'
+      '<button class="att-msg-x" aria-label="Închide mesajul">' + ic('x', 16) + '</button></div>'),
+
+    # Zona de drop e coloana întreagă, nu bara. `min-height`/`border-right` sunt
+    # anulate inline fiindcă aici lipsește grila formularului care le dă sens —
+    # ce se verifică e evidențierea, nu geometria coloanei.
+    g('Fișiere — zona de drop',
+      '<div class="form-col-desc att-dropping" style="width:100%;min-height:auto;border-right:0">'
+      '<label class="if-field-label" style="display:block;margin-bottom:8px">Descriere</label>'
+      + att_bar(att_img(), n=1)
+      + '<textarea class="desc-fixed" style="height:70px" placeholder="Cerințe, notițe, context…"></textarea>'
+      '</div>'),
 ])
 
 SCREENS = {
@@ -635,8 +714,12 @@ SHELL = """<!doctype html>
   .bench-row > .tabs, .bench-row > .bulk-bar, .bench-row > .toast,
   .bench-row > .banner, .bench-row > .layer-intro, .bench-row > .dep-card,
   .bench-row > .fld, .bench-row > .qs-footer,
-  .bench-row > .seg-row, .bench-row > .srow { width: 100%; }
+  .bench-row > .seg-row, .bench-row > .srow,
+  .bench-row > .att-zone, .bench-row > .att-msg,
+  .bench-row > .form-col-desc { width: 100%; }
   .bench-gallery .toast { position: static; transform: none; opacity: 1; }
+  /* `.att-del` apare la hover; pe banc n-ar fi nimic de inspectat. */
+  .bench-gallery .att-del { opacity: 1; }
   .bench-gallery .bulk-bar { position: static; transform: none; }
 </style>
 </head>

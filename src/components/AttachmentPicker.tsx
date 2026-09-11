@@ -2,18 +2,6 @@ import { useRef, type ChangeEvent } from 'react'
 import { useCoarsePointer } from '../hooks'
 import { Icon } from './Icon'
 
-function CameraIcon() {
-  return (
-    <Icon name="camera" size={20} />
-  )
-}
-
-function GalleryIcon() {
-  return (
-    <Icon name="image" size={20} />
-  )
-}
-
 /**
  * Alegerea fișierelor, fără să știe nimic despre ce se întâmplă cu ele: nici de
  * Supabase, nici de `issueId`, nici de plafoane, nici de redenumire. Predă un
@@ -23,13 +11,26 @@ function GalleryIcon() {
  * Varianta cu unul singur economisește două noduri și cumpără un bug: Safari
  * citește atributele în momentul gestului, iar React nu garantează că DOM-ul s-a
  * actualizat înainte de apel. Aici ce e scris în JSX e ce vede browserul.
+ *
+ * Butoane cu iconiță, fără titlu și fără descriere: picker-ul stă într-o bară de
+ * 36px deasupra descrierii, iar acolo fiecare cuvânt împinge miniaturile afară
+ * din vedere. Ce spuneau descrierile („poți alege mai multe deodată") a rămas în
+ * `title`/`aria-label`, unde nu ocupă lățime.
  */
 export function AttachmentPicker({
   onPick,
   disabled = false,
+  blocked = false,
+  onBlocked,
 }: {
   onPick: (files: File[]) => void
   disabled?: boolean
+  /** Tichet nou: nu există id la care să lipim fișierul. Butoanele rămân la
+   *  vedere, ca bara să nu-și schimbe forma după prima salvare, dar spun de ce
+   *  nu merg în loc să fie `disabled` — un buton mort pe telefon nu explică
+   *  nimic, fiindcă nu există hover care să arate `title`. */
+  blocked?: boolean
+  onBlocked?: () => void
 }) {
   const coarse = useCoarsePointer()
   const camera = useRef<HTMLInputElement>(null)
@@ -48,54 +49,49 @@ export function AttachmentPicker({
     if (files.length > 0) onPick(files)
   }
 
-  return (
-    <div className="att-pick">
-      <div className="att-pick-cards">
-        {/* `capture` exclude `multiple` prin definiția atributului: captura
-            pornește camera pentru un singur cadru. De-aia scrie „o poză odată". */}
-        {coarse && (
-          <button
-            type="button"
-            className="att-pick-card"
-            disabled={disabled}
-            onClick={() => camera.current?.click()}
-          >
-            <span className="att-pick-ic"><CameraIcon /></span>
-            <span className="att-pick-t">Fă o poză</span>
-            <span className="att-pick-d">Deschide camera, o poză odată</span>
-          </button>
-        )}
+  const open = (input: HTMLInputElement | null) => {
+    if (blocked) { onBlocked?.(); return }
+    input?.click()
+  }
 
+  return (
+    <div className="att-acts">
+      {/* `capture` exclude `multiple` prin definiția atributului: captura
+          pornește camera pentru un singur cadru. */}
+      {coarse && (
         <button
           type="button"
-          className="att-pick-card"
+          className="att-act"
           disabled={disabled}
-          onClick={() => gallery.current?.click()}
+          aria-label="Fă o poză"
+          title="Fă o poză (o poză odată)"
+          onClick={() => open(camera.current)}
         >
-          <span className="att-pick-ic"><GalleryIcon /></span>
-          <span className="att-pick-t">Din galerie</span>
-          <span className="att-pick-d">Poți alege mai multe deodată</span>
+          <Icon name="camera" size={15} />
         </button>
-      </div>
+      )}
 
       <button
         type="button"
-        className="att-pick-more"
+        className="att-act"
         disabled={disabled}
-        onClick={() => anyFile.current?.click()}
+        aria-label="Adaugă din galerie"
+        title="Din galerie (poți alege mai multe deodată)"
+        onClick={() => open(gallery.current)}
       >
-        + Alt fișier
+        <Icon name="image" size={15} />
       </button>
 
-      <p className="att-pick-hint">
-        Poze, PDF-uri, arhive — orice fișier
-        {!coarse && (
-          <>
-            <br />
-            Lipește o poză (Ctrl+V) sau trage fișiere aici.
-          </>
-        )}
-      </p>
+      <button
+        type="button"
+        className="att-act"
+        disabled={disabled}
+        aria-label="Adaugă alt fișier"
+        title={coarse ? 'Alt fișier' : 'Alt fișier — sau lipește (Ctrl+V) ori trage peste descriere'}
+        onClick={() => open(anyFile.current)}
+      >
+        <Icon name="add" size={15} />
+      </button>
 
       <input ref={camera} className="att-pick-input" type="file"
              accept="image/*" capture="environment" onChange={handle} />

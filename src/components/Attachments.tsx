@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import {
   deleteAttachment,
   isRenderableImage,
@@ -34,14 +34,34 @@ function iconFor(contentType: string, filename: string): IconName {
   return 'attachment'
 }
 
+/**
+ * Fișierele tichetului, ca o bară de 36px deasupra descrierii.
+ *
+ * Înainte era un bloc sub notițe, adică sub o descriere care poate fi lungă: se
+ * ajungea la el doar cu scroll, deci nu răspundea la întrebarea pentru care
+ * există — „am deja atașamente?". O bară de o singură linie o poate ține în
+ * câmpul vizual permanent, dar numai dacă nu poartă niciun cuvânt în plus:
+ * titlul secțiunii, descrierile butoanelor și îndemnul de paste au plecat în
+ * `title`/`aria-label`. Miniaturile SUNT lista, iconița-ancoră e eticheta.
+ */
 export function Attachments({
   issueId,
   projectId,
   readOnly = false,
+  dropZone,
+  onDropActive,
 }: {
   issueId?: string
   projectId: string
   readOnly?: boolean
+  /** Unde se poate LĂSA un fișier tras cu mouse-ul. O bară de 36px e o țintă
+   *  proastă de drop, deci zona rămâne mare: formularul dă aici coloana de
+   *  descriere. Fără prop, nu există drop deloc (cazul read-only). */
+  dropZone?: RefObject<HTMLElement | null>
+  /** Evidențierea zonei de drop o pune părintele, pe nodul lui. Componenta
+   *  asta nu randează `dropZone`, iar un `classList.add` pe un nod al altcuiva
+   *  se bate cu React la următoarea randare. */
+  onDropActive?: (active: boolean) => void
 }) {
   const [items, setItems] = useState<Attachment[]>([])
   const [urls, setUrls] = useState<Record<string, string>>({})
@@ -70,6 +90,8 @@ export function Attachments({
   }, [issueId])
 
   useEffect(() => { void load() }, [load])
+
+  useEffect(() => { onDropActive?.(dragging) }, [dragging, onDropActive])
 
   /** Dezarmează X-ul după 3s, altfel un X rămas armat devine chiar capcana pe
    *  care confirmarea din două atingeri trebuia să o închidă. */
@@ -165,6 +187,56 @@ export function Attachments({
     return () => document.removeEventListener('paste', onPaste)
   }, [canEdit, addFiles])
 
+  // Drag & drop pe zona primită de la părinte (coloana de descriere), nu pe
+  // bară. Ascultători nativi, fiindcă nodul nu e randat de componenta asta.
+  useEffect(() => {
+    const node = dropZone?.current
+    if (!ENABLED || !canEdit || !node) return
+
+    const onEnter = (e: DragEvent) => {
+      if (!carriesFiles(Array.from(e.dataTransfer?.types ?? []))) return
+      dragDepth.current += 1
+      setDragging(true)
+    }
+    // Obligatoriu: fără preventDefault pe dragover, drop-ul nu e permis deloc
+    // și browserul navighează la fișier.
+    const onOver = (e: DragEvent) => {
+      if (carriesFiles(Array.from(e.dataTransfer?.types ?? []))) e.preventDefault()
+    }
+    // Contor, nu boolean: dragleave se declanșează și la trecerea în
+    // elementele-copil, iar un boolean face evidențierea să pâlpâie.
+    //
+    // Nu punem gardă `carriesFiles(...)` aici ca la celelalte trei handlere:
+    // la `dragleave` unele browsere expun `dataTransfer.types` gol din motive
+    // de securitate, iar o gardă ar putea bloca decrementul și ar lăsa
+    // `dragDepth` blocat peste zero — evidențierea ar rămâne aprinsă la
+    // nesfârșit. Decrementul negardat e sigur fiindcă adunăm mai jos la 0.
+    const onLeave = () => {
+      dragDepth.current -= 1
+      if (dragDepth.current <= 0) { dragDepth.current = 0; setDragging(false) }
+    }
+    const onDrop = (e: DragEvent) => {
+      if (!carriesFiles(Array.from(e.dataTransfer?.types ?? []))) return
+      e.preventDefault()
+      dragDepth.current = 0
+      setDragging(false)
+      void addFiles(Array.from(e.dataTransfer?.types ?? []), Array.from(e.dataTransfer?.files ?? []))
+    }
+
+    node.addEventListener('dragenter', onEnter)
+    node.addEventListener('dragover', onOver)
+    node.addEventListener('dragleave', onLeave)
+    node.addEventListener('drop', onDrop)
+    return () => {
+      node.removeEventListener('dragenter', onEnter)
+      node.removeEventListener('dragover', onOver)
+      node.removeEventListener('dragleave', onLeave)
+      node.removeEventListener('drop', onDrop)
+      dragDepth.current = 0
+      setDragging(false)
+    }
+  }, [dropZone, canEdit, addFiles])
+
   if (!ENABLED) return null
 
   const openItem = async (a: Attachment) => {
@@ -191,106 +263,74 @@ export function Attachments({
     }
   }
 
-  // Tichet nou: nu există id la care să lipim fișierul. Un rând de text, și am
-  // scăpat de tot cazul greu — fără auto-save, fără tichete pe jumătate scrise.
-  if (!issueId) {
-    return (
-      <div className="att-section">
-        <div className="sheet-section-t">Fișiere</div>
-        <p className="att-empty">Salvează tichetul, apoi atașează fișiere.</p>
-      </div>
-    )
-  }
-
+  // Read-only fără fișiere: bara n-ar spune nimic și n-ar oferi nimic.
   if (readOnly && items.length === 0) return null
 
   return (
-    <div
-      className={`att-section ${dragging ? 'dragover' : ''}`}
-      onDragEnter={canEdit ? (e) => {
-        if (!carriesFiles(Array.from(e.dataTransfer.types))) return
-        dragDepth.current += 1
-        setDragging(true)
-      } : undefined}
-      onDragOver={canEdit ? (e) => {
-        // Obligatoriu: fără preventDefault pe dragover, drop-ul nu e permis
-        // deloc și browserul navighează la fișier.
-        if (carriesFiles(Array.from(e.dataTransfer.types))) e.preventDefault()
-      } : undefined}
-      onDragLeave={canEdit ? () => {
-        // Contor, nu boolean: dragleave se declanșează și la trecerea în
-        // elementele-copil, iar un boolean face evidențierea să pâlpâie.
-        //
-        // Nu punem gardă `carriesFiles(...)` aici ca la celelalte trei handlere:
-        // la `dragleave` unele browsere expun `dataTransfer.types` gol din motive
-        // de securitate, iar o gardă ar putea bloca decrementul și ar lăsa
-        // `dragDepth` blocat peste zero — evidențierea ar rămâne aprinsă la
-        // nesfârșit. Decrementul negardat e sigur fiindcă adunăm mai jos la 0.
-        dragDepth.current -= 1
-        if (dragDepth.current <= 0) { dragDepth.current = 0; setDragging(false) }
-      } : undefined}
-      onDrop={canEdit ? (e) => {
-        if (!carriesFiles(Array.from(e.dataTransfer.types))) return
-        e.preventDefault()
-        dragDepth.current = 0
-        setDragging(false)
-        void addFiles(Array.from(e.dataTransfer.types), Array.from(e.dataTransfer.files))
-      } : undefined}
-    >
-      <div className="sheet-section-t">Fișiere</div>
+    <div className="att-zone">
+      <div className="att-bar">
+        <span className="att-anchor" title="Fișiere atașate">
+          <Icon name="attachment" size={14} />
+          {items.length > 0 && <span className="att-n">{items.length}</span>}
+        </span>
 
-      {/* Picker-ul rămâne montat și când există deja fișiere. Regula veche —
-          hint doar pe listă goală — făcea imposibil al doilea fișier pe telefon,
-          unde nu există nici paste, nici drop. */}
-      {canEdit && (
-        <AttachmentPicker
-          onPick={(files) => void addFiles(['Files'], files)}
-          disabled={busy > 0}
-        />
-      )}
-
-      <div className="att-grid">
-        {items.map((a) => {
-          const isImg = isRenderableImage(a.contentType)
-          const url = urls[a.path]
-          return (
-            <div key={a.id} className={`att-item ${isImg ? 'img' : 'file'}`}>
-              <button className="att-open" onClick={() => void openItem(a)} title={a.filename}>
-                {isImg && url && !broken.has(a.path) ? (
-                  <img
-                    src={url}
-                    alt={a.filename}
-                    loading="lazy"
-                    // URL-urile semnate nu funcționează offline, iar shell-ul
-                    // aplicației e precachat — fără asta, sheet-ul s-ar randa
-                    // cu imagini moarte, care se citesc ca pierdere de date.
-                    // Marcăm calea în state și lăsăm React să randeze locul
-                    // gol; nu umblăm în DOM cu mâna.
-                    onError={() => setBroken((prev) => new Set(prev).add(a.path))}
-                  />
-                ) : isImg ? (
-                  <span className="att-offline">indisponibil offline</span>
-                ) : (
-                  <>
-                    <span className="att-ic"><Icon name={iconFor(a.contentType, a.filename)} size={16} /></span>
-                    <span className="att-name">{a.filename}</span>
-                    <span className="att-size">{humanSize(a.size)}</span>
-                  </>
-                )}
-              </button>
-              {canEdit && (
+        <div className="att-strip">
+          {items.map((a) => {
+            const isImg = isRenderableImage(a.contentType)
+            const url = urls[a.path]
+            const shown = isImg && url && !broken.has(a.path)
+            return (
+              <span key={a.id} className={`att-chip ${isImg ? 'img' : 'file'}`}>
                 <button
-                  className={`att-del ${armed === a.id ? 'armed' : ''}`}
-                  aria-label={armed === a.id ? `Confirmă ștergerea ${a.filename}` : `Șterge ${a.filename}`}
-                  onClick={() => (armed === a.id ? void remove(a) : arm(a.id))}
+                  className="att-open"
+                  onClick={() => void openItem(a)}
+                  title={`${a.filename} · ${humanSize(a.size)}`}
                 >
-                  {armed === a.id ? 'Șterg?' : <Icon name="close" size={14} />}
+                  {shown ? (
+                    <img
+                      src={url}
+                      alt={a.filename}
+                      loading="lazy"
+                      // URL-urile semnate nu funcționează offline, iar shell-ul
+                      // aplicației e precachat — fără asta, bara s-ar randa cu
+                      // imagini moarte, care se citesc ca pierdere de date.
+                      // Marcăm calea în state și randăm iconița de tip în loc;
+                      // nu umblăm în DOM cu mâna.
+                      onError={() => setBroken((prev) => new Set(prev).add(a.path))}
+                    />
+                  ) : isImg ? (
+                    <span className="att-ic off"><Icon name="fileImage" size={14} /></span>
+                  ) : (
+                    <>
+                      <span className="att-ic"><Icon name={iconFor(a.contentType, a.filename)} size={14} /></span>
+                      <span className="att-name">{a.filename}</span>
+                    </>
+                  )}
                 </button>
-              )}
-            </div>
-          )
-        })}
-        {busy > 0 && <div className="att-item busy">Se urcă {busy}…</div>}
+                {canEdit && (
+                  <button
+                    className={`att-del ${armed === a.id ? 'armed' : ''}`}
+                    aria-label={armed === a.id ? `Confirmă ștergerea ${a.filename}` : `Șterge ${a.filename}`}
+                    title={armed === a.id ? 'Mai apasă o dată ca să ștergi' : 'Șterge'}
+                    onClick={() => (armed === a.id ? void remove(a) : arm(a.id))}
+                  >
+                    <Icon name={armed === a.id ? 'delete' : 'close'} size={11} />
+                  </button>
+                )}
+              </span>
+            )
+          })}
+          {busy > 0 && <span className="att-chip busy" role="status">{busy}</span>}
+        </div>
+
+        {!readOnly && (
+          <AttachmentPicker
+            onPick={(files) => void addFiles(['Files'], files)}
+            disabled={busy > 0}
+            blocked={!issueId}
+            onBlocked={() => setMessage('Salvează tichetul, apoi atașează fișiere.')}
+          />
+        )}
       </div>
 
       {message && (

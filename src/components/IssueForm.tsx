@@ -336,6 +336,10 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
 
   const titleInputRef = useRef<HTMLInputElement>(null)
   const descRef = useRef<HTMLTextAreaElement>(null)
+  /** Coloana de descriere, ca zonă de drop pentru fișiere. Bara de atașamente
+   *  e prea subțire ca să fie o țintă nimerită cu mouse-ul. */
+  const descColRef = useRef<HTMLDivElement>(null)
+  const [dropActive, setDropActive] = useState(false)
   const notesSectionRef = useRef<HTMLDivElement>(null)
   const [notesMaxH, setNotesMaxH] = useState(200)
 
@@ -1157,9 +1161,20 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
         {/* MAIN FORM — 2 cols */}
         <div className="form-cols">
 
-          {/* LEFT — descriere */}
-          <div className="form-col form-col-desc">
+          {/* LEFT — descriere. Fișierele stau DEASUPRA descrierii, într-o bară
+              de o linie: sub o descriere lungă nu se mai vedeau fără scroll.
+              Coloana întreagă e zona de drop — vezi `dropZone` în Attachments. */}
+          <div className={`form-col form-col-desc ${dropActive ? 'att-dropping' : ''}`} ref={descColRef}>
             <label className="if-field-label" style={{ display: 'block', marginBottom: 8 }}>Descriere</label>
+            {project && (
+              <Attachments
+                issueId={existing?.id}
+                projectId={project.id}
+                readOnly={!canWrite}
+                dropZone={descColRef}
+                onDropActive={setDropActive}
+              />
+            )}
             <textarea
               ref={descRef}
               className="desc-fixed"
@@ -1352,10 +1367,6 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
               <AutoTextarea value={notes} onChange={setNotes}
                 placeholder="Observații libere, edge cases, links…" minH={80} maxH={notesMaxH} />
             </div>
-
-            {/* FIȘIERE — sub notițe. La tichet nou (`existing` lipsă) componenta
-                afișează doar îndemnul de a salva întâi. */}
-            {project && <Attachments issueId={existing?.id} projectId={project.id} readOnly={!canWrite} />}
 
           </div>
         </div>
