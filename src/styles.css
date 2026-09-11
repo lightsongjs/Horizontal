@@ -3035,8 +3035,8 @@ main {
      restul înălțimii — panoul se derulează. */
   .split-pane .form-col-desc .desc-fixed {
     flex: 0 0 auto;
-    height: 280px;
-    min-height: 280px;
+    height: 420px;
+    min-height: 420px;
   }
 
   .split-empty {
@@ -4078,7 +4078,7 @@ main {
     padding: 14px 16px 16px;
   }
   .desc-fixed {
-    height: 200px;
+    height: 300px;
   }
 
   /* ── Settings accent colours: wrap instead of clipping the last
