@@ -177,7 +177,7 @@ const slugify = (name: string) =>
 
 function Shell() {
   const { loading, error, project, projects, issuesLoadedFor, issuesLoadFailedFor, byId, selectProject, refresh, toggleDone, updateIssue } = useHorizontal()
-  const { openNewIssue, openNewProject, openProjectSettings, openIssue, closeSheet, sheet, ticketId } = useUI()
+  const { openNewIssue, openNewProject, openProjectSettings, openIssue, closeSheet, sheet, ticketId, dockedIssueId } = useUI()
   const { isAdmin } = useAuth()
   const canWrite = useCanWrite()
   const [sidebarCollapsed, toggleSidebar] = useSidebarCollapsed()
@@ -258,11 +258,32 @@ function Shell() {
    * Dacă garda de close refuză (modificări nesalvate), tabul NU se schimbă:
    * confirmarea ei se vede în formularul care e încă pe ecran.
    */
+  /**
+   * O foaie e MODALĂ doar dacă nu e docată în panoul lateral. Aceeași formulă
+   * ca în `hooks.ts`, care o folosește pentru tastatura listei — panoul nu e un
+   * modal, deci nu blochează tastele.
+   */
+  const modalOpen = sheet.kind !== 'none' && !dockedIssueId
+
+  /**
+   * Pleacă de la formularul docat, dacă e vreunul. Întoarce `false` dacă garda
+   * de close a refuzat (modificări nesalvate) — atunci apelantul NU continuă.
+   *
+   * Trebuie chemată de orice acțiune care ÎNLOCUIEȘTE stiva de foi (C, O, P,
+   * comutarea tabului). `openNewIssue()` face `setSheets([...])`, deci fără
+   * asta un formular docat cu modificări nesalvate ar dispărea în tăcere — și
+   * asta e exact ce `openEditIssue` se ferește să facă la un click în listă.
+   */
+  const leaveDocked = useCallback(() => {
+    if (sheetRef.current.kind === 'none') return true
+    return closeSheet()
+  }, [closeSheet])
+
   const changeTab = useCallback((next: Tab) => {
     if (next === tabRef.current) return
-    if (sheetRef.current.kind !== 'none' && !closeSheet()) return
+    if (!leaveDocked()) return
     setTab(next)
-  }, [closeSheet])
+  }, [leaveDocked])
   const projectRef = useRef(project)
   projectRef.current = project
   const projectsRef = useRef(projects)
@@ -518,9 +539,17 @@ function Shell() {
       if (onTicketUrl === ticketId) replacePath(path)
       else pushPath(path)
     } else if (onTicketUrl && deepLinkPending.current === null) {
+      // `ticketId` e null, dar asta nu înseamnă întotdeauna „s-a închis tot".
+      // Poate fi și „am înlocuit formularul unui ticket cu unul de ticket NOU",
+      // care n-are id — deci nu deține URL-ul. Un `back()` aici ar declanșa
+      // `popstate`, iar handlerul lui închide orice foaie deschisă: exact pe
+      // cea abia deschisă. Așa murea „+ Tichet" (și tasta C) cu un tichet
+      // docat pe ecran — formularul vechi se închidea, cel nou nu apărea.
+      // Cu o foaie încă pe stivă rescriem URL-ul, fără să navigăm.
+      if (sheetRef.current.kind !== 'none') settleUrl(projectRef.current)
       // Sheet-ul s-a închis dar URL-ul e încă de ticket. Garda `onTicketUrl`
       // previne un back dublu când popstate a fost cel care a închis sheet-ul.
-      if (historyDepth.current > 0) window.history.back()
+      else if (historyDepth.current > 0) window.history.back()
       // Deep link rece: intrarea de ticket e prima din sesiune, un back ar
       // scoate userul din aplicație. Rescriem în loc să navigăm.
       else settleUrl(projectRef.current)
@@ -580,13 +609,22 @@ function Shell() {
       if (e.metaKey || e.ctrlKey || e.altKey) return
 
       if (e.key === 'Escape' && showSearch) { setShowSearch(false); return }
-      if (sheet.kind !== 'none') return  // don't fire shortcuts when modal is open
+      // Gating pe MODAL, nu pe „există o foaie pe stivă". Panoul lateral nu e
+      // un modal — `ui.tsx` o spune explicit, iar gating-ul listei din
+      // `hooks.ts` o respectă deja (`modalOpen`, nu `sheet.kind`). Aici era
+      // singurul loc rămas pe vechea gardă, deci cu un tichet deschis în panou
+      // tasta C nu făcea NIMIC: nu puteai adăuga un tichet fără să închizi mai
+      // întâi ce citeai.
+      if (modalOpen) return
       if (showSearch) return
       if (showUsers) return
 
-      if (e.key === 'c' || e.key === 'C') { e.preventDefault(); if (!canWrite) return; project && openNewIssue() }
-      else if (e.key === 'o' || e.key === 'O') { e.preventDefault(); project && setShowSearch(true) }
-      else if (e.key === 'p' || e.key === 'P') { e.preventDefault(); if (!isAdmin) return; openNewProject() }
+      // C / O / P înlocuiesc stiva de foi, deci trec prin `leaveDocked()`:
+      // altfel un formular docat cu modificări nesalvate ar dispărea în
+      // tăcere, exact ce previne `openEditIssue` la un click în listă.
+      if (e.key === 'c' || e.key === 'C') { e.preventDefault(); if (!canWrite) return; if (!leaveDocked()) return; project && openNewIssue() }
+      else if (e.key === 'o' || e.key === 'O') { e.preventDefault(); if (!leaveDocked()) return; project && setShowSearch(true) }
+      else if (e.key === 'p' || e.key === 'P') { e.preventDefault(); if (!isAdmin) return; if (!leaveDocked()) return; openNewProject() }
       else if (e.key === '?') { e.preventDefault(); setShowInfo(v => !v) }
       else if (e.key === '[') { e.preventDefault(); toggleSidebar() }
       else if (e.key === '1' && project) { e.preventDefault(); changeTab('list') }
@@ -596,7 +634,7 @@ function Shell() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [project, openNewIssue, openNewProject, sheet, showInfo, showSearch, showUsers, canWrite, isAdmin, toggleSidebar, changeTab])
+  }, [project, openNewIssue, openNewProject, modalOpen, showInfo, showSearch, showUsers, canWrite, isAdmin, toggleSidebar, changeTab, leaveDocked])
 
   /**
    * Butoanele notificării („Gata", „Amână"). Cu o filă deschisă, PAGINA e

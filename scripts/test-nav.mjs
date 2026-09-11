@@ -82,6 +82,65 @@ try {
     await page.locator('.list-row').first().click().catch(() => {})
     await page.waitForTimeout(500)
   }
+  // ── Scurtăturile globale trebuie să meargă cu un formular DOCAT ──────────
+  // Panoul lateral nu e un modal: `ui.tsx` o spune explicit, iar `hooks.ts`
+  // gating-ul listei o respectă (`modalOpen`, nu `sheet.kind`). Scurtăturile
+  // globale din `App.tsx` gatingau pe prezența unei foi, deci cu un tichet
+  // deschis în panou tasta C nu făcea nimic.
+  await page.locator('.tab', { hasText: /^List/ }).first().click().catch(() => {})
+  await page.waitForTimeout(400)
+  await page.locator('.list-row').first().click()
+  await page.waitForTimeout(800)
+  check('tichet docat, pregătit pentru C', !(await modalOpen()), 'fără modal')
+
+  await page.locator('.tabs').click()
+  await page.waitForTimeout(150)
+  await page.keyboard.press('c')
+  await page.waitForTimeout(800)
+  const newFormOpen = await modalOpen()
+  const firstVal = await page.locator('.sheet.on input').first().inputValue().catch(() => null)
+  check('C deschide un tichet nou peste panou', newFormOpen, newFormOpen ? 'formular deschis' : 'nu s-a întâmplat nimic')
+  check('formularul e GOL (tichet nou, nu cel docat)', firstVal === '', `titlu="${firstVal ?? '(niciun input)'}"`)
+
+  // ── …dar nu aruncă în tăcere ce ai scris ────────────────────────────────
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(500)
+  await page.locator('.tab', { hasText: /^List/ }).first().click().catch(() => {})
+  await page.waitForTimeout(400)
+  await page.locator('.list-row').first().click()
+  await page.waitForTimeout(700)
+  const docked = page.locator('.split-right input, input').first()
+  const was = await docked.inputValue().catch(() => '')
+  await docked.fill(`${was} MODIFICAT`)
+  await page.waitForTimeout(500)
+  await page.locator('.tabs').click()
+  await page.waitForTimeout(150)
+  await page.keyboard.press('c')
+  await page.waitForTimeout(700)
+  const stillThere = await page.locator('input').first().inputValue().catch(() => '')
+  check(
+    'C nu aruncă modificările nesalvate',
+    stillThere.includes('MODIFICAT'),
+    stillThere.includes('MODIFICAT') ? 'formularul murdar e încă pe ecran' : `s-a pierdut: "${stillThere}"`,
+  )
+
+  // ── „+ Tichet" din header, cu un tichet docat ───────────────────────────
+  // Același drum, fără tastatură: un formular de ticket NOU n-are id, deci
+  // `ticketId` devine null. Efectul de URL citea asta ca „s-a închis tot" și
+  // dădea `history.back()`, iar `popstate` închidea formularul abia deschis.
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(500)
+  await page.locator('.tab', { hasText: /^List/ }).first().click().catch(() => {})
+  await page.waitForTimeout(400)
+  await page.locator('.list-row').first().click()
+  await page.waitForTimeout(700)
+  await page.locator('.header-new-btn').click()
+  await page.waitForTimeout(900)
+  const hdrOpen = await modalOpen()
+  const hdrVal = await page.locator('.sheet.on input').first().inputValue().catch(() => null)
+  check('„+ Tichet" merge cu un tichet docat', hdrOpen, hdrOpen ? 'formular deschis' : 'totul s-a închis')
+  check('„+ Tichet" deschide un formular GOL', hdrVal === '', `titlu="${hdrVal ?? '(niciun input)'}"`)
+
   await page.close()
 } finally {
   if (browser) await browser.close()
