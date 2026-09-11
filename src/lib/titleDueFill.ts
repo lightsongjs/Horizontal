@@ -59,3 +59,28 @@ export function fillFromTitle(
   }
   return { fields: mine ? memo!.before : fields, memo: null }
 }
+
+/** Titlul care ajunge în bază, plus semnalul „n-a mai rămas nimic din el". */
+export interface SaveTitle {
+  /** Ce se scrie ca titlu — fără fragmentele devenite scadență. */
+  title: string
+  /** Textul era numai dată: „mâine la 14" n-are ce salva ca sarcină. */
+  bare: boolean
+}
+
+/**
+ * Ce se salvează ca titlu, după ce recunoașterea și-a luat partea.
+ *
+ * Un fragment devenit scadență e redundant în titlu — scadența se vede deja în
+ * câmpul ei și pe card — și, mai rău, minte la a doua deschidere: „la 14"
+ * rămas în text se recalculează față de ALTĂ zi. De-aia se taie la salvare, la
+ * fel ca la adăugarea rapidă, unde regula asta e de la început.
+ *
+ * @param raw textul din câmp, așa cum l-a scris omul
+ * @param recognized `TitleDate.title` — același text fără fragmentele
+ *   recunoscute și nerefuzate (identic cu `raw` când nu s-a recunoscut nimic)
+ */
+export function titleToSave(raw: string, recognized: string): SaveTitle {
+  const title = recognized.trim()
+  return { title, bare: title === '' && raw.trim() !== '' }
+}

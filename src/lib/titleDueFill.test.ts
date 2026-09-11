@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { fillFromTitle, type FillMemo } from './titleDueFill'
+import { fillFromTitle, titleToSave, type FillMemo } from './titleDueFill'
 
 const F = (date: string, time: string) => ({ date, time })
 const EMPTY = F('', '')
@@ -64,5 +64,29 @@ describe('fillFromTitle — fără memorie', () => {
     const r = fillFromTitle(F('08/09/2026', '10:00'), null, null)
     expect(r.fields).toEqual(F('08/09/2026', '10:00'))
     expect(r.memo).toBeNull()
+  })
+})
+
+describe('titleToSave', () => {
+  it('salvează titlul fără fragmentul devenit scadență', () => {
+    expect(titleToSave('cumpără lapte la 14', 'cumpără lapte')).toEqual({
+      title: 'cumpără lapte',
+      bare: false,
+    })
+  })
+
+  it('lasă titlul neatins când nu s-a recunoscut nimic', () => {
+    expect(titleToSave('  cumpără lapte  ', '  cumpără lapte  ')).toEqual({
+      title: 'cumpără lapte',
+      bare: false,
+    })
+  })
+
+  it('semnalează titlul rămas gol — o dată nu e o sarcină', () => {
+    expect(titleToSave('mâine la 14', '')).toEqual({ title: '', bare: true })
+  })
+
+  it('un titlu gol de la bun început nu e „numai dată"', () => {
+    expect(titleToSave('   ', '')).toEqual({ title: '', bare: false })
   })
 })

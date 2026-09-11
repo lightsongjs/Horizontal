@@ -131,7 +131,10 @@ timeText === auto.time`) și trebuie să supraviețuiască mutării.
 
 ## Ce rămâne în afara scopului
 
-- Ștergerea automată a fragmentului din titlu la salvare. Azi „la 2p" rămâne în
-  titlu, iar cu decizia 2 asta nu mai face rău. O curățare automată e o
-  schimbare separată, cu propriile ei consecințe.
+- ~~Ștergerea automată a fragmentului din titlu la salvare.~~ **Făcută**
+  ulterior (`titleToSave` din `lib/titleDueFill.ts`): la salvare, titlul se
+  scrie fără fragmentele devenite scadență, ca la `QuickAdd`. Un fragment
+  rămas în titlu minte la a doua deschidere — „la 14" se recalculează față de
+  altă zi. Dacă nu mai rămâne nimic din titlu, salvarea e stinsă și se spune de
+  ce („și ce ai de făcut?").
 - Editorul de dependențe obstacol-obstacol, listele inteligente, `QuickAdd`.

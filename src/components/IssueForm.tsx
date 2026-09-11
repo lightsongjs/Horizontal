@@ -6,7 +6,7 @@ import { useCanWrite, useTitleDate } from '../hooks'
 import { ticketUrl } from '../lib/deepLink'
 import { stripSpans } from '../lib/parseDue'
 import { fold } from '../lib/text'
-import { fillFromTitle, type FillMemo } from '../lib/titleDueFill'
+import { fillFromTitle, titleToSave, type FillMemo } from '../lib/titleDueFill'
 import {
   DATE_PLACEHOLDER, NO_SCHEDULE, TIME_PLACEHOLDER, defaultReminder, displayFromInputDate,
   fromDisplayDate, fromInputs, fromTimeText, hasTime, maskDateInput, maskTimeInput, reminderAt,
@@ -419,6 +419,14 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
    */
   const refuseTitleDate = () => titleDate.rejectAll()
 
+  /**
+   * Titlul care se salvează — fără fragmentele devenite scadență. Decizia e în
+   * `titleToSave`; aici rămâne doar folosirea ei, în locul lui `title.trim()`.
+   * Butonul „curăță titlul" nu dispare: el face tăietura ACUM, ca s-o vezi
+   * înainte de salvare.
+   */
+  const { title: saveTitle, bare: bareTitle } = titleToSave(title, titleDate.title)
+
   const isDirty = isEdit
     ? title !== (existing?.title ?? '') ||
       desc !== (existing?.desc ?? '') ||
@@ -635,10 +643,14 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
   }
 
   const save = async ({ close }: { close: boolean }) => {
-    if (!canWrite || !title.trim() || saving || waves.length === 0) return
+    if (!canWrite || !saveTitle || saving || waves.length === 0) return
     const cyc = cycleAfterSave()
     if (cyc) { setCycleMsg(cyc); return }
     setCycleMsg(null); setObstacleError(null); setSaving(true)
+    // Câmpul urmează ce s-a salvat, altfel formularul ar rămâne „murdar" pe o
+    // diferență invizibilă. Uităm și memoria completării: scadența aplicată
+    // devine definitivă, exact ca la „curăță titlul".
+    if (saveTitle !== title) { fillMemo.current = null; setTitle(saveTitle) }
     try {
       const draftDepMap: Record<string, string> = {}
       for (const d of draftDeps) {
@@ -678,8 +690,8 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
         dueAt: schedule.dueAt, allDay: schedule.allDay, remindAt: schedule.remindAt,
       }
       const targetId = isEdit
-        ? (await updateIssue(existing!.id, { title: title.trim(), desc: desc.trim(), theme, wave, deps: realDeps, ...qaPayload }), existing!.id)
-        : (await createIssue({ projectId: project.id, title: title.trim(), desc: desc.trim(), theme, wave, deps: realDeps, ...qaPayload })).id
+        ? (await updateIssue(existing!.id, { title: saveTitle, desc: desc.trim(), theme, wave, deps: realDeps, ...qaPayload }), existing!.id)
+        : (await createIssue({ projectId: project.id, title: saveTitle, desc: desc.trim(), theme, wave, deps: realDeps, ...qaPayload })).id
       await setIssueObstacles(targetId, realObstIds)
       const realBlocks = blocks.map((id) => draftBlockMap[id] ?? (id.startsWith('__draft_') ? null : id)).filter(Boolean) as string[]
       const currentBlockers = issues.filter((i) => i.deps?.includes(targetId)).map((i) => i.id)
@@ -702,7 +714,7 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
         return i
       })
       if (!snap.find((i) => i.id === targetId)) {
-        snap = [...snap, { id: targetId, projectId: project.id, title: title.trim(), desc: desc.trim(), theme, wave, deps: realDeps, done: false, selectors: selectors.filter(Boolean), scenarios, notes: notes.trim(), assigneeId, urgent, dueAt: schedule.dueAt, allDay: schedule.allDay, remindAt: schedule.remindAt, rrule: null }]
+        snap = [...snap, { id: targetId, projectId: project.id, title: saveTitle, desc: desc.trim(), theme, wave, deps: realDeps, done: false, selectors: selectors.filter(Boolean), scenarios, notes: notes.trim(), assigneeId, urgent, dueAt: schedule.dueAt, allDay: schedule.allDay, remindAt: schedule.remindAt, rrule: null }]
       }
       const cascadeQueue = [...realDeps]
       const cascadeSeen = new Set<string>()
@@ -841,7 +853,7 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
             tabIndex={-1}
             className={`sh-save${isDirty ? ' dirty' : ''}${nudging ? ' nudge' : ''}`}
             onClick={() => void save({ close: false })}
-            disabled={!title.trim() || saving || waves.length === 0}
+            disabled={!saveTitle || saving || waves.length === 0}
             title={saving ? 'Se salvează…' : 'Salvează (Ctrl+S) · Ctrl+Enter salvează și închide'}
           >
             <Icon name="arrowUp" size={16} />
@@ -1105,6 +1117,8 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
                   </button>
                 </span>
               )}
+              {/* Titlul era numai dată: salvarea e stinsă, deci spune de ce. */}
+              {bareTitle && <span className="due-hint warn">și ce ai de făcut?</span>}
               {(dueIncomplete || timeIncomplete) && (
                   <span className="due-hint warn">{dueIncomplete ? 'zi-lună-an' : 'oră 0–23'}</span>
                 )}
