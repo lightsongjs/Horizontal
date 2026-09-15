@@ -141,6 +141,47 @@ try {
   check('„+ Tichet" merge cu un tichet docat', hdrOpen, hdrOpen ? 'formular deschis' : 'totul s-a închis')
   check('„+ Tichet" deschide un formular GOL', hdrVal === '', `titlu="${hdrVal ?? '(niciun input)'}"`)
 
+  // ── Reîncărcarea nu are voie să golească ecranul ────────────────────────
+  // `refresh()` ridica `loading`, iar `loading` înlocuia tot `<main>` cu „Se
+  // încarcă…”. Vizualizarea se demonta, `SplitView` ieșea din arbore, cleanup-ul
+  // lui `registerSplitHost` ducea `dockedIssueId` la null și tichetul docat
+  // clipea ca MODAL peste listă — la fiecare revenire în tab. Un `waitForTimeout`
+  // n-ar prinde asta (poate dura un singur cadru), de-aia observatorul se pune
+  // ÎNAINTE de click și raportează dacă modalul a existat vreodată.
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(400)
+  await page.locator('.tab', { hasText: /^List/ }).first().click().catch(() => {})
+  await page.waitForTimeout(400)
+  await page.locator('.list-row').first().click()
+  await page.waitForTimeout(800)
+  check('tichet docat, pregătit de reîncărcare', !(await modalOpen()), 'fără modal')
+
+  await page.evaluate(() => {
+    window.__flash = { modal: false, blank: false }
+    const look = () => {
+      // Se urmărește DISPARIȚIA panoului, nu apariția modalului: `.sheet` e
+      // mereu în DOM (o face `.on` vizibilă), iar pe backendul local cele două
+      // randări intermediare se pot comprima destul cât `.on` să nu apuce să se
+      // pună. Cauza, însă, se vede întreagă: dacă `.split-pane` a lipsit măcar
+      // o randare, `registerSplitHost` s-a desfăcut — și cu latența reală a lui
+      // Supabase exact acolo sare modalul.
+      if (!document.querySelector('.split-pane')) window.__flash.modal = true
+      const main = document.querySelector('main')
+      if (main && main.textContent.includes('Se încarcă')) window.__flash.blank = true
+    }
+    window.__flashObserver = new MutationObserver(look)
+    window.__flashObserver.observe(document.body, { childList: true, subtree: true })
+    look()
+  })
+  await page.locator('.header-refresh-btn').click()
+  await page.waitForTimeout(1500)
+  const flash = await page.evaluate(() => {
+    window.__flashObserver.disconnect()
+    return window.__flash
+  })
+  check('reîncărcarea nu golește ecranul', !flash.blank, flash.blank ? 'a apărut „Se încarcă…" peste listă' : 'lista a rămas pe ecran')
+  check('reîncărcarea nu scoate tichetul din panou', !flash.modal, flash.modal ? 'panoul lateral a dispărut — de aici clipește modalul' : 'a rămas docat')
+
   // ── C într-o listă inteligentă ──────────────────────────────────────────
   // „Azi"/„Mâine" n-au proiect activ (se alege abia când deschizi o sarcină),
   // iar C era condiționat de `project` — deci nu făcea nimic. Acolo „creează"

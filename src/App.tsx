@@ -58,7 +58,7 @@ function smartCrumb(kind: SmartListKind, now: Date): string {
 }
 
 function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, canWrite, smartList, onExitSmartList, sidebarCollapsed, onToggleSidebar }: { onNewIssue: () => void; onSearch: () => void; onProjectSettings: () => void; onRefresh: () => void; onInfo: () => void; canWrite: boolean; smartList: SmartListKind | null; onExitSmartList: () => void; sidebarCollapsed: boolean; onToggleSidebar: () => void }) {
-  const { project, completion, selectProject, smartLists } = useHorizontal()
+  const { project, completion, selectProject, smartLists, refreshing } = useHorizontal()
   const pct = project ? Math.round(completion(project.id) * 100) : 0
   const list = smartList ? SMART_LISTS.find((s) => s.kind === smartList) : null
   const listCount = smartList === 'today' ? smartLists.today.length
@@ -121,7 +121,12 @@ function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, ca
       <button className="header-info-btn" onClick={onInfo} aria-label="Referință" title="Referință (Ctrl+,)">
         <Icon name="help" size={15} />
       </button>
-      <button className="header-refresh-btn" onClick={onRefresh} aria-label="Reîncarcă">
+      <button
+        className={`header-refresh-btn${refreshing ? ' is-refreshing' : ''}`}
+        onClick={onRefresh}
+        aria-label="Reîncarcă"
+        aria-busy={refreshing}
+      >
         <Icon name="refresh" size={15} />
       </button>
       <ThemeToggle className="theme-toggle-mobile" />
@@ -228,8 +233,9 @@ function Shell() {
   // Setat cât timp un deep link se rezolvă, ca sincronizarea proiect → URL să
   // nu scrie /project/<slug> peste /MS-03. Vezi Task 4.
   const deepLinkPending = useRef<string | null>(null)
-  // Efectul de boot rulează o singură dată. `loading` redevine true la fiecare
-  // refresh() (inclusiv la revenirea în tab), deci nu poate fi singura gardă.
+  // Efectul de boot rulează o singură dată. `loading` e acum doar al pornirii —
+  // `refresh()` nu-l mai ridică — dar garda rămâne: efectul depinde de `loading`
+  // și n-are voie să se rejoace dacă altcineva îl atinge vreodată.
   const bootDone = useRef(false)
   const sheetRef = useRef(sheet)
   sheetRef.current = sheet

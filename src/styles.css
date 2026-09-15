@@ -2254,6 +2254,21 @@ main {
   background: var(--accent-soft);
   color: var(--accent);
 }
+/* Singurul semn că se reîncarcă în fundal. Datele vechi rămân pe ecran: un
+   ecran golit la fiecare revenire în tab demonta vizualizarea (vezi `loading`
+   în store.tsx), iar tichetul docat clipea ca modal. */
+.header-refresh-btn.is-refreshing {
+  color: var(--accent);
+}
+.header-refresh-btn.is-refreshing svg {
+  animation: header-refresh-spin 0.9s linear infinite;
+}
+@keyframes header-refresh-spin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .header-refresh-btn.is-refreshing svg { animation: none; }
+}
 
 /* ─── KEYBOARD SHORTCUTS OVERLAY ────────────────────────────────────── */
 /* ── PANOUL DE REFERINȚĂ (Ctrl+,) ───────────────────────────────────

@@ -8,6 +8,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
@@ -26,9 +27,20 @@ import { buildSmartLists, smartListRange, type SmartLists } from './lib/schedule
 import { blockedBy, detectObstacleCycle } from './lib/obstacles'
 import type { Assignee, Issue, IssueState, Layers, Obstacle, ObstacleLink, Project, Theme, Wave } from './lib/types'
 import { errorMessage } from './lib/errorMessage'
+import { shouldRefreshOnVisible } from './lib/refreshGate'
 
 interface HorizontalState {
+  /**
+   * Doar PORNIREA aplicației. `refresh()` nu îl mai ridică, iar asta e o
+   * garanție, nu o optimizare: cât e true, `App` înlocuiește tot `<main>` cu
+   * „Se încarcă…”, deci vizualizarea se demontează. O demontare la revenirea
+   * în tab scotea `SplitView` din arbore, cleanup-ul lui `registerSplitHost`
+   * ducea `dockedIssueId` la null, iar tichetul docat clipea ca modal peste
+   * listă. Vezi `refreshing` pentru reîmprospătarea în fundal.
+   */
   loading: boolean
+  /** O reîmprospătare e în curs, dar datele vechi sunt pe ecran și rămân acolo. */
+  refreshing: boolean
   error: string | null
   refresh(): Promise<void>
   projects: Project[]
@@ -113,7 +125,14 @@ const Ctx = createContext<HorizontalState | null>(null)
 
 export function HorizontalProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /**
+   * Când s-a încheiat ultima încărcare completă. Ref, nu state: îl citește doar
+   * ascultătorul de `visibilitychange`, iar ca state ar fi recreat `refresh` la
+   * fiecare rulare și ar fi reatașat ascultătorul degeaba.
+   */
+  const lastRefreshAt = useRef<number | null>(null)
   const [projectOrder, setProjectOrder] = useState<string[]>(loadOrder)
   const [rawProjects, setRawProjects] = useState<Project[]>([])
   const [allWaves, setAllWaves] = useState<Wave[]>([])
@@ -165,7 +184,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const refresh = useCallback(async () => {
-    setLoading(true)
+    setRefreshing(true)
     setIssuesLoadFailedFor(null)
     void loadDue()
     try {
@@ -217,7 +236,11 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
       // rămâne cum era — datele vechi sunt încă în memorie și încă valide.
       if (projectId) setIssuesLoadFailedFor(projectId)
     } finally {
-      setLoading(false)
+      // Și după un eșec: pragul măsoară „de când n-am mai încercat”, nu „de
+      // când n-am mai reușit”. Altfel un Supabase căzut ar fi însemnat o
+      // cerere la fiecare comutare de tab.
+      lastRefreshAt.current = Date.now()
+      setRefreshing(false)
     }
   }, [projectId, loadDue])
 
@@ -233,14 +256,21 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
       } catch (e) {
         if (alive) setError(errorMessage(e))
       } finally {
-        if (alive) setLoading(false)
+        if (alive) {
+          lastRefreshAt.current = Date.now()
+          setLoading(false)
+        }
       }
     })()
     return () => { alive = false }
   }, [loadDue])
 
   useEffect(() => {
-    const onVisible = () => { if (document.visibilityState === 'visible') refresh() }
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return
+      if (!shouldRefreshOnVisible(lastRefreshAt.current, Date.now())) return
+      void refresh()
+    }
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [refresh])
@@ -632,6 +662,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
 
   const value: HorizontalState = {
     loading,
+    refreshing,
     error,
     refresh,
     projects,

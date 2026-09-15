@@ -366,6 +366,28 @@ scriu azi doar direct în bază.
 
 Setup: `npm run migrate supabase/migration-obstacles.sql`.
 
+## Reîmprospătarea datelor — de ce nu golește ecranul
+
+Datele se cer din nou la revenirea în tab: asta e tot ce face „un tichet creat
+pe telefon se vede pe web". Două reguli o țin suportabilă.
+
+**`loading` e doar al PORNIRII.** Cât e true, `App` înlocuiește tot `<main>` cu
+„Se încarcă…", deci vizualizarea se demontează — iar odată cu ea `SplitView`,
+al cărui cleanup de `registerSplitHost` duce `dockedIssueId` la null și face
+tichetul docat să clipească ca modal peste listă. De-aia `refresh()` ridică
+`refreshing`, nu `loading`: datele vechi rămân pe ecran, iar singurul semn e
+iconița care se rotește în header. Nu muta `loading` înapoi în `refresh()`.
+
+**Revenirea în tab trece printr-un prag** (`src/lib/refreshGate.ts`, 30s):
+comuți pe alt tab să copiezi un link și te întorci — asta nu e un motiv de
+rundă completă către Supabase. Refresh-ul EXPLICIT (butonul din header,
+tragerea în jos) nu consultă pragul niciodată: acolo omul a cerut datele, iar
+un refuz tăcut ar arăta ca un buton stricat.
+
+Realtime (`postgres_changes`) ar da „instant" cu ambele dispozitive deschise,
+dar nu înlocuiește nimic de mai sus: canalul cade cu tabul în fundal și cu
+telefonul adormit, deci resyncul la revenire rămâne oricum necesar.
+
 ## Teste care cer un browser
 
 `npm test` (vitest) nu face layout și nu are DOM real, deci nu poate vedea două
@@ -381,6 +403,10 @@ clase de regresii — amândouă au ajuns în producție o dată:
   în browser că o foaie deschisă nu urmează userul între taburi. A prins un
   tichet docat în panoul lateral al „Listei" care sărea ca modal peste „Cards".
   Rulează-l după orice atingere a stivei de foi, a `SplitView` sau a navigării.
+  Tot el păzește și reîmprospătarea: verifică, printr-un `MutationObserver` pus
+  ÎNAINTE de click, că o reîncărcare n-a golit `<main>` și n-a scos `.split-pane`
+  din DOM măcar o randare. Un `waitForTimeout` n-ar prinde asta — clipirea poate
+  dura un singur cadru.
 
 Amândouă sunt lente (pornesc un browser), deci nu sunt în `npm test`. Bancul de
 probă din `design/preview.html` rămâne pentru CULOARE; astea două sunt pentru
