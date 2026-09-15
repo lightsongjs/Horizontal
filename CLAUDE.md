@@ -195,6 +195,15 @@ Mockup vizual: `prototype-todo.html`.
 **Nu există Inbox.** Fiecare sarcină are un proiect; quick add poartă un selector
 care ține minte ultima alegere (`horizontal:last-task-project`).
 
+**Un URL de tichet spune CE e deschis, nu PE CE ecran.** Un card deschis dintr-o
+listă inteligentă se deschide peste listă, iar `/HZ-12` din bară nu poartă
+informația asta — de-aia ramura de tichet din efectul de boot (`App.tsx`)
+restaurează lista memorată din `LAST_VIEW_KEY`, iar `settleUrl` așază `/` cât
+timp o listă e pe ecran. Fără cele două, o repornire cu cardul deschis ateriza
+pe boardul proiectului și ștergerea ducea mai departe, pe ultimul proiect
+folosit. Repornirea nu e ipotetică: `pwa.ts` aplică un build nou la revenirea în
+tab, adică reîncarcă pagina exact peste cardul deschis.
+
 Scadența se vede și în **modul proiecte**, pe card („Ordine") și pe rând
 („Listă"): `src/components/DueChip.tsx` — ziua, ora **doar dacă** are una,
 clopoțelul **doar dacă** are memento, roșu dacă e restanță. Un tichet fără
@@ -406,7 +415,8 @@ clase de regresii — amândouă au ajuns în producție o dată:
   Tot el păzește și reîmprospătarea: verifică, printr-un `MutationObserver` pus
   ÎNAINTE de click, că o reîncărcare n-a golit `<main>` și n-a scos `.split-pane`
   din DOM măcar o randare. Un `waitForTimeout` n-ar prinde asta — clipirea poate
-  dura un singur cadru.
+  dura un singur cadru. Și, într-o filă curată, că o sarcină deschisă din „Azi"
+  rămâne pe „Azi" peste o repornire și peste ștergere.
 
 Amândouă sunt lente (pornesc un browser), deci nu sunt în `npm test`. Bancul de
 probă din `design/preview.html` rămâne pentru CULOARE; astea două sunt pentru

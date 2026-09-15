@@ -295,6 +295,11 @@ function Shell() {
   }, [leaveDocked])
   const projectRef = useRef(project)
   projectRef.current = project
+  // Citit din `settleUrl`, care e chemat și din handlere de istoric — acolo un
+  // `smartList` închis peste clojură ar fi poza de la montare, nu ecranul de
+  // acum.
+  const smartListRef = useRef(smartList)
+  smartListRef.current = smartList
   const projectsRef = useRef(projects)
   projectsRef.current = projects
   const byIdRef = useRef(byId)
@@ -312,9 +317,17 @@ function Shell() {
     window.history.replaceState({ hzDepth: historyDepth.current }, '', path)
   }
   const projectPath = (p: Project | null) => (p ? `/project/${slugify(p.name)}` : '/')
-  /** Așază URL-ul pe destinația reală (proiect sau landing), fără intrare nouă. */
+  /**
+   * Așază URL-ul pe destinația reală (proiect sau landing), fără intrare nouă.
+   *
+   * Cu o listă inteligentă pe ecran, destinația reală e `/` oricare ar fi
+   * proiectul primit: acolo proiectul e încărcat doar ca să meargă formularul
+   * sarcinii, nu e ecranul pe care te afli. Fără regula asta, închiderea sau
+   * ștergerea unei sarcini din „Azi" lăsa în bară `/project/<slug>` — iar
+   * următoarea repornire chiar te muta acolo.
+   */
   const settleUrl = (p: Project | null) => {
-    const path = projectPath(p)
+    const path = projectPath(smartListRef.current ? null : p)
     if (window.location.pathname !== path) replacePath(path)
   }
   /**
@@ -464,6 +477,16 @@ function Shell() {
     bootDone.current = true
     const target = parseTicketPath(window.location.pathname)
     if (target) {
+      // Un path de tichet spune CE e deschis, nu PE CE ecran. În aplicație, un
+      // card dintr-o listă inteligentă se deschide PESTE listă (vezi
+      // `openTaskAnywhere`), deci o repornire trebuie să se întoarcă tot acolo.
+      // Fără asta se ateriza pe boardul proiectului, iar ștergerea ducea mai
+      // departe, pe ultimul proiect folosit — te trezeai în două mutări într-un
+      // loc pe care nu-l ceruseși. Și repornirea nu e ipotetică: `pwa.ts`
+      // aplică un build nou la revenirea în tab, adică reîncarcă pagina exact
+      // peste un card deschis.
+      const lastView = parseLastView(localStorage.getItem(LAST_VIEW_KEY))
+      if (lastView) setSmartList(lastView)
       const owner = resolveTicketProject(projects, target)
       if (owner) {
         deepLinkPending.current = target
@@ -472,7 +495,10 @@ function Shell() {
         // Fără proiecte în listă nu putem ști dacă ticketul a dispărut sau doar
         // listProjects() a eșuat — `error` face diferența.
         setNotice(deepLinkNotice(target, error ? 'load-failed' : 'missing'))
-        settleUrl(selectLastUsedProject())
+        // Cu o listă restaurată, ea E ecranul: un salt în ultimul proiect ar
+        // muta userul de pe singurul loc pe care îl ceruse.
+        if (lastView) settleUrl(null)
+        else settleUrl(selectLastUsedProject())
       }
     } else {
       const match = window.location.pathname.match(/^\/project\/(.+)$/)

@@ -203,6 +203,63 @@ try {
     check('C focusează quick add pe „Azi"', focused, focused ? 'cursorul e în câmp' : 'nu s-a întâmplat nimic')
   }
 
+  // ── O sarcină deschisă din „Azi" nu te mută pe boardul proiectului ──────
+  // Un URL de tichet (/EX-06) nu spune pe ce ecran era deschis cardul. Ramura
+  // de tichet din efectul de boot presupunea „proiect" și nu citea deloc
+  // `LAST_VIEW_KEY`, deci o repornire cu cardul deschis ateriza pe boardul
+  // proiectului, iar ștergerea ducea mai departe, pe ultimul proiect folosit.
+  //
+  // Repornirea nu e ipotetică: `src/pwa.ts` aplică un build nou la revenirea în
+  // tab, iar `updateSW(true)` reîncarcă pagina — exact peste un card deschis.
+  //
+  // Filă NOUĂ, deliberat: istoricul de până aici e plin de tichete vizitate de
+  // testele de mai sus, iar `history.back()` de la închiderea unei foi ar
+  // ateriza pe unul dintre ele. Scenariul ăsta e despre o sesiune obișnuită —
+  // intri pe „Azi", deschizi o sarcină, se reîncarcă — deci pornește curat.
+  const fresh = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+  await fresh.goto(BASE, { waitUntil: 'networkidle' })
+  await fresh.waitForTimeout(700)
+  await fresh.locator('.tabbar button, .sidebar-smart-item, .sidebar button')
+    .filter({ hasText: /^Azi/ }).locator('visible=true').first()
+    .click()
+  await fresh.waitForTimeout(800)
+  const qa = fresh.locator('.qa-input').first()
+  await qa.fill('Sarcină de probă pentru repornire')
+  await fresh.keyboard.press('Enter')
+  await fresh.waitForTimeout(1200)
+  const taskRows = await fresh.locator('.task-row').count()
+  check('quick add a creat sarcina', taskRows > 0, taskRows > 0 ? `${taskRows} în listă` : 'lista e goală')
+  if (taskRows > 0) {
+    await fresh.locator('.task-row').first().click()
+    await fresh.waitForTimeout(1200)
+    const ticketUrl = new URL(fresh.url()).pathname
+    check('cardul deschis ține URL de tichet', /^\/[A-Z]+-\d+$/.test(ticketUrl), `URL=${ticketUrl}`)
+
+    await fresh.reload({ waitUntil: 'networkidle' })
+    await fresh.waitForTimeout(1600)
+    const stillOnList = (await fresh.locator('.qa-input').count()) > 0
+    check(
+      'repornirea cu cardul deschis rămâne pe „Azi"',
+      stillOnList,
+      stillOnList ? 'lista e pe ecran' : `a sărit pe „${await fresh.locator('h1').first().textContent()}"`,
+    )
+
+    const del = fresh.locator('.sh-delete').first()
+    await del.click()
+    await fresh.waitForTimeout(300)
+    await del.click()
+    await fresh.waitForTimeout(1800)
+    const afterDelete = (await fresh.locator('.qa-input').count()) > 0
+    check(
+      'ștergerea sarcinii rămâne pe „Azi"',
+      afterDelete,
+      afterDelete ? 'lista e pe ecran' : `a sărit pe „${await fresh.locator('h1').first().textContent()}"`,
+    )
+    const urlAfter = new URL(fresh.url()).pathname
+    check('URL-ul nu minte după ștergere', urlAfter === '/', `URL=${urlAfter}`)
+  }
+
+  await fresh.close()
   await page.close()
 } finally {
   if (browser) await browser.close()
