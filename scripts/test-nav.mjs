@@ -260,6 +260,49 @@ try {
   }
 
   await fresh.close()
+
+  // ── Ștergerea nu redeschide tichetul vizitat înainte ────────────────────
+  // La închiderea unei foi se dădea `history.back()`, ca să se desfacă
+  // intrarea împinsă la deschidere. Dar `back()` merge orbește: presupune că
+  // intrarea din spate e ecranul pe care erai. Dacă în spate stă alt tichet,
+  // `popstate` își face datoria — vede un URL de tichet și îl deschide. Ștergi
+  // o sarcină din „Azi" și îți sare în panou un tichet din alt proiect.
+  const stale = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+  await stale.goto(BASE, { waitUntil: 'networkidle' })
+  await stale.waitForTimeout(700)
+  await stale.locator('.proj').first().click()
+  await stale.waitForTimeout(900)
+  await stale.locator('.tab', { hasText: /^List/ }).first().click()
+  await stale.waitForTimeout(500)
+  await stale.locator('.list-row').first().click()
+  await stale.waitForTimeout(900)
+  const oldTicket = new URL(stale.url()).pathname
+  check('un tichet vechi e deschis', /^\/[A-Z]+-\d+$/.test(oldTicket), `URL=${oldTicket}`)
+
+  await stale.locator('.tabbar button, .sidebar-smart-item, .sidebar button')
+    .filter({ hasText: /^Azi/ }).locator('visible=true').first()
+    .click()
+  await stale.waitForTimeout(800)
+  await stale.locator('.qa-input').first().fill('test')
+  await stale.keyboard.press('Enter')
+  await stale.waitForTimeout(1200)
+  await stale.locator('.task-row').first().click()
+  await stale.waitForTimeout(1200)
+  const staleDel = stale.locator('.sh-delete').first()
+  await staleDel.click()
+  await stale.waitForTimeout(300)
+  await staleDel.click()
+  await stale.waitForTimeout(1800)
+  const reopened = await stale.locator('.split-pane input').first().inputValue().catch(() => null)
+  check(
+    'ștergerea nu redeschide tichetul vechi',
+    reopened === null,
+    reopened === null ? 'panoul e gol' : `a sărit „${reopened}" în panou`,
+  )
+  const staleUrl = new URL(stale.url()).pathname
+  check('URL-ul nu rămâne pe tichetul vechi', staleUrl !== oldTicket, `URL=${staleUrl}`)
+  await stale.close()
+
   await page.close()
 } finally {
   if (browser) await browser.close()

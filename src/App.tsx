@@ -309,6 +309,16 @@ function Shell() {
   // cu care s-a încărcat pagina nu are state → 0 → nu avem nimic al nostru în
   // spate, deci history.back() ar scoate userul din aplicație.
   const historyDepth = useRef<number>(readDepth())
+  /**
+   * Path-ul care era în bară când am împins intrarea ticketului curent — adică
+   * unde ar ateriza un `history.back()` la închiderea foii. `null` înseamnă „nu
+   * noi am împins-o" (deep link rece, sau o pagină reîncărcată peste un card
+   * deschis): acolo nu se poate ști ce e în spate, deci nu navigăm.
+   */
+  const behindTicket = useRef<string | null>(null)
+  /** Un back ne-ar duce pe alt ticket? Atunci rescriem URL-ul în loc să navigăm. */
+  const backLandsOnTicket = () =>
+    behindTicket.current === null || parseTicketPath(behindTicket.current) !== null
   const pushPath = (path: string) => {
     historyDepth.current += 1
     window.history.pushState({ hzDepth: historyDepth.current }, '', path)
@@ -572,7 +582,11 @@ function Shell() {
       // URL-ul e deja al acestui ticket (alt caps, după un deep link) → doar îl
       // canonizăm, fără intrare nouă.
       if (onTicketUrl === ticketId) replacePath(path)
-      else pushPath(path)
+      else {
+        // Ce era în bară înainte de intrarea asta. Vezi `behindTicket`.
+        behindTicket.current = window.location.pathname
+        pushPath(path)
+      }
     } else if (onTicketUrl && deepLinkPending.current === null) {
       // `ticketId` e null, dar asta nu înseamnă întotdeauna „s-a închis tot".
       // Poate fi și „am înlocuit formularul unui ticket cu unul de ticket NOU",
@@ -584,7 +598,11 @@ function Shell() {
       if (sheetRef.current.kind !== 'none') settleUrl(projectRef.current)
       // Sheet-ul s-a închis dar URL-ul e încă de ticket. Garda `onTicketUrl`
       // previne un back dublu când popstate a fost cel care a închis sheet-ul.
-      else if (historyDepth.current > 0) window.history.back()
+      // `backLandsOnTicket()` e a doua gardă: un `back()` orb presupune că în
+      // spate e ecranul pe care erai, dar acolo poate sta alt tichet — iar
+      // `onPop` își face datoria și îl deschide. Ștergeai o sarcină din „Azi"
+      // și îți sărea în panou un tichet din alt proiect.
+      else if (historyDepth.current > 0 && !backLandsOnTicket()) window.history.back()
       // Deep link rece: intrarea de ticket e prima din sesiune, un back ar
       // scoate userul din aplicație. Rescriem în loc să navigăm.
       else settleUrl(projectRef.current)

@@ -195,6 +195,17 @@ Mockup vizual: `prototype-todo.html`.
 **Nu există Inbox.** Fiecare sarcină are un proiect; quick add poartă un selector
 care ține minte ultima alegere (`horizontal:last-task-project`).
 
+**Închiderea unei foi nu e o navigare înapoi.** La deschidere se împinge o
+intrare de istoric (ca Back să închidă foaia), iar la închidere se desface cu
+`history.back()` — dar un back orb presupune că în spate e ecranul pe care
+erai. Dacă acolo stă alt tichet, `popstate` își face datoria și îl deschide:
+ștergeai o sarcină din „Azi" și îți sărea în panou un tichet din alt proiect.
+De-aia `behindTicket` din `App.tsx` reține ce era în bară înainte de împingere,
+iar `back()` se face doar dacă acolo NU e tot un tichet; altfel URL-ul se
+rescrie pe ecranul curent, fără navigare. `null` (deep link rece, sau pagină
+reîncărcată peste un card deschis) înseamnă „nu noi am împins-o", deci tot fără
+navigare.
+
 **Un URL de tichet spune CE e deschis, nu PE CE ecran.** Un card deschis dintr-o
 listă inteligentă se deschide peste listă, iar `/HZ-12` din bară nu poartă
 informația asta — de-aia ramura de tichet din efectul de boot (`App.tsx`)
@@ -415,8 +426,9 @@ clase de regresii — amândouă au ajuns în producție o dată:
   Tot el păzește și reîmprospătarea: verifică, printr-un `MutationObserver` pus
   ÎNAINTE de click, că o reîncărcare n-a golit `<main>` și n-a scos `.split-pane`
   din DOM măcar o randare. Un `waitForTimeout` n-ar prinde asta — clipirea poate
-  dura un singur cadru. Și, într-o filă curată, că o sarcină deschisă din „Azi"
-  rămâne pe „Azi" peste o repornire și peste ștergere.
+  dura un singur cadru. Și, în file curate (istoricul celorlalte teste ar falsifica
+  un `back()`), că o sarcină deschisă din „Azi" rămâne pe „Azi" peste o repornire
+  și peste ștergere, și că ștergerea nu redeschide tichetul vizitat înainte.
 
 Amândouă sunt lente (pornesc un browser), deci nu sunt în `npm test`. Bancul de
 probă din `design/preview.html` rămâne pentru CULOARE; astea două sunt pentru
