@@ -35,7 +35,7 @@ function iconFor(contentType: string, filename: string): IconName {
 }
 
 /**
- * Fișierele tichetului, ca o bară de 36px deasupra descrierii.
+ * Fișierele tichetului, ca o bară de o linie deasupra descrierii.
  *
  * Înainte era un bloc sub notițe, adică sub o descriere care poate fi lungă: se
  * ajungea la el doar cu scroll, deci nu răspundea la întrebarea pentru care
@@ -54,7 +54,7 @@ export function Attachments({
   issueId?: string
   projectId: string
   readOnly?: boolean
-  /** Unde se poate LĂSA un fișier tras cu mouse-ul. O bară de 36px e o țintă
+  /** Unde se poate LĂSA un fișier tras cu mouse-ul. O bară de o linie e o țintă
    *  proastă de drop, deci zona rămâne mare: formularul dă aici coloana de
    *  descriere. Fără prop, nu există drop deloc (cazul read-only). */
   dropZone?: RefObject<HTMLElement | null>
@@ -270,7 +270,7 @@ export function Attachments({
     <div className="att-zone">
       <div className="att-bar">
         <span className="att-anchor" title="Fișiere atașate">
-          <Icon name="attachment" size={14} />
+          <Icon name="attachment" size={16} />
           {items.length > 0 && <span className="att-n">{items.length}</span>}
         </span>
 
@@ -299,10 +299,10 @@ export function Attachments({
                       onError={() => setBroken((prev) => new Set(prev).add(a.path))}
                     />
                   ) : isImg ? (
-                    <span className="att-ic off"><Icon name="fileImage" size={14} /></span>
+                    <span className="att-ic off"><Icon name="fileImage" size={20} /></span>
                   ) : (
                     <>
-                      <span className="att-ic"><Icon name={iconFor(a.contentType, a.filename)} size={14} /></span>
+                      <span className="att-ic"><Icon name={iconFor(a.contentType, a.filename)} size={20} /></span>
                       <span className="att-name">{a.filename}</span>
                     </>
                   )}
@@ -314,7 +314,7 @@ export function Attachments({
                     title={armed === a.id ? 'Mai apasă o dată ca să ștergi' : 'Șterge'}
                     onClick={() => (armed === a.id ? void remove(a) : arm(a.id))}
                   >
-                    <Icon name={armed === a.id ? 'delete' : 'close'} size={11} />
+                    <Icon name={armed === a.id ? 'delete' : 'close'} size={13} />
                   </button>
                 )}
               </span>

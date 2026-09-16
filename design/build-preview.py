@@ -425,9 +425,9 @@ THUMB = ("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width
 
 
 def att_del(armed=False):
-    return ('<button class="att-del armed" aria-label="Confirmă ștergerea">' + ic('trash-2', 11) + '</button>'
+    return ('<button class="att-del armed" aria-label="Confirmă ștergerea">' + ic('trash-2', 13) + '</button>'
             if armed else
-            '<button class="att-del" aria-label="Șterge">' + ic('x', 11) + '</button>')
+            '<button class="att-del" aria-label="Șterge">' + ic('x', 13) + '</button>')
 
 
 def att_img(armed=False, del_btn=True):
@@ -438,7 +438,7 @@ def att_img(armed=False, del_btn=True):
 
 def att_file(name='contract-v3.pdf', icon='file-text', del_btn=True):
     return ('<span class="att-chip file"><button class="att-open" title="' + name + ' · 1.2 MB">'
-            '<span class="att-ic">' + ic(icon, 14) + '</span>'
+            '<span class="att-ic">' + ic(icon, 20) + '</span>'
             '<span class="att-name">' + name + '</span></button>'
             + (att_del() if del_btn else '') + '</span>')
 
@@ -446,7 +446,7 @@ def att_file(name='contract-v3.pdf', icon='file-text', del_btn=True):
 # Imaginea care n-a putut fi încărcată (offline): locul rămâne ocupat de iconița
 # de tip. Un gol s-ar citi ca fișier pierdut.
 ATT_OFF = ('<span class="att-chip img"><button class="att-open" title="indisponibil offline">'
-           '<span class="att-ic off">' + ic('image', 14) + '</span></button></span>')
+           '<span class="att-ic off">' + ic('image', 20) + '</span></button></span>')
 
 ATT_BUSY = '<span class="att-chip busy">2</span>'
 
@@ -454,15 +454,15 @@ ATT_BUSY = '<span class="att-chip busy">2</span>'
 def att_acts(disabled=False):
     d = ' disabled' if disabled else ''
     return ('<div class="att-acts">'
-            '<button class="att-act"' + d + ' aria-label="Fă o poză">' + ic('camera', 15) + '</button>'
-            '<button class="att-act"' + d + ' aria-label="Din galerie">' + ic('image', 15) + '</button>'
-            '<button class="att-act"' + d + ' aria-label="Alt fișier">' + ic('plus', 15) + '</button>'
+            '<button class="att-act"' + d + ' aria-label="Fă o poză">' + ic('camera', 18) + '</button>'
+            '<button class="att-act"' + d + ' aria-label="Din galerie">' + ic('image', 18) + '</button>'
+            '<button class="att-act"' + d + ' aria-label="Alt fișier">' + ic('plus', 18) + '</button>'
             '</div>')
 
 
 def att_bar(chips='', n=None, acts=True, disabled=False):
     return ('<div class="att-zone"><div class="att-bar">'
-            '<span class="att-anchor" title="Fișiere atașate">' + ic('paperclip', 14)
+            '<span class="att-anchor" title="Fișiere atașate">' + ic('paperclip', 16)
             + ('<span class="att-n">' + str(n) + '</span>' if n else '')
             + '</span><div class="att-strip">' + chips + '</div>'
             + (att_acts(disabled) if acts else '')

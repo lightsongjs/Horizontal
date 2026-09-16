@@ -67,7 +67,7 @@ export function AttachmentPicker({
           title="Fă o poză (o poză odată)"
           onClick={() => open(camera.current)}
         >
-          <Icon name="camera" size={15} />
+          <Icon name="camera" size={18} />
         </button>
       )}
 
@@ -79,7 +79,7 @@ export function AttachmentPicker({
         title="Din galerie (poți alege mai multe deodată)"
         onClick={() => open(gallery.current)}
       >
-        <Icon name="image" size={15} />
+        <Icon name="image" size={18} />
       </button>
 
       <button
@@ -90,7 +90,7 @@ export function AttachmentPicker({
         title={coarse ? 'Alt fișier' : 'Alt fișier — sau lipește (Ctrl+V) ori trage peste descriere'}
         onClick={() => open(anyFile.current)}
       >
-        <Icon name="add" size={15} />
+        <Icon name="add" size={18} />
       </button>
 
       <input ref={camera} className="att-pick-input" type="file"

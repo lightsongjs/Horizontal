@@ -4296,7 +4296,7 @@ main {
 .att-zone { flex: none; margin: 0 0 8px; }
 .att-bar {
   display: flex; align-items: center; gap: 8px;
-  min-height: 36px; padding: 3px 6px 3px 10px;
+  min-height: 52px; padding: 4px 6px 4px 10px;
   border-radius: var(--r-m); background: var(--surface-2);
 }
 /* Ancora ține locul etichetei „Fișiere": o agrafă care nu pleacă la scroll,
@@ -4315,18 +4315,18 @@ main {
 .att-strip::-webkit-scrollbar { display: none; }
 
 .att-chip { position: relative; flex: none; border-radius: var(--r-s); overflow: hidden; }
-.att-chip.img { width: 28px; height: 28px; }
+.att-chip.img { width: 44px; height: 44px; }
 .att-chip.busy {
-  display: grid; place-items: center; min-width: 28px; height: 28px; padding: 0 8px;
+  display: grid; place-items: center; min-width: 44px; height: 44px; padding: 0 8px;
   background: var(--accent-soft); color: var(--accent);
   font-family: var(--mono); font-size: 11px;
 }
 .att-open {
   display: flex; align-items: center; gap: 6px;
-  width: 100%; height: 28px; padding: 0; cursor: pointer;
+  width: 100%; height: 44px; padding: 0; cursor: pointer;
   background: color-mix(in srgb, var(--txt) 7%, transparent); color: var(--txt); text-align: left;
 }
-.att-chip.file .att-open { padding: 0 9px; }
+.att-chip.file .att-open { padding: 0 11px; }
 .att-open:hover { background: var(--accent-soft); color: var(--accent); }
 .att-chip.img img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .att-ic { display: flex; color: var(--txt-faint); }
@@ -4334,13 +4334,13 @@ main {
 /* Imagine care n-a putut fi încărcată (tipic: offline). Locul rămâne ocupat cu
    iconița de tip — un gol ar arăta a fișier pierdut. */
 .att-ic.off { margin: 0 auto; opacity: 0.6; }
-.att-name { max-width: 132px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.att-name { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
 
 /* X-ul apare la hover; pe ecran tactil, unde nu există hover, stă permanent.
    Confirmarea din două atingeri a rămas: prima armează, a doua șterge. */
 .att-del {
   position: absolute; top: 1px; right: 1px;
-  display: grid; place-items: center; width: 15px; height: 15px;
+  display: grid; place-items: center; width: 18px; height: 18px;
   border: 0; border-radius: var(--r-s); padding: 0; cursor: pointer;
   background: color-mix(in srgb, var(--bg) 82%, transparent); color: var(--txt);
   opacity: 0; transition: opacity 0.12s;
@@ -4352,7 +4352,7 @@ main {
 /* Acțiunile stau lipite în dreapta: nu pleacă niciodată la derularea benzii. */
 .att-acts { display: flex; align-items: center; gap: 2px; flex: none; }
 .att-act {
-  display: grid; place-items: center; width: 28px; height: 28px;
+  display: grid; place-items: center; width: 34px; height: 34px;
   border: 0; border-radius: var(--r-s); padding: 0; cursor: pointer;
   background: none; color: var(--txt-dim);
 }
