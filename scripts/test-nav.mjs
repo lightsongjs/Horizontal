@@ -30,7 +30,17 @@ const vite = spawn(
   ['vite', '--port', String(PORT), '--strictPort'],
   {
     cwd: new URL('..', import.meta.url).pathname,
-    env: { ...process.env, VITE_DATA_SOURCE: 'local', VITE_SUPABASE_URL: '', VITE_SUPABASE_ANON_KEY: '' },
+    // `NO_COLOR` nu e cosmetic: cu culori, vite scrie „Local:" ca
+    // `\e[1mLocal\e[22m:`, iar potrivirea de mai jos nu mai vede niciodată
+    // portul gata — testul cădea cu „vite nu a pornit în 60s" deși pornise.
+    env: {
+      ...process.env,
+      NO_COLOR: '1',
+      FORCE_COLOR: '0',
+      VITE_DATA_SOURCE: 'local',
+      VITE_SUPABASE_URL: '',
+      VITE_SUPABASE_ANON_KEY: '',
+    },
     stdio: ['ignore', 'pipe', 'pipe'],
   },
 )
@@ -38,7 +48,8 @@ const vite = spawn(
 const ready = new Promise((resolve, reject) => {
   const t = setTimeout(() => reject(new Error('vite nu a pornit în 60s')), 60_000)
   vite.stdout.on('data', (d) => {
-    if (d.toString().includes('Local:')) { clearTimeout(t); resolve() }
+    // Și, ca plasă peste `NO_COLOR`: portul din URL e cel care contează.
+    if (d.toString().includes(`localhost:${PORT}`)) { clearTimeout(t); resolve() }
   })
   vite.on('exit', (c) => { clearTimeout(t); reject(new Error(`vite a ieșit cu ${c}`)) })
 })
