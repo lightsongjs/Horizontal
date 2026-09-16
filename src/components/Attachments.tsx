@@ -8,6 +8,7 @@ import {
   uploadAttachment,
   type Attachment,
 } from '../data/attachments'
+import { afterDelete } from '../lib/gallery'
 import { carriesFiles, pickFiles, rejectMessage } from '../lib/pickFiles'
 import { attachmentFilename, shrinkImage } from '../lib/shrinkImage'
 import { Lightbox } from './Lightbox'
@@ -69,13 +70,22 @@ export function Attachments({
   const [message, setMessage] = useState<string | null>(null)
   const [armed, setArmed] = useState<string | null>(null)
   const [dragging, setDragging] = useState(false)
-  const [viewing, setViewing] = useState<Attachment | null>(null)
+  /** Ce imagine e deschisă în galerie, ca ID — nu ca index și nu ca obiect. Un
+   *  index s-ar referi la altă poză după o reîncărcare a listei, iar un obiect
+   *  ar rămâne cel vechi după ce URL-ul semnat se reînnoiește. */
+  const [viewing, setViewing] = useState<string | null>(null)
   /** Căile ale căror imagini n-au putut fi încărcate (tipic: offline). */
   const [broken, setBroken] = useState<Set<string>>(new Set())
   const dragDepth = useRef(0)
   const armTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const canEdit = !readOnly && !!issueId
+
+  /** Galeria e formată DOAR din imagini, în ordinea din bară. Un index care ar
+   *  trece și prin documente ar duce săgeata pe un ecran gol, iar contorul ar
+   *  număra altceva decât se vede. */
+  const images = items.filter((a) => isRenderableImage(a.contentType))
+  const viewIndex = viewing === null ? -1 : images.findIndex((a) => a.id === viewing)
 
   const load = useCallback(async () => {
     if (!ENABLED || !issueId) return
@@ -241,7 +251,7 @@ export function Attachments({
 
   const openItem = async (a: Attachment) => {
     if (isRenderableImage(a.contentType)) {
-      setViewing(a)
+      setViewing(a.id)
       return
     }
     try {
@@ -261,6 +271,16 @@ export function Attachments({
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'Fișierul nu s-a putut șterge.')
     }
+  }
+
+  // Ștergerea DIN galerie. Ce rămâne deschis se calculează pe lista de dinainte
+  // de ștergere (`afterDelete` întoarce un index în lista nouă), altfel ar trebui
+  // să așteptăm randarea următoare ca să știm pe ce poză suntem.
+  const removeViewed = (a: Attachment) => {
+    const rest = images.filter((x) => x.id !== a.id)
+    const next = afterDelete(images.length, images.findIndex((x) => x.id === a.id))
+    setViewing(next === null ? null : (rest[next]?.id ?? null))
+    void remove(a)
   }
 
   // Read-only fără fișiere: bara n-ar spune nimic și n-ar oferi nimic.
@@ -340,10 +360,14 @@ export function Attachments({
         </div>
       )}
 
-      {viewing && (
+      {viewIndex >= 0 && (
         <Lightbox
-          attachment={viewing}
-          url={broken.has(viewing.path) ? undefined : urls[viewing.path]}
+          items={images}
+          index={viewIndex}
+          urlFor={(a) => (broken.has(a.path) ? undefined : urls[a.path])}
+          canDelete={canEdit}
+          onIndex={(i) => setViewing(images[i]?.id ?? null)}
+          onDelete={removeViewed}
           onClose={() => setViewing(null)}
           onError={setMessage}
         />

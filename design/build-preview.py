@@ -460,6 +460,28 @@ def att_acts(disabled=False):
             '</div>')
 
 
+# ── Galeria de imagini (lightbox) ───────────────────────────────────────────
+# `.lb-back` e `position: fixed`, deci pe banc ar acoperi tot ecranul. Aici e
+# ancorat în rând (vezi `.bench-gallery .lb-back`), ca săgețile și bara de sus
+# să poată fi inspectate lângă restul controalelor.
+def lightbox(n=3, i=2, armed=False):
+    del_cls = ' armed' if armed else ''
+    return ('<div class="lb-back">'
+            '<div class="lb-bar">'
+            '<span class="lb-name">poza-1.jpg</span>'
+            '<span class="lb-count">' + str(i) + ' / ' + str(n) + '</span>'
+            '<div class="lb-actions">'
+            '<button class="lb-del' + del_cls + '" aria-label="Șterge">' + ic('trash-2', 16) + '</button>'
+            '<button>Descarcă</button>'
+            '<button aria-label="Închide">' + ic('x', 16) + '</button>'
+            '</div></div>'
+            '<div class="lb-body">'
+            '<img src="' + THUMB + '" alt="poza-1.jpg" style="width:120px;height:120px">'
+            '<button class="lb-nav prev" aria-label="Imaginea anterioară">' + ic('arrow-left', 22) + '</button>'
+            '<button class="lb-nav next" aria-label="Imaginea următoare">' + ic('arrow-right', 22) + '</button>'
+            '</div></div>')
+
+
 def att_bar(chips='', n=None, acts=True, disabled=False):
     return ('<div class="att-zone"><div class="att-bar">'
             '<span class="att-anchor" title="Fișiere atașate">' + ic('paperclip', 16)
@@ -618,6 +640,12 @@ CONTROALE = ''.join([
       + '<div class="att-msg">Salvează tichetul, apoi atașează fișiere.'
       '<button class="att-msg-x" aria-label="Închide mesajul">' + ic('x', 16) + '</button></div>'),
 
+    # Galeria: săgeți fără chenar peste imagine și butonul de ștergere armat.
+    # Amândouă trăiesc pe negru opac, singurul loc unde linia de 1px e chiar
+    # delimitarea — de-aia merită văzute lângă restul.
+    g('Fișiere — galeria', lightbox()),
+    g('Fișiere — galeria, ștergere armată', lightbox(armed=True)),
+
     # Zona de drop e coloana întreagă, nu bara. `min-height`/`border-right` sunt
     # anulate inline fiindcă aici lipsește grila formularului care le dă sens —
     # ce se verifică e evidențierea, nu geometria coloanei.
@@ -721,6 +749,8 @@ SHELL = """<!doctype html>
   /* `.att-del` apare la hover; pe banc n-ar fi nimic de inspectat. */
   .bench-gallery .att-del { opacity: 1; }
   .bench-gallery .bulk-bar { position: static; transform: none; }
+  /* `.lb-back` e fixed în aplicație; pe banc ar acoperi ecranul. */
+  .bench-gallery .lb-back { position: relative; inset: auto; z-index: auto; width: 100%; height: 230px; border-radius: var(--r); }
 </style>
 </head>
 <body>

@@ -4372,13 +4372,49 @@ main {
 }
 
 /* ── Lightbox ────────────────────────────────────────────────────────────── */
+/* Singurul loc din aplicație unde regula „fără linii" nu se aplică: fundalul e
+   negru opac, nu o suprafață a temei, deci un salt de fundal n-ar delimita
+   nimic. Chenarul subțire alb E delimitarea. */
 .lb-back { position: fixed; inset: 0; z-index: 60; display: grid; grid-template-rows: auto 1fr; background: rgba(0, 0, 0, 0.92); }
 .lb-bar { display: flex; align-items: center; gap: 10px; padding: 10px 12px; color: #fff; font-size: 13px; }
-.lb-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb-name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* „3 / 7" — cifre, deci mono, ca peste tot. */
+.lb-count { flex: none; font-family: var(--mono); font-size: 12px; color: rgba(255, 255, 255, 0.62); font-variant-numeric: tabular-nums; }
 .lb-actions { margin-left: auto; display: flex; gap: 8px; }
 .lb-bar button { border: 1px solid rgba(255, 255, 255, 0.35); background: transparent; color: #fff; border-radius: var(--r-s); padding: 5px 10px; cursor: pointer; font-size: 13px; }
-.lb-body { display: grid; place-items: center; overflow: auto; padding: 8px; }
+.lb-bar button:hover { background: rgba(255, 255, 255, 0.14); }
+.lb-del { display: grid; place-items: center; width: 34px; padding: 0 !important; }
+/* Armat = a doua apăsare șterge. Aceeași culoare ca X-ul armat din bară, ca
+   starea să se recunoască dintr-o privire în ambele locuri. */
+.lb-del.armed { background: var(--blocked); border-color: var(--blocked); color: var(--on-accent); }
+.lb-del.armed:hover { background: var(--blocked); }
+.lb-body { position: relative; display: grid; place-items: center; overflow: auto; padding: 8px; }
 .lb-body img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.lb-off { color: #fff; font-size: 13px; }
+
+/* Săgețile stau PESTE imagine, pe margini. Rotunde de-a binelea, deci 50% —
+   nu o a patra rază. Fără chenar: discul translucid e deja delimitarea.
+   Discul e ALB translucid, nu negru: o imagine înaltă lasă margini de fundal
+   gol, iar un disc negru pe negru e un buton invizibil — fix regresia pe care
+   o păzește ecranul „Controale". Umbra îl ține citibil și peste o poză albă. */
+.lb-nav {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  display: grid; place-items: center; width: 48px; height: 48px;
+  border: 0; border-radius: 50%; padding: 0; cursor: pointer;
+  background: rgba(255, 255, 255, 0.16); color: #fff;
+  box-shadow: 0 1px 10px rgba(0, 0, 0, 0.55);
+  transition: background 0.13s;
+}
+.lb-nav:hover { background: rgba(255, 255, 255, 0.3); }
+.lb-nav.prev { left: 10px; }
+.lb-nav.next { right: 10px; }
+/* Pe telefon degetul acoperă exact mijlocul marginii: discurile coboară sub
+   imagine, unde nu ascund nimic din ea. */
+@media (max-width: 560px) {
+  .lb-nav { top: auto; bottom: 14px; transform: none; width: 52px; height: 52px; }
+  .lb-nav.prev { left: 16px; }
+  .lb-nav.next { right: 16px; }
+}
 
 /* ── SCADENȚĂ în formularul de tichet ─────────────────────────────
    Inputuri native (calendarul și ceasul sistemului, gratis pe telefon)
