@@ -132,3 +132,45 @@ export interface ObstacleLink {
   obstacleId: string
   issueId: string
 }
+
+/**
+ * Un eveniment din firul unui tichet. Append-only: comentariile se pot edita
+ * (doar `body`), pasele niciodată. `kind` le ține în aceeași tabelă fiindcă se
+ * citesc împreună, cronologic — vezi specul.
+ */
+export interface IssueEvent {
+  id: string
+  issueId: string
+  projectId: string
+  kind: 'comment' | 'handoff'
+  /** Contul care a scris. `null` = notă migrată din vechiul câmp `notes`. */
+  authorId: string | null
+  body: string
+  /** Doar pe `kind: 'handoff'`. Assignee-ul de dinainte, `null` = nepasat. */
+  handoffFrom: string | null
+  /** Doar pe `kind: 'handoff'`. `null` = „către nimeni", adică luat înapoi. */
+  handoffTo: string | null
+  createdAt: string
+  editedAt: string | null
+}
+
+/**
+ * Un rând din cutia de pase. Nu poartă firul, doar cele două momente din care
+ * se decide bulina de necitit — altfel fiecare rând ar trage după el zeci de
+ * evenimente.
+ */
+export interface InboxRow {
+  issueId: string
+  projectId: string
+  title: string
+  done: boolean
+  assigneeId: string | null
+  /** Ultimul eveniment, al oricui. Dă ordinea listei. */
+  lastEventAt: string | null
+  /** Ultimul eveniment care NU e al meu. Dă bulina. */
+  lastForeignAt: string | null
+  /** Autorul ultimului eveniment străin — „de la Alex" de pe rând. E un id de
+   *  cont (`auth.users`), deci se mapează la un nume prin `assignees.userId`. */
+  lastForeignAuthor: string | null
+  seenAt: string | null
+}
