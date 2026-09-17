@@ -22,15 +22,29 @@ export function isUnread(lastForeignAt: string | null, seenAt: string | null): b
 
 /**
  * „Necitite" / „Mai devreme". Bifatele nu apar deloc: cutia de pase e o listă
- * de treabă rămasă, nu un istoric. Sortează pe momente, nu șiruri: un
- * `lastEventAt: null` trebuie pus la coadă, nu să dea NaN.
+ * de treabă rămasă, nu un istoric. Sortează pe momente, nu șiruri.
+ *
+ * `null` și date corupte (NaN) se pun la coadă listei: nu-și au loc în
+ * ordinea cronologică. Comparatorul nu folosește NaN direct (ar polua ordinea
+ * datelor valide din jur) — ci le detectează și le trimite la coadă explicit.
  */
 export function groupInbox(rows: readonly InboxRow[]): { fresh: InboxRow[]; rest: InboxRow[] } {
   const open = rows.filter((r) => !r.done)
   const byRecency = [...open].sort((a, b) => {
-    const aTime = a.lastEventAt ? Date.parse(a.lastEventAt) : 0
-    const bTime = b.lastEventAt ? Date.parse(b.lastEventAt) : 0
-    return bTime - aTime
+    let aTime = a.lastEventAt ? Date.parse(a.lastEventAt) : null
+    let bTime = b.lastEventAt ? Date.parse(b.lastEventAt) : null
+
+    const aInvalid = aTime === null || isNaN(aTime)
+    const bInvalid = bTime === null || isNaN(bTime)
+
+    // Amândouă invalide → egal (păstrează ordinea)
+    if (aInvalid && bInvalid) return 0
+    // a valid, b invalid → a întâi
+    if (!aInvalid && bInvalid) return -1
+    // a invalid, b valid → b întâi
+    if (aInvalid && !bInvalid) return 1
+    // Amândouă valide → sortează descrescător (mai recent întâi)
+    return bTime! - aTime!
   })
   return {
     fresh: byRecency.filter((r) => isUnread(r.lastForeignAt, r.seenAt)),

@@ -65,4 +65,17 @@ describe('groupInbox', () => {
     expect(fresh.map((r) => r.issueId)).toEqual(['X', 'Z', 'Y'])
     expect(rest).toEqual([])
   })
+  it('data valida nu se poluează de date corupte în sort', () => {
+    // Cu dată coruptă în comparator, NaN poluează ordinea rândurilor valide
+    // Test: 2 date valide (A: 2026-09-17, C: 2026-09-10) amestecat cu 2 corupte
+    const rows = [
+      row({ issueId: 'A', lastEventAt: '2026-09-17T10:00:00Z', lastForeignAt: 'dummy', seenAt: null }),
+      row({ issueId: 'B', lastEventAt: 'data-rea', lastForeignAt: 'dummy', seenAt: null }),
+      row({ issueId: 'C', lastEventAt: '2026-09-10T10:00:00Z', lastForeignAt: 'dummy', seenAt: null }),
+      row({ issueId: 'D', lastEventAt: 'alta-data-rea', lastForeignAt: 'dummy', seenAt: null }),
+    ]
+    const { fresh, rest } = groupInbox(rows)
+    // Datele valide să fie în ordinea corectă (A mai recent, apoi C), coruptele la coadă
+    expect(fresh.map((r) => r.issueId)).toEqual(['A', 'C', 'B', 'D'])
+  })
 })
