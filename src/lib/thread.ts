@@ -5,11 +5,19 @@ import type { InboxRow } from './types'
  * Compară momente, nu șiruri: formatări diferite ale aceluiași moment
  * (Z vs +00:00, milisecunde vs microsecunde) pot veni din surse diferite
  * și trebuie să compareze corect. `null` = nimeni străin n-a scris niciodată.
+ *
+ * O dată coruptă (NaN) din oricare sursă e de pe latura sigură: nu-și pierde
+ * o pasă prin „nu vad bulina". seenAt corupt cere aceeași alegere — dacă
+ * nu-l poți citi, e ca și cum n-ai fi vizitat niciodată.
  */
 export function isUnread(lastForeignAt: string | null, seenAt: string | null): boolean {
   if (!lastForeignAt) return false
   if (!seenAt) return true
-  return Date.parse(lastForeignAt) > Date.parse(seenAt)
+  const lastForeignTime = Date.parse(lastForeignAt)
+  const seenTime = Date.parse(seenAt)
+  // O dată pe care nu o poți citi (NaN) e tratată ca „necitit"
+  if (isNaN(lastForeignTime) || isNaN(seenTime)) return true
+  return lastForeignTime > seenTime
 }
 
 /**

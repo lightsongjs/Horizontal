@@ -27,6 +27,15 @@ describe('isUnread', () => {
     // Z (GMT) vs +00:00, milisecunde vs microsecunde — trebuie să fie egal
     expect(isUnread('2026-09-17T12:00:00+00:00', '2026-09-17T12:00:00.000Z')).toBe(false)
   })
+  it('nu confundă formatări — reversul care pică pe codul vechi', () => {
+    // Inversul: pe cod vechi, 'Z' > '+' e true (fals necitit).
+    // Pe cod nou: același moment → false
+    expect(isUnread('2026-09-17T12:00:00.000Z', '2026-09-17T12:00:00+00:00')).toBe(false)
+  })
+  it('o dată coruptă în lastForeignAt e sigur „necitit"', () => {
+    // Date.parse('nu-e-o-data') === NaN, și NaN > x e false — dar vrem true
+    expect(isUnread('nu-e-o-data', '2026-09-17T12:00:00Z')).toBe(true)
+  })
 })
 
 describe('groupInbox', () => {
