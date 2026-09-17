@@ -13,6 +13,7 @@ import {
   type ReactNode,
 } from 'react'
 import { repository } from './data'
+import { useAuth } from './auth'
 import { applyOrder, loadOrder, saveOrder } from './lib/projectOrder'
 import type { NewIssue, NewObstacle, NewProject } from './data/repository'
 import {
@@ -75,7 +76,6 @@ interface HorizontalState {
   /** Muchiile obstacol → tichet ale proiectului activ. */
   obstacleLinks: ObstacleLink[]
   myAssigneeId: string | null
-  setMyAssigneeId(id: string | null): void
 
   selectProject(id: string | null): void
   setActiveWave(wave: number): void
@@ -124,6 +124,7 @@ interface HorizontalState {
 const Ctx = createContext<HorizontalState | null>(null)
 
 export function HorizontalProvider({ children }: { children: ReactNode }) {
+  const { session } = useAuth()
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -158,15 +159,13 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
    */
   const [loadedProjects, setLoadedProjects] = useState<Set<string>>(() => new Set())
   const [assignees, setAssignees] = useState<Assignee[]>([])
-  const [myAssigneeId, setMyAssigneeIdState] = useState<string | null>(
-    () => localStorage.getItem('horizontal-my-assignee-id')
+  // Cine sunt, ca assignee. Vine din sesiune, nu dintr-un „eu sunt X" salvat
+  // local: creatorul unui tichet și autorul unui comentariu sunt fapte, iar un
+  // `localStorage` se poate minți. `null` = contul nu e legat de niciun nume.
+  const myAssigneeId = useMemo(
+    () => assignees.find((a) => a.userId === session?.user.id)?.id ?? null,
+    [assignees, session],
   )
-
-  const setMyAssigneeId = useCallback((id: string | null) => {
-    setMyAssigneeIdState(id)
-    if (id) localStorage.setItem('horizontal-my-assignee-id', id)
-    else localStorage.removeItem('horizontal-my-assignee-id')
-  }, [])
 
   /**
    * Aduce fereastra de scadențe. Eșecul e tăcut în afară de `error`: listele
@@ -679,7 +678,6 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     obstacles,
     obstacleLinks,
     myAssigneeId,
-    setMyAssigneeId,
     selectProject,
     setActiveWave,
     createProject,

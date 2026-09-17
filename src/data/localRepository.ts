@@ -397,7 +397,7 @@ export function createLocalRepository(): Repository {
 
     async createAssignee(name: string) {
       const db = load()
-      const assignee: Assignee = { id: crypto.randomUUID(), name }
+      const assignee: Assignee = { id: crypto.randomUUID(), name, userId: null }
       db.assignees.push(assignee)
       save(db)
       return clone(assignee)

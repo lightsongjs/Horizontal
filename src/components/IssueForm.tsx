@@ -85,12 +85,11 @@ const AutoTextarea = forwardRef<HTMLTextAreaElement, {
   )
 })
 
-function AssigneeSearch({ assigneeId, assignees, myAssigneeId, onSelect, onSetMe, onCreateAndSelect }: {
+function AssigneeSearch({ assigneeId, assignees, myAssigneeId, onSelect, onCreateAndSelect }: {
   assigneeId: string | null
   assignees: import('../lib/types').Assignee[]
   myAssigneeId: string | null
   onSelect(id: string | null): void
-  onSetMe(id: string): void
   onCreateAndSelect(name: string): Promise<void>
 }) {
   const [q, setQ] = useState('')
@@ -151,13 +150,6 @@ function AssigneeSearch({ assigneeId, assignees, myAssigneeId, onSelect, onSetMe
               onClick={() => { onSelect(a.id); setQ(''); setHlIdx(0) }}>
               <span className={`ic ${a.id === assigneeId ? 'ok' : 'ext'}`}><Icon name={a.id === assigneeId ? 'check' : 'add'} size={14} /></span>
               <span className="dep-result-title">{a.name}{a.id === myAssigneeId ? ' (me)' : ''}</span>
-              {a.id !== myAssigneeId && (
-                <button style={{ marginLeft: 'auto', fontSize: 10, opacity: 0.5, padding: '0 4px' }}
-                  onClick={(e) => { e.stopPropagation(); onSetMe(a.id) }} title="This is me"
-                  aria-label="Setează ca fiind eu">
-                  <Icon name="star" size={13} />
-                </button>
-              )}
             </button>
           ))}
           {filtered.length === 0 && !showCreate && <p className="dep-no-results">No one found.</p>}
@@ -181,7 +173,7 @@ function AssigneeSearch({ assigneeId, assignees, myAssigneeId, onSelect, onSetMe
  *   către `ui.tsx`, care oprește prima comutare pe alt tichet.
  */
 export function IssueForm({ issueId, docked = false }: { issueId?: string; docked?: boolean }) {
-  const { project, waves, themes, issues, byId, activeWave, createIssue, updateIssue, deleteIssue, createTheme, assignees, myAssigneeId, setMyAssigneeId, createAssignee, obstacles, obstaclesOf, createObstacle, setIssueObstacles } = useHorizontal()
+  const { project, waves, themes, issues, byId, activeWave, createIssue, updateIssue, deleteIssue, createTheme, assignees, myAssigneeId, createAssignee, obstacles, obstaclesOf, createObstacle, setIssueObstacles } = useHorizontal()
   const { closeSheet, setCloseGuard, pushSheet, openEditIssue, setDockedDirty, saveNudge } = useUI()
   const canWrite = useCanWrite()
   const existing = issueId ? byId[issueId] : undefined
@@ -237,13 +229,11 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
     // listener-ul la fiecare mutație de ticket.
   }, [isEdit, copyLink, existing?.id])
 
-  const defaultAssigneeId = !isEdit && project?.type === 'personal' ? (myAssigneeId ?? null) : null
-
   const [title, setTitle] = useState(existing?.title ?? '')
   const [desc, setDesc] = useState(existing?.desc ?? '')
   const [theme, setTheme] = useState(existing?.theme ?? '')
   const [wave, setWave] = useState(existing?.wave ?? activeWave)
-  const [assigneeId, setAssigneeId] = useState<string | null>(existing?.assigneeId ?? defaultAssigneeId)
+  const [assigneeId, setAssigneeId] = useState<string | null>(existing?.assigneeId ?? null)
   const [deps, setDeps] = useState<string[]>(existing?.deps ?? [])
   const [blocks, setBlocks] = useState<string[]>(
     existing ? issues.filter((i) => i.deps?.includes(existing.id)).map((i) => i.id) : []
@@ -1150,7 +1140,6 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
                 assignees={assignees}
                 myAssigneeId={myAssigneeId}
                 onSelect={(id) => { setAssigneeId(id); setShowAssigneeInline(false) }}
-                onSetMe={setMyAssigneeId}
                 onCreateAndSelect={async (name) => {
                   const a = await createAssignee(name)
                   setAssigneeId(a.id)

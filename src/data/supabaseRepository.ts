@@ -635,13 +635,13 @@ export function createSupabaseRepository(): Repository {
     async listAssignees(): Promise<Assignee[]> {
       const { data, error } = await db.from('assignees').select('*').order('name')
       if (error) throw error
-      return (data ?? []).map((a) => ({ id: a.id, name: a.name }))
+      return (data ?? []).map((a) => ({ id: a.id, name: a.name, userId: a.user_id ?? null }))
     },
 
     async createAssignee(name: string): Promise<Assignee> {
       const { data, error } = await db.from('assignees').insert({ name }).select('*').single()
       if (error) throw error
-      return { id: data.id, name: data.name }
+      return { id: data.id, name: data.name, userId: data.user_id ?? null }
     },
 
     async listEvents(issueId: string): Promise<IssueEvent[]> {

@@ -8,6 +8,9 @@ export type IssueState = 'done' | 'active' | 'blocked'
 export interface Assignee {
   id: string
   name: string
+  /** Contul (`auth.users`) legat de rândul ăsta, dacă există. `null` = nelegat
+   *  încă — vezi `scripts/link-assignees.mjs`. */
+  userId: string | null
 }
 
 export interface Project {
