@@ -17,10 +17,15 @@ describe('isUnread', () => {
   it('e necitit când n-am vizitat niciodată', () => {
     expect(isUnread('2026-09-17T10:00:00Z', null)).toBe(true)
   })
-  // Regula care contează: lastForeignAt EXCLUDE deja evenimentele mele, deci
-  // propriul comentariu nu poate aprinde bulina.
+  // Excluderea propriilor evenimente se face în SQL (inbox_rows view), nu aici.
+  // lastForeignAt ajunge deja pre-filtrat — nici o regresie a necluzionării
+  // propriilor comentarii nu poate veni din funcția asta.
   it('e citit când nimeni străin n-a scris', () => {
     expect(isUnread(null, null)).toBe(false)
+  })
+  it('compară momente, nu șiruri — aceeași vreme, formatări diferite', () => {
+    // Z (GMT) vs +00:00, milisecunde vs microsecunde — trebuie să fie egal
+    expect(isUnread('2026-09-17T12:00:00+00:00', '2026-09-17T12:00:00.000Z')).toBe(false)
   })
 })
 
@@ -38,6 +43,17 @@ describe('groupInbox', () => {
   it('scoate tichetele bifate', () => {
     const { fresh, rest } = groupInbox([row({ issueId: 'D', done: true, lastForeignAt: '2026-09-17T10:00:00Z' })])
     expect(fresh).toEqual([])
+    expect(rest).toEqual([])
+  })
+  it('pune rândurile fără data la coadă', () => {
+    const rows = [
+      row({ issueId: 'X', lastEventAt: '2026-09-17T10:00:00Z', lastForeignAt: '2026-09-17T10:00:00Z', seenAt: null }),
+      row({ issueId: 'Y', lastEventAt: null, lastForeignAt: '2026-09-15T10:00:00Z', seenAt: null }),
+      row({ issueId: 'Z', lastEventAt: '2026-09-16T10:00:00Z', lastForeignAt: '2026-09-16T10:00:00Z', seenAt: null }),
+    ]
+    const { fresh, rest } = groupInbox(rows)
+    // X (2026-09-17), Z (2026-09-16), Y (null) — cu null la coadă
+    expect(fresh.map((r) => r.issueId)).toEqual(['X', 'Z', 'Y'])
     expect(rest).toEqual([])
   })
 })
