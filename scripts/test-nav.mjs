@@ -314,6 +314,69 @@ try {
   check('URL-ul nu rămâne pe tichetul vechi', staleUrl !== oldTicket, `URL=${staleUrl}`)
   await stale.close()
 
+  // ── „Pe mine" supraviețuiește unei reporniri, ca „Azi" ──────────────────
+  // Al patrulea tab NU e un `SmartListKind` (vezi `Screen` din App.tsx), deci
+  // are propriul drum prin `parseLastView`/`LAST_VIEW_KEY` — ăsta e testul care
+  // verifică drumul ăla, nu doar clickul. Viewport de telefon, deliberat: bara
+  // de jos (`.tabbar`) e ascunsă peste 899px, iar `data-tab` trăiește acolo.
+  // Filă curată: istoricul celorlalte teste ar falsifica un `back()`.
+  const inbox = await browser.newPage({ viewport: { width: 390, height: 844 } })
+  await inbox.goto(BASE, { waitUntil: 'networkidle' })
+  await inbox.waitForTimeout(700)
+  await inbox.click('[data-tab="inbox"]')
+  await inbox.waitForTimeout(500)
+  const inboxTabOn = (await inbox.locator('.tabbar button.on').textContent()) ?? ''
+  check('„Pe mine" se activează la click', /Pe mine/.test(inboxTabOn), `tab activ="${inboxTabOn}"`)
+
+  await inbox.reload({ waitUntil: 'networkidle' })
+  await inbox.waitForTimeout(1200)
+  const inboxTabAfterReload = (await inbox.locator('.tabbar button.on').textContent()) ?? ''
+  check(
+    '„Pe mine" supraviețuiește unei reporniri',
+    /Pe mine/.test(inboxTabAfterReload),
+    `tab activ="${inboxTabAfterReload}"`,
+  )
+  await inbox.close()
+
+  // ── O pasă din panoul lateral nu mută foaia pe alt ecran ────────────────
+  // Firul (`Thread.tsx`) poate paza un tichet chiar din formularul docat. O
+  // pasă e o scriere, nu o navigare: „către Nimănui" (handoff cu `to: null`,
+  // „iau tichetul înapoi la creator") e suficient ca să numere ca pasă — nu
+  // are nevoie de niciun assignee seedat. Tab-ul și URL-ul trebuie să rămână
+  // neschimbate după ea.
+  const pass = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+  await pass.goto(BASE, { waitUntil: 'networkidle' })
+  await pass.waitForTimeout(700)
+  await pass.locator('.proj').first().click()
+  await pass.waitForTimeout(900)
+  await pass.locator('.tab', { hasText: /^List/ }).first().click()
+  await pass.waitForTimeout(500)
+  await pass.locator('.list-row').first().click()
+  await pass.waitForTimeout(900)
+  const screenBeforePass = await pass.locator('h1').first().textContent().catch(() => null)
+  const urlBeforePass = new URL(pass.url()).pathname
+
+  await pass.locator('.thread-to-btn').click()
+  await pass.waitForTimeout(200)
+  await pass.locator('.dep-dd-item', { hasText: 'Nimănui' }).click()
+  await pass.waitForTimeout(200)
+  await pass.locator('.thread-send-btn').click()
+  await pass.waitForTimeout(900)
+
+  const screenAfterPass = await pass.locator('h1').first().textContent().catch(() => null)
+  const urlAfterPass = new URL(pass.url()).pathname
+  check(
+    'pasa din panoul lateral nu schimbă ecranul',
+    screenAfterPass === screenBeforePass,
+    `înainte="${screenBeforePass}" după="${screenAfterPass}"`,
+  )
+  check(
+    'pasa din panoul lateral nu schimbă URL-ul',
+    urlAfterPass === urlBeforePass,
+    `înainte=${urlBeforePass} după=${urlAfterPass}`,
+  )
+  await pass.close()
+
   await page.close()
 } finally {
   if (browser) await browser.close()

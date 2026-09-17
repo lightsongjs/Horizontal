@@ -54,6 +54,7 @@ import {
   Sparkles,
   Trash2,
   TriangleAlert,
+  User,
   X,
   Zap,
 } from 'lucide-react'
@@ -112,6 +113,9 @@ const ICONS = {
   image: Image,
   logout: LogOut,
   members: Users,
+  // „Cine ține tichetul", nu „echipa" — de-aia un singur om, nu `Users` (ăla e
+  // `members`, lista de utilizatori). Folosit de tab-ul „Pe mine".
+  people: User,
   refresh: RefreshCw,
   selectAll: SquareCheck,
   selector: Crosshair,

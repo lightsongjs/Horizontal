@@ -22,9 +22,14 @@ interface SidebarProps {
   onNavigate?: () => void
   smartList?: SmartListKind | null
   onSmartList?: (kind: SmartListKind) => void
+  /** „Pe mine" e un ecran separat de `SmartListKind` (vezi `Screen` din
+   *  App.tsx) — de-aia trei props proprii, în loc să lărgim `smartList`. */
+  inboxActive?: boolean
+  inboxUnread?: number
+  onInbox?: () => void
 }
 
-export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNavigate, smartList = null, onSmartList }: SidebarProps = {}) {
+export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNavigate, smartList = null, onSmartList, inboxActive = false, inboxUnread = 0, onInbox }: SidebarProps = {}) {
   const { projects, project, completion, selectProject, reorderProjects, smartLists } = useHorizontal()
 
   // Navigate away from any overlay (e.g. Users) then select a project.
@@ -65,7 +70,7 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
       </div>
 
       <button
-        className={`sidebar-nav-item ${!project && !showUsers && !smartList ? 'on' : ''}`}
+        className={`sidebar-nav-item ${!project && !showUsers && !smartList && !inboxActive ? 'on' : ''}`}
         onClick={() => goToProject(null)}
       >
         <span className="sidebar-nav-icon">
@@ -109,6 +114,17 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
           {counts[kind] > 0 && <span className="sl-count">{counts[kind]}</span>}
         </button>
       ))}
+
+      {/* „Pe mine" — cutia de pase. Nu vine din `SMART_LISTS`: n-are zi, deci
+          nu se calculează layer/wave pe ea, e doar tot ce ți-a pasat cineva. */}
+      <button
+        className={`sidebar-nav-item ${inboxActive ? 'on' : ''}`}
+        onClick={() => onInbox?.()}
+      >
+        <span className="sidebar-nav-icon"><Icon name="people" size={17} /></span>
+        <span>Pe mine</span>
+        {inboxUnread > 0 && <span className="sl-count">{inboxUnread}</span>}
+      </button>
 
       <div className="sidebar-section-label">Proiecte</div>
 
