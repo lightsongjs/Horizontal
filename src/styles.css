@@ -3966,6 +3966,11 @@ main {
 .thread-comment-name { font-size: 13px; font-weight: 600; color: var(--txt); }
 .thread-comment-time { font-family: var(--mono); font-size: 11px; color: var(--txt-faint); }
 .thread-comment-text { font-size: 13px; line-height: 1.55; color: var(--txt); white-space: pre-wrap; overflow-wrap: break-word; }
+/* Refolosește `.att-strip`/`.att-chip` din Attachments.tsx — aceleași
+   miniaturi și același lightbox ca bara tichetului, doar grupate sub
+   comentariul care le-a adus. Fără `.att-del`: firul e istoric, nu se editează. */
+.thread-comment-atts { margin-top: 6px; }
+.thread-comment-text + .thread-comment-atts { margin-top: 8px; }
 
 /* O pasă e un eveniment, nu un mesaj — fără casetă, ca să nu se citească
    drept replică goală. Aliniată la dreapta, ca să se deosebească dintr-o

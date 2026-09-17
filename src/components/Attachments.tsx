@@ -18,14 +18,18 @@ import { Icon, type IconName } from './Icon'
 /** Doar în modul Supabase: attachment-urile n-au sens în modul local seeded. */
 const ENABLED = import.meta.env.VITE_DATA_SOURCE === 'supabase'
 
-function humanSize(bytes: number): string {
+/** Exportată pentru același motiv ca `iconFor` — vezi comentariul de-acolo. */
+export function humanSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
 
 /** Iconiță după tip. Nu încercăm să fim exhaustivi — doar să nu arate toate la fel. */
-function iconFor(contentType: string, filename: string): IconName {
+/** Exportată: `Thread.tsx` o refolosește pentru mozaicul de sub comentarii —
+ *  „are atașamente" trebuie să arate identic în ambele locuri, nu un al doilea
+ *  vocabular de iconițe. */
+export function iconFor(contentType: string, filename: string): IconName {
   if (contentType === 'application/pdf') return 'fileDoc'
   if (contentType.startsWith('image/')) return 'fileImage'
   if (contentType.startsWith('video/')) return 'fileVideo'

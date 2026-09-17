@@ -1,8 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { repository } from '../data'
 import {
   deleteAttachment,
   isRenderableImage,
+  listAttachments,
+  signedDownloadUrl,
+  signedUrls,
   uploadAttachment,
   type Attachment,
 } from '../data/attachments'
@@ -14,6 +17,8 @@ import { useAuth } from '../auth'
 import { useHorizontal } from '../store'
 import { useCanWrite } from '../hooks'
 import { AttachmentPicker } from './AttachmentPicker'
+import { humanSize, iconFor } from './Attachments'
+import { Lightbox } from './Lightbox'
 import { Icon } from './Icon'
 import type { Assignee, IssueEvent } from '../lib/types'
 
@@ -57,10 +62,20 @@ function assigneeLabel(id: string | null, assignees: readonly Assignee[]): strin
  *  - NU salvează tichetul. „Trimite" scrie în fir; săgeata din antet salvează
  *    tichetul. Două butoane, două înțelesuri.
  */
-export function Thread({ issueId, projectId, onDirtyChange }: {
+export function Thread({ issueId, projectId, onDirtyChange, onHandoff }: {
   issueId: string
   projectId: string
   onDirtyChange(dirty: boolean): void
+  /**
+   * Cine ține tichetul ACUM, după o pasă reușită din fir. `IssueForm` ține
+   * propriul `assigneeId` local (folosit și la salvare) — fără raportarea
+   * asta, o pasă mută baza dar nu și starea locală: formularul rămâne murdar
+   * pe veci, iar o atingere pe săgeata de salvare ar retrimite assignee-ul
+   * VECHI, anulând pasa în tăcere. Chemat DOAR când chiar s-a cerut o pasă
+   * (nu la un comentariu simplu), ca să nu suprascrie o alegere nesalvată din
+   * selectorul „Assigned to" al formularului.
+   */
+  onHandoff(to: string | null): void
 }) {
   const { assignees, myAssigneeId, byId, upsertIssue } = useHorizontal()
   const { session } = useAuth()
@@ -73,6 +88,18 @@ export function Thread({ issueId, projectId, onDirtyChange }: {
   const [events, setEvents] = useState<IssueEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+
+  // Atașamentele TUTUROR evenimentelor tichetului — o singură cerere, grupată
+  // în client pe `eventId`. Bara tichetului (`Attachments.tsx`, montată mai
+  // sus în `IssueForm`) le arată pe toate laolaltă; aici arătăm doar cele
+  // legate de comentariul respectiv. Un fișier nu dispare din bară când
+  // capătă `eventId` — „am atașat ceva" trebuie să rămână adevărat acolo unde
+  // omul se uită dintâi, iar bara e singurul loc care numără TOATE fișierele
+  // tichetului.
+  const [allAttachments, setAllAttachments] = useState<Attachment[]>([])
+  const [urls, setUrls] = useState<Record<string, string>>({})
+  const [broken, setBroken] = useState<Set<string>>(new Set())
+  const [lightbox, setLightbox] = useState<{ images: Attachment[]; id: string } | null>(null)
 
   const [body, setBody] = useState('')
   const [to, setTo] = useState<string | null | undefined>(undefined)
@@ -94,6 +121,51 @@ export function Thread({ issueId, projectId, onDirtyChange }: {
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
   }, [issueId])
+
+  const loadAttachments = async () => {
+    if (!ATTACHMENTS_ENABLED) return
+    try {
+      const list = await listAttachments(issueId)
+      setAllAttachments(list)
+      const images = list.filter((a) => isRenderableImage(a.contentType))
+      // Un singur apel pentru toate căile — la fel ca `Attachments.tsx`.
+      // `signedUrls` însuși memorează rezultatul (vezi `rememberUrls`), deci a
+      // doua cerere pentru aceleași poze (bara tichetului, deja randată mai
+      // sus) nu mai lovește rețeaua.
+      if (images.length) setUrls(await signedUrls(images.map((a) => a.path)))
+    } catch {
+      // Atașamentele de sub comentarii sunt un plus, nu calea critică a
+      // firului: un eșec aici nu trebuie să ascundă comentariile deja
+      // încărcate cu succes.
+    }
+  }
+
+  useEffect(() => { void loadAttachments() /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [issueId])
+
+  const attachmentsByEvent = useMemo(() => {
+    const map = new Map<string, Attachment[]>()
+    for (const a of allAttachments) {
+      if (!a.eventId) continue
+      const arr = map.get(a.eventId)
+      if (arr) arr.push(a)
+      else map.set(a.eventId, [a])
+    }
+    return map
+  }, [allAttachments])
+
+  const openAttachment = async (a: Attachment, group: Attachment[]) => {
+    if (isRenderableImage(a.contentType)) {
+      setLightbox({ images: group.filter((x) => isRenderableImage(x.contentType)), id: a.id })
+      return
+    }
+    try {
+      const url = await signedDownloadUrl(a)
+      if (url) window.location.href = url
+      else setAttMessage('Fișierul nu s-a putut descărca.')
+    } catch (e) {
+      setAttMessage(errorMessage(e))
+    }
+  }
 
   const updateBody = (v: string) => {
     setBody(v)
@@ -147,14 +219,24 @@ export function Thread({ issueId, projectId, onDirtyChange }: {
       })
       setEvents((prev) => [...prev, ...res.events])
       // `res.issue` NU poartă `deps` (`to_jsonb(i)` din `post_to_thread` citește
-      // doar tabela `issues`) — păstrăm `deps` din tichetul vechi al store-ului,
-      // altfel dependențele dispar din interfață fără nicio eroare.
+      // doar tabela `issues`) — păstrăm `deps` din tichetul vechi al store-ului.
+      // Dacă tichetul vechi lipsește din store (n-ar trebui, dar dacă totuși),
+      // NU scriem un tichet fără dependențe — mai bine store-ul rămâne
+      // neschimbat decât să inventăm `deps: []` peste unul real.
       const prevIssue = byId[issueId]
-      upsertIssue({ ...res.issue, deps: prevIssue?.deps ?? [] })
+      if (prevIssue) upsertIssue({ ...res.issue, deps: prevIssue.deps })
+      // Firul e sursa de adevăr pentru cine ține tichetul acum. Dacă am CERUT
+      // o pasă (`to !== undefined`), `IssueForm` trebuie să-și resincronizeze
+      // `assigneeId` local — altfel formularul rămâne murdar pe veci ȘI o
+      // atingere pe săgeata de salvare ar retrimite assignee-ul vechi peste
+      // pasa abia făcută. La un comentariu simplu (`to === undefined`) NU
+      // atingem nimic: am suprascrie o alegere nesalvată din „Assigned to".
+      if (to !== undefined) onHandoff(res.issue.assigneeId)
       setBody('')
       setTo(undefined)
       setPending([])
       onDirtyChange(false) // altfel formularul rămâne murdar și clipește la orice click în listă
+      void loadAttachments() // atașamentele proaspăt trimise capătă acum un event_id
     } catch (e) {
       setSendError(errorMessage(e))
     } finally {
@@ -182,6 +264,7 @@ export function Thread({ issueId, projectId, onDirtyChange }: {
               )
             }
             const author = authorDisplay(e.authorId, assignees, myUserId)
+            const group = attachmentsByEvent.get(e.id) ?? []
             return (
               <div key={e.id} className={`thread-comment${author.mine ? ' mine' : ''}`}>
                 <span className={`thread-avatar${author.initials === null ? ' empty' : ''}`}>
@@ -193,7 +276,41 @@ export function Thread({ issueId, projectId, onDirtyChange }: {
                       <span className="thread-comment-name">{author.name}</span>
                       <span className="thread-comment-time">{toTimeInput(e.createdAt)}</span>
                     </div>
-                    <div className="thread-comment-text">{e.body}</div>
+                    {e.body && <div className="thread-comment-text">{e.body}</div>}
+                    {group.length > 0 && (
+                      <div className="att-strip thread-comment-atts">
+                        {group.map((a) => {
+                          const isImg = isRenderableImage(a.contentType)
+                          const url = urls[a.path]
+                          const shown = isImg && url && !broken.has(a.path)
+                          return (
+                            <span key={a.id} className={`att-chip ${isImg ? 'img' : 'file'}`}>
+                              <button
+                                className="att-open"
+                                onClick={() => void openAttachment(a, group)}
+                                title={`${a.filename} · ${humanSize(a.size)}`}
+                              >
+                                {shown ? (
+                                  <img
+                                    src={url}
+                                    alt={a.filename}
+                                    loading="lazy"
+                                    onError={() => setBroken((prev) => new Set(prev).add(a.path))}
+                                  />
+                                ) : isImg ? (
+                                  <span className="att-ic off"><Icon name="fileImage" size={20} /></span>
+                                ) : (
+                                  <>
+                                    <span className="att-ic"><Icon name={iconFor(a.contentType, a.filename)} size={20} /></span>
+                                    <span className="att-name">{a.filename}</span>
+                                  </>
+                                )}
+                              </button>
+                            </span>
+                          )
+                        })}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -291,6 +408,22 @@ export function Thread({ issueId, projectId, onDirtyChange }: {
           </div>
         )}
       </div>
+
+      {lightbox && (() => {
+        const idx = lightbox.images.findIndex((x) => x.id === lightbox.id)
+        if (idx < 0) return null
+        return (
+          <Lightbox
+            items={lightbox.images}
+            index={idx}
+            urlFor={(a) => (broken.has(a.path) ? undefined : urls[a.path])}
+            canDelete={false}
+            onIndex={(i) => setLightbox({ images: lightbox.images, id: lightbox.images[i]?.id ?? lightbox.id })}
+            onClose={() => setLightbox(null)}
+            onError={setAttMessage}
+          />
+        )
+      })()}
     </div>
   )
 }

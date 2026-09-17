@@ -200,14 +200,24 @@ describe('listAttachments', () => {
     fake.tables.attachments.push({
       id: 'a1', issue_id: 'TUR-01', project_id: 'tur', path: 'tur/TUR-01/a1',
       filename: 'ecran.png', size: 1234, content_type: 'image/png',
-      created_at: '2026-08-12T10:00:00Z',
+      created_at: '2026-08-12T10:00:00Z', event_id: null,
     })
     const list = await listAttachments('TUR-01')
     expect(list).toEqual([{
       id: 'a1', issueId: 'TUR-01', projectId: 'tur', path: 'tur/TUR-01/a1',
       filename: 'ecran.png', size: 1234, contentType: 'image/png',
-      createdAt: '2026-08-12T10:00:00Z',
+      createdAt: '2026-08-12T10:00:00Z', eventId: null,
     }])
+  })
+
+  it('un fișier legat de un comentariu poartă event_id — Thread.tsx grupează pe el', async () => {
+    fake.tables.attachments.push({
+      id: 'a2', issue_id: 'TUR-01', project_id: 'tur', path: 'tur/TUR-01/a2',
+      filename: 'poza.jpg', size: 500, content_type: 'image/jpeg',
+      created_at: '2026-08-12T10:05:00Z', event_id: 'ev-1',
+    })
+    const list = await listAttachments('TUR-01')
+    expect(list.find((a) => a.id === 'a2')?.eventId).toBe('ev-1')
   })
 
   it('un tichet fără fișiere dă listă goală', async () => {
@@ -309,7 +319,7 @@ describe('signedUrls', () => {
 describe('signedDownloadUrl', () => {
   const pdf = {
     id: 'a1', issueId: 'TUR-01', projectId: 'tur', path: 'tur/TUR-01/a1',
-    filename: 'raport final.pdf', size: 10, contentType: 'application/pdf', createdAt: 'z',
+    filename: 'raport final.pdf', size: 10, contentType: 'application/pdf', createdAt: 'z', eventId: null,
   }
 
   it('trimite opțiunea download, cu numele de afișat', async () => {

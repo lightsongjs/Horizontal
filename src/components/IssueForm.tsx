@@ -1379,7 +1379,12 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
             {/* FIR — comentarii + pase. Nu se randează pe un tichet nesalvat:
                 `existing` e undefined până la primul save. */}
             {isEdit && existing && (
-              <Thread issueId={existing.id} projectId={project.id} onDirtyChange={setCommentDraftDirty} />
+              <Thread
+                issueId={existing.id}
+                projectId={project.id}
+                onDirtyChange={setCommentDraftDirty}
+                onHandoff={setAssigneeId}
+              />
             )}
 
           </div>
