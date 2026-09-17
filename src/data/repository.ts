@@ -20,7 +20,6 @@ export interface NewIssue {
   deps?: string[]
   selectors?: string[]
   scenarios?: { text: string; kind: string }[]
-  notes?: string
   assigneeId?: string | null
   urgent?: boolean
   dueAt?: string | null

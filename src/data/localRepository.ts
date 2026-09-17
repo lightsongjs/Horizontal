@@ -278,7 +278,6 @@ export function createLocalRepository(): Repository {
         done: false,
         selectors: [],
         scenarios: [],
-        notes: '',
         assigneeId: input.assigneeId ?? null,
         urgent: input.urgent ?? false,
         dueAt: input.dueAt ?? null,

@@ -98,6 +98,13 @@ interface HorizontalState {
   updateIssue(id: string, patch: Partial<Issue>): Promise<void>
   deleteIssue(id: string): Promise<void>
   deleteIssues(ids: string[]): Promise<void>
+  /**
+   * Scrie un tichet deja mutat de altundeva (nu de `repository.updateIssue`)
+   * direct în stare — folosit de `Thread.tsx` după `postToThread`, al cărui
+   * răspuns NU poartă `deps` (vezi comentariul din `supabaseRepository.ts`).
+   * Apelantul răspunde să păstreze `deps` din tichetul vechi.
+   */
+  upsertIssue(issue: Issue): void
 
   createObstacle(input: Omit<NewObstacle, 'projectId'>): Promise<Obstacle | null>
   updateObstacle(id: string, patch: Partial<Obstacle>): Promise<void>
@@ -696,6 +703,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     updateIssue,
     deleteIssue,
     deleteIssues,
+    upsertIssue,
     createObstacle,
     updateObstacle,
     deleteObstacle,

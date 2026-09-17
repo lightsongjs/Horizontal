@@ -15,7 +15,6 @@ function makeIssue(id: string, title: string): Issue {
     done: false,
     selectors: [],
     scenarios: [],
-    notes: '',
     assigneeId: null,
     urgent: false,
     ...NO_SCHEDULE,

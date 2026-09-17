@@ -66,7 +66,6 @@ export interface Issue {
   /** Playwright locator strings. */
   selectors: string[]
   scenarios: TestScenario[]
-  notes: string
   assigneeId: string | null
   /** Urgent issues sort left within their layer. Default false. */
   urgent: boolean

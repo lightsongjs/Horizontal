@@ -4,7 +4,7 @@ import { NO_SCHEDULE } from './schedule'
 import type { Issue, Obstacle, ObstacleLink, ObstacleState } from './types'
 
 function mkIssue(id: string, wave = 1, done = false): Issue {
-  return { id, projectId: 'p', title: id, desc: '', theme: '', wave, deps: [], done, selectors: [], scenarios: [], notes: '', assigneeId: null, urgent: false, ...NO_SCHEDULE }
+  return { id, projectId: 'p', title: id, desc: '', theme: '', wave, deps: [], done, selectors: [], scenarios: [], assigneeId: null, urgent: false, ...NO_SCHEDULE }
 }
 
 function mkObst(id: string, state: ObstacleState, extra: Partial<Obstacle> = {}): Obstacle {

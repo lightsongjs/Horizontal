@@ -17,7 +17,6 @@ interface IssueRow {
   done: boolean
   selectors: unknown
   scenarios: unknown
-  notes: string
   assignee_id: string | null
   urgent: boolean
   due_at: string | null
@@ -47,7 +46,6 @@ function rowToIssue(row: IssueRow, depsByIssue: Record<string, string[]>): Issue
     done: row.done,
     selectors: Array.isArray(row.selectors) ? (row.selectors as string[]) : [],
     scenarios: Array.isArray(row.scenarios) ? (row.scenarios as { text: string; kind: string }[]).map((s) => ({ text: s.text, kind: s.kind as import('../lib/types').ScenarioKind })) : [],
-    notes: row.notes ?? '',
     assigneeId: row.assignee_id ?? null,
     urgent: row.urgent ?? false,
     dueAt: isoOrNull(row.due_at),
@@ -391,7 +389,6 @@ export function createSupabaseRepository(): Repository {
         done: false,
         selectors: input.selectors ?? [],
         scenarios: (input.scenarios ?? []).map((s) => ({ text: s.text, kind: s.kind as import('../lib/types').ScenarioKind })),
-        notes: input.notes ?? '',
         assigneeId: input.assigneeId ?? null,
         urgent: input.urgent ?? false,
         dueAt: isoOrNull(input.dueAt),
@@ -409,7 +406,6 @@ export function createSupabaseRepository(): Repository {
         done: issue.done,
         selectors: issue.selectors,
         scenarios: issue.scenarios,
-        notes: issue.notes,
         assignee_id: input.assigneeId ?? null,
         urgent: issue.urgent,
         due_at: issue.dueAt,
@@ -436,7 +432,6 @@ export function createSupabaseRepository(): Repository {
       if (patch.done !== undefined) row.done = patch.done
       if (patch.selectors !== undefined) row.selectors = patch.selectors
       if (patch.scenarios !== undefined) row.scenarios = patch.scenarios
-      if (patch.notes !== undefined) row.notes = patch.notes
       if ('assigneeId' in patch) row.assignee_id = patch.assigneeId ?? null
       if ('urgent' in patch) row.urgent = patch.urgent ?? false
       // `in patch`, nu `!== undefined`: ștergerea unei scadențe trimite `null`,
