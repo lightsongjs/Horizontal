@@ -265,3 +265,62 @@ describe('localRepository', () => {
     expect(withFakeIds.projectId).toBe(p.id)
   })
 })
+
+describe('firul', () => {
+  it('un comentariu simplu scrie un singur eveniment și nu mută tichetul', async () => {
+    const repo = createLocalRepository()
+    const p = await repo.createProject({ name: 'P', description: '', prefix: 'P' })
+    const i = await repo.createIssue({ projectId: p.id, title: 'T' })
+    const { events, issue } = await repo.postToThread({ issueId: i.id, projectId: p.id, body: 'salut' })
+    expect(events).toHaveLength(1)
+    expect(events[0].kind).toBe('comment')
+    expect(issue.assigneeId).toBeNull()
+  })
+
+  it('o pasă scrie DOUĂ evenimente și mută tichetul', async () => {
+    const repo = createLocalRepository()
+    const p = await repo.createProject({ name: 'P', description: '', prefix: 'P' })
+    const i = await repo.createIssue({ projectId: p.id, title: 'T' })
+    const a = await repo.createAssignee('Alex')
+    const { events, issue } = await repo.postToThread({
+      issueId: i.id, projectId: p.id, body: 'ia-l tu', handoff: true, to: a.id,
+    })
+    expect(events.map((e) => e.kind)).toEqual(['comment', 'handoff'])
+    expect(events[1].handoffFrom).toBeNull()
+    expect(events[1].handoffTo).toBe(a.id)
+    expect(issue.assigneeId).toBe(a.id)
+  })
+
+  it('nu scrie pasă când destinatarul ține deja tichetul', async () => {
+    const repo = createLocalRepository()
+    const p = await repo.createProject({ name: 'P', description: '', prefix: 'P' })
+    const a = await repo.createAssignee('Alex')
+    const i = await repo.createIssue({ projectId: p.id, title: 'T', assigneeId: a.id })
+    const { events } = await repo.postToThread({
+      issueId: i.id, projectId: p.id, body: 'inca ceva', handoff: true, to: a.id,
+    })
+    expect(events.map((e) => e.kind)).toEqual(['comment'])
+  })
+
+  it('„către nimeni" e o pasă reală, nu absența uneia', async () => {
+    const repo = createLocalRepository()
+    const p = await repo.createProject({ name: 'P', description: '', prefix: 'P' })
+    const a = await repo.createAssignee('Alex')
+    const i = await repo.createIssue({ projectId: p.id, title: 'T', assigneeId: a.id })
+    const { events, issue } = await repo.postToThread({
+      issueId: i.id, projectId: p.id, handoff: true, to: null,
+    })
+    expect(events.map((e) => e.kind)).toEqual(['handoff'])
+    expect(events[0].handoffFrom).toBe(a.id)
+    expect(events[0].handoffTo).toBeNull()
+    expect(issue.assigneeId).toBeNull()
+  })
+
+  it('un gest gol nu scrie nimic', async () => {
+    const repo = createLocalRepository()
+    const p = await repo.createProject({ name: 'P', description: '', prefix: 'P' })
+    const i = await repo.createIssue({ projectId: p.id, title: 'T' })
+    const { events } = await repo.postToThread({ issueId: i.id, projectId: p.id, body: '   ' })
+    expect(events).toEqual([])
+  })
+})
