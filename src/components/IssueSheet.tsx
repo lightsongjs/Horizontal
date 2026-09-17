@@ -35,12 +35,6 @@ export function IssueSheet({ issueId }: { issueId: string }) {
               {theme.name}
             </>
           )}
-          {assignee && (
-            <>
-              {' · '}
-              {assignee.name}{assignee.id === myAssigneeId ? ' (eu)' : ''}
-            </>
-          )}
           {it.done && <>{' · '}<span className="sheet-done"><Icon name="check" size={13} /> Gata</span></>}
         </div>
         <h2>{it.title}</h2>
@@ -61,6 +55,7 @@ export function IssueSheet({ issueId }: { issueId: string }) {
             <span className="arrow">→</span>
             <span className="origin-avatar">{assignee.name.slice(0, 2).toUpperCase()}</span>
             <span className="who">{assignee.name}</span>
+            {assignee.id === myAssigneeId && <span className="me">(eu)</span>}
           </div>
         ) : (
           <div className="holder free">nepasat — stă la {creatorName ?? 'creator'}</div>

@@ -1063,6 +1063,12 @@ main {
   color: var(--txt-faint);
 }
 .holder .who { font-weight: 600; color: var(--txt); }
+/* „(eu)" — singurul semnal „tichetul ăsta e pe mine"; text plin, nu casetă. */
+.holder .me {
+  margin-left: 4px;
+  color: var(--accent);
+  font-weight: 600;
+}
 /* Nepasat: afirmație generică („stă la creator"), nu un jeton de persoană —
    de-aia n-are avatar și textul e mai șters. */
 .holder.free {
