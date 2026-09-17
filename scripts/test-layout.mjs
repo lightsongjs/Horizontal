@@ -191,6 +191,59 @@ for (const width of PHONE_WIDTHS) {
   check(`jeton vizibil @${width}px`, m.visible, m.visible ? 'are fundal sau umbră' : 'INVIZIBIL')
 }
 
+/**
+ * Bara de jos (`TabBar` din App.tsx, Task 9) — patru butoane cu `flex: 1`.
+ * „Proiecte" e eticheta cea mai lungă, la cel mai îngust ecran. Trei lucruri
+ * contează cu adevărat: eticheta nu se rupe pe două rânduri (butoanele sunt
+ * `flex-direction: column`, deci o a doua linie crește ÎNĂLȚIMEA, nu
+ * lățimea — un check de lățime n-ar prinde-o), butonul rămâne atingibil, iar
+ * bara nu depășește lățimea disponibilă.
+ */
+const tabBar = () => `
+<nav class="tabbar">
+  <button data-tab="today"><span class="tb-ico"><svg width="21" height="21"></svg></span>Azi</button>
+  <button data-tab="week"><span class="tb-ico"><svg width="21" height="21"></svg></span>7 zile</button>
+  <button class="on" data-tab="inbox"><span class="tb-ico"><svg width="21" height="21"></svg><span class="tb-badge">12</span></span>Pe mine</button>
+  <button data-tab="projects"><span class="tb-ico"><svg width="21" height="21"></svg></span>Proiecte</button>
+</nav>`
+
+console.log('\nBara de jos (`TabBar`) — patru butoane pe telefon:')
+for (const width of PHONE_WIDTHS) {
+  const page = await browser.newPage({ viewport: { width, height: 800 } })
+  await page.setContent(`<style>${CSS}</style>${tabBar()}`)
+  const m = await page.evaluate(() => {
+    const nav = document.querySelector('.tabbar')
+    const btns = [...document.querySelectorAll('.tabbar button')]
+    // `align-items: stretch` (implicit pe un flex row) egalizează înălțimea
+    // TUTUROR butoanelor cu cel mai înalt vecin — deci o etichetă ruptă pe
+    // două rânduri nu se vede NICIODATĂ într-o comparație de înălțimi ale
+    // cutiei (toate ies la fel, stretch-uite). Trebuie numărate liniile
+    // TEXTULUI direct, cu `Range.getClientRects()`: un nod-text pe un rând dă
+    // un dreptunghi, pe două rânduri dă două.
+    const wrapped = btns.map((b) => {
+      const textNode = [...b.childNodes].reverse().find((n) => n.nodeType === Node.TEXT_NODE && n.textContent.trim())
+      if (!textNode) return false
+      const range = document.createRange()
+      range.selectNodeContents(textNode)
+      return range.getClientRects().length > 1
+    })
+    return {
+      overflow: nav.scrollWidth - Math.round(nav.getBoundingClientRect().width),
+      narrowest: Math.round(Math.min(...btns.map((b) => b.getBoundingClientRect().width))),
+      wrapped,
+    }
+  })
+  await page.close()
+
+  check(`fără overflow @${width}px`, m.overflow <= 0, `${m.overflow}px peste bară`)
+  check(
+    `etichetă pe un rând @${width}px`,
+    !m.wrapped.some(Boolean),
+    m.wrapped.some(Boolean) ? `butonul #${m.wrapped.indexOf(true) + 1} s-a rupt pe două rânduri` : 'toate pe un rând',
+  )
+  check(`buton atingibil @${width}px`, m.narrowest >= 44, `cel mai îngust ${m.narrowest}px`)
+}
+
 await browser.close()
 
 if (failures.length) {

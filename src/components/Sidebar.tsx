@@ -38,8 +38,14 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
   const { theme, toggle } = useTheme()
   const { enabled, signOut } = useAuth()
   const canWrite = useCanWrite()
+  // Cromul de proiect al piciorului de sidebar e legat de proiectul DESCHIS ca
+  // ecran, nu de orice proiect încărcat în store — o pasă docată deschisă din
+  // „Pe mine" încarcă proiectul ei ca formularul să funcționeze, fără să te
+  // mute pe boardul lui. Fără gardă, un click pe „Tichet nou" ar fi creat un
+  // tichet ÎN PROIECTUL STRĂIN, exact scurgerea reparată la FAB și la taste.
+  const projectChrome = inboxActive ? null : project
   // "Tichet nou" needs write access to the open project; "Proiect nou" is admin-only.
-  const showNewBtn = project ? canWrite : isAdmin
+  const showNewBtn = projectChrome ? canWrite : isAdmin
   const dragId = useRef<string | null>(null)
   const [dragOver, setDragOver] = useState<string | null>(null)
   const [filter, setFilter] = useState<'all' | 'personal' | 'work'>('all')
@@ -192,10 +198,10 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
         {showNewBtn && (
           <button
             className="sidebar-new-btn"
-            onClick={project ? openNewIssue : openNewProject}
+            onClick={projectChrome ? openNewIssue : openNewProject}
           >
             <span className="sidebar-new-plus">+</span>
-            {project ? 'Tichet nou' : 'Proiect nou'}
+            {projectChrome ? 'Tichet nou' : 'Proiect nou'}
           </button>
         )}
         <button className="sidebar-theme-btn" onClick={toggle} aria-label="Schimbă tema">
