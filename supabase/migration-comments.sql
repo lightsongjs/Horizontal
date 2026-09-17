@@ -247,7 +247,11 @@ begin
     end if;
 
     if v_prev is distinct from p_to then
-      update public.issues i set assignee_id = p_to
+      -- `p_to` e `text` (parametrul funcției nu se schimbă — vezi comentariul
+      -- de la semnătură), dar `assignee_id` e `uuid`: Postgres nu aplică un
+      -- cast de atribuire text -> uuid, deci fără cast explicit aici pica cu
+      -- „column assignee_id is of type uuid but expression is of type text".
+      update public.issues i set assignee_id = p_to::uuid
        where i.id = p_issue_id and i.project_id = p_project_id;
       get diagnostics v_rows = row_count;
       -- Un UPDATE filtrat de RLS nu dă eroare, dă zero rânduri: fără asta, un
@@ -255,8 +259,9 @@ begin
       if v_rows = 0 then
         raise exception 'fara drept de scriere pe %', p_project_id using errcode = '42501';
       end if;
+      -- Același motiv: handoff_from/handoff_to sunt uuid, v_prev/p_to sunt text.
       insert into public.issue_events (issue_id, project_id, kind, author_id, body, handoff_from, handoff_to)
-      values (p_issue_id, p_project_id, 'handoff', v_me, '', v_prev, p_to)
+      values (p_issue_id, p_project_id, 'handoff', v_me, '', v_prev::uuid, p_to::uuid)
       returning id into v_id;
       v_ids := v_ids || v_id;
     end if;
