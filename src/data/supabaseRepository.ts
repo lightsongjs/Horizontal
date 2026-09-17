@@ -2,9 +2,9 @@
 // edge table, per-project waves and themes) to/from the app's models.
 
 import { requireSupabase } from '../lib/supabase'
-import type { Assignee, Issue, Obstacle, ObstacleLink, Project, Theme, Wave } from '../lib/types'
+import type { Assignee, InboxRow, Issue, IssueEvent, Obstacle, ObstacleLink, Project, Theme, Wave } from '../lib/types'
 import { pathsForIssues, pathsForProject, removeObjects } from './attachments'
-import { themeKey, type DueRange, type NewIssue, type NewObstacle, type NewProject, type Repository } from './repository'
+import { themeKey, type DueRange, type NewIssue, type NewObstacle, type NewProject, type NewThreadPost, type Repository } from './repository'
 
 interface IssueRow {
   id: string
@@ -35,7 +35,7 @@ function isoOrNull(v: string | null | undefined): string | null {
   return v ? new Date(v).toISOString() : null
 }
 
-function rowToIssue(row: IssueRow, depsByIssue: Record<string, string[]>): Issue {
+function rowToIssue(row: IssueRow, depsByIssue: Record<string, string[]> = {}): Issue {
   return {
     id: row.id,
     projectId: row.project_id,
@@ -106,6 +106,62 @@ function nextObstacleId(existing: string[], prefix: string): string {
     .filter((n) => Number.isFinite(n))
     .reduce((a, b) => Math.max(a, b), 0)
   return `${pre}${String(max + 1).padStart(2, '0')}`
+}
+
+interface EventRow {
+  id: string
+  issue_id: string
+  project_id: string
+  kind: 'comment' | 'handoff'
+  author_id: string | null
+  body: string
+  handoff_from: string | null
+  handoff_to: string | null
+  created_at: string
+  edited_at: string | null
+}
+
+export function rowToEvent(row: EventRow): IssueEvent {
+  return {
+    id: row.id,
+    issueId: row.issue_id,
+    projectId: row.project_id,
+    kind: row.kind,
+    authorId: row.author_id ?? null,
+    body: row.body ?? '',
+    handoffFrom: row.handoff_from ?? null,
+    handoffTo: row.handoff_to ?? null,
+    // Canonizat prin isoOrNull: `src/lib/thread.ts` compară momente, iar
+    // PostgREST întoarce `+00:00` pentru un timestamp scris din client cu `Z`.
+    createdAt: isoOrNull(row.created_at) ?? row.created_at,
+    editedAt: isoOrNull(row.edited_at),
+  }
+}
+
+interface InboxRowRaw {
+  issue_id: string
+  project_id: string
+  title: string
+  done: boolean
+  assignee_id: string | null
+  last_event_at: string | null
+  last_foreign_at: string | null
+  last_foreign_author: string | null
+  seen_at: string | null
+}
+
+export function rowToInboxRow(row: InboxRowRaw): InboxRow {
+  return {
+    issueId: row.issue_id,
+    projectId: row.project_id,
+    title: row.title,
+    done: row.done,
+    assigneeId: row.assignee_id ?? null,
+    lastEventAt: isoOrNull(row.last_event_at),
+    lastForeignAt: isoOrNull(row.last_foreign_at),
+    lastForeignAuthor: row.last_foreign_author ?? null,
+    seenAt: isoOrNull(row.seen_at),
+  }
 }
 
 export function createSupabaseRepository(): Repository {
@@ -586,6 +642,45 @@ export function createSupabaseRepository(): Repository {
       const { data, error } = await db.from('assignees').insert({ name }).select('*').single()
       if (error) throw error
       return { id: data.id, name: data.name }
+    },
+
+    async listEvents(issueId: string): Promise<IssueEvent[]> {
+      const { data, error } = await db.from('issue_events').select('*').eq('issue_id', issueId).order('created_at')
+      if (error) throw error
+      return (data ?? []).map(rowToEvent)
+    },
+
+    async postToThread(input: NewThreadPost) {
+      const { data, error } = await db.rpc('post_to_thread', {
+        p_issue_id: input.issueId,
+        p_project_id: input.projectId,
+        p_body: input.body ?? '',
+        p_handoff: input.handoff ?? false,
+        p_to: input.to ?? null,
+        p_attachment_ids: input.attachmentIds ?? [],
+      })
+      if (error) throw error
+      // `to_jsonb(i)` citește doar tabela `issues`, deci tichetul întors NU
+      // poartă `deps` (ele stau în `dependencies`). Nu inventăm `deps: []` aici
+      // — apelantul păstrează deps-ul vechi al tichetului (vezi Task 6).
+      return {
+        events: (data.events ?? []).map(rowToEvent),
+        issue: rowToIssue(data.issue),
+      }
+    },
+
+    async markSeen(issueId: string): Promise<void> {
+      // Fără `user_id` explicit: îl pune politica RLS prin `auth.uid()`.
+      const { error } = await db
+        .from('issue_seen')
+        .upsert({ issue_id: issueId, seen_at: new Date().toISOString() }, { onConflict: 'user_id,issue_id' })
+      if (error) throw error
+    },
+
+    async listInbox(): Promise<InboxRow[]> {
+      const { data, error } = await db.from('inbox_rows').select('*').eq('done', false)
+      if (error) throw error
+      return (data ?? []).map(rowToInboxRow)
     },
   }
 }
