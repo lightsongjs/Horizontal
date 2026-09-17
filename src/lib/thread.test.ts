@@ -66,16 +66,22 @@ describe('groupInbox', () => {
     expect(rest).toEqual([])
   })
   it('data valida nu se poluează de date corupte în sort', () => {
-    // Cu dată coruptă în comparator, NaN poluează ordinea rândurilor valide
-    // Test: 2 date valide (A: 2026-09-17, C: 2026-09-10) amestecat cu 2 corupte
+    // Cu dată coruptă în comparator, NaN poluează ordinea rândurilor valide.
+    // Rândurile valide sunt puse în ordine INVERSĂ (C, cel vechi, înaintea
+    // lui A, cel nou) — dacă sortarea doar ar păstra ordinea de intrare
+    // (comparator care întoarce NaN, tratat ca „egal" de motor), rezultatul
+    // ar rămâne C înaintea lui A, ceea ce testul de mai jos ar prinde. Cu
+    // rândurile valide deja în ordinea corectă, un comparator stricat ar
+    // „trece" din întâmplare, prin stabilitatea sortării — nu prin corectitudine.
     const rows = [
-      row({ issueId: 'A', lastEventAt: '2026-09-17T10:00:00Z', lastForeignAt: 'dummy', seenAt: null }),
-      row({ issueId: 'B', lastEventAt: 'data-rea', lastForeignAt: 'dummy', seenAt: null }),
       row({ issueId: 'C', lastEventAt: '2026-09-10T10:00:00Z', lastForeignAt: 'dummy', seenAt: null }),
+      row({ issueId: 'B', lastEventAt: 'data-rea', lastForeignAt: 'dummy', seenAt: null }),
+      row({ issueId: 'A', lastEventAt: '2026-09-17T10:00:00Z', lastForeignAt: 'dummy', seenAt: null }),
       row({ issueId: 'D', lastEventAt: 'alta-data-rea', lastForeignAt: 'dummy', seenAt: null }),
     ]
     const { fresh, rest } = groupInbox(rows)
     // Datele valide să fie în ordinea corectă (A mai recent, apoi C), coruptele la coadă
     expect(fresh.map((r) => r.issueId)).toEqual(['A', 'C', 'B', 'D'])
+    expect(rest).toEqual([])
   })
 })
