@@ -384,6 +384,13 @@ export function createSupabaseRepository(): Repository {
       if (pErr) throw pErr
 
       const id = nextIssueId((existing ?? []).map((r) => r.id), proj.prefix)
+      // `getSession()` citește sesiunea locală (fără rundă către rețea) — nu
+      // e o presupunere despre altcineva, e „cine suntem noi", exact ce va
+      // scrie `default auth.uid()` din migrare. Fără asta, ecoul optimist
+      // de mai jos ar întoarce `createdBy: null`, iar un card de dependență
+      // deschis pe tichetul ăsta ÎNAINTE de următorul fetch complet ar arăta
+      // gol în loc de „creat de <nume>", deși rândul din bază e deja corect.
+      const { data: sess } = await db.auth.getSession()
       const issue: Issue = {
         id,
         projectId: input.projectId,
@@ -397,10 +404,11 @@ export function createSupabaseRepository(): Repository {
         scenarios: (input.scenarios ?? []).map((s) => ({ text: s.text, kind: s.kind as import('../lib/types').ScenarioKind })),
         assigneeId: input.assigneeId ?? null,
         // Nu se trimit la insert: `created_at` are `default now()`, iar
-        // `created_by` n-are default (nimic nu atribuie automat un tichet
-        // cuiva — vezi regula centrală). Aproximăm aici ce va avea rândul,
-        // ca obiectul întors să nu mintă fără să mai facă un round-trip.
-        createdBy: null,
+        // `created_by` are `default auth.uid()` (migrare) — TRIMIS explicit
+        // aici ar bloca acel default (un `null` explicit e o valoare, nu o
+        // absență). Aproximăm doar ecoul întors, ca „creat de X" să apară
+        // instant, fără o rundă suplimentară.
+        createdBy: sess.session?.user.id ?? null,
         createdAt: new Date().toISOString(),
         urgent: input.urgent ?? false,
         dueAt: isoOrNull(input.dueAt),

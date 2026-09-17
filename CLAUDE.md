@@ -441,15 +441,38 @@ face totul într-o singură tranzacție, cu `for update` pe rândul tichetului c
 două pase simultane să nu scrie două rânduri cu același `handoff_from` —
 istoric fals, nu doar o stare pierdută.
 
-**Verificat manual, cu conturi reale** (`.superpowers/sdd/2026-09-17-comentarii-si-pasare/verify-rpc.mjs`
-e tiparul; ciclul complet — creare, comentariu + atașament + pasă într-un
-singur gest, bulina de necitit, pasă înapoi — a fost dus până la capăt cu două
-conturi temporare, șterse la final): „creat de X" (`IssueSheet.tsx`, pe cardul
-de dependență) există în cod, dar `created_by` nu e scris nicăieri la creare —
-nici în `supabaseRepository.createIssue`, nici în `localRepository.createIssue`
-— deci un tichet creat azi prin aplicație nu va arăta niciodată „creat de X" în
-producție, oricine l-ar crea. Coloana și afișarea sunt gata; doar firul care le
-leagă (cine sunt „eu" la insert) nu s-a scris încă.
+**„Creat de X" (`IssueSheet.tsx`, pe cardul de dependență) vine dintr-un
+default de bază, nu dintr-o scriere de client.** `created_by` are
+`default auth.uid()` (`supabase/migration-comments.sql`) — la fel ca
+`issue_seen.user_id` mai sus. Un client care ar trimite `created_by` explicit
+ar putea numi pe altcineva drept autor, plus că un `null` explicit e o
+valoare, nu o absență, deci ar bloca exact default-ul pe care ne bazăm;
+`supabaseRepository.createIssue` nu-l trimite niciodată la insert. Ecoul
+optimist întors imediat (înainte de orice refetch) citește totuși sesiunea
+locală (`db.auth.getSession()`, fără rundă către rețea) ca să-l aproximeze
+corect — altfel un card de dependență deschis pe tichetul abia creat, înainte
+de următoarea reîncărcare, ar arăta gol deși rândul din bază e deja corect.
+
+**Un tichet scris cu cheia de serviciu n-are autor uman, și așa trebuie să
+rămână.** `functions/api/` (ticket-kit) scrie direct prin REST cu
+`SUPABASE_SERVICE_ROLE_KEY`, fără sesiune de utilizator — `auth.uid()` e
+`null` în contextul ăla, deci `created_by` rămâne `null`, la fel ca înainte de
+fix. Nu e o gaură: e coloana spunând adevărul. Un tichet creat de o unealtă nu
+are cine să fie „Alex" sau „Bogdan", și inventarea unui autor ar fi mai rea
+decât lipsa lui.
+
+`localRepository` (modul local, fără conturi) rămâne cu `createdBy: null` la
+creare, deliberat: n-are cine să fie creatorul, la fel cum autorul unui
+comentariu local e string-ul `'local'` și `myAssigneeId` e mereu `null` — nu
+un rest uitat, ci aceeași lipsă de identitate peste tot.
+
+Verificat manual, cu conturi reale (`.superpowers/sdd/2026-09-17-comentarii-si-pasare/verify-rpc.mjs`
+e tiparul pentru fir/pasă; ciclul complet — creare, comentariu + atașament +
+pasă într-un singur gest, bulina de necitit, pasă înapoi — a fost dus până la
+capăt cu conturi temporare, șterse la final): un tichet creat prin interfață
+arată „creat de <numele contului>" pe cardul de dependență, imediat, fără
+reîncărcare; un tichet creat prin `POST /api/tickets` are `created_by null` în
+bază.
 
 Pasul de setup: `npm run migrate supabase/migration-comments.sql`, apoi
 `node scripts/link-assignees.mjs` ca să legi conturile de rânduri din

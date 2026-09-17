@@ -290,8 +290,10 @@ export function createLocalRepository(): Repository {
         selectors: [],
         scenarios: [],
         assigneeId: input.assigneeId ?? null,
-        // Backendul local n-are noțiune de sesiune/cont — nimic nu
-        // atribuie automat un tichet cuiva, nici la creator.
+        // Backendul local n-are conturi, deci n-are cine să fie „creatorul":
+        // la fel ca autorul unui comentariu (`'local'`, în `postToThread` de
+        // mai jos) și ca `myAssigneeId` (mereu null în modul local), rămâne
+        // fără identitate — consecvent, nu un rest uitat.
         createdBy: null,
         createdAt: new Date().toISOString(),
         urgent: input.urgent ?? false,

@@ -49,6 +49,13 @@ end $$;
 alter table public.issues add column if not exists created_by uuid references auth.users(id) on delete set null;
 alter table public.issues add column if not exists created_at timestamptz not null default now();
 
+-- Default în bază, nu în client: un client care ar trimite `created_by` ar
+-- putea numi pe altcineva drept autor. `auth.uid()` e null pentru un insert
+-- făcut cu cheia de serviciu (ex. `functions/api/`) — corect, un tichet creat
+-- prin API n-are autor uman, iar coloana trebuie să spună adevărul, nu să
+-- inventeze unul. La fel ca `issue_seen.user_id` mai jos.
+alter table public.issues alter column created_by set default auth.uid();
+
 -- ── 3. issue_events ─────────────────────────────────────────────────────────
 create table if not exists public.issue_events (
   id uuid primary key default gen_random_uuid(),

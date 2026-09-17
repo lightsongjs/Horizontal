@@ -112,6 +112,13 @@ const { fakeDb } = vi.hoisted(() => {
       obstacle_deps: [],
     }
     storage = new FakeStorage()
+    // `createIssue` citește sesiunea locală (fără rundă către rețea) doar ca
+    // să potrivească local `createdBy` cu ce va scrie `default auth.uid()`
+    // din bază — vezi comentariul din `supabaseRepository.ts`.
+    userId: string | null = 'u1'
+    auth = {
+      getSession: async () => ({ data: { session: this.userId ? { user: { id: this.userId } } : null } }),
+    }
     from(table: string) {
       return new Query(this.tables, table)
     }
@@ -128,6 +135,7 @@ const { fakeDb } = vi.hoisted(() => {
         obstacle_deps: [],
       }
       this.storage.reset()
+      this.userId = 'u1'
     }
   }
   return { fakeDb: new FakeDB() }
@@ -197,7 +205,22 @@ describe('supabaseRepository', () => {
     const row = fakeDb.tables.issues.find((r) => r.id === 'P-02')!
     expect(row).toMatchObject({ title: 'B', details: 'hello', project_id: 'p', wave: 1 })
     expect('desc' in row).toBe(false) // must use the real column name
+    // `created_by` nu se trimite NICIODATĂ la insert — coloana are
+    // `default auth.uid()` în bază, iar un `created_by` explicit (chiar
+    // `null`) ar bloca acel default.
+    expect('created_by' in row).toBe(false)
+    // Ecoul optimist aproximează totuși sesiunea curentă, ca „creat de X" să
+    // apară instant, fără o rundă suplimentară.
+    expect(issue.createdBy).toBe('u1')
     expect(fakeDb.tables.dependencies).toContainEqual({ issue_id: 'P-02', depends_on_id: 'P-01' })
+  })
+
+  it('createIssue leaves createdBy null when there is no session (ex. writes made with the service key)', async () => {
+    fakeDb.tables.projects.push({ id: 'p', prefix: 'P', current_wave: 1, name: 'x', description: '', accent: '#fff' })
+    fakeDb.userId = null
+    const repo = createSupabaseRepository()
+    const issue = await repo.createIssue({ projectId: 'p', title: 'B', deps: [] })
+    expect(issue.createdBy).toBeNull()
   })
 
   it('updateIssue replaces the full dependency set', async () => {
