@@ -12,7 +12,13 @@
 import { chromium } from 'playwright'
 import { readFileSync } from 'node:fs'
 
-const CSS = readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8')
+// `.replace(/^﻿/, '')`: `styles.css` are BOM (salvat de un editor Windows).
+// Injectat inline într-un `<style>` (nu ca foaie externă), BOM-ul rămâne text
+// literal înaintea `@import`-ului — Chromium aruncă atunci nu doar @import-ul,
+// ci și `:root{}` de după, deci NICIO variabilă CSS (`--surface-3`, `--amb`
+// etc.) nu se mai rezolvă. Latent până acum: niciun check de mai jos n-a citit
+// o culoare calculată — abia bara de om verifică fundal/umbră.
+const CSS = readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8').replace(/^﻿/, '')
 
 /** Lățimile la care se uită oamenii pe telefon. 320 = cel mai îngust ecran
  *  pe care merită să funcționeze; 430 = iPhone Pro Max. */
@@ -117,6 +123,53 @@ for (const width of PHONE_WIDTHS) {
   check(`fără overflow @${width}px`, m.overflow <= 0, `${m.overflow}px peste rând`)
   check(`text netăiat @${width}px`, !m.clipped, m.clipped ? 'o etichetă e tăiată' : 'toate etichetele întregi')
   check(`buton vizibil @${width}px`, m.narrowest >= 40, `cel mai îngust ${m.narrowest}px`)
+}
+
+/**
+ * Bara de filtre de om stă pe rând PROPRIU. În `.wave-sel`, `.wave-tabs` are
+ * `flex: 1` și `.wave-actions` `flex-shrink: 0` — un al treilea copil ar fura
+ * din valuri. Fixture-ul pune cazul cel mai rău: patru jetoane cu nume lungi.
+ */
+const whoBar = () => `
+<div class="wave-sel">
+  <div class="wave-tabs"><button>Val 1</button><button>Val 2</button><button>Val 3</button></div>
+  <div class="wave-actions"><button>A</button><button>B</button></div>
+</div>
+<div class="who-bar">
+  <button class="who-chip">Toți <span class="n">12</span></button>
+  <button class="who-chip">Nepasate <span class="n">7</span></button>
+  <button class="who-chip on">Alexandru <span class="n">3</span></button>
+  <button class="who-chip">Maria Popescu <span class="n">2</span></button>
+</div>`
+
+console.log('Bara de filtre de om (ListView) — valurile nu se strivesc:')
+for (const width of PHONE_WIDTHS) {
+  const page = await browser.newPage({ viewport: { width, height: 900 } })
+  await page.setContent(`<style>${CSS}</style>${whoBar()}`)
+  const m = await page.evaluate(() => {
+    const tabs = document.querySelector('.wave-tabs')
+    const bar = document.querySelector('.who-bar')
+    const chip = document.querySelector('.who-chip')
+    const barStyle = getComputedStyle(bar)
+    const chipStyle = getComputedStyle(chip)
+    return {
+      tabs: Math.round(tabs.getBoundingClientRect().width),
+      chipH: Math.round(chip.getBoundingClientRect().height),
+      // Bara își duce singură depășirea, prin scroll orizontal — nu o împinge
+      // în pagină și nu se înfășoară. (Proprietatea de derulat trăiește pe
+      // BARĂ, nu pe jeton — jetonul nu se derulează pe cont propriu.)
+      scrolls: bar.scrollWidth > Math.round(bar.getBoundingClientRect().width),
+      overflowX: barStyle.overflowX,
+      // Un control fără fundal ȘI fără chenar e invizibil.
+      visible: chipStyle.backgroundColor !== 'rgba(0, 0, 0, 0)' || chipStyle.boxShadow !== 'none',
+    }
+  })
+  await page.close()
+
+  check(`valuri @${width}px`, m.tabs >= 120, `${m.tabs}px pentru taburile de val`)
+  check(`jeton atingibil @${width}px`, m.chipH >= 28, `${m.chipH}px înălțime`)
+  check(`bara se derulează @${width}px`, !m.scrolls || m.overflowX === 'auto', `overflow-x: ${m.overflowX}`)
+  check(`jeton vizibil @${width}px`, m.visible, m.visible ? 'are fundal sau umbră' : 'INVIZIBIL')
 }
 
 await browser.close()

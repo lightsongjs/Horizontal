@@ -917,6 +917,43 @@ main {
   background: var(--txt-faint);
 }
 
+/* FILTRU DE OM (Listă) — rând PROPRIU, frate al `.wave-sel`, nu al treilea
+   copil: acolo `.wave-tabs` are flex:1 și valurile s-ar strivi. Numărul de
+   oameni nu e mărginit ca cel de valuri, deci scroll orizontal, nu wrap. */
+.who-bar {
+  display: flex;
+  gap: 7px;
+  margin-bottom: 14px;
+  padding: 8px 15px;
+  overflow-x: auto;
+  background: var(--surface);
+  box-shadow: var(--amb);
+  border-radius: var(--r-m);
+  scrollbar-width: none;
+}
+.who-bar::-webkit-scrollbar { display: none; }
+.who-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  background: var(--surface-3);
+  border: 0;
+  /* Jeton, ca `.holder`/`.dep-tab-btn` — r-s, nu r-m. */
+  border-radius: var(--r-s);
+  padding: 6px 10px;
+  color: var(--txt-dim);
+  font-size: 13px;
+  cursor: pointer;
+}
+/* Activ = text plin + linie de 2px. Nicio casetă umplută, niciun gradient. */
+.who-chip.on {
+  color: var(--txt);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+.who-chip .n { font-family: var(--mono); font-size: 10px; color: var(--txt-faint); }
+.who-chip.on .n { color: var(--accent); }
+
 /* BOTTOM SHEET */
 .sheet-bg {
   position: fixed;
