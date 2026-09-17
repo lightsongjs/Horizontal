@@ -35,7 +35,7 @@ function isoOrNull(v: string | null | undefined): string | null {
   return v ? new Date(v).toISOString() : null
 }
 
-function rowToIssue(row: IssueRow, depsByIssue: Record<string, string[]> = {}): Issue {
+function rowToIssue(row: IssueRow, depsByIssue: Record<string, string[]>): Issue {
   return {
     id: row.id,
     projectId: row.project_id,
@@ -665,12 +665,15 @@ export function createSupabaseRepository(): Repository {
       // — apelantul păstrează deps-ul vechi al tichetului (vezi Task 6).
       return {
         events: (data.events ?? []).map(rowToEvent),
-        issue: rowToIssue(data.issue),
+        issue: rowToIssue(data.issue, {}),
       }
     },
 
     async markSeen(issueId: string): Promise<void> {
-      // Fără `user_id` explicit: îl pune politica RLS prin `auth.uid()`.
+      // Fără `user_id` explicit: coloana are `default auth.uid()` (migrare),
+      // deci baza îl completează singură la INSERT. RLS nu suplinește o
+      // coloană NOT NULL lipsă — filtrează/validează rânduri, nu completează
+      // valori; aici doar refuză orice `user_id` diferit de-al tău.
       const { error } = await db
         .from('issue_seen')
         .upsert({ issue_id: issueId, seen_at: new Date().toISOString() }, { onConflict: 'user_id,issue_id' })

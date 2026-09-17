@@ -98,6 +98,12 @@ create table if not exists public.issue_seen (
   primary key (user_id, issue_id)
 );
 
+-- `markSeen` din client nu trimite `user_id` — baza îl completează, nu RLS.
+-- RLS filtrează/validează rânduri, nu poate suplini o coloană NOT NULL lipsă
+-- dintr-un INSERT. `(select auth.uid())` NU e valid într-un DEFAULT (nu se
+-- admit subinterogări acolo) — de-aia forma simplă, fără `select`.
+alter table public.issue_seen alter column user_id set default auth.uid();
+
 -- ── 5. attachments.event_id ─────────────────────────────────────────────────
 -- `set null`, nu `cascade`: ștergerea unui comentariu întoarce fișierul la
 -- tichet în loc să-l lase orfan în bucket.
