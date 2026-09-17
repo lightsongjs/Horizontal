@@ -18,6 +18,8 @@ interface IssueRow {
   selectors: unknown
   scenarios: unknown
   assignee_id: string | null
+  created_by: string | null
+  created_at: string
   urgent: boolean
   due_at: string | null
   all_day: boolean
@@ -47,6 +49,10 @@ function rowToIssue(row: IssueRow, depsByIssue: Record<string, string[]>): Issue
     selectors: Array.isArray(row.selectors) ? (row.selectors as string[]) : [],
     scenarios: Array.isArray(row.scenarios) ? (row.scenarios as { text: string; kind: string }[]).map((s) => ({ text: s.text, kind: s.kind as import('../lib/types').ScenarioKind })) : [],
     assigneeId: row.assignee_id ?? null,
+    createdBy: row.created_by ?? null,
+    // Canonizat prin isoOrNull, ca la IssueEvent.createdAt mai jos — Postgres
+    // întoarce `+00:00`, modelul vrea un singur format ISO-Z.
+    createdAt: isoOrNull(row.created_at) ?? row.created_at,
     urgent: row.urgent ?? false,
     dueAt: isoOrNull(row.due_at),
     allDay: row.all_day ?? true,
@@ -390,6 +396,12 @@ export function createSupabaseRepository(): Repository {
         selectors: input.selectors ?? [],
         scenarios: (input.scenarios ?? []).map((s) => ({ text: s.text, kind: s.kind as import('../lib/types').ScenarioKind })),
         assigneeId: input.assigneeId ?? null,
+        // Nu se trimit la insert: `created_at` are `default now()`, iar
+        // `created_by` n-are default (nimic nu atribuie automat un tichet
+        // cuiva — vezi regula centrală). Aproximăm aici ce va avea rândul,
+        // ca obiectul întors să nu mintă fără să mai facă un round-trip.
+        createdBy: null,
+        createdAt: new Date().toISOString(),
         urgent: input.urgent ?? false,
         dueAt: isoOrNull(input.dueAt),
         allDay: input.allDay ?? true,

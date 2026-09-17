@@ -1,3 +1,4 @@
+import { toShortDate } from '../lib/schedule'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { Attachments } from './Attachments'
@@ -14,6 +15,11 @@ export function IssueSheet({ issueId }: { issueId: string }) {
   const deps = it.deps ?? []
   const permits = unblockedBy(issueId)
   const assignee = it.assigneeId ? assignees.find((a) => a.id === it.assigneeId) : null
+  // `createdBy` e un id de cont (`auth.users`), nu de assignee — se mapează
+  // prin `assignees.userId`, la fel ca autorul unui comentariu în Thread.tsx.
+  // `null` e cazul normal azi: 486 de tichete migrate fără el.
+  const creator = it.createdBy ? assignees.find((a) => a.userId === it.createdBy) : undefined
+  const creatorName = creator?.name
 
   const navigateTo = (id: string) => pushSheet({ kind: 'issue', issueId: id })
 
@@ -38,6 +44,27 @@ export function IssueSheet({ issueId }: { issueId: string }) {
           {it.done && <>{' · '}<span className="sheet-done"><Icon name="check" size={13} /> Gata</span></>}
         </div>
         <h2>{it.title}</h2>
+        {/* `it.createdBy` null e cazul normal azi (vezi mai sus) — atunci se
+            arată doar data, fără „creat de —" și fără un avatar gol. */}
+        <div className="origin">
+          {it.createdBy && (
+            <>
+              <span className="origin-avatar">{(creatorName ?? '?').slice(0, 2).toUpperCase()}</span>
+              <span>creat de {creatorName ?? 'cineva'}</span>
+              <span className="dot">·</span>
+            </>
+          )}
+          <time className="mono">{toShortDate(it.createdAt)}</time>
+        </div>
+        {assignee ? (
+          <div className="holder">
+            <span className="arrow">→</span>
+            <span className="origin-avatar">{assignee.name.slice(0, 2).toUpperCase()}</span>
+            <span className="who">{assignee.name}</span>
+          </div>
+        ) : (
+          <div className="holder free">nepasat — stă la {creatorName ?? 'creator'}</div>
+        )}
       </div>
 
       <div className="sheet-scroll">

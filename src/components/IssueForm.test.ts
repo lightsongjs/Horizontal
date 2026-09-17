@@ -31,7 +31,7 @@ describe('obstaclesDirty', () => {
 
 const existingIssue: Issue = {
   id: 'HZ-1', projectId: 'p1', title: 'Titlu salvat', desc: 'Descriere salvată', theme: '', wave: 2,
-  deps: [], done: false, selectors: [], scenarios: [], assigneeId: null, urgent: false, ...NO_SCHEDULE,
+  deps: [], done: false, selectors: [], scenarios: [], assigneeId: null, createdBy: null, createdAt: '2026-01-01T00:00:00.000Z', urgent: false, ...NO_SCHEDULE,
 }
 
 /** Stare curată pentru un tichet existent — fiecare câmp reflectă exact ce e

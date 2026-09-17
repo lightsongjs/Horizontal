@@ -15,6 +15,15 @@ import {
 
 const KEY = 'horizontal:v2'
 
+/**
+ * Un tichet local salvat înainte de `createdAt` n-are de unde să știe când a
+ * apărut cu adevărat — la fel ca cele 486 din producție, migrate fără
+ * `created_by`/`created_at` reale. Momentul evaluării modulului joacă rolul
+ * „orei migrării": un singur moment, stabil pentru toată sesiunea, nu unul
+ * recalculat la fiecare `load()`.
+ */
+const LEGACY_CREATED_AT = new Date().toISOString()
+
 interface DB {
   projects: Project[]
   waves: Wave[]
@@ -52,6 +61,8 @@ function load(): DB {
           allDay: i.allDay ?? true,
           remindAt: i.remindAt ?? null,
           rrule: i.rrule ?? null,
+          createdBy: i.createdBy ?? null,
+          createdAt: i.createdAt ?? LEGACY_CREATED_AT,
         })),
         assignees: db.assignees ?? [],
         // Adăugate după ce cineva avea deja date în localStorage.
@@ -279,6 +290,10 @@ export function createLocalRepository(): Repository {
         selectors: [],
         scenarios: [],
         assigneeId: input.assigneeId ?? null,
+        // Backendul local n-are noțiune de sesiune/cont — nimic nu
+        // atribuie automat un tichet cuiva, nici la creator.
+        createdBy: null,
+        createdAt: new Date().toISOString(),
         urgent: input.urgent ?? false,
         dueAt: input.dueAt ?? null,
         allDay: input.allDay ?? true,

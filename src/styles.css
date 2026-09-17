@@ -1015,6 +1015,60 @@ main {
   margin-top: 5px;
   line-height: 1.5;
 }
+/* ── PROVENIENȚĂ + DEȚINĂTOR ─────────────────────────
+   Cine l-a creat (nu se schimbă niciodată) și pe cine stă acum (se schimbă la
+   fiecare pasă) — vezi IssueSheet. Numele e limbă → serif, moștenit din body;
+   data e cifră → mono, explicit mai jos. */
+.origin {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 12.5px;
+  color: var(--txt-faint);
+}
+.origin .dot { color: var(--txt-faint); }
+.origin .mono {
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.origin-avatar {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-3);
+  color: var(--txt-dim);
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+}
+/* Jetonul „holder" n-are chenar: saltul e de fundal (surface-3), nu de linie. */
+.holder {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 3px 9px 3px 6px;
+  background: var(--surface-3);
+  border-radius: var(--r-s);
+  font-size: 12.5px;
+  color: var(--txt-dim);
+}
+.holder .arrow {
+  font-family: var(--mono);
+  color: var(--txt-faint);
+}
+.holder .who { font-weight: 600; color: var(--txt); }
+/* Nepasat: afirmație generică („stă la creator"), nu un jeton de persoană —
+   de-aia n-are avatar și textul e mai șters. */
+.holder.free {
+  color: var(--txt-faint);
+  font-style: italic;
+}
 /* Descrierea tichetului, în zona derulabilă (vezi IssueSheet).
    `pre-wrap` fiindcă vine din `<textarea>`: fără el rândurile scrise de om se
    lipeau într-un singur paragraf, iar o listă tastată pe rânduri devenea

@@ -158,6 +158,27 @@ describe('localRepository', () => {
     expect(issue.urgent).toBe(false)
   })
 
+  it('backfills createdBy=null and a createdAt string for legacy issues persisted without either field', async () => {
+    const legacy = {
+      projects: [
+        { id: 'leg', name: 'L', description: '', prefix: 'LEG', currentWave: 1, accent: '#0EA5E9', type: 'personal' },
+      ],
+      waves: [{ projectId: 'leg', number: 1, name: 'Val 1', label: 'MVP', position: 0 }],
+      themes: [],
+      issues: [
+        { id: 'LEG-01', projectId: 'leg', title: 'Old', desc: '', theme: '', wave: 1, deps: [], done: false, selectors: [], scenarios: [], assigneeId: null },
+      ] as unknown[],
+      assignees: [],
+    }
+    localStorage.setItem('horizontal:v2', JSON.stringify(legacy))
+
+    const repo = createLocalRepository()
+    const issue = (await repo.listIssues('leg')).find((i) => i.id === 'LEG-01')!
+    expect(issue.createdBy).toBeNull()
+    expect(typeof issue.createdAt).toBe('string')
+    expect(Number.isNaN(new Date(issue.createdAt).getTime())).toBe(false)
+  })
+
   it('creează obstacole cu id derivat din prefixul proiectului', async () => {
     const repo = createLocalRepository()
     const p = await repo.createProject({ name: 'MCP', description: '', prefix: 'MCP' })

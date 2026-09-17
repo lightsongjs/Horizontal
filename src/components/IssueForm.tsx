@@ -638,7 +638,7 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
     const prospective: Issue[] = issues.map((i) => ({ ...i, deps: [...(i.deps ?? [])] }))
     let target = prospective.find((i) => i.id === targetId)
     if (!target) {
-      target = { id: targetId, projectId: project.id, title, desc: '', theme, wave, deps: [], done: false, selectors: [], scenarios: [], assigneeId: null, urgent: false, ...NO_SCHEDULE }
+      target = { id: targetId, projectId: project.id, title, desc: '', theme, wave, deps: [], done: false, selectors: [], scenarios: [], assigneeId: null, createdBy: null, createdAt: new Date().toISOString(), urgent: false, ...NO_SCHEDULE }
       prospective.push(target)
     }
     target.deps = [...deps.filter((d) => !d.startsWith('__draft_'))]
@@ -726,7 +726,7 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
         return i
       })
       if (!snap.find((i) => i.id === targetId)) {
-        snap = [...snap, { id: targetId, projectId: project.id, title: saveTitle, desc: desc.trim(), theme, wave, deps: realDeps, done: false, selectors: selectors.filter(Boolean), scenarios, assigneeId, urgent, dueAt: schedule.dueAt, allDay: schedule.allDay, remindAt: schedule.remindAt, rrule: null }]
+        snap = [...snap, { id: targetId, projectId: project.id, title: saveTitle, desc: desc.trim(), theme, wave, deps: realDeps, done: false, selectors: selectors.filter(Boolean), scenarios, assigneeId, createdBy: null, createdAt: new Date().toISOString(), urgent, dueAt: schedule.dueAt, allDay: schedule.allDay, remindAt: schedule.remindAt, rrule: null }]
       }
       const cascadeQueue = [...realDeps]
       const cascadeSeen = new Set<string>()

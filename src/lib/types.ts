@@ -67,6 +67,19 @@ export interface Issue {
   selectors: string[]
   scenarios: TestScenario[]
   assigneeId: string | null
+  /**
+   * Contul (`auth.users`) care a creat tichetul — nu se schimbă niciodată,
+   * spre deosebire de `assigneeId`. `null` = nu se știe: cazul normal azi,
+   * fiindcă la 486 de tichete deja existente coloana a venit goală. E un id
+   * de cont, nu de assignee — se mapează prin `assignees.userId`, la fel ca
+   * `IssueEvent.authorId`.
+   */
+  createdBy: string | null
+  /**
+   * Când a apărut tichetul, ISO 8601. Pentru tichetele vechi e ora migrării,
+   * nu ora reală de creare.
+   */
+  createdAt: string
   /** Urgent issues sort left within their layer. Default false. */
   urgent: boolean
   /**

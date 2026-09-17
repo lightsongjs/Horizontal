@@ -16,6 +16,8 @@ function makeIssue(id: string, title: string): Issue {
     selectors: [],
     scenarios: [],
     assigneeId: null,
+    createdBy: null,
+    createdAt: '2026-01-01T00:00:00.000Z',
     urgent: false,
     ...NO_SCHEDULE,
   }
