@@ -36,7 +36,19 @@ export function ListView() {
     return counts
   }, [allIds, byId])
   // Doar oamenii care chiar au ceva în valul ăsta — un filtru cu zero e zgomot.
-  const holders = useMemo(() => assignees.filter((a) => (countFor.get(a.id) ?? 0) > 0), [assignees, countFor])
+  // EXCEPȚIE: cel filtrat activ rămâne, chiar cu zero — la schimbarea valului
+  // pe unul unde n-are nimic, un jeton care dispare ar lăsa filtrul aplicat
+  // dar invizibil, iar lista goală s-ar citi ca „valul ăsta e gol", nu ca
+  // „ai un filtru pus". Aici zero nu e zgomot, e rezultatul unei alegeri.
+  const holders = useMemo(
+    () => assignees.filter((a) => (countFor.get(a.id) ?? 0) > 0 || a.id === personFilter),
+    [assignees, countFor, personFilter],
+  )
+  const showUnassignedChip = unassignedCount > 0 || personFilter === 'none'
+  const filteredName =
+    personFilter && personFilter !== 'none'
+      ? (assignees.find((a) => a.id === personFilter)?.name ?? null)
+      : null
 
   const visibleLayers = useMemo(() => {
     const matches = (id: string) => {
@@ -77,7 +89,7 @@ export function ListView() {
 
         {/* Frate al `.wave-sel`, nu al treilea copil: acolo `.wave-tabs` are
             flex:1 și un al treilea copil ar fura din taburile de val. */}
-        {holders.length > 0 && (
+        {(holders.length > 0 || showUnassignedChip) && (
           <div className="who-bar">
             <button
               type="button"
@@ -86,7 +98,7 @@ export function ListView() {
             >
               Toți <span className="n">{allIds.length}</span>
             </button>
-            {unassignedCount > 0 && (
+            {showUnassignedChip && (
               <button
                 type="button"
                 className={`who-chip ${personFilter === 'none' ? 'on' : ''}`}
@@ -113,7 +125,13 @@ export function ListView() {
         ) : orderedLayers.length === 0 ? (
           <p className="empty">Niciun tichet în acest val. Apasă + ca să adaugi unul.</p>
         ) : visibleLayers.length === 0 ? (
-          <p className="empty">Niciun tichet pentru acest filtru.</p>
+          <p className="empty">
+            {personFilter === 'none'
+              ? 'Niciun tichet nepasat în acest val.'
+              : filteredName
+                ? `Niciun tichet pasat lui ${filteredName} în acest val.`
+                : 'Niciun tichet pentru acest filtru.'}
+          </p>
         ) : (
           visibleLayers.map((g, i) => (
             <div

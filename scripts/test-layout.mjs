@@ -126,9 +126,15 @@ for (const width of PHONE_WIDTHS) {
 }
 
 /**
- * Bara de filtre de om stă pe rând PROPRIU. În `.wave-sel`, `.wave-tabs` are
- * `flex: 1` și `.wave-actions` `flex-shrink: 0` — un al treilea copil ar fura
- * din valuri. Fixture-ul pune cazul cel mai rău: patru jetoane cu nume lungi.
+ * Bara de filtre de om stă pe rând PROPRIU, frate al `.wave-sel` — nu al
+ * treilea copil al lui. Un check pe LĂȚIME nu prinde greșeala asta: sub
+ * 899px `.wave-sel` are deja `flex-wrap: wrap`, deci rândurile se despart
+ * oricum indiferent unde stă elementul, iar la 1000px+ diferența e reală
+ * (970px vs. 579px) dar tot rămâne peste orice prag rezonabil de „lățime minimă" —
+ * verificat empiric, mutând bara ca al treilea copil: testul pe lățimi trecea
+ * la fel. De-aia verificarea de mai jos e STRUCTURALĂ (`.who-bar` nu are voie
+ * să aibă `.wave-sel` ca părinte), nu geometrică. Celelalte trei — înălțimea
+ * jetonului, derularea, vizibilitatea — chiar testează ce pretind și rămân.
  */
 const whoBar = () => `
 <div class="wave-sel">
@@ -142,18 +148,32 @@ const whoBar = () => `
   <button class="who-chip">Maria Popescu <span class="n">2</span></button>
 </div>`
 
-console.log('Bara de filtre de om (ListView) — valurile nu se strivesc:')
+console.log('Bara de filtre de om (ListView):')
+{
+  const page = await browser.newPage({ viewport: { width: 390, height: 900 } })
+  await page.setContent(`<style>${CSS}</style>${whoBar()}`)
+  const isSibling = await page.evaluate(() => {
+    const bar = document.querySelector('.who-bar')
+    const waveSel = document.querySelector('.wave-sel')
+    return bar.parentElement !== waveSel
+  })
+  await page.close()
+  check(
+    '`.who-bar` nu e al treilea copil al `.wave-sel`',
+    isSibling,
+    isSibling ? 'e frate, nu copil' : 'COPIL — ar fura din `.wave-tabs` (flex:1)',
+  )
+}
+
 for (const width of PHONE_WIDTHS) {
   const page = await browser.newPage({ viewport: { width, height: 900 } })
   await page.setContent(`<style>${CSS}</style>${whoBar()}`)
   const m = await page.evaluate(() => {
-    const tabs = document.querySelector('.wave-tabs')
     const bar = document.querySelector('.who-bar')
     const chip = document.querySelector('.who-chip')
     const barStyle = getComputedStyle(bar)
     const chipStyle = getComputedStyle(chip)
     return {
-      tabs: Math.round(tabs.getBoundingClientRect().width),
       chipH: Math.round(chip.getBoundingClientRect().height),
       // Bara își duce singură depășirea, prin scroll orizontal — nu o împinge
       // în pagină și nu se înfășoară. (Proprietatea de derulat trăiește pe
@@ -166,7 +186,6 @@ for (const width of PHONE_WIDTHS) {
   })
   await page.close()
 
-  check(`valuri @${width}px`, m.tabs >= 120, `${m.tabs}px pentru taburile de val`)
   check(`jeton atingibil @${width}px`, m.chipH >= 28, `${m.chipH}px înălțime`)
   check(`bara se derulează @${width}px`, !m.scrolls || m.overflowX === 'auto', `overflow-x: ${m.overflowX}`)
   check(`jeton vizibil @${width}px`, m.visible, m.visible ? 'are fundal sau umbră' : 'INVIZIBIL')
