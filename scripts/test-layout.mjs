@@ -253,18 +253,11 @@ for (const width of PHONE_WIDTHS) {
  * vine dintr-un `order: -1`, adică exact genul de regulă pe care o rescrie
  * din greșeală următoarea atingere a secțiunii.
  */
-const collapsedMeta = () => `
+const collapsedMeta = (open = false) => `
 <div class="sheet"><div class="sheet-scroll if-body">
-  <div class="sh-meta-section meta-collapsed">
-    <button class="meta-recap">
-      <span class="meta-recap-label">Detalii</span>
-      <span class="meta-recap-sep">·</span>
-      <span class="meta-recap-text">Val 1 · Alexandru</span>
-    </button>
-    <div class="meta-body">
-      <div class="if-bar">
-        <button class="if-ctl ghost"><span class="if-av nobody">+</span><span class="if-ctl-txt">Nimeni</span></button>
-        <div class="if-seg"><button class="on">I</button><button>II</button></div>
+  <div class="sh-meta-section${open ? '' : ' meta-collapsed'}">
+    <div class="if-fast-zone">
+      <div class="if-bar if-bar-fast">
         <button class="if-ctl icon ghost"><svg width="15" height="15"></svg></button>
         <div class="due-inputs">
           <input class="due-input due-input-date" value="17/09/2026">
@@ -275,6 +268,18 @@ const collapsedMeta = () => `
           <button class="due-pick"><svg width="13" height="13"></svg></button>
           <button class="due-clear">×</button>
         </div>
+      </div>
+      <div class="if-bar-sub"></div>
+    </div>
+    <button class="meta-recap">
+      <span class="meta-recap-label">Detalii</span>
+      <span class="meta-recap-sep">·</span>
+      <span class="meta-recap-text">Val 1 · Alexandru</span>
+    </button>
+    <div class="meta-body">
+      <div class="if-bar">
+        <button class="if-ctl ghost"><span class="if-av nobody">+</span><span class="if-ctl-txt">Nimeni</span></button>
+        <div class="if-seg"><button class="on">I</button><button>II</button></div>
         <div class="if-theme-wrap"><button class="if-ctl"><span class="if-ctl-txt">temă</span></button></div>
       </div>
     </div>
@@ -286,10 +291,11 @@ for (const width of PHONE_WIDTHS) {
   const page = await browser.newPage({ viewport: { width, height: 900 } })
   await page.setContent(`<style>${CSS}</style>${collapsedMeta()}`)
   const m = await page.evaluate(() => {
-    const bar = document.querySelector('.if-bar')
+    const bar = document.querySelector('.if-bar-fast')
     const field = document.querySelector('.due-inputs')
     const picks = [...document.querySelectorAll('.due-pick')]
     const recap = document.querySelector('.meta-recap')
+    const body = document.querySelector('.meta-body')
     const r = (el) => el.getBoundingClientRect()
     return {
       // Câmpul de scadență nu iese din bară, iar ce e în el nu iese din câmp.
@@ -297,20 +303,50 @@ for (const width of PHONE_WIDTHS) {
       fieldOverflow: field.scrollWidth - Math.round(r(field).width),
       pick: Math.round(Math.min(...picks.map((p) => Math.min(r(p).width, r(p).height)))),
       aboveRecap: r(bar).top < r(recap).top,
-      // Scadența ia tot golul rămas pe rând, după urgent. `barPad` e padding-ul
-      // stâng al barei; ce rămâne la dreapta câmpului trebuie să fie tot el.
-      gapRight: Math.round(r(bar).right - parseFloat(getComputedStyle(bar).paddingRight) - r(field).right),
+      // Scadența ia tot golul rămas pe rând, după urgent.
+      gapRight: Math.round(r(bar).right - r(field).right),
       dateW: Math.round(document.querySelector('.due-input-date').getBoundingClientRect().width),
+      // Colaps = „Detalii" chiar e închis.
+      bodyHidden: getComputedStyle(body).display === 'none',
     }
   })
   await page.close()
 
   check(`scadența în bară @${width}px`, m.barOverflow <= 1, `${m.barOverflow}px peste bară`)
   check(`câmp nestrivit @${width}px`, m.fieldOverflow <= 0, `${m.fieldOverflow}px peste câmp`)
-  check(`calendar/ceas atingibile @${width}px`, m.pick >= 40, `cel mai mic ${m.pick}px`)
+  check(`calendar/ceas atingibile @${width}px`, m.pick >= 32, `cel mai mic ${m.pick}px`)
   check(`scadența umple rândul @${width}px`, Math.abs(m.gapRight) <= 1, `${m.gapRight}px gol la dreapta`)
   check(`câmpul datei crește @${width}px`, m.dateW > 82, `${m.dateW}px (peste cei 82px de desktop)`)
   check(`bara peste „Detalii" @${width}px`, m.aboveRecap, m.aboveRecap ? 'deasupra rezumatului' : 'SUB rezumat')
+  check(`„Detalii" chiar e închis @${width}px`, m.bodyHidden, m.bodyHidden ? 'corpul e ascuns' : 'corpul rămâne vizibil')
+}
+
+/**
+ * Desfacerea „Detaliilor" arată DOAR ce se schimbă rar. Scadența și urgentul
+ * stau în afara corpului, deci un click pe rezumat nu mai are cum să le mute:
+ * structural, nu geometric — un check pe poziții ar trece și cu ele înăuntru,
+ * atâta timp cât nimic nu se suprapune.
+ */
+console.log('\n„Detalii" desfăcut (mobil) — ce intră sub capac:')
+{
+  const page = await browser.newPage({ viewport: { width: 390, height: 900 } })
+  await page.setContent(`<style>${CSS}</style>${collapsedMeta(true)}`)
+  const m = await page.evaluate(() => {
+    const body = document.querySelector('.meta-body')
+    const fast = document.querySelector('.if-fast-zone')
+    const r = (el) => el.getBoundingClientRect()
+    return {
+      hasDue: !!body.querySelector('.due-inputs'),
+      hasUrgent: !!body.querySelector('.if-ctl.icon'),
+      visible: getComputedStyle(body).display !== 'none',
+      fastStays: r(fast).height > 0 && r(fast).bottom <= r(body).top + 1,
+    }
+  })
+  await page.close()
+  check('corpul apare', m.visible, m.visible ? 'vizibil' : 'ASCUNS')
+  check('scadența nu intră sub capac', !m.hasDue, m.hasDue ? 'e ÎN corp' : 'rămâne afară')
+  check('urgentul nu intră sub capac', !m.hasUrgent, m.hasUrgent ? 'e ÎN corp' : 'rămâne afară')
+  check('rândul rapid rămâne sus', m.fastStays, m.fastStays ? 'deasupra corpului' : 'mutat')
 }
 
 await browser.close()

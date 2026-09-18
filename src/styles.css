@@ -4372,31 +4372,21 @@ main {
   .meta-recap {
     display: flex;
   }
-  /* Colapsat NU înseamnă gol: urgentul și scadența rămân pe ecran, fiindcă
-     alea se schimbă în timpul zilei, de pe telefon. Cine ține tichetul, valul
-     și tema se schimbă rar și la masă — ele stau sub „Detalii". */
-  /* Urgentul și scadența stau DEASUPRA rezumatului, nu sub el: ele sunt ce se
-     atinge zilnic, iar „Detalii" e capacul peste ce se schimbă rar. Reordonare
-     prin flex, nu prin mutarea markup-ului: desfăcut, blocul trebuie să rămână
-     în ordinea lui firească (rezumatul devine titlul secțiunii). */
-  .meta-collapsed {
-    display: flex;
-    flex-direction: column;
-  }
+  /* Colapsat chiar înseamnă gol: rândul rapid (urgent + scadență) e acum un
+     frate al rezumatului, randat separat pe telefon — vezi `if-fast-zone` în
+     IssueForm.tsx. Deci „Detalii" ascunde fix ce promite, iar deschiderea lui
+     nu mai mișcă scadența din loc. */
   .meta-collapsed .meta-body {
-    display: block;
-    order: -1;
-  }
-  .meta-collapsed .if-bar > .if-ctl:not(.icon),
-  .meta-collapsed .if-bar > .if-seg,
-  .meta-collapsed .if-theme-wrap {
     display: none;
   }
-  /* Bara rămasă cu două controale nu mai are nevoie de fundalul ei: ar fi o
-     casetă în jurul a două jetoane, sub o casetă (rezumatul). */
-  .meta-collapsed .if-bar {
+  /* Rândul rapid nu-și mai poartă fundalul: ar fi o casetă în jurul a două
+     jetoane, lipită de altă casetă (rezumatul). */
+  .if-fast-zone {
+    padding: 10px 18px 6px;
+  }
+  .if-bar-fast {
     background: transparent;
-    padding: 10px 18px 8px;
+    padding: 0;
   }
 
   /* ── Issue form body: single column, shorter description box ───────
@@ -5598,7 +5588,7 @@ main {
      loc de calendar. Câmpul crește odată cu ele ca butoanele să nu iasă din
      ramă. */
   .due-inputs {
-    height: 46px;
+    height: 38px;
     gap: 0;
     padding: 0 2px 0 4px;
   }
@@ -5606,33 +5596,33 @@ main {
      restul rândului. Cu lățime pe conținut, câmpul stătea pe jumătate de ecran
      cu un gol lat lângă el, iar cifrele rămâneau o țintă îngustă exact acolo
      unde se apasă cu degetul. */
-  .meta-collapsed .if-bar > .due-inputs {
+  .if-bar-fast > .due-inputs {
     flex: 1;
     min-width: 0;
   }
-  .meta-collapsed .if-bar > .if-ctl.icon {
-    width: 44px;
-    height: 44px;
+  .if-bar-fast > .if-ctl.icon {
+    width: 38px;
+    height: 38px;
   }
   .due-input {
-    font-size: 15px;
+    font-size: 14px;
   }
   /* Data ia golul; ora rămâne pe măsura a cinci cifre — altfel „09:30" ar
      pluti în mijlocul unei jumătăți de rând. */
   .due-input-date { flex: 1 1 auto; min-width: 88px; }
   .due-input-time { flex: 0 0 58px; }
   .due-pick {
-    width: 42px;
-    height: 42px;
+    width: 40px;
+    height: 34px;
     border-radius: var(--r-s);
   }
   .due-pick svg {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
   }
   .due-clear {
-    width: 34px;
-    height: 34px;
+    width: 30px;
+    height: 30px;
   }
 }
 
@@ -5650,7 +5640,7 @@ main {
    să-i strivească cifrele — atunci trece pe rândul ei, întreagă. Un câmp de
    dată pe jumătate de lățime e mai rău decât un rând în plus. */
 @media (max-width: 359px) {
-  .meta-collapsed .if-bar > .due-inputs {
+  .if-bar-fast > .due-inputs {
     flex: 1 1 100%;
   }
 }

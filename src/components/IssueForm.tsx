@@ -4,7 +4,7 @@ import { buildAssigneeOptions, type AssigneeOption } from '../lib/assigneeOption
 import { useAuth } from '../auth'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
-import { useCanWrite, useTitleDate } from '../hooks'
+import { useCanWrite, useMediaQuery, useTitleDate } from '../hooks'
 import { ticketUrl } from '../lib/deepLink'
 import { stripSpans } from '../lib/parseDue'
 import { fold } from '../lib/text'
@@ -539,6 +539,15 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
     return () => window.removeEventListener('keydown', onKey)
   })
 
+  /* Aceeași limită ca media query-ul de telefon din `styles.css` — sub ea,
+     bara de meta se desparte în două grupuri (vezi comentariile de la
+     randare). O constantă în două locuri, dar limita e a LAYOUT-ului: mutată
+     doar în CSS, structura ar rămâne în urmă tăcut, deci testul de layout o
+     verifică la 320–430px. Sus, cu celelalte hook-uri: sub `if (!project)
+     return null` ar fi fost un hook condiționat, deci numărul lor s-ar fi
+     schimbat de la o randare la alta. */
+  const narrow = useMediaQuery('(max-width: 899px)')
+
   if (!project) return null
 
   const candidates = issues.filter((i) => i.id !== issueId)
@@ -816,6 +825,293 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
 
   const badgeIcon = (kind: ScenarioKind): IconName => BADGE_CYCLE.find((b) => b.kind === kind)?.icon ?? 'notDone'
 
+
+  /* Cele cinci controale ale barei, scoase din JSX ca VALORI: pe telefon ele
+     nu mai stau în același rând, iar o a doua copie a markup-ului ar fi
+     însemnat două locuri de ținut în pas pentru fiecare câmp. */
+
+  const assigneeCtl = (
+    <>
+
+    <button
+      tabIndex={-1}
+      type="button"
+      className={`if-ctl${assigneeId ? '' : ' ghost'}`}
+      onClick={() => setShowAssigneeInline((v) => !v)}
+      title={assigneeName ? `Assigned to: ${assigneeName}` : 'Assigned to — nimeni'}
+      aria-expanded={showAssigneeInline}
+    >
+      <span className={`if-av${assigneeId ? '' : ' nobody'}`}>
+        {assigneeId ? (assigneeShort[assigneeId] ?? '?') : '+'}
+      </span>
+      <span className="if-ctl-txt">{assigneeName ?? 'Nimeni'}</span>
+      <Icon name="collapse" size={12} className="if-chev" />
+    </button>
+    </>
+  )
+
+  const waveCtl = (
+    <>
+    <div className="if-seg" role="group" aria-label="Val">
+      {waves.map((w) => (
+        <button tabIndex={-1} key={w.number} type="button" title={w.name}
+          className={wave === w.number ? 'on' : ''}
+          aria-pressed={wave === w.number}
+          onClick={() => {
+            if (isEdit && existing) {
+              const dependants = issues.filter((i) => (i.deps ?? []).includes(existing.id))
+              if (dependants.length > 0) {
+                const required = Math.min(...dependants.map((d) => d.wave))
+                if (w.number !== required) {
+                  const names = dependants.map((d) => `„${d.title}" (val ${d.wave})`).join(', ')
+                  setWaveError(`„${title}" este o dependență a ${names}. Nu poți muta tichetul.`)
+                  return
+                }
+              }
+            }
+            setWave(w.number)
+            setWaveError(null)
+          }}>
+          {w.name}
+        </button>
+      ))}
+    </div>
+    </>
+  )
+
+  const urgentCtl = (
+    <>
+    {/* Doar fulgerul: „Prioritate" era un cuvânt pentru un singur
+        buton, iar „Urgent" scris lângă semnul de urgență e de două
+        ori același lucru. Aprins = roșul de blocaj, nu accentul. */}
+    <button
+      tabIndex={-1}
+      type="button"
+      className={`if-ctl icon${urgent ? ' urgent-on' : ' ghost'}`}
+      onClick={() => setUrgent((v) => !v)}
+      title={urgent ? 'Urgent — apasă ca să scoți' : 'Marchează urgent'}
+      aria-label="Urgent"
+      aria-pressed={urgent}
+    >
+      <Icon name="urgent" size={15} />
+    </button>
+    </>
+  )
+
+  const dueCtl = (
+    <>
+    <div className={`due-inputs${dueText ? '' : ' unset'}`} title="Scadență">
+      <input
+        tabIndex={-1}
+        type="text"
+        inputMode="numeric"
+        className={`due-input due-input-date ${dueIncomplete ? 'incomplete' : ''}`}
+        value={dueText}
+        onChange={(e) => setDueText(maskDateInput(e.target.value))}
+        placeholder={DATE_PLACEHOLDER}
+        maxLength={10}
+        aria-label="Data scadenței, zi/lună/an"
+      />
+      {/* Selectorul nativ rămâne la un click distanță — pe telefon e
+          calendarul sistemului, care bate orice am construi noi. E
+          ascuns vizual, nu absent: `showPicker()` are nevoie de el în
+          document. */}
+      <input
+        ref={nativeDateRef}
+        type="date"
+        className="due-native"
+        tabIndex={-1}
+        aria-hidden="true"
+        value={dueDate}
+        onChange={(e) => setDueText(displayFromInputDate(e.target.value))}
+      />
+      <button
+        tabIndex={-1}
+        type="button"
+        className="due-pick"
+        title="Alege din calendar"
+        aria-label="Alege data din calendar"
+        onClick={() => {
+          const el = nativeDateRef.current
+          if (!el) return
+          // `showPicker` lipsește în browsere mai vechi; atunci un
+          // click pe inputul nativ face aceeași treabă.
+          if (typeof el.showPicker === 'function') el.showPicker()
+          else el.click()
+        }}
+      >
+        <Icon name="due" size={13} />
+      </button>
+      <input
+        tabIndex={-1}
+        type="text"
+        inputMode="numeric"
+        className={`due-input due-input-time ${timeIncomplete ? 'incomplete' : ''}`}
+        value={timeText}
+        onChange={(e) => setTimeText(maskTimeInput(e.target.value))}
+        disabled={!dueDate}
+        placeholder={TIME_PLACEHOLDER}
+        maxLength={5}
+        aria-label="Ora scadenței, 24 de ore"
+        title={dueDate ? 'Lasă gol pentru toată ziua' : 'Alege întâi o zi'}
+      />
+      {/* Ceasul nativ, la un click distanță — pe telefon e cel al sistemului. */}
+      <input
+        ref={nativeTimeRef}
+        type="time"
+        className="due-native"
+        tabIndex={-1}
+        aria-hidden="true"
+        value={dueTime}
+        onChange={(e) => setTimeText(e.target.value)}
+      />
+      <button
+        tabIndex={-1}
+        type="button"
+        className="due-pick"
+        title="Alege ora"
+        aria-label="Alege ora din ceas"
+        disabled={!dueDate}
+        onClick={() => {
+          const el = nativeTimeRef.current
+          if (!el) return
+          if (typeof el.showPicker === 'function') el.showPicker()
+          else el.click()
+        }}
+      >
+        <Icon name="reminderTime" size={13} />
+      </button>
+      {dueText && (
+        <button
+          tabIndex={-1}
+          type="button"
+          className="due-clear"
+          onClick={() => {
+          setDueText(''); setTimeText(''); setReminderTouched(false)
+        }}
+          title="Scoate scadența"
+          aria-label="Scoate scadența"
+        >
+          ×
+        </button>
+      )}
+    </div>
+    </>
+  )
+
+  const themeCtl = (
+    <>
+    {/* Tema, la capătul barei: un jeton cu punctul ei de culoare, care
+        deschide lista. Punctul e informația — numele e doar eticheta
+        lui. */}
+    <div className="if-theme-wrap">
+      <button
+        tabIndex={-1}
+        type="button"
+        className={`if-ctl${theme ? '' : ' ghost dashed'}`}
+        onClick={() => setShowThemeMenu((v) => !v)}
+        onBlur={() => setTimeout(() => setShowThemeMenu(false), 150)}
+        title={themeObj ? `Temă: ${themeObj.name}` : 'Fără temă'}
+        aria-expanded={showThemeMenu}
+      >
+        {themeObj && <span className="if-dot" style={{ background: themeObj.color }} />}
+        <span className="if-ctl-txt">{themeObj ? themeObj.name : 'temă'}</span>
+        <Icon name="collapse" size={12} className="if-chev" />
+      </button>
+      {showThemeMenu && (
+        <div className="dep-dropdown if-theme-menu">
+          <button type="button" className="dep-dd-item" onMouseDown={(e) => e.preventDefault()}
+            onClick={() => { setTheme(''); setShowThemeMenu(false) }}>
+            <span className="dep-dd-title">Fără temă</span>
+          </button>
+          {themes.map((t) => (
+            <button key={t.key} type="button" className="dep-dd-item" onMouseDown={(e) => e.preventDefault()}
+              onClick={() => { setTheme(t.key); setShowThemeMenu(false) }}>
+              <span className="if-dot" style={{ background: t.color }} />
+              <span className="dep-dd-title">{t.name}</span>
+            </button>
+          ))}
+          {canWrite && (
+            <button type="button" className="dep-dd-item if-theme-new" onMouseDown={(e) => e.preventDefault()}
+              onClick={() => { setShowThemeMenu(false); setShowNewTheme(true) }}>
+              <Icon name="add" size={13} />
+              <span className="dep-dd-title">Temă nouă</span>
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+    </>
+  )
+
+  const dueSubRow = (
+    <>
+    {/* Rândul secundar: ce ține de scadență, dar n-are ce căuta între
+        controale — mementoul și avertismentele. Apare doar când există. */}
+    <div className="if-bar-sub">
+          {/* Mementoul apare numai când are ce să însemne. Pentru o sarcină de
+              zi întreagă ar suna la miezul nopții, deci acolo tace și treaba
+              o face rezumatul de dimineață. */}
+          {dueDate && dueTime && (
+            <div className="pills-row due-reminder">
+              <span className="if-sub-label">Memento</span>
+              {([
+                ['due', 'la oră'],
+                ['m30', '−30m'],
+                ['d1', '−1 zi'],
+                ['none', 'fără'],
+              ] as const).map(([kind, label]) => (
+                <button
+                  key={kind}
+                  tabIndex={-1}
+                  type="button"
+                  className={`if-meta-pill reminder-pill ${schedule.kind === kind ? 'active' : ''}`}
+                  onClick={() => { setReminder(kind); setReminderTouched(true) }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+          {/* Semnalul că scadența a venit din titlu, cu cele două ieșiri:
+            curăță textul rămas în titlu, sau refuză de tot. Fără ele,
+            recunoașterea ar fi o ghicire pe care n-o poți contrazice. */}
+        {titleDate.active && (
+          <span className="due-from-title">
+            <span className="chip date">
+              <span className="chip-ico"><Icon name="fromTitle" size={13} /></span> din titlu
+              <button
+                tabIndex={-1}
+                type="button"
+                className="chip-x"
+                title="Nu e o dată — lasă titlul în pace"
+                aria-label="Refuză data din titlu"
+                onClick={refuseTitleDate}
+              >
+                ✕
+              </button>
+            </span>
+            <button
+              tabIndex={-1}
+              type="button"
+              className="due-clean-title"
+              title="Scoate textul datei din titlu"
+              onClick={cleanTitleFromDate}
+            >
+              curăță titlul
+            </button>
+          </span>
+        )}
+        {/* Titlul era numai dată: salvarea e stinsă, deci spune de ce. */}
+        {bareTitle && <span className="due-hint warn">și ce ai de făcut?</span>}
+        {(dueIncomplete || timeIncomplete) && (
+            <span className="due-hint warn">{dueIncomplete ? 'zi-lună-an' : 'oră 0–23'}</span>
+          )}
+          {dueDate && !dueTime && <span className="due-hint">toată ziua</span>}
+    </div>
+    </>
+  )
+
   return (
     <>
       {/* HEADER */}
@@ -919,6 +1215,17 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
 
         {/* META — Temă · Val · Assigned to */}
         <div className={`sh-meta-section${metaOpen ? '' : ' meta-collapsed'}`}>
+          {/* Rândul rapid stă ÎN AFARA „Detaliilor", pe telefon: urgentul și
+              scadența se ating în timpul zilei, deci nu au ce căuta sub un
+              capac — iar deschiderea capacului nu trebuie să le mai mute o
+              dată. Mementoul și avertismentele vin cu ele: sunt despre aceeași
+              scadență. */}
+          {narrow && (
+            <div className="if-fast-zone">
+              <div className="if-bar if-bar-fast">{urgentCtl}{dueCtl}</div>
+              {dueSubRow}
+            </div>
+          )}
           {/* Doar pe mobil (CSS-ul de desktop îl ascunde): rezumatul înlocuiește
               blocul întreg cât timp e colaps, ca Descrierea să urce sub titlu. */}
           <button
@@ -933,272 +1240,22 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
             <Icon name="collapse" size={14} className={`acc-chevron${metaOpen ? ' open' : ''}`} />
           </button>
           <div className="meta-body">
-          {/* BARA — cine · val · urgent · scadență … temă.
-              Fără etichete: fiecare control își spune rolul prin formă
-              (avatar, cifră romană, fulger, cifre de dată), iar numele
-              întreg stă în `title`. Tema stă la capăt, într-un jeton care
-              deschide lista: e cel mai rar schimbat câmp din formular și
-              ocupa, ca rând de pastile, jumătate din lățime. */}
-          <div className="if-bar">
-
-            <button
-              tabIndex={-1}
-              type="button"
-              className={`if-ctl${assigneeId ? '' : ' ghost'}`}
-              onClick={() => setShowAssigneeInline((v) => !v)}
-              title={assigneeName ? `Assigned to: ${assigneeName}` : 'Assigned to — nimeni'}
-              aria-expanded={showAssigneeInline}
-            >
-              <span className={`if-av${assigneeId ? '' : ' nobody'}`}>
-                {assigneeId ? (assigneeShort[assigneeId] ?? '?') : '+'}
-              </span>
-              <span className="if-ctl-txt">{assigneeName ?? 'Nimeni'}</span>
-              <Icon name="collapse" size={12} className="if-chev" />
-            </button>
-
-            <div className="if-seg" role="group" aria-label="Val">
-              {waves.map((w) => (
-                <button tabIndex={-1} key={w.number} type="button" title={w.name}
-                  className={wave === w.number ? 'on' : ''}
-                  aria-pressed={wave === w.number}
-                  onClick={() => {
-                    if (isEdit && existing) {
-                      const dependants = issues.filter((i) => (i.deps ?? []).includes(existing.id))
-                      if (dependants.length > 0) {
-                        const required = Math.min(...dependants.map((d) => d.wave))
-                        if (w.number !== required) {
-                          const names = dependants.map((d) => `„${d.title}" (val ${d.wave})`).join(', ')
-                          setWaveError(`„${title}" este o dependență a ${names}. Nu poți muta tichetul.`)
-                          return
-                        }
-                      }
-                    }
-                    setWave(w.number)
-                    setWaveError(null)
-                  }}>
-                  {w.name}
-                </button>
-              ))}
-            </div>
-
-            {/* Doar fulgerul: „Prioritate" era un cuvânt pentru un singur
-                buton, iar „Urgent" scris lângă semnul de urgență e de două
-                ori același lucru. Aprins = roșul de blocaj, nu accentul. */}
-            <button
-              tabIndex={-1}
-              type="button"
-              className={`if-ctl icon${urgent ? ' urgent-on' : ' ghost'}`}
-              onClick={() => setUrgent((v) => !v)}
-              title={urgent ? 'Urgent — apasă ca să scoți' : 'Marchează urgent'}
-              aria-label="Urgent"
-              aria-pressed={urgent}
-            >
-              <Icon name="urgent" size={15} />
-            </button>
-
-                <div className={`due-inputs${dueText ? '' : ' unset'}`} title="Scadență">
-                  <input
-                    tabIndex={-1}
-                    type="text"
-                    inputMode="numeric"
-                    className={`due-input due-input-date ${dueIncomplete ? 'incomplete' : ''}`}
-                    value={dueText}
-                    onChange={(e) => setDueText(maskDateInput(e.target.value))}
-                    placeholder={DATE_PLACEHOLDER}
-                    maxLength={10}
-                    aria-label="Data scadenței, zi/lună/an"
-                  />
-                  {/* Selectorul nativ rămâne la un click distanță — pe telefon e
-                      calendarul sistemului, care bate orice am construi noi. E
-                      ascuns vizual, nu absent: `showPicker()` are nevoie de el în
-                      document. */}
-                  <input
-                    ref={nativeDateRef}
-                    type="date"
-                    className="due-native"
-                    tabIndex={-1}
-                    aria-hidden="true"
-                    value={dueDate}
-                    onChange={(e) => setDueText(displayFromInputDate(e.target.value))}
-                  />
-                  <button
-                    tabIndex={-1}
-                    type="button"
-                    className="due-pick"
-                    title="Alege din calendar"
-                    aria-label="Alege data din calendar"
-                    onClick={() => {
-                      const el = nativeDateRef.current
-                      if (!el) return
-                      // `showPicker` lipsește în browsere mai vechi; atunci un
-                      // click pe inputul nativ face aceeași treabă.
-                      if (typeof el.showPicker === 'function') el.showPicker()
-                      else el.click()
-                    }}
-                  >
-                    <Icon name="due" size={13} />
-                  </button>
-                  <input
-                    tabIndex={-1}
-                    type="text"
-                    inputMode="numeric"
-                    className={`due-input due-input-time ${timeIncomplete ? 'incomplete' : ''}`}
-                    value={timeText}
-                    onChange={(e) => setTimeText(maskTimeInput(e.target.value))}
-                    disabled={!dueDate}
-                    placeholder={TIME_PLACEHOLDER}
-                    maxLength={5}
-                    aria-label="Ora scadenței, 24 de ore"
-                    title={dueDate ? 'Lasă gol pentru toată ziua' : 'Alege întâi o zi'}
-                  />
-                  {/* Ceasul nativ, la un click distanță — pe telefon e cel al sistemului. */}
-                  <input
-                    ref={nativeTimeRef}
-                    type="time"
-                    className="due-native"
-                    tabIndex={-1}
-                    aria-hidden="true"
-                    value={dueTime}
-                    onChange={(e) => setTimeText(e.target.value)}
-                  />
-                  <button
-                    tabIndex={-1}
-                    type="button"
-                    className="due-pick"
-                    title="Alege ora"
-                    aria-label="Alege ora din ceas"
-                    disabled={!dueDate}
-                    onClick={() => {
-                      const el = nativeTimeRef.current
-                      if (!el) return
-                      if (typeof el.showPicker === 'function') el.showPicker()
-                      else el.click()
-                    }}
-                  >
-                    <Icon name="reminderTime" size={13} />
-                  </button>
-                  {dueText && (
-                    <button
-                      tabIndex={-1}
-                      type="button"
-                      className="due-clear"
-                      onClick={() => {
-                      setDueText(''); setTimeText(''); setReminderTouched(false)
-                    }}
-                      title="Scoate scadența"
-                      aria-label="Scoate scadența"
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
-
-            {/* Tema, la capătul barei: un jeton cu punctul ei de culoare, care
-                deschide lista. Punctul e informația — numele e doar eticheta
-                lui. */}
-            <div className="if-theme-wrap">
-              <button
-                tabIndex={-1}
-                type="button"
-                className={`if-ctl${theme ? '' : ' ghost dashed'}`}
-                onClick={() => setShowThemeMenu((v) => !v)}
-                onBlur={() => setTimeout(() => setShowThemeMenu(false), 150)}
-                title={themeObj ? `Temă: ${themeObj.name}` : 'Fără temă'}
-                aria-expanded={showThemeMenu}
-              >
-                {themeObj && <span className="if-dot" style={{ background: themeObj.color }} />}
-                <span className="if-ctl-txt">{themeObj ? themeObj.name : 'temă'}</span>
-                <Icon name="collapse" size={12} className="if-chev" />
-              </button>
-              {showThemeMenu && (
-                <div className="dep-dropdown if-theme-menu">
-                  <button type="button" className="dep-dd-item" onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => { setTheme(''); setShowThemeMenu(false) }}>
-                    <span className="dep-dd-title">Fără temă</span>
-                  </button>
-                  {themes.map((t) => (
-                    <button key={t.key} type="button" className="dep-dd-item" onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => { setTheme(t.key); setShowThemeMenu(false) }}>
-                      <span className="if-dot" style={{ background: t.color }} />
-                      <span className="dep-dd-title">{t.name}</span>
-                    </button>
-                  ))}
-                  {canWrite && (
-                    <button type="button" className="dep-dd-item if-theme-new" onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => { setShowThemeMenu(false); setShowNewTheme(true) }}>
-                      <Icon name="add" size={13} />
-                      <span className="dep-dd-title">Temă nouă</span>
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-
-          </div>
-
-          {/* Rândul secundar: ce ține de scadență, dar n-are ce căuta între
-              controale — mementoul și avertismentele. Apare doar când există. */}
-          <div className="if-bar-sub">
-                {/* Mementoul apare numai când are ce să însemne. Pentru o sarcină de
-                    zi întreagă ar suna la miezul nopții, deci acolo tace și treaba
-                    o face rezumatul de dimineață. */}
-                {dueDate && dueTime && (
-                  <div className="pills-row due-reminder">
-                    <span className="if-sub-label">Memento</span>
-                    {([
-                      ['due', 'la oră'],
-                      ['m30', '−30m'],
-                      ['d1', '−1 zi'],
-                      ['none', 'fără'],
-                    ] as const).map(([kind, label]) => (
-                      <button
-                        key={kind}
-                        tabIndex={-1}
-                        type="button"
-                        className={`if-meta-pill reminder-pill ${schedule.kind === kind ? 'active' : ''}`}
-                        onClick={() => { setReminder(kind); setReminderTouched(true) }}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {/* Semnalul că scadența a venit din titlu, cu cele două ieșiri:
-                  curăță textul rămas în titlu, sau refuză de tot. Fără ele,
-                  recunoașterea ar fi o ghicire pe care n-o poți contrazice. */}
-              {titleDate.active && (
-                <span className="due-from-title">
-                  <span className="chip date">
-                    <span className="chip-ico"><Icon name="fromTitle" size={13} /></span> din titlu
-                    <button
-                      tabIndex={-1}
-                      type="button"
-                      className="chip-x"
-                      title="Nu e o dată — lasă titlul în pace"
-                      aria-label="Refuză data din titlu"
-                      onClick={refuseTitleDate}
-                    >
-                      ✕
-                    </button>
-                  </span>
-                  <button
-                    tabIndex={-1}
-                    type="button"
-                    className="due-clean-title"
-                    title="Scoate textul datei din titlu"
-                    onClick={cleanTitleFromDate}
-                  >
-                    curăță titlul
-                  </button>
-                </span>
-              )}
-              {/* Titlul era numai dată: salvarea e stinsă, deci spune de ce. */}
-              {bareTitle && <span className="due-hint warn">și ce ai de făcut?</span>}
-              {(dueIncomplete || timeIncomplete) && (
-                  <span className="due-hint warn">{dueIncomplete ? 'zi-lună-an' : 'oră 0–23'}</span>
-                )}
-                {dueDate && !dueTime && <span className="due-hint">toată ziua</span>}
-          </div>
+          {/* Pe telefon, aici rămâne doar ce se schimbă rar. Urgentul și
+              scadența s-au mutat deasupra rezumatului (vezi `if-fast-zone`):
+              despărțirea e la RANDARE, nu din CSS, fiindcă un `order` le-ar fi
+              lăsat în aceeași cutie — iar atunci desfacerea „Detaliilor" ar fi
+              umflat și rândul rapid, exact ce nu trebuia.
+              Pe desktop rămâne un singur rând: cine · val · urgent · scadență
+              … temă. Fără etichete: forma spune rolul (avatar, cifră romană,
+              fulger, cifre de dată), iar numele întreg stă în `title`. */}
+          {narrow ? (
+            <div className="if-bar">{assigneeCtl}{waveCtl}{themeCtl}</div>
+          ) : (
+            <>
+              <div className="if-bar">{assigneeCtl}{waveCtl}{urgentCtl}{dueCtl}{themeCtl}</div>
+              {dueSubRow}
+            </>
+          )}
 
           {showNewTheme && (
             <div className="inline-search-wrap" style={{ padding: '6px 12px 8px' }}>
@@ -1393,7 +1450,21 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
 
             </div>
 
-            {/* QA ACCORDION */}
+            {/* FIR — comentarii + pase. Nu se randează pe un tichet nesalvat:
+                `existing` e undefined până la primul save. */}
+            {isEdit && existing && (
+              <Thread
+                issueId={existing.id}
+                projectId={project.id}
+                onDirtyChange={setCommentDraftDirty}
+                onHandoff={setAssigneeId}
+              />
+            )}
+
+            {/* QA, la coada coloanei: selectorii și scenariile se scriu o
+                dată, la final, și se recitesc rar — iar până acum stăteau
+                între dependențe și fir, adică exact peste ce se deschide des.
+                Acordeonul rămâne închis când e gol. */}
             <div className="acc-section">
               <button className="acc-header" onClick={() => setQaOpen((v) => !v)}>
                 <span className="acc-icon">
@@ -1444,17 +1515,6 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
                 </div>
               )}
             </div>
-
-            {/* FIR — comentarii + pase. Nu se randează pe un tichet nesalvat:
-                `existing` e undefined până la primul save. */}
-            {isEdit && existing && (
-              <Thread
-                issueId={existing.id}
-                projectId={project.id}
-                onDirtyChange={setCommentDraftDirty}
-                onHandoff={setAssigneeId}
-              />
-            )}
 
           </div>
         </div>
