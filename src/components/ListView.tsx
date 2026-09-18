@@ -89,12 +89,17 @@ export function ListView() {
 
         {/* Frate al `.wave-sel`, nu al treilea copil: acolo `.wave-tabs` are
             flex:1 și un al treilea copil ar fura din taburile de val.
-            Poarta e `holders.length > 0`, NU `showUnassignedChip` — fără ea,
-            un proiect fără NICIUN assignee real (starea de azi în producție:
-            `assignees` aproape goală) arăta „Toți N" și „Nepasate N" cu
-            aceleași cifre, pe fiecare proiect: un filtru fără oameni de
-            filtrat e zgomot, nu funcționalitate. */}
-        {holders.length > 0 && (
+            Poarta e formată din DOUĂ condiții, deliberat, nu una singură:
+            `(holders.length > 0 || showUnassignedChip)` e regula veche
+            (f43add2) — arată bara dacă are ce arăta, inclusiv „Nepasate N"
+            într-un val proaspăt unde niciun holder nu ține nimic încă, dar
+            proiectul chiar are oameni. `&& assignees.length > 0` e intenția
+            de aici — un proiect fără NICIUN assignee real (starea de azi în
+            producție: `assignees` aproape goală) nu mai arată „Toți N" și
+            „Nepasate N" cu aceleași cifre, pe fiecare proiect. Ștergerea
+            oricăreia din cele două reproduce bug-ul pe care cealaltă îl
+            repara. */}
+        {(holders.length > 0 || showUnassignedChip) && assignees.length > 0 && (
           <div className="who-bar">
             <button
               type="button"
