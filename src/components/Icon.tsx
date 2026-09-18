@@ -113,7 +113,7 @@ const ICONS = {
   logout: LogOut,
   members: Users,
   // „Cine ține tichetul", nu „echipa" — de-aia un singur om, nu `Users` (ăla e
-  // `members`, lista de utilizatori). Folosit de tab-ul „Pe mine".
+  // `members`, lista de utilizatori). Folosit de tab-ul „Ale mele".
   people: User,
   refresh: RefreshCw,
   selectAll: SquareCheck,

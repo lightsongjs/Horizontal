@@ -26,7 +26,7 @@ function timeAgo(iso: string | null): string {
 }
 
 /**
- * Cutia de pase — al patrulea ecran, „Pe mine". NU e un `SmartListKind` (vezi
+ * Cutia de pase — al patrulea ecran, „Ale mele". NU e un `SmartListKind` (vezi
  * `Screen` din App.tsx): n-are zi, deci n-are quick add și n-are FAB.
  *
  * Scurtă PRIN DEFINIȚIE, nu prin filtrare deșteaptă: `assignee_id` gol

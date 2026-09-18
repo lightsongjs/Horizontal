@@ -565,7 +565,7 @@ FIR = (
     + THREAD_EVENTS + THREAD_COMPOSE
 )
 
-# ═══ ECRANUL „PE MINE" — cutia de pase (InboxView.tsx) ══════════════════════
+# ═══ ECRANUL „ALE MELE" — cutia de pase (InboxView.tsx) ══════════════════════
 # `.inbox-dot`/`.inbox-dot.read` — bulina de necitit; gruparea „Necitite" /
 # „Mai devreme" e doi `.list-group` obișnuiți, ca-n orice altă listă.
 def irow(unread, initials, title, tid, who, ago):
@@ -829,7 +829,7 @@ SCREENS = {
             + '</aside></div>'),
     # Cutia de pase — al patrulea tab, fără crumb de proiect (InboxView.tsx
     # n-are `project`, vezi Header cu `inbox` prop în App.tsx).
-    'pe-mine': ('Pe mine', 'Ce ți-a pasat cineva.', ic('user', 18), False, False,
+    'pe-mine': ('Ale mele', 'Ce ți-a pasat cineva.', ic('user', 18), False, False,
                 '<div class="panel inbox-pad">' + PE_MINE + '</div>'),
 }
 
@@ -849,13 +849,13 @@ def screen(key):
 
 
 # Patru destinații, nu cinci: „+" a ieșit din bară (e FAB-ul plutitor), iar
-# „Pe mine" e a treia — cu `.tb-badge` pentru necitite (vezi TabBar din
+# „Ale mele" e a treia — cu `.tb-badge` pentru necitite (vezi TabBar din
 # App.tsx). Bulina se vede doar sub 900px (`.tabbar { display: none }` mai
 # sus de-atât), la fel ca în aplicație.
 TABBAR = ('<nav class="tabbar">'
           '<button class="on"><span class="tb-ico">%s</span>Azi</button>'
           '<button><span class="tb-ico">%s</span>7 zile</button>'
-          '<button><span class="tb-ico">%s<span class="tb-badge">2</span></span>Pe mine</button>'
+          '<button><span class="tb-ico">%s<span class="tb-badge">2</span></span>Ale mele</button>'
           '<button><span class="tb-ico">%s</span>Proiecte</button></nav>'
           % (ic('calendar-days', 21), ic('calendar-range', 21), ic('user', 21), ic('layout-grid', 21)))
 
@@ -918,7 +918,7 @@ SHELL = """<!doctype html>
   <button data-go="lista-gol">Listă · gol</button>
   <button data-go="harta">Hartă</button>
   <button data-go="fir">Fir</button>
-  <button data-go="pe-mine">Pe mine</button>
+  <button data-go="pe-mine">Ale mele</button>
   <button data-go="controale">Controale</button>
   <span class="sep"></span>
   <button id="bench-theme">Temă</button>

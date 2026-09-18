@@ -282,7 +282,7 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff }: {
       setTo(undefined)
       setPending([]) // cele trei resetări de mai sus curăță și murdăria — vezi efectul unificat
       void loadAttachments() // atașamentele proaspăt trimise capătă acum un event_id
-      // Cutia de pase (badge + listă „Pe mine") nu se atinge de `upsertIssue`:
+      // Cutia de pase (badge + listă „Ale mele") nu se atinge de `upsertIssue`:
       // fără reîmprospătare, un tichet trimis înapoi rămâne vizibil acolo până
       // la un refresh întreg. Best-effort: un eșec aici nu anulează trimiterea.
       void refreshInbox()

@@ -237,7 +237,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
    * Aduce cutia de pase. Transversal pe proiecte, ca `loadDue` — NU intră în
    * Promise.all-ul per-proiect din `refresh`/`selectProject`: acolo ar fi
    * refăcută la fiecare comutare de proiect și ar lipsi exact când nu e niciun
-   * proiect deschis, adică fix pe ecranul „Pe mine". Eșecul e tăcut în afară
+   * proiect deschis, adică fix pe ecranul „Ale mele". Eșecul e tăcut în afară
    * de `error`, ca `loadDue`: un Supabase indisponibil nu blochează pornirea.
    */
   const loadInbox = useCallback(async () => {
@@ -331,7 +331,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
         if (alive) { setRawProjects(p); setAssignees(a) }
         // Listele inteligente se cer în paralel cu proiectele: sunt prima
         // secțiune din sidebar și trebuie să aibă numere de la primul cadru.
-        // La fel cutia de pase — ecranul „Pe mine" trebuie să aibă badge-ul
+        // La fel cutia de pase — ecranul „Ale mele" trebuie să aibă badge-ul
         // corect de la primul cadru, fără să aștepte deschiderea unui proiect.
         if (alive) { void loadDue(); void loadInbox() }
       } catch (e) {

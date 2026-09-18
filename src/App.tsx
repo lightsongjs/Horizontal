@@ -58,12 +58,12 @@ function smartCrumb(kind: SmartListKind, now: Date): string {
   return `${DAYS_FULL[d.getDay()]}, ${d.getDate()} ${MON_FULL[d.getMonth()]}`
 }
 
-function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, canWrite, smartList, onExitSmartList, sidebarCollapsed, onToggleSidebar, inbox = false }: { onNewIssue: () => void; onSearch: () => void; onProjectSettings: () => void; onRefresh: () => void; onInfo: () => void; canWrite: boolean; smartList: SmartListKind | null; onExitSmartList: () => void; sidebarCollapsed: boolean; onToggleSidebar: () => void; /** „Pe mine" — opțional, ca vechile call-site-uri (fără el) să rămână valide. */ inbox?: boolean }) {
+function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, canWrite, smartList, onExitSmartList, sidebarCollapsed, onToggleSidebar, inbox = false }: { onNewIssue: () => void; onSearch: () => void; onProjectSettings: () => void; onRefresh: () => void; onInfo: () => void; canWrite: boolean; smartList: SmartListKind | null; onExitSmartList: () => void; sidebarCollapsed: boolean; onToggleSidebar: () => void; /** „Ale mele" — opțional, ca vechile call-site-uri (fără el) să rămână valide. */ inbox?: boolean }) {
   const { project, completion, selectProject, smartLists, refreshing } = useHorizontal()
   const list = smartList ? SMART_LISTS.find((s) => s.kind === smartList) : null
   // Cromul de proiect (progres, „+ Tichet", căutare, setări) e legat de
   // proiectul DESCHIS ca ecran, nu de orice proiect încărcat în store. O pasă
-  // deschisă din „Pe mine" încarcă proiectul ei ca să meargă formularul —
+  // deschisă din „Ale mele" încarcă proiectul ei ca să meargă formularul —
   // fără gardă, antetul arăta „+ Tichet”/căutare/setări ale proiectului STRĂIN
   // peste un ecran care n-are treabă cu el.
   const projectChrome = inbox ? null : project
@@ -93,7 +93,7 @@ function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, ca
       )}
       <div className="logo">{inbox ? <Icon name="people" size={18} /> : list ? <Icon name={list.icon} size={18} /> : projectChrome ? projectChrome.prefix.slice(0, 2) : 'H'}</div>
       <div className="htxt">
-        <h1>{inbox ? 'Pe mine' : list ? list.label : projectChrome ? projectChrome.name : 'Horizontal'}</h1>
+        <h1>{inbox ? 'Ale mele' : list ? list.label : projectChrome ? projectChrome.name : 'Horizontal'}</h1>
         <div className="crumb">
           {inbox ? 'Ce ți-a pasat cineva.' : list ? smartCrumb(list.kind, new Date()) : projectChrome ? projectChrome.description : 'Toate proiectele tale'}
           {!projectChrome && !list && !inbox && <span style={{ display: 'block', fontSize: '10px', opacity: 0.5, marginTop: '1px' }}>Built: {getBuildAgo()}</span>}
@@ -152,7 +152,7 @@ function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, ca
  * Și nu cinci destinații: „Caută" ar fi fost a cincea, dar QuickSearch caută
  * în proiectul deschis, iar de aici nu există unul.
  *
- * „Pe mine" își ia singur numărul de necitite din store — la fel cum Header
+ * „Ale mele" își ia singur numărul de necitite din store — la fel cum Header
  * își ia `smartLists` singur — ca Shell să nu care încă un prop prin bară.
  */
 function TabBar({ screen, onScreen, onProjects, inProjects }: {
@@ -174,7 +174,7 @@ function TabBar({ screen, onScreen, onProjects, inProjects }: {
         <span className="tb-ico">
           <Icon name="people" size={21} />
           {inbox.fresh.length > 0 && <span className="tb-badge">{inbox.fresh.length}</span>}
-        </span>Pe mine
+        </span>Ale mele
       </button>
       <button className={inProjects ? 'on' : ''} onClick={onProjects} data-tab="projects">
         <span className="tb-ico"><Icon name="projects" size={21} /></span>Proiecte
@@ -189,7 +189,7 @@ const readDepth = () => (window.history.state as { hzDepth?: number } | null)?.h
 const LAST_VIEW_KEY = 'horizontal:last-view'
 
 /**
- * Ecranul din spatele bării de jos / sidebar. „Pe mine" NU e un
+ * Ecranul din spatele bării de jos / sidebar. „Ale mele" NU e un
  * `SmartListKind`: un al patrulea `kind` acolo ar trece de typecheck și ar
  * strica trei lucruri deodată — ecranul ar aștepta `dueLoaded` (o încărcare de
  * scadențe care nu-l privește), ar cere un `defaultDueAt` pentru `QuickAdd` pe
@@ -219,20 +219,20 @@ function Shell() {
   const [sidebarCollapsed, toggleSidebar] = useSidebarCollapsed()
   const [showUsers, setShowUsers] = useState(false)
   /**
-   * Ecranul „peste listă" deschis — o listă inteligentă sau „Pe mine". Ca
+   * Ecranul „peste listă" deschis — o listă inteligentă sau „Ale mele". Ca
    * `showUsers`, e un strat peste conținut care NU deține URL-ul: mașinăria de
    * mai jos e scrisă în jurul a două stări (proiect, ticket) și nu merită
    * atinsă pentru asta. Ce contează practic — PWA-ul să se deschidă unde ai
    * rămas — se rezolvă cu `last-view`.
    *
    * `smartList` se derivă de aici, ca `Header`/`Sidebar`/`SmartListView` să
-   * rămână neatinse: pentru ele, „Pe mine" pur și simplu nu există.
+   * rămână neatinse: pentru ele, „Ale mele" pur și simplu nu există.
    */
   const [screen, setScreen] = useState<Screen | null>(null)
   const smartList = screen === 'inbox' ? null : screen
   // Derivat o singură dată, folosit de orice loc care presupunea „dacă
   // `project` e încărcat, sunt pe ecranul proiectului" — o presupunere
-  // adevărată înainte de „Pe mine", unde o pasă docată încarcă proiectul EI
+  // adevărată înainte de „Ale mele", unde o pasă docată încarcă proiectul EI
   // ca să meargă formularul, fără să schimbe ecranul. Un singur nume, ca FAB-ul
   // și scurtăturile de tastatură să nu poată diverge (au divergat o dată).
   const inInbox = screen === 'inbox'
@@ -336,7 +336,7 @@ function Shell() {
   projectRef.current = project
   // Citit din `settleUrl`, care e chemat și din handlere de istoric — acolo un
   // `screen` închis peste clojură ar fi poza de la montare, nu ecranul de
-  // acum. Full `screen`, nu `smartList`: „Pe mine" trebuie tratat la fel ca o
+  // acum. Full `screen`, nu `smartList`: „Ale mele" trebuie tratat la fel ca o
   // listă inteligentă aici — ambele forțează `/`, indiferent ce proiect s-a
   // încărcat între timp în store pentru formularul unei sarcini.
   const screenRef = useRef(screen)
@@ -371,11 +371,11 @@ function Shell() {
   /**
    * Așază URL-ul pe destinația reală (proiect sau landing), fără intrare nouă.
    *
-   * Cu o listă inteligentă SAU „Pe mine" pe ecran, destinația reală e `/`
+   * Cu o listă inteligentă SAU „Ale mele" pe ecran, destinația reală e `/`
    * oricare ar fi proiectul primit: acolo proiectul e încărcat doar ca să
    * meargă formularul sarcinii, nu e ecranul pe care te afli. Fără regula
    * asta, închiderea sau ștergerea unei sarcini din „Azi" (sau dintr-o pasă
-   * deschisă din „Pe mine") lăsa în bară `/project/<slug>` — iar următoarea
+   * deschisă din „Ale mele") lăsa în bară `/project/<slug>` — iar următoarea
    * repornire chiar te muta acolo.
    */
   const settleUrl = (p: Project | null) => {
@@ -433,7 +433,7 @@ function Shell() {
 
   // Ce secțiune era deschisă la ultima folosire. Fără asta, un PWA deschis de pe
   // ecranul de start ar ateriza mereu în proiecte, nu în lista de azi (sau, cu
-  // „Pe mine" restaurat, într-un proiect la întâmplare).
+  // „Ale mele" restaurat, într-un proiect la întâmplare).
   useEffect(() => {
     if (screen) localStorage.setItem(LAST_VIEW_KEY, `smart:${screen}`)
     else if (project) localStorage.removeItem(LAST_VIEW_KEY)
@@ -450,7 +450,7 @@ function Shell() {
     localStorage.removeItem(LAST_VIEW_KEY)
     // Deschiderea unei sarcini încarcă proiectul ei în store, fără să schimbe
     // ecranul. Fără curățenia asta, un Back din „Azi" (sau dintr-o pasă
-    // deschisă din „Pe mine") ar ateriza pe boardul ultimei sarcini deschise —
+    // deschisă din „Ale mele") ar ateriza pe boardul ultimei sarcini deschise —
     // un loc pe care nu l-a cerut nimeni.
     selectProject(null)
   }, [selectProject])
@@ -727,7 +727,7 @@ function Shell() {
       // despre proiectul DESCHIS, deci nu se aplică; dreptul îl decide
       // `useWritableProjects`, care hrănește chiar selectorul acela.
       // `inInbox` taie fiecare ramură de mai jos care ar acționa pe `project`:
-      // pe „Pe mine", o pasă docată încarcă proiectul EI în store ca formularul
+      // pe „Ale mele", o pasă docată încarcă proiectul EI în store ca formularul
       // să funcționeze, dar nu suntem pe ecranul acelui proiect. Fără gardă, C
       // deschidea un tichet nou ÎN PROIECTUL STRĂIN peste panou, O deschidea
       // căutarea limitată la el, iar 1-4 schimbau un tab de proiect care nici
@@ -863,7 +863,7 @@ function Shell() {
             <ProjectsView />
           )}
         </main>
-        {/* „Pe mine" n-are FAB: nu există „sarcină nouă" fără o zi și, cu
+        {/* „Ale mele" n-are FAB: nu există „sarcină nouă" fără o zi și, cu
             proiectul curent gol pe acest ecran, condiția de mai jos ar fi
             arătat „Adaugă proiect" unui admin — un buton fără sens aici. */}
         {!inInbox && (smartList || (project ? canWrite : isAdmin)) && (

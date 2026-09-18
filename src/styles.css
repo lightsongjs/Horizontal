@@ -4806,7 +4806,7 @@ main {
 .t-proj-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .t-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 
-/* ── PE MINE (InboxView.tsx) ─────────────────────────────────────────
+/* ── ALE MELE (InboxView.tsx) ─────────────────────────────────────────
    Aceeași lățime de citit ca listele inteligente — vezi `.smart-list`. */
 .inbox-pad { max-width: 760px; padding: 14px 14px 0; }
 .inbox-row { align-items: flex-start; min-height: 44px; }
@@ -5041,7 +5041,7 @@ main {
   }
   .tabbar button.on { color: var(--accent); }
   .tabbar .tb-ico { position: relative; display: inline-flex; align-items: center; justify-content: center; }
-  /* Bulina „Pe mine" necitite — un jeton, nu o casetă activă: nu ține de
+  /* Bulina „Ale mele" necitite — un jeton, nu o casetă activă: nu ține de
      starea butonului, ci de conținutul din spatele lui. */
   .tb-badge {
     position: absolute;

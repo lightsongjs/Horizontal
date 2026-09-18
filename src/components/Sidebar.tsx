@@ -22,7 +22,7 @@ interface SidebarProps {
   onNavigate?: () => void
   smartList?: SmartListKind | null
   onSmartList?: (kind: SmartListKind) => void
-  /** „Pe mine" e un ecran separat de `SmartListKind` (vezi `Screen` din
+  /** „Ale mele" e un ecran separat de `SmartListKind` (vezi `Screen` din
    *  App.tsx) — de-aia trei props proprii, în loc să lărgim `smartList`. */
   inboxActive?: boolean
   inboxUnread?: number
@@ -40,7 +40,7 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
   const canWrite = useCanWrite()
   // Cromul de proiect al piciorului de sidebar e legat de proiectul DESCHIS ca
   // ecran, nu de orice proiect încărcat în store — o pasă docată deschisă din
-  // „Pe mine" încarcă proiectul ei ca formularul să funcționeze, fără să te
+  // „Ale mele" încarcă proiectul ei ca formularul să funcționeze, fără să te
   // mute pe boardul lui. Fără gardă, un click pe „Tichet nou" ar fi creat un
   // tichet ÎN PROIECTUL STRĂIN, exact scurgerea reparată la FAB și la taste.
   const projectChrome = inboxActive ? null : project
@@ -121,14 +121,14 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
         </button>
       ))}
 
-      {/* „Pe mine" — cutia de pase. Nu vine din `SMART_LISTS`: n-are zi, deci
+      {/* „Ale mele" — cutia de pase. Nu vine din `SMART_LISTS`: n-are zi, deci
           nu se calculează layer/wave pe ea, e doar tot ce ți-a pasat cineva. */}
       <button
         className={`sidebar-nav-item ${inboxActive ? 'on' : ''}`}
         onClick={() => onInbox?.()}
       >
         <span className="sidebar-nav-icon"><Icon name="people" size={17} /></span>
-        <span>Pe mine</span>
+        <span>Ale mele</span>
         {inboxUnread > 0 && <span className="sl-count">{inboxUnread}</span>}
       </button>
 

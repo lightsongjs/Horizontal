@@ -403,22 +403,22 @@ cineva") și nu există un pas separat de „preluare" — a pasa ȘI a scrie un
 comentariu sunt un singur gest, `post_to_thread`, ca să nu existe o fereastră
 în care comentariul a plecat dar tichetul n-a ajuns la nimeni.
 
-Din regula asta iese direct forma lui „Pe mine": e scurtă **prin definiție**,
+Din regula asta iese direct forma lui „Ale mele": e scurtă **prin definiție**,
 nu prin filtrare deșteaptă. Interogarea (`inbox_rows`) cere `assignee_id = al
 meu` — un tichet pe care ți-l faci singur n-are niciodată `assignee_id` pus
 (rămâne gol, „al creatorului"), deci n-are cum să treacă vreodată de filtrul
 ăsta. Golul e vestea bună, nu o eroare, și de-aia ecranul spune asta direct în
 loc să tacă. Consecința practică, verificată manual: un tichet pe care l-ai
-creat și nu l-ai pasat NIMĂNUI nu apare în „Pe mine" — nici la tine, nici la
+creat și nu l-ai pasat NIMĂNUI nu apare în „Ale mele" — nici la tine, nici la
 altcineva — indiferent de câte comentarii capătă.
 
-**De ce „Pe mine" nu e un `SmartListKind`.** Ar trece de typecheck ca al
+**De ce „Ale mele" nu e un `SmartListKind`.** Ar trece de typecheck ca al
 patrulea membru, dar ar strica trei lucruri deodată: ecranul ar aștepta
 `dueLoaded`, o încărcare de scadențe care nu-l privește (un tichet ajunge aici
 prin pasă, nu prin dată); quick add-ul de pe un `SmartListKind` cere o zi
-implicită, iar „Pe mine" n-are — nu există „azi" pentru o pasă; și FAB-ul de
+implicită, iar „Ale mele" n-are — nu există „azi" pentru o pasă; și FAB-ul de
 adăugare rapidă ar apărea pe un ecran unde „sarcină nouă" n-are sens: aici nu
-se creează, aici se primește. `screen` din `App.tsx` ține „Pe mine" ca un
+se creează, aici se primește. `screen` din `App.tsx` ține „Ale mele" ca un
 `kind` separat, în afara `SmartListKind`, tocmai ca aceste trei să rămână
 neatinse.
 
@@ -478,7 +478,7 @@ bază.
 
 Pasul de setup: `npm run migrate supabase/migration-comments.sql`, apoi
 `node scripts/link-assignees.mjs` ca să legi conturile de rânduri din
-`assignees` (fără el, „Pe mine" spune corect „nu ești legat de niciun nume" —
+`assignees` (fără el, „Ale mele" spune corect „nu ești legat de niciun nume" —
 nu e o eroare, e starea de dinainte de legare). Pe o bază nouă `assignees` e
 goală — nu există niciun `<assigneeId>` de dat scriptului — deci primul rând se
 creează ȘI se leagă într-un singur pas: `node scripts/link-assignees.mjs
