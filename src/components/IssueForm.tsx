@@ -149,6 +149,13 @@ function AssigneeSearch({ assigneeId, assignees, members, myAssigneeId, myUserId
   const [hlIdx, setHlIdx] = useState(0)
   const [creating, setCreating] = useState(false)
   const [linking, setLinking] = useState(false)
+  /**
+   * Lista se deschide la FOCUS, nu la prima literă: oamenii proiectului sunt
+   * câțiva, nu o mie, deci a cere un termen de căutare ca să vezi trei nume e
+   * o taxă pe nimic — și pe telefon înseamnă tastatură scoasă degeaba.
+   * Căutarea rămâne pentru când lista chiar e lungă.
+   */
+  const [open, setOpen] = useState(false)
 
   const options = buildAssigneeOptions(assignees, members, myUserId)
   const filtered = q.trim() ? options.filter((o) => o.name.toLowerCase().includes(q.toLowerCase())) : options
@@ -158,11 +165,14 @@ function AssigneeSearch({ assigneeId, assignees, members, myAssigneeId, myUserId
 
   const selected = assigneeId ? assignees.find((a) => a.id === assigneeId) : null
 
+  // Câmpul ține O SINGURĂ persoană, deci alegerea e și sfârșitul căutării:
+  // lista se închide, spre deosebire de selectorul de dependențe, unde rămâne
+  // deschisă fiindcă urmează de obicei încă una.
   const selectOption = async (opt: AssigneeOption) => {
-    if (opt.kind === 'assignee') { onSelect(opt.id); setQ(''); setHlIdx(0); return }
+    if (opt.kind === 'assignee') { onSelect(opt.id); setQ(''); setHlIdx(0); setOpen(false); return }
     if (linking) return
     setLinking(true)
-    try { await onSelectMember(opt.userId); setQ(''); setHlIdx(0) } finally { setLinking(false) }
+    try { await onSelectMember(opt.userId); setQ(''); setHlIdx(0); setOpen(false) } finally { setLinking(false) }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -173,13 +183,13 @@ function AssigneeSearch({ assigneeId, assignees, members, myAssigneeId, myUserId
       e.preventDefault()
       if (hlIdx < filtered.length) void selectOption(filtered[hlIdx])
       else if (showCreate) handleCreate()
-    } else if (e.key === 'Escape') { setQ(''); setHlIdx(0) }
+    } else if (e.key === 'Escape') { setQ(''); setHlIdx(0); setOpen(false) }
   }
 
   const handleCreate = async () => {
     const name = q.trim(); if (!name || creating) return
     setCreating(true)
-    try { await onCreateAndSelect(name); setQ(''); setHlIdx(0) } finally { setCreating(false) }
+    try { await onCreateAndSelect(name); setQ(''); setHlIdx(0); setOpen(false) } finally { setCreating(false) }
   }
 
   return (
@@ -194,18 +204,24 @@ function AssigneeSearch({ assigneeId, assignees, members, myAssigneeId, myUserId
         </div>
       )}
       <div className="dep-search-wrap">
-        <input value={q} onChange={(e) => { setQ(e.target.value); setHlIdx(0) }}
+        <input value={q} onChange={(e) => { setQ(e.target.value); setHlIdx(0); setOpen(true) }}
           onKeyDown={handleKeyDown}
+          onFocus={() => setOpen(true)}
+          // Întârzierea lasă clickul pe un rând să se termine: pe unele
+          // browsere blur-ul ajunge înaintea lui, iar `onMouseDown` de pe
+          // rânduri (care păstrează focusul) nu acoperă atingerea pe touch.
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
           placeholder="Search or add person…"
           className="dep-search-input" autoComplete="off" autoCorrect="off" inputMode="text" />
       </div>
-      {q.trim() && (
+      {(open || q.trim()) && (
         <div className="dep-results">
           {filtered.map((o, idx) => {
             const key = o.kind === 'assignee' ? o.id : `member:${o.userId}`
             const on = o.kind === 'assignee' && o.id === assigneeId
             return (
               <button key={key} className={`dep-result-row ${on ? 'on' : ''} ${idx === hlIdx ? 'hl' : ''}`}
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => void selectOption(o)}
                 disabled={o.kind === 'member' && linking}>
                 <span className={`ic ${on ? 'ok' : 'ext'}`}><Icon name={on ? 'check' : 'add'} size={14} /></span>
@@ -216,6 +232,7 @@ function AssigneeSearch({ assigneeId, assignees, members, myAssigneeId, myUserId
           {filtered.length === 0 && !showCreate && <p className="dep-no-results">No one found.</p>}
           {showCreate && (
             <button className={`dep-create-btn ${hlIdx === filtered.length ? 'hl' : ''}`}
+              onMouseDown={(e) => e.preventDefault()}
               onClick={handleCreate} disabled={creating}>
               <span className="dep-create-plus">+</span>
               Add <strong>«{q.trim()}»</strong>
