@@ -592,6 +592,71 @@ PE_MINE = (
 )
 
 
+# ═══ ECRANUL „UTILIZATORI" — conturile (UsersView.tsx + UserForm.tsx) ════════
+# Lista n-are niciun chenar: rândurile stau pe `--surface` cu `--amb`, despărțite
+# de separatoare. Foaia contului e randată aici într-un `.bench-sheet` (același
+# `--surface` ca `.sheet`, fără poziționarea fixă care ar acoperi bancul).
+def urow(initial, name, email, access, unnamed=False):
+    tag = '<span class="user-unnamed">fără nume</span>' if unnamed else ''
+    return ('<button class="user-row"><span class="user-avatar">%s</span>'
+            '<span class="user-id"><span class="user-name">%s%s</span>'
+            '<span class="user-email">%s</span></span>'
+            '<span class="user-access">%s</span>%s</button>'
+            % (initial, name, tag, email, access, ic('chevron-right', 16, 'user-chev')))
+
+
+def arow(color, name, role):
+    opts = ''.join(
+        '<button class="acc-opt %s %s">%s</button>' % ('on' if r == role else '', 'is-' + k, lbl)
+        for k, r, lbl in (('none', None, 'Fără'), ('read', 'read', 'Read'), ('write', 'write', 'Write')))
+    return ('<div class="acc-row"><span class="acc-dot" style="background:%s"></span>'
+            '<span class="acc-name">%s</span><div class="acc-toggle">%s</div></div>'
+            % (color, name, opts))
+
+
+UTILIZATORI = (
+    '<header class="users-head"><div><h1 class="users-title">Utilizatori</h1>'
+    '<p class="users-sub">Conturile care se pot loga și proiectele la care ajung.</p></div>'
+    '<button class="btn-primary sm">%s Adaugă</button></header>' % ic('plus', 14)
+    + '<div class="user-list">'
+    + urow('I', 'Ionuț', 'ionut@exemplu.ro', 'toate proiectele')
+    + urow('M', 'Mihai', 'mihai@exemplu.ro', '3 proiecte')
+    + urow('A', 'ana.pop', 'ana.pop@exemplu.ro', 'fără acces', unnamed=True)
+    + '</div>'
+)
+
+CONT = (
+    '<div class="bench-sheet">'
+    '<div class="sheet-head"><div class="eyebrow">%s Cont</div><h2>Mihai</h2>'
+    '<p>Numele apare peste tot unde contul e ales: „Assigned to”, carduri, fir.</p></div>'
+    % ic('user', 13)
+    + '<div class="sheet-scroll">'
+    '<div class="fld"><label>Nume</label><input value="Mihai" /></div>'
+    '<div class="fld"><label>Email</label>'
+    '<div class="fld-static">mihai@exemplu.ro</div></div>'
+    '<div class="sheet-section-t"><span>Acces la proiecte</span>'
+    '<span class="grant-badge">2 alocate</span></div>'
+    '<div class="acc-grid">'
+    + arow('#0EA5E9', 'MateCuSens', 'write')
+    + arow('#3ecf8e', 'Horizontal', 'read')
+    + arow('#ffb454', 'PFA', None)
+    + '</div>'
+    '<div class="save-bar"><button>Salvează</button></div>'
+    '<div class="sheet-section-t" style="margin-top:24px">Parolă</div>'
+    '<div class="pw-row"><input placeholder="parolă nouă (min. 6)" />'
+    '<button class="btn-ghost">Schimbă</button></div>'
+    '<p class="fld-hint ok">Parolă schimbată.</p>'
+    '<div class="sheet-section-t" style="margin-top:24px;color:var(--blocked)">Zonă periculoasă</div>'
+    '<p class="fld-hint">Ștergerea contului îi taie accesul definitiv.</p>'
+    '<div class="save-bar" style="padding-top:0">'
+    '<button style="background:transparent;border:1px solid var(--blocked);color:var(--blocked)">'
+    'Șterge contul</button></div>'
+    '<div style="text-align:center;margin-top:6px">'
+    '<button class="link-btn">Anulează</button></div>'
+    '</div></div>'
+)
+
+
 CONTROALE = ''.join([
     g('Butoane de header',
       '<button class="back" aria-label="Înapoi">%s</button>'
@@ -616,7 +681,7 @@ CONTROALE = ''.join([
       '<span class="t-bell">' + ic('bell', 12) + '</span></span>'
       '<span class="due-chip late"><span class="dc-date">8 sep</span></span>'
       '<span class="type-badge">task</span><span class="type-badge ext">extern</span>'
-      '<span class="acc-count">4</span><span class="users-count">7</span>'
+      '<span class="acc-count">4</span>'
       '<span class="list-group-num">3</span><span class="wave-roman">II</span>'),
 
     g('Cipuri',
@@ -807,6 +872,10 @@ SCREENS = {
               '<div class="tabs"><button class="tab">Ordine</button><button class="tab">Listă</button>'
               '<button class="tab on">Hartă</button><button class="tab">Teme</button></div>'
               + HARTA),
+    'utilizatori': ('Utilizatori', 'conturi și acces', ic('users', 18), False, False,
+                    '<div class="panel">' + UTILIZATORI + '</div>'),
+    'cont': ('Utilizatori', 'foaia unui cont', ic('users', 18), False, False,
+             '<div class="panel">' + CONT + '</div>'),
     'controale': ('Controale', 'fiecare clasă, normal și activ', None, False, False,
                   '<div class="panel bench-gallery">' + CONTROALE + '</div>'),
     # Firul (Thread.tsx) trăiește în formularul docat, la fel ca „Listă" —
@@ -906,6 +975,9 @@ SHELL = """<!doctype html>
   .bench-gallery .att-del { opacity: 1; }
   .bench-gallery .bulk-bar { position: static; transform: none; }
   /* `.lb-back` e fixed în aplicație; pe banc ar acoperi ecranul. */
+  /* `.sheet` e fixed în aplicație; pe banc ar acoperi ecranul. Fundalul e
+     același `--surface`, deci ce se vede aici e ce se vede în foaie. */
+  .bench-sheet { background: var(--surface); border-radius: var(--r); padding: 18px; max-width: 480px; box-shadow: var(--amb); }
   .bench-gallery .lb-back { position: relative; inset: auto; z-index: auto; width: 100%; height: 230px; border-radius: var(--r); }
 </style>
 </head>
@@ -919,6 +991,8 @@ SHELL = """<!doctype html>
   <button data-go="harta">Hartă</button>
   <button data-go="fir">Fir</button>
   <button data-go="pe-mine">Ale mele</button>
+  <button data-go="utilizatori">Utilizatori</button>
+  <button data-go="cont">Cont</button>
   <button data-go="controale">Controale</button>
   <span class="sep"></span>
   <button id="bench-theme">Temă</button>
@@ -953,7 +1027,7 @@ __TABBAR__
 """
 
 html = (SHELL
-        .replace('__SCREENS__', ''.join(screen(k) for k in ('ordine', 'proiecte', 'azi', 'lista', 'lista-gol', 'harta', 'fir', 'pe-mine', 'controale')))
+        .replace('__SCREENS__', ''.join(screen(k) for k in ('ordine', 'proiecte', 'azi', 'lista', 'lista-gol', 'harta', 'fir', 'pe-mine', 'utilizatori', 'cont', 'controale')))
         .replace('__TABBAR__', TABBAR))
 out = os.path.join(ROOT, 'design/preview.html')
 io.open(out, 'w', encoding='utf-8').write(html)

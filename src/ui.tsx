@@ -11,6 +11,7 @@ export type SheetState =
   | { kind: 'wave-manage' }
   | { kind: 'theme-manage' }
   | { kind: 'obstacle-form'; obstacleId?: string } // creare când n-are id
+  | { kind: 'user-form'; userId?: string } // creare când n-are id
 
 interface UI {
   sheet: SheetState
@@ -49,6 +50,8 @@ interface UI {
   openProjectSettings(): void
   openWaveManage(): void
   openThemeManage(): void
+  /** Foaia de utilizator din ecranul de administrare. Fără id = cont nou. */
+  openUserForm(userId?: string): void
   /** Închide toată stiva. Întoarce false dacă garda de close a blocat. */
   closeSheet(): boolean
   goBack(): void
@@ -145,6 +148,7 @@ export function UIProvider({ children }: { children: ReactNode }) {
       openProjectSettings: () => setSheets([{ kind: 'project-settings' }]),
       openWaveManage: () => setSheets([{ kind: 'wave-manage' }]),
       openThemeManage: () => setSheets([{ kind: 'theme-manage' }]),
+      openUserForm: (userId) => setSheets([{ kind: 'user-form', userId }]),
       closeSheet: () => {
         if (closeGuard.current && !closeGuard.current()) return false
         setSheets([])

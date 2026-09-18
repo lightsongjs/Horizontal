@@ -3,7 +3,28 @@ import { errorMessage } from './errorMessage'
 import type { ProjectRole } from './access'
 
 export interface AccessEntry { project_id: string; role: ProjectRole }
-export interface AdminUser { id: string; email: string; access: AccessEntry[] }
+/**
+ * `name` e rândul din `assignees` legat prin `user_id` — ACELAȘI nume pe care
+ * îl vede toată lumea în „Assigned to", pe carduri și în fir. `null` înseamnă
+ * „contul n-are încă rând"; interfața cade atunci pe partea locală a
+ * emailului (`memberDisplayName`), ca până acum. Nu există o a doua coloană
+ * de nume pe cont: ar fi al doilea adevăr, iar cele două ar diverge.
+ */
+export interface AdminUser {
+  id: string
+  email: string
+  name: string | null
+  /**
+   * `app_metadata.role === 'admin'`. Un admin vede și scrie tot prin
+   * `is_admin()`, fără niciun rând în `project_members` — a-i arăta „0
+   * proiecte" ar fi o minciună, nu o listă goală.
+   */
+  admin: boolean
+  access: AccessEntry[]
+}
+
+/** Un nume gol e o absență, nu o valoare — serverul primește `null`, nu `''`. */
+const cleanName = (name: string): string | null => name.trim() || null
 
 /**
  * Ce a spus de fapt funcția edge.
@@ -41,9 +62,12 @@ export async function listUsers(): Promise<AdminUser[]> {
   const { users } = await call<{ users: AdminUser[] }>('list_users')
   return users
 }
-export async function createUser(email: string, password: string, access: AccessEntry[]): Promise<string> {
-  const { id } = await call<{ id: string }>('create_user', { email, password, access })
+export async function createUser(email: string, password: string, name: string, access: AccessEntry[]): Promise<string> {
+  const { id } = await call<{ id: string }>('create_user', { email, password, name: cleanName(name), access })
   return id
+}
+export async function setName(user_id: string, name: string): Promise<void> {
+  await call('set_name', { user_id, name: cleanName(name) })
 }
 export async function setAccess(user_id: string, access: AccessEntry[]): Promise<void> {
   await call('set_access', { user_id, access })

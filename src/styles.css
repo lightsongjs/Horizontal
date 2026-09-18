@@ -4410,12 +4410,7 @@ main {
 }
 
 /* ═══ Users admin screen ══════════════════════════════════════════════ */
-.users-view { max-width: 860px; }
-
-@keyframes users-rise {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
+.users-view { max-width: 720px; }
 
 .users-head {
   display: flex; align-items: flex-start; justify-content: space-between;
@@ -4427,54 +4422,57 @@ main {
   color: var(--txt); margin: 0;
 }
 .users-sub { margin: 5px 0 0; font-size: 13px; color: var(--txt-dim); }
-.users-count {
-  flex: none; min-width: 40px; text-align: center;
-  font-family: var(--mono); font-size: 15px; font-weight: 600;
-  color: var(--accent); background: var(--accent-soft);
-  border-radius: var(--r-m); padding: 6px 12px;
-}
 
-.users-card, .user-card {
-  border-radius: var(--r); padding: 18px;
-  animation: users-rise 0.4s ease both;
-  box-shadow: var(--amb);
+/* ── Lista de conturi ─────────────────────────────────────────────────
+   Un rând nu are chenar: se desprinde de fundal prin `--surface` plus
+   umbra ambientală, iar rândurile se despart printr-un separator, care e
+   linie de structură, nu decor. */
+.user-list {
+  display: flex; flex-direction: column;
+  border-radius: var(--r); overflow: hidden;
+  background: var(--surface); box-shadow: var(--amb);
 }
-.users-add { background: var(--surface-2); margin-bottom: 26px; }
-.user-card { background: var(--surface); margin-bottom: 14px; }
+.user-row {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; text-align: left; cursor: pointer;
+  border: none; background: transparent; font-family: inherit;
+  padding: 12px 14px;
+  transition: background 0.14s;
+}
+.user-row + .user-row { border-top: 1px solid var(--line-soft); }
+.user-row:hover { background: var(--surface-2); }
+.user-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
-.users-card-title {
-  display: flex; align-items: center; gap: 9px;
-  font-family: var(--display); font-size: 15px; font-weight: 600;
-  color: var(--txt); margin-bottom: 16px;
-}
-.ttl-ico {
-  display: grid; place-items: center; width: 24px; height: 24px;
-  border-radius: var(--r-s); font-size: 15px; line-height: 1; color: var(--on-accent);
+.user-avatar {
+  flex: none; display: grid; place-items: center;
+  width: 38px; height: 38px; border-radius: var(--r-m);
+  font-family: var(--display); font-size: 16px; font-weight: 700; color: var(--on-accent);
   background: var(--accent);
 }
-
-.users-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
-.users-field { display: flex; flex-direction: column; gap: 6px; }
-.users-flabel {
-  font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
-  color: var(--txt-faint);
+.user-id { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.user-name {
+  display: flex; align-items: baseline; gap: 8px; min-width: 0;
+  font-family: var(--display); font-size: 15px; font-weight: 600; color: var(--txt);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.users-flabel.row { display: flex; align-items: center; justify-content: space-between; }
+.user-unnamed {
+  flex: none; font-family: var(--mono); font-size: 10px;
+  text-transform: uppercase; letter-spacing: 0.06em; color: var(--txt-faint);
+}
+.user-email {
+  font-family: var(--mono); font-size: 12px; color: var(--txt-dim);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.user-access {
+  flex: none; font-family: var(--mono); font-size: 11.5px; color: var(--txt-faint);
+}
+.user-chev { flex: none; color: var(--txt-faint); }
+
+/* ── Accesul, în foaie ────────────────────────────────────────────── */
 .grant-badge {
   font-family: var(--mono); font-size: 10px; text-transform: none; letter-spacing: 0;
   color: var(--accent); background: var(--accent-soft); border-radius: var(--r-s); padding: 2px 7px;
 }
-.users-input {
-  width: 100%; background: var(--surface-3); border: 1px solid var(--line);
-  border-radius: var(--r-m); padding: 10px 12px; color: var(--txt);
-  font-size: 14px; font-family: inherit;
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-.users-input::placeholder { color: var(--txt-faint); }
-.users-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-
-.users-access-block { display: flex; flex-direction: column; gap: 10px; }
-
 .acc-grid {
   display: flex; flex-direction: column;
   border-radius: var(--r-m); overflow: hidden;
@@ -4504,7 +4502,29 @@ main {
 .acc-opt.on.is-read  { background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--accent); }
 .acc-opt.on.is-write { background: var(--accent); color: var(--on-accent); }
 
+/* ── Câmpuri auxiliare din foaia contului ─────────────────────────── */
+.fld-hint { margin: 6px 0 0; font-size: 12px; color: var(--txt-faint); line-height: 1.5; }
+.fld-hint.ok { color: var(--accent); }
+.fld-static {
+  font-family: var(--mono); font-size: 13.5px; color: var(--txt-dim);
+  padding: 10px 12px; background: var(--surface-2); border-radius: var(--r-m);
+}
+.pw-row { display: flex; gap: 8px; align-items: center; }
+.pw-row input {
+  flex: 1 1 auto; min-width: 0;
+  background: var(--surface-2); border: 1px solid var(--line);
+  border-radius: var(--r-m); padding: 10px 12px;
+  color: var(--txt); font-family: inherit; font-size: 15px;
+}
+.pw-row input:focus { outline: none; border-color: color-mix(in srgb, var(--accent) 53%, transparent); }
+.pw-row .btn-ghost { flex: none; }
+.link-btn {
+  background: none; border: none; cursor: pointer;
+  color: var(--txt-dim); font-family: inherit; font-size: 12px;
+}
+
 .btn-primary {
+  display: inline-flex; align-items: center; gap: 7px;
   border: none; cursor: pointer; font-family: inherit;
   font-size: 14px; font-weight: 600; color: var(--on-accent);
   background: var(--accent);
@@ -4518,39 +4538,16 @@ main {
 .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
 
 .btn-ghost, .btn-danger {
-  cursor: pointer; font-family: inherit;
+  cursor: pointer; font-family: inherit; border: none;
   font-size: 12.5px; font-weight: 600;
   background: var(--surface-2); color: var(--txt-dim);
-  padding: 7px 13px; border-radius: var(--r-s);
+  padding: 9px 14px; border-radius: var(--r-s);
   transition: background 0.14s, color 0.14s;
 }
 .btn-ghost:hover { background: var(--accent-soft); color: var(--accent); }
+.btn-ghost:disabled { opacity: 0.45; cursor: not-allowed; }
 .btn-danger { color: var(--blocked); background: var(--blocked-soft); }
 .btn-danger:hover { background: color-mix(in srgb, var(--blocked) 16%, transparent); color: var(--blocked); }
-
-.users-add-foot { margin-top: 18px; display: flex; justify-content: flex-end; }
-
-.users-section-label {
-  font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
-  color: var(--txt-faint); margin: 8px 2px 14px;
-}
-.users-grid { display: flex; flex-direction: column; }
-
-.user-card-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
-.user-avatar {
-  flex: none; display: grid; place-items: center;
-  width: 38px; height: 38px; border-radius: var(--r-m);
-  font-family: var(--display); font-size: 16px; font-weight: 700; color: var(--on-accent);
-  background: var(--accent);
-}
-.user-id { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.user-email {
-  font-family: var(--mono); font-size: 13.5px; color: var(--txt);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.user-meta { font-size: 11.5px; color: var(--txt-faint); }
-.user-actions { flex: none; display: flex; gap: 8px; }
-.user-card-foot { margin-top: 14px; display: flex; justify-content: flex-end; }
 
 .users-empty {
   color: var(--txt-faint); font-size: 13.5px; padding: 20px; text-align: center;
@@ -4559,13 +4556,10 @@ main {
 .users-empty.sm { padding: 12px; font-size: 12.5px; border-radius: var(--r-m); }
 
 @media (max-width: 640px) {
-  .users-fields { grid-template-columns: 1fr; }
+  .user-access { display: none; }
   .acc-row { flex-wrap: wrap; }
   .acc-toggle { width: 100%; }
   .acc-opt { flex: 1; text-align: center; }
-  .user-card-head { flex-wrap: wrap; }
-  .user-actions { width: 100%; }
-  .user-actions .btn-ghost, .user-actions .btn-danger { flex: 1; text-align: center; }
 }
 
 /* ── TOAST ───────────────────────────────────────── */

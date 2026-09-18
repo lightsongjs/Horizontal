@@ -13,6 +13,36 @@ const json = (body: unknown, status = 200) =>
 const validAccess = (access: { project_id: string; role: string }[] | undefined) =>
   (access ?? []).every((a) => a.role === 'read' || a.role === 'write')
 
+type Admin = ReturnType<typeof createClient>
+
+/**
+ * Numele afisat al unui cont = randul din `assignees` legat prin `user_id`.
+ *
+ * Scriem aici, cu cheia de serviciu, nu prin `ensure_project_assignee`: aceea
+ * cere ca apelantul sa fie membru al unui PROIECT anume, iar adminul care
+ * boteaza un cont nu are (si nu trebuie sa aiba) un proiect in mana.
+ *
+ * Select-then-write, nu `upsert`: indexul unic de pe `assignees.user_id` e
+ * PARTIAL (`where user_id is not null`, vezi migration-comments.sql), iar un
+ * `on conflict (user_id)` simplu nu se potriveste cu el.
+ */
+async function writeName(admin: Admin, user_id: string, name: string | null) {
+  const { data: row, error: selErr } = await admin
+    .from('assignees').select('id').eq('user_id', user_id).maybeSingle()
+  if (selErr) return selErr.message
+
+  if (!name) {
+    // Gol pe un cont fara rand = nu e nimic de facut. Gol pe un cont care ARE
+    // deja un nume ar insemna sa stergem randul — dar de el atarna
+    // `issues.assignee_id` si istoricul pasarilor, deci se refuza aici.
+    return row ? 'Numele nu poate fi sters. Scrie altul.' : null
+  }
+  const { error } = row
+    ? await admin.from('assignees').update({ name }).eq('id', row.id)
+    : await admin.from('assignees').insert({ name, user_id })
+  return error?.message ?? null
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
 
@@ -35,24 +65,31 @@ Deno.serve(async (req) => {
     if (action === 'list_users') {
       const { data } = await admin.auth.admin.listUsers()
       const { data: members } = await admin.from('project_members').select('user_id, project_id, role')
+      const { data: named } = await admin.from('assignees').select('user_id, name').not('user_id', 'is', null)
       const users = (data?.users ?? []).map((u) => ({
         id: u.id,
         email: u.email,
+        name: (named ?? []).find((a) => a.user_id === u.id)?.name ?? null,
+        admin: u.app_metadata?.role === 'admin',
         access: (members ?? []).filter((m) => m.user_id === u.id).map((m) => ({ project_id: m.project_id, role: m.role })),
       }))
       return json({ users })
     }
 
     if (action === 'create_user') {
-      const { email, password, access } = payload as { email: string; password: string; access: { project_id: string; role: string }[] }
+      const { email, password, name, access } = payload as { email: string; password: string; name: string | null; access: { project_id: string; role: string }[] }
       if (!validAccess(access)) return json({ error: 'invalid role (must be read or write)' }, 400)
       const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true })
       if (error) return json({ error: error.message }, 400)
+      // Contul exista deja aici. Un nume care nu se scrie nu mai justifica
+      // anularea lui, deci esecul se raporteaza dupa ce accesul e pus.
+      const nameErr = await writeName(admin, data.user.id, name ?? null)
       if (access?.length) {
         const rows = access.map((a) => ({ user_id: data.user.id, project_id: a.project_id, role: a.role }))
         const { error: mErr } = await admin.from('project_members').insert(rows)
         if (mErr) return json({ error: mErr.message }, 400)
       }
+      if (nameErr) return json({ error: nameErr }, 400)
       return json({ id: data.user.id })
     }
 
@@ -68,6 +105,12 @@ Deno.serve(async (req) => {
         if (error) return json({ error: error.message }, 400)
       }
       return json({ ok: true })
+    }
+
+    if (action === 'set_name') {
+      const { user_id, name } = payload as { user_id: string; name: string | null }
+      const err = await writeName(admin, user_id, name ?? null)
+      return err ? json({ error: err }, 400) : json({ ok: true })
     }
 
     if (action === 'reset_password') {
