@@ -4372,8 +4372,22 @@ main {
   .meta-recap {
     display: flex;
   }
+  /* Colapsat NU înseamnă gol: urgentul și scadența rămân pe ecran, fiindcă
+     alea se schimbă în timpul zilei, de pe telefon. Cine ține tichetul, valul
+     și tema se schimbă rar și la masă — ele stau sub „Detalii". */
   .meta-collapsed .meta-body {
+    display: block;
+  }
+  .meta-collapsed .if-bar > .if-ctl:not(.icon),
+  .meta-collapsed .if-bar > .if-seg,
+  .meta-collapsed .if-theme-wrap {
     display: none;
+  }
+  /* Bara rămasă cu două controale nu mai are nevoie de fundalul ei: ar fi o
+     casetă în jurul a două jetoane, sub o casetă (rezumatul). */
+  .meta-collapsed .if-bar {
+    background: transparent;
+    padding: 8px 18px 10px;
   }
 
   /* ── Issue form body: single column, shorter description box ───────

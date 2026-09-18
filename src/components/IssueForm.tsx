@@ -11,7 +11,7 @@ import { fold } from '../lib/text'
 import { fillFromTitle, titleToSave, type FillMemo } from '../lib/titleDueFill'
 import {
   DATE_PLACEHOLDER, NO_SCHEDULE, TIME_PLACEHOLDER, defaultReminder, displayFromInputDate,
-  fromDisplayDate, fromInputs, fromTimeText, hasTime, maskDateInput, maskTimeInput, reminderAt,
+  fromDisplayDate, fromInputs, fromTimeText, maskDateInput, maskTimeInput, reminderAt,
   reminderKindOf, toDisplayDate, toShortDate, toTimeInput, type ReminderKind,
 } from '../lib/schedule'
 import { Attachments } from './Attachments'
@@ -645,10 +645,11 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
     themeName: themeObj?.name ?? null,
     waveName: waves.find((w) => w.number === wave)?.name ?? `Val ${wave}`,
     assigneeName,
-    urgent,
-    dueLabel: schedule.dueAt
-      ? `${toShortDate(schedule.dueAt)}${hasTime({ dueAt: schedule.dueAt, allDay: schedule.allDay }) ? ` ${toTimeInput(schedule.dueAt)}` : ''}`
-      : null,
+    // Urgentul și scadența NU intră în rezumat: pe mobil rămân vizibile lângă
+    // el (vezi `.meta-collapsed` din styles.css), iar un rezumat care repetă
+    // ce se vede dedesubt e zgomot pe singurul ecran unde contează lățimea.
+    urgent: false,
+    dueLabel: null,
   })
 
   const addTheme = async () => {
