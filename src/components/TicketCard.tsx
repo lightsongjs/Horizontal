@@ -18,7 +18,7 @@ interface Props {
 }
 
 export function TicketCard({ id, contextWave, selectMode, isSelected, onToggleSelect, treeMode, highlighted, onTreeSelect, focused }: Props) {
-  const { byId, stateOf, toggleDone, themeOf, blockedByObstacle } = useHorizontal()
+  const { byId, stateOf, toggleDone, themeOf, blockedByObstacle, assignees, assigneeShort } = useHorizontal()
   const { openEditIssue } = useUI()
   const canWrite = useCanWrite()
   const it = byId[id]
@@ -30,6 +30,7 @@ export function TicketCard({ id, contextWave, selectMode, isSelected, onToggleSe
   const sameWave = deps.filter((d) => byId[d]?.wave === contextWave)
   const crossWave = deps.filter((d) => byId[d] && byId[d].wave !== contextWave)
   const obstructed = Boolean(blockedByObstacle[id]?.length)
+  const holder = it.assigneeId ? assignees.find((a) => a.id === it.assigneeId) : undefined
 
   const handleClick = () => {
     if (treeMode) {
@@ -76,6 +77,12 @@ export function TicketCard({ id, contextWave, selectMode, isSelected, onToggleSe
         <span className="tk-id">{id}</span>
         {theme && <span className="tk-theme">{theme.name}</span>}
         {it.urgent && <span className="tk-urgent" title="Urgent"><Icon name="urgent" size={13} /></span>}
+        {/* Cine ține tichetul, la capătul rândului de meta: o literă când
+            nimeni nu se ciocnește, două-trei când da (vezi `shortLabels`).
+            Numele întreg stă în `title` — pastila e un semn, nu o etichetă. */}
+        {holder && (
+          <span className="tk-who" title={holder.name}>{assigneeShort[holder.id] ?? '?'}</span>
+        )}
       </div>
       <h5>{it.title}</h5>
       {(sameWave.length > 0 || crossWave.length > 0 || it.dueAt || obstructed) && (

@@ -1083,6 +1083,62 @@ main {
   font-size: 9px;
   font-weight: 700;
 }
+/* ── cine ține tichetul ──────────────────────────────────────────────
+   Pe card: o pastilă cu cea mai scurtă etichetă unică (`shortLabels`).
+   Cerc perfect la o literă, pastilă la două-trei — lățimea crește, înălțimea
+   nu. Fără chenar și fără culoare per om: saltul e de fundal, ca la
+   `.origin-avatar`, iar literele se citesc direct. */
+.tk-who {
+  margin-left: auto;
+  flex-shrink: 0;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 5px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-3);
+  color: var(--txt-dim);
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+/* Pe rând e loc pentru numele întreg — serif, ca orice e limbă. Plafonat la
+   96px și tăiat cu „…": un „Alexandru Constantinescu" nu are voie să înghită
+   titlul pe telefon, iar coada rândului nu se micșorează (`flex-shrink: 0`),
+   deci fără plafon ar fi împins titlul la zero. */
+.row-who {
+  flex-shrink: 0;
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--txt-dim);
+  font-size: 12px;
+  white-space: nowrap;
+}
+/* Sub 560px numele se strânge în aceeași pastilă ca pe card. */
+.row-who-sm { display: none; }
+@media (max-width: 560px) {
+  .row-who { display: none; }
+  .row-who-sm {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: var(--surface-3);
+    color: var(--txt-dim);
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 700;
+  }
+}
+
 /* Jetonul „holder" n-are chenar: saltul e de fundal (surface-3), nu de linie. */
 .holder {
   display: inline-flex;

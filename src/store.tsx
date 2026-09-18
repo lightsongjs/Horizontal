@@ -27,6 +27,7 @@ import {
 import { buildSmartLists, smartListRange, type SmartLists } from './lib/schedule'
 import { blockedBy, detectObstacleCycle } from './lib/obstacles'
 import { groupInbox, reconcileInbox } from './lib/thread'
+import { shortLabels } from './lib/initials'
 import type { Assignee, InboxRow, Issue, IssueState, Layers, Obstacle, ObstacleLink, Project, ProjectMember, Theme, Wave } from './lib/types'
 import { errorMessage } from './lib/errorMessage'
 import { shouldRefreshOnVisible } from './lib/refreshGate'
@@ -89,6 +90,8 @@ interface HorizontalState {
   /** Muchiile obstacol → tichet ale proiectului activ. */
   obstacleLinks: ObstacleLink[]
   myAssigneeId: string | null
+  /** id de assignee → eticheta de pe pastila cardului („MIR"). */
+  assigneeShort: Record<string, string>
   /**
    * Cutia de pase, tăiată în „Necitite"/„Mai devreme" (`groupInbox`).
    * Transversal pe proiecte, ca `smartLists` — vezi `loadInbox`.
@@ -222,6 +225,17 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     () => assignees.find((a) => a.userId === session?.user.id)?.id ?? null,
     [assignees, session],
   )
+
+  /**
+   * Eticheta scurtă a fiecărui assignee, pentru pastila de pe card: cea mai
+   * scurtă care îl distinge de ceilalți (vezi `shortLabels`). Se calculează o
+   * dată aici, nu în fiecare card: regula se uită la TOATĂ lista, deci un
+   * card singur n-ar putea-o afla, iar N carduri ar reface același calcul.
+   */
+  const assigneeShort = useMemo(() => {
+    const labels = shortLabels(assignees.map((a) => a.name))
+    return Object.fromEntries(assignees.map((a, i) => [a.id, labels[i]])) as Record<string, string>
+  }, [assignees])
 
   /**
    * Aduce fereastra de scadențe. Eșecul e tăcut în afară de `error`: listele
@@ -835,6 +849,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     obstacles,
     obstacleLinks,
     myAssigneeId,
+    assigneeShort,
     inbox,
     inboxLoaded,
     markInboxSeen,

@@ -12,7 +12,7 @@ import { Icon } from './Icon'
 import { SplitView } from './SplitView'
 
 export function ListView() {
-  const { waves, activeWave, byId, stateOf, themeOf, toggleDone, blockedByObstacle, assignees } = useHorizontal()
+  const { waves, activeWave, byId, stateOf, themeOf, toggleDone, blockedByObstacle, assignees, assigneeShort } = useHorizontal()
   const { openEditIssue, dockedIssueId } = useUI()
   const canWrite = useCanWrite()
   const [hideDone, toggleHideDone] = useHideDone()
@@ -209,6 +209,20 @@ export function ListView() {
                     <span className="list-title">{it.title}</span>
                     {/* Coada rândului: aceeași ordine ca `.t-tail` din TaskRow. */}
                     <span className="row-tail">
+                      {/* Numele întreg pe ecran lat, pastila cu inițiale pe
+                          telefon (CSS le schimbă la 560px): 96px de nume ar
+                          fi luat jumătate din titlu acolo, iar titlul e
+                          singurul lucru care contează într-o listă. */}
+                      {(() => {
+                        const who = assignees.find((a) => a.id === it.assigneeId)
+                        if (!who) return null
+                        return (
+                          <>
+                            <span className="row-who">{who.name}</span>
+                            <span className="row-who-sm" title={who.name}>{assigneeShort[who.id] ?? '?'}</span>
+                          </>
+                        )
+                      })()}
                       {it.urgent && <span className="tk-urgent" title="Urgent"><Icon name="urgent" size={13} /></span>}
                       <DueChip issue={it} />
                       <ObstacleChip issueId={id} />
