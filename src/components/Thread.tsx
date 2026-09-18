@@ -12,7 +12,7 @@ import {
 import { attachmentFilename, shrinkImage } from '../lib/shrinkImage'
 import { pickFiles, rejectMessage } from '../lib/pickFiles'
 import { errorMessage } from '../lib/errorMessage'
-import { toTimeInput } from '../lib/schedule'
+import { dayOffset, toShortDate, toTimeInput } from '../lib/schedule'
 import { useAuth } from '../auth'
 import { useHorizontal } from '../store'
 import { useCanWrite } from '../hooks'
@@ -51,6 +51,17 @@ function assigneeLabel(id: string | null, assignees: readonly Assignee[]): strin
 }
 
 /**
+ * Ora unui eveniment din fir, cu data în față dacă nu e de azi. Fără asta, un
+ * schimb de replici pe mai multe zile — exact cazul de utilizare al firului —
+ * arăta „14:32" la tot, inclusiv la cele 266 de note migrate din vechiul câmp
+ * de notițe. Aceleași `toShortDate`/`toTimeInput` ca peste tot în aplicație
+ * (`DueChip.tsx`) — nu un al treilea format de dată.
+ */
+function eventTime(iso: string, now: Date): string {
+  return dayOffset(iso, now) === 0 ? toTimeInput(iso) : `${toShortDate(iso)} ${toTimeInput(iso)}`
+}
+
+/**
  * Firul unui tichet: comentarii și pase, cronologic, plus caseta de scris.
  *
  * Trei lucruri pe care nu le face, deliberat:
@@ -77,7 +88,7 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff }: {
    */
   onHandoff(to: string | null): void
 }) {
-  const { assignees, myAssigneeId, byId, upsertIssue } = useHorizontal()
+  const { assignees, myAssigneeId, byId, upsertIssue, refreshInbox } = useHorizontal()
   const { session } = useAuth()
   const canWrite = useCanWrite()
   // `localRepository` semnează firul cu 'local' (vezi `postToThread` de-acolo)
@@ -142,6 +153,17 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff }: {
 
   useEffect(() => { void loadAttachments() /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [issueId])
 
+  // Murdăria draftului se calculează într-UN SINGUR loc, din toate trei:
+  // textul netrimis, atașamentele deja urcate (`pending`) și destinatarul ales
+  // (`to`). Înainte doar textul conta — un fișier urcat sau un „către…" ales
+  // treceau formularul drept curat, iar un click pe alt rând din listă comuta
+  // firul fără nicio avertizare, lăsând fișierul orfan în storage (event_id
+  // null). `to !== undefined` e starea „am ales ceva", inclusiv „către Nimeni"
+  // (`to === null`) — vezi `canSubmit`.
+  useEffect(() => {
+    onDirtyChange(body.trim() !== '' || pending.length > 0 || to !== undefined)
+  }, [body, pending, to, onDirtyChange])
+
   const attachmentsByEvent = useMemo(() => {
     const map = new Map<string, Attachment[]>()
     for (const a of allAttachments) {
@@ -165,11 +187,6 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff }: {
     } catch (e) {
       setAttMessage(errorMessage(e))
     }
-  }
-
-  const updateBody = (v: string) => {
-    setBody(v)
-    onDirtyChange(v.trim() !== '')
   }
 
   const pickAttachments = async (files: File[]) => {
@@ -202,7 +219,10 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff }: {
     void deleteAttachment(a).catch(() => {})
   }
 
-  const canSubmit = canWrite && !sending && (body.trim() !== '' || pending.length > 0 || to !== undefined)
+  // `busy > 0` = un upload de atașament încă în zbor: fără gardă, „Trimite"
+  // pleca înaintea răspunsului de upload, iar comentariul ajungea pe fir fără
+  // fișierul pe care omul tocmai îl alesese.
+  const canSubmit = canWrite && !sending && busy === 0 && (body.trim() !== '' || pending.length > 0 || to !== undefined)
 
   const send = async () => {
     if (!canSubmit) return
@@ -234,9 +254,12 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff }: {
       if (to !== undefined) onHandoff(res.issue.assigneeId)
       setBody('')
       setTo(undefined)
-      setPending([])
-      onDirtyChange(false) // altfel formularul rămâne murdar și clipește la orice click în listă
+      setPending([]) // cele trei resetări de mai sus curăță și murdăria — vezi efectul unificat
       void loadAttachments() // atașamentele proaspăt trimise capătă acum un event_id
+      // Cutia de pase (badge + listă „Pe mine") nu se atinge de `upsertIssue`:
+      // fără reîmprospătare, un tichet trimis înapoi rămâne vizibil acolo până
+      // la un refresh întreg. Best-effort: un eșec aici nu anulează trimiterea.
+      void refreshInbox()
     } catch (e) {
       setSendError(errorMessage(e))
     } finally {
@@ -254,12 +277,12 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff }: {
       {!loading && !loadError && (
         <div className="thread-events">
           {events.length === 0 && <p className="thread-empty">Niciun comentariu încă.</p>}
-          {events.map((e) => {
+          {(() => { const now = new Date(); return events.map((e) => {
             if (e.kind === 'handoff') {
               return (
                 <div key={e.id} className="thread-handoff">
                   {assigneeLabel(e.handoffFrom, assignees)} → {assigneeLabel(e.handoffTo, assignees)}
-                  <span className="thread-handoff-time">{toTimeInput(e.createdAt)}</span>
+                  <span className="thread-handoff-time">{eventTime(e.createdAt, now)}</span>
                 </div>
               )
             }
@@ -274,7 +297,7 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff }: {
                   <div className="thread-comment-card">
                     <div className="thread-comment-head">
                       <span className="thread-comment-name">{author.name}</span>
-                      <span className="thread-comment-time">{toTimeInput(e.createdAt)}</span>
+                      <span className="thread-comment-time">{eventTime(e.createdAt, now)}</span>
                     </div>
                     {e.body && <div className="thread-comment-text">{e.body}</div>}
                     {group.length > 0 && (
@@ -315,7 +338,7 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff }: {
                 </div>
               </div>
             )
-          })}
+          }) })()}
         </div>
       )}
 
@@ -347,7 +370,7 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff }: {
           ref={textareaRef}
           className="thread-textarea"
           value={body}
-          onChange={(e) => updateBody(e.target.value)}
+          onChange={(e) => setBody(e.target.value)}
           readOnly={!canWrite}
           placeholder={canWrite ? 'Scrie un comentariu…' : undefined}
           onKeyDown={(e) => {

@@ -68,10 +68,11 @@ export function InboxView({ onOpen }: { onOpen(issueId: string): void }) {
 
   // `<SplitView>` învelește ORICE stare, nu doar cea cu rânduri — inclusiv
   // „nelegat" și „gol". Fără asta, un tichet docat dintr-o vizitare anterioară
-  // (sau chiar din firul care tocmai a golit cutia — o pasă marchează un rând
-  // „gata" și el dispare din listă) pierde `registerSplitHost` exact când
-  // conținutul dispare, și SARE la modal peste mesajul gol. Verificat cu date
-  // reale: fără învelișul ăsta, exact asta se întâmplă.
+  // (sau chiar din firul tichetului deschis acum — o pasă trimisă înapoi prin
+  // `Thread.send` scoate rândul din cutie, via `refreshInbox`) pierde
+  // `registerSplitHost` exact când conținutul dispare, și SARE la modal peste
+  // mesajul gol. Verificat cu date reale: fără învelișul ăsta, exact asta se
+  // întâmplă.
   return (
     <SplitView>
       <div className="panel inbox-pad">

@@ -876,6 +876,28 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
       {/* BODY */}
       <div className="sheet-scroll if-body">
 
+        {/* Proveniența — doar la editare: un tichet nesalvat n-are creator.
+            Aceeași clasă `.origin` din IssueSheet.tsx, ca să nu apară un al
+            doilea set de stiluri pentru același fapt. Rezolvarea numelui
+            trece prin `assignees.userId`, la fel ca autorul unui comentariu
+            din Thread.tsx. */}
+        {isEdit && existing && (
+          <div className="origin">
+            {existing.createdBy && (() => {
+              const creator = assignees.find((a) => a.userId === existing.createdBy)
+              const creatorName = creator?.name ?? 'cineva'
+              return (
+                <>
+                  <span className="origin-avatar">{creatorName.slice(0, 2).toUpperCase()}</span>
+                  <span>creat de {creatorName}</span>
+                  <span className="dot">·</span>
+                </>
+              )
+            })()}
+            <time className="mono">{toShortDate(existing.createdAt)}</time>
+          </div>
+        )}
+
         {/* META — Temă · Val · Assigned to */}
         <div className={`sh-meta-section${metaOpen ? '' : ' meta-collapsed'}`}>
           {/* Doar pe mobil (CSS-ul de desktop îl ascunde): rezumatul înlocuiește

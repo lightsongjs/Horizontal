@@ -90,6 +90,15 @@ interface HorizontalState {
    * refresh întreg ca să reflecte atingerea.
    */
   markInboxSeen(issueId: string): Promise<void>
+  /**
+   * Reîncarcă doar cutia de pase — tiparul lui `refreshing`, nu al lui
+   * `loading`: o scriere în fir (`Thread.send`) schimbă `inboxRaw` pe server,
+   * dar `upsertIssue` nu-l atinge, deci fără asta rândul pasat rămâne vizibil
+   * și badge-ul din bara de jos continuă să-l numere până la un refresh întreg.
+   * Nu ridică `loading` — ar demonta `<main>` (deci `SplitView`) sub tichetul
+   * tocmai scris. Vezi `loadInbox`.
+   */
+  refreshInbox(): Promise<void>
 
   selectProject(id: string | null): void
   setActiveWave(wave: number): void
@@ -741,6 +750,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     inbox,
     inboxLoaded,
     markInboxSeen,
+    refreshInbox: loadInbox,
     selectProject,
     setActiveWave,
     createProject,

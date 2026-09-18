@@ -384,12 +384,15 @@ export function createSupabaseRepository(): Repository {
       if (pErr) throw pErr
 
       const id = nextIssueId((existing ?? []).map((r) => r.id), proj.prefix)
-      // `getSession()` citește sesiunea locală (fără rundă către rețea) — nu
-      // e o presupunere despre altcineva, e „cine suntem noi", exact ce va
-      // scrie `default auth.uid()` din migrare. Fără asta, ecoul optimist
-      // de mai jos ar întoarce `createdBy: null`, iar un card de dependență
-      // deschis pe tichetul ăsta ÎNAINTE de următorul fetch complet ar arăta
-      // gol în loc de „creat de <nume>", deși rândul din bază e deja corect.
+      // `getSession()` citește de obicei sesiunea locală, fără rundă către
+      // rețea — dar nu e GARANTAT: cu un token aproape de expirare, chiar
+      // `getSession()` îl reîmprospătează pe loc, ceea ce E o cerere de
+      // rețea. Oricum, nu e o presupunere despre altcineva, e „cine suntem
+      // noi", exact ce va scrie `default auth.uid()` din migrare. Fără asta,
+      // ecoul optimist de mai jos ar întoarce `createdBy: null`, iar un card
+      // de dependență deschis pe tichetul ăsta ÎNAINTE de următorul fetch
+      // complet ar arăta gol în loc de „creat de <nume>", deși rândul din
+      // bază e deja corect.
       const { data: sess } = await db.auth.getSession()
       const issue: Issue = {
         id,

@@ -136,7 +136,9 @@ create policy events_select on public.issue_events for select to authenticated
 using (public.is_admin() or exists (select 1 from public.project_members m
   where m.project_id = issue_events.project_id and m.user_id = (select auth.uid())));
 
--- is_admin() NU apare aici: nici adminul nu semnează cu numele altuia.
+-- `is_admin()` NU ocolește `author_id = auth.uid()` de mai jos: nici adminul
+-- nu semnează cu numele altuia. El apare totuși mai jos ca bypass de ROL, ca
+-- un admin să poată scrie chiar fără rol `write` explicit de membru.
 create policy events_insert on public.issue_events for insert to authenticated
 with check (
   author_id = (select auth.uid())
@@ -177,7 +179,16 @@ begin
   -- `on delete set null` de pe author_id/handoff_* face RI să emită UPDATE ca
   -- OWNER. Fără scurtătura asta, ștergerea unui cont sau a unui assignee ar
   -- eșua. Garda e pentru aplicație, nu pentru bază.
-  if pg_catalog.current_user <> 'authenticated' then return new; end if;
+  -- `current_user` e un cuvânt-cheie SQL, nu o funcție obișnuită din
+  -- `pg_catalog` — NU se poate califica cu schema (`pg_catalog.current_user`
+  -- dă „missing FROM-clause entry for table pg_catalog", fiindcă parserul îl
+  -- citește ca pe o coloană a unui tabel numit `pg_catalog`). Găsit la
+  -- verificare: orice UPDATE pe `issue_events` — inclusiv SET NULL de RI la
+  -- ștergerea unui assignee sau a unui cont — pica cu eroarea asta, ceea ce
+  -- făcea ștergerea IMPOSIBILĂ pentru orice assignee sau cont folosit vreodată
+  -- într-un comentariu sau o pasă. `search_path = ''` de mai sus nu schimbă
+  -- nimic aici: `current_user` nu se rezolvă prin search_path.
+  if current_user <> 'authenticated' then return new; end if;
   if old.kind = 'handoff' then
     raise exception 'o pasa nu se editeaza' using errcode = '42501';
   end if;

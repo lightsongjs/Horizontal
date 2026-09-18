@@ -449,9 +449,11 @@ ar putea numi pe altcineva drept autor, plus că un `null` explicit e o
 valoare, nu o absență, deci ar bloca exact default-ul pe care ne bazăm;
 `supabaseRepository.createIssue` nu-l trimite niciodată la insert. Ecoul
 optimist întors imediat (înainte de orice refetch) citește totuși sesiunea
-locală (`db.auth.getSession()`, fără rundă către rețea) ca să-l aproximeze
-corect — altfel un card de dependență deschis pe tichetul abia creat, înainte
-de următoarea reîncărcare, ar arăta gol deși rândul din bază e deja corect.
+locală (`db.auth.getSession()`, de obicei fără rundă către rețea — dar nu
+garantat: cu tokenul aproape de expirare, chiar `getSession()` îl
+reîmprospătează, ceea ce E o cerere de rețea) ca să-l aproximeze corect —
+altfel un card de dependență deschis pe tichetul abia creat, înainte de
+următoarea reîncărcare, ar arăta gol deși rândul din bază e deja corect.
 
 **Un tichet scris cu cheia de serviciu n-are autor uman, și așa trebuie să
 rămână.** `functions/api/` (ticket-kit) scrie direct prin REST cu
@@ -477,7 +479,11 @@ bază.
 Pasul de setup: `npm run migrate supabase/migration-comments.sql`, apoi
 `node scripts/link-assignees.mjs` ca să legi conturile de rânduri din
 `assignees` (fără el, „Pe mine" spune corect „nu ești legat de niciun nume" —
-nu e o eroare, e starea de dinainte de legare).
+nu e o eroare, e starea de dinainte de legare). Pe o bază nouă `assignees` e
+goală — nu există niciun `<assigneeId>` de dat scriptului — deci primul rând se
+creează ȘI se leagă într-un singur pas: `node scripts/link-assignees.mjs
+--create <nume> <email>`. Fără argumente, scriptul listează conturile și
+rândurile existente, ca să știi ce id să folosești la o legare ulterioară.
 
 ## Reîmprospătarea datelor — de ce nu golește ecranul
 

@@ -88,8 +88,13 @@ export function ListView() {
         </div>
 
         {/* Frate al `.wave-sel`, nu al treilea copil: acolo `.wave-tabs` are
-            flex:1 și un al treilea copil ar fura din taburile de val. */}
-        {(holders.length > 0 || showUnassignedChip) && (
+            flex:1 și un al treilea copil ar fura din taburile de val.
+            Poarta e `holders.length > 0`, NU `showUnassignedChip` — fără ea,
+            un proiect fără NICIUN assignee real (starea de azi în producție:
+            `assignees` aproape goală) arăta „Toți N" și „Nepasate N" cu
+            aceleași cifre, pe fiecare proiect: un filtru fără oameni de
+            filtrat e zgomot, nu funcționalitate. */}
+        {holders.length > 0 && (
           <div className="who-bar">
             <button
               type="button"
