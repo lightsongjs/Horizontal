@@ -105,10 +105,16 @@ export function InboxView({ onOpen }: { onOpen(issueId: string): void }) {
             )}
             {inbox.rest.length > 0 && (
               <div className="list-group">
-                <div className="list-group-head">
-                  <span className="list-group-num">{inbox.rest.length}</span>
-                  <span className="list-group-label">Mai devreme</span>
-                </div>
+                {/* Capul apare doar în PERECHE cu „Necitite": singur pe ecran,
+                    numea un grup care nu se opune nimănui — „mai devreme"
+                    decât ce? Iar când perechea există, numele spune criteriul
+                    (le-ai citit), nu o vagă ordine în timp. */}
+                {inbox.fresh.length > 0 && (
+                  <div className="list-group-head">
+                    <span className="list-group-num">{inbox.rest.length}</span>
+                    <span className="list-group-label">Citite</span>
+                  </div>
+                )}
                 {inbox.rest.map(row)}
               </div>
             )}
