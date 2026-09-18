@@ -5598,21 +5598,59 @@ main {
      loc de calendar. Câmpul crește odată cu ele ca butoanele să nu iasă din
      ramă. */
   .due-inputs {
-    height: 40px;
-    gap: 1px;
-    padding: 0 3px 0 6px;
+    height: 46px;
+    gap: 0;
+    padding: 0 2px 0 4px;
   }
+  /* Colapsat, în bară rămân doar urgentul și scadența — deci scadența ia tot
+     restul rândului. Cu lățime pe conținut, câmpul stătea pe jumătate de ecran
+     cu un gol lat lângă el, iar cifrele rămâneau o țintă îngustă exact acolo
+     unde se apasă cu degetul. */
+  .meta-collapsed .if-bar > .due-inputs {
+    flex: 1;
+    min-width: 0;
+  }
+  .meta-collapsed .if-bar > .if-ctl.icon {
+    width: 44px;
+    height: 44px;
+  }
+  .due-input {
+    font-size: 15px;
+  }
+  /* Data ia golul; ora rămâne pe măsura a cinci cifre — altfel „09:30" ar
+     pluti în mijlocul unei jumătăți de rând. */
+  .due-input-date { flex: 1 1 auto; min-width: 88px; }
+  .due-input-time { flex: 0 0 58px; }
   .due-pick {
-    width: 34px;
-    height: 34px;
+    width: 42px;
+    height: 42px;
     border-radius: var(--r-s);
   }
   .due-pick svg {
-    width: 17px;
-    height: 17px;
+    width: 20px;
+    height: 20px;
   }
   .due-clear {
-    width: 30px;
-    height: 30px;
+    width: 34px;
+    height: 34px;
+  }
+}
+
+/* Proveniența, la coada foii: un fapt care se citește o dată nu are ce căuta
+   în primul rând de sub titlu. Stinsă și despărțită de restul printr-un salt
+   de spațiu, nu printr-o linie. */
+.origin-foot {
+  margin-top: 22px;
+  padding-top: 12px;
+  font-size: 11.5px;
+  opacity: 0.75;
+}
+
+/* Sub 360px (SE-ul vechi), scadența nu mai încape pe rând lângă urgent fără
+   să-i strivească cifrele — atunci trece pe rândul ei, întreagă. Un câmp de
+   dată pe jumătate de lățime e mai rău decât un rând în plus. */
+@media (max-width: 359px) {
+  .meta-collapsed .if-bar > .due-inputs {
+    flex: 1 1 100%;
   }
 }

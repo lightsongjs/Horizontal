@@ -917,36 +917,6 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
       {/* BODY */}
       <div className="sheet-scroll if-body">
 
-        {/* Proveniența — doar la editare: un tichet nesalvat n-are creator.
-            Aceeași clasă `.origin` din IssueSheet.tsx, ca să nu apară un al
-            doilea set de stiluri pentru același fapt. Rezolvarea numelui
-            trece prin `assignees.userId`, la fel ca autorul unui comentariu
-            din Thread.tsx. */}
-        {isEdit && existing && (
-          <div className="origin">
-            {existing.createdBy ? (() => {
-              const creator = assignees.find((a) => a.userId === existing.createdBy)
-              const creatorName = creator?.name ?? 'cineva'
-              return (
-                <>
-                  <span className="origin-avatar">{creatorName.slice(0, 2).toUpperCase()}</span>
-                  <span>creat de {creatorName}</span>
-                  <span className="dot">·</span>
-                </>
-              )
-            })() : (
-              /* Fără creator (tichet scris cu cheia de serviciu — vezi
-                 ticket-kit) rămânea pe rând doar „17.09", patru cifre care nu
-                 spun al cui e faptul. Data singură nu e informație; data
-                 numită, da. */
-              <span>creat</span>
-            )}
-            <time className="mono" title={new Date(existing.createdAt).toLocaleString('ro-RO')}>
-              {toShortDate(existing.createdAt)}
-            </time>
-          </div>
-        )}
-
         {/* META — Temă · Val · Assigned to */}
         <div className={`sh-meta-section${metaOpen ? '' : ' meta-collapsed'}`}>
           {/* Doar pe mobil (CSS-ul de desktop îl ascunde): rezumatul înlocuiește
@@ -1498,6 +1468,40 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
         {obstacleError && (
           <div className="banner" style={{ marginTop: 12 }}>⚠ {obstacleError}</div>
         )}
+
+        {/* Proveniența stă la COADĂ, nu în capul foii: cine și când a creat
+            tichetul nu se citește decât o dată, iar sus fura rândul de la
+            urgent și scadență — singurele două lucruri pentru care deschizi
+            formularul de pe telefon. Doar la editare: un tichet nesalvat n-are
+            creator. Aceeași clasă `.origin` din IssueSheet.tsx, ca să nu apară
+            un al doilea set de stiluri pentru același fapt; `.origin-foot` doar
+            o coboară și o stinge. Rezolvarea numelui trece prin
+            `assignees.userId`, la fel ca autorul unui comentariu din
+            Thread.tsx. */}
+        {isEdit && existing && (
+          <div className="origin origin-foot">
+            {existing.createdBy ? (() => {
+              const creator = assignees.find((a) => a.userId === existing.createdBy)
+              const creatorName = creator?.name ?? 'cineva'
+              return (
+                <>
+                  <span className="origin-avatar">{creatorName.slice(0, 2).toUpperCase()}</span>
+                  <span>creat de {creatorName}</span>
+                  <span className="dot">·</span>
+                </>
+              )
+            })() : (
+              /* Fără creator (tichet scris cu cheia de serviciu — vezi
+                 ticket-kit) rămâne pe rând doar data; numită, ca să nu fie
+                 patru cifre fără subiect. */
+              <span>creat</span>
+            )}
+            <time className="mono" title={new Date(existing.createdAt).toLocaleString('ro-RO')}>
+              {toShortDate(existing.createdAt)}
+            </time>
+          </div>
+        )}
+
       </div>
 
       {confirmClose && (

@@ -297,13 +297,19 @@ for (const width of PHONE_WIDTHS) {
       fieldOverflow: field.scrollWidth - Math.round(r(field).width),
       pick: Math.round(Math.min(...picks.map((p) => Math.min(r(p).width, r(p).height)))),
       aboveRecap: r(bar).top < r(recap).top,
+      // Scadența ia tot golul rămas pe rând, după urgent. `barPad` e padding-ul
+      // stâng al barei; ce rămâne la dreapta câmpului trebuie să fie tot el.
+      gapRight: Math.round(r(bar).right - parseFloat(getComputedStyle(bar).paddingRight) - r(field).right),
+      dateW: Math.round(document.querySelector('.due-input-date').getBoundingClientRect().width),
     }
   })
   await page.close()
 
   check(`scadența în bară @${width}px`, m.barOverflow <= 1, `${m.barOverflow}px peste bară`)
   check(`câmp nestrivit @${width}px`, m.fieldOverflow <= 0, `${m.fieldOverflow}px peste câmp`)
-  check(`calendar/ceas atingibile @${width}px`, m.pick >= 32, `cel mai mic ${m.pick}px`)
+  check(`calendar/ceas atingibile @${width}px`, m.pick >= 40, `cel mai mic ${m.pick}px`)
+  check(`scadența umple rândul @${width}px`, Math.abs(m.gapRight) <= 1, `${m.gapRight}px gol la dreapta`)
+  check(`câmpul datei crește @${width}px`, m.dateW > 82, `${m.dateW}px (peste cei 82px de desktop)`)
   check(`bara peste „Detalii" @${width}px`, m.aboveRecap, m.aboveRecap ? 'deasupra rezumatului' : 'SUB rezumat')
 }
 
