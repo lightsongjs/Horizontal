@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Horizontal — zona de deasupra descrierii</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;0,7..72,700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" />
+<style>
+/* ═══════════════════════════════════════════════════════════════════════
+   Aceleași jetoane ca design/index.html — mockup-ul nu-și inventează paleta.
+   ═══════════════════════════════════════════════════════════════════════ */
+:root {
+  --ground:#0B0B0E; --surface:#16161A; --raise:#1E1E23; --sunken:#101014;
+  --hairline:#2A2A2E; --ink:#FAFAF9; --ink-2:#9C9CA2; --ink-3:#6B6B70;
+  --accent:#818CF8; --accent-wash:rgba(129,140,248,.13);
+  --stop:#DF8B84; --stop-wash:rgba(223,139,132,.13);
+  --now:#D9A661;
+  --t-auth:#8B93F7; --t-email:#D9A661; --t-db:#6FB894; --t-users:#B08BD4;
+  --amb:0 6px 24px rgba(0,0,0,.42); --amb-lg:0 18px 48px rgba(0,0,0,.55);
+  --r-s:6px; --r-m:10px; --r-l:16px;
+  --serif:"Literata","Iowan Old Style",Georgia,serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,monospace;
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  --ground:#f7f9fc; --surface:#ffffff; --raise:#ffffff; --sunken:#e8eff4;
+  --hairline:rgba(168,179,187,.38); --ink:#29343a; --ink-2:#566168; --ink-3:#717c84;
+  --accent:#1A237E; --accent-wash:rgba(26,35,126,.08);
+  --stop:#A0333F; --stop-wash:rgba(160,51,63,.09);
+  --now:#8A5A18;
+  --t-auth:#3A43A8; --t-email:#8A5A18; --t-db:#2F6B4F; --t-users:#6B3F96;
+  --amb:0 6px 24px rgba(41,52,58,.06); --amb-lg:0 18px 48px rgba(41,52,58,.10);
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:var(--serif); font-size:15px; line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap { max-width:1180px; margin:0 auto; padding:34px 20px 90px; }
+
+h1 { font-size:26px; font-weight:700; margin:0 0 4px; letter-spacing:-.01em; }
+.sub { color:var(--ink-2); font-size:14px; margin:0 0 26px; max-width:68ch; }
+h2 {
+  font-family:var(--mono); font-size:11px; font-weight:600; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--ink-3); margin:40px 0 12px;
+}
+h3 { font-size:17px; font-weight:600; margin:0 0 2px; }
+.note { color:var(--ink-2); font-size:13.5px; margin:0 0 16px; max-width:70ch; }
+.note b { color:var(--ink); font-weight:600; }
+code { font-family:var(--mono); font-size:12px; color:var(--ink-2); }
+
+.theme-toggle {
+  position:fixed; top:16px; right:16px; z-index:20;
+  display:flex; gap:2px; padding:3px; border-radius:var(--r-s);
+  background:var(--surface); box-shadow:var(--amb);
+}
+.theme-toggle button {
+  font-family:var(--mono); font-size:10px; letter-spacing:.08em; text-transform:uppercase;
+  padding:5px 10px; border:0; border-radius:var(--r-s); cursor:pointer;
+  background:transparent; color:var(--ink-3);
+}
+.theme-toggle button.on { color:var(--accent); background:var(--accent-wash); }
+
+/* ── ramele de prezentare ─────────────────────────────────────────── */
+.stage { display:grid; grid-template-columns:1fr 392px; gap:26px; align-items:start; }
+@media (max-width:980px) { .stage { grid-template-columns:1fr; } }
+.stage-label {
+  font-family:var(--mono); font-size:10px; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--ink-3); margin-bottom:7px;
+}
+.screen { background:var(--surface); border-radius:var(--r-l); box-shadow:var(--amb); padding:18px 18px 20px; }
+.phone {
+  width:392px; background:var(--surface); border-radius:26px; box-shadow:var(--amb-lg);
+  padding:14px 12px 18px;
+}
+.phone .sheet-grip { width:38px; height:4px; border-radius:2px; background:var(--hairline); margin:0 auto 14px; }
+
+/* ── capul tichetului, comun tuturor variantelor ───────────────────── */
+.tk-head { display:flex; align-items:flex-start; gap:10px; margin-bottom:14px; }
+.tk-head .tk-id { font-family:var(--mono); font-size:11px; color:var(--ink-3); padding-top:5px; }
+.tk-title { font-size:19px; font-weight:600; line-height:1.35; margin:0; }
+.desc-box {
+  margin-top:16px; background:var(--sunken); border-radius:var(--r-m);
+  padding:12px 14px; color:var(--ink-3); font-size:14px; min-height:82px;
+}
+.desc-label {
+  font-family:var(--mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--ink-3); display:block; margin-bottom:7px;
+}
+
+/* ═══ ÎNAINTE — replica stării de azi ═══════════════════════════════ */
+.old-row { display:flex; gap:14px; flex-wrap:wrap; }
+.old-col { min-width:0; }
+.old-label {
+  font-family:var(--mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--ink-3); display:block; margin-bottom:6px;
+}
+.old-pills { display:flex; gap:5px; flex-wrap:wrap; }
+.old-pill {
+  font-family:var(--serif); font-size:12.5px; padding:4px 10px; border-radius:var(--r-s);
+  background:var(--raise); color:var(--ink-2); border:0; cursor:pointer;
+  display:inline-flex; align-items:center; gap:5px;
+}
+.old-pill.on { background:var(--accent-wash); color:var(--accent); }
+.old-dot { width:7px; height:7px; border-radius:50%; }
+.old-sep { width:1px; background:var(--hairline); align-self:stretch; }
+
+/* ═══ CONTROALE NOI ═════════════════════════════════════════════════ */
+/* Bara: un singur rând de comenzi, fără etichete. Fiecare control își
+   spune rolul prin formă — avatar, cifră romană, fulger, dată. */
+.bar {
+  display:flex; align-items:center; gap:7px; flex-wrap:wrap;
+  background:var(--sunken); border-radius:var(--r-m); padding:7px 8px;
+}
+.bar .spacer { flex:1; min-width:0; }
+
+/* jeton generic de control */
+.ctl {
+  display:inline-flex; align-items:center; gap:7px; height:32px; padding:0 10px;
+  border:0; border-radius:var(--r-s); background:var(--raise); color:var(--ink);
+  font-family:var(--serif); font-size:13.5px; cursor:pointer; white-space:nowrap;
+  transition:background .13s, color .13s;
+}
+.ctl:hover { background:var(--hairline); }
+.ctl .chev { color:var(--ink-3); display:flex; }
+.ctl.ghost {
+  background:transparent; color:var(--ink-3);
+  box-shadow:inset 0 0 0 1px var(--hairline);
+}
+.ctl.ghost.dashed { box-shadow:none; border:1px dashed var(--hairline); }
+.ctl.icon { width:32px; padding:0; justify-content:center; }
+.ctl.icon.on { background:var(--stop-wash); color:var(--stop); }
+
+.av {
+  width:22px; height:22px; border-radius:50%; flex:0 0 auto;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--accent-wash); color:var(--accent);
+  font-family:var(--mono); font-size:9px; font-weight:700;
+}
+.av.empty { background:var(--raise); color:var(--ink-3); box-shadow:inset 0 0 0 1px var(--hairline); }
+
+/* Valul: segmentat, marcat cu text plin + linie de 2px — nu cu o casetă. */
+.seg { display:inline-flex; align-items:center; gap:2px; height:32px; padding:0 2px;
+  background:var(--raise); border-radius:var(--r-s); }
+.seg button {
+  font-family:var(--mono); font-size:11px; font-weight:600; letter-spacing:.06em;
+  min-width:26px; height:26px; padding:0 7px; border:0; border-radius:4px;
+  background:transparent; color:var(--ink-3); cursor:pointer; position:relative;
+}
+.seg button.on { color:var(--accent); }
+.seg button.on::after {
+  content:""; position:absolute; left:6px; right:6px; bottom:1px; height:2px;
+  border-radius:1px; background:var(--accent);
+}
+
+/* Scadența: un câmp — singurul loc unde chenarul rămâne, fiindcă se scrie în el. */
+.due {
+  display:inline-flex; align-items:center; gap:6px; height:32px; padding:0 4px 0 9px;
+  border-radius:var(--r-s); background:var(--raise);
+  box-shadow:inset 0 0 0 1px var(--hairline);
+}
+.due input {
+  border:0; background:transparent; color:var(--ink); font-family:var(--mono);
+  font-size:12px; width:74px; padding:0;
+}
+.due input.t { width:42px; }
+.due input::placeholder { color:var(--ink-3); }
+.due .divider { color:var(--ink-3); font-family:var(--mono); font-size:12px; }
+.due .mini {
+  width:24px; height:24px; border:0; border-radius:4px; background:transparent;
+  color:var(--ink-3); cursor:pointer; display:flex; align-items:center; justify-content:center;
+}
+.due .mini:hover { background:var(--hairline); color:var(--ink); }
+.due.empty { background:transparent; box-shadow:none; border:1px dashed var(--hairline); color:var(--ink-3); }
+.due.empty .lbl { font-size:13px; color:var(--ink-3); padding-right:6px; }
+
+/* Rândul secundar: doar ce nu e nevoie să fie sus. */
+.sub-row { display:flex; align-items:center; gap:7px; flex-wrap:wrap; margin-top:8px; }
+.reminder { display:inline-flex; gap:3px; }
+.reminder button {
+  font-family:var(--mono); font-size:10.5px; padding:4px 8px; border:0; border-radius:4px;
+  background:var(--raise); color:var(--ink-3); cursor:pointer;
+}
+.reminder button.on { background:var(--accent-wash); color:var(--accent); }
+
+/* Varianta B — etichete la stânga */
+.grid-b { display:grid; grid-template-columns:auto 1fr; gap:9px 16px; align-items:center;
+  background:var(--sunken); border-radius:var(--r-m); padding:12px 14px; }
+.grid-b .k {
+  font-family:var(--mono); font-size:10px; letter-spacing:.11em; text-transform:uppercase;
+  color:var(--ink-3);
+}
+.grid-b .v { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+
+/* meniul de temă, deschis, ca să se vadă unde s-au dus pastilele */
+.menu {
+  margin-top:8px; width:212px; background:var(--raise); border-radius:var(--r-m);
+  box-shadow:var(--amb-lg); padding:5px;
+}
+.menu button {
+  display:flex; align-items:center; gap:8px; width:100%; text-align:left;
+  font-family:var(--serif); font-size:13.5px; padding:7px 9px; border:0; border-radius:var(--r-s);
+  background:transparent; color:var(--ink-2); cursor:pointer;
+}
+.menu button:hover { background:var(--hairline); color:var(--ink); }
+.menu button.on { color:var(--accent); }
+
+.callouts { display:grid; grid-template-columns:repeat(auto-fit,minmax(248px,1fr)); gap:14px; margin-top:20px; }
+.callout { background:var(--surface); border-radius:var(--r-m); padding:14px 16px; box-shadow:var(--amb); }
+.callout .t { font-family:var(--mono); font-size:10px; letter-spacing:.11em; text-transform:uppercase; color:var(--accent); margin-bottom:6px; }
+.callout p { margin:0; font-size:13.5px; color:var(--ink-2); }
+
+.verdict { background:var(--surface); border-radius:var(--r-l); padding:18px 20px; box-shadow:var(--amb); margin-top:12px; }
+.verdict ul { margin:8px 0 0; padding-left:18px; color:var(--ink-2); font-size:14px; }
+.verdict li { margin-bottom:5px; }
+</style>
+</head>
+<body>
+
+<div class="theme-toggle">
+  <button id="t-dark" class="on">întuneric</button>
+  <button id="t-light">lumină</button>
+</div>
+
+<div class="wrap">
+
+<h1>Zona de deasupra descrierii</h1>
+<p class="sub">
+  Blocul de meta din formularul tichetului: azi e un rând de coloane cu etichete,
+  în care tema mănâncă jumătate din lățime pentru o informație pe care o schimbi
+  o dată la zece tichete. Mai jos: starea de azi, apoi două variante, fiecare pe
+  desktop și pe telefon. Ordinea cerută — <b>Assigned to · Val · Urgent · Scadență</b>,
+  urgentul rămâne doar buton.
+</p>
+
+<!-- ════════════════════════════ ÎNAINTE ════════════════════════════ -->
+<h2>Înainte — cum arată azi</h2>
+<div class="stage">
+  <div>
+    <div class="stage-label">web</div>
+    <div class="screen">
+      <div class="tk-head">
+        <span class="tk-id">MS-238</span>
+        <h4 class="tk-title">Separarea lecțiilor „Aprofundare" de lecțiile gratuite</h4>
+      </div>
+      <div class="old-row">
+        <div class="old-col">
+          <span class="old-label">Temă</span>
+          <div class="old-pills">
+            <button class="old-pill">Fără</button>
+            <button class="old-pill on"><span class="old-dot" style="background:var(--t-email)"></span>Email</button>
+            <button class="old-pill"><span class="old-dot" style="background:var(--t-auth)"></span>Autentificare</button>
+            <button class="old-pill"><span class="old-dot" style="background:var(--t-db)"></span>Bază de date</button>
+            <button class="old-pill"><span class="old-dot" style="background:var(--t-users)"></span>Utilizatori</button>
+            <button class="old-pill">+</button>
+          </div>
+        </div>
+        <div class="old-sep"></div>
+        <div class="old-col">
+          <span class="old-label">Val</span>
+          <div class="old-pills">
+            <button class="old-pill on">I</button><button class="old-pill">II</button><button class="old-pill">III</button>
+          </div>
+        </div>
+        <div class="old-sep"></div>
+        <div class="old-col">
+          <span class="old-label">Assigned to</span>
+          <div class="old-pills"><button class="old-pill">+</button></div>
+        </div>
+        <div class="old-sep"></div>
+        <div class="old-col">
+          <span class="old-label">Prioritate</span>
+          <div class="old-pills"><button class="old-pill">⚡ Urgent</button></div>
+        </div>
+      </div>
+      <div style="margin-top:12px">
+        <span class="old-label">Scadență</span>
+        <div class="old-pills">
+          <span class="due"><input value="18/09/2026" /><span class="divider">·</span><input class="t" value="14:00" /></span>
+        </div>
+      </div>
+      <div class="desc-box"><span class="desc-label">Descriere</span>…abia acum începe textul.</div>
+    </div>
+  </div>
+  <div>
+    <div class="stage-label">telefon</div>
+    <div class="phone">
+      <div class="sheet-grip"></div>
+      <div class="tk-head">
+        <span class="tk-id">MS-238</span>
+        <h4 class="tk-title">Separarea lecțiilor „Aprofundare"…</h4>
+      </div>
+      <div class="old-col" style="margin-bottom:10px">
+        <span class="old-label">Temă</span>
+        <div class="old-pills">
+          <button class="old-pill">Fără</button>
+          <button class="old-pill on"><span class="old-dot" style="background:var(--t-email)"></span>Email</button>
+          <button class="old-pill"><span class="old-dot" style="background:var(--t-auth)"></span>Autentificare</button>
+          <button class="old-pill"><span class="old-dot" style="background:var(--t-db)"></span>Bază de date</button>
+          <button class="old-pill"><span class="old-dot" style="background:var(--t-users)"></span>Utilizatori</button>
+        </div>
+      </div>
+      <div class="old-col" style="margin-bottom:10px">
+        <span class="old-label">Val</span>
+        <div class="old-pills"><button class="old-pill on">I</button><button class="old-pill">II</button><button class="old-pill">III</button></div>
+      </div>
+      <div class="old-col" style="margin-bottom:10px">
+        <span class="old-label">Prioritate</span>
+        <div class="old-pills"><button class="old-pill">⚡ Urgent</button></div>
+      </div>
+      <div class="desc-box"><span class="desc-label">Descriere</span>…undeva mai jos.</div>
+    </div>
+  </div>
+</div>
+
+<div class="callouts">
+  <div class="callout"><div class="t">ce nu merge</div><p>Tema e cel mai rar schimbat câmp și ocupă cel mai mult loc: toate temele proiectului, ca pastile, mereu pe ecran.</p></div>
+  <div class="callout"><div class="t">ce nu merge</div><p>Patru etichete mono deasupra a patru controale care s-ar explica singure. „Prioritate" e un cuvânt pentru un singur buton.</p></div>
+  <div class="callout"><div class="t">ce nu merge</div><p>Scadența cade pe rândul ei, deci descrierea — motivul pentru care ai deschis tichetul — ajunge sub trei rânduri de meta.</p></div>
+</div>
+
+<!-- ════════════════════════════ VARIANTA A ════════════════════════════ -->
+<h2>Varianta A — bara de comenzi</h2>
+<h3>Un singur rând, fără etichete</h3>
+<p class="note">
+  Fiecare control își spune rolul prin formă: avatar = cine, cifră romană = val,
+  fulger = urgent, cifre = scadență. Tema pleacă într-un jeton cu un punct
+  colorat, la capătul rândului — se vede mereu, se schimbă la un click.
+  Numele complet apare la hover pe fiecare jeton.
+</p>
+<div class="stage">
+  <div>
+    <div class="stage-label">web</div>
+    <div class="screen">
+      <div class="tk-head">
+        <span class="tk-id">MS-238</span>
+        <h4 class="tk-title">Separarea lecțiilor „Aprofundare" de lecțiile gratuite</h4>
+      </div>
+
+      <div class="bar">
+        <button class="ctl" title="Assigned to: Miron Popa">
+          <span class="av">MIR</span>Miron
+          <span class="chev"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m6 9 6 6 6-6"/></svg></span>
+        </button>
+
+        <div class="seg" title="Val">
+          <button class="on">I</button><button>II</button><button>III</button>
+        </div>
+
+        <button class="ctl icon on" title="Urgent — apasă ca să scoți">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M13 2 3 14h8l-1 8 10-12h-8z"/></svg>
+        </button>
+
+        <span class="due" title="Scadență">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="color:var(--ink-3)"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/></svg>
+          <input value="18/09/2026" aria-label="Data scadenței" />
+          <span class="divider">·</span>
+          <input class="t" value="14:00" aria-label="Ora" />
+          <button class="mini" title="Scoate scadența"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+        </span>
+
+        <span class="spacer"></span>
+
+        <button class="ctl" title="Temă: Email">
+          <span class="old-dot" style="background:var(--t-email)"></span>Email
+          <span class="chev"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m6 9 6 6 6-6"/></svg></span>
+        </button>
+      </div>
+
+      <div class="sub-row">
+        <span style="font-family:var(--mono);font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3)">memento</span>
+        <span class="reminder">
+          <button class="on">la oră</button><button>−30m</button><button>−1 zi</button><button>fără</button>
+        </span>
+      </div>
+
+      <div class="desc-box"><span class="desc-label">Descriere</span>Descrierea urcă cu două rânduri.</div>
+    </div>
+
+    <div class="stage-label" style="margin-top:18px">tema, deschisă</div>
+    <div class="screen" style="display:inline-block">
+      <button class="ctl" title="Temă"><span class="old-dot" style="background:var(--t-email)"></span>Email
+        <span class="chev"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m6 9 6 6 6-6"/></svg></span></button>
+      <div class="menu">
+        <button>Fără temă</button>
+        <button class="on"><span class="old-dot" style="background:var(--t-email)"></span>Email</button>
+        <button><span class="old-dot" style="background:var(--t-auth)"></span>Autentificare</button>
+        <button><span class="old-dot" style="background:var(--t-db)"></span>Bază de date</button>
+        <button><span class="old-dot" style="background:var(--t-users)"></span>Utilizatori</button>
+        <button style="color:var(--ink-3)">+ temă nouă</button>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="stage-label">telefon</div>
+    <div class="phone">
+      <div class="sheet-grip"></div>
+      <div class="tk-head">
+        <span class="tk-id">MS-238</span>
+        <h4 class="tk-title">Separarea lecțiilor „Aprofundare"…</h4>
+      </div>
+      <div class="bar">
+        <button class="ctl"><span class="av">MIR</span>Miron
+          <span class="chev"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m6 9 6 6 6-6"/></svg></span></button>
+        <div class="seg"><button class="on">I</button><button>II</button><button>III</button></div>
+        <button class="ctl icon on"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M13 2 3 14h8l-1 8 10-12h-8z"/></svg></button>
+        <span class="due" style="flex:1">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="color:var(--ink-3)"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/></svg>
+          <input value="18/09/2026" /><span class="divider">·</span><input class="t" value="14:00" />
+        </span>
+        <button class="ctl"><span class="old-dot" style="background:var(--t-email)"></span>Email
+          <span class="chev"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m6 9 6 6 6-6"/></svg></span></button>
+      </div>
+      <div class="desc-box"><span class="desc-label">Descriere</span>Două rânduri de bară, apoi textul.</div>
+    </div>
+
+    <div class="stage-label" style="margin-top:18px">telefon — tichet gol</div>
+    <div class="phone">
+      <div class="sheet-grip"></div>
+      <div class="tk-head"><span class="tk-id">nou</span><h4 class="tk-title">Titlu…</h4></div>
+      <div class="bar">
+        <button class="ctl ghost"><span class="av empty">+</span>Nimeni
+          <span class="chev"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m6 9 6 6 6-6"/></svg></span></button>
+        <div class="seg"><button class="on">I</button><button>II</button><button>III</button></div>
+        <button class="ctl icon ghost" title="Marchează urgent"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M13 2 3 14h8l-1 8 10-12h-8z"/></svg></button>
+        <button class="ctl ghost dashed"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/></svg>scadență</button>
+        <button class="ctl ghost dashed">temă</button>
+      </div>
+      <div class="desc-box"><span class="desc-label">Descriere</span>Gol înseamnă gol: nimic nu pretinde o valoare.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════ VARIANTA B ════════════════════════════ -->
+<h2>Varianta B — etichete la stânga</h2>
+<h3>Patru rânduri, citite ca o fișă</h3>
+<p class="note">
+  Aceleași controale, dar cu eticheta lipită în stânga valorii. Mai înaltă cu
+  ~34px decât A pe desktop, în schimb nu cere să ghicești ce e fiecare jeton —
+  și rămâne citibilă când proiectul are șase valuri și nume lungi.
+</p>
+<div class="stage">
+  <div>
+    <div class="stage-label">web</div>
+    <div class="screen">
+      <div class="tk-head">
+        <span class="tk-id">MS-238</span>
+        <h4 class="tk-title">Separarea lecțiilor „Aprofundare" de lecțiile gratuite</h4>
+      </div>
+      <div class="grid-b">
+        <span class="k">Cine</span>
+        <span class="v">
+          <button class="ctl"><span class="av">MIR</span>Miron Popa
+            <span class="chev"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m6 9 6 6 6-6"/></svg></span></button>
+        </span>
+
+        <span class="k">Val</span>
+        <span class="v">
+          <div class="seg"><button class="on">I · MVP</button><button>II</button><button>III</button></div>
+          <button class="ctl icon on" title="Urgent"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M13 2 3 14h8l-1 8 10-12h-8z"/></svg></button>
+        </span>
+
+        <span class="k">Scadență</span>
+        <span class="v">
+          <span class="due">
+            <input value="18/09/2026" /><span class="divider">·</span><input class="t" value="14:00" />
+            <button class="mini"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+          </span>
+          <span class="reminder"><button class="on">la oră</button><button>−30m</button><button>−1 zi</button><button>fără</button></span>
+        </span>
+
+        <span class="k">Temă</span>
+        <span class="v">
+          <button class="ctl"><span class="old-dot" style="background:var(--t-email)"></span>Email
+            <span class="chev"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m6 9 6 6 6-6"/></svg></span></button>
+        </span>
+      </div>
+      <div class="desc-box"><span class="desc-label">Descriere</span>Textul începe aici.</div>
+    </div>
+  </div>
+  <div>
+    <div class="stage-label">telefon</div>
+    <div class="phone">
+      <div class="sheet-grip"></div>
+      <div class="tk-head"><span class="tk-id">MS-238</span><h4 class="tk-title">Separarea lecțiilor „Aprofundare"…</h4></div>
+      <div class="grid-b" style="grid-template-columns:auto 1fr">
+        <span class="k">Cine</span>
+        <span class="v"><button class="ctl"><span class="av">MIR</span>Miron</button></span>
+        <span class="k">Val</span>
+        <span class="v">
+          <div class="seg"><button class="on">I</button><button>II</button><button>III</button></div>
+          <button class="ctl icon on"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M13 2 3 14h8l-1 8 10-12h-8z"/></svg></button>
+        </span>
+        <span class="k">Când</span>
+        <span class="v"><span class="due"><input value="18/09/2026" /><span class="divider">·</span><input class="t" value="14:00" /></span></span>
+        <span class="k">Temă</span>
+        <span class="v"><button class="ctl"><span class="old-dot" style="background:var(--t-email)"></span>Email</button></span>
+      </div>
+      <div class="desc-box"><span class="desc-label">Descriere</span>…</div>
+    </div>
+  </div>
+</div>
+
+<h2>Ce se schimbă, indiferent de variantă</h2>
+<div class="verdict">
+  <ul>
+    <li><b>Tema</b> nu mai e un rând de pastile, ci un jeton cu punct colorat care deschide lista. E cel mai rar schimbat câmp din formular.</li>
+    <li><b>Urgent</b> rămâne doar butonul: fulger, fără cuvântul „Prioritate" și fără cuvântul „Urgent". Aprins = text și fundal în roșul de blocaj.</li>
+    <li><b>Ordinea</b>: cine · val · urgent · scadență, apoi tema. Primul lucru pe care-l cauți e cine ține tichetul.</li>
+    <li><b>Mementoul</b> apare doar când există oră, exact ca azi — dar pe un rând secundar, nu între câmpuri.</li>
+    <li><b>Gol arată gol</b>: fără assignee, fără scadență și fără temă, jetoanele sunt punctate („adaugă aici"), nu casete pline cu „Fără".</li>
+    <li>Pe telefon rămâne rezumatul pliabil de azi („Detalii · Email · val I"), doar că sub el stă bara, nu patru coloane.</li>
+  </ul>
+</div>
+
+</div>
+
+<script>
+const root = document.documentElement
+const [d, l] = [document.getElementById('t-dark'), document.getElementById('t-light')]
+d.onclick = () => { root.setAttribute('data-theme', 'dark'); d.classList.add('on'); l.classList.remove('on') }
+l.onclick = () => { root.setAttribute('data-theme', 'light'); l.classList.add('on'); d.classList.remove('on') }
+root.setAttribute('data-theme', 'dark')
+</script>
+</body>
+</html>
