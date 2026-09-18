@@ -1,5 +1,7 @@
 import { useRef, useState, useEffect, useCallback } from 'react'
 import { detectCycle, requiredDepWave } from '../lib/engine'
+import { buildAssigneeOptions, type AssigneeOption } from '../lib/assigneeOptions'
+import { useAuth } from '../auth'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { useCanWrite, useTitleDate } from '../hooks'
@@ -131,29 +133,37 @@ export function isFormDirty(s: FormDirtyState): boolean {
   )
 }
 
-function AssigneeSearch({ assigneeId, assignees, myAssigneeId, onSelect, onCreateAndSelect }: {
+function AssigneeSearch({ assigneeId, assignees, members, myAssigneeId, myUserId, onSelect, onSelectMember, onCreateAndSelect }: {
   assigneeId: string | null
   assignees: import('../lib/types').Assignee[]
+  /** Conturile cu acces la proiectul curent — vezi `src/lib/assigneeOptions.ts`. */
+  members: import('../lib/types').ProjectMember[]
   myAssigneeId: string | null
+  myUserId: string | null
   onSelect(id: string | null): void
+  /** Un membru fără rând încă în `assignees` — creează rândul, apoi selectează-l. */
+  onSelectMember(userId: string): Promise<void>
   onCreateAndSelect(name: string): Promise<void>
 }) {
   const [q, setQ] = useState('')
   const [hlIdx, setHlIdx] = useState(0)
   const [creating, setCreating] = useState(false)
+  const [linking, setLinking] = useState(false)
 
-  const sorted = [...assignees].sort((a, b) => {
-    if (a.id === myAssigneeId) return -1
-    if (b.id === myAssigneeId) return 1
-    return a.name.localeCompare(b.name)
-  })
-
-  const filtered = q.trim() ? sorted.filter((a) => a.name.toLowerCase().includes(q.toLowerCase())) : sorted
-  const hasExact = assignees.some((a) => a.name.toLowerCase() === q.toLowerCase().trim())
+  const options = buildAssigneeOptions(assignees, members, myUserId)
+  const filtered = q.trim() ? options.filter((o) => o.name.toLowerCase().includes(q.toLowerCase())) : options
+  const hasExact = options.some((o) => o.name.toLowerCase() === q.toLowerCase().trim())
   const showCreate = q.trim() && !hasExact
   const optionCount = filtered.length + (showCreate ? 1 : 0)
 
   const selected = assigneeId ? assignees.find((a) => a.id === assigneeId) : null
+
+  const selectOption = async (opt: AssigneeOption) => {
+    if (opt.kind === 'assignee') { onSelect(opt.id); setQ(''); setHlIdx(0); return }
+    if (linking) return
+    setLinking(true)
+    try { await onSelectMember(opt.userId); setQ(''); setHlIdx(0) } finally { setLinking(false) }
+  }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!optionCount) return
@@ -161,7 +171,7 @@ function AssigneeSearch({ assigneeId, assignees, myAssigneeId, onSelect, onCreat
     else if (e.key === 'ArrowUp') { e.preventDefault(); setHlIdx((p) => Math.max(p - 1, 0)) }
     else if (e.key === 'Enter') {
       e.preventDefault()
-      if (hlIdx < filtered.length) { onSelect(filtered[hlIdx].id); setQ(''); setHlIdx(0) }
+      if (hlIdx < filtered.length) void selectOption(filtered[hlIdx])
       else if (showCreate) handleCreate()
     } else if (e.key === 'Escape') { setQ(''); setHlIdx(0) }
   }
@@ -191,13 +201,18 @@ function AssigneeSearch({ assigneeId, assignees, myAssigneeId, onSelect, onCreat
       </div>
       {q.trim() && (
         <div className="dep-results">
-          {filtered.map((a, idx) => (
-            <button key={a.id} className={`dep-result-row ${a.id === assigneeId ? 'on' : ''} ${idx === hlIdx ? 'hl' : ''}`}
-              onClick={() => { onSelect(a.id); setQ(''); setHlIdx(0) }}>
-              <span className={`ic ${a.id === assigneeId ? 'ok' : 'ext'}`}><Icon name={a.id === assigneeId ? 'check' : 'add'} size={14} /></span>
-              <span className="dep-result-title">{a.name}{a.id === myAssigneeId ? ' (me)' : ''}</span>
-            </button>
-          ))}
+          {filtered.map((o, idx) => {
+            const key = o.kind === 'assignee' ? o.id : `member:${o.userId}`
+            const on = o.kind === 'assignee' && o.id === assigneeId
+            return (
+              <button key={key} className={`dep-result-row ${on ? 'on' : ''} ${idx === hlIdx ? 'hl' : ''}`}
+                onClick={() => void selectOption(o)}
+                disabled={o.kind === 'member' && linking}>
+                <span className={`ic ${on ? 'ok' : 'ext'}`}><Icon name={on ? 'check' : 'add'} size={14} /></span>
+                <span className="dep-result-title">{o.name}{o.mine ? ' (me)' : ''}</span>
+              </button>
+            )
+          })}
           {filtered.length === 0 && !showCreate && <p className="dep-no-results">No one found.</p>}
           {showCreate && (
             <button className={`dep-create-btn ${hlIdx === filtered.length ? 'hl' : ''}`}
@@ -219,8 +234,10 @@ function AssigneeSearch({ assigneeId, assignees, myAssigneeId, onSelect, onCreat
  *   către `ui.tsx`, care oprește prima comutare pe alt tichet.
  */
 export function IssueForm({ issueId, docked = false }: { issueId?: string; docked?: boolean }) {
-  const { project, waves, themes, issues, byId, activeWave, createIssue, updateIssue, deleteIssue, createTheme, assignees, myAssigneeId, createAssignee, obstacles, obstaclesOf, createObstacle, setIssueObstacles } = useHorizontal()
+  const { project, waves, themes, issues, byId, activeWave, createIssue, updateIssue, deleteIssue, createTheme, assignees, myAssigneeId, createAssignee, projectMembers, ensureAssigneeForMember, obstacles, obstaclesOf, createObstacle, setIssueObstacles } = useHorizontal()
   const { closeSheet, setCloseGuard, pushSheet, openEditIssue, setDockedDirty, saveNudge } = useUI()
+  const { session } = useAuth()
+  const myUserId = session?.user.id ?? null
   const canWrite = useCanWrite()
   const existing = issueId ? byId[issueId] : undefined
   const isEdit = !!existing
@@ -1182,8 +1199,16 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
               <AssigneeSearch
                 assigneeId={null}
                 assignees={assignees}
+                members={projectMembers}
                 myAssigneeId={myAssigneeId}
+                myUserId={myUserId}
                 onSelect={(id) => { setAssigneeId(id); setShowAssigneeInline(false) }}
+                onSelectMember={async (userId) => {
+                  if (!project) return
+                  const a = await ensureAssigneeForMember(project.id, userId)
+                  setAssigneeId(a.id)
+                  setShowAssigneeInline(false)
+                }}
                 onCreateAndSelect={async (name) => {
                   const a = await createAssignee(name)
                   setAssigneeId(a.id)

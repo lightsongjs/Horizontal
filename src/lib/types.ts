@@ -13,6 +13,19 @@ export interface Assignee {
   userId: string | null
 }
 
+/**
+ * Un cont care are acces la un proiect — membru literal sau admin — fără rând
+ * (încă) în `assignees`. Vine din RPC-ul `project_member_roster`
+ * (`migration-members-visible.sql`), NU dintr-un select direct pe
+ * `project_members`/`auth.users`: niciuna din tabele nu e citibilă direct de
+ * un user obișnuit pentru alte rânduri decât al lui. Vezi `assigneeOptions.ts`
+ * pentru cum se îmbină cu `assignees` în selectoarele „către…"/„Assigned to".
+ */
+export interface ProjectMember {
+  userId: string
+  email: string
+}
+
 export interface Project {
   id: string
   name: string

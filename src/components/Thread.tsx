@@ -12,6 +12,7 @@ import {
 import { attachmentFilename, shrinkImage } from '../lib/shrinkImage'
 import { pickFiles, rejectMessage } from '../lib/pickFiles'
 import { errorMessage } from '../lib/errorMessage'
+import { buildAssigneeOptions, type AssigneeOption } from '../lib/assigneeOptions'
 import { dayOffset, toShortDate, toTimeInput } from '../lib/schedule'
 import { useAuth } from '../auth'
 import { useHorizontal } from '../store'
@@ -88,7 +89,7 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff }: {
    */
   onHandoff(to: string | null): void
 }) {
-  const { assignees, myAssigneeId, byId, upsertIssue, refreshInbox } = useHorizontal()
+  const { assignees, projectMembers, ensureAssigneeForMember, byId, upsertIssue, refreshInbox } = useHorizontal()
   const { session } = useAuth()
   const canWrite = useCanWrite()
   // `localRepository` semnează firul cu 'local' (vezi `postToThread` de-acolo)
@@ -115,6 +116,7 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff }: {
   const [body, setBody] = useState('')
   const [to, setTo] = useState<string | null | undefined>(undefined)
   const [toOpen, setToOpen] = useState(false)
+  const [linkingTo, setLinkingTo] = useState(false)
   const [pending, setPending] = useState<Attachment[]>([])
   const [busy, setBusy] = useState(0)
   const [attMessage, setAttMessage] = useState<string | null>(null)
@@ -223,6 +225,30 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff }: {
   // pleca înaintea răspunsului de upload, iar comentariul ajungea pe fir fără
   // fișierul pe care omul tocmai îl alesese.
   const canSubmit = canWrite && !sending && busy === 0 && (body.trim() !== '' || pending.length > 0 || to !== undefined)
+
+  const assigneeOptions = buildAssigneeOptions(assignees, projectMembers, session?.user.id ?? null)
+
+  /**
+   * Un membru cu acces la proiect, dar fără rând încă în `assignees`, îl
+   * capătă acum (`ensure_project_assignee`) — vezi contractul din
+   * `ensureAssigneeForMember`. Cele DOUĂ kind-uri din `AssigneeOption` ajung
+   * la același `setTo(id real)`, ca „Trimite și pasează" să nu trebuiască să
+   * știe diferența.
+   */
+  const selectTo = async (opt: AssigneeOption) => {
+    if (opt.kind === 'assignee') { setTo(opt.id); setToOpen(false); return }
+    if (linkingTo) return
+    setLinkingTo(true)
+    try {
+      const a = await ensureAssigneeForMember(projectId, opt.userId)
+      setTo(a.id)
+      setToOpen(false)
+    } catch (e) {
+      setSendError(errorMessage(e))
+    } finally {
+      setLinkingTo(false)
+    }
+  }
 
   const send = async () => {
     if (!canSubmit) return
@@ -409,16 +435,17 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff }: {
                       <span className="thread-to-sub">rămâne la creator</span>
                     </span>
                   </button>
-                  {assignees.length === 0 && <div className="dep-dd-empty">Niciun coleg încă.</div>}
-                  {assignees.map((a) => (
+                  {assigneeOptions.length === 0 && <div className="dep-dd-empty">Niciun coleg încă.</div>}
+                  {assigneeOptions.map((o) => (
                     <button
-                      key={a.id}
+                      key={o.kind === 'assignee' ? o.id : `member:${o.userId}`}
                       type="button"
                       className="dep-dd-item"
                       onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => { setTo(a.id); setToOpen(false) }}
+                      onClick={() => void selectTo(o)}
+                      disabled={o.kind === 'member' && linkingTo}
                     >
-                      <span className="dep-dd-title">{a.name}{a.id === myAssigneeId ? ' (eu)' : ''}</span>
+                      <span className="dep-dd-title">{o.name}{o.mine ? ' (eu)' : ''}</span>
                     </button>
                   ))}
                 </div>

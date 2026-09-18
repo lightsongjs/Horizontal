@@ -1,7 +1,7 @@
 // Storage-agnostic data access. The app talks only to this interface; the
 // concrete backend (local or Supabase) is chosen in ./index.ts by env.
 
-import type { Assignee, Issue, IssueEvent, InboxRow, Obstacle, ObstacleLink, Project, Theme, Wave } from '../lib/types'
+import type { Assignee, Issue, IssueEvent, InboxRow, Obstacle, ObstacleLink, Project, ProjectMember, Theme, Wave } from '../lib/types'
 
 export interface NewProject {
   name: string
@@ -128,6 +128,19 @@ export interface Repository {
 
   listAssignees(): Promise<Assignee[]>
   createAssignee(name: string): Promise<Assignee>
+  /**
+   * Conturile cu acces la proiect (membri + admin), pentru selectoarele
+   * „către…"/„Assigned to" — vezi `src/lib/assigneeOptions.ts`. Fără emailuri
+   * din alte proiecte: RPC-ul refuză dacă apelantul n-are el însuși acces.
+   */
+  listProjectMembers(projectId: string): Promise<ProjectMember[]>
+  /**
+   * Creează (sau găsește) rândul din `assignees` al unui membru la prima lui
+   * alegere ca destinatar/assignee. Aruncă dacă țintă sau apelant n-au acces
+   * la proiect — vezi `ensure_project_assignee` din
+   * `migration-members-visible.sql`.
+   */
+  ensureAssigneeForMember(projectId: string, userId: string): Promise<Assignee>
 
   /** Firul unui tichet, cronologic. Per tichet, ca listObstacleLinks — un
    *  proiect vechi are mii de evenimente și nimeni nu le vede pe toate. */

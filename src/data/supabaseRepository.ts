@@ -2,7 +2,7 @@
 // edge table, per-project waves and themes) to/from the app's models.
 
 import { requireSupabase } from '../lib/supabase'
-import type { Assignee, InboxRow, Issue, IssueEvent, Obstacle, ObstacleLink, Project, Theme, Wave } from '../lib/types'
+import type { Assignee, InboxRow, Issue, IssueEvent, Obstacle, ObstacleLink, Project, ProjectMember, Theme, Wave } from '../lib/types'
 import { pathsForIssues, pathsForProject, removeObjects } from './attachments'
 import { themeKey, type DueRange, type NewIssue, type NewObstacle, type NewProject, type NewThreadPost, type Repository } from './repository'
 
@@ -658,6 +658,24 @@ export function createSupabaseRepository(): Repository {
 
     async createAssignee(name: string): Promise<Assignee> {
       const { data, error } = await db.from('assignees').insert({ name }).select('*').single()
+      if (error) throw error
+      return { id: data.id, name: data.name, userId: data.user_id ?? null }
+    },
+
+    async listProjectMembers(projectId: string): Promise<ProjectMember[]> {
+      const { data, error } = await db.rpc('project_member_roster', { p_project_id: projectId })
+      if (error) throw error
+      return (data ?? []).map((r: { user_id: string; email: string | null }) => ({
+        userId: r.user_id,
+        email: r.email ?? '',
+      }))
+    },
+
+    async ensureAssigneeForMember(projectId: string, userId: string): Promise<Assignee> {
+      const { data, error } = await db.rpc('ensure_project_assignee', {
+        p_project_id: projectId,
+        p_user_id: userId,
+      })
       if (error) throw error
       return { id: data.id, name: data.name, userId: data.user_id ?? null }
     },

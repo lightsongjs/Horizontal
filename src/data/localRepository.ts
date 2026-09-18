@@ -2,7 +2,7 @@
 // example on first run. Mirrors the Supabase backend's behavior.
 
 import { SEED_ISSUES, SEED_PROJECTS, SEED_THEMES, SEED_WAVES } from '../lib/seed'
-import type { Assignee, Issue, IssueEvent, InboxRow, Obstacle, ObstacleLink, Project, Theme, Wave } from '../lib/types'
+import type { Assignee, Issue, IssueEvent, InboxRow, Obstacle, ObstacleLink, Project, ProjectMember, Theme, Wave } from '../lib/types'
 import {
   themeKey,
   type DueRange,
@@ -414,6 +414,23 @@ export function createLocalRepository(): Repository {
     async createAssignee(name: string) {
       const db = load()
       const assignee: Assignee = { id: crypto.randomUUID(), name, userId: null }
+      db.assignees.push(assignee)
+      save(db)
+      return clone(assignee)
+    },
+
+    async listProjectMembers(): Promise<ProjectMember[]> {
+      // Modul local n-are conturi/proiecte multi-user (vezi comentariul de
+      // sus al fișierului) — bucata de conturi din selector rămâne goală,
+      // numele libere din `assignees` tot apar.
+      return []
+    },
+
+    async ensureAssigneeForMember(_projectId: string, userId: string): Promise<Assignee> {
+      const db = load()
+      const existing = db.assignees.find((a) => a.userId === userId)
+      if (existing) return clone(existing)
+      const assignee: Assignee = { id: crypto.randomUUID(), name: userId, userId }
       db.assignees.push(assignee)
       save(db)
       return clone(assignee)

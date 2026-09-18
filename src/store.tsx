@@ -27,7 +27,7 @@ import {
 import { buildSmartLists, smartListRange, type SmartLists } from './lib/schedule'
 import { blockedBy, detectObstacleCycle } from './lib/obstacles'
 import { groupInbox } from './lib/thread'
-import type { Assignee, InboxRow, Issue, IssueState, Layers, Obstacle, ObstacleLink, Project, Theme, Wave } from './lib/types'
+import type { Assignee, InboxRow, Issue, IssueState, Layers, Obstacle, ObstacleLink, Project, ProjectMember, Theme, Wave } from './lib/types'
 import { errorMessage } from './lib/errorMessage'
 import { shouldRefreshOnVisible } from './lib/refreshGate'
 
@@ -72,6 +72,18 @@ interface HorizontalState {
   /** Fereastra de scadențe a fost adusă cel puțin o dată. */
   dueLoaded: boolean
   assignees: Assignee[]
+  /**
+   * Conturile cu acces la proiectul activ (membri + admin) — pentru
+   * selectoarele „către…"/„Assigned to". Vezi `src/lib/assigneeOptions.ts`.
+   * Gol cât timp niciun proiect nu e deschis.
+   */
+  projectMembers: ProjectMember[]
+  /**
+   * Creează (dacă lipsește) rândul din `assignees` al unui membru fără cont
+   * legat încă, apoi îl adaugă local — ca noul destinatar să fie selectabil
+   * imediat, fără un refresh întreg. Vezi `ensure_project_assignee`.
+   */
+  ensureAssigneeForMember(projectId: string, userId: string): Promise<Assignee>
   /** Obstacolele proiectului activ, ordonate după `position`. */
   obstacles: Obstacle[]
   /** Muchiile obstacol → tichet ale proiectului activ. */
@@ -192,6 +204,12 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
    */
   const [loadedProjects, setLoadedProjects] = useState<Set<string>>(() => new Set())
   const [assignees, setAssignees] = useState<Assignee[]>([])
+  // Rostrul de membri, cache-uit per proiect ca `allWaves`/`allObstacles` —
+  // vezi motivul din `refresh`: obstacolele vin în ACELAȘI Promise.all ca
+  // tichetele, ca poarta valului să nu clipească. `ProjectMember` n-are
+  // `projectId` (nu-i trebuie apelantului RPC-ului), deci-l purtăm alături
+  // doar în cache-ul local.
+  const [allProjectMembers, setAllProjectMembers] = useState<(ProjectMember & { projectId: string })[]>([])
   // Cine sunt, ca assignee. Vine din sesiune, nu dintr-un „eu sunt X" salvat
   // local: creatorul unui tichet și autorul unui comentariu sunt fapte, iar un
   // `localStorage` se poate minți. `null` = contul nu e legat de niciun nume.
@@ -244,16 +262,21 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
         // Obstacolele vin în ACELAȘI Promise.all cu tichetele: dacă ajungeau o
         // randare mai târziu, poarta valului apărea goală și apoi sărea la
         // patru, iar cardurile clipeau din „liber” în „blocat”.
-        const [w, t, loaded, o, ol] = await Promise.all([
+        const [w, t, loaded, o, ol, pm] = await Promise.all([
           repository.listWaves(projectId),
           repository.listThemes(projectId),
           repository.listIssues(projectId),
           repository.listObstacles(projectId),
           repository.listObstacleLinks(projectId),
+          repository.listProjectMembers(projectId),
         ])
         setAllWaves((prev) => [...prev.filter((x) => x.projectId !== projectId), ...w])
         setAllThemes((prev) => [...prev.filter((x) => x.projectId !== projectId), ...t])
         setAllIssues((prev) => [...prev.filter((i) => i.projectId !== projectId), ...loaded])
+        setAllProjectMembers((prev) => [
+          ...prev.filter((x) => x.projectId !== projectId),
+          ...pm.map((m) => ({ ...m, projectId })),
+        ])
         // `ObstacleLink` n-are `projectId` direct, deci legăturile stale ale
         // acestui proiect (inclusiv ale unui obstacol între timp șters) se scot
         // pe baza obstacolelor lui VECHI, nu doar completate peste — altfel un
@@ -343,6 +366,10 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     const mine = new Set(obstacles.map((o) => o.id))
     return allObstacleLinks.filter((l) => mine.has(l.obstacleId))
   }, [allObstacleLinks, obstacles])
+  const projectMembers = useMemo(
+    () => allProjectMembers.filter((m) => m.projectId === projectId).map(({ userId, email }) => ({ userId, email })),
+    [allProjectMembers, projectId],
+  )
 
   /**
    * Tichetele cu scadență, cu O SINGURĂ sursă de adevăr pentru fiecare.
@@ -405,11 +432,16 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
         repository.listIssues(id),
         repository.listObstacles(id),
         repository.listObstacleLinks(id),
+        repository.listProjectMembers(id),
       ])
-        .then(([w, t, loaded, o, ol]) => {
+        .then(([w, t, loaded, o, ol, pm]) => {
           setAllWaves((prev) => [...prev.filter((x) => x.projectId !== id), ...w])
           setAllThemes((prev) => [...prev.filter((x) => x.projectId !== id), ...t])
           setAllIssues((prev) => [...prev.filter((i) => i.projectId !== id), ...loaded])
+          setAllProjectMembers((prev) => [
+            ...prev.filter((x) => x.projectId !== id),
+            ...pm.map((m) => ({ ...m, projectId: id })),
+          ])
           // Ca în `refresh`: `ObstacleLink` n-are `projectId`, deci legăturile
           // stale ale acestui proiect (revizitat după o încărcare anterioară)
           // se scot pe baza obstacolelor lui VECHI, nu doar completate peste.
@@ -478,6 +510,23 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     return assignee
   }, [])
 
+  /**
+   * Vezi contractul din interfață. `assignee.userId` poate să nu fie
+   * `userId`-ul cerut dacă am pierdut o cursă cu o altă cerere concurentă
+   * pentru ACELAȘI cont (`ensure_project_assignee` întoarce rândul celeilalte
+   * cereri) — tot un rezultat corect, deci nu verificăm, doar îl adăugăm dacă
+   * lipsește din cache-ul local.
+   */
+  const ensureAssigneeForMember = useCallback(async (pid: string, userId: string) => {
+    const assignee = await repository.ensureAssigneeForMember(pid, userId)
+    setAssignees((prev) =>
+      prev.some((a) => a.id === assignee.id)
+        ? prev
+        : [...prev, assignee].sort((a, b) => a.name.localeCompare(b.name)),
+    )
+    return assignee
+  }, [])
+
   const deleteProject = useCallback(async (id: string) => {
     await repository.deleteProject(id)
     setRawProjects((prev) => prev.filter((p) => p.id !== id))
@@ -492,6 +541,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
       return prev.filter((o) => o.projectId !== id)
     })
     setDueRaw((prev) => prev.filter((i) => i.projectId !== id))
+    setAllProjectMembers((prev) => prev.filter((m) => m.projectId !== id))
     setLoadedProjects((prev) => { const n = new Set(prev); n.delete(id); return n })
     setProjectId((cur) => (cur === id ? null : cur))
     setIssuesLoadedFor((cur) => (cur === id ? null : cur))
@@ -744,6 +794,8 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     smartLists,
     dueLoaded,
     assignees,
+    projectMembers,
+    ensureAssigneeForMember,
     obstacles,
     obstacleLinks,
     myAssigneeId,
