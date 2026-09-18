@@ -1,5 +1,5 @@
 // Logica pură a firului. Fără DOM, fără rețea — ca engine.ts și schedule.ts.
-import type { InboxRow } from './types'
+import type { InboxRow, Issue } from './types'
 
 /**
  * Compară momente, nu șiruri: formatări diferite ale aceluiași moment
@@ -50,4 +50,52 @@ export function groupInbox(rows: readonly InboxRow[]): { fresh: InboxRow[]; rest
     fresh: byRecency.filter((r) => isUnread(r.lastForeignAt, r.seenAt)),
     rest: byRecency.filter((r) => !isUnread(r.lastForeignAt, r.seenAt)),
   }
+}
+
+/**
+ * Reconciliază instantaneul cutiei de pase cu tichetele DEJA încărcate.
+ *
+ * `inbox_rows` e o a doua poză a acelorași fapte (`assignee_id`, `done`,
+ * titlu), adusă o dată la pornire și la refresh. Fără reconciliere, orice
+ * scriere care nu trece prin `post_to_thread` o lăsa în urmă: îți puneai
+ * numele pe un tichet din formular și „Ale mele" rămânea gol, îl scoteai și
+ * rândul rămânea acolo. Același tipar ca `dueIssues` din store — `allIssues`
+ * e mai proaspăt pentru proiectele deschise, deci versiunea de acolo câștigă,
+ * iar rezultatul e derivat: nu există al doilea loc de scris.
+ *
+ * Un tichet dintr-un proiect NEîncărcat nu se atinge — absența lui din
+ * `issues` înseamnă „nu știu", nu „nu mai e al meu". Ștergerea îl scoate din
+ * `inboxRaw` explicit (store), la fel ca la `dueRaw`.
+ *
+ * `myAssigneeId` null (cont nelegat de un nume, sau `assignees` încă
+ * neîncărcat) nu reconciliază nimic: fără o identitate, „al meu" n-are sens
+ * și am goli lista pe baza unei necunoscute.
+ */
+export function reconcileInbox(
+  rows: readonly InboxRow[],
+  issues: readonly Issue[],
+  myAssigneeId: string | null,
+): InboxRow[] {
+  if (!myAssigneeId) return [...rows]
+  const fresh = new Map(issues.map((i) => [i.id, i]))
+  const known = new Set(rows.map((r) => r.issueId))
+  const merged: InboxRow[] = []
+  for (const r of rows) {
+    const live = fresh.get(r.issueId)
+    if (!live) { merged.push(r); continue }
+    if (live.assigneeId !== myAssigneeId) continue
+    merged.push({ ...r, title: live.title, done: live.done, assigneeId: live.assigneeId })
+  }
+  for (const i of issues) {
+    if (i.assigneeId !== myAssigneeId || known.has(i.id)) continue
+    // Un tichet care tocmai a devenit al meu n-are fir în poza asta: momentele
+    // rămân null (se completează la următorul refresh). E cinstit — „—" în loc
+    // de o oră inventată — și îl duce la coada listei, nu în „Necitite".
+    merged.push({
+      issueId: i.id, projectId: i.projectId, title: i.title, done: i.done,
+      assigneeId: i.assigneeId, lastEventAt: null, lastForeignAt: null,
+      lastForeignAuthor: null, seenAt: null,
+    })
+  }
+  return merged
 }

@@ -203,7 +203,7 @@ const tabBar = () => `
 <nav class="tabbar">
   <button data-tab="today"><span class="tb-ico"><svg width="21" height="21"></svg></span>Azi</button>
   <button data-tab="week"><span class="tb-ico"><svg width="21" height="21"></svg></span>7 zile</button>
-  <button class="on" data-tab="inbox"><span class="tb-ico"><svg width="21" height="21"></svg><span class="tb-badge">12</span></span>Pe mine</button>
+  <button class="on" data-tab="inbox"><span class="tb-ico"><svg width="21" height="21"></svg><span class="tb-badge">12</span></span>Ale mele</button>
   <button data-tab="projects"><span class="tb-ico"><svg width="21" height="21"></svg></span>Proiecte</button>
 </nav>`
 

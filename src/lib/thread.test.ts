@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { groupInbox, isUnread } from './thread'
-import type { InboxRow } from './types'
+import { groupInbox, isUnread, reconcileInbox } from './thread'
+import type { InboxRow, Issue } from './types'
 
 const row = (patch: Partial<InboxRow>): InboxRow => ({
   issueId: 'T-1', projectId: 'p', title: 'T', done: false, assigneeId: 'a1',
@@ -83,5 +83,50 @@ describe('groupInbox', () => {
     // Datele valide să fie în ordinea corectă (A mai recent, apoi C), coruptele la coadă
     expect(fresh.map((r) => r.issueId)).toEqual(['A', 'C', 'B', 'D'])
     expect(rest).toEqual([])
+  })
+})
+
+const issue = (patch: Partial<Issue>): Issue => ({
+  id: 'T-1', projectId: 'p', title: 'T', desc: '', theme: '', wave: 1, deps: [], done: false,
+  selectors: [], scenarios: [], assigneeId: null, createdBy: null, createdAt: '2026-09-17T09:00:00Z',
+  urgent: false, dueAt: null, allDay: true, remindAt: null, rrule: null, ...patch,
+})
+
+describe('reconcileInbox', () => {
+  it('scoate rândul căruia i s-a șters assignee-ul în formular', () => {
+    const rows = [row({ issueId: 'T-1', assigneeId: 'a1' })]
+    const live = [issue({ id: 'T-1', assigneeId: null })]
+    expect(reconcileInbox(rows, live, 'a1')).toEqual([])
+  })
+
+  it('scoate rândul pasat altcuiva', () => {
+    const rows = [row({ issueId: 'T-1', assigneeId: 'a1' })]
+    const live = [issue({ id: 'T-1', assigneeId: 'a2' })]
+    expect(reconcileInbox(rows, live, 'a1')).toEqual([])
+  })
+
+  it('adaugă tichetul pe care tocmai mi l-am pus în formular', () => {
+    const live = [issue({ id: 'T-9', title: 'Nou', assigneeId: 'a1' })]
+    const out = reconcileInbox([], live, 'a1')
+    expect(out.map((r) => r.issueId)).toEqual(['T-9'])
+    expect(out[0]).toMatchObject({ title: 'Nou', assigneeId: 'a1', done: false, lastEventAt: null })
+  })
+
+  it('preia starea proaspătă (titlu, bifă) peste rândul vechi', () => {
+    const rows = [row({ issueId: 'T-1', assigneeId: 'a1', title: 'Vechi', seenAt: '2026-09-17T10:00:00Z' })]
+    const live = [issue({ id: 'T-1', assigneeId: 'a1', title: 'Redenumit', done: true })]
+    expect(reconcileInbox(rows, live, 'a1')[0]).toMatchObject({
+      title: 'Redenumit', done: true, seenAt: '2026-09-17T10:00:00Z',
+    })
+  })
+
+  it('nu atinge rândurile din proiecte neîncărcate', () => {
+    const rows = [row({ issueId: 'X-1', assigneeId: 'a1' })]
+    expect(reconcileInbox(rows, [], 'a1')).toEqual(rows)
+  })
+
+  it('fără nume legat nu reconciliază nimic', () => {
+    const rows = [row({ issueId: 'T-1', assigneeId: 'a1' })]
+    expect(reconcileInbox(rows, [issue({ id: 'T-1', assigneeId: null })], null)).toEqual(rows)
   })
 })

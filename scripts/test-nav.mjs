@@ -314,7 +314,7 @@ try {
   check('URL-ul nu rămâne pe tichetul vechi', staleUrl !== oldTicket, `URL=${staleUrl}`)
   await stale.close()
 
-  // ── „Pe mine" supraviețuiește unei reporniri, ca „Azi" ──────────────────
+  // ── „Ale mele" supraviețuiește unei reporniri, ca „Azi" ──────────────────
   // Al patrulea tab NU e un `SmartListKind` (vezi `Screen` din App.tsx), deci
   // are propriul drum prin `parseLastView`/`LAST_VIEW_KEY` — ăsta e testul care
   // verifică drumul ăla, nu doar clickul. Viewport de telefon, deliberat: bara
@@ -326,14 +326,14 @@ try {
   await inbox.click('[data-tab="inbox"]')
   await inbox.waitForTimeout(500)
   const inboxTabOn = (await inbox.locator('.tabbar button.on').textContent()) ?? ''
-  check('„Pe mine" se activează la click', /Pe mine/.test(inboxTabOn), `tab activ="${inboxTabOn}"`)
+  check('„Ale mele" se activează la click', /Ale mele/.test(inboxTabOn), `tab activ="${inboxTabOn}"`)
 
   await inbox.reload({ waitUntil: 'networkidle' })
   await inbox.waitForTimeout(1200)
   const inboxTabAfterReload = (await inbox.locator('.tabbar button.on').textContent()) ?? ''
   check(
-    '„Pe mine" supraviețuiește unei reporniri',
-    /Pe mine/.test(inboxTabAfterReload),
+    '„Ale mele" supraviețuiește unei reporniri',
+    /Ale mele/.test(inboxTabAfterReload),
     `tab activ="${inboxTabAfterReload}"`,
   )
   await inbox.close()

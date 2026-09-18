@@ -412,6 +412,16 @@ loc să tacă. Consecința practică, verificată manual: un tichet pe care l-ai
 creat și nu l-ai pasat NIMĂNUI nu apare în „Ale mele" — nici la tine, nici la
 altcineva — indiferent de câte comentarii capătă.
 
+**Lista „Ale mele" e derivată, nu un al doilea adevăr.** `inbox_rows` e o poză
+a acelorași câmpuri care trăiesc și în tichete (`assignee_id`, `done`, titlu),
+adusă doar la pornire, la refresh și după `post_to_thread`. Orice altă scriere
+o lăsa în urmă: îți puneai numele din formular și ecranul rămânea gol, ți-l
+scoteai și rândul rămânea acolo. De-aia `reconcileInbox`
+(`src/lib/thread.ts`) trece instantaneul prin `allIssues` înainte de grupare —
+același tipar ca `dueIssues`. Un tichet dintr-un proiect NEîncărcat nu se
+atinge (absența lui înseamnă „nu știu", nu „nu mai e al meu"), deci ștergerea
+îl scoate din `inboxRaw` explicit, ca la `dueRaw`.
+
 **De ce „Ale mele" nu e un `SmartListKind`.** Ar trece de typecheck ca al
 patrulea membru, dar ar strica trei lucruri deodată: ecranul ar aștepta
 `dueLoaded`, o încărcare de scadențe care nu-l privește (un tichet ajunge aici

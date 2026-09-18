@@ -26,7 +26,7 @@ import {
 } from './lib/engine'
 import { buildSmartLists, smartListRange, type SmartLists } from './lib/schedule'
 import { blockedBy, detectObstacleCycle } from './lib/obstacles'
-import { groupInbox } from './lib/thread'
+import { groupInbox, reconcileInbox } from './lib/thread'
 import type { Assignee, InboxRow, Issue, IssueState, Layers, Obstacle, ObstacleLink, Project, ProjectMember, Theme, Wave } from './lib/types'
 import { errorMessage } from './lib/errorMessage'
 import { shouldRefreshOnVisible } from './lib/refreshGate'
@@ -181,6 +181,11 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
   const [allWaves, setAllWaves] = useState<Wave[]>([])
   const [allThemes, setAllThemes] = useState<Theme[]>([])
   const [allIssues, setAllIssues] = useState<Issue[]>([])
+  // Poza curentă a tichetelor pentru callback-urile async care au nevoie de
+  // starea DINAINTE de scriere (vezi `updateIssue`): o închidere peste
+  // `allIssues` ar vedea valoarea din randarea în care s-a creat callback-ul.
+  const allIssuesRef = useRef<Issue[]>([])
+  useEffect(() => { allIssuesRef.current = allIssues }, [allIssues])
   const [allObstacles, setAllObstacles] = useState<Obstacle[]>([])
   const [allObstacleLinks, setAllObstacleLinks] = useState<ObstacleLink[]>([])
   const [projectId, setProjectId] = useState<string | null>(null)
@@ -396,7 +401,18 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
 
   const smartLists = useMemo(() => buildSmartLists(dueIssues, new Date()), [dueIssues])
 
-  const inbox = useMemo(() => groupInbox(inboxRaw), [inboxRaw])
+  /**
+   * Cutia de pase, cu aceeași regulă ca `dueIssues`: instantaneul din
+   * `inbox_rows` e reconciliat cu tichetele încărcate înainte de grupare.
+   * Fără asta, orice scriere care NU trece prin `post_to_thread` (adică
+   * salvarea din formular) lăsa lista în urmă până la următorul refresh:
+   * îți puneai numele și „Ale mele" rămânea gol, ți-l scoteai și rândul
+   * rămânea acolo. Vezi `reconcileInbox`.
+   */
+  const inbox = useMemo(
+    () => groupInbox(reconcileInbox(inboxRaw, allIssues, myAssigneeId)),
+    [inboxRaw, allIssues, myAssigneeId],
+  )
 
   /**
    * Vezi contractul din interfață: scrie și pe server, și local — local ca
@@ -648,10 +664,17 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
 
   const updateIssue = useCallback(
     async (id: string, patch: Partial<Issue>) => {
+      const before = allIssuesRef.current.find((i) => i.id === id)?.assigneeId ?? null
       const saved = await repository.updateIssue(id, patch)
       upsertIssue(saved)
+      // `reconcileInbox` pune deja rândul la locul lui instantaneu; asta cere
+      // doar momentele firului (ora, bulina), pe care instantaneul local nu
+      // le are. Numai la o SCHIMBARE reală de assignee — formularul trimite
+      // `assigneeId` la fiecare salvare, și n-are rost o interogare pe toate
+      // proiectele pentru o virgulă din titlu. Best-effort, ca la `Thread`.
+      if ((saved.assigneeId ?? null) !== before) void loadInbox()
     },
-    [upsertIssue],
+    [upsertIssue, loadInbox],
   )
 
   const deleteIssue = useCallback(async (id: string) => {
@@ -659,6 +682,10 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     // `dueRaw` nu trece prin upsertIssue, deci ștergerea trebuie curățată și
     // aici — altfel sarcina ar rămâne în listele inteligente până la refresh.
     setDueRaw((prev) => prev.filter((i) => i.id !== id))
+    // Idem `inboxRaw`: un tichet șters n-are cum să mai fie reconciliat
+    // (`reconcileInbox` păstrează rândurile fără tichet încărcat, ca să nu
+    // golească proiectele neîncărcate), deci se scoate explicit.
+    setInboxRaw((prev) => prev.filter((r) => r.issueId !== id))
     setAllIssues((prev) =>
       prev
         .filter((i) => i.id !== id)
@@ -671,6 +698,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     await repository.deleteIssues(ids)
     const gone = new Set(ids)
     setDueRaw((prev) => prev.filter((i) => !gone.has(i.id)))
+    setInboxRaw((prev) => prev.filter((r) => !gone.has(r.issueId)))
     setAllIssues((prev) =>
       prev
         .filter((i) => !gone.has(i.id))
