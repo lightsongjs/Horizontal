@@ -244,6 +244,69 @@ for (const width of PHONE_WIDTHS) {
   check(`buton atingibil @${width}px`, m.narrowest >= 44, `cel mai îngust ${m.narrowest}px`)
 }
 
+/**
+ * Meta colapsată din `IssueForm.tsx`, pe telefon: rămân pe ecran doar
+ * urgentul și scadența, iar scadența e UN câmp cu cinci controale care nu se
+ * micșorează (două câmpuri de cifre, calendarul, ceasul, ștergerea). Cu
+ * butoanele crescute la deget, rândul e cel mai aproape de a se rupe — și tot
+ * aici se verifică ordinea: bara stă DEASUPRA rezumatului „Detalii", ceea ce
+ * vine dintr-un `order: -1`, adică exact genul de regulă pe care o rescrie
+ * din greșeală următoarea atingere a secțiunii.
+ */
+const collapsedMeta = () => `
+<div class="sheet"><div class="sheet-scroll if-body">
+  <div class="sh-meta-section meta-collapsed">
+    <button class="meta-recap">
+      <span class="meta-recap-label">Detalii</span>
+      <span class="meta-recap-sep">·</span>
+      <span class="meta-recap-text">Val 1 · Alexandru</span>
+    </button>
+    <div class="meta-body">
+      <div class="if-bar">
+        <button class="if-ctl ghost"><span class="if-av nobody">+</span><span class="if-ctl-txt">Nimeni</span></button>
+        <div class="if-seg"><button class="on">I</button><button>II</button></div>
+        <button class="if-ctl icon ghost"><svg width="15" height="15"></svg></button>
+        <div class="due-inputs">
+          <input class="due-input due-input-date" value="17/09/2026">
+          <input class="due-native" type="date">
+          <button class="due-pick"><svg width="13" height="13"></svg></button>
+          <input class="due-input due-input-time" value="09:30">
+          <input class="due-native" type="time">
+          <button class="due-pick"><svg width="13" height="13"></svg></button>
+          <button class="due-clear">×</button>
+        </div>
+        <div class="if-theme-wrap"><button class="if-ctl"><span class="if-ctl-txt">temă</span></button></div>
+      </div>
+    </div>
+  </div>
+</div></div>`
+
+console.log('\nMeta colapsată (IssueForm, mobil) — urgentul și scadența:')
+for (const width of PHONE_WIDTHS) {
+  const page = await browser.newPage({ viewport: { width, height: 900 } })
+  await page.setContent(`<style>${CSS}</style>${collapsedMeta()}`)
+  const m = await page.evaluate(() => {
+    const bar = document.querySelector('.if-bar')
+    const field = document.querySelector('.due-inputs')
+    const picks = [...document.querySelectorAll('.due-pick')]
+    const recap = document.querySelector('.meta-recap')
+    const r = (el) => el.getBoundingClientRect()
+    return {
+      // Câmpul de scadență nu iese din bară, iar ce e în el nu iese din câmp.
+      barOverflow: Math.round(r(field).right - r(bar).right),
+      fieldOverflow: field.scrollWidth - Math.round(r(field).width),
+      pick: Math.round(Math.min(...picks.map((p) => Math.min(r(p).width, r(p).height)))),
+      aboveRecap: r(bar).top < r(recap).top,
+    }
+  })
+  await page.close()
+
+  check(`scadența în bară @${width}px`, m.barOverflow <= 1, `${m.barOverflow}px peste bară`)
+  check(`câmp nestrivit @${width}px`, m.fieldOverflow <= 0, `${m.fieldOverflow}px peste câmp`)
+  check(`calendar/ceas atingibile @${width}px`, m.pick >= 32, `cel mai mic ${m.pick}px`)
+  check(`bara peste „Detalii" @${width}px`, m.aboveRecap, m.aboveRecap ? 'deasupra rezumatului' : 'SUB rezumat')
+}
+
 await browser.close()
 
 if (failures.length) {

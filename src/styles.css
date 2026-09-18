@@ -4375,8 +4375,17 @@ main {
   /* Colapsat NU înseamnă gol: urgentul și scadența rămân pe ecran, fiindcă
      alea se schimbă în timpul zilei, de pe telefon. Cine ține tichetul, valul
      și tema se schimbă rar și la masă — ele stau sub „Detalii". */
+  /* Urgentul și scadența stau DEASUPRA rezumatului, nu sub el: ele sunt ce se
+     atinge zilnic, iar „Detalii" e capacul peste ce se schimbă rar. Reordonare
+     prin flex, nu prin mutarea markup-ului: desfăcut, blocul trebuie să rămână
+     în ordinea lui firească (rezumatul devine titlul secțiunii). */
+  .meta-collapsed {
+    display: flex;
+    flex-direction: column;
+  }
   .meta-collapsed .meta-body {
     display: block;
+    order: -1;
   }
   .meta-collapsed .if-bar > .if-ctl:not(.icon),
   .meta-collapsed .if-bar > .if-seg,
@@ -4387,7 +4396,7 @@ main {
      casetă în jurul a două jetoane, sub o casetă (rezumatul). */
   .meta-collapsed .if-bar {
     background: transparent;
-    padding: 8px 18px 10px;
+    padding: 10px 18px 8px;
   }
 
   /* ── Issue form body: single column, shorter description box ───────
@@ -5575,3 +5584,35 @@ main {
 .map-head.don { fill: var(--done); opacity: 0.5; }
 .map-strike { stroke: var(--done); stroke-width: 1.2; opacity: 0.8; }
 .map-node { cursor: pointer; }
+
+/* ── TELEFON: scadența, la deget ──────────────────────────────────────
+   Blocul stă la COADA fișierului, nu în media query-ul de la `.meta-collapsed`
+   unde i-ar fi locul tematic: regulile de bază ale `.due-pick` vin mai jos în
+   fișier, cu aceeași specificitate, deci de acolo le-ar fi rescris ordinea.
+   Testat de `npm run test:layout` („calendar/ceas atingibile"). */
+@media (max-width: 899px) {
+
+  /* Degetul, nu cursorul: 24px e o țintă de mouse. Calendarul și ceasul sunt
+     singurul drum către selectorul nativ de pe telefon, iar o ratare acolo
+     înseamnă cursor pus în câmpul de cifre — adică tastatura peste ecran, în
+     loc de calendar. Câmpul crește odată cu ele ca butoanele să nu iasă din
+     ramă. */
+  .due-inputs {
+    height: 40px;
+    gap: 1px;
+    padding: 0 3px 0 6px;
+  }
+  .due-pick {
+    width: 34px;
+    height: 34px;
+    border-radius: var(--r-s);
+  }
+  .due-pick svg {
+    width: 17px;
+    height: 17px;
+  }
+  .due-clear {
+    width: 30px;
+    height: 30px;
+  }
+}

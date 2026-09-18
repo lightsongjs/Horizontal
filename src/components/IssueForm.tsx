@@ -924,7 +924,7 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
             din Thread.tsx. */}
         {isEdit && existing && (
           <div className="origin">
-            {existing.createdBy && (() => {
+            {existing.createdBy ? (() => {
               const creator = assignees.find((a) => a.userId === existing.createdBy)
               const creatorName = creator?.name ?? 'cineva'
               return (
@@ -934,8 +934,16 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
                   <span className="dot">·</span>
                 </>
               )
-            })()}
-            <time className="mono">{toShortDate(existing.createdAt)}</time>
+            })() : (
+              /* Fără creator (tichet scris cu cheia de serviciu — vezi
+                 ticket-kit) rămânea pe rând doar „17.09", patru cifre care nu
+                 spun al cui e faptul. Data singură nu e informație; data
+                 numită, da. */
+              <span>creat</span>
+            )}
+            <time className="mono" title={new Date(existing.createdAt).toLocaleString('ro-RO')}>
+              {toShortDate(existing.createdAt)}
+            </time>
           </div>
         )}
 
