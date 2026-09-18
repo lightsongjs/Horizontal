@@ -65,7 +65,13 @@ begin
 end
 $fn$;
 
+-- `revoke ... from public` NU anulează grantul implicit al lui `anon` — pe
+-- schema `public`, Supabase acordă `EXECUTE` implicit atât lui `anon` cât și
+-- lui `authenticated`; fără linia de mai jos, `pg_proc.proacl` ar rămâne cu
+-- `anon=X` chiar dacă un `auth.uid()` null face poarta de mai sus să cadă
+-- oricum azi. Corect din pornire, nu doar neexploatabil azi.
 revoke all on function public.project_member_roster(text) from public;
+revoke all on function public.project_member_roster(text) from anon;
 grant execute on function public.project_member_roster(text) to authenticated;
 
 -- ── legarea la prima alegere ─────────────────────────────────────────────
@@ -138,6 +144,7 @@ end
 $fn$;
 
 revoke all on function public.ensure_project_assignee(text, uuid) from public;
+revoke all on function public.ensure_project_assignee(text, uuid) from anon;
 grant execute on function public.ensure_project_assignee(text, uuid) to authenticated;
 
 notify pgrst, 'reload schema';

@@ -136,3 +136,33 @@ asta explicit, dar doar după ce a verificat accesul amândurora.
   anterioară neterminată (proiectul `tmpverify1789676938995`, „TMP verify
   browser", fără membri, cu un singur tichet) — nu era creat de sesiunea asta,
   dar era clar debris de test, nu date reale.
+
+## Reparații după revizuirea de securitate
+
+Revizuirea a găsit două probleme, ambele reparate:
+
+1. **`revoke all ... from public` nu anulează grantul implicit al lui
+   `anon`.** Pe schema `public`, Supabase acordă `EXECUTE` implicit atât lui
+   `anon` cât și lui `authenticated`; fără un `revoke ... from anon` explicit,
+   `pg_proc.proacl` rămânea cu `anon=X` pentru ambele funcții noi —
+   neexploatabil azi (`auth.uid()` null face poarta din funcție să cadă
+   oricum), dar migrarea nu reflecta ce trebuia să fie în bază. Adăugat
+   `revoke all on function ... from anon` pentru `project_member_roster` și
+   `ensure_project_assignee`, migrare re-rulată. Confirmat din
+   `pg_proc.proacl`: `{postgres=X/postgres,authenticated=X/postgres,
+   service_role=X/postgres}` pentru ambele — `anon` a dispărut.
+2. **Un eșec pe roster nu are voie să dărâme boardul.** `listProjectMembers()`
+   era în ACELAȘI `Promise.all` cu tichetele/valurile/obstacolele
+   (`src/store.tsx`, în `refresh()` și `selectProject()`); dacă RPC-ul cădea
+   (cache PostgREST nereîncărcat, grant schimbat, mediu fără migrare),
+   `Promise.all` respingea tot lotul și `setIssuesLoadFailedFor` marca
+   proiectul întreg ca neîncărcat — o listă de selector ar fi făcut aplicația
+   să pară moartă. Izolat cu `.catch(() => [])` doar pe apelul ăsta.
+
+   **Probă de degradare** (Playwright, cont/proiect temporare, curățate):
+   RPC-ul redenumit temporar (`project_member_roster__FORCED_FAILURE...`,
+   404 real) direct în `supabaseRepository.ts`, apoi verificat că tichetul se
+   încarcă în continuare (titlu, valuri, arbore — toate randate) și că
+   selectorul „către…" apare gol (doar „Nimănui"), cu eroarea de RPC prinsă
+   în consola browserului. Patch-ul a fost revertit imediat după probă —
+   `git diff` pe `supabaseRepository.ts` arată zero schimbări rămase.

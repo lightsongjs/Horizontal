@@ -268,7 +268,13 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
           repository.listIssues(projectId),
           repository.listObstacles(projectId),
           repository.listObstacleLinks(projectId),
-          repository.listProjectMembers(projectId),
+          // Doar pentru selectoarele „către…"/„Assigned to" — un eșec aici
+          // (cache PostgREST nereîncărcat, grant schimbat, orice mediu fără
+          // migrarea asta) nu are voie să pice TOT lotul: un `Promise.all` cu
+          // ceilalți ar respinge tichetele/valurile/obstacolele, și boardul
+          // întreg ar rămâne neîncărcat pentru o listă de selector. Selectorul
+          // gol e o degradare acceptabilă; boardul gol nu e.
+          repository.listProjectMembers(projectId).catch(() => []),
         ])
         setAllWaves((prev) => [...prev.filter((x) => x.projectId !== projectId), ...w])
         setAllThemes((prev) => [...prev.filter((x) => x.projectId !== projectId), ...t])
@@ -432,7 +438,9 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
         repository.listIssues(id),
         repository.listObstacles(id),
         repository.listObstacleLinks(id),
-        repository.listProjectMembers(id),
+        // Vezi motivul din `refresh`: izolat cu `.catch`, ca un eșec pe
+        // selector să nu picteze tot proiectul ca „n-a putut fi încărcat".
+        repository.listProjectMembers(id).catch(() => []),
       ])
         .then(([w, t, loaded, o, ol, pm]) => {
           setAllWaves((prev) => [...prev.filter((x) => x.projectId !== id), ...w])
