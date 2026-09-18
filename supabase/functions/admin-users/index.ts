@@ -121,6 +121,13 @@ Deno.serve(async (req) => {
 
     if (action === 'delete_user') {
       const { user_id } = payload as { user_id: string }
+      // Refuzat pe server, nu doar ascuns din interfata (`UsersView` nu-ti
+      // arata propriul rand): un buton ascuns nu e o regula. Stergerea
+      // propriului cont de admin e singura actiune din aplicatie dupa care
+      // nu mai exista nimeni care sa-ti dea accesul inapoi — doar
+      // `scripts/set-admin.mjs`, din linia de comanda.
+      if (user_id === userData.user!.id)
+        return json({ error: 'Nu-ti poti sterge propriul cont.' }, 400)
       const { error } = await admin.auth.admin.deleteUser(user_id)
       return error ? json({ error: error.message }, 400) : json({ ok: true })
     }

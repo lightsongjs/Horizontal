@@ -4,6 +4,7 @@
 // deschise: cu treisprezece proiecte, ecranul era un perete de butoane în
 // care nu se vedea cine sunt oamenii.
 import { useEffect } from 'react'
+import { useAuth } from '../auth'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { useAdminUsers, reloadUsers } from '../lib/adminUsersStore'
@@ -21,8 +22,17 @@ function accessLabel(user: AdminUser): string {
 
 export function UsersView() {
   const { projects } = useHorizontal()
+  const { session } = useAuth()
   const { openUserForm } = useUI()
   const { users, loading, error } = useAdminUsers()
+
+  // Contul care se uită la ecran nu apare în listă. Nu e o ascunzătoare, e
+  // absența unei decizii: accesul propriu nu se administrează de aici. Un
+  // admin vede și scrie tot prin `is_admin()`, care ocolește complet
+  // `project_members` — comutatoarele de pe rândul propriu n-ar fi schimbat
+  // nimic, iar „Șterge contul" ar fi fost singurul buton din aplicație care
+  // îți taie ție accesul, fără nimeni care să ți-l dea înapoi.
+  const others = users.filter((u) => u.id !== session?.user.id)
 
   useEffect(() => { void reloadUsers() }, [])
 
@@ -31,7 +41,7 @@ export function UsersView() {
       <header className="users-head">
         <div>
           <h1 className="users-title">Utilizatori</h1>
-          <p className="users-sub">Conturile care se pot loga și proiectele la care ajung.</p>
+          <p className="users-sub">Cine mai intră în aplicație, în afară de tine.</p>
         </div>
         <button className="btn-primary sm" onClick={() => openUserForm()}>
           <Icon name="add" size={14} /> Adaugă
@@ -42,11 +52,11 @@ export function UsersView() {
 
       {loading ? (
         <p className="users-empty">Se încarcă…</p>
-      ) : users.length === 0 ? (
-        <p className="users-empty">Niciun cont încă. Adaugă primul cu butonul de sus.</p>
+      ) : others.length === 0 ? (
+        <p className="users-empty">Niciun alt cont. Adaugă unul cu butonul de sus.</p>
       ) : (
         <div className="user-list">
-          {users.map((u) => {
+          {others.map((u) => {
             const display = u.name ?? memberDisplayName(u.email)
             return (
               <button key={u.id} className="user-row" onClick={() => openUserForm(u.id)}>
