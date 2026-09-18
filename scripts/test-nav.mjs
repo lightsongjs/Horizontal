@@ -62,6 +62,12 @@ try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
   await page.goto(BASE, { waitUntil: 'networkidle' })
   await page.waitForTimeout(700)
+  // O pornire proaspătă aterizează pe „Azi" (vezi `SESSION_KEY` din App.tsx),
+  // deci lista de proiecte se cere explicit înainte de tot restul testului.
+  const bootScreen = await page.locator('.sidebar-nav-item.on').first().textContent()
+  check('pornirea aterizează pe „Azi"', /Azi/.test(bootScreen ?? ''), `ecran=${(bootScreen ?? '').trim()}`)
+  await page.locator('.sidebar-nav-item', { hasText: 'Toate proiectele' }).first().click()
+  await page.waitForTimeout(600)
   await page.locator('.proj').first().click()
   await page.waitForTimeout(800)
   await page.locator('.tab', { hasText: /^List/ }).first().click()
@@ -281,6 +287,9 @@ try {
   const stale = await browser.newPage({ viewport: { width: 1440, height: 900 } })
   await stale.goto(BASE, { waitUntil: 'networkidle' })
   await stale.waitForTimeout(700)
+  // Idem: pornirea e pe „Azi", deci lista de proiecte se cere.
+  await stale.locator('.sidebar-nav-item', { hasText: 'Toate proiectele' }).first().click()
+  await stale.waitForTimeout(600)
   await stale.locator('.proj').first().click()
   await stale.waitForTimeout(900)
   await stale.locator('.tab', { hasText: /^List/ }).first().click()
@@ -347,6 +356,8 @@ try {
   const pass = await browser.newPage({ viewport: { width: 1440, height: 900 } })
   await pass.goto(BASE, { waitUntil: 'networkidle' })
   await pass.waitForTimeout(700)
+  await pass.locator('.sidebar-nav-item', { hasText: 'Toate proiectele' }).first().click()
+  await pass.waitForTimeout(600)
   await pass.locator('.proj').first().click()
   await pass.waitForTimeout(900)
   await pass.locator('.tab', { hasText: /^List/ }).first().click()

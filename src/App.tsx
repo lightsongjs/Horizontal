@@ -187,6 +187,14 @@ function TabBar({ screen, onScreen, onProjects, inProjects }: {
 const readDepth = () => (window.history.state as { hzDepth?: number } | null)?.hzDepth ?? 0
 
 const LAST_VIEW_KEY = 'horizontal:last-view'
+/**
+ * „Tabul ăsta a mai fost pornit o dată." `sessionStorage`, nu `localStorage`:
+ * supraviețuiește unui reload, dar moare cu fila/aplicația închisă — exact
+ * linia dintre „deschid aplicația" și „pagina s-a reîncărcat sub mine".
+ * Deschiderea aterizează pe „Azi"; un reload (inclusiv cel prin care `pwa.ts`
+ * aplică un build nou la revenirea în tab) se întoarce unde erai.
+ */
+const SESSION_KEY = 'horizontal:session-started'
 
 /**
  * Ecranul din spatele bării de jos / sidebar. „Ale mele" NU e un
@@ -560,10 +568,20 @@ function Shell() {
         const found = findBySlug(match[1])
         if (found) selectProject(found.id)
       } else {
-        // O listă inteligentă memorată bate ultimul proiect: userul a plecat de
-        // acolo, deci acolo se întoarce.
+        // Pornire proaspătă → „Azi", mereu: aplicația deschisă dimineața
+        // răspunde la „ce am azi", nu la „unde am rămas acum trei zile".
+        // Reîncărcarea aceleiași file e altă întrebare — acolo userul nu
+        // pleca nicăieri, deci lista memorată bate ultimul proiect.
+        let firstRun = true
+        try {
+          firstRun = sessionStorage.getItem(SESSION_KEY) === null
+          sessionStorage.setItem(SESSION_KEY, '1')
+        } catch {
+          // Fereastră privată / stocare blocată: tratăm ca pornire proaspătă.
+        }
         const lastView = parseLastView(localStorage.getItem(LAST_VIEW_KEY))
-        if (lastView) setScreen(lastView)
+        if (firstRun) setScreen('today')
+        else if (lastView) setScreen(lastView)
         else selectLastUsedProject()
       }
     }
