@@ -349,6 +349,15 @@ LISTA_STANGA = (
     '<button class="wave-action-btn active">%s</button>'
     '<button class="wave-action-btn">%s</button></div></div>'
     % (ic('share-2', 14), ic('eye-off', 14), ic('check-check', 14))
+    # Frate al `.wave-sel`, nu al treilea copil al lui — vezi comentariul din
+    # ListView.tsx. `Alex` e activ CU ZERO tichete în val: cazul din
+    # f43add2, filtrul rămâne vizibil chiar dacă schimbi valul pe unul gol.
+    + '<div class="who-bar">'
+      '<button type="button" class="who-chip">Toți <span class="n">6</span></button>'
+      '<button type="button" class="who-chip">Nepasate <span class="n">2</span></button>'
+      '<button type="button" class="who-chip on">Alex <span class="n">0</span></button>'
+      '<button type="button" class="who-chip">Ionuț <span class="n">3</span></button>'
+      '</div>'
     + lgroup(1, 'Începe aici', 2, 'var(--layer-0)',
              lrow('TUR-01', 'Cont Supabase (DB + Auth)', 'var(--layer-0)', urgent=True, docked=True, due='9 sep')
              + lrow('TUR-02', 'Schema tabelelor', 'var(--layer-0)', done=True))
@@ -489,6 +498,98 @@ def att_bar(chips='', n=None, acts=True, disabled=False):
             + '</span><div class="att-strip">' + chips + '</div>'
             + (att_acts(disabled) if acts else '')
             + '</div></div>')
+
+
+# ── FIRUL DE COMENTARII (Thread.tsx) ────────────────────────────────────────
+# `.thread-comment`/`.thread-comment.mine` — DOM real: avatar + card, cardul
+# fără chenar (saltul e `--surface` → `--surface-2` pentru „al meu"). O pasă
+# (`.thread-handoff`) e text simplu aliniat dreapta, deliberat FĂRĂ casetă —
+# un eveniment, nu un mesaj.
+def thread_comment(mine, initials, name, time, text=None, atts=''):
+    cls = 'thread-comment' + (' mine' if mine else '')
+    av_cls = 'thread-avatar' + ('' if initials else ' empty')
+    body = ''
+    if text:
+        body += '<div class="thread-comment-text">%s</div>' % text
+    if atts:
+        body += '<div class="att-strip thread-comment-atts">%s</div>' % atts
+    return ('<div class="%s"><span class="%s">%s</span>'
+            '<div class="thread-comment-body"><div class="thread-comment-card">'
+            '<div class="thread-comment-head"><span class="thread-comment-name">%s</span>'
+            '<span class="thread-comment-time">%s</span></div>%s</div></div></div>'
+            % (cls, av_cls, initials or '', name, time, body))
+
+
+def thread_handoff(a, b, time):
+    return ('<div class="thread-handoff">%s → %s'
+            '<span class="thread-handoff-time">%s</span></div>' % (a, b, time))
+
+
+THREAD_EVENTS = (
+    '<div class="thread-events">'
+    + thread_comment(False, 'AL', 'Alex', '10:20',
+                      'Poți arunca o privire peste schema propusă? Am atașat draftul.')
+    + thread_comment(True, 'IS', 'Ionuț', '10:32', 'Arată bine, dau drumul azi.',
+                      atts=att_file(name='schema-db.pdf', del_btn=False))
+    + thread_handoff('Ionuț', 'Alex', '10:33')
+    + '</div>'
+)
+
+# Caseta de scris — un fișier în curs de trimis, câmpul de text, iar dedesubt
+# `.thread-to-wrap` cu meniul DESCHIS (starea „set", cu destinatar ales) ca să
+# se vadă `.dep-dd-item`-urile lângă rest. Butonul „Trimite" arată deja
+# eticheta de pasă, fiindcă `to !== undefined`.
+THREAD_COMPOSE = (
+    '<div class="thread-compose">'
+    '<div class="thread-pending"><span class="thread-pending-chip">'
+    + ic('paperclip', 13) + '<span class="thread-pending-name">contract-v3.pdf</span>'
+    '<button type="button" aria-label="Scoate contract-v3.pdf">' + ic('x', 11) + '</button>'
+    '</span></div>'
+    '<textarea class="thread-textarea" placeholder="Scrie un comentariu…"></textarea>'
+    '<div class="thread-actions">'
+    + att_acts()
+    + '<div class="thread-to-wrap">'
+      '<button type="button" class="thread-to-btn set">' + ic('arrow-right', 13) + ' către Alex</button>'
+      '<div class="dep-dropdown thread-to-menu">'
+      '<button type="button" class="dep-dd-item"><span class="dep-dd-title">Nimănui'
+      '<span class="thread-to-sub">rămâne la creator</span></span></button>'
+      '<button type="button" class="dep-dd-item"><span class="dep-dd-title">Alex</span></button>'
+      '<button type="button" class="dep-dd-item"><span class="dep-dd-title">Ionuț (eu)</span></button>'
+      '</div></div>'
+    + '<button type="button" class="thread-send-btn">Trimite și pasează</button>'
+    + '</div></div>'
+)
+
+FIR = (
+    '<span class="if-field-label" style="display:block;margin-bottom:8px">Fir</span>'
+    + THREAD_EVENTS + THREAD_COMPOSE
+)
+
+# ═══ ECRANUL „PE MINE" — cutia de pase (InboxView.tsx) ══════════════════════
+# `.inbox-dot`/`.inbox-dot.read` — bulina de necitit; gruparea „Necitite" /
+# „Mai devreme" e doi `.list-group` obișnuiți, ca-n orice altă listă.
+def irow(unread, initials, title, tid, who, ago):
+    dot = 'inbox-dot' + ('' if unread else ' read')
+    return ('<button class="list-row inbox-row">'
+            '<span class="%s" aria-hidden="true"></span>'
+            '<span class="origin-avatar">%s</span>'
+            '<div class="inbox-body"><div class="list-title">%s</div>'
+            '<div class="inbox-meta"><span class="mono">%s</span><span>de la %s</span>'
+            '<time class="mono">%s</time></div></div></button>'
+            % (dot, initials, title, tid, who, ago))
+
+
+PE_MINE = (
+    '<div class="list-group"><div class="list-group-head">'
+    '<span class="list-group-num">2</span><span class="list-group-label">Necitite</span></div>'
+    + irow(True, 'AL', 'Config webhook plăți', 'TUR-07', 'Alex', 'acum 12 min')
+    + irow(True, 'RA', 'Trimite draft ofertă', 'TUR-08', 'Raluca', 'acum 2 h')
+    + '</div>'
+    + '<div class="list-group"><div class="list-group-head">'
+    '<span class="list-group-num">1</span><span class="list-group-label">Mai devreme</span></div>'
+    + irow(False, 'IS', 'Pagină SignUp / Înregistrare', 'TUR-06', 'Ionuț', '9 sep')
+    + '</div>'
+)
 
 
 CONTROALE = ''.join([
@@ -655,6 +756,35 @@ CONTROALE = ''.join([
       + att_bar(att_img(), n=1)
       + '<textarea class="desc-fixed" style="height:70px" placeholder="Cerințe, notițe, context…"></textarea>'
       '</div>'),
+
+    # `.who-chip`/`.who-chip.on` — filtrul de om din „Listă". Normal e doar
+    # `--surface-3`, fără chenar; activ e text plin + linia de 2px, ca peste
+    # tot unde regula nr. 3 se aplică unei stări active.
+    g('Filtru de om',
+      '<button type="button" class="who-chip">Toți <span class="n">6</span></button>'
+      '<button type="button" class="who-chip on">Alex <span class="n">0</span></button>'
+      '<button type="button" class="who-chip">Nepasate <span class="n">2</span></button>'),
+
+    # `.thread-to-btn`/`.thread-to-btn.set` și `.thread-send-btn` — normal ȘI
+    # disabled (fără text de scris, fără destinatar, fără atașament).
+    g('Fir — butonul „către" și „Trimite"',
+      '<button type="button" class="thread-to-btn">' + ic('arrow-right', 13) + ' către…</button>'
+      '<button type="button" class="thread-to-btn set">' + ic('arrow-right', 13) + ' către Alex</button>'
+      '<button type="button" class="thread-send-btn">Trimite</button>'
+      '<button type="button" class="thread-send-btn" disabled>Trimite</button>'),
+
+    # `.origin`/`.holder` — linia de proveniență (cine l-a creat, neschimbată)
+    # și jetonul de deținător (pe cine stă acum, se schimbă la fiecare pasă).
+    # Trei stări de `.holder`: pasat altcuiva, pasat mie („(eu)"), și
+    # `.holder.free` — „nepasat", fără avatar, text italic, mai șters.
+    g('Proveniență și deținător',
+      '<div class="origin"><span class="origin-avatar">AL</span><span>creat de Alex</span>'
+      '<span class="dot">·</span><time class="mono">9 sep</time></div>'
+      '<div class="holder"><span class="arrow">→</span><span class="origin-avatar">RA</span>'
+      '<span class="who">Raluca</span></div>'
+      '<div class="holder"><span class="arrow">→</span><span class="origin-avatar">IS</span>'
+      '<span class="who">Ionuț</span><span class="me">(eu)</span></div>'
+      '<div class="holder free">nepasat — stă la Alex</div>'),
 ])
 
 SCREENS = {
@@ -679,6 +809,28 @@ SCREENS = {
               + HARTA),
     'controale': ('Controale', 'fiecare clasă, normal și activ', None, False, False,
                   '<div class="panel bench-gallery">' + CONTROALE + '</div>'),
+    # Firul (Thread.tsx) trăiește în formularul docat, la fel ca „Listă" —
+    # de-aia și-l ia pe `LISTA_STANGA` (aceeași bară de val + filtru de om)
+    # ca fundal pentru panoul din dreapta, doar că panoul arată firul, nu
+    # meta+dependențe.
+    'fir': ('Aplicație Turism', 'Fir · TUR-07', 'TU', True, True,
+            '<div class="split">'
+            '<div class="split-list"><div class="panel">' + LISTA_STANGA + '</div></div>'
+            '<aside class="split-pane">'
+            '<div class="sh-header">'
+            '<button class="sh-close">%s</button>'
+            '<button class="sh-copy">%s</button>'
+            '<button class="sh-delete">%s</button>'
+            '<span class="sh-title-wrap"><input class="sh-title-input" type="search" '
+            'value="Config webhook plăți" /></span>'
+            '<button class="sh-save" disabled>%s</button></div>'
+            % (ic('x', 16), ic('copy', 15), ic('trash-2', 14), ic('arrow-up', 16))
+            + '<div class="sheet-scroll if-body">' + FIR + '</div>'
+            + '</aside></div>'),
+    # Cutia de pase — al patrulea tab, fără crumb de proiect (InboxView.tsx
+    # n-are `project`, vezi Header cu `inbox` prop în App.tsx).
+    'pe-mine': ('Pe mine', 'Ce ți-a pasat cineva.', ic('user', 18), False, False,
+                '<div class="panel inbox-pad">' + PE_MINE + '</div>'),
 }
 
 
@@ -696,12 +848,16 @@ def screen(key):
             '<main><div class="view">%s</div></main></section>' % (key, head, body))
 
 
+# Patru destinații, nu cinci: „+" a ieșit din bară (e FAB-ul plutitor), iar
+# „Pe mine" e a treia — cu `.tb-badge` pentru necitite (vezi TabBar din
+# App.tsx). Bulina se vede doar sub 900px (`.tabbar { display: none }` mai
+# sus de-atât), la fel ca în aplicație.
 TABBAR = ('<nav class="tabbar">'
           '<button class="on"><span class="tb-ico">%s</span>Azi</button>'
           '<button><span class="tb-ico">%s</span>7 zile</button>'
-          '<button class="tb-add" aria-label="Sarcină nouă"><span class="tb-ico">%s</span></button>'
+          '<button><span class="tb-ico">%s<span class="tb-badge">2</span></span>Pe mine</button>'
           '<button><span class="tb-ico">%s</span>Proiecte</button></nav>'
-          % (ic('calendar-days', 21), ic('calendar-range', 21), ic('plus', 25), ic('layout-grid', 21)))
+          % (ic('calendar-days', 21), ic('calendar-range', 21), ic('user', 21), ic('layout-grid', 21)))
 
 SHELL = """<!doctype html>
 <html lang="ro" data-theme="dark">
@@ -761,6 +917,8 @@ SHELL = """<!doctype html>
   <button data-go="lista">Listă</button>
   <button data-go="lista-gol">Listă · gol</button>
   <button data-go="harta">Hartă</button>
+  <button data-go="fir">Fir</button>
+  <button data-go="pe-mine">Pe mine</button>
   <button data-go="controale">Controale</button>
   <span class="sep"></span>
   <button id="bench-theme">Temă</button>
@@ -795,7 +953,7 @@ __TABBAR__
 """
 
 html = (SHELL
-        .replace('__SCREENS__', ''.join(screen(k) for k in ('ordine', 'proiecte', 'azi', 'lista', 'lista-gol', 'harta', 'controale')))
+        .replace('__SCREENS__', ''.join(screen(k) for k in ('ordine', 'proiecte', 'azi', 'lista', 'lista-gol', 'harta', 'fir', 'pe-mine', 'controale')))
         .replace('__TABBAR__', TABBAR))
 out = os.path.join(ROOT, 'design/preview.html')
 io.open(out, 'w', encoding='utf-8').write(html)

@@ -2,10 +2,27 @@
 // example on first run. Mirrors the Supabase backend's behavior.
 
 import { SEED_ISSUES, SEED_PROJECTS, SEED_THEMES, SEED_WAVES } from '../lib/seed'
-import type { Assignee, Issue, Obstacle, ObstacleLink, Project, Theme, Wave } from '../lib/types'
-import { themeKey, type DueRange, type NewIssue, type NewObstacle, type NewProject, type Repository } from './repository'
+import type { Assignee, Issue, IssueEvent, InboxRow, Obstacle, ObstacleLink, Project, Theme, Wave } from '../lib/types'
+import {
+  themeKey,
+  type DueRange,
+  type NewIssue,
+  type NewObstacle,
+  type NewProject,
+  type NewThreadPost,
+  type Repository,
+} from './repository'
 
 const KEY = 'horizontal:v2'
+
+/**
+ * Un tichet local salvat înainte de `createdAt` n-are de unde să știe când a
+ * apărut cu adevărat — la fel ca cele 486 din producție, migrate fără
+ * `created_by`/`created_at` reale. Momentul evaluării modulului joacă rolul
+ * „orei migrării": un singur moment, stabil pentru toată sesiunea, nu unul
+ * recalculat la fiecare `load()`.
+ */
+const LEGACY_CREATED_AT = new Date().toISOString()
 
 interface DB {
   projects: Project[]
@@ -15,6 +32,9 @@ interface DB {
   assignees: Assignee[]
   obstacles: Obstacle[]
   obstacleLinks: ObstacleLink[]
+  events: IssueEvent[]
+  /** issueId -> ultimul moment în care userul local a văzut firul. */
+  seen: Record<string, string>
 }
 
 function clone<T>(v: T): T {
@@ -41,11 +61,16 @@ function load(): DB {
           allDay: i.allDay ?? true,
           remindAt: i.remindAt ?? null,
           rrule: i.rrule ?? null,
+          createdBy: i.createdBy ?? null,
+          createdAt: i.createdAt ?? LEGACY_CREATED_AT,
         })),
         assignees: db.assignees ?? [],
         // Adăugate după ce cineva avea deja date în localStorage.
         obstacles: (db.obstacles ?? []).map((o) => ({ ...o, deps: o.deps ?? [] })),
         obstacleLinks: db.obstacleLinks ?? [],
+        // Adăugate după ce cineva avea deja date în localStorage — firul.
+        events: db.events ?? [],
+        seen: db.seen ?? {},
       }
     }
   } catch {
@@ -59,6 +84,8 @@ function load(): DB {
     assignees: [],
     obstacles: [],
     obstacleLinks: [],
+    events: [],
+    seen: {},
   }
   save(seeded)
   return seeded
@@ -262,8 +289,13 @@ export function createLocalRepository(): Repository {
         done: false,
         selectors: [],
         scenarios: [],
-        notes: '',
         assigneeId: input.assigneeId ?? null,
+        // Backendul local n-are conturi, deci n-are cine să fie „creatorul":
+        // la fel ca autorul unui comentariu (`'local'`, în `postToThread` de
+        // mai jos) și ca `myAssigneeId` (mereu null în modul local), rămâne
+        // fără identitate — consecvent, nu un rest uitat.
+        createdBy: null,
+        createdAt: new Date().toISOString(),
         urgent: input.urgent ?? false,
         dueAt: input.dueAt ?? null,
         allDay: input.allDay ?? true,
@@ -381,10 +413,91 @@ export function createLocalRepository(): Repository {
 
     async createAssignee(name: string) {
       const db = load()
-      const assignee: Assignee = { id: crypto.randomUUID(), name }
+      const assignee: Assignee = { id: crypto.randomUUID(), name, userId: null }
       db.assignees.push(assignee)
       save(db)
       return clone(assignee)
+    },
+
+    async listEvents(issueId: string) {
+      return clone(load().events ?? [])
+        .filter((e) => e.issueId === issueId)
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+    },
+
+    async postToThread(input: NewThreadPost) {
+      const db = load()
+      const issue = db.issues.find((i) => i.id === input.issueId)
+      if (!issue) throw new Error(`tichet inexistent: ${input.issueId}`)
+      const body = (input.body ?? '').trim()
+      const out: IssueEvent[] = []
+      const at = new Date().toISOString()
+      const base = {
+        issueId: input.issueId,
+        projectId: input.projectId,
+        authorId: 'local',
+        createdAt: at,
+        editedAt: null,
+      }
+      if (body) {
+        out.push({
+          ...base,
+          id: crypto.randomUUID(),
+          kind: 'comment',
+          body,
+          handoffFrom: null,
+          handoffTo: null,
+        })
+      }
+      const to = input.to ?? null
+      if (input.handoff && issue.assigneeId !== to) {
+        out.push({
+          ...base,
+          id: crypto.randomUUID(),
+          kind: 'handoff',
+          body: '',
+          handoffFrom: issue.assigneeId,
+          handoffTo: to,
+        })
+        issue.assigneeId = to
+      }
+      db.events = [...(db.events ?? []), ...out]
+      db.seen = { ...(db.seen ?? {}), [input.issueId]: at }
+      save(db)
+      return clone({ events: out, issue })
+    },
+
+    async markSeen(issueId: string) {
+      const db = load()
+      db.seen = { ...(db.seen ?? {}), [issueId]: new Date().toISOString() }
+      save(db)
+    },
+
+    async listInbox() {
+      const db = load()
+      const events = db.events ?? []
+      const seen = db.seen ?? {}
+      return clone(
+        db.issues
+          .filter((i) => i.assigneeId)
+          .map((i): InboxRow => {
+            const mine = events.filter((e) => e.issueId === i.id)
+            const foreign = mine.filter((e) => e.authorId !== 'local')
+            const last = mine[mine.length - 1]
+            const lastForeign = foreign[foreign.length - 1]
+            return {
+              issueId: i.id,
+              projectId: i.projectId,
+              title: i.title,
+              done: i.done,
+              assigneeId: i.assigneeId,
+              lastEventAt: last?.createdAt ?? null,
+              lastForeignAt: lastForeign?.createdAt ?? null,
+              lastForeignAuthor: lastForeign?.authorId ?? null,
+              seenAt: seen[i.id] ?? null,
+            }
+          }),
+      )
     },
   }
 }

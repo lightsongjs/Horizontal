@@ -2,9 +2,9 @@
 // edge table, per-project waves and themes) to/from the app's models.
 
 import { requireSupabase } from '../lib/supabase'
-import type { Assignee, Issue, Obstacle, ObstacleLink, Project, Theme, Wave } from '../lib/types'
+import type { Assignee, InboxRow, Issue, IssueEvent, Obstacle, ObstacleLink, Project, Theme, Wave } from '../lib/types'
 import { pathsForIssues, pathsForProject, removeObjects } from './attachments'
-import { themeKey, type DueRange, type NewIssue, type NewObstacle, type NewProject, type Repository } from './repository'
+import { themeKey, type DueRange, type NewIssue, type NewObstacle, type NewProject, type NewThreadPost, type Repository } from './repository'
 
 interface IssueRow {
   id: string
@@ -17,8 +17,9 @@ interface IssueRow {
   done: boolean
   selectors: unknown
   scenarios: unknown
-  notes: string
   assignee_id: string | null
+  created_by: string | null
+  created_at: string
   urgent: boolean
   due_at: string | null
   all_day: boolean
@@ -47,8 +48,11 @@ function rowToIssue(row: IssueRow, depsByIssue: Record<string, string[]>): Issue
     done: row.done,
     selectors: Array.isArray(row.selectors) ? (row.selectors as string[]) : [],
     scenarios: Array.isArray(row.scenarios) ? (row.scenarios as { text: string; kind: string }[]).map((s) => ({ text: s.text, kind: s.kind as import('../lib/types').ScenarioKind })) : [],
-    notes: row.notes ?? '',
     assigneeId: row.assignee_id ?? null,
+    createdBy: row.created_by ?? null,
+    // Canonizat prin isoOrNull, ca la IssueEvent.createdAt mai jos — Postgres
+    // întoarce `+00:00`, modelul vrea un singur format ISO-Z.
+    createdAt: isoOrNull(row.created_at) ?? row.created_at,
     urgent: row.urgent ?? false,
     dueAt: isoOrNull(row.due_at),
     allDay: row.all_day ?? true,
@@ -106,6 +110,62 @@ function nextObstacleId(existing: string[], prefix: string): string {
     .filter((n) => Number.isFinite(n))
     .reduce((a, b) => Math.max(a, b), 0)
   return `${pre}${String(max + 1).padStart(2, '0')}`
+}
+
+interface EventRow {
+  id: string
+  issue_id: string
+  project_id: string
+  kind: 'comment' | 'handoff'
+  author_id: string | null
+  body: string
+  handoff_from: string | null
+  handoff_to: string | null
+  created_at: string
+  edited_at: string | null
+}
+
+export function rowToEvent(row: EventRow): IssueEvent {
+  return {
+    id: row.id,
+    issueId: row.issue_id,
+    projectId: row.project_id,
+    kind: row.kind,
+    authorId: row.author_id ?? null,
+    body: row.body ?? '',
+    handoffFrom: row.handoff_from ?? null,
+    handoffTo: row.handoff_to ?? null,
+    // Canonizat prin isoOrNull: `src/lib/thread.ts` compară momente, iar
+    // PostgREST întoarce `+00:00` pentru un timestamp scris din client cu `Z`.
+    createdAt: isoOrNull(row.created_at) ?? row.created_at,
+    editedAt: isoOrNull(row.edited_at),
+  }
+}
+
+interface InboxRowRaw {
+  issue_id: string
+  project_id: string
+  title: string
+  done: boolean
+  assignee_id: string | null
+  last_event_at: string | null
+  last_foreign_at: string | null
+  last_foreign_author: string | null
+  seen_at: string | null
+}
+
+export function rowToInboxRow(row: InboxRowRaw): InboxRow {
+  return {
+    issueId: row.issue_id,
+    projectId: row.project_id,
+    title: row.title,
+    done: row.done,
+    assigneeId: row.assignee_id ?? null,
+    lastEventAt: isoOrNull(row.last_event_at),
+    lastForeignAt: isoOrNull(row.last_foreign_at),
+    lastForeignAuthor: row.last_foreign_author ?? null,
+    seenAt: isoOrNull(row.seen_at),
+  }
 }
 
 export function createSupabaseRepository(): Repository {
@@ -324,6 +384,16 @@ export function createSupabaseRepository(): Repository {
       if (pErr) throw pErr
 
       const id = nextIssueId((existing ?? []).map((r) => r.id), proj.prefix)
+      // `getSession()` citește de obicei sesiunea locală, fără rundă către
+      // rețea — dar nu e GARANTAT: cu un token aproape de expirare, chiar
+      // `getSession()` îl reîmprospătează pe loc, ceea ce E o cerere de
+      // rețea. Oricum, nu e o presupunere despre altcineva, e „cine suntem
+      // noi", exact ce va scrie `default auth.uid()` din migrare. Fără asta,
+      // ecoul optimist de mai jos ar întoarce `createdBy: null`, iar un card
+      // de dependență deschis pe tichetul ăsta ÎNAINTE de următorul fetch
+      // complet ar arăta gol în loc de „creat de <nume>", deși rândul din
+      // bază e deja corect.
+      const { data: sess } = await db.auth.getSession()
       const issue: Issue = {
         id,
         projectId: input.projectId,
@@ -335,8 +405,14 @@ export function createSupabaseRepository(): Repository {
         done: false,
         selectors: input.selectors ?? [],
         scenarios: (input.scenarios ?? []).map((s) => ({ text: s.text, kind: s.kind as import('../lib/types').ScenarioKind })),
-        notes: input.notes ?? '',
         assigneeId: input.assigneeId ?? null,
+        // Nu se trimit la insert: `created_at` are `default now()`, iar
+        // `created_by` are `default auth.uid()` (migrare) — TRIMIS explicit
+        // aici ar bloca acel default (un `null` explicit e o valoare, nu o
+        // absență). Aproximăm doar ecoul întors, ca „creat de X" să apară
+        // instant, fără o rundă suplimentară.
+        createdBy: sess.session?.user.id ?? null,
+        createdAt: new Date().toISOString(),
         urgent: input.urgent ?? false,
         dueAt: isoOrNull(input.dueAt),
         allDay: input.allDay ?? true,
@@ -353,7 +429,6 @@ export function createSupabaseRepository(): Repository {
         done: issue.done,
         selectors: issue.selectors,
         scenarios: issue.scenarios,
-        notes: issue.notes,
         assignee_id: input.assigneeId ?? null,
         urgent: issue.urgent,
         due_at: issue.dueAt,
@@ -380,7 +455,6 @@ export function createSupabaseRepository(): Repository {
       if (patch.done !== undefined) row.done = patch.done
       if (patch.selectors !== undefined) row.selectors = patch.selectors
       if (patch.scenarios !== undefined) row.scenarios = patch.scenarios
-      if (patch.notes !== undefined) row.notes = patch.notes
       if ('assigneeId' in patch) row.assignee_id = patch.assigneeId ?? null
       if ('urgent' in patch) row.urgent = patch.urgent ?? false
       // `in patch`, nu `!== undefined`: ștergerea unei scadențe trimite `null`,
@@ -579,13 +653,55 @@ export function createSupabaseRepository(): Repository {
     async listAssignees(): Promise<Assignee[]> {
       const { data, error } = await db.from('assignees').select('*').order('name')
       if (error) throw error
-      return (data ?? []).map((a) => ({ id: a.id, name: a.name }))
+      return (data ?? []).map((a) => ({ id: a.id, name: a.name, userId: a.user_id ?? null }))
     },
 
     async createAssignee(name: string): Promise<Assignee> {
       const { data, error } = await db.from('assignees').insert({ name }).select('*').single()
       if (error) throw error
-      return { id: data.id, name: data.name }
+      return { id: data.id, name: data.name, userId: data.user_id ?? null }
+    },
+
+    async listEvents(issueId: string): Promise<IssueEvent[]> {
+      const { data, error } = await db.from('issue_events').select('*').eq('issue_id', issueId).order('created_at')
+      if (error) throw error
+      return (data ?? []).map(rowToEvent)
+    },
+
+    async postToThread(input: NewThreadPost) {
+      const { data, error } = await db.rpc('post_to_thread', {
+        p_issue_id: input.issueId,
+        p_project_id: input.projectId,
+        p_body: input.body ?? '',
+        p_handoff: input.handoff ?? false,
+        p_to: input.to ?? null,
+        p_attachment_ids: input.attachmentIds ?? [],
+      })
+      if (error) throw error
+      // `to_jsonb(i)` citește doar tabela `issues`, deci tichetul întors NU
+      // poartă `deps` (ele stau în `dependencies`). Nu inventăm `deps: []` aici
+      // — apelantul păstrează deps-ul vechi al tichetului (vezi Task 6).
+      return {
+        events: (data.events ?? []).map(rowToEvent),
+        issue: rowToIssue(data.issue, {}),
+      }
+    },
+
+    async markSeen(issueId: string): Promise<void> {
+      // Fără `user_id` explicit: coloana are `default auth.uid()` (migrare),
+      // deci baza îl completează singură la INSERT. RLS nu suplinește o
+      // coloană NOT NULL lipsă — filtrează/validează rânduri, nu completează
+      // valori; aici doar refuză orice `user_id` diferit de-al tău.
+      const { error } = await db
+        .from('issue_seen')
+        .upsert({ issue_id: issueId, seen_at: new Date().toISOString() }, { onConflict: 'user_id,issue_id' })
+      if (error) throw error
+    },
+
+    async listInbox(): Promise<InboxRow[]> {
+      const { data, error } = await db.from('inbox_rows').select('*').eq('done', false)
+      if (error) throw error
+      return (data ?? []).map(rowToInboxRow)
     },
   }
 }

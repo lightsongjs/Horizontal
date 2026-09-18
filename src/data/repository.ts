@@ -1,7 +1,7 @@
 // Storage-agnostic data access. The app talks only to this interface; the
 // concrete backend (local or Supabase) is chosen in ./index.ts by env.
 
-import type { Assignee, Issue, Obstacle, ObstacleLink, Project, Theme, Wave } from '../lib/types'
+import type { Assignee, Issue, IssueEvent, InboxRow, Obstacle, ObstacleLink, Project, Theme, Wave } from '../lib/types'
 
 export interface NewProject {
   name: string
@@ -20,13 +20,28 @@ export interface NewIssue {
   deps?: string[]
   selectors?: string[]
   scenarios?: { text: string; kind: string }[]
-  notes?: string
   assigneeId?: string | null
   urgent?: boolean
   dueAt?: string | null
   allDay?: boolean
   remindAt?: string | null
   rrule?: string | null
+}
+
+export interface NewThreadPost {
+  issueId: string
+  projectId: string
+  body?: string
+  /**
+   * `false` = doar comentariu. `true` = mută tichetul la `to`.
+   * Separat de `to` fiindcă `to: null` e o valoare REALĂ — „către nimeni",
+   * adică iau tichetul înapoi la creator. Un singur câmp n-ar putea exprima
+   * trei stări.
+   */
+  handoff?: boolean
+  to?: string | null
+  /** Atașamente deja urcate, care se leagă de comentariul nou-creat. */
+  attachmentIds?: string[]
 }
 
 export interface NewObstacle {
@@ -113,6 +128,16 @@ export interface Repository {
 
   listAssignees(): Promise<Assignee[]>
   createAssignee(name: string): Promise<Assignee>
+
+  /** Firul unui tichet, cronologic. Per tichet, ca listObstacleLinks — un
+   *  proiect vechi are mii de evenimente și nimeni nu le vede pe toate. */
+  listEvents(issueId: string): Promise<IssueEvent[]>
+  /** Comentariul ȘI pasa, într-o singură scriere. Trei apeluri separate pot
+   *  reuși pe jumătate: comentariul scris, tichetul rămas la tine. */
+  postToThread(input: NewThreadPost): Promise<{ events: IssueEvent[]; issue: Issue }>
+  markSeen(issueId: string): Promise<void>
+  /** Cutia de pase: transversal pe proiecte, ca listDueIssues. */
+  listInbox(): Promise<InboxRow[]>
 }
 
 /** Slugify a theme name into a key, unique within `existing`. */

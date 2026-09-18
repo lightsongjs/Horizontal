@@ -19,7 +19,7 @@ function at(off: number, h?: number, m = 0): { dueAt: string; allDay: boolean } 
 function task(id: string, patch: Partial<Issue> = {}): Issue {
   return {
     id, projectId: 'p', title: id, desc: '', theme: '', wave: 1, deps: [], done: false,
-    selectors: [], scenarios: [], notes: '', assigneeId: null, urgent: false,
+    selectors: [], scenarios: [], assigneeId: null, createdBy: null, createdAt: '2026-01-01T00:00:00.000Z', urgent: false,
     ...NO_SCHEDULE, ...patch,
   }
 }

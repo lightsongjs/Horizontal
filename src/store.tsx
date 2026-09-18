@@ -13,6 +13,7 @@ import {
   type ReactNode,
 } from 'react'
 import { repository } from './data'
+import { useAuth } from './auth'
 import { applyOrder, loadOrder, saveOrder } from './lib/projectOrder'
 import type { NewIssue, NewObstacle, NewProject } from './data/repository'
 import {
@@ -25,7 +26,8 @@ import {
 } from './lib/engine'
 import { buildSmartLists, smartListRange, type SmartLists } from './lib/schedule'
 import { blockedBy, detectObstacleCycle } from './lib/obstacles'
-import type { Assignee, Issue, IssueState, Layers, Obstacle, ObstacleLink, Project, Theme, Wave } from './lib/types'
+import { groupInbox } from './lib/thread'
+import type { Assignee, InboxRow, Issue, IssueState, Layers, Obstacle, ObstacleLink, Project, Theme, Wave } from './lib/types'
 import { errorMessage } from './lib/errorMessage'
 import { shouldRefreshOnVisible } from './lib/refreshGate'
 
@@ -75,7 +77,28 @@ interface HorizontalState {
   /** Muchiile obstacol → tichet ale proiectului activ. */
   obstacleLinks: ObstacleLink[]
   myAssigneeId: string | null
-  setMyAssigneeId(id: string | null): void
+  /**
+   * Cutia de pase, tăiată în „Necitite"/„Mai devreme" (`groupInbox`).
+   * Transversal pe proiecte, ca `smartLists` — vezi `loadInbox`.
+   */
+  inbox: { fresh: InboxRow[]; rest: InboxRow[] }
+  /** Fereastra de inbox a fost adusă cel puțin o dată. */
+  inboxLoaded: boolean
+  /**
+   * Marchează firul unui tichet ca văzut — stinge bulina de necitit. Scrie și
+   * pe server (`repository.markSeen`) și local, ca lista să nu aștepte un
+   * refresh întreg ca să reflecte atingerea.
+   */
+  markInboxSeen(issueId: string): Promise<void>
+  /**
+   * Reîncarcă doar cutia de pase — tiparul lui `refreshing`, nu al lui
+   * `loading`: o scriere în fir (`Thread.send`) schimbă `inboxRaw` pe server,
+   * dar `upsertIssue` nu-l atinge, deci fără asta rândul pasat rămâne vizibil
+   * și badge-ul din bara de jos continuă să-l numere până la un refresh întreg.
+   * Nu ridică `loading` — ar demonta `<main>` (deci `SplitView`) sub tichetul
+   * tocmai scris. Vezi `loadInbox`.
+   */
+  refreshInbox(): Promise<void>
 
   selectProject(id: string | null): void
   setActiveWave(wave: number): void
@@ -98,6 +121,13 @@ interface HorizontalState {
   updateIssue(id: string, patch: Partial<Issue>): Promise<void>
   deleteIssue(id: string): Promise<void>
   deleteIssues(ids: string[]): Promise<void>
+  /**
+   * Scrie un tichet deja mutat de altundeva (nu de `repository.updateIssue`)
+   * direct în stare — folosit de `Thread.tsx` după `postToThread`, al cărui
+   * răspuns NU poartă `deps` (vezi comentariul din `supabaseRepository.ts`).
+   * Apelantul răspunde să păstreze `deps` din tichetul vechi.
+   */
+  upsertIssue(issue: Issue): void
 
   createObstacle(input: Omit<NewObstacle, 'projectId'>): Promise<Obstacle | null>
   updateObstacle(id: string, patch: Partial<Obstacle>): Promise<void>
@@ -124,6 +154,7 @@ interface HorizontalState {
 const Ctx = createContext<HorizontalState | null>(null)
 
 export function HorizontalProvider({ children }: { children: ReactNode }) {
+  const { session } = useAuth()
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -150,6 +181,9 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
   // în două locuri (și deci să nu se poată desincroniza).
   const [dueRaw, setDueRaw] = useState<Issue[]>([])
   const [dueLoaded, setDueLoaded] = useState(false)
+  // Cutia de pase. Transversal pe proiecte, ca `dueRaw` — vezi `loadInbox`.
+  const [inboxRaw, setInboxRaw] = useState<InboxRow[]>([])
+  const [inboxLoaded, setInboxLoaded] = useState(false)
   /**
    * Proiectele pentru care listIssues() a adus TOATE tichetele. Doar pentru
    * ele se poate calcula un procent de completare: listele inteligente aduc
@@ -158,15 +192,13 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
    */
   const [loadedProjects, setLoadedProjects] = useState<Set<string>>(() => new Set())
   const [assignees, setAssignees] = useState<Assignee[]>([])
-  const [myAssigneeId, setMyAssigneeIdState] = useState<string | null>(
-    () => localStorage.getItem('horizontal-my-assignee-id')
+  // Cine sunt, ca assignee. Vine din sesiune, nu dintr-un „eu sunt X" salvat
+  // local: creatorul unui tichet și autorul unui comentariu sunt fapte, iar un
+  // `localStorage` se poate minți. `null` = contul nu e legat de niciun nume.
+  const myAssigneeId = useMemo(
+    () => assignees.find((a) => a.userId === session?.user.id)?.id ?? null,
+    [assignees, session],
   )
-
-  const setMyAssigneeId = useCallback((id: string | null) => {
-    setMyAssigneeIdState(id)
-    if (id) localStorage.setItem('horizontal-my-assignee-id', id)
-    else localStorage.removeItem('horizontal-my-assignee-id')
-  }, [])
 
   /**
    * Aduce fereastra de scadențe. Eșecul e tăcut în afară de `error`: listele
@@ -183,10 +215,28 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  /**
+   * Aduce cutia de pase. Transversal pe proiecte, ca `loadDue` — NU intră în
+   * Promise.all-ul per-proiect din `refresh`/`selectProject`: acolo ar fi
+   * refăcută la fiecare comutare de proiect și ar lipsi exact când nu e niciun
+   * proiect deschis, adică fix pe ecranul „Pe mine". Eșecul e tăcut în afară
+   * de `error`, ca `loadDue`: un Supabase indisponibil nu blochează pornirea.
+   */
+  const loadInbox = useCallback(async () => {
+    try {
+      setInboxRaw(await repository.listInbox())
+    } catch (e) {
+      setError(errorMessage(e))
+    } finally {
+      setInboxLoaded(true)
+    }
+  }, [])
+
   const refresh = useCallback(async () => {
     setRefreshing(true)
     setIssuesLoadFailedFor(null)
     void loadDue()
+    void loadInbox()
     try {
       const p = await repository.listProjects()
       setRawProjects(p)
@@ -242,7 +292,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
       lastRefreshAt.current = Date.now()
       setRefreshing(false)
     }
-  }, [projectId, loadDue])
+  }, [projectId, loadDue, loadInbox])
 
   useEffect(() => {
     let alive = true
@@ -252,7 +302,9 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
         if (alive) { setRawProjects(p); setAssignees(a) }
         // Listele inteligente se cer în paralel cu proiectele: sunt prima
         // secțiune din sidebar și trebuie să aibă numere de la primul cadru.
-        if (alive) void loadDue()
+        // La fel cutia de pase — ecranul „Pe mine" trebuie să aibă badge-ul
+        // corect de la primul cadru, fără să aștepte deschiderea unui proiect.
+        if (alive) { void loadDue(); void loadInbox() }
       } catch (e) {
         if (alive) setError(errorMessage(e))
       } finally {
@@ -263,7 +315,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
       }
     })()
     return () => { alive = false }
-  }, [loadDue])
+  }, [loadDue, loadInbox])
 
   useEffect(() => {
     const onVisible = () => {
@@ -311,6 +363,22 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
 
   const smartLists = useMemo(() => buildSmartLists(dueIssues, new Date()), [dueIssues])
 
+  const inbox = useMemo(() => groupInbox(inboxRaw), [inboxRaw])
+
+  /**
+   * Vezi contractul din interfață: scrie și pe server, și local — local ca
+   * bulina să se stingă fără să aștepte un `refresh()` întreg.
+   */
+  const markInboxSeen = useCallback(async (issueId: string) => {
+    try {
+      await repository.markSeen(issueId)
+      setInboxRaw((prev) =>
+        prev.map((r) => (r.issueId === issueId ? { ...r, seenAt: new Date().toISOString() } : r)),
+      )
+    } catch (e) {
+      setError(errorMessage(e))
+    }
+  }, [])
 
   const selectProject = useCallback(
     (id: string | null) => {
@@ -679,7 +747,10 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     obstacles,
     obstacleLinks,
     myAssigneeId,
-    setMyAssigneeId,
+    inbox,
+    inboxLoaded,
+    markInboxSeen,
+    refreshInbox: loadInbox,
     selectProject,
     setActiveWave,
     createProject,
@@ -698,6 +769,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     updateIssue,
     deleteIssue,
     deleteIssues,
+    upsertIssue,
     createObstacle,
     updateObstacle,
     deleteObstacle,

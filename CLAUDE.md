@@ -111,10 +111,17 @@ stânga, formularul tichetului ales în dreapta (`src/components/SplitView.tsx`)
 singur loc: `dockedIssueIdFrom` din `src/ui.tsx`. O vizualizare care poate
 găzdui panoul se anunță cu `registerSplitHost` (numai când e destul de lată),
 iar dacă stiva de foi e exact un `issue-form` cu id, formularul apare acolo în
-loc de modal. Trei lucruri ies gratis din asta, și de-aia regula nu se mută în
-handlerul de click: un deep link aterizează direct în panou; redimensionarea
-ferestrei mută formularul între panou și modal fără să piardă ce ai scris; un
-card de dependență împins deasupra rămâne modal, ca „Înapoi" să aibă sens.
+loc de modal. Două lucruri ies gratis din asta, și de-aia regula nu se mută în
+handlerul de click: un deep link aterizează direct în panou; un card de
+dependență împins deasupra rămâne modal, ca „Înapoi" să aibă sens.
+
+Ce NU iese gratis: redimensionarea peste prag remontează formularul, nu-l mută.
+`SheetHost.tsx` și `SplitView.tsx` randează fiecare propriul `<IssueForm>`, din
+poziții diferite în arbore — trecerea pragului de 1200px demontează o instanță
+și montează cealaltă, iar React nu are cum să păstreze starea locală între ele,
+oricare ar fi `key`-ul. Ce supraviețuiește e doar ce vine din store (`byId`,
+rehidratat din tichetul salvat), nu ce tocmai ai scris nesalvat — o editare în
+curs, redimensionată peste prag, se pierde la fel ca la un click pe alt rând.
 
 **Comutarea nu salvează nimic singură.** Garda de close (`setCloseGuard`) vede
 doar închiderea explicită — un click pe alt rând o ocolește complet. De-aia
@@ -386,6 +393,98 @@ scriu azi doar direct în bază.
 
 Setup: `npm run migrate supabase/migration-obstacles.sql`.
 
+## Firul și pasarea
+
+Regula centrală, de care depinde tot restul: `assignee_id` gol înseamnă „al
+creatorului" — tichetul stă la cine l-a făcut, fără nicio scriere în plus.
+`assignee_id` pus înseamnă „ți-l pasez ție", indiferent cine l-a scris sau cine
+l-a pasat înainte. Nu există o a treia stare („nimănui, dar totuși urmărit de
+cineva") și nu există un pas separat de „preluare" — a pasa ȘI a scrie un
+comentariu sunt un singur gest, `post_to_thread`, ca să nu existe o fereastră
+în care comentariul a plecat dar tichetul n-a ajuns la nimeni.
+
+Din regula asta iese direct forma lui „Pe mine": e scurtă **prin definiție**,
+nu prin filtrare deșteaptă. Interogarea (`inbox_rows`) cere `assignee_id = al
+meu` — un tichet pe care ți-l faci singur n-are niciodată `assignee_id` pus
+(rămâne gol, „al creatorului"), deci n-are cum să treacă vreodată de filtrul
+ăsta. Golul e vestea bună, nu o eroare, și de-aia ecranul spune asta direct în
+loc să tacă. Consecința practică, verificată manual: un tichet pe care l-ai
+creat și nu l-ai pasat NIMĂNUI nu apare în „Pe mine" — nici la tine, nici la
+altcineva — indiferent de câte comentarii capătă.
+
+**De ce „Pe mine" nu e un `SmartListKind`.** Ar trece de typecheck ca al
+patrulea membru, dar ar strica trei lucruri deodată: ecranul ar aștepta
+`dueLoaded`, o încărcare de scadențe care nu-l privește (un tichet ajunge aici
+prin pasă, nu prin dată); quick add-ul de pe un `SmartListKind` cere o zi
+implicită, iar „Pe mine" n-are — nu există „azi" pentru o pasă; și FAB-ul de
+adăugare rapidă ar apărea pe un ecran unde „sarcină nouă" n-are sens: aici nu
+se creează, aici se primește. `screen` din `App.tsx` ține „Pe mine" ca un
+`kind` separat, în afara `SmartListKind`, tocmai ca aceste trei să rămână
+neatinse.
+
+**De ce firul e o singură tabelă, cu `kind`, nu două.** Un comentariu și o pasă
+sunt evenimente pe aceeași axă de timp, iar orice loc care le arată (Thread.tsx,
+un export, un raport viitor) le vrea împreună, cronologic. Cu două tabele,
+fiecare loc ar fi trebuit să interclaseze după `created_at` — un merge pe care
+l-ai fi scris din nou de fiecare dată, cu ocazia să greșești ordinea o dată din
+n. `issue_events.kind` (`comment`/`handoff`) plus constrângerea de formă
+(`issue_events_shape_chk`: un comentariu n-are `handoff_from`/`handoff_to`, o
+pasă n-are `body`) țin „un gest, două rânduri posibile" ca invariant de bază,
+nu de proză.
+
+**De ce scrierea trece printr-o funcție Postgres, nu prin apeluri separate din
+client.** Trei apeluri (insert comentariu, update assignee, atașare fișiere la
+eveniment) pot reuși pe jumătate — rețeaua pică exact între al doilea și al
+treilea, și rezultatul e un comentariu scris care spune „ți-l pasez", dar
+tichetul a rămas la tine. `post_to_thread` (`supabase/migration-comments.sql`)
+face totul într-o singură tranzacție, cu `for update` pe rândul tichetului ca
+două pase simultane să nu scrie două rânduri cu același `handoff_from` —
+istoric fals, nu doar o stare pierdută.
+
+**„Creat de X" (`IssueSheet.tsx`, pe cardul de dependență) vine dintr-un
+default de bază, nu dintr-o scriere de client.** `created_by` are
+`default auth.uid()` (`supabase/migration-comments.sql`) — la fel ca
+`issue_seen.user_id` mai sus. Un client care ar trimite `created_by` explicit
+ar putea numi pe altcineva drept autor, plus că un `null` explicit e o
+valoare, nu o absență, deci ar bloca exact default-ul pe care ne bazăm;
+`supabaseRepository.createIssue` nu-l trimite niciodată la insert. Ecoul
+optimist întors imediat (înainte de orice refetch) citește totuși sesiunea
+locală (`db.auth.getSession()`, de obicei fără rundă către rețea — dar nu
+garantat: cu tokenul aproape de expirare, chiar `getSession()` îl
+reîmprospătează, ceea ce E o cerere de rețea) ca să-l aproximeze corect —
+altfel un card de dependență deschis pe tichetul abia creat, înainte de
+următoarea reîncărcare, ar arăta gol deși rândul din bază e deja corect.
+
+**Un tichet scris cu cheia de serviciu n-are autor uman, și așa trebuie să
+rămână.** `functions/api/` (ticket-kit) scrie direct prin REST cu
+`SUPABASE_SERVICE_ROLE_KEY`, fără sesiune de utilizator — `auth.uid()` e
+`null` în contextul ăla, deci `created_by` rămâne `null`, la fel ca înainte de
+fix. Nu e o gaură: e coloana spunând adevărul. Un tichet creat de o unealtă nu
+are cine să fie „Alex" sau „Bogdan", și inventarea unui autor ar fi mai rea
+decât lipsa lui.
+
+`localRepository` (modul local, fără conturi) rămâne cu `createdBy: null` la
+creare, deliberat: n-are cine să fie creatorul, la fel cum autorul unui
+comentariu local e string-ul `'local'` și `myAssigneeId` e mereu `null` — nu
+un rest uitat, ci aceeași lipsă de identitate peste tot.
+
+Verificat manual, cu conturi reale (`.superpowers/sdd/2026-09-17-comentarii-si-pasare/verify-rpc.mjs`
+e tiparul pentru fir/pasă; ciclul complet — creare, comentariu + atașament +
+pasă într-un singur gest, bulina de necitit, pasă înapoi — a fost dus până la
+capăt cu conturi temporare, șterse la final): un tichet creat prin interfață
+arată „creat de <numele contului>" pe cardul de dependență, imediat, fără
+reîncărcare; un tichet creat prin `POST /api/tickets` are `created_by null` în
+bază.
+
+Pasul de setup: `npm run migrate supabase/migration-comments.sql`, apoi
+`node scripts/link-assignees.mjs` ca să legi conturile de rânduri din
+`assignees` (fără el, „Pe mine" spune corect „nu ești legat de niciun nume" —
+nu e o eroare, e starea de dinainte de legare). Pe o bază nouă `assignees` e
+goală — nu există niciun `<assigneeId>` de dat scriptului — deci primul rând se
+creează ȘI se leagă într-un singur pas: `node scripts/link-assignees.mjs
+--create <nume> <email>`. Fără argumente, scriptul listează conturile și
+rândurile existente, ca să știi ce id să folosești la o legare ulterioară.
+
 ## Reîmprospătarea datelor — de ce nu golește ecranul
 
 Datele se cer din nou la revenirea în tab: asta e tot ce face „un tichet creat
@@ -433,6 +532,15 @@ clase de regresii — amândouă au ajuns în producție o dată:
 Amândouă sunt lente (pornesc un browser), deci nu sunt în `npm test`. Bancul de
 probă din `design/preview.html` rămâne pentru CULOARE; astea două sunt pentru
 GEOMETRIE și NAVIGARE — un banc nu poate arăta un control strivit la zero.
+
+**`src/styles.css` are un BOM UTF-8** (salvat cândva de un editor Windows).
+`design/build-preview.py` nu-l vede — folosește o foaie externă, unde BOM-ul e
+inofensiv. Un test nou care injectează CSS-ul **inline** într-un `<style>` (ca
+`scripts/test-layout.mjs`) nu are același noroc: BOM-ul ajunge text la începutul
+blocului și invalidează prima regulă — care e `:root`, adică toate jetoanele de
+culoare dintr-o singură lovitură. `test-layout.mjs` îl taie explicit
+(`.replace(/^﻿/, '')`); orice test nou cu același tipar trebuie să facă la
+fel, altfel pică tăcut pe „toate culorile sunt negru" în loc de eroare clară.
 
 ## ticket-kit — sync (repo git separat)
 

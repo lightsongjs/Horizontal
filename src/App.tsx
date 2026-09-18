@@ -12,6 +12,7 @@ import { Sidebar } from './components/Sidebar'
 import { QuickSearch } from './components/QuickSearch'
 import { UsersView } from './components/UsersView'
 import { SmartListView, SMART_LISTS, type SmartListKind } from './components/SmartListView'
+import { InboxView } from './components/InboxView'
 import { InfoPanel } from './components/InfoPanel'
 import { Toast } from './components/Toast'
 import { deepLinkNotice, parseTicketPath, resolveTicketProject, ticketPath } from './lib/deepLink'
@@ -57,10 +58,16 @@ function smartCrumb(kind: SmartListKind, now: Date): string {
   return `${DAYS_FULL[d.getDay()]}, ${d.getDate()} ${MON_FULL[d.getMonth()]}`
 }
 
-function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, canWrite, smartList, onExitSmartList, sidebarCollapsed, onToggleSidebar }: { onNewIssue: () => void; onSearch: () => void; onProjectSettings: () => void; onRefresh: () => void; onInfo: () => void; canWrite: boolean; smartList: SmartListKind | null; onExitSmartList: () => void; sidebarCollapsed: boolean; onToggleSidebar: () => void }) {
+function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, canWrite, smartList, onExitSmartList, sidebarCollapsed, onToggleSidebar, inbox = false }: { onNewIssue: () => void; onSearch: () => void; onProjectSettings: () => void; onRefresh: () => void; onInfo: () => void; canWrite: boolean; smartList: SmartListKind | null; onExitSmartList: () => void; sidebarCollapsed: boolean; onToggleSidebar: () => void; /** „Pe mine" — opțional, ca vechile call-site-uri (fără el) să rămână valide. */ inbox?: boolean }) {
   const { project, completion, selectProject, smartLists, refreshing } = useHorizontal()
-  const pct = project ? Math.round(completion(project.id) * 100) : 0
   const list = smartList ? SMART_LISTS.find((s) => s.kind === smartList) : null
+  // Cromul de proiect (progres, „+ Tichet", căutare, setări) e legat de
+  // proiectul DESCHIS ca ecran, nu de orice proiect încărcat în store. O pasă
+  // deschisă din „Pe mine" încarcă proiectul ei ca să meargă formularul —
+  // fără gardă, antetul arăta „+ Tichet”/căutare/setări ale proiectului STRĂIN
+  // peste un ecran care n-are treabă cu el.
+  const projectChrome = inbox ? null : project
+  const pct = projectChrome ? Math.round(completion(projectChrome.id) * 100) : 0
   const listCount = smartList === 'today' ? smartLists.today.length
     : smartList === 'tomorrow' ? smartLists.tomorrow.length
     : smartList === 'week' ? smartLists.week.reduce((n, d) => n + d.issues.length, 0)
@@ -79,39 +86,39 @@ function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, ca
       >
         <Icon name="sidebar" size={15} />
       </button>
-      {(project || list) && (
-        <button className="back" aria-label="Înapoi" onClick={() => (list ? onExitSmartList() : selectProject(null))}>
+      {(projectChrome || list || inbox) && (
+        <button className="back" aria-label="Înapoi" onClick={() => ((list || inbox) ? onExitSmartList() : selectProject(null))}>
           <Icon name="back" size={20} />
         </button>
       )}
-      <div className="logo">{list ? <Icon name={list.icon} size={18} /> : project ? project.prefix.slice(0, 2) : 'H'}</div>
+      <div className="logo">{inbox ? <Icon name="people" size={18} /> : list ? <Icon name={list.icon} size={18} /> : projectChrome ? projectChrome.prefix.slice(0, 2) : 'H'}</div>
       <div className="htxt">
-        <h1>{list ? list.label : project ? project.name : 'Horizontal'}</h1>
+        <h1>{inbox ? 'Pe mine' : list ? list.label : projectChrome ? projectChrome.name : 'Horizontal'}</h1>
         <div className="crumb">
-          {list ? smartCrumb(list.kind, new Date()) : project ? project.description : 'Toate proiectele tale'}
-          {!project && !list && <span style={{ display: 'block', fontSize: '10px', opacity: 0.5, marginTop: '1px' }}>Built: {getBuildAgo()}</span>}
+          {inbox ? 'Ce ți-a pasat cineva.' : list ? smartCrumb(list.kind, new Date()) : projectChrome ? projectChrome.description : 'Toate proiectele tale'}
+          {!projectChrome && !list && !inbox && <span style={{ display: 'block', fontSize: '10px', opacity: 0.5, marginTop: '1px' }}>Built: {getBuildAgo()}</span>}
         </div>
       </div>
       {list && listCount > 0 && <div className="hcount">{listCount}</div>}
-      {project && (
+      {projectChrome && (
         <div className="hprog">
           <span className="dot" />
           <span>{pct}%</span>
         </div>
       )}
-      {project && canWrite && (
+      {projectChrome && canWrite && (
         <button className="header-new-btn" onClick={onNewIssue} title="Tichet nou (C)">
           + Tichet
         </button>
       )}
       {/* Not gated on canWrite, unlike its neighbours: searching changes
           nothing, so a read-only member must be able to do it. */}
-      {project && (
+      {projectChrome && (
         <button className="header-search-btn" onClick={onSearch} aria-label="Caută tichet" title="Caută tichet (O)">
           <Icon name="search" size={15} />
         </button>
       )}
-      {project && canWrite && (
+      {projectChrome && canWrite && (
         <button className="header-settings-btn" onClick={onProjectSettings} aria-label="Setări proiect" title="Setări proiect">
           <Icon name="settingsProject" size={15} />
         </button>
@@ -138,28 +145,38 @@ function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, ca
  * Bara de jos, numai pe telefon (vezi `.tabbar` în styles.css). Pe mobil
  * sidebar-ul e ascuns, deci fără ea listele inteligente n-ar avea drum.
  *
- * Trei tab-uri, nu patru: „+" a ieșit din bară. O bară de navigație spune
+ * Patru tab-uri, nu cinci: „+" a ieșit din bară. O bară de navigație spune
  * UNDE ești, nu CE faci — un buton de acțiune între două destinații se
  * citește ca a treia destinație. Acțiunea e butonul plutitor de deasupra.
  *
- * Și nu patru destinații: „Caută" ar fi fost a patra, dar QuickSearch caută
+ * Și nu cinci destinații: „Caută" ar fi fost a cincea, dar QuickSearch caută
  * în proiectul deschis, iar de aici nu există unul.
+ *
+ * „Pe mine" își ia singur numărul de necitite din store — la fel cum Header
+ * își ia `smartLists` singur — ca Shell să nu care încă un prop prin bară.
  */
-function TabBar({ smartList, onSmartList, onProjects, inProjects }: {
-  smartList: SmartListKind | null
-  onSmartList(kind: SmartListKind): void
+function TabBar({ screen, onScreen, onProjects, inProjects }: {
+  screen: Screen | null
+  onScreen(s: Screen): void
   onProjects(): void
   inProjects: boolean
 }) {
+  const { inbox } = useHorizontal()
   return (
     <nav className="tabbar">
-      <button className={smartList === 'today' ? 'on' : ''} onClick={() => onSmartList('today')}>
+      <button className={screen === 'today' ? 'on' : ''} onClick={() => onScreen('today')} data-tab="today">
         <span className="tb-ico"><Icon name="today" size={21} /></span>Azi
       </button>
-      <button className={smartList === 'week' ? 'on' : ''} onClick={() => onSmartList('week')}>
+      <button className={screen === 'week' ? 'on' : ''} onClick={() => onScreen('week')} data-tab="week">
         <span className="tb-ico"><Icon name="list" size={21} /></span>7 zile
       </button>
-      <button className={inProjects ? 'on' : ''} onClick={onProjects}>
+      <button className={screen === 'inbox' ? 'on' : ''} onClick={() => onScreen('inbox')} data-tab="inbox">
+        <span className="tb-ico">
+          <Icon name="people" size={21} />
+          {inbox.fresh.length > 0 && <span className="tb-badge">{inbox.fresh.length}</span>}
+        </span>Pe mine
+      </button>
+      <button className={inProjects ? 'on' : ''} onClick={onProjects} data-tab="projects">
         <span className="tb-ico"><Icon name="projects" size={21} /></span>Proiecte
       </button>
     </nav>
@@ -171,17 +188,28 @@ const readDepth = () => (window.history.state as { hzDepth?: number } | null)?.h
 
 const LAST_VIEW_KEY = 'horizontal:last-view'
 
+/**
+ * Ecranul din spatele bării de jos / sidebar. „Pe mine" NU e un
+ * `SmartListKind`: un al patrulea `kind` acolo ar trece de typecheck și ar
+ * strica trei lucruri deodată — ecranul ar aștepta `dueLoaded` (o încărcare de
+ * scadențe care nu-l privește), ar cere un `defaultDueAt` pentru `QuickAdd` pe
+ * un ecran care n-are zi, și ar primi FAB-ul de adăugare rapidă, unde crearea
+ * unei sarcini n-are sens. `smartList` (mai jos, în `Shell`) se derivă din
+ * `screen`, ca `Header`/`Sidebar`/`SmartListView` să rămână neatinse.
+ */
+type Screen = SmartListKind | 'inbox'
+
 /** `smart:today` → `today`. Orice altceva → null. */
-function parseLastView(raw: string | null): SmartListKind | null {
+function parseLastView(raw: string | null): Screen | null {
   const kind = raw?.startsWith('smart:') ? raw.slice(6) : null
-  return kind === 'today' || kind === 'tomorrow' || kind === 'week' ? kind : null
+  return kind === 'today' || kind === 'tomorrow' || kind === 'week' || kind === 'inbox' ? kind : null
 }
 
 const slugify = (name: string) =>
   name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '')
 
 function Shell() {
-  const { loading, error, project, projects, issuesLoadedFor, issuesLoadFailedFor, byId, selectProject, refresh, toggleDone, updateIssue } = useHorizontal()
+  const { loading, error, project, projects, issuesLoadedFor, issuesLoadFailedFor, byId, selectProject, refresh, toggleDone, updateIssue, inbox } = useHorizontal()
   const { openNewIssue, openNewProject, openProjectSettings, openIssue, closeSheet, sheet, ticketId, dockedIssueId } = useUI()
   const { isAdmin } = useAuth()
   const canWrite = useCanWrite()
@@ -191,12 +219,23 @@ function Shell() {
   const [sidebarCollapsed, toggleSidebar] = useSidebarCollapsed()
   const [showUsers, setShowUsers] = useState(false)
   /**
-   * Lista inteligentă deschisă. Ca `showUsers`, e un strat peste conținut care
-   * NU deține URL-ul: mașinăria de mai jos e scrisă în jurul a două stări
-   * (proiect, ticket) și nu merită atinsă pentru asta. Ce contează practic —
-   * PWA-ul să se deschidă unde ai rămas — se rezolvă cu `last-view`.
+   * Ecranul „peste listă" deschis — o listă inteligentă sau „Pe mine". Ca
+   * `showUsers`, e un strat peste conținut care NU deține URL-ul: mașinăria de
+   * mai jos e scrisă în jurul a două stări (proiect, ticket) și nu merită
+   * atinsă pentru asta. Ce contează practic — PWA-ul să se deschidă unde ai
+   * rămas — se rezolvă cu `last-view`.
+   *
+   * `smartList` se derivă de aici, ca `Header`/`Sidebar`/`SmartListView` să
+   * rămână neatinse: pentru ele, „Pe mine" pur și simplu nu există.
    */
-  const [smartList, setSmartList] = useState<SmartListKind | null>(null)
+  const [screen, setScreen] = useState<Screen | null>(null)
+  const smartList = screen === 'inbox' ? null : screen
+  // Derivat o singură dată, folosit de orice loc care presupunea „dacă
+  // `project` e încărcat, sunt pe ecranul proiectului" — o presupunere
+  // adevărată înainte de „Pe mine", unde o pasă docată încarcă proiectul EI
+  // ca să meargă formularul, fără să schimbe ecranul. Un singur nume, ca FAB-ul
+  // și scurtăturile de tastatură să nu poată diverge (au divergat o dată).
+  const inInbox = screen === 'inbox'
   // Contor, nu boolean: fiecare apăsare pe „+" trebuie să refocuseze inputul,
   // chiar dacă lista era deja deschisă. Un boolean ar fi „true" a doua oară.
   const [focusQuickAdd, setFocusQuickAdd] = useState(0)
@@ -296,10 +335,12 @@ function Shell() {
   const projectRef = useRef(project)
   projectRef.current = project
   // Citit din `settleUrl`, care e chemat și din handlere de istoric — acolo un
-  // `smartList` închis peste clojură ar fi poza de la montare, nu ecranul de
-  // acum.
-  const smartListRef = useRef(smartList)
-  smartListRef.current = smartList
+  // `screen` închis peste clojură ar fi poza de la montare, nu ecranul de
+  // acum. Full `screen`, nu `smartList`: „Pe mine" trebuie tratat la fel ca o
+  // listă inteligentă aici — ambele forțează `/`, indiferent ce proiect s-a
+  // încărcat între timp în store pentru formularul unei sarcini.
+  const screenRef = useRef(screen)
+  screenRef.current = screen
   const projectsRef = useRef(projects)
   projectsRef.current = projects
   const byIdRef = useRef(byId)
@@ -330,14 +371,15 @@ function Shell() {
   /**
    * Așază URL-ul pe destinația reală (proiect sau landing), fără intrare nouă.
    *
-   * Cu o listă inteligentă pe ecran, destinația reală e `/` oricare ar fi
-   * proiectul primit: acolo proiectul e încărcat doar ca să meargă formularul
-   * sarcinii, nu e ecranul pe care te afli. Fără regula asta, închiderea sau
-   * ștergerea unei sarcini din „Azi" lăsa în bară `/project/<slug>` — iar
-   * următoarea repornire chiar te muta acolo.
+   * Cu o listă inteligentă SAU „Pe mine" pe ecran, destinația reală e `/`
+   * oricare ar fi proiectul primit: acolo proiectul e încărcat doar ca să
+   * meargă formularul sarcinii, nu e ecranul pe care te afli. Fără regula
+   * asta, închiderea sau ștergerea unei sarcini din „Azi" (sau dintr-o pasă
+   * deschisă din „Pe mine") lăsa în bară `/project/<slug>` — iar următoarea
+   * repornire chiar te muta acolo.
    */
   const settleUrl = (p: Project | null) => {
-    const path = projectPath(smartListRef.current ? null : p)
+    const path = projectPath(screenRef.current ? null : p)
     if (window.location.pathname !== path) replacePath(path)
   }
   /**
@@ -390,24 +432,26 @@ function Shell() {
   }, [refresh])
 
   // Ce secțiune era deschisă la ultima folosire. Fără asta, un PWA deschis de pe
-  // ecranul de start ar ateriza mereu în proiecte, nu în lista de azi.
+  // ecranul de start ar ateriza mereu în proiecte, nu în lista de azi (sau, cu
+  // „Pe mine" restaurat, într-un proiect la întâmplare).
   useEffect(() => {
-    if (smartList) localStorage.setItem(LAST_VIEW_KEY, `smart:${smartList}`)
+    if (screen) localStorage.setItem(LAST_VIEW_KEY, `smart:${screen}`)
     else if (project) localStorage.removeItem(LAST_VIEW_KEY)
-  }, [smartList, project])
+  }, [screen, project])
 
-  const openSmartList = useCallback((kind: SmartListKind) => {
+  const openScreen = useCallback((s: Screen) => {
     setShowUsers(false)
-    setSmartList(kind)
+    setScreen(s)
     selectProject(null)
   }, [selectProject])
 
   const exitSmartList = useCallback(() => {
-    setSmartList(null)
+    setScreen(null)
     localStorage.removeItem(LAST_VIEW_KEY)
     // Deschiderea unei sarcini încarcă proiectul ei în store, fără să schimbe
-    // ecranul. Fără curățenia asta, un Back din „Azi" ar ateriza pe boardul
-    // ultimei sarcini deschise — un loc pe care nu l-a cerut nimeni.
+    // ecranul. Fără curățenia asta, un Back din „Azi" (sau dintr-o pasă
+    // deschisă din „Pe mine") ar ateriza pe boardul ultimei sarcini deschise —
+    // un loc pe care nu l-a cerut nimeni.
     selectProject(null)
   }, [selectProject])
 
@@ -496,7 +540,7 @@ function Shell() {
       // aplică un build nou la revenirea în tab, adică reîncarcă pagina exact
       // peste un card deschis.
       const lastView = parseLastView(localStorage.getItem(LAST_VIEW_KEY))
-      if (lastView) setSmartList(lastView)
+      if (lastView) setScreen(lastView)
       const owner = resolveTicketProject(projects, target)
       if (owner) {
         deepLinkPending.current = target
@@ -519,7 +563,7 @@ function Shell() {
         // O listă inteligentă memorată bate ultimul proiect: userul a plecat de
         // acolo, deci acolo se întoarce.
         const lastView = parseLastView(localStorage.getItem(LAST_VIEW_KEY))
-        if (lastView) setSmartList(lastView)
+        if (lastView) setScreen(lastView)
         else selectLastUsedProject()
       }
     }
@@ -682,25 +726,32 @@ function Shell() {
       // proiect — fără Inbox, fiecare sarcină are un proiect. `canWrite` e
       // despre proiectul DESCHIS, deci nu se aplică; dreptul îl decide
       // `useWritableProjects`, care hrănește chiar selectorul acela.
+      // `inInbox` taie fiecare ramură de mai jos care ar acționa pe `project`:
+      // pe „Pe mine", o pasă docată încarcă proiectul EI în store ca formularul
+      // să funcționeze, dar nu suntem pe ecranul acelui proiect. Fără gardă, C
+      // deschidea un tichet nou ÎN PROIECTUL STRĂIN peste panou, O deschidea
+      // căutarea limitată la el, iar 1-4 schimbau un tab de proiect care nici
+      // nu se vede — exact scurgerea reparată la FAB, acum în ambele locuri.
       if (e.key === 'c' || e.key === 'C') {
         e.preventDefault()
+        if (inInbox) return
         if (smartList) { if (writableProjects.length) setFocusQuickAdd((n) => n + 1); return }
         if (!canWrite) return
         if (!leaveDocked()) return
         project && openNewIssue()
       }
-      else if (e.key === 'o' || e.key === 'O') { e.preventDefault(); if (!leaveDocked()) return; project && setShowSearch(true) }
+      else if (e.key === 'o' || e.key === 'O') { e.preventDefault(); if (inInbox) return; if (!leaveDocked()) return; project && setShowSearch(true) }
       else if (e.key === 'p' || e.key === 'P') { e.preventDefault(); if (!isAdmin) return; if (!leaveDocked()) return; openNewProject() }
       else if (e.key === '?') { e.preventDefault(); setShowInfo(v => !v) }
       else if (e.key === '[') { e.preventDefault(); toggleSidebar() }
-      else if (e.key === '1' && project) { e.preventDefault(); changeTab('list') }
-      else if (e.key === '2' && project) { e.preventDefault(); changeTab('ordine') }
-      else if (e.key === '3' && project) { e.preventDefault(); changeTab('graf') }
-      else if (e.key === '4' && project) { e.preventDefault(); changeTab('teme') }
+      else if (!inInbox && e.key === '1' && project) { e.preventDefault(); changeTab('list') }
+      else if (!inInbox && e.key === '2' && project) { e.preventDefault(); changeTab('ordine') }
+      else if (!inInbox && e.key === '3' && project) { e.preventDefault(); changeTab('graf') }
+      else if (!inInbox && e.key === '4' && project) { e.preventDefault(); changeTab('teme') }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [project, openNewIssue, openNewProject, modalOpen, showInfo, showSearch, showUsers, canWrite, isAdmin, toggleSidebar, changeTab, leaveDocked, smartList, writableProjects])
+  }, [project, openNewIssue, openNewProject, modalOpen, showInfo, showSearch, showUsers, canWrite, isAdmin, toggleSidebar, changeTab, leaveDocked, smartList, writableProjects, inInbox])
 
   /**
    * Butoanele notificării („Gata", „Amână"). Cu o filă deschisă, PAGINA e
@@ -779,13 +830,16 @@ function Shell() {
       <Sidebar
         isAdmin={isAdmin}
         showUsers={showUsers && isAdmin}
-        onShowUsers={() => { setShowUsers(true); setSmartList(null) }}
+        onShowUsers={() => { setShowUsers(true); setScreen(null) }}
         onNavigate={() => { setShowUsers(false); exitSmartList() }}
         smartList={smartList}
-        onSmartList={openSmartList}
+        onSmartList={openScreen}
+        inboxActive={inInbox}
+        inboxUnread={inbox.fresh.length}
+        onInbox={() => openScreen('inbox')}
       />
       <div className="app-body">
-        <Header onNewIssue={openNewIssue} onSearch={() => setShowSearch(true)} onProjectSettings={openProjectSettings} onRefresh={refresh} onInfo={() => setShowInfo(true)} canWrite={canWrite} smartList={smartList} onExitSmartList={exitSmartList} sidebarCollapsed={sidebarCollapsed} onToggleSidebar={toggleSidebar} />
+        <Header onNewIssue={openNewIssue} onSearch={() => setShowSearch(true)} onProjectSettings={openProjectSettings} onRefresh={refresh} onInfo={() => setShowInfo(true)} canWrite={canWrite} smartList={smartList} onExitSmartList={exitSmartList} sidebarCollapsed={sidebarCollapsed} onToggleSidebar={toggleSidebar} inbox={inInbox} />
         <main ref={mainRef}>
           {pullY > 0 && (
             <div style={{ textAlign: 'center', padding: '6px 0', fontSize: '13px', color: 'var(--txt-dim)', transform: `translateY(${pullY * 0.4}px)`, transition: pullY === 0 ? 'transform 0.3s' : 'none' }}>
@@ -797,6 +851,8 @@ function Shell() {
             <div className="view">
               <p className="empty">Se încarcă…</p>
             </div>
+          ) : inInbox ? (
+            <InboxView onOpen={openTaskAnywhere} />
           ) : smartList ? (
             <SmartListView kind={smartList} onOpenTask={openTaskAnywhere} focusSignal={focusQuickAdd} />
           ) : showUsers && isAdmin ? (
@@ -807,7 +863,10 @@ function Shell() {
             <ProjectsView />
           )}
         </main>
-        {(smartList || (project ? canWrite : isAdmin)) && (
+        {/* „Pe mine" n-are FAB: nu există „sarcină nouă" fără o zi și, cu
+            proiectul curent gol pe acest ecran, condiția de mai jos ar fi
+            arătat „Adaugă proiect" unui admin — un buton fără sens aici. */}
+        {!inInbox && (smartList || (project ? canWrite : isAdmin)) && (
           <button
             className="fab"
             aria-label={smartList ? 'Sarcină nouă' : project ? 'Adaugă tichet' : 'Adaugă proiect'}
@@ -819,10 +878,10 @@ function Shell() {
           </button>
         )}
         <TabBar
-          smartList={smartList}
-          onSmartList={openSmartList}
+          screen={screen}
+          onScreen={openScreen}
           onProjects={() => { exitSmartList(); setShowUsers(false); selectProject(null) }}
-          inProjects={!smartList && !showUsers}
+          inProjects={!screen && !showUsers}
         />
       </div>
       <Toast message={notice} onDone={clearNotice} />

@@ -917,6 +917,43 @@ main {
   background: var(--txt-faint);
 }
 
+/* FILTRU DE OM (Listă) — rând PROPRIU, frate al `.wave-sel`, nu al treilea
+   copil: acolo `.wave-tabs` are flex:1 și valurile s-ar strivi. Numărul de
+   oameni nu e mărginit ca cel de valuri, deci scroll orizontal, nu wrap. */
+.who-bar {
+  display: flex;
+  gap: 7px;
+  margin-bottom: 14px;
+  padding: 8px 15px;
+  overflow-x: auto;
+  background: var(--surface);
+  box-shadow: var(--amb);
+  border-radius: var(--r-m);
+  scrollbar-width: none;
+}
+.who-bar::-webkit-scrollbar { display: none; }
+.who-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  background: var(--surface-3);
+  border: 0;
+  /* Jeton, ca `.holder`/`.dep-tab-btn` — r-s, nu r-m. */
+  border-radius: var(--r-s);
+  padding: 6px 10px;
+  color: var(--txt-dim);
+  font-size: 13px;
+  cursor: pointer;
+}
+/* Activ = text plin + linie de 2px. Nicio casetă umplută, niciun gradient. */
+.who-chip.on {
+  color: var(--txt);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+.who-chip .n { font-family: var(--mono); font-size: 10px; color: var(--txt-faint); }
+.who-chip.on .n { color: var(--accent); }
+
 /* BOTTOM SHEET */
 .sheet-bg {
   position: fixed;
@@ -1014,6 +1051,66 @@ main {
   color: var(--txt-dim);
   margin-top: 5px;
   line-height: 1.5;
+}
+/* ── PROVENIENȚĂ + DEȚINĂTOR ─────────────────────────
+   Cine l-a creat (nu se schimbă niciodată) și pe cine stă acum (se schimbă la
+   fiecare pasă) — vezi IssueSheet. Numele e limbă → serif, moștenit din body;
+   data e cifră → mono, explicit mai jos. */
+.origin {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 12.5px;
+  color: var(--txt-faint);
+}
+.origin .dot { color: var(--txt-faint); }
+.origin .mono {
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.origin-avatar {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-3);
+  color: var(--txt-dim);
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+}
+/* Jetonul „holder" n-are chenar: saltul e de fundal (surface-3), nu de linie. */
+.holder {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 3px 9px 3px 6px;
+  background: var(--surface-3);
+  border-radius: var(--r-s);
+  font-size: 12.5px;
+  color: var(--txt-dim);
+}
+.holder .arrow {
+  font-family: var(--mono);
+  color: var(--txt-faint);
+}
+.holder .who { font-weight: 600; color: var(--txt); }
+/* „(eu)" — singurul semnal „tichetul ăsta e pe mine"; text plin, nu casetă. */
+.holder .me {
+  margin-left: 4px;
+  color: var(--accent);
+  font-weight: 600;
+}
+/* Nepasat: afirmație generică („stă la creator"), nu un jeton de persoană —
+   de-aia n-are avatar și textul e mai șters. */
+.holder.free {
+  color: var(--txt-faint);
+  font-style: italic;
 }
 /* Descrierea tichetului, în zona derulabilă (vezi IssueSheet).
    `pre-wrap` fiindcă vine din `<textarea>`: fără el rândurile scrise de om se
@@ -3936,13 +4033,73 @@ main {
   margin: 2px 0;
 }
 
-/* ── NOTES SECTION ─────────────────────────────── */
-.notes-section {
-  padding: 0 16px 16px;
-  flex: 1;
-}
+/* ── FIR (Thread.tsx) ──────────────────────────── */
+.thread { padding: 0 16px 16px; flex: 1; }
 
-.notes-section textarea {
+.thread-events { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+.thread-loading, .thread-empty { color: var(--txt-faint); font-size: 13px; font-style: italic; padding: 2px 0; }
+
+.thread-comment { display: flex; gap: 8px; align-items: flex-start; }
+.thread-avatar {
+  flex-shrink: 0;
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--surface-3); color: var(--txt-dim);
+  font-family: var(--mono); font-size: 10px; font-weight: 700;
+  margin-top: 2px;
+}
+.thread-comment.mine .thread-avatar { background: var(--accent-soft); color: var(--accent); }
+.thread-avatar.empty { background: transparent; }
+.thread-comment-body { flex: 1; min-width: 0; }
+.thread-comment-card {
+  background: var(--surface);
+  box-shadow: var(--amb);
+  border-radius: var(--r-m);
+  padding: 8px 10px;
+}
+.thread-comment.mine .thread-comment-card { background: var(--surface-2); }
+.thread-comment-head { display: flex; align-items: baseline; gap: 7px; margin-bottom: 3px; }
+.thread-comment-name { font-size: 13px; font-weight: 600; color: var(--txt); }
+.thread-comment-time { font-family: var(--mono); font-size: 11px; color: var(--txt-faint); }
+.thread-comment-text { font-size: 13px; line-height: 1.55; color: var(--txt); white-space: pre-wrap; overflow-wrap: break-word; }
+/* Refolosește `.att-strip`/`.att-chip` din Attachments.tsx — aceleași
+   miniaturi și același lightbox ca bara tichetului, doar grupate sub
+   comentariul care le-a adus. Fără `.att-del`: firul e istoric, nu se editează. */
+.thread-comment-atts { margin-top: 6px; }
+.thread-comment-text + .thread-comment-atts { margin-top: 8px; }
+
+/* O pasă e un eveniment, nu un mesaj — fără casetă, ca să nu se citească
+   drept replică goală. Aliniată la dreapta, ca să se deosebească dintr-o
+   privire de firul de comentarii. */
+.thread-handoff {
+  text-align: right;
+  font-size: 12px;
+  color: var(--txt-dim);
+  padding: 2px 4px;
+}
+.thread-handoff-time { font-family: var(--mono); color: var(--txt-faint); margin-left: 6px; }
+
+.thread-compose { margin-top: 4px; }
+
+.thread-pending { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.thread-pending-chip {
+  display: flex; align-items: center; gap: 5px;
+  background: var(--surface-3); border-radius: var(--r-s);
+  padding: 4px 6px 4px 8px; font-size: 11.5px; color: var(--txt-dim);
+}
+.thread-pending-chip button { display: flex; padding: 2px; background: none; border: none; color: inherit; opacity: 0.6; cursor: pointer; }
+.thread-pending-chip button:hover { opacity: 1; color: var(--blocked); }
+.thread-pending-name { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.thread-att-msg {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 6px; padding: 6px 10px;
+  border-radius: var(--r-m); background: var(--accent-soft); font-size: 12px;
+}
+.thread-att-msg button { margin-left: auto; background: none; border: none; color: inherit; cursor: pointer; }
+
+.thread-textarea {
   width: 100%;
   background: rgba(0, 0, 0, 0.15);
   border: 1px solid var(--line);
@@ -3954,31 +4111,50 @@ main {
   padding: 10px 12px;
   outline: none;
   resize: none;
-  overflow-y: auto;
+  min-height: 72px;
   transition: border-color 0.14s;
 }
-.notes-section textarea:focus { border-color: color-mix(in srgb, var(--accent) 30%, transparent); }
-.notes-section textarea::placeholder { color: var(--txt-faint); font-style: italic; }
+.thread-textarea:focus { border-color: color-mix(in srgb, var(--accent) 30%, transparent); }
+.thread-textarea::placeholder { color: var(--txt-faint); font-style: italic; }
 
-.notes-label {
-  display: block;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: var(--txt);
-  padding: 10px 0 6px;
+.thread-actions { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+
+.thread-to-wrap { position: relative; }
+.thread-to-btn {
+  display: flex; align-items: center; gap: 5px;
+  background: var(--surface-3); color: var(--txt-dim);
+  border: none; border-radius: var(--r-s);
+  padding: 6px 10px; font-size: 12px; font-weight: 500; font-family: var(--font);
+  cursor: pointer; white-space: nowrap;
 }
+.thread-to-btn:hover { background: var(--surface-2); }
+/* Stare activă = text plin + linie de 2px, niciodată casetă umplută. */
+.thread-to-btn.set { color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent); }
+.thread-to-menu { min-width: 200px; z-index: 70; }
+.thread-to-sub { display: block; font-family: var(--font); font-size: 10.5px; color: var(--txt-faint); margin-top: 1px; }
+
+.thread-send-btn {
+  margin-left: auto;
+  background: var(--accent);
+  color: var(--on-accent);
+  border: none; border-radius: var(--r-s);
+  padding: 7px 14px;
+  font-size: 12.5px; font-weight: 600; font-family: var(--font);
+  cursor: pointer;
+  transition: all 0.14s;
+}
+.thread-send-btn:hover:not(:disabled) { background: var(--accent-2); }
+.thread-send-btn:disabled { background: var(--surface-3); color: var(--txt-faint); cursor: not-allowed; }
 
 /* ── LIGHT THEME OVERRIDES — issue form fields ─── */
 [data-theme='light'] .desc-fixed,
-[data-theme='light'] .notes-section textarea,
+[data-theme='light'] .thread-textarea,
 [data-theme='light'] .dep-search-field {
   background: var(--field-bg);
   border-color: var(--accent-soft);
 }
 [data-theme='light'] .desc-fixed:focus,
-[data-theme='light'] .notes-section textarea:focus {
+[data-theme='light'] .thread-textarea:focus {
   background: var(--accent-soft);
   border-color: var(--accent);
 }
@@ -4630,6 +4806,33 @@ main {
 .t-proj-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .t-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 
+/* ── PE MINE (InboxView.tsx) ─────────────────────────────────────────
+   Aceeași lățime de citit ca listele inteligente — vezi `.smart-list`. */
+.inbox-pad { max-width: 760px; padding: 14px 14px 0; }
+.inbox-row { align-items: flex-start; min-height: 44px; }
+.inbox-dot {
+  flex: 0 0 auto;
+  width: 7px; height: 7px; border-radius: 50%;
+  margin-top: 6px;
+  background: var(--accent);
+}
+/* Citit: golul rămâne, ca rândurile să nu sară la stânga-dreapta. */
+.inbox-dot.read { background: transparent; }
+.inbox-body { flex: 1; min-width: 0; }
+.inbox-body .list-title { white-space: normal; }
+.inbox-meta {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  font-size: 11px; color: var(--txt-faint); margin-top: 2px;
+}
+.inbox-meta .mono { font-family: var(--mono); }
+.inbox-empty .big {
+  display: block;
+  font-size: 15.5px;
+  font-weight: 600;
+  color: var(--txt-dim);
+  margin-bottom: 6px;
+}
+
 /* ── QUICK ADD ───────────────────────────────────────────────────────
    Evidențierea fragmentului de dată se face cu un strat-oglindă sub un
    input transparent. Cele două TREBUIE să aibă metrici identice — orice
@@ -4837,7 +5040,20 @@ main {
     border-radius: var(--r-s);
   }
   .tabbar button.on { color: var(--accent); }
-  .tabbar .tb-ico { display: inline-flex; align-items: center; justify-content: center; }
+  .tabbar .tb-ico { position: relative; display: inline-flex; align-items: center; justify-content: center; }
+  /* Bulina „Pe mine" necitite — un jeton, nu o casetă activă: nu ține de
+     starea butonului, ci de conținutul din spatele lui. */
+  .tb-badge {
+    position: absolute;
+    top: -3px; right: -9px;
+    min-width: 14px; height: 14px; padding: 0 3px;
+    border-radius: var(--r-s);
+    background: var(--accent);
+    color: var(--on-accent);
+    font-family: var(--mono);
+    font-size: 9px; font-weight: 700; line-height: 14px;
+    text-align: center;
+  }
 
   /* Numele proiectului costă exact lățimea care taie titlul, iar titlul e
      singurul lucru care contează într-o listă. Rămâne punctul colorat;

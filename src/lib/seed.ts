@@ -29,9 +29,9 @@ export const SEED_THEMES: Theme[] = [
 ]
 
 export const SEED_ISSUES: Issue[] = [
-  { id: 'EX-01', projectId: 'demo', title: 'Adresă email proiect', desc: '', theme: 'email', wave: 1, deps: [], done: true, selectors: [], scenarios: [], notes: '', assigneeId: null, urgent: false, ...NO_SCHEDULE },
-  { id: 'EX-02', projectId: 'demo', title: 'Cont bază de date', desc: '', theme: 'db', wave: 1, deps: ['EX-01'], done: false, selectors: [], scenarios: [], notes: '', assigneeId: null, urgent: false, ...NO_SCHEDULE },
-  { id: 'EX-03', projectId: 'demo', title: 'Cont server mail', desc: '', theme: 'email', wave: 1, deps: ['EX-01'], done: false, selectors: [], scenarios: [], notes: '', assigneeId: null, urgent: false, ...NO_SCHEDULE },
-  { id: 'EX-04', projectId: 'demo', title: 'Pagina de înregistrare', desc: '', theme: 'auth', wave: 1, deps: ['EX-02', 'EX-03'], done: false, selectors: [], scenarios: [], notes: '', assigneeId: null, urgent: true, ...NO_SCHEDULE },
-  { id: 'EX-05', projectId: 'demo', title: 'Administrare utilizatori', desc: '', theme: 'auth', wave: 2, deps: ['EX-04'], done: false, selectors: [], scenarios: [], notes: '', assigneeId: null, urgent: false, ...NO_SCHEDULE },
+  { id: 'EX-01', projectId: 'demo', title: 'Adresă email proiect', desc: '', theme: 'email', wave: 1, deps: [], done: true, selectors: [], scenarios: [], assigneeId: null, createdBy: null, createdAt: '2026-01-01T00:00:00.000Z', urgent: false, ...NO_SCHEDULE },
+  { id: 'EX-02', projectId: 'demo', title: 'Cont bază de date', desc: '', theme: 'db', wave: 1, deps: ['EX-01'], done: false, selectors: [], scenarios: [], assigneeId: null, createdBy: null, createdAt: '2026-01-01T00:00:00.000Z', urgent: false, ...NO_SCHEDULE },
+  { id: 'EX-03', projectId: 'demo', title: 'Cont server mail', desc: '', theme: 'email', wave: 1, deps: ['EX-01'], done: false, selectors: [], scenarios: [], assigneeId: null, createdBy: null, createdAt: '2026-01-01T00:00:00.000Z', urgent: false, ...NO_SCHEDULE },
+  { id: 'EX-04', projectId: 'demo', title: 'Pagina de înregistrare', desc: '', theme: 'auth', wave: 1, deps: ['EX-02', 'EX-03'], done: false, selectors: [], scenarios: [], assigneeId: null, createdBy: null, createdAt: '2026-01-01T00:00:00.000Z', urgent: true, ...NO_SCHEDULE },
+  { id: 'EX-05', projectId: 'demo', title: 'Administrare utilizatori', desc: '', theme: 'auth', wave: 2, deps: ['EX-04'], done: false, selectors: [], scenarios: [], assigneeId: null, createdBy: null, createdAt: '2026-01-01T00:00:00.000Z', urgent: false, ...NO_SCHEDULE },
 ]

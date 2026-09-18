@@ -19,6 +19,14 @@ export interface Attachment {
   size: number
   contentType: string
   createdAt: string
+  /**
+   * Comentariul (`issue_events.id`) de care s-a legat, dacă a fost urcat din
+   * caseta firului (`Thread.tsx`). `null` = atașat direct la tichet (bara din
+   * `Attachments.tsx`), sau încă neconfirmat — `post_to_thread` îl leagă abia
+   * la trimitere. `Thread.tsx` grupează pe câmpul ăsta ca să arate fiecare
+   * poză sub comentariul care a adus-o.
+   */
+  eventId: string | null
 }
 
 export const BUCKET = 'attachments'
@@ -45,6 +53,7 @@ interface AttachmentRow {
   size: number
   content_type: string
   created_at: string
+  event_id?: string | null
 }
 
 function rowToAttachment(r: AttachmentRow): Attachment {
@@ -57,6 +66,7 @@ function rowToAttachment(r: AttachmentRow): Attachment {
     size: r.size,
     contentType: r.content_type,
     createdAt: r.created_at,
+    eventId: r.event_id ?? null,
   }
 }
 

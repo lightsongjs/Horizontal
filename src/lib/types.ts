@@ -8,6 +8,9 @@ export type IssueState = 'done' | 'active' | 'blocked'
 export interface Assignee {
   id: string
   name: string
+  /** Contul (`auth.users`) legat de rândul ăsta, dacă există. `null` = nelegat
+   *  încă — vezi `scripts/link-assignees.mjs`. */
+  userId: string | null
 }
 
 export interface Project {
@@ -63,8 +66,20 @@ export interface Issue {
   /** Playwright locator strings. */
   selectors: string[]
   scenarios: TestScenario[]
-  notes: string
   assigneeId: string | null
+  /**
+   * Contul (`auth.users`) care a creat tichetul — nu se schimbă niciodată,
+   * spre deosebire de `assigneeId`. `null` = nu se știe: cazul normal azi,
+   * fiindcă la 486 de tichete deja existente coloana a venit goală. E un id
+   * de cont, nu de assignee — se mapează prin `assignees.userId`, la fel ca
+   * `IssueEvent.authorId`.
+   */
+  createdBy: string | null
+  /**
+   * Când a apărut tichetul, ISO 8601. Pentru tichetele vechi e ora migrării,
+   * nu ora reală de creare.
+   */
+  createdAt: string
   /** Urgent issues sort left within their layer. Default false. */
   urgent: boolean
   /**
@@ -131,4 +146,46 @@ export interface Obstacle {
 export interface ObstacleLink {
   obstacleId: string
   issueId: string
+}
+
+/**
+ * Un eveniment din firul unui tichet. Append-only: comentariile se pot edita
+ * (doar `body`), pasele niciodată. `kind` le ține în aceeași tabelă fiindcă se
+ * citesc împreună, cronologic — vezi specul.
+ */
+export interface IssueEvent {
+  id: string
+  issueId: string
+  projectId: string
+  kind: 'comment' | 'handoff'
+  /** Contul care a scris. `null` = notă migrată din vechiul câmp `notes`. */
+  authorId: string | null
+  body: string
+  /** Doar pe `kind: 'handoff'`. Assignee-ul de dinainte, `null` = nepasat. */
+  handoffFrom: string | null
+  /** Doar pe `kind: 'handoff'`. `null` = „către nimeni", adică luat înapoi. */
+  handoffTo: string | null
+  createdAt: string
+  editedAt: string | null
+}
+
+/**
+ * Un rând din cutia de pase. Nu poartă firul, doar cele două momente din care
+ * se decide bulina de necitit — altfel fiecare rând ar trage după el zeci de
+ * evenimente.
+ */
+export interface InboxRow {
+  issueId: string
+  projectId: string
+  title: string
+  done: boolean
+  assigneeId: string | null
+  /** Ultimul eveniment, al oricui. Dă ordinea listei. */
+  lastEventAt: string | null
+  /** Ultimul eveniment care NU e al meu. Dă bulina. */
+  lastForeignAt: string | null
+  /** Autorul ultimului eveniment străin — „de la Alex" de pe rând. E un id de
+   *  cont (`auth.users`), deci se mapează la un nume prin `assignees.userId`. */
+  lastForeignAuthor: string | null
+  seenAt: string | null
 }

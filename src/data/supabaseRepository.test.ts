@@ -112,6 +112,13 @@ const { fakeDb } = vi.hoisted(() => {
       obstacle_deps: [],
     }
     storage = new FakeStorage()
+    // `createIssue` citește sesiunea locală (fără rundă către rețea) doar ca
+    // să potrivească local `createdBy` cu ce va scrie `default auth.uid()`
+    // din bază — vezi comentariul din `supabaseRepository.ts`.
+    userId: string | null = 'u1'
+    auth = {
+      getSession: async () => ({ data: { session: this.userId ? { user: { id: this.userId } } : null } }),
+    }
     from(table: string) {
       return new Query(this.tables, table)
     }
@@ -128,6 +135,7 @@ const { fakeDb } = vi.hoisted(() => {
         obstacle_deps: [],
       }
       this.storage.reset()
+      this.userId = 'u1'
     }
   }
   return { fakeDb: new FakeDB() }
@@ -135,7 +143,7 @@ const { fakeDb } = vi.hoisted(() => {
 
 vi.mock('../lib/supabase', () => ({ supabase: fakeDb, requireSupabase: () => fakeDb }))
 
-import { createSupabaseRepository } from './supabaseRepository'
+import { createSupabaseRepository, rowToEvent, rowToInboxRow } from './supabaseRepository'
 
 beforeEach(() => fakeDb.reset())
 
@@ -197,7 +205,22 @@ describe('supabaseRepository', () => {
     const row = fakeDb.tables.issues.find((r) => r.id === 'P-02')!
     expect(row).toMatchObject({ title: 'B', details: 'hello', project_id: 'p', wave: 1 })
     expect('desc' in row).toBe(false) // must use the real column name
+    // `created_by` nu se trimite NICIODATĂ la insert — coloana are
+    // `default auth.uid()` în bază, iar un `created_by` explicit (chiar
+    // `null`) ar bloca acel default.
+    expect('created_by' in row).toBe(false)
+    // Ecoul optimist aproximează totuși sesiunea curentă, ca „creat de X" să
+    // apară instant, fără o rundă suplimentară.
+    expect(issue.createdBy).toBe('u1')
     expect(fakeDb.tables.dependencies).toContainEqual({ issue_id: 'P-02', depends_on_id: 'P-01' })
+  })
+
+  it('createIssue leaves createdBy null when there is no session (ex. writes made with the service key)', async () => {
+    fakeDb.tables.projects.push({ id: 'p', prefix: 'P', current_wave: 1, name: 'x', description: '', accent: '#fff' })
+    fakeDb.userId = null
+    const repo = createSupabaseRepository()
+    const issue = await repo.createIssue({ projectId: 'p', title: 'B', deps: [] })
+    expect(issue.createdBy).toBeNull()
   })
 
   it('updateIssue replaces the full dependency set', async () => {
@@ -336,5 +359,130 @@ describe('supabaseRepository', () => {
     await expect(repo.deleteIssue('P-01')).resolves.toBeUndefined()
     fakeDb.storage = original
     expect(fakeDb.tables.issues.some((i) => i.id === 'P-01')).toBe(false)
+  })
+
+  it('rowToEvent mapează snake_case la camelCase', () => {
+    expect(
+      rowToEvent({
+        id: 'e1',
+        issue_id: 'T-1',
+        project_id: 'p',
+        kind: 'handoff',
+        author_id: 'u1',
+        body: '',
+        handoff_from: null,
+        handoff_to: 'a2',
+        created_at: '2026-09-17T10:00:00.000Z',
+        edited_at: null,
+      }),
+    ).toEqual({
+      id: 'e1',
+      issueId: 'T-1',
+      projectId: 'p',
+      kind: 'handoff',
+      authorId: 'u1',
+      body: '',
+      handoffFrom: null,
+      handoffTo: 'a2',
+      createdAt: '2026-09-17T10:00:00.000Z',
+      editedAt: null,
+    })
+  })
+
+  it('rowToEvent canonizează datele la ISO-Z (PostgREST întoarce +00:00)', () => {
+    const e = rowToEvent({
+      id: 'e2',
+      issue_id: 'T-1',
+      project_id: 'p',
+      kind: 'comment',
+      author_id: null,
+      body: 'notă migrată',
+      handoff_from: null,
+      handoff_to: null,
+      created_at: '2026-09-17T10:00:00+00:00',
+      edited_at: '2026-09-17T11:00:00+00:00',
+    })
+    expect(e.authorId).toBeNull()
+    expect(e.createdAt).toBe('2026-09-17T10:00:00.000Z')
+    expect(e.editedAt).toBe('2026-09-17T11:00:00.000Z')
+  })
+
+  it('rowToInboxRow mapează snake_case la camelCase și canonizează datele', () => {
+    expect(
+      rowToInboxRow({
+        issue_id: 'T-1',
+        project_id: 'p',
+        title: 'A',
+        done: false,
+        assignee_id: 'a1',
+        last_event_at: '2026-09-17T10:00:00+00:00',
+        last_foreign_at: '2026-09-17T09:00:00+00:00',
+        last_foreign_author: 'u2',
+        seen_at: null,
+      }),
+    ).toEqual({
+      issueId: 'T-1',
+      projectId: 'p',
+      title: 'A',
+      done: false,
+      assigneeId: 'a1',
+      lastEventAt: '2026-09-17T10:00:00.000Z',
+      lastForeignAt: '2026-09-17T09:00:00.000Z',
+      lastForeignAuthor: 'u2',
+      seenAt: null,
+    })
+  })
+
+  it('rowToInboxRow tratează assignee_id și seen_at absente ca null', () => {
+    const row = rowToInboxRow({
+      issue_id: 'T-2',
+      project_id: 'p',
+      title: 'B',
+      done: false,
+      assignee_id: null,
+      last_event_at: null,
+      last_foreign_at: null,
+      last_foreign_author: null,
+      seen_at: null,
+    })
+    expect(row.assigneeId).toBeNull()
+    expect(row.lastEventAt).toBeNull()
+    expect(row.seenAt).toBeNull()
+  })
+
+  it('listEvents citește issue_events, ordonate cronologic, mapate', async () => {
+    fakeDb.tables.issue_events = [
+      {
+        id: 'e1', issue_id: 'T-1', project_id: 'p', kind: 'comment', author_id: 'u1',
+        body: 'primul', handoff_from: null, handoff_to: null,
+        created_at: '2026-09-17T10:00:00+00:00', edited_at: null,
+      },
+    ]
+    const repo = createSupabaseRepository()
+    const events = await repo.listEvents('T-1')
+    expect(events).toEqual([
+      {
+        id: 'e1', issueId: 'T-1', projectId: 'p', kind: 'comment', authorId: 'u1',
+        body: 'primul', handoffFrom: null, handoffTo: null,
+        createdAt: '2026-09-17T10:00:00.000Z', editedAt: null,
+      },
+    ])
+  })
+
+  it('listInbox citește doar rândurile nefinalizate din inbox_rows', async () => {
+    fakeDb.tables.inbox_rows = [
+      {
+        issue_id: 'T-1', project_id: 'p', title: 'A', done: false, assignee_id: 'a1',
+        last_event_at: null, last_foreign_at: null, last_foreign_author: null, seen_at: null,
+      },
+    ]
+    const repo = createSupabaseRepository()
+    const rows = await repo.listInbox()
+    expect(rows).toEqual([
+      {
+        issueId: 'T-1', projectId: 'p', title: 'A', done: false, assigneeId: 'a1',
+        lastEventAt: null, lastForeignAt: null, lastForeignAuthor: null, seenAt: null,
+      },
+    ])
   })
 })

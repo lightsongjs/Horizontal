@@ -74,6 +74,10 @@ const RULES: { title: string; body: string }[] = [
     body: 'Fiecare sarcină are un proiect. Rândul de adăugare rapidă ține minte ultima alegere.',
   },
   {
+    title: 'Cine ține tichetul',
+    body: 'Un tichet fără assignee e al celui care l-a creat; assignee-ul înseamnă „ți l-am pasat". Nimic nu atribuie automat un tichet cuiva.',
+  },
+  {
     title: 'Toată ziua',
     body: 'O sarcină fără oră e „cândva azi" și stă deasupra celor cu oră. Nu devine restantă la miezul nopții, ci abia a doua zi.',
   },

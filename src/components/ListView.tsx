@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { WaveTabs } from './WaveTabs'
@@ -12,12 +12,56 @@ import { Icon } from './Icon'
 import { SplitView } from './SplitView'
 
 export function ListView() {
-  const { waves, activeWave, byId, stateOf, themeOf, toggleDone, blockedByObstacle } = useHorizontal()
+  const { waves, activeWave, byId, stateOf, themeOf, toggleDone, blockedByObstacle, assignees } = useHorizontal()
   const { openEditIssue, dockedIssueId } = useUI()
   const canWrite = useCanWrite()
   const [hideDone, toggleHideDone] = useHideDone()
   const orderedLayers = useOrderedLayers(hideDone)
-  const flatLayers = useMemo(() => orderedLayers.map((g) => g.ids), [orderedLayers])
+
+  // Filtrul de om: „ce are Alex pe cap", nu o preferință — stare locală
+  // vizualizării, nu în DB, nu în URL (ar bate cu restaurarea din LAST_VIEW_KEY).
+  const [personFilter, setPersonFilter] = useState<string | 'none' | null>(null)
+
+  const allIds = useMemo(() => orderedLayers.flatMap((g) => g.ids), [orderedLayers])
+  const unassignedCount = useMemo(
+    () => allIds.filter((id) => !byId[id]?.assigneeId).length,
+    [allIds, byId],
+  )
+  const countFor = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const id of allIds) {
+      const aid = byId[id]?.assigneeId
+      if (aid) counts.set(aid, (counts.get(aid) ?? 0) + 1)
+    }
+    return counts
+  }, [allIds, byId])
+  // Doar oamenii care chiar au ceva în valul ăsta — un filtru cu zero e zgomot.
+  // EXCEPȚIE: cel filtrat activ rămâne, chiar cu zero — la schimbarea valului
+  // pe unul unde n-are nimic, un jeton care dispare ar lăsa filtrul aplicat
+  // dar invizibil, iar lista goală s-ar citi ca „valul ăsta e gol", nu ca
+  // „ai un filtru pus". Aici zero nu e zgomot, e rezultatul unei alegeri.
+  const holders = useMemo(
+    () => assignees.filter((a) => (countFor.get(a.id) ?? 0) > 0 || a.id === personFilter),
+    [assignees, countFor, personFilter],
+  )
+  const showUnassignedChip = unassignedCount > 0 || personFilter === 'none'
+  const filteredName =
+    personFilter && personFilter !== 'none'
+      ? (assignees.find((a) => a.id === personFilter)?.name ?? null)
+      : null
+
+  const visibleLayers = useMemo(() => {
+    const matches = (id: string) => {
+      if (personFilter === null) return true
+      const aid = byId[id]?.assigneeId
+      if (personFilter === 'none') return !aid
+      return aid === personFilter
+    }
+    return orderedLayers
+      .map((g) => ({ ...g, ids: g.ids.filter(matches) }))
+      .filter((g) => g.ids.length > 0)
+  }, [orderedLayers, personFilter, byId])
+  const flatLayers = useMemo(() => visibleLayers.map((g) => g.ids), [visibleLayers])
 
   const wa = useWaveActions()
   const { focusedId } = useVimNav(flatLayers)
@@ -43,12 +87,63 @@ export function ListView() {
           />
         </div>
 
+        {/* Frate al `.wave-sel`, nu al treilea copil: acolo `.wave-tabs` are
+            flex:1 și un al treilea copil ar fura din taburile de val.
+            Poarta e formată din DOUĂ condiții, deliberat, nu una singură:
+            `(holders.length > 0 || showUnassignedChip)` e regula veche
+            (f43add2) — arată bara dacă are ce arăta, inclusiv „Nepasate N"
+            într-un val proaspăt unde niciun holder nu ține nimic încă, dar
+            proiectul chiar are oameni. `&& assignees.length > 0` e intenția
+            de aici — un proiect fără NICIUN assignee real (starea de azi în
+            producție: `assignees` aproape goală) nu mai arată „Toți N" și
+            „Nepasate N" cu aceleași cifre, pe fiecare proiect. Ștergerea
+            oricăreia din cele două reproduce bug-ul pe care cealaltă îl
+            repara. */}
+        {(holders.length > 0 || showUnassignedChip) && assignees.length > 0 && (
+          <div className="who-bar">
+            <button
+              type="button"
+              className={`who-chip ${personFilter === null ? 'on' : ''}`}
+              onClick={() => setPersonFilter(null)}
+            >
+              Toți <span className="n">{allIds.length}</span>
+            </button>
+            {showUnassignedChip && (
+              <button
+                type="button"
+                className={`who-chip ${personFilter === 'none' ? 'on' : ''}`}
+                onClick={() => setPersonFilter('none')}
+              >
+                Nepasate <span className="n">{unassignedCount}</span>
+              </button>
+            )}
+            {holders.map((a) => (
+              <button
+                type="button"
+                key={a.id}
+                className={`who-chip ${personFilter === a.id ? 'on' : ''}`}
+                onClick={() => setPersonFilter(a.id)}
+              >
+                {a.name} <span className="n">{countFor.get(a.id) ?? 0}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
         {waves.length === 0 ? (
           <p className="empty">Niciun val încă. Apasă rotița din bara de valuri ca să adaugi primul (sprint).</p>
         ) : orderedLayers.length === 0 ? (
           <p className="empty">Niciun tichet în acest val. Apasă + ca să adaugi unul.</p>
+        ) : visibleLayers.length === 0 ? (
+          <p className="empty">
+            {personFilter === 'none'
+              ? 'Niciun tichet nepasat în acest val.'
+              : filteredName
+                ? `Niciun tichet pasat lui ${filteredName} în acest val.`
+                : 'Niciun tichet pentru acest filtru.'}
+          </p>
         ) : (
-          orderedLayers.map((g, i) => (
+          visibleLayers.map((g, i) => (
             <div
               key={g.L}
               className="list-group"

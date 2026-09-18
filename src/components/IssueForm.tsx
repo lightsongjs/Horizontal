@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useCallback, forwardRef } from 'react'
+import { useRef, useState, useEffect, useCallback } from 'react'
 import { detectCycle, requiredDepWave } from '../lib/engine'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
@@ -13,6 +13,7 @@ import {
   reminderKindOf, toDisplayDate, toShortDate, toTimeInput, type ReminderKind,
 } from '../lib/schedule'
 import { Attachments } from './Attachments'
+import { Thread } from './Thread'
 import type { Issue, ScenarioKind, TestScenario } from '../lib/types'
 import { Icon, type IconName } from './Icon'
 
@@ -61,36 +62,80 @@ function depCols(n: number): number {
   return 3
 }
 
-const AutoTextarea = forwardRef<HTMLTextAreaElement, {
-  value: string; onChange: (v: string) => void; placeholder?: string; minH?: number; maxH?: number
-}>(function AutoTextarea({ value, onChange, placeholder, minH = 80, maxH }, forwardedRef) {
-  const innerRef = useRef<HTMLTextAreaElement>(null)
-  useEffect(() => {
-    const el = innerRef.current; if (!el) return
-    el.style.height = 'auto'
-    const natural = Math.max(minH, el.scrollHeight)
-    const capped = maxH ? Math.min(natural, maxH) : natural
-    el.style.height = capped + 'px'
-    el.style.overflow = (maxH && natural >= maxH) ? 'auto' : 'hidden'
-  }, [value, minH, maxH])
-  return (
-    <textarea
-      ref={(el) => {
-        (innerRef as { current: HTMLTextAreaElement | null }).current = el
-        if (typeof forwardedRef === 'function') forwardedRef(el)
-        else if (forwardedRef) (forwardedRef as { current: HTMLTextAreaElement | null }).current = el
-      }}
-      value={value} onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder} style={{ minHeight: minH, resize: 'none' }} />
-  )
-})
+export interface FormDirtyState {
+  isEdit: boolean
+  existing: Issue | undefined
+  activeWave: number
+  /** Tichetele care depind azi de `existing` (blocante) — gol la creare. */
+  existingBlockerIds: string[]
+  /** Obstacolele curente ale lui `existing` — gol la creare. */
+  existingObstacleIds: string[]
+  title: string
+  desc: string
+  theme: string
+  wave: number
+  assigneeId: string | null
+  deps: string[]
+  draftDeps: DraftIssue[]
+  blocks: string[]
+  draftBlocks: DraftIssue[]
+  obstIds: string[]
+  draftObstacles: DraftIssue[]
+  selectors: string[]
+  scenarios: TestScenario[]
+  /**
+   * Corpul netrimis din caseta firului (`Thread.tsx`). Contează DOAR la
+   * editare — un tichet nesalvat n-are fir încă.
+   */
+  commentDraft: string
+  urgent: boolean
+  dueAt: string | null
+  remindAt: string | null
+}
 
-function AssigneeSearch({ assigneeId, assignees, myAssigneeId, onSelect, onSetMe, onCreateAndSelect }: {
+/**
+ * Murdăria formularului, extrasă din randare ca să fie testabilă fără DOM —
+ * aceeași comparație câmp cu câmp care trăia inline în `IssueForm`, doar
+ * parametrizată. `obstaclesDirty` de mai sus rămâne separată: e testată și
+ * folosită independent.
+ */
+export function isFormDirty(s: FormDirtyState): boolean {
+  if (s.isEdit) {
+    const existing = s.existing
+    return (
+      s.title !== (existing?.title ?? '') ||
+      s.desc !== (existing?.desc ?? '') ||
+      s.theme !== (existing?.theme ?? '') ||
+      s.wave !== (existing?.wave ?? s.activeWave) ||
+      s.assigneeId !== (existing?.assigneeId ?? null) ||
+      s.deps.filter((d) => !d.startsWith('__draft_')).slice().sort().join(',') !== (existing?.deps ?? []).slice().sort().join(',') ||
+      s.draftDeps.filter((d) => s.deps.includes(d.tempId)).length > 0 ||
+      s.draftBlocks.filter((d) => s.blocks.includes(d.tempId)).length > 0 ||
+      s.blocks.filter((b) => !b.startsWith('__draft_')).slice().sort().join(',') !== s.existingBlockerIds.slice().sort().join(',') ||
+      obstaclesDirty(
+        s.obstIds.filter((o) => !o.startsWith('__obst_draft_')),
+        s.existingObstacleIds,
+      ) ||
+      s.draftObstacles.filter((d) => s.obstIds.includes(d.tempId)).length > 0 ||
+      JSON.stringify(s.selectors) !== JSON.stringify(existing?.selectors ?? []) ||
+      JSON.stringify(s.scenarios) !== JSON.stringify(existing?.scenarios ?? []) ||
+      s.commentDraft.trim() !== '' ||
+      s.urgent !== (existing?.urgent ?? false) ||
+      s.dueAt !== (existing?.dueAt ?? null) ||
+      s.remindAt !== (existing?.remindAt ?? null)
+    )
+  }
+  return (
+    s.title.trim() !== '' || s.desc.trim() !== '' || s.deps.length > 0 || s.blocks.length > 0 || s.obstIds.length > 0 ||
+    s.selectors.length > 0 || s.scenarios.length > 0 || s.urgent || s.dueAt !== null
+  )
+}
+
+function AssigneeSearch({ assigneeId, assignees, myAssigneeId, onSelect, onCreateAndSelect }: {
   assigneeId: string | null
   assignees: import('../lib/types').Assignee[]
   myAssigneeId: string | null
   onSelect(id: string | null): void
-  onSetMe(id: string): void
   onCreateAndSelect(name: string): Promise<void>
 }) {
   const [q, setQ] = useState('')
@@ -151,13 +196,6 @@ function AssigneeSearch({ assigneeId, assignees, myAssigneeId, onSelect, onSetMe
               onClick={() => { onSelect(a.id); setQ(''); setHlIdx(0) }}>
               <span className={`ic ${a.id === assigneeId ? 'ok' : 'ext'}`}><Icon name={a.id === assigneeId ? 'check' : 'add'} size={14} /></span>
               <span className="dep-result-title">{a.name}{a.id === myAssigneeId ? ' (me)' : ''}</span>
-              {a.id !== myAssigneeId && (
-                <button style={{ marginLeft: 'auto', fontSize: 10, opacity: 0.5, padding: '0 4px' }}
-                  onClick={(e) => { e.stopPropagation(); onSetMe(a.id) }} title="This is me"
-                  aria-label="Setează ca fiind eu">
-                  <Icon name="star" size={13} />
-                </button>
-              )}
             </button>
           ))}
           {filtered.length === 0 && !showCreate && <p className="dep-no-results">No one found.</p>}
@@ -181,7 +219,7 @@ function AssigneeSearch({ assigneeId, assignees, myAssigneeId, onSelect, onSetMe
  *   către `ui.tsx`, care oprește prima comutare pe alt tichet.
  */
 export function IssueForm({ issueId, docked = false }: { issueId?: string; docked?: boolean }) {
-  const { project, waves, themes, issues, byId, activeWave, createIssue, updateIssue, deleteIssue, createTheme, assignees, myAssigneeId, setMyAssigneeId, createAssignee, obstacles, obstaclesOf, createObstacle, setIssueObstacles } = useHorizontal()
+  const { project, waves, themes, issues, byId, activeWave, createIssue, updateIssue, deleteIssue, createTheme, assignees, myAssigneeId, createAssignee, obstacles, obstaclesOf, createObstacle, setIssueObstacles } = useHorizontal()
   const { closeSheet, setCloseGuard, pushSheet, openEditIssue, setDockedDirty, saveNudge } = useUI()
   const canWrite = useCanWrite()
   const existing = issueId ? byId[issueId] : undefined
@@ -237,13 +275,11 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
     // listener-ul la fiecare mutație de ticket.
   }, [isEdit, copyLink, existing?.id])
 
-  const defaultAssigneeId = !isEdit && project?.type === 'personal' ? (myAssigneeId ?? null) : null
-
   const [title, setTitle] = useState(existing?.title ?? '')
   const [desc, setDesc] = useState(existing?.desc ?? '')
   const [theme, setTheme] = useState(existing?.theme ?? '')
   const [wave, setWave] = useState(existing?.wave ?? activeWave)
-  const [assigneeId, setAssigneeId] = useState<string | null>(existing?.assigneeId ?? defaultAssigneeId)
+  const [assigneeId, setAssigneeId] = useState<string | null>(existing?.assigneeId ?? null)
   const [deps, setDeps] = useState<string[]>(existing?.deps ?? [])
   const [blocks, setBlocks] = useState<string[]>(
     existing ? issues.filter((i) => i.deps?.includes(existing.id)).map((i) => i.id) : []
@@ -258,7 +294,12 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
 
   const [selectors, setSelectors] = useState<string[]>(existing?.selectors ?? [])
   const [scenarios, setScenarios] = useState<TestScenario[]>(existing?.scenarios ?? [])
-  const [notes, setNotes] = useState(existing?.notes ?? '')
+  /**
+   * Nu ținem textul firului aici — ăla trăiește în `Thread.tsx`, care își
+   * gestionează singur trimiterea. Aici contează doar SEMNALUL de murdărie,
+   * ca `isDirty` să știe că există ceva netrimis. Vezi `isFormDirty`.
+   */
+  const [commentDraftDirty, setCommentDraftDirty] = useState(false)
   const [urgent, setUrgent] = useState(existing?.urgent ?? false)
   // Scadența trăiește în formular ca cele două valori pe care le scrie userul,
   // nu ca ISO: inputurile native vorbesc local, iar conversia stă în
@@ -347,26 +388,6 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
    *  e prea subțire ca să fie o țintă nimerită cu mouse-ul. */
   const descColRef = useRef<HTMLDivElement>(null)
   const [dropActive, setDropActive] = useState(false)
-  const notesSectionRef = useRef<HTMLDivElement>(null)
-  const [notesMaxH, setNotesMaxH] = useState(200)
-
-  useEffect(() => {
-    const section = notesSectionRef.current
-    if (!section) return
-    const compute = () => {
-      const sheet = section.closest('.sheet')
-      if (!sheet) return
-      const sheetBottom = sheet.getBoundingClientRect().bottom - 24
-      const labelEl = section.querySelector('.notes-label') as HTMLElement | null
-      const textareaTop = section.getBoundingClientRect().top + (labelEl ? labelEl.offsetHeight + 10 : 36)
-      setNotesMaxH(Math.max(80, sheetBottom - textareaTop))
-    }
-    compute()
-    const sheet = section.closest('.sheet')
-    const ro = new ResizeObserver(compute)
-    if (sheet) ro.observe(sheet)
-    return () => ro.disconnect()
-  }, [])
 
   useEffect(() => {
     if (isEdit && titleInputRef.current) {
@@ -427,30 +448,21 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
    */
   const { title: saveTitle, bare: bareTitle } = titleToSave(title, titleDate.title)
 
-  const isDirty = isEdit
-    ? title !== (existing?.title ?? '') ||
-      desc !== (existing?.desc ?? '') ||
-      theme !== (existing?.theme ?? '') ||
-      wave !== (existing?.wave ?? activeWave) ||
-      assigneeId !== (existing?.assigneeId ?? null) ||
-      deps.filter((d) => !d.startsWith('__draft_')).slice().sort().join(',') !== (existing?.deps ?? []).slice().sort().join(',') ||
-      draftDeps.filter((d) => deps.includes(d.tempId)).length > 0 ||
-      draftBlocks.filter((d) => blocks.includes(d.tempId)).length > 0 ||
-      blocks.filter((b) => !b.startsWith('__draft_')).slice().sort().join(',') !== (existing ? issues.filter((i) => i.deps?.includes(existing.id)).map((i) => i.id) : []).slice().sort().join(',') ||
-      obstaclesDirty(
-        obstIds.filter((o) => !o.startsWith('__obst_draft_')),
-        existing ? obstaclesOf(existing.id).map((o) => o.id) : [],
-      ) ||
-      draftObstacles.filter((d) => obstIds.includes(d.tempId)).length > 0 ||
-      JSON.stringify(selectors) !== JSON.stringify(existing?.selectors ?? []) ||
-      JSON.stringify(scenarios) !== JSON.stringify(existing?.scenarios ?? []) ||
-      notes !== (existing?.notes ?? '') ||
-      urgent !== (existing?.urgent ?? false) ||
-      schedule.dueAt !== (existing?.dueAt ?? null) ||
-      schedule.remindAt !== (existing?.remindAt ?? null)
-    : title.trim() !== '' || desc.trim() !== '' || deps.length > 0 || blocks.length > 0 || obstIds.length > 0 ||
-      selectors.length > 0 || scenarios.length > 0 || notes.trim() !== '' || urgent ||
-      schedule.dueAt !== null
+  const isDirty = isFormDirty({
+    isEdit,
+    existing,
+    activeWave,
+    existingBlockerIds: existing ? issues.filter((i) => i.deps?.includes(existing.id)).map((i) => i.id) : [],
+    existingObstacleIds: existing ? obstaclesOf(existing.id).map((o) => o.id) : [],
+    title, desc, theme, wave, assigneeId, deps, draftDeps, blocks, draftBlocks,
+    obstIds, draftObstacles, selectors, scenarios,
+    // Thread ține propriul text; aici trecem doar semnalul de murdărie, sub
+    // forma cerută de isFormDirty — orice șir nevid înseamnă "ceva netrimis".
+    commentDraft: commentDraftDirty ? 'draft' : '',
+    urgent,
+    dueAt: schedule.dueAt,
+    remindAt: schedule.remindAt,
+  })
 
   useEffect(() => {
     if (isDirty) {
@@ -626,7 +638,7 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
     const prospective: Issue[] = issues.map((i) => ({ ...i, deps: [...(i.deps ?? [])] }))
     let target = prospective.find((i) => i.id === targetId)
     if (!target) {
-      target = { id: targetId, projectId: project.id, title, desc: '', theme, wave, deps: [], done: false, selectors: [], scenarios: [], notes: '', assigneeId: null, urgent: false, ...NO_SCHEDULE }
+      target = { id: targetId, projectId: project.id, title, desc: '', theme, wave, deps: [], done: false, selectors: [], scenarios: [], assigneeId: null, createdBy: null, createdAt: new Date().toISOString(), urgent: false, ...NO_SCHEDULE }
       prospective.push(target)
     }
     target.deps = [...deps.filter((d) => !d.startsWith('__draft_'))]
@@ -686,7 +698,7 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
       }
       const realDeps = deps.map((id) => draftDepMap[id] ?? (id.startsWith('__draft_') ? null : id)).filter(Boolean) as string[]
       const qaPayload = {
-        selectors: selectors.filter(Boolean), scenarios, notes: notes.trim(), assigneeId, urgent,
+        selectors: selectors.filter(Boolean), scenarios, assigneeId, urgent,
         dueAt: schedule.dueAt, allDay: schedule.allDay, remindAt: schedule.remindAt,
       }
       const targetId = isEdit
@@ -714,7 +726,7 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
         return i
       })
       if (!snap.find((i) => i.id === targetId)) {
-        snap = [...snap, { id: targetId, projectId: project.id, title: saveTitle, desc: desc.trim(), theme, wave, deps: realDeps, done: false, selectors: selectors.filter(Boolean), scenarios, notes: notes.trim(), assigneeId, urgent, dueAt: schedule.dueAt, allDay: schedule.allDay, remindAt: schedule.remindAt, rrule: null }]
+        snap = [...snap, { id: targetId, projectId: project.id, title: saveTitle, desc: desc.trim(), theme, wave, deps: realDeps, done: false, selectors: selectors.filter(Boolean), scenarios, assigneeId, createdBy: null, createdAt: new Date().toISOString(), urgent, dueAt: schedule.dueAt, allDay: schedule.allDay, remindAt: schedule.remindAt, rrule: null }]
       }
       const cascadeQueue = [...realDeps]
       const cascadeSeen = new Set<string>()
@@ -863,6 +875,28 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
 
       {/* BODY */}
       <div className="sheet-scroll if-body">
+
+        {/* Proveniența — doar la editare: un tichet nesalvat n-are creator.
+            Aceeași clasă `.origin` din IssueSheet.tsx, ca să nu apară un al
+            doilea set de stiluri pentru același fapt. Rezolvarea numelui
+            trece prin `assignees.userId`, la fel ca autorul unui comentariu
+            din Thread.tsx. */}
+        {isEdit && existing && (
+          <div className="origin">
+            {existing.createdBy && (() => {
+              const creator = assignees.find((a) => a.userId === existing.createdBy)
+              const creatorName = creator?.name ?? 'cineva'
+              return (
+                <>
+                  <span className="origin-avatar">{creatorName.slice(0, 2).toUpperCase()}</span>
+                  <span>creat de {creatorName}</span>
+                  <span className="dot">·</span>
+                </>
+              )
+            })()}
+            <time className="mono">{toShortDate(existing.createdAt)}</time>
+          </div>
+        )}
 
         {/* META — Temă · Val · Assigned to */}
         <div className={`sh-meta-section${metaOpen ? '' : ' meta-collapsed'}`}>
@@ -1150,7 +1184,6 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
                 assignees={assignees}
                 myAssigneeId={myAssigneeId}
                 onSelect={(id) => { setAssigneeId(id); setShowAssigneeInline(false) }}
-                onSetMe={setMyAssigneeId}
                 onCreateAndSelect={async (name) => {
                   const a = await createAssignee(name)
                   setAssigneeId(a.id)
@@ -1365,12 +1398,16 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
               )}
             </div>
 
-            {/* NOTE — mereu vizibil */}
-            <div className="notes-section" ref={notesSectionRef}>
-              <span className="notes-label">NOTE</span>
-              <AutoTextarea value={notes} onChange={setNotes}
-                placeholder="Observații libere, edge cases, links…" minH={80} maxH={notesMaxH} />
-            </div>
+            {/* FIR — comentarii + pase. Nu se randează pe un tichet nesalvat:
+                `existing` e undefined până la primul save. */}
+            {isEdit && existing && (
+              <Thread
+                issueId={existing.id}
+                projectId={project.id}
+                onDirtyChange={setCommentDraftDirty}
+                onHandoff={setAssigneeId}
+              />
+            )}
 
           </div>
         </div>
