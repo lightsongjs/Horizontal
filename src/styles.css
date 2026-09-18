@@ -4734,6 +4734,9 @@ main {
 .sidebar-nav-item.on .sl-count { color: var(--accent); }
 /* Restanțele n-au rând propriu — sunt un badge pe „Azi". */
 .sl-late {
+  /* `auto` ca la `.sl-count`: fără el, perechea restanțe+total rămânea lipită
+     de etichetă, în timp ce un rând cu un singur număr era aliniat la dreapta. */
+  margin-left: auto;
   font-family: var(--mono);
   font-size: 10px;
   font-weight: 700;
@@ -4742,9 +4745,23 @@ main {
   border-radius: var(--r-s);
   padding: 1px 6px;
   line-height: 1.5;
-  margin-left: 2px;
 }
 .sidebar-nav-item .sl-late + .sl-count { margin-left: 6px; }
+/* Necititele din „Ale mele" — aceeași formă ca `.sl-late`, dar accent, nu
+   roșu: o pasă necitită e o chemare, nu o restanță. Perechea cu `.sl-count`
+   de lângă ea repetă exact tiparul „restanțe + total" de pe „Azi". */
+.sl-new {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--on-accent);
+  background: var(--accent);
+  border-radius: var(--r-s);
+  padding: 1px 6px;
+  line-height: 1.5;
+}
+.sidebar-nav-item .sl-new + .sl-count { margin-left: 6px; }
 
 /* ── capul unui grup de zi ───────────────────────────────────────── */
 /* Data stă LÂNGĂ eticheta zilei, nu împinsă în marginea dreaptă. `.list-group-label`

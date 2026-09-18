@@ -836,6 +836,7 @@ function Shell() {
         onSmartList={openScreen}
         inboxActive={inInbox}
         inboxUnread={inbox.fresh.length}
+        inboxTotal={inbox.fresh.length + inbox.rest.length}
         onInbox={() => openScreen('inbox')}
       />
       <div className="app-body">

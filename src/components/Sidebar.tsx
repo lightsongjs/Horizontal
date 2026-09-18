@@ -26,10 +26,12 @@ interface SidebarProps {
    *  App.tsx) — de-aia trei props proprii, în loc să lărgim `smartList`. */
   inboxActive?: boolean
   inboxUnread?: number
+  /** Câte tichete stau acolo cu totul — ca `sl-count` de pe listele de sarcini. */
+  inboxTotal?: number
   onInbox?: () => void
 }
 
-export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNavigate, smartList = null, onSmartList, inboxActive = false, inboxUnread = 0, onInbox }: SidebarProps = {}) {
+export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNavigate, smartList = null, onSmartList, inboxActive = false, inboxUnread = 0, inboxTotal = 0, onInbox }: SidebarProps = {}) {
   const { projects, project, completion, selectProject, reorderProjects, smartLists } = useHorizontal()
 
   // Navigate away from any overlay (e.g. Users) then select a project.
@@ -129,7 +131,11 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
       >
         <span className="sidebar-nav-icon"><Icon name="people" size={17} /></span>
         <span>Ale mele</span>
-        {inboxUnread > 0 && <span className="sl-count">{inboxUnread}</span>}
+        {/* Două numere, ca pe „Azi" (restanțe + total): necititele sunt o
+            chemare, totalul e mărimea listei. Necititele dispar când le-ai
+            văzut; totalul rămâne cât timp tichetele sunt ale tale. */}
+        {inboxUnread > 0 && <span className="sl-new" title={`${inboxUnread} necitite`}>{inboxUnread}</span>}
+        {inboxTotal > 0 && <span className="sl-count">{inboxTotal}</span>}
       </button>
 
       <div className="sidebar-section-label">Proiecte</div>
