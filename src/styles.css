@@ -3171,6 +3171,13 @@ main {
     overflow-x: hidden;
     padding-right: 2px;
   }
+  /* Plafonul de 760px al listelor („o lățime de citit") e pentru ecranul
+     întreg. În panoul lateral, coloana ÎNSĂȘI e măsura — cu plafon peste ea,
+     rândurile se opreau înainte de panou și rămânea o bandă goală între
+     listă și tichetul deschis. */
+  .split-list > .smart-list,
+  .split-list > .inbox-pad,
+  .split-list > .panel.inbox-pad { max-width: none; }
   .split-pane {
     min-width: 0;
     display: flex;
