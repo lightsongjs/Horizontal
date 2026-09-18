@@ -251,7 +251,7 @@ function AssigneeSearch({ assigneeId, assignees, members, myAssigneeId, myUserId
  *   către `ui.tsx`, care oprește prima comutare pe alt tichet.
  */
 export function IssueForm({ issueId, docked = false }: { issueId?: string; docked?: boolean }) {
-  const { project, waves, themes, issues, byId, activeWave, createIssue, updateIssue, deleteIssue, createTheme, assignees, myAssigneeId, createAssignee, projectMembers, ensureAssigneeForMember, obstacles, obstaclesOf, createObstacle, setIssueObstacles } = useHorizontal()
+  const { project, waves, themes, issues, byId, activeWave, createIssue, updateIssue, deleteIssue, createTheme, assignees, myAssigneeId, createAssignee, assigneeShort, projectMembers, ensureAssigneeForMember, obstacles, obstaclesOf, createObstacle, setIssueObstacles } = useHorizontal()
   const { closeSheet, setCloseGuard, pushSheet, openEditIssue, setDockedDirty, saveNudge } = useUI()
   const { session } = useAuth()
   const myUserId = session?.user.id ?? null
@@ -397,6 +397,7 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
   // sub fold. Pe desktop CSS-ul ignoră starea asta și ține blocul mereu deschis.
   const [metaOpen, setMetaOpen] = useState(false)
 
+  const [showThemeMenu, setShowThemeMenu] = useState(false)
   const [showNewTheme, setShowNewTheme] = useState(false)
   const [newThemeName, setNewThemeName] = useState('')
   const [saving, setSaving] = useState(false)
@@ -635,10 +636,15 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
 
   const qaCount = selectors.filter(Boolean).length + scenarios.length
 
+  // Tema aleasă și numele celui care ține tichetul, o dată: le folosesc și
+  // bara, și rezumatul de pe mobil.
+  const themeObj = theme ? themes.find((t) => t.key === theme) : undefined
+  const assigneeName = assigneeId ? (assignees.find((a) => a.id === assigneeId)?.name ?? null) : null
+
   const metaRecap = buildMetaRecap({
-    themeName: theme ? (themes.find((t) => t.key === theme)?.name ?? null) : null,
+    themeName: themeObj?.name ?? null,
     waveName: waves.find((w) => w.number === wave)?.name ?? `Val ${wave}`,
-    assigneeName: assigneeId ? (assignees.find((a) => a.id === assigneeId)?.name ?? null) : null,
+    assigneeName,
     urgent,
     dueLabel: schedule.dueAt
       ? `${toShortDate(schedule.dueAt)}${hasTime({ dueAt: schedule.dueAt, allDay: schedule.allDay }) ? ` ${toTimeInput(schedule.dueAt)}` : ''}`
@@ -948,32 +954,35 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
             <Icon name="collapse" size={14} className={`acc-chevron${metaOpen ? ' open' : ''}`} />
           </button>
           <div className="meta-body">
-          <div className="sh-meta-inline-row">
+          {/* BARA — cine · val · urgent · scadență … temă.
+              Fără etichete: fiecare control își spune rolul prin formă
+              (avatar, cifră romană, fulger, cifre de dată), iar numele
+              întreg stă în `title`. Tema stă la capăt, într-un jeton care
+              deschide lista: e cel mai rar schimbat câmp din formular și
+              ocupa, ca rând de pastile, jumătate din lățime. */}
+          <div className="if-bar">
 
-            <div className="meta-col meta-col-theme">
-              <span className="meta-row-label">Temă</span>
-              <div className="pills-row">
-                <button tabIndex={-1} className={`if-meta-pill ${theme === '' ? 'active' : ''}`} onClick={() => setTheme('')}>Fără</button>
-                {themes.map((t) => (
-                  <button tabIndex={-1} key={t.key} className={`if-meta-pill ${theme === t.key ? 'active' : ''}`} onClick={() => setTheme(t.key)}>
-                    <span className="if-meta-dot" style={{ background: t.color }} />{t.name}
-                  </button>
-                ))}
-                {canWrite && (
-                  <button tabIndex={-1} className="if-meta-add" onClick={() => setShowNewTheme((v) => !v)} title="Temă nouă">
-                    <Icon name={showNewTheme ? 'close' : 'add'} size={13} />
-                  </button>
-                )}
-              </div>
-            </div>
+            <button
+              tabIndex={-1}
+              type="button"
+              className={`if-ctl${assigneeId ? '' : ' ghost'}`}
+              onClick={() => setShowAssigneeInline((v) => !v)}
+              title={assigneeName ? `Assigned to: ${assigneeName}` : 'Assigned to — nimeni'}
+              aria-expanded={showAssigneeInline}
+            >
+              <span className={`if-av${assigneeId ? '' : ' nobody'}`}>
+                {assigneeId ? (assigneeShort[assigneeId] ?? '?') : '+'}
+              </span>
+              <span className="if-ctl-txt">{assigneeName ?? 'Nimeni'}</span>
+              <Icon name="collapse" size={12} className="if-chev" />
+            </button>
 
-            <div className="meta-vsep" />
-
-            <div className="meta-col meta-col-wave">
-              <span className="meta-row-label">Val</span>
-              <div className="pills-row">
-                {waves.map((w) => (
-                  <button tabIndex={-1} key={w.number} className={`if-meta-wave ${wave === w.number ? 'active' : ''}`} onClick={() => {
+            <div className="if-seg" role="group" aria-label="Val">
+              {waves.map((w) => (
+                <button tabIndex={-1} key={w.number} type="button" title={w.name}
+                  className={wave === w.number ? 'on' : ''}
+                  aria-pressed={wave === w.number}
+                  onClick={() => {
                     if (isEdit && existing) {
                       const dependants = issues.filter((i) => (i.deps ?? []).includes(existing.id))
                       if (dependants.length > 0) {
@@ -988,56 +997,27 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
                     setWave(w.number)
                     setWaveError(null)
                   }}>
-                    {w.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="meta-vsep" />
-
-            <div className="meta-col meta-col-assign">
-              <span className="meta-row-label">Assigned to</span>
-              <div className="meta-row-inline">
-                {assigneeId && !showAssigneeInline && (() => {
-                  const a = assignees.find((x) => x.id === assigneeId)
-                  return a ? (
-                    <div className="assignee-chip-inline">
-                      <div className="assignee-avatar-sm">{a.name.slice(0, 2).toUpperCase()}</div>
-                      <span className="assignee-name-sm">{a.name}{a.id === myAssigneeId ? ' (me)' : ''}</span>
-                      <span className="assignee-x-sm" tabIndex={-1} onClick={() => setAssigneeId(null)}><Icon name="close" size={12} /></span>
-                    </div>
-                  ) : null
-                })()}
-                <button tabIndex={-1} className="if-meta-add" onClick={() => setShowAssigneeInline((v) => !v)}>
-                  <Icon name={showAssigneeInline ? 'close' : 'add'} size={13} />
+                  {w.name}
                 </button>
-              </div>
+              ))}
             </div>
 
-            <div className="meta-vsep" />
+            {/* Doar fulgerul: „Prioritate" era un cuvânt pentru un singur
+                buton, iar „Urgent" scris lângă semnul de urgență e de două
+                ori același lucru. Aprins = roșul de blocaj, nu accentul. */}
+            <button
+              tabIndex={-1}
+              type="button"
+              className={`if-ctl icon${urgent ? ' urgent-on' : ' ghost'}`}
+              onClick={() => setUrgent((v) => !v)}
+              title={urgent ? 'Urgent — apasă ca să scoți' : 'Marchează urgent'}
+              aria-label="Urgent"
+              aria-pressed={urgent}
+            >
+              <Icon name="urgent" size={15} />
+            </button>
 
-            <div className="meta-col meta-col-urgent">
-              <span className="meta-row-label">Prioritate</span>
-              <div className="pills-row">
-                <button
-                  tabIndex={-1}
-                  type="button"
-                  className={`if-meta-pill urgent-pill ${urgent ? 'active' : ''}`}
-                  onClick={() => setUrgent((v) => !v)}
-                  title={urgent ? 'Scoate urgența' : 'Marchează urgent'}
-                >
-                  <Icon name="urgent" size={13} /> Urgent
-                </button>
-              </div>
-            </div>
-
-          </div>
-
-            <div className="sh-due-row">
-              <div className="meta-col meta-col-due">
-                <span className="meta-row-label">Scadență</span>
-                <div className="due-inputs">
+                <div className={`due-inputs${dueText ? '' : ' unset'}`} title="Scadență">
                   <input
                     tabIndex={-1}
                     type="text"
@@ -1133,11 +1113,59 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
                     </button>
                   )}
                 </div>
+
+            {/* Tema, la capătul barei: un jeton cu punctul ei de culoare, care
+                deschide lista. Punctul e informația — numele e doar eticheta
+                lui. */}
+            <div className="if-theme-wrap">
+              <button
+                tabIndex={-1}
+                type="button"
+                className={`if-ctl${theme ? '' : ' ghost dashed'}`}
+                onClick={() => setShowThemeMenu((v) => !v)}
+                onBlur={() => setTimeout(() => setShowThemeMenu(false), 150)}
+                title={themeObj ? `Temă: ${themeObj.name}` : 'Fără temă'}
+                aria-expanded={showThemeMenu}
+              >
+                {themeObj && <span className="if-dot" style={{ background: themeObj.color }} />}
+                <span className="if-ctl-txt">{themeObj ? themeObj.name : 'temă'}</span>
+                <Icon name="collapse" size={12} className="if-chev" />
+              </button>
+              {showThemeMenu && (
+                <div className="dep-dropdown if-theme-menu">
+                  <button type="button" className="dep-dd-item" onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => { setTheme(''); setShowThemeMenu(false) }}>
+                    <span className="dep-dd-title">Fără temă</span>
+                  </button>
+                  {themes.map((t) => (
+                    <button key={t.key} type="button" className="dep-dd-item" onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => { setTheme(t.key); setShowThemeMenu(false) }}>
+                      <span className="if-dot" style={{ background: t.color }} />
+                      <span className="dep-dd-title">{t.name}</span>
+                    </button>
+                  ))}
+                  {canWrite && (
+                    <button type="button" className="dep-dd-item if-theme-new" onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => { setShowThemeMenu(false); setShowNewTheme(true) }}>
+                      <Icon name="add" size={13} />
+                      <span className="dep-dd-title">Temă nouă</span>
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+          </div>
+
+          {/* Rândul secundar: ce ține de scadență, dar n-are ce căuta între
+              controale — mementoul și avertismentele. Apare doar când există. */}
+          <div className="if-bar-sub">
                 {/* Mementoul apare numai când are ce să însemne. Pentru o sarcină de
                     zi întreagă ar suna la miezul nopții, deci acolo tace și treaba
                     o face rezumatul de dimineață. */}
                 {dueDate && dueTime && (
                   <div className="pills-row due-reminder">
+                    <span className="if-sub-label">Memento</span>
                     {([
                       ['due', 'la oră'],
                       ['m30', '−30m'],
@@ -1191,9 +1219,7 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
                   <span className="due-hint warn">{dueIncomplete ? 'zi-lună-an' : 'oră 0–23'}</span>
                 )}
                 {dueDate && !dueTime && <span className="due-hint">toată ziua</span>}
-              </div>
-  
-            </div>
+          </div>
 
           {showNewTheme && (
             <div className="inline-search-wrap" style={{ padding: '6px 12px 8px' }}>

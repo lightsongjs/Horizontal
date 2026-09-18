@@ -3436,76 +3436,128 @@ main {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.sh-meta-inline-row {
+/* ── BARA DE META a formularului ──────────────────────────────────────
+   Un singur rând de comenzi deasupra descrierii: cine · val · urgent ·
+   scadență … temă. Fără etichete — forma spune rolul (avatar, cifră
+   romană, fulger, cifre de dată) — și fără separatoare verticale: bara
+   ÎNSĂȘI e gruparea, printr-un salt de fundal. Etichetele mono de dinainte
+   costau un rând întreg pentru patru cuvinte pe care nimeni nu le citea a
+   doua oară. */
+.if-bar {
   display: flex;
   align-items: center;
-  min-height: 40px;
-}
-.meta-col {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  min-width: 0;
-  overflow: hidden;
-}
-.meta-col-theme { flex: 1; }
-.meta-col-wave  { flex: 1; }
-.meta-col-assign { flex: 1; }
-/* Scadența are trei controale plus jetoane de memento — prea mult pentru o a
-   cincea coloană într-un rând care avea deja patru. Rând propriu, pe toată
-   lățimea, cu eticheta la fel ca la vecini. */
-.sh-due-row {
-  display: flex;
-  border-top: 1px solid var(--line-soft);
-}
-.sh-due-row .meta-col-due {
-  flex: 1;
+  gap: 7px;
   flex-wrap: wrap;
-  padding: 8px 12px;
+  padding: 7px 8px;
+  /* `--surface-2`, nu `--surface`: în panoul lateral foaia E deja `--surface`,
+     deci bara ar fi fost invizibilă exact acolo unde se folosește cel mai des. */
+  background: var(--surface-2);
+  border-radius: var(--r-m);
 }
 
-.meta-vsep {
-  width: 1px;
-  background: var(--line-soft);
-  align-self: stretch;
-  flex-shrink: 0;
-}
-.meta-row-inline {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.meta-row-label {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--txt-faint);
-  display: block;
-  flex-shrink: 0;
-}
-
-/* ── ASSIGNEE INLINE CHIP ────────────────────────── */
-.assignee-chip-inline {
+/* Jetonul de control. Fără chenar: saltul e de fundal (surface-3 peste
+   surface), ca peste tot. Varianta `ghost` e pentru gol — punctat, adică
+   „adaugă aici", nu o casetă plină cu cuvântul „Fără". */
+.if-ctl {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 7px;
+  height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--r-s);
+  background: var(--surface-3);
+  color: var(--txt);
+  font-size: 13.5px;
+  cursor: pointer;
+  white-space: nowrap;
+  max-width: 190px;
+  transition: background 0.13s, color 0.13s;
+}
+.if-ctl:hover { background: var(--line); }
+.if-ctl .if-ctl-txt { overflow: hidden; text-overflow: ellipsis; }
+.if-ctl.ghost { background: transparent; color: var(--txt-faint); box-shadow: inset 0 0 0 1px var(--line); }
+.if-ctl.ghost.dashed { box-shadow: none; border: 1px dashed var(--line); }
+.if-ctl.ghost:hover { color: var(--txt); }
+.if-ctl.icon { width: 32px; padding: 0; justify-content: center; }
+/* Urgent aprins: roșul de blocaj, nu accentul — accentul înseamnă „selectat",
+   iar aici informația nu e că l-ai atins, ci că tichetul arde. */
+.if-ctl.urgent-on { background: var(--blocked-soft); color: var(--blocked); }
+.if-ctl.urgent-on:hover { background: var(--blocked-soft); }
+.if-chev { color: var(--txt-faint); flex-shrink: 0; }
+.if-av {
+  width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent-soft); color: var(--accent);
+  font-family: var(--mono); font-size: 9px; font-weight: 700;
+}
+/* `.nobody`, nu `.empty`: `.empty` e clasa globală a stărilor goale de ecran
+   (`padding: 40px 0`), iar un jeton de 22px care o prinde devine o elipsă. */
+.if-av.nobody { background: transparent; color: var(--txt-faint); box-shadow: inset 0 0 0 1px var(--line); }
+.if-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+/* Valul: segmentat. Activul se marchează cu text plin plus o linie de 2px,
+   nu cu o casetă umplută (regula 3 din sistemul vizual). */
+.if-seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 32px;
+  padding: 0 2px;
   background: var(--surface-3);
   border-radius: var(--r-s);
-  padding: 3px 8px 3px 4px;
 }
-.assignee-avatar-sm {
-  width: 20px; height: 20px;
-  border-radius: 50%;
+.if-seg button {
+  position: relative;
+  min-width: 28px;
+  height: 26px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--txt-faint);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.if-seg button:hover { color: var(--txt); }
+.if-seg button.on { color: var(--accent); }
+.if-seg button.on::after {
+  content: "";
+  position: absolute;
+  left: 6px; right: 6px; bottom: 1px;
+  height: 2px; border-radius: 1px;
   background: var(--accent);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 10px; font-weight: 700; color: var(--on-accent); flex-shrink: 0;
 }
-.assignee-name-sm { font-size: 14px; font-weight: 500; color: var(--txt); }
-.assignee-x-sm { font-size: 15px; color: var(--txt-faint); cursor: pointer; margin-left: 2px; }
+
+/* Meniul temei — aceeași listă ca la dependențe, ancorată sub jeton. */
+.if-theme-wrap { position: relative; }
+.if-theme-menu { top: 100%; left: 0; margin-top: 4px; min-width: 190px; }
+.if-theme-new { color: var(--txt-faint); }
+
+/* Rândul secundar: memento și avertismente. Ce ține de scadență, dar n-are
+   ce căuta între controale. */
+.if-bar-sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 7px 2px 0;
+}
+.if-sub-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--txt-faint);
+}
 
 /* ── INLINE SEARCH ───────────────────────────────── */
 .inline-search-wrap {
@@ -4658,35 +4710,41 @@ main {
 /* ── SCADENȚĂ în formularul de tichet ─────────────────────────────
    Inputuri native (calendarul și ceasul sistemului, gratis pe telefon)
    îmbrăcate în aceleași jetoane ca restul rândului de meta. */
+/* UN câmp, nu trei jetoane: data, ora și butoanele lor stau într-o singură
+   ramă, fiindcă sunt un singur lucru. Chenarul rămâne — aici chiar se scrie,
+   iar un câmp fără delimitare nu se mai citește ca un câmp (regula 1). */
 .due-inputs {
   display: flex;
   align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
+  gap: 2px;
   min-width: 0;
+  height: 32px;
+  padding: 0 4px 0 8px;
+  border-radius: var(--r-s);
+  background: var(--surface-3);
+  box-shadow: inset 0 0 0 1px var(--line);
   /* Ancora pentru `.due-native`, care e poziționat absolut. */
   position: relative;
-  background: var(--surface-2);
 }
+/* Fără scadență: aceeași afordanță punctată ca jetoanele goale din bară. */
+.due-inputs.unset { background: transparent; box-shadow: none; border: 1px dashed var(--line); }
 .due-input {
-  background: var(--field-bg, var(--surface-3));
-  border: 1.5px solid var(--line);
-  border-radius: var(--r-m);
-  padding: 3px 10px;
+  background: transparent;
+  border: 0;
+  padding: 0 2px;
   font-size: 12px;
   font-weight: 600;
   font-family: var(--mono);
   color: var(--txt);
   min-width: 0;
-  transition: border-color 0.13s, color 0.13s;
+  transition: color 0.13s;
 }
-.due-input:hover:not(:disabled) { border-color: var(--accent); }
-.due-input:focus-visible { border-color: var(--accent); }
-.due-input-date { flex: 0 1 116px; text-align: center; letter-spacing: 0.02em; }
+.due-input:focus-visible { outline: none; color: var(--accent); }
+.due-input-date { flex: 0 0 82px; text-align: center; letter-spacing: 0.02em; }
 .due-input-date::placeholder { color: var(--txt-faint); font-weight: 500; letter-spacing: 0; }
 /* Text scris pe jumătate: un semnal, nu o ceartă. Cineva care a apăsat prima
    cifră nu a greșit încă nimic. */
-.due-input-date.incomplete { border-color: color-mix(in srgb, var(--active) 55%, transparent); }
+.due-input.incomplete { color: var(--active); }
 /* Inputul nativ există doar ca să-i putem cere `showPicker()`. Ascuns, dar în
    document și în fluxul de layout la lățime zero — `display:none` ar face
    `showPicker()` să arunce. */
@@ -4697,13 +4755,15 @@ main {
   pointer-events: none;
   border: 0; padding: 0;
 }
+/* Butoanele stau ÎN câmp acum, deci n-au fundal propriu: un jeton peste un
+   jeton ar fi fost două rame una în alta. */
 .due-pick {
-  width: 26px; height: 26px;
-  border-radius: var(--r-s);
+  width: 24px; height: 24px;
+  border-radius: 4px;
   color: var(--txt-faint);
   display: inline-flex; align-items: center; justify-content: center;
   flex-shrink: 0;
-  background: var(--surface-3);
+  background: transparent;
 }
 .due-pick:hover:not(:disabled) { color: var(--accent); background: var(--accent-soft); }
 .due-pick:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -4728,7 +4788,7 @@ main {
   white-space: nowrap;
 }
 .due-clean-title:hover { color: var(--accent); }
-.due-input-time { flex: 0 0 62px; text-align: center; letter-spacing: 0.02em; }
+.due-input-time { flex: 0 0 46px; text-align: center; letter-spacing: 0.02em; }
 .due-input-time::placeholder { color: var(--txt-faint); font-weight: 500; letter-spacing: 0; }
 /* Fără dată, ora nu poate însemna nimic — inertă, nu ascunsă, ca rândul să nu
    sară când apare. */
@@ -4751,7 +4811,7 @@ main {
   font-size: 13px; line-height: 1;
   display: inline-flex; align-items: center; justify-content: center;
   flex-shrink: 0;
-  background: var(--surface-3);
+  background: transparent;
 }
 .due-clear:hover { color: var(--blocked); background: var(--blocked-soft); }
 .due-reminder { margin-top: 2px; }
