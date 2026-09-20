@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useCallback } from 'react'
+import { useRef, useState, useEffect, useLayoutEffect, useCallback } from 'react'
 import { detectCycle, requiredDepWave } from '../lib/engine'
 import { buildAssigneeOptions, type AssigneeOption } from '../lib/assigneeOptions'
 import { useAuth } from '../auth'
@@ -417,7 +417,7 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
   const initialQaCount = (existing?.selectors?.filter(Boolean).length ?? 0) + (existing?.scenarios?.length ?? 0)
   const [qaOpen, setQaOpen] = useState(initialQaCount > 0)
 
-  const titleInputRef = useRef<HTMLInputElement>(null)
+  const titleInputRef = useRef<HTMLTextAreaElement>(null)
   const descRef = useRef<HTMLTextAreaElement>(null)
   /** Coloana de descriere, ca zonă de drop pentru fișiere. Bara de atașamente
    *  e prea subțire ca să fie o țintă nimerită cu mouse-ul. */
@@ -427,9 +427,30 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
   useEffect(() => {
     if (isEdit && titleInputRef.current) {
       titleInputRef.current.setSelectionRange(0, 0)
-      titleInputRef.current.scrollLeft = 0
+      titleInputRef.current.scrollTop = 0
     }
   }, [])
+
+  /**
+   * Titlul crește pe cât are nevoie.
+   *
+   * Un `<input>` nu se rupe pe rânduri: pe telefon, un titlu lung se tăia la
+   * marginea ecranului fără niciun semn că mai e text — și nicăieri altundeva
+   * nu se putea citi întreg (bulina de hover cu titlul complet nu există pe
+   * atingere). De-aia e `<textarea>`, iar înălțimea se măsoară aici, nu din
+   * CSS: `field-sizing: content` n-are încă suport în Safari/iOS, adică exact
+   * pe dispozitivul pentru care s-a făcut schimbarea.
+   *
+   * `useLayoutEffect`, nu `useEffect`: măsurarea trebuie făcută înainte de
+   * pictare, altfel la deschiderea unui tichet cu titlu lung s-ar vedea un
+   * cadru cu rândul de 26px, apoi saltul.
+   */
+  useLayoutEffect(() => {
+    const el = titleInputRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [title])
 
   /**
    * Titlul → câmpurile de scadență.
@@ -1161,15 +1182,10 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
           <span className="sh-title-mirror" ref={titleDate.mirrorRef} aria-hidden="true">
             {titleDate.pieces.map((p, i) => (p.mark ? <mark key={i}>{p.text}</mark> : <span key={i}>{p.text}</span>))}
           </span>
-          <input
+          <textarea
             ref={titleInputRef}
             className="sh-title-input"
-            // `search`, nu `text`: e singura pârghie din pagină peste bara de
-            // „completează manual" a Chrome (parolă / card / adresă), care
-            // apare pe orice câmp de text. Costul e că un cititor de ecran
-            // anunță „câmp de căutare" — de-aia stă aici cu un comentariu, nu
-            // ca alegere de la sine înțeleasă.
-            type="search"
+            rows={1}
             value={title}
             onChange={(e) => {
               setTitleTyped(true)
@@ -1177,22 +1193,38 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
             }}
             readOnly={!canWrite}
             placeholder={isEdit ? existing!.id : 'Titlu tichet…'}
-            // În panou, nu: focusul ar sări în titlu la fiecare rând atins din
+            // Două motive pentru care nu se ia focusul singur:
+            // În panou — focusul ar sări în titlu la fiecare rând atins din
             // listă, iar tastele de navigare ar ajunge în câmp în loc de listă.
-            autoFocus={!docked}
+            // Pe telefon, la un tichet EXISTENT — acolo deschizi cardul ca
+            // să-l citești, iar tastatura ar acoperi jumătate din el ca să
+            // scrie ceva ce nu voiai să scrii. La un tichet nou rămâne:
+            // singurul motiv să-l deschizi e să scrii titlul.
+            autoFocus={!docked && (!narrow || !isEdit)}
             autoComplete="off"
             autoCorrect="off"
             inputMode="text"
+            // Enter SALVEAZĂ, nu rupe rândul: un titlu nu are rânduri, iar
+            // `<textarea>` e aici pentru afișare, nu pentru text pe mai multe
+            // linii. Ctrl+Enter (salvează și închide) rămâne la handlerul de
+            // fereastră, deci se lasă să treacă.
+            enterKeyHint="done"
             spellCheck={false}
             // O atingere PE fragmentul recunoscut înseamnă „nu e o dată".
             {...titleDate.inputProps}
+            // Peste plafonul de înălțime din CSS câmpul se derulează, iar
+            // oglinda trebuie să meargă cu el — altfel marcajul de dată rămâne
+            // pe textul de deasupra.
             onScroll={(e) => {
-              if (titleDate.mirrorRef.current) titleDate.mirrorRef.current.scrollLeft = e.currentTarget.scrollLeft
+              if (titleDate.mirrorRef.current) titleDate.mirrorRef.current.scrollTop = e.currentTarget.scrollTop
             }}
             onKeyDown={(e) => {
               if (e.key === 'Tab' && !e.shiftKey) {
                 e.preventDefault()
                 descRef.current?.focus()
+              } else if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) {
+                e.preventDefault()
+                if (canWrite && saveTitle && !saving && waves.length > 0) void save({ close: false })
               }
             }}
           />

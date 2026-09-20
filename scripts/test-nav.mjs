@@ -115,18 +115,21 @@ try {
   await page.keyboard.press('c')
   await page.waitForTimeout(800)
   const newFormOpen = await modalOpen()
-  const firstVal = await page.locator('.sheet.on input').first().inputValue().catch(() => null)
+  const firstVal = await page.locator('.sheet.on .sh-title-input').first().inputValue().catch(() => null)
   check('C deschide un tichet nou peste panou', newFormOpen, newFormOpen ? 'formular deschis' : 'nu s-a întâmplat nimic')
   check('formularul e GOL (tichet nou, nu cel docat)', firstVal === '', `titlu="${firstVal ?? '(niciun input)'}"`)
 
   // ── …dar nu aruncă în tăcere ce ai scris ────────────────────────────────
+  // Selectorul e `.sh-title-input`, nu `input`: titlul e un `<textarea>` (se
+  // rupe pe rânduri). Un `input` generic ar fi prins alt câmp din formular
+  // și ar fi raportat pierderea modificărilor care de fapt nu s-a întâmplat.
   await page.keyboard.press('Escape')
   await page.waitForTimeout(500)
   await page.locator('.tab', { hasText: /^List/ }).first().click().catch(() => {})
   await page.waitForTimeout(400)
   await page.locator('.list-row').first().click()
   await page.waitForTimeout(700)
-  const docked = page.locator('.split-right input, input').first()
+  const docked = page.locator('.sh-title-input').first()
   const was = await docked.inputValue().catch(() => '')
   await docked.fill(`${was} MODIFICAT`)
   await page.waitForTimeout(500)
@@ -134,7 +137,7 @@ try {
   await page.waitForTimeout(150)
   await page.keyboard.press('c')
   await page.waitForTimeout(700)
-  const stillThere = await page.locator('input').first().inputValue().catch(() => '')
+  const stillThere = await page.locator('.sh-title-input').first().inputValue().catch(() => '')
   check(
     'C nu aruncă modificările nesalvate',
     stillThere.includes('MODIFICAT'),
@@ -154,7 +157,7 @@ try {
   await page.locator('.header-new-btn').click()
   await page.waitForTimeout(900)
   const hdrOpen = await modalOpen()
-  const hdrVal = await page.locator('.sheet.on input').first().inputValue().catch(() => null)
+  const hdrVal = await page.locator('.sheet.on .sh-title-input').first().inputValue().catch(() => null)
   check('„+ Tichet" merge cu un tichet docat', hdrOpen, hdrOpen ? 'formular deschis' : 'totul s-a închis')
   check('„+ Tichet" deschide un formular GOL', hdrVal === '', `titlu="${hdrVal ?? '(niciun input)'}"`)
 
@@ -313,7 +316,7 @@ try {
   await stale.waitForTimeout(300)
   await staleDel.click()
   await stale.waitForTimeout(1800)
-  const reopened = await stale.locator('.split-pane input').first().inputValue().catch(() => null)
+  const reopened = await stale.locator('.split-pane .sh-title-input').first().inputValue().catch(() => null)
   check(
     'ștergerea nu redeschide tichetul vechi',
     reopened === null,

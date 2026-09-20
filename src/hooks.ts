@@ -413,8 +413,12 @@ export interface TitleDate {
   onDate: boolean
   /** Legăturile inputului transparent de deasupra oglinzii. */
   inputProps: {
-    onPointerDown(e: React.PointerEvent<HTMLInputElement>): void
-    onPointerMove(e: React.PointerEvent<HTMLInputElement>): void
+    // Uniunea, nu doar `HTMLInputElement`: titlul din formular e un
+    // `<textarea>` (se rupe pe mai multe rânduri), adăugarea rapidă a rămas
+    // `<input>`. Tot ce atinge handlerul — `value`, `focus`,
+    // `setSelectionRange` — există pe amândouă.
+    onPointerDown(e: React.PointerEvent<HTMLInputElement | HTMLTextAreaElement>): void
+    onPointerMove(e: React.PointerEvent<HTMLInputElement | HTMLTextAreaElement>): void
     onPointerLeave(): void
   }
   /** „Nu e o dată" pentru tot ce e evidențiat acum. */

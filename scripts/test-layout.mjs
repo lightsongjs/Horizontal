@@ -349,6 +349,83 @@ console.log('\n„Detalii" desfăcut (mobil) — ce intră sub capac:')
   check('rândul rapid rămâne sus', m.fastStays, m.fastStays ? 'deasupra corpului' : 'mutat')
 }
 
+/**
+ * Titlul tichetului — se rupe pe rânduri, nu se taie.
+ *
+ * Un `<input>` nu poate face asta, iar pe telefon nu există hover, deci un
+ * titlu tăiat nu se mai poate citi NICĂIERI. Două lucruri se verifică aici,
+ * și al doilea e cel care sparge tăcut: oglinda de evidențiere a datei stă
+ * peste câmp, deci trebuie să se rupă în ACELEAȘI locuri — orice diferență de
+ * `white-space` sau de `overflow-wrap` decalează marcajul, la fel ca un font
+ * diferit. Iar butoanele rotunde din antet trebuie să rămână la primul rând.
+ */
+const LONG = 'Cont Supabase cu politici RLS conștiente de membership și rotație de chei'
+const titleHead = (title) => `
+<div class="sheet card" style="width:100%">
+  <div class="sh-header">
+    <button class="sh-close">x</button>
+    <span class="sh-title-wrap">
+      <span class="sh-title-mirror" aria-hidden="true"><span>${title}</span></span>
+      <textarea class="sh-title-input" rows="1" style="height:auto">${title}</textarea>
+    </span>
+    <button class="sh-save">^</button>
+  </div>
+</div>`
+
+console.log('\nTitlul din formular (mobil) — rupere pe rânduri:')
+for (const width of PHONE_WIDTHS) {
+  const page = await browser.newPage({ viewport: { width, height: 900 } })
+  await page.setContent(`<style>${CSS}</style>${titleHead(LONG)}`)
+  const m = await page.evaluate(() => {
+    const ta = document.querySelector('.sh-title-input')
+    const mirror = document.querySelector('.sh-title-mirror')
+    const head = document.querySelector('.sh-header')
+    const save = document.querySelector('.sh-save')
+    const r = (el) => el.getBoundingClientRect()
+    // Exact ce face `useLayoutEffect`-ul din IssueForm: `height:auto` pe un
+    // `<textarea>` NU se strânge pe conținut (cade pe `rows`), deci înălțimea
+    // se pune în pixeli din `scrollHeight`. Dacă testul ar sări peste pasul
+    // ăsta, ar măsura mereu un singur rând.
+    ta.style.height = 'auto'
+    ta.style.height = `${ta.scrollHeight}px`
+    return {
+      lines: Math.round(ta.scrollHeight / 26),
+      clipped: ta.scrollHeight - Math.round(r(ta).height) > 1,
+      mirrorGap: Math.abs(mirror.scrollHeight - ta.scrollHeight),
+      saveOnFirstLine: r(save).top - r(head).top <= 8,
+    }
+  })
+  await page.close()
+
+  check(`titlul se rupe @${width}px`, m.lines >= 2, `${m.lines} rânduri`)
+  check(`titlul întreg @${width}px`, !m.clipped, m.clipped ? 'TĂIAT sub plafon' : 'tot textul e vizibil')
+  check(`oglinda se rupe la fel @${width}px`, m.mirrorGap <= 1, `${m.mirrorGap}px diferență`)
+  check(`butoanele sus @${width}px`, m.saveOnFirstLine, m.saveOnFirstLine ? 'la primul rând' : 'coborâte la mijloc')
+}
+
+/**
+ * Titlul de pe cardul din „Ordine" — trei rânduri, nu unul.
+ *
+ * Bulina cu titlul complet (`.tk[data-title]::after`) cere hover, deci pe
+ * telefon nu există. Cardul e singurul loc unde titlul se poate citi.
+ */
+console.log('\nTitlul de pe card (mobil) — câte rânduri se văd:')
+{
+  const page = await browser.newPage({ viewport: { width: 390, height: 900 } })
+  await page.setContent(
+    `<style>${CSS}</style><div class="tk" style="width:168px">` +
+    `<div class="tk-meta"><span class="tk-id">HZ-14</span></div><h5>${LONG}</h5></div>`,
+  )
+  const m = await page.evaluate(() => {
+    const h5 = document.querySelector('.tk h5')
+    const line = parseFloat(getComputedStyle(h5).lineHeight)
+    return { lines: Math.round(h5.getBoundingClientRect().height / line) }
+  })
+  await page.close()
+  check('cardul arată mai mult de un rând', m.lines >= 2, `${m.lines} rânduri`)
+  check('cardul nu crește la nesfârșit', m.lines <= 3, `${m.lines} rânduri (plafon 3)`)
+}
+
 await browser.close()
 
 if (failures.length) {

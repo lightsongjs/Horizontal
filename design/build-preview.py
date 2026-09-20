@@ -374,8 +374,8 @@ LISTA_PANOU = (
     '<button class="sh-close">%s</button>'
     '<button class="sh-copy">%s</button>'
     '<button class="sh-delete">%s</button>'
-    '<span class="sh-title-wrap"><input class="sh-title-input" type="search" '
-    'value="Cont Supabase (DB + Auth)" /></span>'
+    '<span class="sh-title-wrap"><textarea class="sh-title-input" rows="1" '
+    'style="height:52px">Cont Supabase (DB + Auth) cu politici RLS pe membership</textarea></span>'
     '<button class="sh-save dirty">%s</button></div>'
     % (ic('x', 16), ic('copy', 15), ic('trash-2', 14), ic('arrow-up', 16))
     + '<div class="sheet-scroll if-body">'
@@ -890,8 +890,8 @@ SCREENS = {
             '<button class="sh-close">%s</button>'
             '<button class="sh-copy">%s</button>'
             '<button class="sh-delete">%s</button>'
-            '<span class="sh-title-wrap"><input class="sh-title-input" type="search" '
-            'value="Config webhook plăți" /></span>'
+            '<span class="sh-title-wrap"><textarea class="sh-title-input" rows="1" '
+            'style="height:26px">Config webhook plăți</textarea></span>'
             '<button class="sh-save" disabled>%s</button></div>'
             % (ic('x', 16), ic('copy', 15), ic('trash-2', 14), ic('arrow-up', 16))
             + '<div class="sheet-scroll if-body">' + FIR + '</div>'

@@ -710,6 +710,9 @@ main {
   color: var(--txt-faint);
   background: var(--surface-3);
 }
+/* Trei rânduri, nu unul. Pe telefon nu există hover, deci bulina cu titlul
+   complet (`.tk[data-title]::after`) nu se poate atinge — un titlu tăiat la
+   primul rând nu se mai poate citi nicăieri. */
 .tk h5 {
   font-size: 12px;
   font-weight: 400;
@@ -717,8 +720,11 @@ main {
   line-height: 1.35;
   color: var(--txt);
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow-wrap: break-word;
 }
 .tk[data-title]::after {
   content: attr(data-title);
@@ -3268,7 +3274,10 @@ main {
 .sh-header {
   flex-shrink: 0;
   display: flex;
-  align-items: center;
+  /* Sus, nu la mijloc: titlul se rupe pe mai multe rânduri, iar butoanele
+     rotunde trebuie să rămână la primul rând. Decalajul de 4px de pe
+     `.sh-title-wrap` păstrează cazul cu un singur rând exact cum arăta. */
+  align-items: flex-start;
   gap: 10px;
   padding: 6px 14px;
   border-bottom: 1px solid var(--line-soft);
@@ -3354,12 +3363,18 @@ main {
   background: var(--blocked-soft);
 }
 
-/* Titlul tichetului: aceleași două straturi ca la adăugarea rapidă. Inputul
-   rămâne în flux (el dă înălțimea), oglinda se suprapune peste el. */
+/* Titlul tichetului: aceleași două straturi ca la adăugarea rapidă. Câmpul
+   rămâne în flux (el dă înălțimea), oglinda se suprapune peste el.
+   Spre deosebire de adăugarea rapidă, aici se RUPE pe rânduri: un titlu lung
+   tăiat la marginea ecranului nu se poate citi nicăieri pe telefon. Deci
+   `pre-wrap` pe amândouă straturile — orice diferență de rupere ar decala
+   marcajul de dată, la fel ca o diferență de font. */
 .sh-title-wrap {
   position: relative;
   flex: 1;
   min-width: 0;
+  /* (34px buton − 26px rând) / 2 — vezi `align-items` de la `.sh-header`. */
+  padding-top: 4px;
 }
 .sh-title-mirror,
 .sh-title-input {
@@ -3368,13 +3383,15 @@ main {
   font-weight: 500;
   line-height: 26px;
   letter-spacing: -0.015em;
-  white-space: pre;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: normal;
   padding: 0;
   border: none;
 }
 .sh-title-mirror {
   position: absolute;
-  inset: 0;
+  inset: 4px 0 0;
   pointer-events: none;
   color: transparent;
   overflow: hidden;
@@ -3383,7 +3400,13 @@ main {
   display: block;
   position: relative;
   width: 100%;
+  /* Înălțimea o pune `useLayoutEffect` din IssueForm (scrollHeight); asta e
+     doar rândul de pornire, până la prima măsurare. */
   height: 26px;
+  min-height: 26px;
+  max-height: 156px; /* 6 rânduri: peste atât, titlul se derulează în loc să împingă tot formularul afară */
+  resize: none;
+  overflow: hidden;
   color: var(--txt);
   background: transparent;
   outline: none;
@@ -5007,9 +5030,7 @@ main {
    stratul-oglindă și peste jetonul de dată. Nu ne trebuie: golirea se face
    din Escape și din × pe jeton. */
 .qa-input::-webkit-search-cancel-button,
-.sh-title-input::-webkit-search-cancel-button,
-.qa-input::-webkit-search-decoration,
-.sh-title-input::-webkit-search-decoration {
+.qa-input::-webkit-search-decoration {
   -webkit-appearance: none;
   appearance: none;
   display: none;
