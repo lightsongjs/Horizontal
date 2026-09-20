@@ -1,6 +1,7 @@
 // localStorage-backed repository for credential-free local dev. Seeds the tiny
 // example on first run. Mirrors the Supabase backend's behavior.
 
+import { nextOccurrence } from '../lib/recurrence'
 import { SEED_ISSUES, SEED_PROJECTS, SEED_THEMES, SEED_WAVES } from '../lib/seed'
 import type { Assignee, Issue, IssueEvent, InboxRow, Obstacle, ObstacleLink, Project, ProjectMember, Theme, Wave } from '../lib/types'
 import {
@@ -312,6 +313,21 @@ export function createLocalRepository(): Repository {
       const issue = db.issues.find((i) => i.id === id)
       if (!issue) throw new Error(`Unknown issue ${id}`)
       Object.assign(issue, patch)
+
+      // Oglinda trigger-ului `issues_advance_recurrence` din Supabase: aici nu
+      // există Postgres care să facă saltul, iar modul local n-are voie să se
+      // comporte altfel. Ce e în `supabase/migration-recurrence.sql` e legea;
+      // asta doar o repetă în TS.
+      if (patch.done === true && issue.rrule && issue.dueAt) {
+        const nxt = nextOccurrence(issue.rrule, new Date(), issue.dueAt)
+        if (nxt) {
+          const delta = issue.remindAt ? new Date(issue.dueAt).getTime() - new Date(issue.remindAt).getTime() : null
+          issue.dueAt = nxt
+          issue.remindAt = delta === null ? null : new Date(new Date(nxt).getTime() - delta).toISOString()
+          issue.done = false
+        }
+      }
+
       save(db)
       return clone(issue)
     },

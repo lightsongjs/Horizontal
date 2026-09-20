@@ -345,3 +345,45 @@ describe('firul', () => {
     expect(events).toEqual([])
   })
 })
+
+describe('localRepository — recurență', () => {
+  it('o sarcină recurentă bifată sare, nu se închide', async () => {
+    const repo = createLocalRepository()
+    const projects = await repo.listProjects()
+    // Scadența e ancorată la ASTĂZI, nu la o dată fixă: `nextOccurrence`
+    // primește `new Date()` (ca la trigger-ul din Postgres, care primește
+    // `now()`), deci sare de la scadență ÎNAINTE de „acum" — nu cu o zi, ci
+    // pe prima apariție de la ziua curentă. O dată fixă din trecut ar fi
+    // testat comportamentul greșit de fiecare dată când rulează mai târziu
+    // decât ziua scrisă în test.
+    const now = new Date()
+    const due = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0, 0, 0)
+    const created = await repo.createIssue({
+      projectId: projects[0].id,
+      title: 'bea apă',
+      dueAt: due.toISOString(),
+      allDay: false,
+      remindAt: new Date(due.getTime() - 30 * 60_000).toISOString(),
+      rrule: 'FREQ=DAILY',
+    })
+
+    const saved = await repo.updateIssue(created.id, { done: true })
+
+    expect(saved.done).toBe(false)
+    const expectedNext = new Date(due.getTime())
+    expectedNext.setDate(expectedNext.getDate() + 1)
+    const next = new Date(saved.dueAt!)
+    expect(next.getDate()).toBe(expectedNext.getDate())
+    expect(next.getHours()).toBe(9)
+    // Decalajul mementoului se păstrează.
+    expect(new Date(saved.dueAt!).getTime() - new Date(saved.remindAt!).getTime()).toBe(30 * 60_000)
+  })
+
+  it('o sarcină fără rrule se închide normal', async () => {
+    const repo = createLocalRepository()
+    const projects = await repo.listProjects()
+    const created = await repo.createIssue({ projectId: projects[0].id, title: 'una singură' })
+    const saved = await repo.updateIssue(created.id, { done: true })
+    expect(saved.done).toBe(true)
+  })
+})
