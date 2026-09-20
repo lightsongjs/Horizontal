@@ -10,6 +10,7 @@
 // la primul „Întâlnire la Podul 5".
 
 import { startOfLocalDay, addDays } from './schedule'
+import { formatRrule } from './recurrence'
 
 export interface ParsedDue {
   /** Titlul cu fragmentele de dată scoase. Poate fi GOL — vezi mai jos. */
@@ -128,16 +129,84 @@ export function parseDue(raw: string, now: Date = new Date()): ParsedDue {
   let rrule: string | null = null
   let m: RegExpMatchArray | null
 
-  // ── recurență. Recunoscută chiar dacă motorul nu există încă: altfel „în
-  //    fiecare luni" ar rămâne în titlu și ar arăta ca o eroare de parsare.
-  m = hay.match(/\b(?:in fiecare|fiecare|every)\s+([a-z]+)\b/)
+  // ── recurență. Se caută ÎNAINTE de ziua relativă și de ora liberă: „la 2
+  //    zile" trebuie să fie o recurență, nu o scadență „peste 2 zile", iar
+  //    fragmentul consumat de aici nu mai e disponibil pentru celelalte tipare.
+  //
+  //    Forma ARTICULATĂ e semnalul, în română: „luni" e o zi, „lunea" e o
+  //    recurență. De aceea lista de mai jos e separată de `DAYS_RO`.
+  const DAYS_RO_ART = ['duminica', 'lunea', 'martea', 'miercurea', 'joia', 'vinerea', 'sambata']
+
+  // „la 2 zile", „din 3 în 3 zile", „every 2 days"
+  m = hay.match(/\b(?:la|every)\s+(\d+)\s*(?:de\s+)?(zile|zi|days|day|saptamani|saptamana|weeks|week|luni|luna|months|month|ani|an|years|year)\b/)
+    ?? hay.match(/\bdin\s+(\d+)\s+in\s+\d+\s+(zile|zi|saptamani|saptamana|luni|luna|ani|an)\b/)
   if (m) {
-    const w = m[1]
-    if (DAYS_RO.includes(w) || DAYS_EN.includes(w)) { rrule = 'FREQ=WEEKLY'; hit(m) }
-    else if (/^(zi|day|saptamana|week)$/.test(w)) { rrule = 'FREQ=DAILY'; hit(m) }
+    const n = Number(m[1])
+    const unit = m[2]
+    // Atenție: „luni" e ambiguu — ziua sau pluralul lui „lună". Aici, după un
+    // număr („la 2 luni"), e unitatea; ca zi a săptămânii n-ar avea sens.
+    const freq = /^(zile|zi|days|day)$/.test(unit) ? 'DAILY'
+      : /^(saptamani|saptamana|weeks|week)$/.test(unit) ? 'WEEKLY'
+      : /^(luni|luna|months|month)$/.test(unit) ? 'MONTHLY' : 'YEARLY'
+    if (n >= 1) { rrule = formatRrule({ freq, interval: n, byday: [], bymonthday: null }); hit(m) }
   }
-  m = hay.match(/\b(?:zilnic|daily)\b/)
-  if (m) { rrule = 'FREQ=DAILY'; hit(m) }
+
+  // „în fiecare luni", „every monday", „în fiecare zi/săptămână/lună/an"
+  if (!rrule) {
+    m = hay.match(/\b(?:in fiecare|fiecare|every)\s+([a-z]+)\b/)
+    if (m) {
+      const w = m[1]
+      const dow = DAYS_RO.indexOf(w) >= 0 ? DAYS_RO.indexOf(w) : DAYS_EN.indexOf(w)
+      if (dow >= 0) { rrule = formatRrule({ freq: 'WEEKLY', interval: 1, byday: [dow], bymonthday: null }); hit(m) }
+      else if (/^(zi|day)$/.test(w)) { rrule = 'FREQ=DAILY'; hit(m) }
+      else if (/^(saptamana|week)$/.test(w)) { rrule = 'FREQ=WEEKLY'; hit(m) }
+      else if (/^(luna|month)$/.test(w)) { rrule = 'FREQ=MONTHLY'; hit(m) }
+      else if (/^(an|year)$/.test(w)) { rrule = 'FREQ=YEARLY'; hit(m) }
+    }
+  }
+
+  // Zilele articulate, una sau mai multe: „lunea", „lunea și joia",
+  // „luni, miercuri și vineri" NU intră aici (neaticulate = date), dar
+  // „lunea, miercurea si vinerea" da.
+  if (!rrule) {
+    const days: number[] = []
+    const re = /\b(duminica|lunea|martea|miercurea|joia|vinerea|sambata)\b/g
+    let mm: RegExpExecArray | null
+    while ((mm = re.exec(hay))) {
+      const i = DAYS_RO_ART.indexOf(mm[1])
+      if (i >= 0 && !days.includes(i)) days.push(i)
+      spans.push([mm.index, mm.index + mm[0].length])
+    }
+    if (days.length) {
+      rrule = formatRrule({ freq: 'WEEKLY', interval: 1, byday: days.sort((a, b) => a - b), bymonthday: null })
+      // Legătura dintre două zile („și", „,") rămâne în titlu ca resturi; le
+      // scoate `stripSpans` doar dacă sunt lipite de spans. Le prindem explicit.
+      const glue = hay.match(/\b(?:si|and)\b/)
+      if (glue && days.length > 1) hit(glue)
+    }
+  }
+
+  // „zilnic", „daily", „săptămânal", „lunar", „anual"
+  if (!rrule) {
+    m = hay.match(/\b(?:zilnic|daily)\b/)
+    if (m) { rrule = 'FREQ=DAILY'; hit(m) }
+    m = hay.match(/\b(?:saptamanal|weekly)\b/)
+    if (m) { rrule = 'FREQ=WEEKLY'; hit(m) }
+    m = hay.match(/\b(?:lunar|monthly)\b/)
+    if (m) { rrule = 'FREQ=MONTHLY'; hit(m) }
+    m = hay.match(/\b(?:anual|yearly|annually)\b/)
+    if (m) { rrule = 'FREQ=YEARLY'; hit(m) }
+  }
+
+  // „pe 15 ale lunii", „on the 15th"
+  m = hay.match(/\bpe\s+(\d{1,2})\s+ale\s+lunii\b/) ?? hay.match(/\bon\s+the\s+(\d{1,2})(?:st|nd|rd|th)?\b/)
+  if (m) {
+    const d = Number(m[1])
+    if (d >= 1 && d <= 31) {
+      rrule = formatRrule({ freq: 'MONTHLY', interval: 1, byday: [], bymonthday: d })
+      hit(m)
+    }
+  }
 
   // ── zi relativă
   m = hay.match(/\b(?:azi|astazi|today)\b/)
@@ -214,8 +283,13 @@ export function parseDue(raw: string, now: Date = new Date()): ParsedDue {
   //
   // `(?:\s*(am|pm))?` și nu `\s*(am|pm)?`: al doilea consumă spațiul de după oră
   // chiar și când nu urmează am/pm, iar span-ul ar evidenția un caracter în plus.
+  //
+  // Excluderea de mai jos e ce ține „la 2 zile" o recurență, nu ora 2: fără ea,
+  // acest tipar prinde „la 2" din „la 2 zile udă florile" ca oră liberă,
+  // fiindcă regexul de recurență a consumat deja fragmentul, dar hay-ul pe care
+  // caută acesta e neschimbat.
   if (!time) {
-    m = hay.match(/\b(?:la|ora|at)\s*(\d{1,2})(?::(\d{2}))?(?:\s*(am|pm))?\b/)
+    m = hay.match(/\b(?:la|ora|at)\s*(\d{1,2})(?::(\d{2}))?(?:\s*(am|pm))?\b(?!\s*(?:de\s+)?(?:zile|zi|days|day|saptamani|saptamana|weeks|week|luni|luna|months|month|ani|an|years|year)\b)/)
       ?? hay.match(/\b(\d{1,2}):(\d{2})\b/)
       ?? hay.match(/\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/)
     if (m) {

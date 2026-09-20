@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { parseDue } from '../lib/parseDue'
+import { describeRrule } from '../lib/recurrence'
 import { dayOffset, toDisplayDate, toTimeInput } from '../lib/schedule'
 import { Icon } from './Icon'
 
@@ -36,8 +37,11 @@ const GROUPS: Group[] = [
   },
   {
     title: 'Recurență',
-    note: 'Se recunoaște și se salvează; motorul care o repetă vine mai târziu.',
-    examples: ['în fiecare luni', 'zilnic'],
+    note: 'Forma articulată e semnalul: „luni" e o zi, „lunea" se repetă.',
+    examples: [
+      'zilnic', 'la 2 zile', 'în fiecare luni', 'lunea și joia',
+      'săptămânal', 'la 2 săptămâni', 'lunar', 'pe 15 ale lunii', 'anual',
+    ],
   },
   {
     title: 'Ce NU e o dată',
@@ -122,7 +126,7 @@ function explain(text: string, now: Date): { title: string; due: string | null }
   const off = dayOffset(r.dueAt, now)
   const day = off === 0 ? 'azi' : off === 1 ? 'mâine' : toDisplayDate(r.dueAt)
   const time = r.allDay ? '' : ` ${toTimeInput(r.dueAt)}`
-  const rec = r.rrule ? (r.rrule === 'FREQ=DAILY' ? ' · zilnic' : ' · săptămânal') : ''
+  const rec = r.rrule ? ` · ${describeRrule(r.rrule)}` : ''
   return { title: r.title, due: `${day}${time}${rec}` }
 }
 

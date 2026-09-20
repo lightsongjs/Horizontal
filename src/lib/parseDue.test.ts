@@ -79,7 +79,7 @@ describe('parseDue — română', () => {
 
   it('recurență + prima apariție', () => {
     expect(p('în fiecare luni raport săptămânal')).toMatchObject({
-      title: 'raport săptămânal', date: '2026-08-31', rrule: 'FREQ=WEEKLY',
+      title: 'raport săptămânal', date: '2026-08-31', rrule: 'FREQ=WEEKLY;BYDAY=MO',
     })
     expect(p('zilnic bea apă')).toMatchObject({ title: 'bea apă', rrule: 'FREQ=DAILY' })
   })
@@ -337,5 +337,53 @@ describe('refuzul se uită când fragmentul dispare', () => {
       { text: 'test la 11 ' },
       { text: 'test la 11 la 12' },
     ])).toEqual([['la 11'], [], ['la 12']])
+  })
+})
+
+describe('recurență în text', () => {
+  const r = (s: string) => parseDue(s, NOW).rrule
+
+  it('zilnic și intervalul de zile', () => {
+    expect(r('zilnic bea apă')).toBe('FREQ=DAILY')
+    expect(r('în fiecare zi bea apă')).toBe('FREQ=DAILY')
+    expect(r('daily standup')).toBe('FREQ=DAILY')
+    expect(r('la 2 zile udă florile')).toBe('FREQ=DAILY;INTERVAL=2')
+    expect(r('din 3 în 3 zile verifică')).toBe('FREQ=DAILY;INTERVAL=3')
+    expect(r('every 2 days water')).toBe('FREQ=DAILY;INTERVAL=2')
+  })
+
+  it('ziua săptămânii, una sau mai multe', () => {
+    expect(r('în fiecare luni raport')).toBe('FREQ=WEEKLY;BYDAY=MO')
+    expect(r('lunea raport')).toBe('FREQ=WEEKLY;BYDAY=MO')
+    expect(r('every monday report')).toBe('FREQ=WEEKLY;BYDAY=MO')
+    expect(r('lunea și joia sala')).toBe('FREQ=WEEKLY;BYDAY=MO,TH')
+    expect(r('săptămânal sinteza')).toBe('FREQ=WEEKLY')
+    expect(r('la 2 săptămâni retrospectivă')).toBe('FREQ=WEEKLY;INTERVAL=2')
+  })
+
+  it('lunar și anual', () => {
+    expect(r('lunar plătește chiria')).toBe('FREQ=MONTHLY')
+    expect(r('pe 15 ale lunii plătește factura')).toBe('FREQ=MONTHLY;BYMONTHDAY=15')
+    expect(r('anual revizie')).toBe('FREQ=YEARLY')
+    expect(r('în fiecare an revizie')).toBe('FREQ=YEARLY')
+  })
+
+  it('„luni" e o zi, „lunea" e o recurență — forma articulată e semnalul', () => {
+    expect(r('luni raport')).toBeNull()
+    expect(parseDue('luni raport', NOW).dueAt).not.toBeNull()
+  })
+
+  it('o recurență fără dată pornește de azi — motorul are nevoie de un start', () => {
+    const p = parseDue('zilnic bea apă', NOW)
+    expect(p.dueAt).not.toBeNull()
+    expect(new Date(p.dueAt!).getDate()).toBe(24)
+    expect(p.title).toBe('bea apă')
+  })
+
+  it('fragmentul de recurență se poate refuza ca oricare altul', () => {
+    const p = parseDue('la 2 zile de concediu', NOW)
+    expect(p.spans.length).toBeGreaterThan(0)
+    const rejected = ['la 2 zile']
+    expect(parseDue(maskRejected('la 2 zile de concediu', rejected), NOW).rrule).toBeNull()
   })
 })
