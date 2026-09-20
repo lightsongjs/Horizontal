@@ -55,4 +55,22 @@ export const FIXTURES: Fixture[] = [
     due: iso(2026, 10, 24), from: iso(2026, 10, 24), want: '2026-10-25 09:00' },
   { name: 'RRULE nerecunoscut — nu sare', rrule: 'FREQ=DAILY;COUNT=3',
     due: iso(2026, 8, 24), from: iso(2026, 8, 24), want: null },
+
+  // Fix round 1: divergențe TS↔SQL pe intrări din afara subsetului acceptat.
+  // Lista e ALBĂ (chei cunoscute), nu neagră — o cheie nouă, necunoscută,
+  // trebuie să respingă tot RRULE-ul, nu doar cele patru enumerate explicit.
+  { name: 'cheie necunoscută — respinsă, nu ignorată', rrule: 'FREQ=DAILY;FOO=BAR',
+    due: iso(2026, 8, 24), from: iso(2026, 8, 24), want: null },
+  { name: 'INTERVAL negativ — nu e „implicit 1"', rrule: 'FREQ=DAILY;INTERVAL=-1',
+    due: iso(2026, 8, 24), from: iso(2026, 8, 24), want: null },
+  { name: 'INTERVAL nenumeric', rrule: 'FREQ=DAILY;INTERVAL=abc',
+    due: iso(2026, 8, 24), from: iso(2026, 8, 24), want: null },
+  { name: 'BYMONTHDAY peste 31', rrule: 'FREQ=MONTHLY;BYMONTHDAY=99',
+    due: iso(2026, 8, 24), from: iso(2026, 8, 24), want: null },
+  { name: 'cod de zi necunoscut în BYDAY — respinge tot, nu doar codul', rrule: 'FREQ=WEEKLY;BYDAY=MO,XX',
+    due: iso(2026, 8, 24), from: iso(2026, 8, 24), want: null },
+  { name: 'FREQ scris minuscul — identic cu FREQ=DAILY', rrule: 'freq=daily',
+    due: iso(2026, 8, 24), from: iso(2026, 8, 24), want: '2026-08-25 09:00' },
+  { name: 'UNTIL — respins prin absența din lista albă, nu prin listă neagră', rrule: 'FREQ=DAILY;UNTIL=20261231T000000Z',
+    due: iso(2026, 8, 24), from: iso(2026, 8, 24), want: null },
 ]

@@ -20,33 +20,90 @@ create or replace function next_occurrence(
   p_tz    text default 'Europe/Bucharest'
 ) returns timestamptz language plpgsql stable as $$
 declare
-  due_local timestamp;
-  due_day   date;
-  base      date;
-  tod       time;
-  freq      text;
-  step      int;
-  byday     int[] := '{}';
-  target    int;
-  cand      date := null;
-  m0        date;
-  gap       int;
-  k         int;
-  i         int;
+  due_local  timestamp;
+  due_day    date;
+  base       date;
+  tod        time;
+  rrule_up   text;
+  parts      text[];
+  part       text;
+  eq_pos     int;
+  pkey       text;
+  pval       text;
+  freq       text;
+  interval_s text;
+  byday_s    text;
+  bymonth_s  text;
+  step       int;
+  byday      int[] := '{}';
+  code       text;
+  day_idx    int;
+  target     int;
+  cand       date := null;
+  m0         date;
+  gap        int;
+  k          int;
+  i          int;
 begin
   if p_rrule is null or p_due is null then return null; end if;
 
-  -- Chei pe care motorul TS le refuza explicit. A le ignora ar transforma o
-  -- serie marginita (UNTIL, COUNT) intr-una fara sfarsit.
-  if p_rrule ~ '(UNTIL|COUNT|BYSETPOS|BYMONTH=|BYWEEKNO|BYYEARDAY|WKST|BYHOUR|BYMINUTE)' then
-    return null;
-  end if;
+  -- Lista ALBA, in oglinda cu `parseRrule` din TS: orice cheie necunoscuta,
+  -- orice pereche fara `=`, respinge tot RRULE-ul. UNTIL, COUNT, BYSETPOS
+  -- etc. cad prin CONSTRUCTIE (nu sunt in lista de patru chei), nu printr-o
+  -- lista neagra de nume care ar trebui tinuta manual la zi si care poate
+  -- ramane in urma cand apare o cheie noua, necunoscuta inca.
+  rrule_up := upper(p_rrule);
+  parts := string_to_array(rrule_up, ';');
+  foreach part in array parts loop
+    if part = '' then continue; end if;
+    eq_pos := position('=' in part);
+    if eq_pos = 0 then return null; end if;
+    pkey := substring(part from 1 for eq_pos - 1);
+    pval := substring(part from eq_pos + 1);
+    if pkey not in ('FREQ', 'INTERVAL', 'BYDAY', 'BYMONTHDAY') then return null; end if;
+    if pkey = 'FREQ' then freq := pval;
+    elsif pkey = 'INTERVAL' then interval_s := pval;
+    elsif pkey = 'BYDAY' then byday_s := pval;
+    else bymonth_s := pval;
+    end if;
+  end loop;
 
-  freq := substring(p_rrule from 'FREQ=([A-Z]+)');
   if freq is null or freq not in ('DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY') then return null; end if;
 
-  step := coalesce(nullif(substring(p_rrule from 'INTERVAL=([0-9]+)'), '')::int, 1);
+  -- INTERVAL: intreg pozitiv, implicit 1. Regexul respinge "-1" si "abc" (nu
+  -- sunt numai cifre); "0" trece regexul dar cade la verificarea de sub el,
+  -- exact ca in TS.
+  if interval_s is null then
+    step := 1;
+  elsif interval_s !~ '^[0-9]+$' then
+    return null;
+  else
+    step := interval_s::int;
+  end if;
   if step < 1 then return null; end if;
+
+  -- BYMONTHDAY: validat CHIAR DACA freq nu e MONTHLY - ca in TS, unde
+  -- valoarea e verificata neconditionat si folosita (sau aruncata) abia la
+  -- capatul functiei de parsare.
+  if bymonth_s is not null then
+    if bymonth_s !~ '^[0-9]+$' then return null; end if;
+    target := bymonth_s::int;
+    if target < 1 or target > 31 then return null; end if;
+  end if;
+  if freq <> 'MONTHLY' then target := null; end if;
+
+  -- BYDAY: fiecare cod trebuie sa fie o zi cunoscuta, validat CHIAR DACA freq
+  -- nu e WEEKLY - un cod gresit ("XX") respinge tot RRULE-ul, nu e ignorat
+  -- tacit ca zgomot.
+  if byday_s is not null then
+    if byday_s = '' then return null; end if;
+    foreach code in array string_to_array(byday_s, ',') loop
+      day_idx := array_position(array['SU','MO','TU','WE','TH','FR','SA'], code);
+      if code = '' or day_idx is null then return null; end if;
+      byday := byday || (day_idx - 1);
+    end loop;
+  end if;
+  if freq <> 'WEEKLY' then byday := '{}'; end if;
 
   -- Toata aritmetica se face pe timestamp LOCAL, apoi rezultatul se intoarce in
   -- timestamptz. Asa ora 09:00 ramane 09:00 si peste schimbarea orei de vara;
@@ -62,10 +119,6 @@ begin
     cand := due_day + k * step;
 
   elsif freq = 'WEEKLY' then
-    select coalesce(array_agg(array_position(array['SU','MO','TU','WE','TH','FR','SA'], c) - 1), '{}')
-      into byday
-      from unnest(string_to_array(coalesce(substring(p_rrule from 'BYDAY=([A-Z,]+)'), ''), ',')) as c
-     where c <> '';
     if coalesce(array_length(byday, 1), 0) = 0 then
       byday := array[extract(dow from due_day)::int];
     end if;
@@ -80,8 +133,7 @@ begin
     end loop;
 
   elsif freq = 'MONTHLY' then
-    target := coalesce(nullif(substring(p_rrule from 'BYMONTHDAY=([0-9]+)'), '')::int,
-                       extract(day from due_day)::int);
+    target := coalesce(target, extract(day from due_day)::int);
     for k in 1..120 loop
       m0   := (date_trunc('month', due_day::timestamp) + make_interval(months => k * step))::date;
       -- Retezare la lungimea lunii, pornind de fiecare data de la ziua-TINTA.
@@ -115,6 +167,11 @@ begin
     if nxt is not null then
       -- Mementoul pastreaza acelasi decalaj fata de scadenta, deci ReminderKind
       -- din formular ramane ce era, fara sa-l recalculeze cineva.
+      --
+      -- new.due_at si new.remind_at sunt perechea din ACEEASI stare finala a
+      -- randului (ce a scris update-ul, nu ce era inainte). Nu inlocui cu
+      -- old.due_at: ar aduna un decalaj intre o scadenta veche si un memento
+      -- nou, care n-a existat niciodata ca pereche.
       if new.remind_at is not null then delta := new.due_at - new.remind_at; end if;
       new.due_at    := nxt;
       new.remind_at := case when delta is null then null else nxt - delta end;
