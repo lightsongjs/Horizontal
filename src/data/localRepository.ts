@@ -327,6 +327,10 @@ export function createLocalRepository(): Repository {
       if (!wasDone && patch.done === true && issue.rrule && issue.dueAt) {
         const nxt = nextOccurrence(issue.rrule, new Date(), issue.dueAt)
         if (nxt) {
+          // `issue.dueAt`/`issue.remindAt` sunt deja cele din `Object.assign` de
+          // mai sus, adică perechea din starea FINALĂ a patch-ului — la fel ca
+          // `new.due_at - new.remind_at` din trigger, nu `old.due_at`. Un decalaj
+          // amestecat din scadența veche și mementoul nou n-a existat ca pereche.
           const delta = issue.remindAt ? new Date(issue.dueAt).getTime() - new Date(issue.remindAt).getTime() : null
           issue.dueAt = nxt
           issue.remindAt = delta === null ? null : new Date(new Date(nxt).getTime() - delta).toISOString()
