@@ -123,6 +123,15 @@ oricare ar fi `key`-ul. Ce supraviețuiește e doar ce vine din store (`byId`,
 rehidratat din tichetul salvat), nu ce tocmai ai scris nesalvat — o editare în
 curs, redimensionată peste prag, se pierde la fel ca la un click pe alt rând.
 
+Din 2026-09-20, cheia panoului poartă și `dueAt`, ca saltul unei recurențe să
+remonteze formularul în loc să-l lase cu scadența veche în câmp (altfel Salvează
+scria data dinainte de salt și anula saltul în tăcere). Prețul e același ca mai
+sus, cu un rând în plus: remontarea pierde și ciorna netrimisă din `Thread`, nu
+doar derularea și focusul. Dacă vrei ciorna păstrată, mut-o din starea locală a
+lui `Thread` într-un loc care supraviețuiește remontării — nu adăuga un efect de
+sincronizare în formular, care ar avea nevoie de propria conștiință a stării
+murdare.
+
 **Comutarea nu salvează nimic singură.** Garda de close (`setCloseGuard`) vede
 doar închiderea explicită — un click pe alt rând o ocolește complet. De-aia
 formularul docat își raportează starea murdară (`setDockedDirty`) și
