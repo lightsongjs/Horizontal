@@ -59,6 +59,7 @@ const pristineEdit: FormDirtyState = {
   urgent: existingIssue.urgent,
   dueAt: existingIssue.dueAt,
   remindAt: existingIssue.remindAt,
+  rrule: existingIssue.rrule,
 }
 
 /** Stare curată pentru un tichet nou — nimic scris încă. */
@@ -85,6 +86,7 @@ const pristineCreate: FormDirtyState = {
   urgent: false,
   dueAt: null,
   remindAt: null,
+  rrule: null,
 }
 
 describe('isFormDirty — draftul firului', () => {

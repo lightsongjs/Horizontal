@@ -16,6 +16,8 @@ import {
 } from '../lib/schedule'
 import { Attachments } from './Attachments'
 import { Thread } from './Thread'
+import { describeRrule } from '../lib/recurrence'
+import { PRESETS, RecurrencePicker, presetOf } from './RecurrencePicker'
 import type { Issue, ScenarioKind, TestScenario } from '../lib/types'
 import { Icon, type IconName } from './Icon'
 
@@ -93,6 +95,7 @@ export interface FormDirtyState {
   urgent: boolean
   dueAt: string | null
   remindAt: string | null
+  rrule: string | null
 }
 
 /**
@@ -124,12 +127,13 @@ export function isFormDirty(s: FormDirtyState): boolean {
       s.commentDraft.trim() !== '' ||
       s.urgent !== (existing?.urgent ?? false) ||
       s.dueAt !== (existing?.dueAt ?? null) ||
-      s.remindAt !== (existing?.remindAt ?? null)
+      s.remindAt !== (existing?.remindAt ?? null) ||
+      s.rrule !== (existing?.rrule ?? null)
     )
   }
   return (
     s.title.trim() !== '' || s.desc.trim() !== '' || s.deps.length > 0 || s.blocks.length > 0 || s.obstIds.length > 0 ||
-    s.selectors.length > 0 || s.scenarios.length > 0 || s.urgent || s.dueAt !== null
+    s.selectors.length > 0 || s.scenarios.length > 0 || s.urgent || s.dueAt !== null || s.rrule !== null
   )
 }
 
@@ -386,6 +390,8 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
   )
   // Mementoul implicit urmează forma scadenței cât timp userul nu l-a atins.
   const [reminderTouched, setReminderTouched] = useState(false)
+  const [rrule, setRrule] = useState<string | null>(existing?.rrule ?? null)
+  const [showRecur, setShowRecur] = useState(false)
   const schedule = (() => {
     const { dueAt, allDay } = fromInputs(dueDate, dueTime)
     const kind = reminderTouched ? reminder : defaultReminder(allDay)
@@ -474,6 +480,7 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
     fillMemo.current = next.memo
     setDueText(next.fields.date)
     setTimeText(next.fields.time)
+    if (titleDate.active && parsed.rrule) setRrule(parsed.rrule)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [title, titleDate.rejectedKey, canWrite, titleTyped])
 
@@ -518,6 +525,7 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
     urgent,
     dueAt: schedule.dueAt,
     remindAt: schedule.remindAt,
+    rrule,
   })
 
   useEffect(() => {
@@ -770,7 +778,7 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
       const realDeps = deps.map((id) => draftDepMap[id] ?? (id.startsWith('__draft_') ? null : id)).filter(Boolean) as string[]
       const qaPayload = {
         selectors: selectors.filter(Boolean), scenarios, assigneeId, urgent,
-        dueAt: schedule.dueAt, allDay: schedule.allDay, remindAt: schedule.remindAt,
+        dueAt: schedule.dueAt, allDay: schedule.allDay, remindAt: schedule.remindAt, rrule,
       }
       const targetId = isEdit
         ? (await updateIssue(existing!.id, { title: saveTitle, desc: desc.trim(), theme, wave, deps: realDeps, ...qaPayload }), existing!.id)
@@ -797,7 +805,7 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
         return i
       })
       if (!snap.find((i) => i.id === targetId)) {
-        snap = [...snap, { id: targetId, projectId: project.id, title: saveTitle, desc: desc.trim(), theme, wave, deps: realDeps, done: false, selectors: selectors.filter(Boolean), scenarios, assigneeId, createdBy: null, createdAt: new Date().toISOString(), urgent, dueAt: schedule.dueAt, allDay: schedule.allDay, remindAt: schedule.remindAt, rrule: null }]
+        snap = [...snap, { id: targetId, projectId: project.id, title: saveTitle, desc: desc.trim(), theme, wave, deps: realDeps, done: false, selectors: selectors.filter(Boolean), scenarios, assigneeId, createdBy: null, createdAt: new Date().toISOString(), urgent, dueAt: schedule.dueAt, allDay: schedule.allDay, remindAt: schedule.remindAt, rrule }]
       }
       const cascadeQueue = [...realDeps]
       const cascadeSeen = new Set<string>()
@@ -1093,6 +1101,36 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
                 </button>
               ))}
             </div>
+          )}
+          {/* Repetarea are sens doar peste o scadență: o recurență e o funcție
+              de o dată de start. Fără dată, rândul nici nu apare. */}
+          {dueDate && (
+            <div className="pills-row due-recur">
+              <span className="if-sub-label">Repetare</span>
+              {PRESETS.map((p) => (
+                <button
+                  key={p.label}
+                  tabIndex={-1}
+                  type="button"
+                  className={`if-meta-pill reminder-pill ${presetOf(rrule) === (p.value ?? 'none') ? 'active' : ''}`}
+                  onClick={() => setRrule(p.value)}
+                >
+                  {p.label}
+                </button>
+              ))}
+              <button
+                tabIndex={-1}
+                type="button"
+                className={`if-meta-pill reminder-pill ${presetOf(rrule) === 'custom' ? 'active' : ''}`}
+                onClick={() => setShowRecur(true)}
+                title="Interval, zile ale săptămânii"
+              >
+                {presetOf(rrule) === 'custom' ? describeRrule(rrule) || 'personalizat' : 'personalizat…'}
+              </button>
+            </div>
+          )}
+          {showRecur && (
+            <RecurrencePicker value={rrule} onChange={setRrule} onClose={() => setShowRecur(false)} />
           )}
           {/* Semnalul că scadența a venit din titlu, cu cele două ieșiri:
             curăță textul rămas în titlu, sau refuză de tot. Fără ele,

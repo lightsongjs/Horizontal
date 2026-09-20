@@ -4856,6 +4856,40 @@ main {
   font-style: italic;
   white-space: nowrap;
 }
+.due-recur { margin-top: 2px; }
+/* Foaia de repetare personalizată. Fundal propriu peste fundalul paginii, cu
+   umbră ambientală — fără chenar, ca orice altă suprafață (regula 1). */
+.rp-back { position: fixed; inset: 0; z-index: 130; background: rgba(0, 0, 0, 0.32); }
+.rp {
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+  transform: translateX(-50%);
+  z-index: 131;
+  width: min(94vw, 420px);
+  padding: 14px;
+  border-radius: var(--r);
+  background: var(--surface);
+  box-shadow: var(--amb-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.rp-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.rp-n {
+  width: 56px;
+  padding: 4px 8px;
+  border-radius: var(--r-m);
+  /* Chenarul rămâne: un câmp fără delimitare nu se mai citește ca un câmp
+     (excepția din regula 1). */
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--txt);
+  font-family: var(--mono);
+  font-size: 13px;
+}
+.rp-day { min-width: 30px; justify-content: center; font-family: var(--mono); }
+.rp-acts { display: flex; justify-content: flex-end; gap: 8px; }
 
 /* ═══════════════════════════════════════════════════════════════════
    MOD TO-DO — liste inteligente (Azi / Mâine / Next 7 days)
