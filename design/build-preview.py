@@ -701,6 +701,55 @@ CONTROALE = ''.join([
       '<button class="if-meta-wave">I</button><button class="if-meta-wave active">II</button>'
       '<button class="if-meta-add">+</button>'),
 
+    # `.due-recur` — rândul „Repetare" din formular (Task 5). Preseturile sunt
+    # `.if-meta-pill.reminder-pill`, deci fundalul normal vine din regula de bază
+    # a lui `.if-meta-pill` — dar clasa compusă n-avea nicio intrare proprie pe
+    # banc, deci n-a fost verificată cu ochiul. Un rând arată preseturile
+    # neatinse (nimic activ în afară de „fără"); al doilea arată „personalizat…"
+    # activ, cu textul lui `describeRrule` în el — exact ce desenează IssueForm
+    # când presetul curent nu e unul dintre cele cinci.
+    g('Repetare — rândul din formular',
+      '<div class="pills-row due-recur">'
+      '<span class="if-sub-label">Repetare</span>'
+      '<button class="if-meta-pill reminder-pill active">fără</button>'
+      '<button class="if-meta-pill reminder-pill">zilnic</button>'
+      '<button class="if-meta-pill reminder-pill">săptămânal</button>'
+      '<button class="if-meta-pill reminder-pill">lunar</button>'
+      '<button class="if-meta-pill reminder-pill">anual</button>'
+      '<button class="if-meta-pill reminder-pill">personalizat…</button>'
+      '</div>'
+      '<div class="pills-row due-recur">'
+      '<span class="if-sub-label">Repetare</span>'
+      '<button class="if-meta-pill reminder-pill">fără</button>'
+      '<button class="if-meta-pill reminder-pill">zilnic</button>'
+      '<button class="if-meta-pill reminder-pill">săptămânal</button>'
+      '<button class="if-meta-pill reminder-pill">lunar</button>'
+      '<button class="if-meta-pill reminder-pill">anual</button>'
+      '<button class="if-meta-pill reminder-pill active">lunea și joia</button>'
+      '</div>'),
+
+    # Foaia de personalizare (`RecurrencePicker.tsx`, clasa `.rp`) — `position:
+    # fixed` în aplicație, ca `.sheet`/`.lb-back` mai sus; pe banc e adusă în flux
+    # cu aceleași reguli (`position: static`, `transform: none`, vezi `<style>`),
+    # ca fundalul ei (`--surface` + `--amb-lg`, fără chenar) să se vadă normal.
+    # `.rp-n` e excepția de câmp (chenar explicit); `.rp-day` reușește `if-meta-pill`,
+    # deci fundalul normal/activ e testat aici pentru prima dată pe clasa compusă.
+    g('Repetare — foaia personalizată',
+      '<div class="rp">'
+      '<div class="rp-row">'
+      '<span class="if-sub-label">La fiecare</span>'
+      '<input class="rp-n" type="text" inputMode="numeric" value="2" aria-label="La câte unități se repetă" />'
+      '<div class="pills-row">'
+      '<button class="if-meta-pill rp-day active" aria-label="luni">L</button>'
+      '<button class="if-meta-pill rp-day" aria-label="joi">J</button>'
+      '</div>'
+      '</div>'
+      '<div class="rp-acts">'
+      '<button class="if-meta-pill">Renunță</button>'
+      '<button class="if-meta-pill active">Gata</button>'
+      '</div>'
+      '</div>'),
+
     g('Butoane',
       '<button class="btn-primary">Salvează</button>'
       '<button class="btn-ghost">Renunță</button>'
@@ -974,6 +1023,10 @@ SHELL = """<!doctype html>
   /* `.att-del` apare la hover; pe banc n-ar fi nimic de inspectat. */
   .bench-gallery .att-del { opacity: 1; }
   .bench-gallery .bulk-bar { position: static; transform: none; }
+  /* `.rp` (RecurrencePicker) e fixed, centrat pe ecran, în aplicație; pe banc
+     ar acoperi restul galeriei. Fundalul e același `--surface` + `--amb-lg`,
+     deci ce se vede aici e ce se vede în foaia reală. */
+  .bench-gallery .rp { position: static; left: auto; bottom: auto; transform: none; width: 100%; max-width: 420px; z-index: auto; }
   /* `.lb-back` e fixed în aplicație; pe banc ar acoperi ecranul. */
   /* `.sheet` e fixed în aplicație; pe banc ar acoperi ecranul. Fundalul e
      același `--surface`, deci ce se vede aici e ce se vede în foaie. */
