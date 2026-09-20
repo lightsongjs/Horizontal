@@ -312,13 +312,19 @@ export function createLocalRepository(): Repository {
       const db = load()
       const issue = db.issues.find((i) => i.id === id)
       if (!issue) throw new Error(`Unknown issue ${id}`)
+      const wasDone = issue.done
       Object.assign(issue, patch)
 
       // Oglinda trigger-ului `issues_advance_recurrence` din Supabase: aici nu
       // există Postgres care să facă saltul, iar modul local n-are voie să se
       // comporte altfel. Ce e în `supabase/migration-recurrence.sql` e legea;
-      // asta doar o repetă în TS.
-      if (patch.done === true && issue.rrule && issue.dueAt) {
+      // asta doar o repetă în TS. Trigger-ul verifică o TRANZIȚIE
+      // (`new.done and not old.done`), nu doar valoarea din patch — de-aia
+      // `wasDone` e citit ÎNAINTE de `Object.assign`. Un `updateIssue(id,
+      // { done: true })` pe un tichet deja bifat n-are voie să sară scadența
+      // a doua oară, la fel cum trigger-ul n-ar face nimic pe un rând care
+      // era deja `done`.
+      if (!wasDone && patch.done === true && issue.rrule && issue.dueAt) {
         const nxt = nextOccurrence(issue.rrule, new Date(), issue.dueAt)
         if (nxt) {
           const delta = issue.remindAt ? new Date(issue.dueAt).getTime() - new Date(issue.remindAt).getTime() : null

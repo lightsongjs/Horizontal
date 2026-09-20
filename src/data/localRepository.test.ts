@@ -386,4 +386,32 @@ describe('localRepository — recurență', () => {
     const saved = await repo.updateIssue(created.id, { done: true })
     expect(saved.done).toBe(true)
   })
+
+  it('o sarcină recurentă DEJA bifată nu sare din nou scadența la un al doilea updateIssue({ done: true })', async () => {
+    // Fixează TRANZIȚIA (`false -> true`), nu valoarea din patch: trigger-ul
+    // Postgres verifică `new.done and not old.done`, deci a doua bifare pe un
+    // rând deja `done` nu mișcă nimic. Fără verificarea asta, `patch.done ===
+    // true` ar fi singura condiție, și orice al doilea apel cu același patch
+    // ar sări scadența din nou.
+    const repo = createLocalRepository()
+    const projects = await repo.listProjects()
+    const now = new Date()
+    const due = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0, 0, 0)
+    const created = await repo.createIssue({ projectId: projects[0].id, title: 'bea apă' })
+
+    // Aduce tichetul în starea „deja bifat, ȘI recurent" fără să treacă prin
+    // gardă: bifarea de mai jos n-are încă rrule/dueAt, deci nu sare nimic —
+    // apoi recurența se adaugă separat, exact cum ar putea acumula-o un
+    // tichet vechi, deja închis, editat ulterior.
+    await repo.updateIssue(created.id, { done: true })
+    const withRecurrence = await repo.updateIssue(created.id, {
+      dueAt: due.toISOString(),
+      rrule: 'FREQ=DAILY',
+    })
+    expect(withRecurrence.done).toBe(true)
+
+    const secondCall = await repo.updateIssue(created.id, { done: true })
+    expect(secondCall.done).toBe(true)
+    expect(secondCall.dueAt).toBe(withRecurrence.dueAt)
+  })
 })
