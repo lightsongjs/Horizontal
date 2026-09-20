@@ -38,4 +38,14 @@ describe('dueTitle', () => {
     expect(dueTitle({ ...base, dueAt: at(2026, 8, 20, 9, 0), allDay: false, done: true }, now))
       .toBe('20/08/2026 09:00')
   })
+
+  it('titlul spune și că se repetă', () => {
+    const t = dueTitle({ ...base, dueAt: at(2026, 8, 24, 9, 0), allDay: false, rrule: 'FREQ=DAILY' }, new Date(2026, 7, 24, 8, 0))
+    expect(t).toContain('zilnic')
+  })
+
+  it('un tichet care nu se repetă nu spune nimic despre asta', () => {
+    const t = dueTitle({ ...base, dueAt: at(2026, 8, 24, 9, 0), allDay: false, rrule: null }, new Date(2026, 7, 24, 8, 0))
+    expect(t).not.toContain('zilnic')
+  })
 })

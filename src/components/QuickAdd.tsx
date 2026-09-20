@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useHorizontal } from '../store'
 import { useTitleDate, useWritableProjects } from '../hooks'
 import { dayOffset, defaultReminder, reminderAt, toDisplayDate, toTimeInput } from '../lib/schedule'
+import { describeRrule } from '../lib/recurrence'
 import { Icon } from './Icon'
 
 const LAST_PROJECT_KEY = 'horizontal:last-task-project'
@@ -228,8 +229,12 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0 }: Props) {
             </span>
           )}
 
-          {useParsed && parsed.rrule && (
-            <span className="chip"><Icon name="recurring" size={12} /> {parsed.rrule === 'FREQ=DAILY' ? 'zilnic' : 'săptămânal'}</span>
+          {/* Prin `describeRrule`, nu pe un `if` care numără tipare: acela era
+              tolerabil cu doi tipare cunoscute, dar parserul le știe acum pe
+              toate opt din vocabular — un `if` pe `'FREQ=DAILY'` ar minti la
+              primul „la 2 zile" sau „lunea și joia". */}
+          {useParsed && parsed.rrule && describeRrule(parsed.rrule) && (
+            <span className="chip"><Icon name="recurring" size={12} /> {describeRrule(parsed.rrule)}</span>
           )}
 
           <label className="qa-proj" title="Proiectul sarcinii">

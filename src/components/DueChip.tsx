@@ -1,4 +1,5 @@
 import { hasTime, isOverdue, reminderKindOf, toDisplayDate, toShortDate, toTimeInput } from '../lib/schedule'
+import { describeRrule } from '../lib/recurrence'
 import type { Issue } from '../lib/types'
 import { Icon } from './Icon'
 
@@ -18,13 +19,34 @@ export function Bell() {
   )
 }
 
+/**
+ * Semnul de repetare: „acest tichet e recurent".
+ *
+ * Exportat la fel ca `Bell`, ca „se repetă" să arate identic oriunde apare un
+ * jeton de scadență — deocamdată doar aici, dar `TaskRow` ar reutiliza-o la
+ * fel cum reutilizează `Bell`, nu ar desena a doua iconiță. Refolosește clasa
+ * `.t-bell` în loc de una nouă: e deja exact „iconiță mică, aliniată, în
+ * culoarea de accent a jetonului" — ce mai are nevoie și semnul de repetare —
+ * iar două semne mici cu culori diferite unul lângă altul ar fi exact ce
+ * vocabularul comun de iconițe există să evite.
+ */
+export function Recur({ rrule }: { rrule: string | null }) {
+  const rec = describeRrule(rrule)
+  if (!rec) return null
+  return (
+    <span className="t-bell" aria-label={`Se repetă ${rec}`}>
+      <Icon name="recurring" size={12} />
+    </span>
+  )
+}
+
 const REMINDER_LABEL: Record<string, string> = {
   due: 'memento la scadență',
   m30: 'memento 30 min înainte',
   d1: 'memento cu o zi înainte',
 }
 
-type Due = Pick<Issue, 'dueAt' | 'allDay' | 'remindAt' | 'done'>
+type Due = Pick<Issue, 'dueAt' | 'allDay' | 'remindAt' | 'done' | 'rrule'>
 
 /** Textul din `title`: aici încape tot ce nu încape pe card. */
 export function dueTitle(issue: Due, now: Date): string {
@@ -32,6 +54,8 @@ export function dueTitle(issue: Due, now: Date): string {
   const parts = [toDisplayDate(issue.dueAt) + (hasTime(issue) ? ` ${toTimeInput(issue.dueAt)}` : ' · toată ziua')]
   const kind = reminderKindOf(issue.dueAt, issue.remindAt)
   if (kind !== 'none') parts.push(REMINDER_LABEL[kind])
+  const rec = describeRrule(issue.rrule)
+  if (rec) parts.push(`se repetă ${rec}`)
   if (isOverdue(issue, now)) parts.unshift('Restanță')
   return parts.join(' · ')
 }
@@ -61,6 +85,7 @@ export function DueChip({ issue, now }: Props) {
       <span className="dc-date">{toShortDate(issue.dueAt)}</span>
       {hasTime(issue) && <span className="dc-time">{toTimeInput(issue.dueAt)}</span>}
       {issue.remindAt && <Bell />}
+      <Recur rrule={issue.rrule} />
     </span>
   )
 }
