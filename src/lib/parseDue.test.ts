@@ -417,6 +417,66 @@ describe('recurență în text', () => {
     expect(p.rrule).toBe('FREQ=WEEKLY;BYDAY=MO,TH')
     expect(p.spans.length).toBe(2)
   })
+
+  it('„sâmbătă" și „duminică" rămân DATE — articularea nu le deosebește', () => {
+    // Regresia cea mai scumpă a ramurii: după `fold()`, „sâmbătă" și „sâmbăta"
+    // sunt același șir, la fel „duminică"/„duminica". Tratate ca recurență,
+    // dădeau o sarcină pe care bifa n-o mai închidea niciodată.
+    expect(r('sâmbătă tuns')).toBeNull()
+    expect(r('sambata tuns')).toBeNull()
+    expect(r('duminică la bunici')).toBeNull()
+    expect(r('duminica la bunici')).toBeNull()
+    expect(p('sâmbătă tuns')).toMatchObject({ title: 'tuns', date: '2026-08-29' })
+    expect(p('duminica la bunici')).toMatchObject({ title: 'la bunici', date: '2026-08-30' })
+  })
+
+  it('aceleași două zile DEVIN recurență cu marcaj explicit', () => {
+    expect(p('în fiecare sâmbătă tuns')).toMatchObject({
+      title: 'tuns', date: '2026-08-29', rrule: 'FREQ=WEEKLY;BYDAY=SA',
+    })
+    expect(p('every saturday haircut')).toMatchObject({
+      title: 'haircut', date: '2026-08-29', rrule: 'FREQ=WEEKLY;BYDAY=SA',
+    })
+    expect(p('în fiecare duminică la bunici')).toMatchObject({
+      date: '2026-08-30', rrule: 'FREQ=WEEKLY;BYDAY=SU',
+    })
+  })
+
+  it('o recurență care NUMEȘTE o zi pornește de la ea, nu de azi', () => {
+    // NOW = luni 24 aug. Fără alinierea la BYDAY/BYMONTHDAY, toate patru
+    // cădeau azi — adică în „Azi", pe o zi pe care n-a cerut-o nimeni.
+    expect(p('vinerea raport')).toMatchObject({ date: '2026-08-28', rrule: 'FREQ=WEEKLY;BYDAY=FR' })
+    expect(p('joia la 18 sala')).toMatchObject({ date: '2026-08-27', time: '18:00' })
+    expect(p('pe 15 ale lunii la 10 factura')).toMatchObject({ date: '2026-09-15', time: '10:00' })
+    expect(p('on the 15th pay the bill')).toMatchObject({ date: '2026-09-15' })
+  })
+
+  it('„în fiecare X" și „Xa" dau ACEEAȘI zi — nu mai e o întâmplare', () => {
+    // Înainte, „în fiecare joi" nimerea joia doar fiindcă `\bjoi\b` se
+    // potrivea a doua oară, ca zi obișnuită; „joia" nu se potrivea și cădea
+    // azi. Acum ziua vine din motor pentru amândouă.
+    expect(p('în fiecare joi sala').date).toBe('2026-08-27')
+    expect(p('joia sala').date).toBe('2026-08-27')
+    // Și într-o vineri, unde ambele formulări trebuie să spună „vinerea
+    // viitoare", ca „vineri" spus vineri.
+    const FRI = new Date(2026, 7, 28, 8, 40)
+    expect(parseDue('vinerea raport', FRI).dueAt).toBe(parseDue('vineri raport', FRI).dueAt)
+    expect(parseDue('în fiecare vineri raport', FRI).dueAt).toBe(parseDue('vineri raport', FRI).dueAt)
+  })
+
+  it('o zi scrisă explicit învinge alinierea recurenței', () => {
+    // „mâine" e o dată cerută cu mâna; recurența doar spune cât de des.
+    expect(p('mâine lunea raport')).toMatchObject({ date: '2026-08-25', rrule: 'FREQ=WEEKLY;BYDAY=MO' })
+  })
+
+  it('un interval absurd nu devine recurență — ar fi blocat bifarea', () => {
+    // `INTERVAL=99999999999` nu încape în `int4`: `next_occurrence()` arunca,
+    // iar un trigger care aruncă anulează tot update-ul. Rândul nu se mai
+    // putea bifa deloc. Fragmentul rămâne text, ceea ce e onest.
+    expect(r('la 99999999999 zile ceva')).toBeNull()
+    expect(parseDue('la 99999999999 zile ceva', NOW).dueAt).toBeNull()
+    expect(r('la 999 zile ceva')).toBe('FREQ=DAILY;INTERVAL=999')
+  })
 })
 
 describe('excluderea de recurență din tiparul de oră liberă', () => {

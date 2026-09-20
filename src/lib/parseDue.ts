@@ -10,7 +10,7 @@
 // la primul „Întâlnire la Podul 5".
 
 import { startOfLocalDay, addDays } from './schedule'
-import { formatRrule } from './recurrence'
+import { firstOccurrence, formatRrule } from './recurrence'
 
 export interface ParsedDue {
   /** Titlul cu fragmentele de dată scoase. Poate fi GOL — vezi mai jos. */
@@ -135,11 +135,20 @@ export function parseDue(raw: string, now: Date = new Date()): ParsedDue {
   //
   //    Forma ARTICULATĂ e semnalul, în română: „luni" e o zi, „lunea" e o
   //    recurență. De aceea lista de mai jos e separată de `DAYS_RO`.
+  //
+  //    Indexul din listă E ziua săptămânii, deci rămân toate șapte — dar
+  //    regexul de mai jos caută doar cinci; vezi comentariul de acolo.
   const DAYS_RO_ART = ['duminica', 'lunea', 'martea', 'miercurea', 'joia', 'vinerea', 'sambata']
 
   // „la 2 zile", „din 3 în 3 zile", „every 2 days"
-  m = hay.match(/\b(?:la|every)\s+(\d+)\s*(?:de\s+)?(zile|zi|days|day|saptamani|saptamana|weeks|week|luni|luna|months|month|ani|an|years|year)\b/)
-    ?? hay.match(/\bdin\s+(\d+)\s+in\s+\d+\s+(zile|zi|saptamani|saptamana|luni|luna|ani|an)\b/)
+  //
+  // Numărul e plafonat la trei cifre, nu din pedanterie: `INTERVAL=99999999999`
+  // nu încape în `int4`, iar `next_occurrence()` din Postgres arunca pe el —
+  // adică tichetul nu se mai putea bifa DELOC. Peste trei cifre fragmentul nu
+  // se mai recunoaște ca recurență și rămâne text în titlu, ceea ce e onest:
+  // „la 99999999999 zile" nu e o rată, e o greșeală de tastare.
+  m = hay.match(/\b(?:la|every)\s+(\d{1,3})\s*(?:de\s+)?(zile|zi|days|day|saptamani|saptamana|weeks|week|luni|luna|months|month|ani|an|years|year)\b/)
+    ?? hay.match(/\bdin\s+(\d{1,3})\s+in\s+\d+\s+(zile|zi|saptamani|saptamana|luni|luna|ani|an)\b/)
   if (m) {
     const n = Number(m[1])
     const unit = m[2]
@@ -177,8 +186,16 @@ export function parseDue(raw: string, now: Date = new Date()): ParsedDue {
   // virgule și cel mult un „si"/„and", golul se punte și cele două rămân un
   // singur fragment continuu. Orice altceva între ele înseamnă că nu fac
   // parte din aceeași enumerare — spanurile rămân separate, fără punte.
+  //
+  // DOAR CINCI din șapte zile intră aici. „sâmbătă"/„sâmbăta" și
+  // „duminică"/„duminica" se scriu IDENTIC după `fold()` (diacriticele cad),
+  // deci pentru ele forma articulată nu mai e un semnal — „sâmbătă tuns",
+  // scris în adăugarea rapidă, ar fi devenit o sarcină care se repetă la
+  // infinit și pe care o bifă n-o închide. Rămân date obișnuite; ca recurență
+  // se cer explicit („în fiecare sâmbătă", „every saturday"), iar marcajul
+  // acela e prins de blocul de mai sus, care nu depinde de articulare.
   if (!rrule) {
-    const dayRe = /\b(duminica|lunea|martea|miercurea|joia|vinerea|sambata)\b/g
+    const dayRe = /\b(lunea|martea|miercurea|joia|vinerea)\b/g
     const found: { start: number; end: number; day: number }[] = []
     let mm: RegExpExecArray | null
     while ((mm = dayRe.exec(hay))) {
@@ -270,7 +287,15 @@ export function parseDue(raw: string, now: Date = new Date()): ParsedDue {
     m = hay.match(
       /\b(?:(?:in|pe)\s+)?(duminica|luni|marti|miercuri|joi|vineri|sambata|monday|tuesday|wednesday|thursday|friday|saturday|sunday)(\s+viitoare|\s+viitor)?\b/,
     )
-    if (m) {
+    // Un nume de zi care e DEJA înăuntrul unui fragment de recurență nu e o
+    // dată separată: „în fiecare joi" e un singur lucru. Potrivirea asta a
+    // doua era, până acum, singurul motiv pentru care „în fiecare joi" nimerea
+    // ziua corectă — o întâmplare, fiindcă „joia" nu se potrivește cu
+    // `\bjoi\b` și rămânea fără zi. Acum ziua de start vine din motor, la fel
+    // pentru amândouă formele.
+    const insideRecurrence = !!m && m.index !== undefined
+      && spans.some(([s, e]) => m!.index! >= s && m!.index! + m![0].length <= e)
+    if (m && !insideRecurrence) {
       const name = m[1]
       const idx = DAYS_RO.indexOf(name) >= 0 ? DAYS_RO.indexOf(name) : DAYS_EN.indexOf(name)
       let delta = (idx - now.getDay() + 7) % 7
@@ -281,6 +306,22 @@ export function parseDue(raw: string, now: Date = new Date()): ParsedDue {
       day = addDays(startOfLocalDay(now), delta)
       hit(m)
     }
+  }
+
+  // ── prima apariție a unei recurențe care NUMEȘTE o zi
+  //
+  // „vinerea raport" e vinerea care vine, „pe 15 ale lunii factura" e pe 15 —
+  // nu azi. Regula „recurență fără dată ⇒ azi" e pentru recurențele care nu
+  // numesc nimic (zilnic, lunar simplu); peste una care numește, ea producea o
+  // scadență pe care n-a cerut-o nimeni, în „Azi", și pe care omul o acționa.
+  //
+  // Ziua se cere motorului, nu se calculează aici: un al doilea „care e
+  // următoarea vineri" ar fi driftat de `nextOccurrence` în tăcere, exact
+  // clasa de bug pentru care există `test:recurrence-sql`. O zi scrisă
+  // explicit învinge, ca peste tot în funcția asta.
+  if (!day && rrule) {
+    const first = firstOccurrence(rrule, now)
+    if (first) day = new Date(first)
   }
 
   // ── oră militară lipită: „at 1500", „la 0830", „ora 900".
