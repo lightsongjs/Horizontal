@@ -72,7 +72,7 @@ def tk(tid, theme, theme_color, title, done=False, urgent=False, deps=None,
         sub += ('<span class="due-chip%s"><span class="dc-date">%s</span>%s%s</span>'
                 % (' late' if late else '', d,
                    '<span class="dc-time">%s</span>' % t if t else '',
-                   '<span class="t-bell" aria-label="Are memento">%s</span>' % ic('bell', 12)))
+                   '<span class="t-mark" aria-label="Are memento">%s</span>' % ic('bell', 12)))
     if obst:
         # `.obst-chip.blk` — ObstacleChip.tsx: aceeași informație pe card ȘI pe
         # rând. Icon-ul e rolul „obstacle" din Icon.tsx, care rezolvă la
@@ -90,7 +90,7 @@ def trow(time, title, proj, dot, done=False, late=False, urgent=False, bell=Fals
     if urgent:
         tail += '<span class="t-urgent" title="Urgent">%s</span>' % ic('zap', 13)
     if bell:
-        tail += '<span class="t-bell" aria-label="Are memento">%s</span>' % ic('bell', 12)
+        tail += '<span class="t-mark" aria-label="Are memento">%s</span>' % ic('bell', 12)
     tail += ('<span class="t-proj"><span class="t-dot" style="background:%s"></span>'
              '<span class="t-proj-name">%s</span></span>' % (dot, proj))
     return ('<button class="list-row task-row%s%s">'
@@ -678,7 +678,14 @@ CONTROALE = ''.join([
       '<span class="tk-children">+2 din alt val</span>'
       '<span class="badge-now">Acum</span>'
       '<span class="due-chip"><span class="dc-date">9 sep</span><span class="dc-time">09:30</span>'
-      '<span class="t-bell">' + ic('bell', 12) + '</span></span>'
+      '<span class="t-mark">' + ic('bell', 12) + '</span></span>'
+      # Amândouă semnele mici pe același jeton (Task 6) — combinația care n-a
+      # existat înainte și unde s-ar vedea o problemă de spațiere/culoare
+      # între ele, fiindcă acum împart o singură clasă (`.t-mark`), nu una
+      # per desen.
+      '<span class="due-chip"><span class="dc-date">10 sep</span><span class="dc-time">08:00</span>'
+      '<span class="t-mark">' + ic('bell', 12) + '</span>'
+      '<span class="t-mark">' + ic('rotate-cw', 12) + '</span></span>'
       '<span class="due-chip late"><span class="dc-date">8 sep</span></span>'
       '<span class="type-badge">task</span><span class="type-badge ext">extern</span>'
       '<span class="acc-count">4</span>'

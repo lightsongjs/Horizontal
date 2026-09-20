@@ -787,8 +787,9 @@ main {
 
 /* ── scadența pe un tichet din modul proiecte ──────────────────────
    Aceleași metrici ca ora din listele inteligente (`.t-time`): ziua e mono,
-   ora e îngroșată, restanța e roșie. Clopoțelul (`.t-bell`) e componenta
-   comună cu TaskRow — „are memento" arată la fel în ambele moduri. */
+   ora e îngroșată, restanța e roșie. Semnul mic (`.t-mark`, clopoțel sau
+   iconița de repetare) e componenta comună cu TaskRow — „are memento"/„se
+   repetă" arată la fel în ambele moduri. */
 .due-chip {
   display: inline-flex;
   align-items: center;
@@ -809,7 +810,7 @@ main {
   background: var(--blocked-soft);
 }
 .due-chip.late .dc-time { color: var(--blocked); }
-.due-chip .t-bell { color: var(--active); }
+.due-chip .t-mark { color: var(--active); }
 /* Într-un rând de listă scadența stă la capăt, lângă fulgerul de urgent. */
 .row-tail {
   display: flex;
@@ -5006,7 +5007,10 @@ main {
 .task-row .list-title { flex: 1; min-width: 0; }
 .t-tail { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
 .t-urgent { display: inline-flex; color: var(--active); }
-.t-bell { color: var(--active); display: inline-flex; align-items: center; }
+/* Semnul mic, generic pe rol: clopoțel („are memento") sau repetare
+   („se repetă"). Un singur desen, o singură clasă — la fel cum vocabularul de
+   iconițe ține un singur nume pe rol, nu unul per glifă. */
+.t-mark { color: var(--active); display: inline-flex; align-items: center; }
 .t-proj {
   display: inline-flex;
   align-items: center;

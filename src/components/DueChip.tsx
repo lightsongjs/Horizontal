@@ -9,11 +9,13 @@ import { Icon } from './Icon'
  * Exportat de aici și folosit și de `TaskRow`, ca „are memento" să arate
  * identic în modul proiecte și în listele inteligente. Desenul vine din
  * vocabularul comun (`Icon`), nu dintr-un SVG scris pe loc: două clopoțele cu
- * grosimi de linie diferite s-ar vedea imediat.
+ * grosimi de linie diferite s-ar vedea imediat. Clasa e `.t-mark`, numită pe
+ * ROL (semn mic pe rând/chip), nu pe desen — `Recur` de mai jos o împarte
+ * fără să mintă despre ce e.
  */
 export function Bell() {
   return (
-    <span className="t-bell" aria-label="Are memento">
+    <span className="t-mark" aria-label="Are memento">
       <Icon name="bell" size={12} />
     </span>
   )
@@ -22,19 +24,24 @@ export function Bell() {
 /**
  * Semnul de repetare: „acest tichet e recurent".
  *
- * Exportat la fel ca `Bell`, ca „se repetă" să arate identic oriunde apare un
- * jeton de scadență — deocamdată doar aici, dar `TaskRow` ar reutiliza-o la
- * fel cum reutilizează `Bell`, nu ar desena a doua iconiță. Refolosește clasa
- * `.t-bell` în loc de una nouă: e deja exact „iconiță mică, aliniată, în
- * culoarea de accent a jetonului" — ce mai are nevoie și semnul de repetare —
- * iar două semne mici cu culori diferite unul lângă altul ar fi exact ce
- * vocabularul comun de iconițe există să evite.
+ * Exportat la fel ca `Bell` și din același motiv — folosit de `DueChip` ȘI de
+ * `TaskRow`, ca „se repetă" să arate identic în modul proiecte și în listele
+ * inteligente, la fel cum arată „are memento". Predicatul („are ceva de
+ * arătat") trăiește o singură dată, aici, în `describeRrule`: cine randează
+ * `<Recur rrule={...} />` nu poate recalcula altfel dacă tichetul se repetă,
+ * deci un al treilea mod de afișare nu poate diverge fără să reimplementeze
+ * funcția asta.
+ *
+ * Clasa e `.t-mark`, aceeași cu `Bell` — nu `.t-bell`: numele vechi descria un
+ * desen, nu un rol, și „clopoțel" pe o iconiță de săgeți rotative ar fi
+ * mințit exact genul de lucru pe care vocabularul de iconițe (`Icon.tsx`)
+ * încearcă să-l evite.
  */
 export function Recur({ rrule }: { rrule: string | null }) {
   const rec = describeRrule(rrule)
   if (!rec) return null
   return (
-    <span className="t-bell" aria-label={`Se repetă ${rec}`}>
+    <span className="t-mark" aria-label={`Se repetă ${rec}`}>
       <Icon name="recurring" size={12} />
     </span>
   )

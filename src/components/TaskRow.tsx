@@ -3,7 +3,7 @@ import { useCanWriteIn } from '../hooks'
 import { useUI } from '../ui'
 import { hasTime, toShortDate, toTimeInput } from '../lib/schedule'
 import type { Issue } from '../lib/types'
-import { Bell } from './DueChip'
+import { Bell, Recur } from './DueChip'
 import { Icon } from './Icon'
 
 interface Props {
@@ -63,6 +63,7 @@ export function TaskRow({ issue, onOpen, late = false }: Props) {
       <span className="t-tail">
         {issue.urgent && <span className="t-urgent" title="Urgent"><Icon name="urgent" size={13} /></span>}
         {issue.remindAt && <Bell />}
+        <Recur rrule={issue.rrule} />
         {project && (
           <span className="t-proj" title={project.name}>
             <span className="t-dot" style={{ background: project.accent }} />

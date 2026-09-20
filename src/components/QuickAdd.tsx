@@ -99,6 +99,8 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0 }: Props) {
   const dueAt = useParsed ? parsed.dueAt! : defaultDueAt
   const allDay = useParsed ? parsed.allDay : true
   const title = date.title.trim()
+  // Calculat o singură dată — nu de două ori în JSX (condiție + text).
+  const recur = useParsed && parsed.rrule ? describeRrule(parsed.rrule) : ''
   // Text numai-dată: „azi la 8" n-are ce să salveze.
   const bare = text.trim() !== '' && title === ''
 
@@ -233,8 +235,8 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0 }: Props) {
               tolerabil cu doi tipare cunoscute, dar parserul le știe acum pe
               toate opt din vocabular — un `if` pe `'FREQ=DAILY'` ar minti la
               primul „la 2 zile" sau „lunea și joia". */}
-          {useParsed && parsed.rrule && describeRrule(parsed.rrule) && (
-            <span className="chip"><Icon name="recurring" size={12} /> {describeRrule(parsed.rrule)}</span>
+          {recur && (
+            <span className="chip"><Icon name="recurring" size={12} /> {recur}</span>
           )}
 
           <label className="qa-proj" title="Proiectul sarcinii">
