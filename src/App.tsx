@@ -217,7 +217,7 @@ const slugify = (name: string) =>
   name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '')
 
 function Shell() {
-  const { loading, error, project, projects, issuesLoadedFor, issuesLoadFailedFor, byId, selectProject, refresh, toggleDone, updateIssue, inbox } = useHorizontal()
+  const { loading, error, project, projects, issuesLoadedFor, issuesLoadFailedFor, byId, selectProject, refresh, toggleDone, updateIssue, inbox, recurrenceUndo, undoRecurrence, clearRecurrenceUndo } = useHorizontal()
   const { openNewIssue, openNewProject, openProjectSettings, openIssue, closeSheet, sheet, ticketId, dockedIssueId } = useUI()
   const { isAdmin } = useAuth()
   const canWrite = useCanWrite()
@@ -903,7 +903,18 @@ function Shell() {
           inProjects={!screen && !showUsers}
         />
       </div>
-      <Toast message={notice} onDone={clearNotice} />
+      {/* Două surse pentru un singur toast. `recurrenceUndo` are prioritate:
+          e legat de o atingere chiar acum (bifarea) și e ACȚIONABIL — un
+          `notice` pierdut sub el e doar informativ (deep link lipsă/eșuat),
+          pe când un `recurrenceUndo` pierdut sub un `notice` ar fi o fereastră
+          de anulare care nu apare deloc. În practică nu se ciocnesc: `notice`
+          se scrie doar din efectele de boot/deep-link, `recurrenceUndo` doar
+          dintr-o bifă explicită după ce aplicația e deja pornită. */}
+      <Toast
+        message={recurrenceUndo ? recurrenceUndo.label : notice}
+        onDone={recurrenceUndo ? clearRecurrenceUndo : clearNotice}
+        action={recurrenceUndo ? { label: 'ANULEAZĂ', onClick: undoRecurrence } : undefined}
+      />
       <SheetHost />
       {showSearch && <QuickSearch onClose={() => setShowSearch(false)} />}
       {showInfo && <InfoPanel onClose={() => setShowInfo(false)} />}

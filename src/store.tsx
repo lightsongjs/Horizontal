@@ -25,6 +25,7 @@ import {
   unblocks,
 } from './lib/engine'
 import { buildSmartLists, smartListRange, type SmartLists } from './lib/schedule'
+import { jumpNotice } from './lib/recurrence'
 import { blockedBy, detectObstacleCycle } from './lib/obstacles'
 import { groupInbox, reconcileInbox } from './lib/thread'
 import { shortLabels } from './lib/initials'
@@ -132,6 +133,15 @@ interface HorizontalState {
   deleteTheme(key: string): Promise<void>
 
   toggleDone(id: string): Promise<void>
+  /**
+   * Nenul cât ține toast-ul care a urmat unei bife pe o sarcină recurentă.
+   * `dueAt`/`remindAt` de aici sunt valorile de ÎNAINTE de salt, ținute doar
+   * în memorie — nu există coloane `prev_due_at` în bază (vezi `undoRecurrence`).
+   */
+  recurrenceUndo: { id: string; label: string; dueAt: string | null; remindAt: string | null } | null
+  /** Scrie înapoi valorile de dinainte de salt și golește `recurrenceUndo`. */
+  undoRecurrence(): Promise<void>
+  clearRecurrenceUndo(): void
   createIssue(input: NewIssue): Promise<Issue>
   updateIssue(id: string, patch: Partial<Issue>): Promise<void>
   deleteIssue(id: string): Promise<void>
@@ -173,6 +183,13 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Un pas înapoi, ținut în memorie cât ține toast-ul: valorile dinainte de
+  // salt. Nu în bază — greșeala pe care o repară („am atins bifa din greșeală")
+  // se observă imediat sau deloc, iar două coloane nefolosite după trei secunde
+  // ar fi fost greutate moartă în model.
+  const [recurrenceUndo, setRecurrenceUndo] = useState<
+    { id: string; label: string; dueAt: string | null; remindAt: string | null } | null
+  >(null)
   /**
    * Când s-a încheiat ultima încărcare completă. Ref, nu state: îl citește doar
    * ascultătorul de `visibilitychange`, iar ca state ar fi recreat `refresh` la
@@ -659,6 +676,13 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
       try {
         const saved = await repository.updateIssue(id, { done })
         upsertIssue(saved)
+        // Saltul e recunoscut după rezultat, nu ghicit dinainte: adevărul e ce
+        // a întors baza (trigger-ul poate refuza un RRULE pe care clientul l-ar
+        // fi acceptat). `saved.done === false` după ce am cerut `true` e
+        // semnătura lui.
+        if (done && !saved.done && saved.dueAt && saved.dueAt !== current.dueAt) {
+          setRecurrenceUndo({ id, label: jumpNotice(saved.dueAt), dueAt: current.dueAt, remindAt: current.remindAt })
+        }
       } catch (e) {
         upsertIssue(current)
         setError(errorMessage(e))
@@ -666,6 +690,23 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     },
     [allIssues, dueIssues, upsertIssue],
   )
+
+  const clearRecurrenceUndo = useCallback(() => setRecurrenceUndo(null), [])
+
+  const undoRecurrence = useCallback(async () => {
+    const u = recurrenceUndo
+    if (!u) return
+    setRecurrenceUndo(null)
+    try {
+      // `done` merge false → false (rândul e deja `false` din răspunsul care a
+      // detectat saltul): trigger-ul de recurență se uită la o tranziție
+      // false → true, deci anularea nu re-declanșează saltul.
+      const saved = await repository.updateIssue(u.id, { dueAt: u.dueAt, remindAt: u.remindAt, done: false })
+      upsertIssue(saved)
+    } catch (e) {
+      setError(errorMessage(e))
+    }
+  }, [recurrenceUndo, upsertIssue])
 
   const createIssue = useCallback(
     async (input: NewIssue) => {
@@ -868,6 +909,9 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     updateTheme,
     deleteTheme,
     toggleDone,
+    recurrenceUndo,
+    undoRecurrence,
+    clearRecurrenceUndo,
     createIssue,
     updateIssue,
     deleteIssue,

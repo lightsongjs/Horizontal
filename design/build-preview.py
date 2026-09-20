@@ -792,6 +792,13 @@ CONTROALE = ''.join([
       '<div class="bulk-sep"></div>'
       '<button class="bulk-btn danger">' + ic('trash-2', 15) + ' Șterge</button></div></div>'
       '<div class="toast on">Tichet salvat</div>'
+      # `.toast` are acum două stări (Task 7): informativ, ca mai sus, și
+      # ACȚIONABIL — după o bifă pe o sarcină recurentă. `.toast-act` e cazul
+      # nou: fără fundal propriu, doar text plin în `--accent` (regula 3, un
+      # singur accent), și era cel mai expus la „control fără fundal ȘI fără
+      # chenar" — butonul stă direct pe fundalul `--surface` al toastului.
+      '<div class="toast on">Gata · revine 21/09'
+      '<button type="button" class="toast-act">ANULEAZĂ</button></div>'
       '<div class="dep-card"><button class="dep-card-body"><span class="dep-card-id">TUR-02</span>'
       '<span class="dep-card-title">Cont Supabase (DB + Auth)</span></button>'
       '<button class="dep-card-x">' + ic('x', 12) + '</button></div>'

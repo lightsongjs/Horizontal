@@ -4604,10 +4604,28 @@ main {
   opacity: 0;
   pointer-events: none;
   transition: opacity 160ms ease, transform 160ms ease;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 .toast.on {
   opacity: 1;
   transform: translate(-50%, 0);
+}
+.toast-act {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  background: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  /* `.toast` e `pointer-events: none` cât nu are acțiune, ca notificarea
+     tranzitorie să nu blocheze un tap dedesubt. Butonul e excepția explicită:
+     fără asta, ar hereda `none` de la părinte și ANULEAZĂ n-ar reacționa la
+     nimic cât timp toast-ul e vizibil. */
+  pointer-events: auto;
 }
 
 /* ── Attachments ─────────────────────────────────────────────────────────── */
