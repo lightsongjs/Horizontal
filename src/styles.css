@@ -4858,7 +4858,15 @@ main {
 }
 .due-recur { margin-top: 2px; }
 /* Foaia de repetare personalizată. Fundal propriu peste fundalul paginii, cu
-   umbră ambientală — fără chenar, ca orice altă suprafață (regula 1). */
+   umbră ambientală — fără chenar, ca orice altă suprafață (regula 1).
+   Randată printr-un portal în `document.body` (RecurrencePicker.tsx), ca să
+   nu cadă sub `.sheet`, care are `transform` necondiționat — un ascendent
+   transformat ar deveni containing block pentru acest `position: fixed`.
+   130/131 trebuie să treacă peste `.sheet`/`.sheet-bg` (41/40) ȘI peste
+   `.toast` (120, cel mai mare din fișier înainte de asta) — foaia e un
+   dialog modal, nu o notificare care poate sta dedesubt. Nu trebuie să
+   treacă peste `.bulk-confirm-overlay`/`.ccm-overlay` (200): acelea sunt
+   confirmări blocante, iar cazul „amândouă deschise" nu se întâmplă azi. */
 .rp-back { position: fixed; inset: 0; z-index: 130; background: rgba(0, 0, 0, 0.32); }
 .rp {
   position: fixed;

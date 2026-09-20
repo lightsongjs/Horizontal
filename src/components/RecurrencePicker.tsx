@@ -10,6 +10,7 @@
 // încape pe un rând.
 
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { formatRrule, parseRrule, type Rec } from '../lib/recurrence'
 
 export const PRESETS: { value: string | null; label: string }[] = [
@@ -37,6 +38,29 @@ const UNITS: { freq: Rec['freq']; one: string; many: string }[] = [
 const DAY_SHORT = ['D', 'L', 'Ma', 'Mi', 'J', 'V', 'S']
 const DAY_FULL = ['duminică', 'luni', 'marți', 'miercuri', 'joi', 'vineri', 'sâmbătă']
 
+/**
+ * Ce arată câmpul de interval cât timp userul scrie — doar cifre, cel mult
+ * două. Un gol e un stadiu intermediar legitim, la fel ca la `bymonthday`:
+ * o valoare controlată care se rotunjește la 1 în timp ce userul șterge ca
+ * să scrie alta face ca următoarea cifră tastată să aterizeze lângă „1"
+ * rezidual („13" în loc de „3"), nu în locul lui.
+ */
+export function sanitizeIntervalText(raw: string): string {
+  return raw.replace(/\D/g, '').slice(0, 2)
+}
+
+/**
+ * Textul din câmp → numărul care intră în `Rec`. Se cheamă DOAR la compunerea
+ * RRULE-ului (butonul „Gata"), niciodată la fiecare tastă — `interval` din
+ * `Rec` n-are o valoare „goală" validă (contractul e „≥ 1"), deci un câmp gol
+ * sau „0" cade pe 1 aici, ca „Gata" să rămână mereu apăsabil și niciun RRULE
+ * invalid să nu iasă din foaie.
+ */
+export function intervalFromText(text: string): number {
+  const n = Number(text)
+  return n >= 1 ? n : 1
+}
+
 export function RecurrencePicker({
   value,
   onChange,
@@ -48,6 +72,9 @@ export function RecurrencePicker({
 }) {
   const start = parseRrule(value) ?? { freq: 'DAILY' as const, interval: 2, byday: [], bymonthday: null }
   const [rec, setRec] = useState<Rec>(start)
+  // Text brut, separat de `rec.interval`: ține golul cât timp userul șterge
+  // ca să scrie alt număr — vezi `sanitizeIntervalText`.
+  const [intervalText, setIntervalText] = useState(String(start.interval))
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -64,7 +91,13 @@ export function RecurrencePicker({
   const toggleDay = (i: number) =>
     set({ byday: rec.byday.includes(i) ? rec.byday.filter((d) => d !== i) : [...rec.byday, i].sort((a, b) => a - b) })
 
-  return (
+  // Portal în `document.body`: `.sheet` are `transform` necondiționat (inclusiv
+  // în starea `.on`), iar un ascendent transformat devine containing block
+  // pentru un descendent `position: fixed` — foaia s-ar poziționa față de
+  // `.sheet`, nu față de fereastră, exact când formularul e modal (nedocat în
+  // `SplitView`). Portalul scoate `.rp`/`.rp-back` din acel arbore; API-ul
+  // componentei nu se schimbă, doar unde ajunge în DOM.
+  return createPortal(
     <>
       <div className="rp-back" onClick={onClose} />
       <div className="rp" role="dialog" aria-label="Repetare personalizată">
@@ -74,11 +107,8 @@ export function RecurrencePicker({
             className="rp-n"
             type="text"
             inputMode="numeric"
-            value={String(rec.interval)}
-            onChange={(e) => {
-              const n = Number(e.target.value.replace(/\D/g, '').slice(0, 2))
-              set({ interval: n >= 1 ? n : 1 })
-            }}
+            value={intervalText}
+            onChange={(e) => setIntervalText(sanitizeIntervalText(e.target.value))}
             aria-label="La câte unități se repetă"
           />
           <div className="pills-row">
@@ -89,7 +119,7 @@ export function RecurrencePicker({
                 className={`if-meta-pill ${rec.freq === u.freq ? 'active' : ''}`}
                 onClick={() => set({ freq: u.freq, byday: [], bymonthday: null })}
               >
-                {rec.interval === 1 ? u.one : u.many}
+                {Number(intervalText) === 1 ? u.one : u.many}
               </button>
             ))}
           </div>
@@ -142,12 +172,16 @@ export function RecurrencePicker({
           <button
             type="button"
             className="if-meta-pill active"
-            onClick={() => { onChange(formatRrule(rec)); onClose() }}
+            onClick={() => {
+              onChange(formatRrule({ ...rec, interval: intervalFromText(intervalText) }))
+              onClose()
+            }}
           >
             Gata
           </button>
         </div>
       </div>
-    </>
+    </>,
+    document.body,
   )
 }
