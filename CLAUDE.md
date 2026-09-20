@@ -371,15 +371,17 @@ joi o sarcină zilnică restantă de luni → sare pe vineri. Zilele sărite dis
 nu sunt datorate. Altfel o sarcină făcută ar rămâne roșie și ar acumula o
 datorie pe care nimeni n-o plătește.
 
-**Saltul trăiește într-un trigger Postgres** (`issues_advance_recurrence`,
+**Saltul trăiește într-un trigger Postgres** (`issues_zz_advance_recurrence`,
 `supabase/migration-recurrence.sql`), nu în store. Trei drumuri bifează un
 tichet și doar unul e interfața: butonul „Gata" din notificare **fără nicio
 filă deschisă** scrie prin `reminder-action` direct în REST, iar `functions/api`
 scrie cu cheia de serviciu. Logica în client le-ar fi lăsat pe ultimele două să
 închidă definitiv o sarcină recurentă. Ordinea alfabetică a trigger-elor
-`before update` contează și e în favoarea noastră: `issues_advance_recurrence`
-rulează înaintea lui `issues_reset_reminder_sent`, deci mementoul apariției
-următoare se armează singur. `localRepository` (modul local, fără Postgres)
+`before update` contează, și de-aia numele are `zz_`: saltul trebuie să ruleze
+**după** `issues_reset_reminder_sent`, fiindcă el decide singur și
+`reminder_sent_at` — un memento care cade în trecut (decalaj „cu o zi înainte"
+peste o sarcină zilnică) pleacă marcat ca livrat, altfel cronul l-ar trimite în
+minutul următor, în fiecare zi. `localRepository` (modul local, fără Postgres)
 oglindește același trigger în TS și verifică aceeași **tranziție** `false →
 true` — nu doar valoarea din patch — citind `wasDone` înainte de a aplica
 patch-ul, exact ca `new.done and not old.done` din SQL: un `updateIssue(id,

@@ -335,6 +335,15 @@ export function createLocalRepository(): Repository {
           issue.dueAt = nxt
           issue.remindAt = delta === null ? null : new Date(new Date(nxt).getTime() - delta).toISOString()
           issue.done = false
+          // A treia parte a regulii — „un memento care cade în trecut pleacă
+          // marcat ca livrat" — n-are ce oglindi AICI, și asta nu e o scăpare:
+          // `reminder_sent_at` e o coloană de server, nu există în `Issue`
+          // (vezi `src/lib/types.ts`), fiindcă cine o citește e jobul de cron
+          // peste `send-reminders`. Modul local n-are nici coloana, nici
+          // trimițătorul — deci nici mementoul răsuflat pe care regula îl
+          // oprește. Ce se poate observa în modul local (`dueAt`, `remindAt`,
+          // `done`) iese identic cu ce scrie trigger-ul. Dacă vreodată modul
+          // local capătă mementouri proprii, regula se adaugă tot aici.
         }
       }
 
