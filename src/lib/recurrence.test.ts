@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { FIXTURES } from './recurrence.fixtures'
-import { describeRrule, didJumpOnComplete, formatRrule, jumpNotice, nextOccurrence, parseRrule } from './recurrence'
+import { describeRrule, didJumpOnComplete, firstOccurrence, formatRrule, jumpNotice, nextOccurrence, parseRrule } from './recurrence'
 
 // Luni, 24 august 2026 — aceeași ancoră ca în `schedule.test.ts`.
 const NOW = new Date(2026, 7, 24, 8, 40)
@@ -68,6 +68,33 @@ describe('nextOccurrence', () => {
 
   it('fără scadență nu are de unde pleca', () => {
     expect(nextOccurrence('FREQ=DAILY', NOW, null)).toBeNull()
+  })
+
+  it('nu aruncă niciodată — nici pe o scadență pe care `Date` n-o poate citi', () => {
+    // Specul cere explicit „Nu aruncă": în modul local, o excepție de aici
+    // ajunge banner de eroare peste o bifă obișnuită.
+    expect(nextOccurrence('FREQ=DAILY', NOW, 'nu e o dată')).toBeNull()
+    expect(nextOccurrence('FREQ=DAILY;INTERVAL=99999999999', NOW, NOW.toISOString())).toBeNull()
+  })
+})
+
+describe('firstOccurrence', () => {
+  // NOW = luni 24 august 2026.
+  it('aliniază la ziua numită, nu la azi', () => {
+    expect(local(firstOccurrence('FREQ=WEEKLY;BYDAY=FR', NOW))).toBe('2026-08-28 00:00')
+    expect(local(firstOccurrence('FREQ=MONTHLY;BYMONTHDAY=15', NOW))).toBe('2026-09-15 00:00')
+  })
+
+  it('o zi numită care E azi înseamnă săptămâna viitoare — ca „luni" spus luni', () => {
+    expect(local(firstOccurrence('FREQ=WEEKLY;BYDAY=MO', NOW))).toBe('2026-08-31 00:00')
+  })
+
+  it('o recurență care nu numește nicio zi n-are ce alinia — apelantul pune azi', () => {
+    expect(firstOccurrence('FREQ=DAILY', NOW)).toBeNull()
+    expect(firstOccurrence('FREQ=WEEKLY', NOW)).toBeNull()
+    expect(firstOccurrence('FREQ=MONTHLY', NOW)).toBeNull()
+    expect(firstOccurrence('FREQ=YEARLY', NOW)).toBeNull()
+    expect(firstOccurrence(null, NOW)).toBeNull()
   })
 })
 

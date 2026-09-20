@@ -73,4 +73,22 @@ export const FIXTURES: Fixture[] = [
     due: iso(2026, 8, 24), from: iso(2026, 8, 24), want: '2026-08-25 09:00' },
   { name: 'UNTIL — respins prin absența din lista albă, nu prin listă neagră', rrule: 'FREQ=DAILY;UNTIL=20261231T000000Z',
     due: iso(2026, 8, 24), from: iso(2026, 8, 24), want: null },
+
+  // Fix round 2: literale numerice care nu încap în `int4`. În SQL, castul
+  // ARUNCA — iar un trigger `before update` care aruncă anulează tot
+  // update-ul, deci rândul nu se mai putea bifa deloc. În TS, aritmetica dădea
+  // `Invalid Date` și `toISOString()` arunca, contrar specului („Nu aruncă").
+  // Amândouă spun acum „nu știu": `null`. Ajung din TEXT, nu doar din bază.
+  { name: 'INTERVAL peste int4 — null, nu eroare', rrule: 'FREQ=DAILY;INTERVAL=99999999999',
+    due: iso(2026, 8, 24), from: iso(2026, 8, 24), want: null },
+  { name: 'INTERVAL în int4, dar peste plafon — tot null', rrule: 'FREQ=DAILY;INTERVAL=2000000000',
+    due: iso(2026, 8, 24), from: iso(2026, 8, 24), want: null },
+  { name: 'BYMONTHDAY peste int4 — null înaintea castului', rrule: 'FREQ=MONTHLY;BYMONTHDAY=99999999999',
+    due: iso(2026, 8, 24), from: iso(2026, 8, 24), want: null },
+  { name: 'INTERVAL la plafon — încă valid', rrule: 'FREQ=DAILY;INTERVAL=999',
+    due: iso(2026, 8, 24), from: iso(2026, 8, 24), want: '2029-05-19 09:00' },
+  { name: 'INTERVAL peste plafon cu o unitate', rrule: 'FREQ=DAILY;INTERVAL=1000',
+    due: iso(2026, 8, 24), from: iso(2026, 8, 24), want: null },
+  { name: 'zerouri în față — plafonul se citește pe cifrele care contează', rrule: 'FREQ=DAILY;INTERVAL=0005',
+    due: iso(2026, 8, 24), from: iso(2026, 8, 24), want: '2026-08-29 09:00' },
 ]

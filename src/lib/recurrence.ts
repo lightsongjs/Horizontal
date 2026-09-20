@@ -34,6 +34,19 @@ const DAY_NAMES = ['duminica', 'lunea', 'marțea', 'miercurea', 'joia', 'vinerea
 const KNOWN_KEYS = new Set(['FREQ', 'INTERVAL', 'BYDAY', 'BYMONTHDAY'])
 
 /**
+ * Plafonul lui `INTERVAL`. Un „la 999 de ani" e deja absurd; peste atât,
+ * aritmetica se rupe în AMÂNDOUĂ limbile, și nu la fel: în Postgres
+ * `INTERVAL=99999999999` nu încape în `int4`, iar castul ARUNCĂ — un trigger
+ * `before update` care aruncă anulează tot update-ul, deci rândul nu s-ar mai
+ * putea bifa deloc. În TS, `addDays` dă `Invalid Date` și `toISOString()`
+ * aruncă, exact ce spune specul că nu se întâmplă („Nu aruncă").
+ *
+ * Valoarea e oglindită în `next_occurrence()` din migrare (acolo, ca lungime a
+ * literalului după tăierea zerourilor din față) și are fixtures în amândouă.
+ */
+const MAX_INTERVAL = 999
+
+/**
  * RRULE → `Rec`, sau `null`.
  *
  * `null` înseamnă „nu știu să repet asta", iar apelantul tratează tichetul ca
@@ -59,7 +72,7 @@ export function parseRrule(s: string | null): Rec | null {
   if (freq !== 'DAILY' && freq !== 'WEEKLY' && freq !== 'MONTHLY' && freq !== 'YEARLY') return null
 
   const interval = map.has('INTERVAL') ? Number(map.get('INTERVAL')) : 1
-  if (!Number.isInteger(interval) || interval < 1) return null
+  if (!Number.isInteger(interval) || interval < 1 || interval > MAX_INTERVAL) return null
 
   let byday: number[] = []
   if (map.has('BYDAY')) {
@@ -197,6 +210,11 @@ export function nextOccurrence(rrule: string | null, from: Date, dueAt: string |
   if (!rec || !dueAt) return null
 
   const due = new Date(dueAt)
+  // O scadență pe care `Date` n-o poate citi nu e o eroare de aici: e o dată
+  // pe care n-o știm. „Nu știu" se spune cu `null`, ca la un RRULE străin —
+  // altfel aritmetica de mai jos ar duce la `Invalid Date` și `toISOString()`
+  // ar arunca tocmai din funcția despre care specul spune că nu aruncă.
+  if (!Number.isFinite(due.getTime())) return null
   const dueDay = startOfLocalDay(due)
   const base = new Date(Math.max(startOfLocalDay(from).getTime(), dueDay.getTime()))
   let day: Date | null = null
@@ -238,6 +256,36 @@ export function nextOccurrence(rrule: string | null, from: Date, dueAt: string |
     }
   }
 
-  if (!day) return null
-  return new Date(day.getFullYear(), day.getMonth(), day.getDate(), due.getHours(), due.getMinutes(), 0, 0).toISOString()
+  if (!day || !Number.isFinite(day.getTime())) return null
+  const at = new Date(day.getFullYear(), day.getMonth(), day.getDate(), due.getHours(), due.getMinutes(), 0, 0)
+  if (!Number.isFinite(at.getTime())) return null
+  return at.toISOString()
+}
+
+/**
+ * Ziua în care ÎNCEPE o recurență care numește o zi — „vinerea raport" e
+ * vinerea care vine, nu azi.
+ *
+ * Există fiindcă altfel parserul ar fi avut nevoie de propriul „care e
+ * următoarea vineri" și de propriul „care e următorul 15" — o a doua
+ * aritmetică de calendar, care ar fi driftat de motor exact ca SQL-ul, doar
+ * fără testul care prinde driftul. Aici se cere motorului: grila se ancorează
+ * pe AZI și se cere pasul următor de pe ea.
+ *
+ * Strict DUPĂ azi, nu „de azi înainte", fiindcă asta e deja convenția
+ * aplicației pentru o zi numită: „luni" spus într-o luni înseamnă lunea
+ * viitoare (`parseDue`), iar specul cere ca „în fiecare luni" să pornească
+ * „lunea următoare". Cele două formulări trebuie să dea aceeași zi.
+ *
+ * `null` înseamnă „recurența asta nu numește nicio zi" (zilnic, săptămânal
+ * fără BYDAY, lunar fără BYMONTHDAY, anual) — atunci apelantul aplică regula
+ * din spec: o recurență fără dată pornește de azi.
+ */
+export function firstOccurrence(rrule: string | null, from: Date): string | null {
+  const rec = parseRrule(rrule)
+  if (!rec) return null
+  const namesADay = (rec.freq === 'WEEKLY' && rec.byday.length > 0) || (rec.freq === 'MONTHLY' && !!rec.bymonthday)
+  if (!namesADay) return null
+  const today = startOfLocalDay(from)
+  return nextOccurrence(rrule, today, today.toISOString())
 }
