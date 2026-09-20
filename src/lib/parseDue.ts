@@ -332,7 +332,13 @@ export function parseDue(raw: string, now: Date = new Date()): ParsedDue {
   // Prefixul `la|ora|at` e OBLIGATORIU aici, spre deosebire de „14:30" care se
   // recunoaște singur: patru cifre lipite sunt de obicei o cantitate, nu o oră.
   // „cumpără 1500 de șuruburi" n-are voie să devină o scadență.
-  m = hay.match(/\b(?:la|ora|at)\s*(\d{3,4})\b/)
+  //
+  // Excluderea de unități e aceeași ca la ora liberă de mai jos, și tot dintr-un
+  // motiv măsurat: „la 1000 zile" nu mai e recunoscut ca recurență (plafonul de
+  // trei cifre), iar fără lookahead cădea AICI și devenea „azi la 10:00" — o
+  // scadență pe care omul n-a cerut-o. Un interval prea mare nu produce nimic:
+  // nici repetare, nici oră.
+  m = hay.match(/\b(?:la|ora|at)\s*(\d{3,4})\b(?!\s*(?:de\s+)?(?:zile|zi|days|day|saptamani|saptamana|weeks|week|luni|luna|months|month|ani|an|years|year)\b)/)
   if (m) {
     const digits = m[1]
     const h = Number(digits.length === 4 ? digits.slice(0, 2) : digits.slice(0, 1))

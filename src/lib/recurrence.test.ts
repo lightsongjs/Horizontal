@@ -82,11 +82,36 @@ describe('firstOccurrence', () => {
   // NOW = luni 24 august 2026.
   it('aliniază la ziua numită, nu la azi', () => {
     expect(local(firstOccurrence('FREQ=WEEKLY;BYDAY=FR', NOW))).toBe('2026-08-28 00:00')
-    expect(local(firstOccurrence('FREQ=MONTHLY;BYMONTHDAY=15', NOW))).toBe('2026-09-15 00:00')
+    expect(local(firstOccurrence('FREQ=MONTHLY;BYMONTHDAY=28', NOW))).toBe('2026-08-28 00:00')
   })
 
   it('o zi numită care E azi înseamnă săptămâna viitoare — ca „luni" spus luni', () => {
     expect(local(firstOccurrence('FREQ=WEEKLY;BYDAY=MO', NOW))).toBe('2026-08-31 00:00')
+  })
+
+  it('ziua lunii se numără de AZI ÎNAINTE, nu de luna viitoare', () => {
+    // Cele trei poziții față de azi (24 august), pe rând.
+    const UNU = new Date(2026, 7, 1, 8, 40)
+    // încă în față, în luna asta
+    expect(local(firstOccurrence('FREQ=MONTHLY;BYMONTHDAY=15', UNU))).toBe('2026-08-15 00:00')
+    expect(local(firstOccurrence('FREQ=MONTHLY;BYMONTHDAY=28', NOW))).toBe('2026-08-28 00:00')
+    // chiar azi
+    expect(local(firstOccurrence('FREQ=MONTHLY;BYMONTHDAY=24', NOW))).toBe('2026-08-24 00:00')
+    expect(local(firstOccurrence('FREQ=MONTHLY;BYMONTHDAY=1', UNU))).toBe('2026-08-01 00:00')
+    // deja trecută în luna asta → luna viitoare
+    expect(local(firstOccurrence('FREQ=MONTHLY;BYMONTHDAY=15', NOW))).toBe('2026-09-15 00:00')
+  })
+
+  it('ziua lunii se retează la lungimea lunii, ca peste tot în motor', () => {
+    // Februarie 2027 n-are 31; „pe 31" spus pe 1 februarie începe pe 28.
+    const FEB = new Date(2027, 1, 1, 8, 40)
+    expect(local(firstOccurrence('FREQ=MONTHLY;BYMONTHDAY=31', FEB))).toBe('2027-02-28 00:00')
+  })
+
+  it('SALTUL rămâne strict după azi pe amândouă axele — marginea nu se molipsește', () => {
+    // Regula centrală din spec: o sarcină lunară pe 24, bifată pe 24, revine
+    // luna viitoare, nu azi.
+    expect(local(nextOccurrence('FREQ=MONTHLY;BYMONTHDAY=24', NOW, NOW.toISOString()))).toBe('2026-09-24 08:40')
   })
 
   it('o recurență care nu numește nicio zi n-are ce alinia — apelantul pune azi', () => {

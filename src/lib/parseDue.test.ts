@@ -469,6 +469,16 @@ describe('recurență în text', () => {
     expect(p('mâine lunea raport')).toMatchObject({ date: '2026-08-25', rrule: 'FREQ=WEEKLY;BYDAY=MO' })
   })
 
+  it('„pe N ale lunii" pornește din luna ASTA dacă ziua n-a trecut', () => {
+    // NOW = luni 24 august. „Strict după azi" (regula pentru zilele
+    // săptămânii) ar fi însemnat aici, pe tăcute, „strict după luna asta".
+    expect(p('pe 28 ale lunii factura')).toMatchObject({ date: '2026-08-28' })
+    expect(p('pe 24 ale lunii factura')).toMatchObject({ date: '2026-08-24' })
+    expect(p('pe 15 ale lunii factura')).toMatchObject({ date: '2026-09-15' })
+    const UNU = new Date(2026, 7, 1, 8, 40)
+    expect(parseDue('pe 15 ale lunii factura', UNU).dueAt).toBe(new Date(2026, 7, 15).toISOString())
+  })
+
   it('un interval absurd nu devine recurență — ar fi blocat bifarea', () => {
     // `INTERVAL=99999999999` nu încape în `int4`: `next_occurrence()` arunca,
     // iar un trigger care aruncă anulează tot update-ul. Rândul nu se mai
@@ -476,6 +486,17 @@ describe('recurență în text', () => {
     expect(r('la 99999999999 zile ceva')).toBeNull()
     expect(parseDue('la 99999999999 zile ceva', NOW).dueAt).toBeNull()
     expect(r('la 999 zile ceva')).toBe('FREQ=DAILY;INTERVAL=999')
+  })
+
+  it('un interval prea mare nu devine ORĂ — patru cifre lipite arată ca „la 1000"', () => {
+    // „la 1000 zile" pică din tiparul de recurență (plafonul de trei cifre) și
+    // cădea în tiparul de oră militară: „azi la 10:00", o scadență inventată.
+    const p1000 = parseDue('la 1000 zile ceva', NOW)
+    expect(p1000.rrule).toBeNull()
+    expect(p1000.dueAt).toBeNull()
+    expect(p1000.title).toBe('la 1000 zile ceva')
+    // Iar ora militară adevărată rămâne întreagă.
+    expect(p('la 1000 sună')).toMatchObject({ title: 'sună', time: '10:00' })
   })
 })
 

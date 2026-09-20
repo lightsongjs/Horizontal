@@ -315,7 +315,7 @@ export function createLocalRepository(): Repository {
       const wasDone = issue.done
       Object.assign(issue, patch)
 
-      // Oglinda trigger-ului `issues_advance_recurrence` din Supabase: aici nu
+      // Oglinda trigger-ului `issues_zz_advance_recurrence` din Supabase: aici nu
       // există Postgres care să facă saltul, iar modul local n-are voie să se
       // comporte altfel. Ce e în `supabase/migration-recurrence.sql` e legea;
       // asta doar o repetă în TS. Trigger-ul verifică o TRANZIȚIE

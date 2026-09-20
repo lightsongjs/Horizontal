@@ -9,6 +9,17 @@
 -- ultimele doua sa inchida definitiv o sarcina recurenta.
 --
 -- Coloana `rrule` exista deja din migration-todo.sql. Aici nu se adauga coloane.
+--
+-- DEPENDENTE, pentru cine ridica o baza de la zero - ordinea conteaza:
+--   1. migration-todo.sql  -> coloanele `due_at`, `remind_at`, `rrule`;
+--   2. migration-push.sql  -> coloana `reminder_sent_at` SI trigger-ul
+--      `issues_reset_reminder_sent`;
+--   3. fisierul asta.
+-- Pasul 2 nu e optional de cand saltul decide singur urma trimiterii:
+-- `advance_recurrence` citeste si scrie `new.reminder_sent_at`, iar pe o baza
+-- fara coloana aia trigger-ul ar arunca la ORICE update pe `issues` - nu doar
+-- la bifarea unei recurente. Adica tabelul ar deveni nescriibil, nu doar
+-- recurentele nefunctionale.
 
 -- Fusul e o CONSTANTA, nu o preferinta per utilizator: aplicatia are azi
 -- utilizatori intr-un singur fus. Daca apar in altul, aici se schimba - si

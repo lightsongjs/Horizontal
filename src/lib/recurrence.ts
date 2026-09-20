@@ -272,10 +272,20 @@ export function nextOccurrence(rrule: string | null, from: Date, dueAt: string |
  * fără testul care prinde driftul. Aici se cere motorului: grila se ancorează
  * pe AZI și se cere pasul următor de pe ea.
  *
- * Strict DUPĂ azi, nu „de azi înainte", fiindcă asta e deja convenția
- * aplicației pentru o zi numită: „luni" spus într-o luni înseamnă lunea
- * viitoare (`parseDue`), iar specul cere ca „în fiecare luni" să pornească
- * „lunea următoare". Cele două formulări trebuie să dea aceeași zi.
+ * Cele două axe NU au aceeași margine, și nu din neglijență:
+ *
+ * - **Ziua săptămânii — strict DUPĂ azi.** E convenția pe care aplicația o are
+ *   deja pentru o zi numită: „luni" spus într-o luni înseamnă lunea viitoare
+ *   (`parseDue`), iar specul cere ca „în fiecare luni" să pornească „lunea
+ *   următoare". „luni", „lunea" și „în fiecare luni" trebuie să dea aceeași zi.
+ * - **Ziua lunii — de azi înainte.** Aici „strict după" ar fi însemnat pe
+ *   tăcute „strict după luna asta": „pe 15" spus pe 1 august ar fi pornit pe 15
+ *   SEPTEMBRIE, o lună și jumătate mai târziu, iar nimeni n-a cerut asta. Ziua
+ *   de azi se numără: „pe 15" spus pe 15 începe azi.
+ *
+ * Regula de SALT (după o bifare) rămâne neatinsă de asta — acolo apariția
+ * următoare e strict după azi pe ambele axe, e regula centrală din spec și o
+ * fixează fixture-urile de paritate.
  *
  * `null` înseamnă „recurența asta nu numește nicio zi" (zilnic, săptămânal
  * fără BYDAY, lunar fără BYMONTHDAY, anual) — atunci apelantul aplică regula
@@ -284,8 +294,22 @@ export function nextOccurrence(rrule: string | null, from: Date, dueAt: string |
 export function firstOccurrence(rrule: string | null, from: Date): string | null {
   const rec = parseRrule(rrule)
   if (!rec) return null
-  const namesADay = (rec.freq === 'WEEKLY' && rec.byday.length > 0) || (rec.freq === 'MONTHLY' && !!rec.bymonthday)
-  if (!namesADay) return null
   const today = startOfLocalDay(from)
-  return nextOccurrence(rrule, today, today.toISOString())
+
+  if (rec.freq === 'MONTHLY' && rec.bymonthday) {
+    // Ziua-țintă din luna ASTA, retezată la lungimea ei ca peste tot în motor.
+    // Dacă n-a trecut încă, ea e prima apariție; altfel se cere motorului
+    // pasul următor de pe grila ancorată pe azi.
+    const y = today.getFullYear()
+    const m = today.getMonth()
+    const here = new Date(y, m, Math.min(rec.bymonthday, daysInMonth(y, m)))
+    if (here.getTime() >= today.getTime()) return here.toISOString()
+    return nextOccurrence(rrule, today, today.toISOString())
+  }
+
+  if (rec.freq === 'WEEKLY' && rec.byday.length > 0) {
+    return nextOccurrence(rrule, today, today.toISOString())
+  }
+
+  return null
 }
