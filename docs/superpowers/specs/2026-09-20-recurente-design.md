@@ -92,20 +92,22 @@ totdeauna. Același motiv pentru care `all_day` există.
 
 ## Unde trăiește saltul: un trigger Postgres
 
-`supabase/migration-recurrence.sql`:
+`supabase/migration-recurrence.sql` — **fără coloane noi**:
 
 ```sql
-alter table issues add column if not exists prev_due_at    timestamptz;
-alter table issues add column if not exists prev_remind_at timestamptz;
-
 -- before update, când `done` trece false→true și `rrule` e pus
 create trigger issues_advance_recurrence before update on issues
   for each row execute function advance_recurrence();
 ```
 
-Funcția: salvează `old.due_at` / `old.remind_at` în `prev_*`, calculează
-următoarea apariție, mută `remind_at` cu **același decalaj** față de scadență
-(deci `ReminderKind` rămâne ce era), și pune `new.done := false`.
+Funcția: calculează următoarea apariție, mută `remind_at` cu **același decalaj**
+față de scadență (deci `ReminderKind` rămâne ce era), și pune `new.done := false`.
+
+Anularea nu are nevoie de `prev_due_at` / `prev_remind_at` în bază: clientul care
+a bifat știe deja ce a fost înainte, iar toast-ul trăiește șase secunde. Două
+coloane care ar fi fost citite o dată la trei secunde de la scriere sunt
+greutate moartă în model — și, dacă mâine se cere o anulare care supraviețuiește
+unei reporniri, ele se adaugă atunci, împreună cu interfața care le folosește.
 
 **De ce trigger și nu cod de client.** Trei drumuri diferite bifează un tichet, și
 doar unul e interfața:
@@ -172,11 +174,16 @@ adaugi un tipar în parser, adaugi un exemplu, nu o descriere.
 
 ## Interfața
 
-**Rând „Repetare" în `IssueForm`**, imediat sub scadență. Închis arată
-`describeRrule` sau nimic — absența e informația, ca la `DueChip`. Deschis, o foaie
-mică: *niciodată · zilnic · săptămânal · lunar · anual · personalizat*.
-„Personalizat" dă intervalul (`la [n] [zile|săptămâni|luni]`) și, pentru
-săptămânal, zilele.
+**Rând „Repetare" în `IssueForm`**, imediat sub scadență, în aceeași formă ca
+rândul de memento de deasupra lui: jetoane *fără · zilnic · săptămânal · lunar ·
+anual*, plus unul de *personalizat…*. Cazurile obișnuite se aleg dintr-o
+atingere, fără nicio foaie; foaia mică se deschide doar pentru ce nu încape pe un
+rând — intervalul (`la [n] [zile|săptămâni|luni|ani]`) și, pentru săptămânal,
+zilele. Jetonul de personalizat arată atunci `describeRrule`.
+
+Foaia NU intră în stiva de foi (`SheetHost`): o intrare de istoric ar face Back-ul
+de pe telefon să închidă un selector în loc de formular. Un control dintr-un
+formular se poartă ca un `<select>` — Escape sau click pe fundal.
 
 Rândul apare **doar dacă tichetul are scadență** (sau o capătă la alegerea unei
 recurențe: scadența se completează cu azi). Un tichet de proiect fără dată nu vede
@@ -187,13 +194,15 @@ folosește `QuickAdd`). Fiind în `DueChip`, apare la fel în „Ordine", în �
 în listele inteligente — același motiv pentru care clopoțelul e exportat de acolo.
 
 **Anularea unui pas.** `Toast` capătă o acțiune opțională (`action: { label,
-onClick }`). La bifarea unei sarcini recurente: „Gata · revine vineri —
-**ANULEAZĂ**". Acțiunea cheamă `store.undoRecurringDone(id)`, care scrie
-`{ dueAt: prev_due_at, remindAt: prev_remind_at, done: false }` și golește `prev_*`.
-Trigger-ul nu se declanșează (`done` nu trece false→true), deci nu există buclă.
+onClick }`) și, cu ea, o durată mai lungă — un mesaj care trebuie apăsat are
+nevoie de mai mult decât unul care trebuie citit. La bifarea unei sarcini
+recurente: „Gata · revine 25 aug — **ANULEAZĂ**". Acțiunea cheamă
+`store.undoRecurrence()`, care scrie înapoi scadența și mementoul dinaintea
+saltului, ținute în starea paginii de la bifare. Trigger-ul nu se declanșează
+(`done` nu trece false→true), deci nu există buclă.
 
-Un pas, nu un istoric: `prev_*` se suprascriu la fiecare salt. Greșeala pe care o
-repară e „am atins bifa din greșeală", și aia se observă imediat.
+Un pas, nu un istoric, și un pas care ține cât toast-ul. Greșeala pe care o
+repară e „am atins bifa din greșeală", și aia se observă imediat sau deloc.
 
 ## Ce NU se atinge
 
