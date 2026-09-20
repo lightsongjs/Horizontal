@@ -56,8 +56,8 @@ export interface Rec {
 
 export function parseRrule(s: string | null): Rec | null
 export function formatRrule(rec: Rec): string
-export function describeRrule(rec: Rec): string        // RO: „la 2 zile", „lunea și joia"
-export function nextOccurrence(rrule: string, from: Date, dueAt: string): string | null
+export function describeRrule(s: string | null): string // textul RO; '' daca nu e recunoscut
+export function nextOccurrence(rrule: string | null, from: Date, dueAt: string | null): string | null
 ```
 
 **Subsetul RRULE acceptat.** `FREQ` (cele patru de mai sus), `INTERVAL`, `BYDAY`,
@@ -152,7 +152,8 @@ refuzabil separat):
 | `zilnic`, `daily`, `în fiecare zi` | `FREQ=DAILY` |
 | `la 2 zile`, `din 3 în 3 zile`, `every 2 days` | `FREQ=DAILY;INTERVAL=2` |
 | `în fiecare luni`, `lunea`, `every monday` | `FREQ=WEEKLY;BYDAY=MO` |
-| `lunea și joia`, `luni, miercuri, vineri` | `FREQ=WEEKLY;BYDAY=MO,TH` |
+| `lunea și joia` | `FREQ=WEEKLY;BYDAY=MO,TH` |
+| `lunea, miercurea și vinerea` | `FREQ=WEEKLY;BYDAY=MO,WE,FR` |
 | `săptămânal`, `weekly` | `FREQ=WEEKLY` (ziua din scadență) |
 | `la 2 săptămâni` | `FREQ=WEEKLY;INTERVAL=2` |
 | `lunar`, `în fiecare lună`, `monthly` | `FREQ=MONTHLY` |
