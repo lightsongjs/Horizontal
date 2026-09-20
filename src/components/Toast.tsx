@@ -16,11 +16,18 @@ export function Toast({
   onDone: () => void
   action?: { label: string; onClick: () => void }
 }) {
+  // Depinde de PREZENȚA unei acțiuni (`hasAction`), nu de identitatea lui
+  // `action`: obiectul e reconstruit la fiecare randare a părintelui (un
+  // literal `{ label, onClick }` scris direct în JSX — vezi App.tsx). Dacă ar
+  // fi în lista de dependențe, orice randare NELEGATĂ de toast (un refresh în
+  // fundal, un tab schimbat) ar reporni cronometrul de la zero — exact
+  // fereastra de 6s care face ANULEAZĂ ajungibil ar deveni nedeterminată.
+  const hasAction = !!action
   useEffect(() => {
     if (!message) return
-    const id = setTimeout(onDone, action ? DURATION_ACTION : DURATION)
+    const id = setTimeout(onDone, hasAction ? DURATION_ACTION : DURATION)
     return () => clearTimeout(id)
-  }, [message, onDone, action])
+  }, [message, onDone, hasAction])
 
   return (
     <div className={`toast ${message ? 'on' : ''}`} role="status" aria-live="polite">

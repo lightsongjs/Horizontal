@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { FIXTURES } from './recurrence.fixtures'
-import { describeRrule, formatRrule, jumpNotice, nextOccurrence, parseRrule } from './recurrence'
+import { describeRrule, didJumpOnComplete, formatRrule, jumpNotice, nextOccurrence, parseRrule } from './recurrence'
 
 // Luni, 24 august 2026 — aceeași ancoră ca în `schedule.test.ts`.
 const NOW = new Date(2026, 7, 24, 8, 40)
@@ -75,5 +75,32 @@ describe('jumpNotice', () => {
   it('spune când revine', () => {
     // `toShortDate` dă `zz/ll`, verificat o dată la scriere — nu ghicit.
     expect(jumpNotice(new Date(2026, 7, 25, 9, 0).toISOString())).toBe('Gata · revine 25/08')
+  })
+})
+
+describe('didJumpOnComplete', () => {
+  const AZI = '2026-08-24T06:00:00.000Z'
+  const MAINE = '2026-08-25T06:00:00.000Z'
+
+  it('un salt real: cerut done, întors nu-done, scadență nouă', () => {
+    expect(didJumpOnComplete(true, AZI, { done: false, dueAt: MAINE })).toBe(true)
+  })
+
+  it('o bifă obișnuită, pe o sarcină fără recurență: rândul rămâne done', () => {
+    expect(didJumpOnComplete(true, AZI, { done: true, dueAt: AZI })).toBe(false)
+  })
+
+  it('serverul normalizează dueAt fără să sară — done rămâne true', () => {
+    // Scadența s-a schimbat (fus, rotunjire), dar triggerul nu s-a declanșat:
+    // fără `done: false` în răspuns, o simplă diferență de dată nu e un salt.
+    expect(didJumpOnComplete(true, AZI, { done: true, dueAt: MAINE })).toBe(false)
+  })
+
+  it('o scriere picată: niciun răspuns, niciun salt', () => {
+    expect(didJumpOnComplete(true, AZI, null)).toBe(false)
+  })
+
+  it('o debifare nu sare niciodată, chiar dacă scadența diferă', () => {
+    expect(didJumpOnComplete(false, AZI, { done: false, dueAt: MAINE })).toBe(false)
   })
 })

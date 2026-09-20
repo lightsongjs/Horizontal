@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useAuth } from './auth'
 import { useCanWrite, useSidebarCollapsed, useWritableProjects } from './hooks'
 import { HorizontalProvider, useHorizontal } from './store'
@@ -219,6 +219,18 @@ const slugify = (name: string) =>
 function Shell() {
   const { loading, error, project, projects, issuesLoadedFor, issuesLoadFailedFor, byId, selectProject, refresh, toggleDone, updateIssue, inbox, recurrenceUndo, undoRecurrence, clearRecurrenceUndo } = useHorizontal()
   const { openNewIssue, openNewProject, openProjectSettings, openIssue, closeSheet, sheet, ticketId, dockedIssueId } = useUI()
+  // Stabil peste randări nelegate de toast: `recurrenceUndo` (din store, un
+  // `useState`) nu-și schimbă identitatea decât când SE SCHIMBĂ toast-ul, deci
+  // memoizarea aici ține `toastAction` la același obiect exact atunci când
+  // `Toast` n-are voie să-și reia cronometrul de 6s. Reparația reală e în
+  // `Toast.tsx` (efectul depinde de `hasAction`, nu de identitate) — asta e
+  // apărarea suplimentară, ca cei doi să fie de acord și ca un viitor
+  // consumator al lui `action` care COMPARĂ identitatea (React.memo, alt
+  // efect) să nu reintroducă exact bug-ul reparat acolo.
+  const toastAction = useMemo(
+    () => (recurrenceUndo ? { label: 'ANULEAZĂ', onClick: undoRecurrence } : undefined),
+    [recurrenceUndo, undoRecurrence],
+  )
   const { isAdmin } = useAuth()
   const canWrite = useCanWrite()
   // Sursa dreptului de a crea într-o listă inteligentă, unde nu există proiect
@@ -913,7 +925,7 @@ function Shell() {
       <Toast
         message={recurrenceUndo ? recurrenceUndo.label : notice}
         onDone={recurrenceUndo ? clearRecurrenceUndo : clearNotice}
-        action={recurrenceUndo ? { label: 'ANULEAZĂ', onClick: undoRecurrence } : undefined}
+        action={toastAction}
       />
       <SheetHost />
       {showSearch && <QuickSearch onClose={() => setShowSearch(false)} />}

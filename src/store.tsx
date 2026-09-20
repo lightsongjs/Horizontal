@@ -25,7 +25,7 @@ import {
   unblocks,
 } from './lib/engine'
 import { buildSmartLists, smartListRange, type SmartLists } from './lib/schedule'
-import { jumpNotice } from './lib/recurrence'
+import { didJumpOnComplete, jumpNotice } from './lib/recurrence'
 import { blockedBy, detectObstacleCycle } from './lib/obstacles'
 import { groupInbox, reconcileInbox } from './lib/thread'
 import { shortLabels } from './lib/initials'
@@ -176,6 +176,31 @@ interface HorizontalState {
   issuesOf(obstacleId: string): Issue[]
 }
 
+/**
+ * Serializează scrierile pe update-issue ale ACELUIAȘI tichet.
+ *
+ * `toggleDone` și `undoRecurrence` pot ținti același id la câteva secunde
+ * distanță (bifă → ANULEAZĂ → bifă din nou, repede) — și, spre diferență de
+ * `toggleDone`, `undoRecurrence` n-are niciun ecou optimist care să arate pe
+ * ecran că scrierea e încă în zbor (vezi brief-ul Task 7: „nu există coloane
+ * `prev_due_at`”). Fără coada asta, un răspuns întârziat ar putea ajunge DUPĂ
+ * scrierea următoare și ar rescrie tăcut peste ea — bifă → anulare → bifă la
+ * loc, dar anularea răspunde ultima și rândul rămâne nebifat în bază, cu
+ * ecranul arătând altceva, până la următorul refresh. Nimic din interfață n-ar
+ * trăda reordonarea asta.
+ *
+ * La modul, nu în componentă: nu ține stare React și nu citește props/state,
+ * deci n-are ce să adauge la vreo listă de dependențe de `useCallback`.
+ * Se înșiră pe SETTLE (`.then(run, run)`), nu pe succes — un `updateIssue`
+ * respins nu are voie să înțepenească lanțul pentru restul sesiunii.
+ */
+function enqueueWrite<T>(queue: Map<string, Promise<unknown>>, id: string, run: () => Promise<T>): Promise<T> {
+  const prev = queue.get(id) ?? Promise.resolve()
+  const next = prev.then(run, run)
+  queue.set(id, next.then(() => undefined, () => undefined))
+  return next
+}
+
 const Ctx = createContext<HorizontalState | null>(null)
 
 export function HorizontalProvider({ children }: { children: ReactNode }) {
@@ -190,6 +215,13 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
   const [recurrenceUndo, setRecurrenceUndo] = useState<
     { id: string; label: string; dueAt: string | null; remindAt: string | null } | null
   >(null)
+  // Coadă de scrieri per tichet — vezi `enqueueWrite`, la nivel de modul.
+  const writeQueue = useRef<Map<string, Promise<unknown>>>(new Map())
+  // Poza curentă a lui `recurrenceUndo`, pentru callback-uri (`deleteIssue`,
+  // `deleteIssues`) care nu au deloc nevoie să se recreeze la fiecare
+  // schimbare a toastului — la fel ca `allIssuesRef` mai sus.
+  const recurrenceUndoRef = useRef(recurrenceUndo)
+  useEffect(() => { recurrenceUndoRef.current = recurrenceUndo }, [recurrenceUndo])
   /**
    * Când s-a încheiat ultima încărcare completă. Ref, nu state: îl citește doar
    * ascultătorul de `visibilitychange`, iar ca state ar fi recreat `refresh` la
@@ -288,6 +320,12 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
 
   const refresh = useCallback(async () => {
     setRefreshing(true)
+    // O reîmprospătare completă rescrie tot ce vine din server — un pas de
+    // anulare ținut local, peste valorile de dinainte de salt, n-are cum să
+    // rămână corect după asta. Golit necondiționat, nu doar dacă id-ul se mai
+    // potrivește: e o operație globală, nu una pe un singur tichet, ca la
+    // ștergere.
+    setRecurrenceUndo(null)
     setIssuesLoadFailedFor(null)
     void loadDue()
     void loadInbox()
@@ -468,6 +506,11 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
       // proiectului curent și chema selectProject cu același id: valul activ
       // sărea de pe II pe `currentWave` (mereu 1), plus o reîncărcare inutilă.
       if (id === projectId) return
+      // O navigare reală, nu o reselectare fără efect (vezi mai sus) — un pas
+      // de anulare ținut pentru tichetul de pe ecranul VECHI n-are ce căuta
+      // pe cel nou. Necondiționat, ca la `refresh`: e legat de navigare, nu de
+      // un singur tichet.
+      setRecurrenceUndo(null)
       setProjectId(id)
       // La schimbarea proiectului, „încărcat” redevine fals până sosesc datele,
       // ca un consumator să nu citească snapshot-ul altui proiect.
@@ -674,14 +717,14 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
       const done = !current.done
       upsertIssue({ ...current, done })
       try {
-        const saved = await repository.updateIssue(id, { done })
+        // Prin coada per-id (`enqueueWrite`, mai sus): `undoRecurrence` poate
+        // avea o scriere pe ACEST id încă în zbor.
+        const saved = await enqueueWrite(writeQueue.current, id, () => repository.updateIssue(id, { done }))
         upsertIssue(saved)
-        // Saltul e recunoscut după rezultat, nu ghicit dinainte: adevărul e ce
-        // a întors baza (trigger-ul poate refuza un RRULE pe care clientul l-ar
-        // fi acceptat). `saved.done === false` după ce am cerut `true` e
-        // semnătura lui.
-        if (done && !saved.done && saved.dueAt && saved.dueAt !== current.dueAt) {
-          setRecurrenceUndo({ id, label: jumpNotice(saved.dueAt), dueAt: current.dueAt, remindAt: current.remindAt })
+        // Saltul e recunoscut după rezultat, nu ghicit dinainte — vezi
+        // `didJumpOnComplete` pentru motiv și teste.
+        if (didJumpOnComplete(done, current.dueAt, saved)) {
+          setRecurrenceUndo({ id, label: jumpNotice(saved.dueAt!), dueAt: current.dueAt, remindAt: current.remindAt })
         }
       } catch (e) {
         upsertIssue(current)
@@ -701,7 +744,16 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
       // `done` merge false → false (rândul e deja `false` din răspunsul care a
       // detectat saltul): trigger-ul de recurență se uită la o tranziție
       // false → true, deci anularea nu re-declanșează saltul.
-      const saved = await repository.updateIssue(u.id, { dueAt: u.dueAt, remindAt: u.remindAt, done: false })
+      //
+      // Prin aceeași coadă per-id ca `toggleDone` (`enqueueWrite`, la nivel de
+      // modul): fără ea, o bifă → ANULEAZĂ → bifă din nou, repede, ar putea
+      // lăsa scrierea asta să ajungă DUPĂ cea de-a doua bifă și să rescrie
+      // tăcut peste ea — anularea n-are ecou optimist care să trădeze pe
+      // ecran că e încă în zbor, așa cum are `toggleDone` prin `upsertIssue`
+      // de mai sus.
+      const saved = await enqueueWrite(writeQueue.current, u.id, () =>
+        repository.updateIssue(u.id, { dueAt: u.dueAt, remindAt: u.remindAt, done: false }),
+      )
       upsertIssue(saved)
     } catch (e) {
       setError(errorMessage(e))
@@ -746,6 +798,12 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
         .filter((i) => i.id !== id)
         .map((i) => (i.deps?.includes(id) ? { ...i, deps: i.deps.filter((d) => d !== id) } : i)),
     )
+    // Doar dacă e CHIAR tichetul din toast: o ștergere fără legătură (alt
+    // rând, altă listă) n-are voie să înghită un pas de anulare care e încă
+    // valid. `recurrenceUndoRef`, nu `recurrenceUndo` direct, ca funcția să nu
+    // fie recreată la fiecare toast — vezi `allIssuesRef` mai sus, același
+    // motiv.
+    if (recurrenceUndoRef.current?.id === id) setRecurrenceUndo(null)
   }, [])
 
   const deleteIssues = useCallback(async (ids: string[]) => {
@@ -759,6 +817,9 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
         .filter((i) => !gone.has(i.id))
         .map((i) => (i.deps?.some((d) => gone.has(d)) ? { ...i, deps: i.deps.filter((d) => !gone.has(d)) } : i)),
     )
+    // Idem `deleteIssue`: golește doar dacă setul șters conține tichetul din
+    // toast, nu la orice ștergere în bloc.
+    if (recurrenceUndoRef.current && gone.has(recurrenceUndoRef.current.id)) setRecurrenceUndo(null)
   }, [])
 
   const createObstacle = useCallback(

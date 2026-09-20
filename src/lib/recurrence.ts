@@ -135,6 +135,33 @@ export function jumpNotice(dueAt: string): string {
   return `Gata · revine ${toShortDate(dueAt)}`
 }
 
+/**
+ * A sărit sarcina la aparița următoare, sau a fost o bifă obișnuită?
+ *
+ * Adevărul e ce a întors baza, nu ce a cerut clientul: un trigger poate
+ * refuza un RRULE pe care clientul l-ar fi acceptat, iar serverul poate
+ * normaliza `dueAt` (fus orar, rotunjire) fără ca sarcina să fi sărit deloc.
+ * Trei condiții, toate pe rezultat:
+ *   1. s-a cerut `done: true` — o debifare n-are cum să sară nimic;
+ *   2. rândul s-a întors `done: false` — semnătura triggerului de recurență
+ *      (`advance_recurrence` din `migration-recurrence.sql`, oglindit în
+ *      `localRepository`);
+ *   3. are o scadență NOUĂ, diferită de cea de dinainte — o normalizare care
+ *      păstrează aceeași dată nu e un salt.
+ *
+ * `saved: null` înseamnă „scrierea a picat” (store-ul nu ajunge niciodată aici
+ * pe drumul de eroare, dar contractul rămâne explicit și testabil): niciun
+ * răspuns înseamnă niciun salt.
+ */
+export function didJumpOnComplete(
+  requestedDone: boolean,
+  prevDueAt: string | null,
+  saved: { done: boolean; dueAt: string | null } | null,
+): boolean {
+  if (!saved) return false
+  return requestedDone && !saved.done && saved.dueAt !== null && saved.dueAt !== prevDueAt
+}
+
 function daysInMonth(y: number, m: number): number {
   // Ziua 0 a lunii următoare = ultima zi a lunii cerute.
   return new Date(y, m + 1, 0).getDate()
