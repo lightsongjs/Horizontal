@@ -382,8 +382,68 @@ describe('recurență în text', () => {
 
   it('fragmentul de recurență se poate refuza ca oricare altul', () => {
     const p = parseDue('la 2 zile de concediu', NOW)
-    expect(p.spans.length).toBeGreaterThan(0)
+    expect(p.spans).toEqual([[0, 9]])
+    expect(p.title).toBe('de concediu')
     const rejected = ['la 2 zile']
     expect(parseDue(maskRejected('la 2 zile de concediu', rejected), NOW).rrule).toBeNull()
+  })
+
+  it('„pe N ale lunii" nu suprascrie o recurență deja recunoscută', () => {
+    // Fără gardă, blocul de mai jos rulează necondiționat și înlocuiește
+    // „zilnic" cu „lunar pe 15", pierzând recurența scrisă de om.
+    expect(r('zilnic pe 15 ale lunii plateste')).toBe('FREQ=DAILY')
+  })
+
+  it('enumerare de trei sau mai multe zile — golul dintre ele se punte, nu se caută „și" în tot textul', () => {
+    // Finding critic #1: cu trei zile, legătura era prinsă o singură dată,
+    // iar restul rămânea în titlu ca resturi.
+    const p = parseDue('lunea, marțea, miercurea și joia curățenie', NOW)
+    expect(p.rrule).toBe('FREQ=WEEKLY;BYDAY=MO,TU,WE,TH')
+    expect(p.title).toBe('curățenie')
+  })
+
+  it('un „și" legitim din restul titlului nu e confundat cu legătura dintre zile', () => {
+    // Finding critic #2: legătura se căuta în tot textul, deci un „și"
+    // scris de om înainte de enumerare era prins și șters în locul ei.
+    const p = parseDue('trimite și primește, lunea și joia sala', NOW)
+    expect(p.rrule).toBe('FREQ=WEEKLY;BYDAY=MO,TH')
+    expect(p.title).toBe('trimite și primește, sala')
+  })
+
+  it('două zile separate de altceva decât separatori NU se punte', () => {
+    // Text real între ele (nu doar spații/virgule/un „și") — nu fac parte
+    // din aceeași enumerare, deci rămân spanuri separate.
+    const p = parseDue('lunea plătește, apoi separat joia livrează', NOW)
+    expect(p.rrule).toBe('FREQ=WEEKLY;BYDAY=MO,TH')
+    expect(p.spans.length).toBe(2)
+  })
+})
+
+describe('excluderea de recurență din tiparul de oră liberă', () => {
+  // Fix anterior, netestat permanent: „la N <unitate>" nu are voie să fie
+  // citit și ca oră liberă „la N", pentru fiecare unitate din listă și în
+  // ambele limbi — altfel „la 2 zile" ajungea și scadență la ora 2:00.
+  it('unitățile în română nu devin oră', () => {
+    for (const text of [
+      'la 2 zile uda florile', 'la 2 saptamani retrospectiva',
+      'la 2 luni revizie', 'la 2 ani revizie',
+    ]) {
+      const r = parseDue(text, NOW)
+      expect(r.allDay, text).toBe(true)
+    }
+  })
+
+  it('unitățile în engleză nu devin oră', () => {
+    for (const text of [
+      'la 2 days water', 'la 2 weeks retro', 'la 2 months rent', 'la 2 years review',
+    ]) {
+      const r = parseDue(text, NOW)
+      expect(r.allDay, text).toBe(true)
+    }
+  })
+
+  it('dar o oră adevărată — fără unitate de recurență după — rămâne oră', () => {
+    expect(p('sună la 2')).toMatchObject({ time: '02:00' })
+    expect(p('mergi la cumpărături la 14:00')).toMatchObject({ time: '14:00' })
   })
 })

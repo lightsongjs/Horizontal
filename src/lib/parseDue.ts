@@ -17,7 +17,7 @@ export interface ParsedDue {
   title: string
   dueAt: string | null
   allDay: boolean
-  /** RRULE recunoscut („în fiecare luni"). Motorul de recurență vine mai târziu. */
+  /** RRULE recunoscut („în fiecare luni", „la 2 zile", „pe 15 ale lunii"). */
   rrule: string | null
   /** Intervalele `[start, end)` din textul ORIGINAL care au fost interpretate. */
   spans: [number, number][]
@@ -168,21 +168,41 @@ export function parseDue(raw: string, now: Date = new Date()): ParsedDue {
   // Zilele articulate, una sau mai multe: „lunea", „lunea și joia",
   // „luni, miercuri și vineri" NU intră aici (neaticulate = date), dar
   // „lunea, miercurea si vinerea" da.
+  //
+  // Legătura dintre zile nu se caută separat în tot textul — un „si"/„and"
+  // legitim, scris de om ÎNAINTE sau DUPĂ enumerare („trimite si primește,
+  // lunea si joia sala"), ar fi prins și șters în locul lui, iar titlul ar
+  // pierde cuvintele omului, nu doar recurența. Se închid în schimb GOLURILE
+  // dintre potriviri consecutive: dacă tot ce e între două zile e spații,
+  // virgule și cel mult un „si"/„and", golul se punte și cele două rămân un
+  // singur fragment continuu. Orice altceva între ele înseamnă că nu fac
+  // parte din aceeași enumerare — spanurile rămân separate, fără punte.
   if (!rrule) {
-    const days: number[] = []
-    const re = /\b(duminica|lunea|martea|miercurea|joia|vinerea|sambata)\b/g
+    const dayRe = /\b(duminica|lunea|martea|miercurea|joia|vinerea|sambata)\b/g
+    const found: { start: number; end: number; day: number }[] = []
     let mm: RegExpExecArray | null
-    while ((mm = re.exec(hay))) {
-      const i = DAYS_RO_ART.indexOf(mm[1])
-      if (i >= 0 && !days.includes(i)) days.push(i)
-      spans.push([mm.index, mm.index + mm[0].length])
+    while ((mm = dayRe.exec(hay))) {
+      found.push({ start: mm.index, end: mm.index + mm[0].length, day: DAYS_RO_ART.indexOf(mm[1]) })
     }
-    if (days.length) {
+    if (found.length) {
+      const days: number[] = []
+      const glueGap = /^[\s,]*(?:(?:si|and)[\s,]*)?$/
+      let spanStart = found[0].start
+      let spanEnd = found[0].end
+      days.push(found[0].day)
+      for (let i = 1; i < found.length; i++) {
+        const between = hay.slice(spanEnd, found[i].start)
+        if (glueGap.test(between)) {
+          spanEnd = found[i].end
+        } else {
+          spans.push([spanStart, spanEnd])
+          spanStart = found[i].start
+          spanEnd = found[i].end
+        }
+        if (!days.includes(found[i].day)) days.push(found[i].day)
+      }
+      spans.push([spanStart, spanEnd])
       rrule = formatRrule({ freq: 'WEEKLY', interval: 1, byday: days.sort((a, b) => a - b), bymonthday: null })
-      // Legătura dintre două zile („și", „,") rămâne în titlu ca resturi; le
-      // scoate `stripSpans` doar dacă sunt lipite de spans. Le prindem explicit.
-      const glue = hay.match(/\b(?:si|and)\b/)
-      if (glue && days.length > 1) hit(glue)
     }
   }
 
@@ -199,12 +219,14 @@ export function parseDue(raw: string, now: Date = new Date()): ParsedDue {
   }
 
   // „pe 15 ale lunii", „on the 15th"
-  m = hay.match(/\bpe\s+(\d{1,2})\s+ale\s+lunii\b/) ?? hay.match(/\bon\s+the\s+(\d{1,2})(?:st|nd|rd|th)?\b/)
-  if (m) {
-    const d = Number(m[1])
-    if (d >= 1 && d <= 31) {
-      rrule = formatRrule({ freq: 'MONTHLY', interval: 1, byday: [], bymonthday: d })
-      hit(m)
+  if (!rrule) {
+    m = hay.match(/\bpe\s+(\d{1,2})\s+ale\s+lunii\b/) ?? hay.match(/\bon\s+the\s+(\d{1,2})(?:st|nd|rd|th)?\b/)
+    if (m) {
+      const d = Number(m[1])
+      if (d >= 1 && d <= 31) {
+        rrule = formatRrule({ freq: 'MONTHLY', interval: 1, byday: [], bymonthday: d })
+        hit(m)
+      }
     }
   }
 
