@@ -356,6 +356,82 @@ Pentru a itera pe sunet fără deploy: `tmp-calibrare/sunet/` (gitignorat) conț
 variantele randate în WAV cu aceeași sinteză. Nota actuală (E5, o singură notă) a
 fost aleasă prin ascultare comparativă.
 
+## Recurențe — un tichet care sare
+
+O sarcină cu `rrule` bifată **nu se închide**: `due_at` avansează la următoarea
+apariție, `remind_at` se mută cu același decalaj, `done` rămâne `false`. Nu
+există rânduri-instanță și nu există istoric al apariției — asumat, vezi
+`docs/superpowers/specs/2026-09-20-recurente-design.md`. Migrarea
+(`supabase/migration-recurrence.sql`) nu adaugă nicio coloană: `rrule` exista
+deja din `migration-todo.sql`, iar anularea (mai jos) nu ține valorile vechi în
+bază — n-are nevoie de `prev_due_at`/`prev_remind_at`.
+
+**Saltul se calculează din ziua CURENTĂ**, nu cu un pas de la scadență: bifezi
+joi o sarcină zilnică restantă de luni → sare pe vineri. Zilele sărite dispar;
+nu sunt datorate. Altfel o sarcină făcută ar rămâne roșie și ar acumula o
+datorie pe care nimeni n-o plătește.
+
+**Saltul trăiește într-un trigger Postgres** (`issues_advance_recurrence`,
+`supabase/migration-recurrence.sql`), nu în store. Trei drumuri bifează un
+tichet și doar unul e interfața: butonul „Gata" din notificare **fără nicio
+filă deschisă** scrie prin `reminder-action` direct în REST, iar `functions/api`
+scrie cu cheia de serviciu. Logica în client le-ar fi lăsat pe ultimele două să
+închidă definitiv o sarcină recurentă. Ordinea alfabetică a trigger-elor
+`before update` contează și e în favoarea noastră: `issues_advance_recurrence`
+rulează înaintea lui `issues_reset_reminder_sent`, deci mementoul apariției
+următoare se armează singur. `localRepository` (modul local, fără Postgres)
+oglindește același trigger în TS și verifică aceeași **tranziție** `false →
+true` — nu doar valoarea din patch — citind `wasDone` înainte de a aplica
+patch-ul, exact ca `new.done and not old.done` din SQL: un `updateIssue(id,
+{ done: true })` pe un tichet deja bifat n-are voie să sară scadența a doua
+oară.
+
+**Regula de salt e scrisă în două limbi** — `src/lib/recurrence.ts` (interfață +
+modul local) și `next_occurrence()` în PL/pgSQL. Cele două parsează RRULE cu
+aceeași listă ALBĂ de patru chei (`FREQ`, `INTERVAL`, `BYDAY`, `BYMONTHDAY`):
+orice cheie necunoscută, orice valoare în afara intervalului ei, întorc `null`
+în amândouă — nu o listă neagră de nume de ținut la zi manual. `UNTIL` și
+`COUNT` cad prin construcție (nu sunt în listă), nu printr-o verificare
+separată. De aceea **`npm run test:recurrence-sql`** trece ACELEAȘI 24 de
+fixtures din `src/lib/recurrence.fixtures.ts` prin baza reală, cu
+`TZ=Europe/Bucharest` fixat înainte de a construi vreo dată. Rulează-l după
+orice atingere a oricăreia dintre cele două. Un caz nou se adaugă în
+`FIXTURES`, nu într-un `it` separat — acolo îl vede și SQL-ul.
+
+Fusul din SQL e constanta `'Europe/Bucharest'`. Un utilizator în alt fus ar
+sări cu o zi; atunci `p_tz` devine o coloană, nu un default.
+
+Vocabularul din text (`parseDue`): `zilnic`, `la 2 zile`, `în fiecare luni`,
+`lunea și joia`, `săptămânal`, `lunar`, `pe 15 ale lunii`, `anual`, plus EN.
+**Forma articulată e semnalul:** „luni" e o dată, „lunea" e o recurență — fără
+distincția asta, „programează luni" (o dată) și „în fiecare luni" (o
+recurență) ar cere același cuvânt pentru două lucruri diferite, și parserul
+ar trebui să ghicească din context. Subsetul RRULE e mic și închis (`FREQ`,
+`INTERVAL`, `BYDAY`, `BYMONTHDAY`); `UNTIL` și `COUNT` sunt **refuzate**, nu
+ignorate — ignorate ar face o serie mărginită să curgă la nesfârșit.
+
+Rândul din formular arată jetoane preconfigurate (`fără · zilnic · săptămânal
+· lunar · anual`) plus un jeton `personalizat…` care deschide o foaie mică cu
+interval și, pentru săptămânal, zilele (`RecurrencePicker.tsx`). Foaia se
+randează cu `createPortal` direct în `document.body`, nu în locul ei firesc în
+arbore: `.sheet` are `transform`, iar un ancestor cu `transform` devine
+containing block pentru `position: fixed` — fără portal, foaia s-ar poziționa
+față de foaia din spate, nu față de ecran.
+
+Anularea e un pas, ținut în memoria paginii cât ține toast-ul (`recurrenceUndo`
+în `store.tsx`), nu în bază — de-aia nu există `prev_due_at`/`prev_remind_at`.
+`didJumpOnComplete` și `jumpNotice`, ambele exportate din `recurrence.ts`,
+decid dacă bifarea chiar a sărit ceva (după ce a răspuns baza, nu după ce a
+cerut clientul) și ce scrie toast-ul. Fiindcă anularea n-are niciun ecou
+optimist care s-o arate imediat pe ecran, o bifă și o anulare pe același
+tichet, la câteva secunde una de alta, pot ajunge la Supabase în ordine
+inversă celei în care s-au cerut — un `updateIssue` mai lent ar rescrie peste
+anulare. De-aia `store.tsx` serializează scrierile per tichet printr-o coadă
+mică (`enqueueWrite`): a doua scriere pe același id așteaptă răspunsul primei,
+nu pornește în paralel cu ea.
+
+Setup: `npm run migrate supabase/migration-recurrence.sql`.
+
 ## Obstacole — a doua axă de blocare
 
 Un obstacol e o condiție din AFARA muncii, care trebuie să cadă înainte ca
