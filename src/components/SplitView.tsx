@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { useUI } from '../ui'
+import { useHorizontal } from '../store'
 import { useMediaQuery } from '../hooks'
 import { IssueForm } from './IssueForm'
 import { Icon } from './Icon'
@@ -23,6 +24,7 @@ const SPLIT_QUERY = '(min-width: 1200px)'
 export function SplitView({ children }: { children: ReactNode }) {
   const wide = useMediaQuery(SPLIT_QUERY)
   const { registerSplitHost, dockedIssueId, closeSheet } = useUI()
+  const { byId } = useHorizontal()
   const paneRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
@@ -53,7 +55,28 @@ export function SplitView({ children }: { children: ReactNode }) {
       <div className="split-list">{children}</div>
       <aside className="split-pane" ref={paneRef} aria-label="Tichetul deschis">
         {dockedIssueId ? (
-          <IssueForm key={dockedIssueId} issueId={dockedIssueId} docked />
+          /* Cheia poartă și scadența, nu doar id-ul. Formularul își citește
+             câmpurile o singură dată, la montare; o scadență care se schimbă
+             de la SERVER (o sarcină recurentă bifată din listă sare la
+             apariția următoare) lăsa panoul pe data veche. Trei lucruri
+             deodată din asta: panoul mințea, formularul se raporta „nesalvat"
+             deși omul nu-l atinsese (deci prima atingere pe alt rând era
+             înghițită de gardă), iar Salvează — exact ce-l îndemna nudge-ul —
+             scria data VECHE înapoi, anulând tăcut saltul.
+
+             Cheie, nu un efect de sincronizare: aici formularul oricum se
+             REMONTEAZĂ, nu se mută (vezi nota despre pragul de 1200px din
+             CLAUDE.md), deci remontarea e mecanismul pe care codul ăsta îl
+             folosește deja peste tot. Un efect ar fi trebuit să știe singur ce
+             câmpuri are voie să suprascrie și care sunt tocmai editate.
+             Prețul, asumat: după o salvare din panou care schimbă scadența,
+             formularul se remontează cu aceleași valori — se pierde poziția
+             derulării, nu date. */
+          <IssueForm
+            key={`${dockedIssueId}:${byId[dockedIssueId]?.dueAt ?? ''}`}
+            issueId={dockedIssueId}
+            docked
+          />
         ) : (
           <div className="split-empty">
             <Icon name="edit" size={22} />

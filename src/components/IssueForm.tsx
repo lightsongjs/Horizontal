@@ -397,6 +397,18 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
     const kind = reminderTouched ? reminder : defaultReminder(allDay)
     return { dueAt, allDay, remindAt: reminderAt(dueAt, kind), kind }
   })()
+  /**
+   * Recurența care chiar se salvează. O repetare fără dată de start nu înseamnă
+   * nimic — motorul pleacă de la scadență — iar rândul „Repetare" nici nu se
+   * mai vede fără ea (`dueDate && …`, mai jos). Fără regula asta, un tichet
+   * căruia i-ai șters scadența rămânea cu un `rrule` salvat, invizibil și
+   * nescoatabil din interfață: o stare din care nu se mai iese.
+   *
+   * Se DERIVĂ, nu se șterge din stare: pui data la loc și repetarea revine cu
+   * ea. Golirea scadenței nu e o ștergere a recurenței, e dispariția lucrului
+   * peste care recurența avea sens.
+   */
+  const rruleOut = dueDate ? rrule : null
 
   // Pe mobil, blocul de meta pornește colapsat într-un rezumat pe un rând —
   // altfel Temă/Val/Assigned/Prioritate/Scadență stivuite împing Descrierea
@@ -525,7 +537,7 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
     urgent,
     dueAt: schedule.dueAt,
     remindAt: schedule.remindAt,
-    rrule,
+    rrule: rruleOut,
   })
 
   useEffect(() => {
@@ -778,7 +790,7 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
       const realDeps = deps.map((id) => draftDepMap[id] ?? (id.startsWith('__draft_') ? null : id)).filter(Boolean) as string[]
       const qaPayload = {
         selectors: selectors.filter(Boolean), scenarios, assigneeId, urgent,
-        dueAt: schedule.dueAt, allDay: schedule.allDay, remindAt: schedule.remindAt, rrule,
+        dueAt: schedule.dueAt, allDay: schedule.allDay, remindAt: schedule.remindAt, rrule: rruleOut,
       }
       const targetId = isEdit
         ? (await updateIssue(existing!.id, { title: saveTitle, desc: desc.trim(), theme, wave, deps: realDeps, ...qaPayload }), existing!.id)
@@ -805,7 +817,7 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
         return i
       })
       if (!snap.find((i) => i.id === targetId)) {
-        snap = [...snap, { id: targetId, projectId: project.id, title: saveTitle, desc: desc.trim(), theme, wave, deps: realDeps, done: false, selectors: selectors.filter(Boolean), scenarios, assigneeId, createdBy: null, createdAt: new Date().toISOString(), urgent, dueAt: schedule.dueAt, allDay: schedule.allDay, remindAt: schedule.remindAt, rrule }]
+        snap = [...snap, { id: targetId, projectId: project.id, title: saveTitle, desc: desc.trim(), theme, wave, deps: realDeps, done: false, selectors: selectors.filter(Boolean), scenarios, assigneeId, createdBy: null, createdAt: new Date().toISOString(), urgent, dueAt: schedule.dueAt, allDay: schedule.allDay, remindAt: schedule.remindAt, rrule: rruleOut }]
       }
       const cascadeQueue = [...realDeps]
       const cascadeSeen = new Set<string>()
