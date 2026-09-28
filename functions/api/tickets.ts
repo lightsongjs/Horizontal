@@ -13,7 +13,7 @@ interface SupabaseIssue {
   done: boolean
 }
 
-import { sbHeaders, resolveProject, nextIssueId } from './_tickets-lib'
+import { sbHeaders, resolveProject, nextIssueId, resolveAssignee } from './_tickets-lib'
 
 export const onRequestGet: PagesFunction<Env> = async (context) => {
   const url = new URL(context.request.url)
@@ -120,6 +120,16 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   }
   const pid = projResolved.id
 
+  // 0. Resolve the assignee: id or name, like projectId. Empty/absent = nobody.
+  let assigneeId: string | null = null
+  if (body.assigneeId !== undefined && body.assigneeId !== null && body.assigneeId !== '') {
+    const who = await resolveAssignee(String(body.assigneeId), SUPABASE_URL, headers)
+    if (!who) {
+      return Response.json({ error: 'assignee_not_found' }, { status: 422 })
+    }
+    assigneeId = who.id
+  }
+
   // 1. Validate deps exist
   if (deps.length > 0) {
     const depsRes = await fetch(
@@ -172,7 +182,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       selectors: [],
       scenarios: [],
       notes: body.notes ?? '',
-      assignee_id: body.assigneeId ?? null,
+      assignee_id: assigneeId,
     }),
   })
   if (!insertRes.ok) {

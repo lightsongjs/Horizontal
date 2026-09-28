@@ -137,3 +137,44 @@ describe('wave validation still rejects bad input', () => {
     expect(await res.json()).toEqual({ error: 'invalid_wave' })
   })
 })
+
+// Assigning on create: --assignee takes a name or an id, like --project.
+describe('create with an assignee', () => {
+  const createRoutes = (assignees: unknown) => [
+    projectRoute,
+    route('/rest/v1/assignees?', assignees),
+    route('/rest/v1/issues?project_id=eq.horizontal&select=id', [{ id: 'MS-160' }]),
+    route('&title=ilike.', []),
+    route('/rest/v1/issues', [{ id: 'MS-161' }], { method: 'POST' }),
+  ]
+
+  it('resolves a name to the assignee id and writes it', async () => {
+    const calls = mockFetch(createRoutes([{ id: 'uuid-ionut', name: 'Ionut' }]))
+    const res = await onRequestPost(postCtx({ projectId: 'MS', title: 'Nota', wave: 1, assigneeId: 'Ionut' }))
+    expect(res.status).toBe(201)
+    expect(calls.find(c => c.url.includes('/rest/v1/assignees?'))!.url).toContain('name=ilike.Ionut')
+    expect(calls.find(c => c.method === 'POST')!.body.assignee_id).toBe('uuid-ionut')
+  })
+
+  it('looks a uuid up by id, not by name', async () => {
+    const id = 'a3fa07cf-b1ac-4b2e-8895-a855e1c55929'
+    const calls = mockFetch(createRoutes([{ id, name: 'Ionut' }]))
+    await onRequestPost(postCtx({ projectId: 'MS', title: 'Nota', wave: 1, assigneeId: id }))
+    expect(calls.find(c => c.url.includes('/rest/v1/assignees?'))!.url).toContain(`id=eq.${id}`)
+  })
+
+  it('422s on an unknown person instead of writing a broken foreign key', async () => {
+    const calls = mockFetch(createRoutes([]))
+    const res = await onRequestPost(postCtx({ projectId: 'MS', title: 'Nota', wave: 1, assigneeId: 'Nimeni' }))
+    expect(res.status).toBe(422)
+    expect(await res.json()).toEqual({ error: 'assignee_not_found' })
+    expect(calls.some(c => c.method === 'POST')).toBe(false)
+  })
+
+  it('leaves the ticket unassigned when no assignee is given', async () => {
+    const calls = mockFetch(createRoutes([]))
+    await onRequestPost(postCtx({ projectId: 'MS', title: 'Nota', wave: 1 }))
+    expect(calls.find(c => c.method === 'POST')!.body.assignee_id).toBe(null)
+    expect(calls.some(c => c.url.includes('/rest/v1/assignees?'))).toBe(false)
+  })
+})

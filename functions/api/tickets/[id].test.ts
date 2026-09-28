@@ -584,3 +584,77 @@ describe('onRequestGet attachments', () => {
     expect(await res.json()).toEqual({ error: 'db_error' })
   })
 })
+
+describe('onRequestPatch assignee', () => {
+  const patchRoutes = (assignees: unknown) => [
+    route('/rest/v1/issues?id=eq.HZ-07&select=id,project_id,title,wave',
+      [{ id: 'HZ-07', project_id: 'horizontal', title: 'Old', wave: 3 }]),
+    route('/rest/v1/assignees?', assignees),
+    route('/rest/v1/issues?id=eq.HZ-07', [{ id: 'HZ-07' }], { method: 'PATCH' }),
+  ]
+
+  it('resolves a name and writes assignee_id', async () => {
+    const calls = mockFetch(patchRoutes([{ id: 'uuid-ionut', name: 'Ionut' }]))
+    const res = await onRequestPatch(patchCtx('HZ-07', { assigneeId: 'Ionut' }))
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ id: 'HZ-07', updated: ['assigneeId'] })
+    const write = calls.find(c => c.method === 'PATCH')!
+    expect(write.body).toEqual({ assignee_id: 'uuid-ionut' })
+  })
+
+  it('looks a uuid up by id, not by name', async () => {
+    const id = 'a3fa07cf-b1ac-4b2e-8895-a855e1c55929'
+    const calls = mockFetch(patchRoutes([{ id, name: 'Ionut' }]))
+    await onRequestPatch(patchCtx('HZ-07', { assigneeId: id }))
+    expect(calls.find(c => c.url.includes('/rest/v1/assignees?'))!.url).toContain(`id=eq.${id}`)
+  })
+
+  it('clears the assignment on an empty string, without a lookup', async () => {
+    const calls = mockFetch(patchRoutes([]))
+    const res = await onRequestPatch(patchCtx('HZ-07', { assigneeId: '' }))
+    expect(res.status).toBe(200)
+    expect(calls.find(c => c.method === 'PATCH')!.body).toEqual({ assignee_id: null })
+    expect(calls.some(c => c.url.includes('/rest/v1/assignees?'))).toBe(false)
+  })
+
+  it('clears the assignment on null too', async () => {
+    const calls = mockFetch(patchRoutes([]))
+    const res = await onRequestPatch(patchCtx('HZ-07', { assigneeId: null }))
+    expect(res.status).toBe(200)
+    expect(calls.find(c => c.method === 'PATCH')!.body).toEqual({ assignee_id: null })
+  })
+
+  it('422s on an unknown person and writes nothing', async () => {
+    const calls = mockFetch(patchRoutes([]))
+    const res = await onRequestPatch(patchCtx('HZ-07', { assigneeId: 'Nimeni' }))
+    expect(res.status).toBe(422)
+    expect(await res.json()).toEqual({ error: 'assignee_not_found' })
+    expect(calls.some(c => c.method === 'PATCH')).toBe(false)
+  })
+
+  it('400s on a non-string, non-null assignee', async () => {
+    mockFetch([])
+    const res = await onRequestPatch(patchCtx('HZ-07', { assigneeId: 7 }))
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ error: 'invalid_assignee' })
+  })
+
+  it('counts as an updatable field on its own', async () => {
+    mockFetch(patchRoutes([{ id: 'uuid-ionut', name: 'Ionut' }]))
+    const res = await onRequestPatch(patchCtx('HZ-07', { assigneeId: 'Ionut' }))
+    expect(res.status).not.toBe(400)
+  })
+
+  it('travels with a title change in one request', async () => {
+    const calls = mockFetch([
+      route('/rest/v1/issues?id=eq.HZ-07&select=id,project_id,title,wave',
+        [{ id: 'HZ-07', project_id: 'horizontal', title: 'Old', wave: 3 }]),
+      route('/rest/v1/assignees?', [{ id: 'uuid-ionut', name: 'Ionut' }]),
+      route('&title=ilike.', []),
+      route('/rest/v1/issues?id=eq.HZ-07', [{ id: 'HZ-07' }], { method: 'PATCH' }),
+    ])
+    const res = await onRequestPatch(patchCtx('HZ-07', { title: 'New', assigneeId: 'Ionut' }))
+    expect(res.status).toBe(200)
+    expect(calls.find(c => c.method === 'PATCH')!.body).toEqual({ title: 'New', assignee_id: 'uuid-ionut' })
+  })
+})

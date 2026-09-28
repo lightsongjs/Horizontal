@@ -6,7 +6,7 @@ interface Env {
   SUPABASE_SERVICE_ROLE_KEY: string
 }
 
-import { sbHeaders, resolveProject, nextIssueId } from '../_tickets-lib'
+import { sbHeaders, resolveProject, nextIssueId, resolveAssignee } from '../_tickets-lib'
 
 const FIELD_MAP: Record<string, string> = {
   title: 'title',
@@ -173,7 +173,15 @@ export const onRequestPatch: PagesFunction<Env> = async (context) => {
     return Response.json({ error: 'invalid_project_id' }, { status: 400 })
   }
 
-  if (Object.keys(issueUpdate).length === 0 && !hasDeps && !wantsMove) {
+  // `assigneeId` nu stă în FIELD_MAP fiindcă valoarea se REZOLVĂ, nu se copiază:
+  // clientul poate trimite un nume, iar coloana ține un uuid. `null` sau șirul
+  // gol golesc asignarea — la fel ca `deps: []`.
+  const wantsAssignee = 'assigneeId' in body
+  if (wantsAssignee && body.assigneeId !== null && typeof body.assigneeId !== 'string') {
+    return Response.json({ error: 'invalid_assignee' }, { status: 400 })
+  }
+
+  if (Object.keys(issueUpdate).length === 0 && !hasDeps && !wantsMove && !wantsAssignee) {
     return Response.json({ error: 'no_updatable_fields' }, { status: 400 })
   }
 
@@ -188,6 +196,19 @@ export const onRequestPatch: PagesFunction<Env> = async (context) => {
   }>
   if (!currentRows.length) return Response.json({ error: 'not_found' }, { status: 404 })
   const current = currentRows[0]
+
+  if (wantsAssignee) {
+    const raw = body.assigneeId as string | null
+    if (raw === null || raw === '') {
+      issueUpdate.assignee_id = null
+    } else {
+      const who = await resolveAssignee(raw, SUPABASE_URL, headers)
+      if (!who) {
+        return Response.json({ error: 'assignee_not_found' }, { status: 422 })
+      }
+      issueUpdate.assignee_id = who.id
+    }
+  }
 
   // Move to another project: new id with the target prefix, target wave, no theme.
   let movedFrom: string | null = null
@@ -338,9 +359,10 @@ export const onRequestPatch: PagesFunction<Env> = async (context) => {
     }
   }
 
-  const dbToClient: Record<string, string> = Object.fromEntries(
-    Object.entries(FIELD_MAP).map(([client, db]) => [db, client])
-  )
+  const dbToClient: Record<string, string> = {
+    ...Object.fromEntries(Object.entries(FIELD_MAP).map(([client, db]) => [db, client])),
+    assignee_id: 'assigneeId',
+  }
   const updatedFields = [
     ...Object.keys(issueUpdate)
       .filter(k => k !== 'id' && k !== 'project_id')
