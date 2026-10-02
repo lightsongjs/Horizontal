@@ -12,6 +12,7 @@ import {
 } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './lib/supabase'
+import { pickStoredSession, resolveBootSession } from './lib/storedSession'
 import { isAdminSession, buildAccessMap, type AccessMap } from './lib/access'
 
 interface AuthState {
@@ -38,11 +39,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!supabase) return
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session)
+    const stored = () => (typeof localStorage === 'undefined' ? null : pickStoredSession(localStorage))
+    supabase.auth.getSession().then(({ data, error }) => {
+      setSession(resolveBootSession({ session: data.session, error }, stored))
       setLoading(false)
     })
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s))
+    // Un `null` venit fără SIGNED_OUT e un refresh eșuat, nu o delogare — vezi
+    // `storedSession.ts`. Delogarea reală vine mereu cu evenimentul ei.
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
+      if (!s && event !== 'SIGNED_OUT') return
+      setSession(s)
+    })
     return () => sub.subscription.unsubscribe()
   }, [])
 
