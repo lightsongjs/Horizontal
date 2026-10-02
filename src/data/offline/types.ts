@@ -4,7 +4,9 @@
 import type { Assignee, InboxRow, Issue, Obstacle, ObstacleLink, Project, ProjectMember, Theme, Wave } from '../../lib/types'
 import type { DueRange } from '../repository'
 
-export interface SyncStatus { offline: boolean; pending: number }
+/** `syncing`: o golire chiar trimite acum — altfel o coadă oprită s-ar fi
+ *  anunțat „se trimite" la nesfârșit. */
+export interface SyncStatus { offline: boolean; pending: number; syncing: boolean }
 
 export type SyncEvent =
   | { type: 'status'; status: SyncStatus }

@@ -36,6 +36,8 @@ export interface OfflineOptions {
   canFlush?: () => boolean
   /** Cât așteaptă o captură răspunsul serverului înainte să întoarcă ecoul provizoriu. */
   createWaitMs?: number
+  /** Pașii reîncercării cât coada are elemente; ultimul se repetă. */
+  retryDelaysMs?: number[]
 }
 
 type CreateOutcome = { issue: Issue } | { error: unknown }
@@ -85,7 +87,7 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
   const listeners = new Set<(e: SyncEvent) => void>()
   /** Capturile care încă își așteaptă răspunsul (după ID-ul provizoriu) — vezi `createIssue`. */
   const createWaiters = new Map<string, (r: CreateOutcome) => void>()
-  let status: SyncStatus = { offline: false, pending: 0 }
+  let status: SyncStatus = { offline: false, pending: 0, syncing: false }
 
   const emitLocal = (e: SyncEvent) => { for (const fn of listeners) fn(e) }
   const emit = (e: SyncEvent) => {
@@ -148,13 +150,45 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
 
   const setStatus = (next: Partial<SyncStatus>) => {
     const s = { ...status, ...next }
-    if (s.offline === status.offline && s.pending === status.pending) return
+    if (s.offline === status.offline && s.pending === status.pending && s.syncing === status.syncing) return
+    const back = status.offline && !s.offline
     status = s
     emit({ type: 'status', status })
+    // Rețeaua s-a dovedit prezentă (a răspuns o citire sau o scriere): coada
+    // rămasă de la o sincopă pleacă acum, nu abia la următoarea scriere.
+    if (back) void flush()
   }
   async function refreshPending() {
     const kv = await kvReady
     setStatus({ pending: kv ? (await kv.ops()).length : 0 })
+    scheduleRetry()
+  }
+
+  /**
+   * Plasa pentru o coadă care a rămas cu elemente și nimic n-o mai împinge: pe
+   * semnal slab `navigator.onLine` nu se schimbă, deci nici `online` nu vine,
+   * iar o sincopă nu e urmată neapărat de o citire. Reîncercăm în pași tot mai
+   * rari; coada goală oprește ceasul. Nu și cu `navigator.onLine === false`:
+   * acolo `online` anunță singur revenirea, iar fiecare încercare ar pica sigur.
+   * Încercarea pornește și cu „offline" aprins: tocmai el e starea în care
+   * a rămas coada după sincopă.
+   */
+  const retryDelays = opts.retryDelaysMs ?? [5_000, 15_000, 60_000]
+  let retryTimer: ReturnType<typeof setTimeout> | null = null
+  let retryStep = 0
+  function scheduleRetry() {
+    if (status.pending === 0) {
+      if (retryTimer) clearTimeout(retryTimer)
+      retryTimer = null
+      retryStep = 0
+      return
+    }
+    if (retryTimer || !retryDelays.length) return
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return
+    const delay = retryDelays[Math.min(retryStep++, retryDelays.length - 1)]
+    retryTimer = setTimeout(() => { retryTimer = null; void flush() }, delay)
+    // În Node (teste) un ceas rămas n-are voie să țină procesul în viață.
+    ;(retryTimer as { unref?: () => void }).unref?.()
   }
 
   async function pendingOps(): Promise<OutboxOp[]> {
@@ -440,55 +474,68 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
     // fiecare scriere), deci o eroare locală scăpată de aici ar fi o respingere
     // neprinsă. Ce rămâne în coadă se reia la următoarea golire.
     await lock(async () => {
-      for (;;) {
-        const all = await kv.ops()
-        if (!all.length) break
-        const [q, ...rest] = all
-        try {
-          const removed = await runOp(kv, q, rest)
-          setStatus({ offline: false })
-          if (!removed) break // n-are rost să-l retrimitem în buclă
-        } catch (e) {
-          if (isNetworkError(e)) { setStatus({ offline: true }); break }
-          // Sesiune lipsă sau expirată: nu e refuz (elementul rămâne) și nici
-          // rețea: serverul a răspuns, deci „offline" se stinge. Se reia când
-          // revine sesiunea.
-          if (isAuthError(e, q.op.kind)) { setStatus({ offline: false }); break }
-          // Refuz de server: nu blocăm coada la infinit. Elementul se scoate,
-          // iar cine afișează tichetul primește valoarea serverului (sau află
-          // că nu mai există). O creare refuzată își ia după ea și scrierile
-          // care-i foloseau ID-ul provizoriu — n-ar avea ce să trimită.
-          let title: string | null = null
-          const removedOk = await queueLock(async () => {
-            if (q.op.kind === 'createIssue') {
-              const queued = await kv.ops()
-              const tempId = q.op.tempId
-              // Titlul de ACUM (cu redenumirile din coadă), citit înainte de
-              // anulare: după ea sarcina dispare din ecran, iar mesajul e
-              // singurul loc care mai spune ce s-a pierdut.
-              title = overlay([], queued.map((o) => o.op), now()).find((i) => i.id === tempId)?.title ?? q.op.input.title
-              const { remove, rewrite } = cancelTempIssues(queued, [tempId])
-              await kv.replaceOps(rewrite, remove)
-            } else {
-              await kv.replaceOps([], [q.seq])
-            }
-          }).then(() => true, () => false)
-          if (!removedOk) break // coada nu poate fi modificată: nu anunțăm un eșec care se va repeta
-          const [issueId] = opIssueIds(q.op)
-          let revert: Issue | null = null
-          if (q.op.kind === 'updateIssue') revert = await currentIssue(kv, q.op.id).catch(() => null)
-          // O captură care încă își așteaptă răspunsul primește refuzul direct,
-          // ca o scriere directă de altădată: omul vede eroarea unde a scris,
-          // iar un `failed` în plus ar dubla mesajul.
-          const waiter = q.op.kind === 'createIssue' ? createWaiters.get(q.op.tempId) : undefined
-          const message = title === null ? errorMessage(e) : `Sarcina „${title}” n-a putut fi salvată: ${errorMessage(e)}`
-          if (waiter) waiter({ error: e })
-          else emit({ type: 'failed', message, issueId: issueId ?? null, revert })
-          if (q.op.kind === 'createIssue') emit({ type: 'removed', ids: [q.op.tempId] })
-        }
+      try {
+        await drain(kv)
+      } finally {
+        // Numărul întâi, apoi stingerea: altfel indicatorul ar trece o clipă
+        // prin „N în așteptare" cu numărul de dinainte de golire.
+        await refreshPending().catch(() => {})
+        setStatus({ syncing: false })
       }
-      await refreshPending()
     }).catch(() => {})
+  }
+
+  async function drain(kv: Kv) {
+    for (;;) {
+      const all = await kv.ops()
+      if (!all.length) break
+      // Aprins abia când chiar e ceva de trimis: o golire care găsește coada
+      // goală (după fiecare captură) n-are de ce să miște indicatorul.
+      setStatus({ syncing: true })
+      const [q, ...rest] = all
+      try {
+        const removed = await runOp(kv, q, rest)
+        setStatus({ offline: false })
+        if (!removed) break // n-are rost să-l retrimitem în buclă
+      } catch (e) {
+        if (isNetworkError(e)) { setStatus({ offline: true }); break }
+        // Sesiune lipsă sau expirată: nu e refuz (elementul rămâne) și nici
+        // rețea: serverul a răspuns, deci „offline" se stinge. Se reia când
+        // revine sesiunea.
+        if (isAuthError(e, q.op.kind)) { setStatus({ offline: false }); break }
+        // Refuz de server: nu blocăm coada la infinit. Elementul se scoate,
+        // iar cine afișează tichetul primește valoarea serverului (sau află
+        // că nu mai există). O creare refuzată își ia după ea și scrierile
+        // care-i foloseau ID-ul provizoriu — n-ar avea ce să trimită.
+        let title: string | null = null
+        const removedOk = await queueLock(async () => {
+          if (q.op.kind === 'createIssue') {
+            const queued = await kv.ops()
+            const tempId = q.op.tempId
+            // Titlul de ACUM (cu redenumirile din coadă), citit înainte de
+            // anulare: după ea sarcina dispare din ecran, iar mesajul e
+            // singurul loc care mai spune ce s-a pierdut.
+            title = overlay([], queued.map((o) => o.op), now()).find((i) => i.id === tempId)?.title ?? q.op.input.title
+            const { remove, rewrite } = cancelTempIssues(queued, [tempId])
+            await kv.replaceOps(rewrite, remove)
+          } else {
+            await kv.replaceOps([], [q.seq])
+          }
+        }).then(() => true, () => false)
+        if (!removedOk) break // coada nu poate fi modificată: nu anunțăm un eșec care se va repeta
+        const [issueId] = opIssueIds(q.op)
+        let revert: Issue | null = null
+        if (q.op.kind === 'updateIssue') revert = await currentIssue(kv, q.op.id).catch(() => null)
+        // O captură care încă își așteaptă răspunsul primește refuzul direct,
+        // ca o scriere directă de altădată: omul vede eroarea unde a scris,
+        // iar un `failed` în plus ar dubla mesajul.
+        const waiter = q.op.kind === 'createIssue' ? createWaiters.get(q.op.tempId) : undefined
+        const message = title === null ? errorMessage(e) : `Sarcina „${title}” n-a putut fi salvată: ${errorMessage(e)}`
+        if (waiter) waiter({ error: e })
+        else emit({ type: 'failed', message, issueId: issueId ?? null, revert })
+        if (q.op.kind === 'createIssue') emit({ type: 'removed', ids: [q.op.tempId] })
+      }
+    }
   }
 
   /**
@@ -520,7 +567,7 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
     flush,
     prefetchAll,
     resolveId,
-    async clear() { const kv = await kvReady; await kv?.clear(); remaps.clear(); setStatus({ pending: 0 }) },
+    async clear() { const kv = await kvReady; await kv?.clear(); remaps.clear(); setStatus({ pending: 0 }); scheduleRetry() },
   }
 
   const repo: Repository = {

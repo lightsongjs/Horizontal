@@ -553,6 +553,44 @@ describe('citire în cursa cu golirea', () => {
   })
 })
 
+describe('coada nu rămâne blocată', () => {
+  async function stuck(retryDelaysMs: number[]) {
+    const f = fakeRemote()
+    const repo = createOfflineRepository(f.remote, Promise.resolve(kv), {
+      now: () => new Date('2026-10-02T09:00:00Z'), readTimeoutMs: 1000, channel: null, retryDelaysMs,
+    })
+    await repo.sync!.prefetchAll()
+    f.net.down = true
+    await repo.updateIssue('HZ-01', { title: 'după o sincopă' })
+    expect(repo.sync!.status()).toMatchObject({ offline: true, pending: 1 })
+    f.net.down = false
+    return { ...f, repo }
+  }
+
+  it('revenirea din offline (o citire reușită) pornește golirea', async () => {
+    const { repo, server } = await stuck([60_000])
+    await repo.listProjects()
+    await vi.waitFor(() => expect(repo.sync!.status().pending).toBe(0))
+    expect(server.issues[0].title).toBe('după o sincopă')
+  })
+
+  it('cu elemente în coadă, o reîncercare programată golește fără niciun alt declanșator', async () => {
+    const { repo, server } = await stuck([20])
+    await vi.waitFor(() => expect(repo.sync!.status().pending).toBe(0), { timeout: 2000 })
+    expect(server.issues[0].title).toBe('după o sincopă')
+  })
+
+  it('`syncing` e aprins doar cât golirea chiar trimite', async () => {
+    const { repo } = await stuck([60_000])
+    const seen: boolean[] = []
+    repo.sync!.subscribe((e) => { if (e.type === 'status') seen.push(e.status.syncing) })
+    expect(repo.sync!.status().syncing).toBe(false)
+    await repo.sync!.flush()
+    expect(seen).toContain(true)
+    expect(repo.sync!.status().syncing).toBe(false)
+  })
+})
+
 describe('golire fără sesiune', () => {
   it('fără sesiune nu golește nimic; cu sesiune, coada pleacă întreagă', async () => {
     const f = fakeRemote()
@@ -585,12 +623,21 @@ describe('golire fără sesiune', () => {
     const events: SyncEvent[] = []
     repo.sync!.subscribe((e) => events.push(e))
     // Cheia anonimă: inserarea trece de rețea, dar RLS n-o lasă să întoarcă rândul.
-    vi.mocked(f.remote.createIssue).mockRejectedValueOnce({ message: 'JSON object requested, multiple (or no) rows returned', code: 'PGRST116' })
+    // Cât ține „fără sesiune", orice reîncercare (și cea pornită de stingerea
+    // lui „offline") primește același răspuns.
+    let anon = true
+    const create = vi.mocked(f.remote.createIssue).getMockImplementation()!
+    vi.mocked(f.remote.createIssue).mockImplementation(async (input) => {
+      if (anon) throw { message: 'JSON object requested, multiple (or no) rows returned', code: 'PGRST116' }
+      return create(input)
+    })
     vi.mocked(f.remote.updateIssue).mockClear()
     await repo.sync!.flush()
+    await repo.sync!.flush() // și cea pornită de stingerea lui „offline", la rând după prima
     expect(events.some((e) => e.type === 'failed')).toBe(false)
     expect(repo.sync!.status()).toMatchObject({ offline: false, pending: 2 })
     expect(f.remote.updateIssue).not.toHaveBeenCalled()
+    anon = false
     vi.mocked(f.remote.updateIssue).mockRejectedValueOnce({ message: 'JWT expired', code: 'PGRST301' })
     await repo.sync!.flush()
     expect(repo.sync!.status().pending).toBe(1) // crearea a trecut, actualizarea așteaptă sesiunea

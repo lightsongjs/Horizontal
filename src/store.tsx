@@ -628,7 +628,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
-  const [syncStatus, setSyncStatus] = useState<SyncStatus>(() => repository.sync?.status() ?? { offline: false, pending: 0 })
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>(() => repository.sync?.status() ?? { offline: false, pending: 0, syncing: false })
 
   // Ce scrie coada, ce refuză serverul, ce scrie altă filă. Store-ul nu
   // inițiază nimic aici — doar își aliniază memoria cu ce s-a întâmplat.
