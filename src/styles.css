@@ -2580,11 +2580,14 @@ main {
 .info-rules dd { font-size: 12.5px; color: var(--txt-dim); line-height: 1.55; }
 
 /* Pe ecran lat, scurtăturile și regulile stau alături, iar exemplele — care
-   sunt partea lungă — trec pe toată lățimea dedesubt. */
+   sunt partea lungă — trec pe toată lățimea dedesubt. Numărate de la COADĂ:
+   în aplicația de Android, ecranul de verificare se pune primul și ar fi
+   decalat numărătoarea de la cap. */
 @media (min-width: 780px) {
   .info-body { grid-template-columns: 1fr 1fr; }
-  .info-sec:nth-child(2) { grid-column: 1 / -1; order: 2; }
-  .info-sec:nth-child(3) { order: 1; }
+  .info-sec:nth-last-child(2) { grid-column: 1 / -1; order: 2; }
+  .info-sec:nth-last-child(1) { order: 1; }
+  .info-sec.and-status { grid-column: 1 / -1; order: 0; }
 }
 
 /* ─── QA FIELDS ─────────────────────────────────────────────────────── */
@@ -5359,6 +5362,73 @@ main {
   display: flex; align-items: center; justify-content: center;
 }
 .push-cta-x:hover { color: var(--txt); background: var(--surface-2); }
+
+/* Reconectarea din cardul Android: parola stă în coloana de text, sub
+   explicație, ca să ia toată lățimea ei. `min-width: 0` pe câmp — altfel
+   lățimea implicită a unui <input> împinge butonul afară din card. */
+.android-pass { display: flex; gap: 8px; margin-top: 7px; }
+.android-pass input {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 6px 9px;
+  border-radius: var(--r-m);
+  background: var(--surface);
+  border: 1px solid var(--line); /* câmp de input: excepția de la „fără linii" */
+  color: var(--txt);
+}
+.android-pass input:focus { outline: none; border-color: var(--accent); }
+
+/* ECRANUL DE VERIFICARE ANDROID (InfoPanel) ─────────────────────────────
+   Bloc pe --surface-2 peste cardul panoului, cu --amb, fără chenar. Eticheta
+   e limbă (serif, moștenit), valoarea e stare de mașină (mono). */
+.and-status {
+  background: var(--surface-2);
+  border-radius: var(--r);
+  box-shadow: var(--amb);
+  padding: 14px 16px;
+}
+.and-head { display: flex; align-items: baseline; gap: 10px; }
+.and-head h3 { flex: 1; }
+.and-reload {
+  flex-shrink: 0;
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--txt-dim);
+  background: var(--surface-3);
+  border-radius: var(--r-s);
+  padding: 4px 9px;
+}
+.and-reload:hover { color: var(--txt); }
+.and-reload:disabled { opacity: 0.6; cursor: default; }
+.and-err { font-size: 12.5px; color: var(--blocked); margin-bottom: 8px; }
+.and-rows { margin: 0; }
+.and-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 6px 0;
+}
+.and-row + .and-row { border-top: 1px solid var(--line-soft); } /* separator de rând */
+.and-row dt { flex: 1; min-width: 0; font-size: 13px; color: var(--txt); }
+.and-row dd {
+  margin: 0;
+  max-width: 62%;
+  display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: baseline;
+  gap: 4px 8px;
+  text-align: right;
+}
+.and-val { font-family: var(--mono); font-size: 12px; color: var(--txt-dim); }
+.and-link {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.and-note { flex-basis: 100%; font-size: 11.5px; color: var(--txt-faint); font-style: italic; }
 
 /* OBSTACOLE ─────────────────────────────────────────────────────────────
    Vocabularul vizual pentru obstacole: poarta valului, rândul de obstacol,

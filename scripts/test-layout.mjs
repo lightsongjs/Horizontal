@@ -426,6 +426,60 @@ console.log('\nTitlul de pe card (mobil) — câte rânduri se văd:')
   check('cardul nu crește la nesfârșit', m.lines <= 3, `${m.lines} rânduri (plafon 3)`)
 }
 
+/**
+ * Cardul Android din „Azi" (`AndroidReminderCard`), varianta cu cel mai mult
+ * conținut: reconectarea, cu câmp de parolă + „Conectează" în coloana de
+ * text, lângă iconiță și „×". Plus rândul cel mai lung din ecranul de
+ * verificare (`AndroidStatus`), cu valoare lungă, link și notă.
+ */
+const androidCard = () => `
+<div class="push-cta">
+  <span class="push-cta-ico"><svg width="20" height="20"></svg></span>
+  <div class="push-cta-txt">
+    <strong>Reconectează mementourile</strong>
+    <span>Aplicația nu mai are sesiune: mementourile nu se sincronizează.</span>
+    <form class="android-pass"><input type="password" placeholder="Parola"><button type="submit" class="push-cta-btn">Conectează</button></form>
+  </div>
+  <button class="push-cta-x"><svg width="15" height="15"></svg></button>
+</div>
+<div class="info-card"><div class="info-body"><section class="info-sec and-status">
+  <div class="and-head"><h3>Aplicația de Android</h3><button class="and-reload"><svg width="13" height="13"></svg>Reîncarcă</button></div>
+  <dl class="and-rows">
+    <div class="and-row"><dt>Alarme exacte</dt><dd><span class="and-val">nu încă — se vor pune la următoarea alarmă</span></dd></div>
+    <div class="and-row"><dt>Baterie</dt><dd><span class="and-val">optimizată</span><button class="and-link">Setări</button><span class="and-note">Producătorul poate opri aplicația în fundal</span></dd></div>
+  </dl>
+</section></div></div>`
+
+console.log('\nCardul Android (Azi) și ecranul de verificare:')
+for (const width of PHONE_WIDTHS) {
+  const page = await browser.newPage({ viewport: { width, height: 900 } })
+  await page.setContent(`<style>${CSS}</style>${androidCard()}`)
+  const m = await page.evaluate(() => {
+    const card = document.querySelector('.push-cta').getBoundingClientRect()
+    const input = document.querySelector('.android-pass input').getBoundingClientRect()
+    const btn = document.querySelector('.android-pass button')
+    const b = btn.getBoundingClientRect()
+    const bs = getComputedStyle(btn)
+    const reload = getComputedStyle(document.querySelector('.and-reload'))
+    const sec = document.querySelector('.and-status').getBoundingClientRect()
+    const rows = [...document.querySelectorAll('.and-row')]
+    return {
+      input: Math.round(input.width),
+      overflow: Math.round(Math.max(b.right, input.right) - card.right),
+      btnVisible: bs.backgroundColor !== 'rgba(0, 0, 0, 0)' || bs.boxShadow !== 'none',
+      reloadVisible: reload.backgroundColor !== 'rgba(0, 0, 0, 0)' || reload.boxShadow !== 'none',
+      rowOverflow: Math.round(Math.max(...rows.map((r) => r.scrollWidth - r.clientWidth))),
+      secInside: sec.right <= window.innerWidth,
+    }
+  })
+  await page.close()
+  check(`parola nestrivită @${width}px`, m.input >= MIN_INPUT_W, `${m.input}px (minim ${MIN_INPUT_W}px)`)
+  check(`fără overflow în card @${width}px`, m.overflow <= 0, `${m.overflow}px peste card`)
+  check(`„Conectează" vizibil @${width}px`, m.btnVisible, m.btnVisible ? 'are fundal' : 'INVIZIBIL')
+  check(`„Reîncarcă" vizibil @${width}px`, m.reloadVisible, m.reloadVisible ? 'are fundal' : 'INVIZIBIL')
+  check(`rândurile de stare încap @${width}px`, m.rowOverflow <= 0 && m.secInside, `${m.rowOverflow}px peste rând`)
+}
+
 await browser.close()
 
 if (failures.length) {

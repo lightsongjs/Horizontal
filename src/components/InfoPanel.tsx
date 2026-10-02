@@ -3,6 +3,7 @@ import { parseDue } from '../lib/parseDue'
 import { describeRrule } from '../lib/recurrence'
 import { dayOffset, toDisplayDate, toTimeInput } from '../lib/schedule'
 import { Icon } from './Icon'
+import { AndroidStatus } from './AndroidStatus'
 
 /**
  * Panoul de referință (Ctrl+,): ce scurtături există și ce înțelege
@@ -164,6 +165,10 @@ export function InfoPanel({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="info-body">
+          {/* Sus, înaintea scurtăturilor: pe telefon nu există tastatură, iar
+              „de ce n-a sunat?" e întrebarea cu care se deschide panoul acolo.
+              Se randează singur doar în cutia de Android. */}
+          <AndroidStatus />
           <section className="info-sec">
             <h3>Scurtături</h3>
             <table className="info-keys">

@@ -4,6 +4,8 @@ import { errorMessage } from '../lib/errorMessage'
 import { announceChime, playChime, unlockChime } from '../lib/chime'
 import { Icon } from './Icon'
 import { getDesktopBridge } from '../lib/desktopBridge'
+import { getAndroidBridge } from '../lib/androidBridge'
+import { AndroidReminderCard } from './AndroidReminderCard'
 
 /**
  * Comutatorul de notificări. Trăiește în capul listei „Azi" fiindcă acolo e
@@ -13,6 +15,14 @@ import { getDesktopBridge } from '../lib/desktopBridge'
  * setează o dată e zgomot. Reapare doar dacă starea se schimbă.
  */
 export function PushToggle() {
+  // Pe Android mementourile le sună cutia (alarme exacte), nu web push-ul.
+  // WebView-ul nu are PushManager; cardul Android cere ce lipsește cutiei.
+  // Două componente, nu un `return` timpuriu aici: fiecare își cheamă
+  // hook-urile necondiționat (regula hook-urilor).
+  return getAndroidBridge() ? <AndroidReminderCard /> : <WebPushToggle />
+}
+
+function WebPushToggle() {
   const [state, setState] = useState<PushState | null>(null)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
