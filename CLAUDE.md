@@ -784,6 +784,73 @@ Ctrl+Shift+A și mementouri cu aplicația în fundal. Spec/plan:
 - **Dublură**: un Chrome abonat la web push + cutia = fiecare memento de două
   ori; dezactivează notificările site-ului în Chrome.
 
+## Aplicația de Android
+
+`mobile/` = cutie Capacitor (`server.url` = site-ul publicat) + pluginul Kotlin
+`HorizontalAndroid`, pentru alarme exacte. Spec/plan:
+`docs/superpowers/{specs,plans}/2026-10-02-android*`. Telefonul: Redmi Note 13
+Pro (HyperOS 3, Android 16).
+
+- **Pagina ȘTIE, cutia SUNĂ, ca pe Linux** — dar pe Android pagina trăiește doar
+  cât e deschisă, deci planul are DOUĂ surse: lista paginii (`NativeBridge`,
+  7 zile, max 100, plus `heldIds` = id-urile din coada offline) și citirea
+  nativă (`SyncWorker`: −24 h / +7 zile / 100, la 15 min, după alarme, acțiuni
+  și boot; `SyncWorker.now()` = APPEND_OR_REPLACE). Câștigă cea citită mai
+  recent; `heldIds` rămân ale paginii. `readAt` al citirii native = PORNIREA
+  cererii. Pagina offline trimite `readAt = 0`. Regula: `core/Plan.kt` (`mergePlan`).
+- **Tot ce decide e în `core/`** (Kotlin pur, JUnit pe JVM: `npm run android:test`).
+  Textul notificării și amânarea sunt scrise în DOUĂ limbi, cu fixtures comune:
+  `src/lib/pushPayload.fixtures.json`, `src/lib/reminderAction.fixtures.json`.
+  Un caz nou se adaugă în JSON, nu într-un test.
+- **Cheia** `id@ISO` e comparată între pagină și cutie: `isoJs` (cu `.000Z`),
+  nu `Instant.toString()`. Kotlin o recalculează la intrare.
+- **O acțiune, un executant.** Aplicația vizibilă → pagina (`reminderAction`).
+  Altfel coada nativă: o trimite `DrainWorker`, SAU o preia pagina la deschidere
+  (`takeActions`) — preluarea și „în zbor" sunt sub același lacăt (`PlanStore`).
+  O bifă executată de două ori pe o recurentă ar sări de două ori; de-aia și
+  garda `due_at=eq.` din `buildPatch`. `DrainWorker` eliberează la start
+  elementele rămase „în zbor" de o încercare ucisă; folosește REPLACE + backoff
+  liniar de 30 s. Fiecare cerere poartă contul căruia îi aparține (`asUser`) și
+  se aruncă dacă sesiunea nativă e acum a altcuiva.
+- **Sesiune nativă proprie** (a doua, nu a WebView-ului — refresh token-ul se
+  rotește): dată O DATĂ la login din `auth.tsx`; criptată cu Keystore;
+  refresh serializat. Moartă → notificare „Reconectează" + cardul din „Azi".
+  `classifyAuth` (`core/Auth.kt`) omoară sesiunea doar la coduri GoTrue
+  (`invalid_grant`, `refresh_token_not_found`, `invalid_credentials`,
+  `session_not_found`) sau 401 la refresh — o eroare de rețea sau 5xx nu.
+  Logout → `signOut` șterge sesiunea, planul, coada, alarmele.
+- **Retragerea** e pe CHEIE (amânat pe laptop → cheie nouă → se retrage), iar
+  citirea nativă ia `remind_at` de la −24 h: cu −1 h o notificare neatinsă s-ar
+  fi retras singură după o oră.
+- **Canalul `mementouri-v2`**: setările unui canal nu se mai schimbă din cod; un
+  sunet nou = id nou (la pornire se șterge `v1`). Sunetul e TRIPLU (E5 la
+  0 / 0,6 / 1,2 s, ~2,2 s), ales de om pe 2026-10-02 fiindcă nota singulară de
+  0,6 s nu s-a auzit pe telefon; pagina își păstrează nota singură
+  (`chime.ts`). Se regenerează cu `node mobile/scripts/render-chime.mjs`.
+- **Capacitor nu respinge niciodată** un apel către o metodă pe care cutia
+  instalată n-o are — apelul pur și simplu nu se întoarce. Deci orice metodă
+  NOUĂ de plugin crește `API` (`HorizontalAndroidPlugin.kt`), iar pagina verifică
+  `getInfo().api >= N` (`ANDROID_API_REQUIRED` / o verificare pe funcție) ÎNAINTE
+  de apel. Niciodată „apelez și sper".
+- **`loggingBehavior: 'none'`** în `capacitor.config.ts` e deliberat: pe un build
+  debuggable bridge-ul ar scrie în logcat datele apelului `signIn`, parola
+  inclusă.
+- **Build/instalare**: `source mobile/scripts/env.sh` (JDK 21 din `~/.local/opt`,
+  SDK în `~/Android/Sdk`); `npm run android:install` (release, `adb install -r`;
+  cu emulatorul atașat, `ANDROID_SERIAL=<serial>`). Cheia:
+  `~/.local/share/horizontal/android-release.{jks,pass}`, NU în repo — fără ea
+  update-ul cere dezinstalare (re-login, coada pierdută). Interfața se
+  actualizează prin push pe master (service worker); APK nou doar când se
+  schimbă `mobile/` — și `versionCode` (în `app/build.gradle`) crește.
+- **Xiaomi/HyperOS**: instalarea prin USB cere „Instalare prin USB" activat și o
+  confirmare pe telefon. Glisarea aplicației din recente poate fi un force-stop,
+  care omoară alarmele — ecranul de stare (`AndroidStatus`) arată starea
+  bateriei pentru asta.
+- **Depanare**: `node mobile/scripts/cdp.mjs '<expr>'` evaluează în WebView
+  (adb forward + CDP). Doze: `adb shell dumpsys deviceidle force-idle`.
+- **Contractul** `HorizontalAndroidPlugin` e scris de două ori:
+  `src/lib/androidBridge.ts` și `HorizontalAndroidPlugin.kt`. Se schimbă împreună.
+
 ## Teste care cer un browser
 
 `npm test` (vitest) nu face layout și nu are DOM real, deci nu poate vedea două
