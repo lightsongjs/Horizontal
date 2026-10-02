@@ -21,7 +21,7 @@ import { reminderMutation } from './lib/reminderAction'
 import { announceChime, playChime, unlockChime } from './lib/chime'
 import type { Project } from './lib/types'
 import { Icon } from './components/Icon'
-import { DesktopBridge } from './components/DesktopBridge'
+import { NativeBridge } from './components/NativeBridge'
 import { repository } from './data'
 import { syncLabel } from './lib/syncLabel'
 
@@ -1003,7 +1003,7 @@ export function App() {
       <HorizontalProvider>
         <UIProvider>
           <SyncBridge />
-          <DesktopBridge />
+          <NativeBridge />
           <Shell />
         </UIProvider>
       </HorizontalProvider>

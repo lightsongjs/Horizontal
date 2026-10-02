@@ -12,4 +12,7 @@ describe('logoutPlan', () => {
   it('merge direct online cu coada goală', () => {
     expect(logoutPlan({ offline: false, pending: 0 })).toBe('proceed')
   })
+  it('acțiunile din notificare încă netrimise de cutia Android cer și ele confirmare', () => {
+    expect(logoutPlan({ offline: false, pending: 0, nativePending: 2 })).toBe('confirm')
+  })
 })

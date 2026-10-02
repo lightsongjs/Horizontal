@@ -12,7 +12,8 @@ import {
   type ReactNode,
 } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { supabase } from './lib/supabase'
+import { supabase, supabaseUrl, supabaseAnonKey } from './lib/supabase'
+import { getAndroidBridge } from './lib/androidBridge'
 import {
   clearAccess,
   pickStoredSession,
@@ -106,7 +107,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async signIn(email, password) {
         if (!supabase) return 'Auth indisponibil.'
         const { error } = await supabase.auth.signInWithPassword({ email, password })
-        return error ? error.message : null
+        if (error) return error.message
+        // Pe Android cutia își face O DATĂ propria sesiune (Kotlin, al doilea
+        // refresh token), ca „Gata" să meargă fără WebView. Parola nu se
+        // păstrează nicăieri; un eșec aici nu blochează login-ul — cardul din
+        // „Azi" arată „Reconectează mementourile".
+        const android = getAndroidBridge()
+        if (android && supabaseUrl && supabaseAnonKey) void android.signIn({ url: supabaseUrl, anonKey: supabaseAnonKey, email, password }).catch(() => {})
+        return null
       },
       async signOut() {
         const { error } = (await supabase?.auth.signOut()) ?? { error: null }

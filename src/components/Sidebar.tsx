@@ -8,6 +8,7 @@ import { SMART_LISTS, type SmartListKind } from './SmartListView'
 import { Icon } from './Icon'
 import { repository } from '../data'
 import { logoutPlan } from '../lib/logoutPlan'
+import { getAndroidBridge } from '../lib/androidBridge'
 
 function getBuildAgo(): string {
   const diff = Math.floor((Date.now() - new Date(__BUILD_TIME__).getTime()) / 1000)
@@ -42,17 +43,23 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
   const { theme, toggle } = useTheme()
   const { enabled, signOut } = useAuth()
   const onSignOut = async () => {
+    // Acțiunile din notificări încă netrimise de cutia Android (coada ei).
+    const android = getAndroidBridge()
+    const nativePending = android ? (await android.status().catch(() => null))?.queued ?? 0 : 0
     const st = repository.sync?.status() ?? { offline: false, pending: 0 }
-    const plan = logoutPlan({ offline: st.offline || navigator.onLine === false, pending: st.pending })
+    const plan = logoutPlan({ offline: st.offline || navigator.onLine === false, pending: st.pending, nativePending })
     // Fără rețea, signOut-ul pică și sesiunea rămâne — dar coada ar fi fost deja
     // ștearsă: omul ar fi rămas logat, fără modificările lui și fără să știe.
     if (plan === 'refuse') return reportError('Deconectarea necesită rețea.')
     // Coada e locală: după logout nu mai are cine s-o trimită.
-    if (plan === 'confirm' && !window.confirm(`${st.pending} modificări netrimise se vor pierde. Te deconectezi?`)) return
+    if (plan === 'confirm' && !window.confirm(`${st.pending + nativePending} modificări netrimise se vor pierde. Te deconectezi?`)) return
     // Coada se șterge DOAR după ce serverul a încheiat sesiunea.
     const err = await signOut()
     if (err) return reportError(err)
     await repository.sync?.clear()
+    // Și starea nativă: sesiunea, alarmele, planul, coada. Fără asta, telefonul
+    // ar suna mai departe mementourile contului vechi. Tot DUPĂ signOut-ul reușit.
+    await android?.signOut().catch(() => {})
   }
   const canWrite = useCanWrite()
   // Cromul de proiect al piciorului de sidebar e legat de proiectul DESCHIS ca
