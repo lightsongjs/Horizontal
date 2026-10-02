@@ -1,6 +1,9 @@
 apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 
+def hzKeystore = file("${System.getProperty('user.home')}/.local/share/horizontal/android-release.jks")
+def hzPass = file("${System.getProperty('user.home')}/.local/share/horizontal/android-release.pass")
+
 android {
     namespace = "ro.horizontal.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -8,8 +11,9 @@ android {
         applicationId "ro.horizontal.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
+        // versionCode trebuie să crească la fiecare APK nou instalat; versionName ajunge în getInfo().version.
         versionCode 1
-        versionName "1.0"
+        versionName "1.0.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -23,8 +27,20 @@ android {
     compileOptions { sourceCompatibility JavaVersion.VERSION_21; targetCompatibility JavaVersion.VERSION_21 }
     // Testele core citesc fixtures din rădăcina repo-ului, nu din modul.
     testOptions { unitTests.all { systemProperty 'hz.repoRoot', rootProject.projectDir.toPath().resolve('../..').normalize().toString() } }
+    signingConfigs {
+        release {
+            // Cheia stă în afara repo-ului (spec, „Distribuția"); fără ea build-ul release pică explicit.
+            if (hzKeystore.exists()) {
+                storeFile hzKeystore
+                storePassword hzPass.text.trim()
+                keyAlias 'horizontal'
+                keyPassword hzPass.text.trim()
+            }
+        }
+    }
     buildTypes {
         release {
+            signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
