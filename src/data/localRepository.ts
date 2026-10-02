@@ -1,7 +1,7 @@
 // localStorage-backed repository for credential-free local dev. Seeds the tiny
 // example on first run. Mirrors the Supabase backend's behavior.
 
-import { nextOccurrence } from '../lib/recurrence'
+import { applyIssuePatch } from '../lib/issuePatch'
 import { SEED_ISSUES, SEED_PROJECTS, SEED_THEMES, SEED_WAVES } from '../lib/seed'
 import type { Assignee, Issue, IssueEvent, InboxRow, Obstacle, ObstacleLink, Project, ProjectMember, Theme, Wave } from '../lib/types'
 import {
@@ -310,45 +310,15 @@ export function createLocalRepository(): Repository {
 
     async updateIssue(id: string, patch: Partial<Issue>) {
       const db = load()
-      const issue = db.issues.find((i) => i.id === id)
-      if (!issue) throw new Error(`Unknown issue ${id}`)
-      const wasDone = issue.done
-      Object.assign(issue, patch)
-
-      // Oglinda trigger-ului `issues_zz_advance_recurrence` din Supabase: aici nu
-      // există Postgres care să facă saltul, iar modul local n-are voie să se
-      // comporte altfel. Ce e în `supabase/migration-recurrence.sql` e legea;
-      // asta doar o repetă în TS. Trigger-ul verifică o TRANZIȚIE
-      // (`new.done and not old.done`), nu doar valoarea din patch — de-aia
-      // `wasDone` e citit ÎNAINTE de `Object.assign`. Un `updateIssue(id,
-      // { done: true })` pe un tichet deja bifat n-are voie să sară scadența
-      // a doua oară, la fel cum trigger-ul n-ar face nimic pe un rând care
-      // era deja `done`.
-      if (!wasDone && patch.done === true && issue.rrule && issue.dueAt) {
-        const nxt = nextOccurrence(issue.rrule, new Date(), issue.dueAt)
-        if (nxt) {
-          // `issue.dueAt`/`issue.remindAt` sunt deja cele din `Object.assign` de
-          // mai sus, adică perechea din starea FINALĂ a patch-ului — la fel ca
-          // `new.due_at - new.remind_at` din trigger, nu `old.due_at`. Un decalaj
-          // amestecat din scadența veche și mementoul nou n-a existat ca pereche.
-          const delta = issue.remindAt ? new Date(issue.dueAt).getTime() - new Date(issue.remindAt).getTime() : null
-          issue.dueAt = nxt
-          issue.remindAt = delta === null ? null : new Date(new Date(nxt).getTime() - delta).toISOString()
-          issue.done = false
-          // A treia parte a regulii — „un memento care cade în trecut pleacă
-          // marcat ca livrat" — n-are ce oglindi AICI, și asta nu e o scăpare:
-          // `reminder_sent_at` e o coloană de server, nu există în `Issue`
-          // (vezi `src/lib/types.ts`), fiindcă cine o citește e jobul de cron
-          // peste `send-reminders`. Modul local n-are nici coloana, nici
-          // trimițătorul — deci nici mementoul răsuflat pe care regula îl
-          // oprește. Ce se poate observa în modul local (`dueAt`, `remindAt`,
-          // `done`) iese identic cu ce scrie trigger-ul. Dacă vreodată modul
-          // local capătă mementouri proprii, regula se adaugă tot aici.
-        }
-      }
-
+      const idx = db.issues.findIndex((i) => i.id === id)
+      if (idx === -1) throw new Error(`Unknown issue ${id}`)
+      // Oglinda trigger-ului de recurență trăiește în `applyIssuePatch` — vezi
+      // comentariul de acolo. Ce e în `supabase/migration-recurrence.sql` e legea.
+      // `reminder_sent_at` n-are ce oglindi aici: e o coloană de server, nu există
+      // în `Issue`, iar modul local n-are nici cron, nici trimițător.
+      db.issues[idx] = applyIssuePatch(db.issues[idx], patch, new Date())
       save(db)
-      return clone(issue)
+      return clone(db.issues[idx])
     },
 
     async deleteIssue(id: string) {
