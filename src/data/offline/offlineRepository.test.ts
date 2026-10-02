@@ -357,4 +357,75 @@ describe('golire', () => {
     expect(events).toContainEqual(expect.objectContaining({ type: 'remap', to: 'HZ-13' }))
     expect(await kv.ops()).toEqual([])
   })
+
+  /** createIssue ținut în aer până când testul îl eliberează; serverul îl primește la eliberare. */
+  function heldCreate(remote: Repository, server: { issues: Issue[] }) {
+    let release!: () => void
+    const gate = new Promise<void>((r) => { release = r })
+    vi.mocked(remote.createIssue).mockClear()
+    vi.mocked(remote.createIssue).mockImplementationOnce(async () => {
+      await gate
+      const i = mk('HZ-13')
+      server.issues.push(i)
+      return i
+    })
+    return { release }
+  }
+
+  it('o editare a tichetului provizoriu, făcută cât crearea e în zbor, pleacă cu ID-ul real', async () => {
+    const { repo, net, remote, server, events } = await queued()
+    const c = await repo.createIssue({ projectId: 'p', title: 'nou' })
+    net.down = false
+    const held = heldCreate(remote, server)
+    const flushing = repo.sync!.flush()
+    await vi.waitFor(() => expect(remote.createIssue).toHaveBeenCalledTimes(1))
+    await repo.updateIssue(c.id, { title: 'x' })
+    held.release()
+    await flushing
+    expect(remote.updateIssue).toHaveBeenCalledWith('HZ-13', { title: 'x' })
+    expect(events.some((e) => (e as { type: string }).type === 'failed')).toBe(false)
+    expect(repo.sync!.status().pending).toBe(0)
+  })
+
+  it('ștergerea tichetului provizoriu cât crearea e în zbor: ce s-a anulat nu revine, iar tichetul creat se șterge', async () => {
+    const { repo, net, remote, server } = await queued()
+    const c = await repo.createIssue({ projectId: 'p', title: 'nou' })
+    await repo.updateIssue(c.id, { title: 'anulat' })
+    net.down = false
+    const held = heldCreate(remote, server)
+    vi.mocked(remote.updateIssue).mockClear()
+    const flushing = repo.sync!.flush()
+    await vi.waitFor(() => expect(remote.createIssue).toHaveBeenCalledTimes(1))
+    await repo.deleteIssue(c.id)
+    held.release()
+    await flushing
+    expect(remote.updateIssue).not.toHaveBeenCalled()
+    expect(remote.deleteIssues).toHaveBeenCalledWith(['HZ-13'])
+    expect(server.issues.some((i) => i.id === 'HZ-13')).toBe(false)
+    expect(repo.sync!.status().pending).toBe(0)
+  })
+
+  it('o creare refuzată scoate și scrierile care o urmau: un singur `failed`', async () => {
+    const { repo, net, remote, events } = await queued()
+    const c = await repo.createIssue({ projectId: 'p', title: 'nou' })
+    await repo.updateIssue(c.id, { title: 'x' })
+    net.down = false
+    vi.mocked(remote.createIssue).mockRejectedValueOnce({ message: 'denied', code: '42501' })
+    vi.mocked(remote.updateIssue).mockClear()
+    await repo.sync!.flush()
+    expect(events.filter((e) => (e as { type: string }).type === 'failed')).toHaveLength(1)
+    expect(remote.updateIssue).not.toHaveBeenCalled()
+    expect(repo.sync!.status().pending).toBe(0)
+  })
+
+  it('o bază locală care nu poate scoate un element refuzat nu aruncă din golire', async () => {
+    const { repo, net, remote } = await queued()
+    await repo.updateIssue('HZ-01', { title: 'a' })
+    net.down = false
+    vi.mocked(remote.updateIssue).mockRejectedValue({ message: 'denied', code: '42501' })
+    const broken = { ...kv, replaceOps: async () => { throw new DOMException('closed', 'InvalidStateError') } } as Kv
+    const again = createOfflineRepository(remote, Promise.resolve(broken), { now: () => new Date('2026-10-02T09:00:00Z'), channel: null })
+    await expect(again.sync!.flush()).resolves.toBeUndefined()
+    await expect(again.sync!.flush()).resolves.toBeUndefined()
+  })
 })
