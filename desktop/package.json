@@ -1,0 +1,34 @@
+{
+  "name": "horizontal-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Horizontal pentru Linux — cutia Electron rezidentă",
+  "main": "dist/main.js",
+  "desktopName": "horizontal.desktop",
+  "author": "Horizontal",
+  "scripts": {
+    "build": "tsc -p .",
+    "typecheck": "tsc -p . --noEmit",
+    "start": "npm run build && electron .",
+    "dist": "npm run build && electron-builder --linux dir",
+    "app:install": "npm run dist && node scripts/install.mjs",
+    "app:uninstall": "node scripts/uninstall.mjs"
+  },
+  "build": {
+    "appId": "ro.horizontal.app",
+    "productName": "Horizontal",
+    "executableName": "horizontal",
+    "files": ["dist/**", "package.json"],
+    "directories": { "output": "release" },
+    "npmRebuild": false,
+    "linux": { "target": "dir", "category": "Office", "icon": "../public/pwa-512x512.png" }
+  },
+  "dependencies": {
+    "dbus-next": "0.10.2"
+  },
+  "devDependencies": {
+    "electron": "44.5.1",
+    "electron-builder": "26.15.3",
+    "typescript": "^5.5.4"
+  }
+}
