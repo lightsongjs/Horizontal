@@ -39,6 +39,9 @@ class SyncWorker(ctx: Context, p: WorkerParameters) : Worker(ctx, p) {
         }
         // Verificat SUB lacătul planului, ca un logout sau o schimbare de cont să nu se
         // strecoare între verificare și scriere. `lastAccount`, nu `userId`: vezi acolo.
+        // Anulat între timp (lucrarea înlocuită, constrângeri pierdute): rezultatul nu
+        // mai e al nimănui; următoarea rulare citește din nou.
+        if (isStopped) return Result.success()
         val written = PlanStore.edit(ctx) { s ->
             if (!NativeSession.isSignedIn(ctx) || NativeSession.lastAccount(ctx) != owner) return@edit null to false
             s.copy(native = NativeList(list, startedAt), lastSyncAt = System.currentTimeMillis()) to true
@@ -49,8 +52,17 @@ class SyncWorker(ctx: Context, p: WorkerParameters) : Worker(ctx, p) {
 
     companion object {
         private val net = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
-        /** O singură sincronizare în așteptare: zece alarme la rând nu fac zece cereri. */
-        fun now(ctx: Context) = WorkManager.getInstance(ctx).enqueueUniqueWork("hz-sync-now", ExistingWorkPolicy.KEEP,
+        /**
+         * APPEND_OR_REPLACE, nu KEEP: cu KEEP, o cerere venită cât rulează deja o
+         * sincronizare (după o golire a cozii, după `signIn`) se pierdea, iar citirea în
+         * curs pornise ÎNAINTE de schimbare — următoarea apariție a unei recurențe
+         * rămânea nearmată până la ciclul de 15 min, iar după o schimbare de cont planul
+         * noului cont rămânea gol până atunci. Acum cererea se leagă DUPĂ cea în curs.
+         * Atenție: APPEND nu contopește — N cereri apropiate fac un lanț de N citiri,
+         * rulate pe rând (nu în paralel). Ieftin: o citire e un GET de ≤100 rânduri.
+         * REPLACE (în loc de APPEND) dacă lanțul anterior a eșuat, ca să nu rămână blocat.
+         */
+        fun now(ctx: Context) = WorkManager.getInstance(ctx).enqueueUniqueWork("hz-sync-now", ExistingWorkPolicy.APPEND_OR_REPLACE,
             OneTimeWorkRequestBuilder<SyncWorker>().setConstraints(net).build())
         fun schedulePeriodic(ctx: Context) = WorkManager.getInstance(ctx).enqueueUniquePeriodicWork("hz-sync", ExistingPeriodicWorkPolicy.KEEP,
             PeriodicWorkRequestBuilder<SyncWorker>(15, TimeUnit.MINUTES).setConstraints(net).build())

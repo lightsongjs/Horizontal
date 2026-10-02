@@ -57,10 +57,17 @@ object NativeSession {
         // Alt cont decât ultimul: planul și coada sunt ale celuilalt. Golite ÎNAINTE de
         // a salva sesiunea nouă, ca workerul să nu apuce să trimită coada veche cu ea.
         val acct = ctx.getSharedPreferences(ACCOUNT_PREFS, 0)
-        if (accountSwitched(acct.getString("lastUserId", null), t.userId)) {
+        // Ordinea: contul nou se scrie ÎNAINTE de golire. `SyncWorker` scrie în plan doar
+        // dacă `lastAccount` e încă al lui; scris după `clear`, o sincronizare a contului
+        // vechi s-ar fi strecurat între cele două și ar fi pus lista veche în planul golit.
+        // `clearPending` acoperă procesul omorât între scriere și golire: altfel următorul
+        // login (același cont nou) n-ar mai vedea schimbarea și planul vechi ar rămâne.
+        if (accountSwitched(acct.getString("lastUserId", null), t.userId) || acct.getBoolean("clearPending", false)) {
+            acct.edit().putString("lastUserId", t.userId).putBoolean("clearPending", true).commit()
             PlanStore.clear(ctx)
             AlarmScheduler.arm(ctx, null)
             Notifier.cancelAll(ctx)
+            acct.edit().remove("clearPending").commit()
         }
         acct.edit().putString("lastUserId", t.userId).commit()
         ctx.getSharedPreferences(PREFS, 0).edit().putString("url", url).putString("anon", anon).commit()
