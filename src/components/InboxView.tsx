@@ -3,6 +3,7 @@ import { useHorizontal } from '../store'
 import { toShortDate } from '../lib/schedule'
 import { isUnread } from '../lib/thread'
 import type { InboxRow } from '../lib/types'
+import { displayIssueId } from '../lib/issueId'
 import { SplitView } from './SplitView'
 
 /**
@@ -58,7 +59,7 @@ export function InboxView({ onOpen }: { onOpen(issueId: string): void }) {
       <div className="inbox-body">
         <div className="list-title">{r.title}</div>
         <div className="inbox-meta">
-          <span className="mono">{r.issueId}</span>
+          <span className="mono">{displayIssueId(r.issueId)}</span>
           <span>de la {authorName(r.lastForeignAuthor)}</span>
           <time className="mono">{timeAgo(r.lastEventAt)}</time>
         </div>

@@ -4,6 +4,7 @@ import { useUI } from '../ui'
 import { COL_GAP, layoutMap, NODE_H, NODE_W, PAD, TOP, type MapNode } from '../lib/mapLayout'
 import { openObstacles } from '../lib/obstacles'
 import { layerVar } from '../lib/layerColors'
+import { displayIssueId } from '../lib/issueId'
 
 const RO_MONTHS = ['ian', 'feb', 'mar', 'apr', 'mai', 'iun', 'iul', 'aug', 'sept', 'oct', 'nov', 'dec']
 
@@ -182,7 +183,7 @@ export function MapView() {
                 fill={barColor(n, openObstacleIds, blockingById)}
               />
               <text className="map-id" x={idX} y={n.y + 19}>
-                {n.id}
+                {displayIssueId(n.id)}
               </text>
               <text className="map-own" x={n.x + NODE_W - 12} y={n.y + 19}>
                 {n.owner}
