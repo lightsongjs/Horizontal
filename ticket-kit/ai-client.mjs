@@ -53,11 +53,16 @@ async function lookup() {
 }
 
 // --create --project kata --title "Auth flow" --wave 1 --deps KATA-03,KATA-04
+// --assignee takes a name or an id, like --project; the API resolves it.
 // Prints: KATA-05   OR   duplicate: KATA-03
 async function create() {
-  const { project, title, wave, deps, theme, desc, notes } = flags
+  const { project, title, wave, deps, theme, desc, notes, assignee } = flags
   if (!project || !title || wave === undefined) {
-    console.error('Usage: --create --project <id> --title "<title>" --wave <n> [--deps ID1,ID2] [--theme key] [--desc "..."] [--notes "..."]')
+    console.error('Usage: --create --project <id> --title "<title>" --wave <n> [--deps ID1,ID2] [--theme key] [--desc "..."] [--notes "..."] [--assignee <id|name>]')
+    process.exit(1)
+  }
+  if (assignee === true) {
+    console.error('--assignee requires a value (a name or an id)')
     process.exit(1)
   }
   const { status, data } = await apiFetch('/api/tickets', {
@@ -70,12 +75,16 @@ async function create() {
       theme: theme ?? undefined,
       desc: desc ?? '',
       notes: notes ?? '',
+      assigneeId: assignee ? String(assignee) : null,
     }),
   })
   if (status === 201) {
     console.log(data.id)
   } else if (status === 409) {
     console.log(`duplicate: ${data.existing_id}`)
+  } else if (status === 422) {
+    console.log(data.error)
+    process.exit(1)
   } else {
     console.error(`Error ${status}: ${JSON.stringify(data)}`)
     process.exit(1)
@@ -164,6 +173,31 @@ async function projects() {
   }
 }
 
+// --assignees
+// Prints one line per person: a3fa07cf-b1ac-4b2e-8895-a855e1c55929  Ionut
+// The list is global, not per project — assignees have no project of their own.
+async function assignees() {
+  const { status, data } = await apiFetch('/api/assignees')
+  if (status === 200) {
+    // An undeployed route is answered by the SPA fallback: HTML, with status 200.
+    // Without this check that would read as "nobody exists yet" instead of a fault.
+    if (!Array.isArray(data)) {
+      console.error('Error: /api/assignees did not return a list (route not deployed?)')
+      process.exit(1)
+    }
+    if (!data.length) {
+      console.log('(no assignees found)')
+    } else {
+      for (const a of data) {
+        console.log(`${a.id}  ${a.name}`)
+      }
+    }
+  } else {
+    console.error(`Error ${status}: ${JSON.stringify(data)}`)
+    process.exit(1)
+  }
+}
+
 async function get() {
   const { id } = flags
   if (!id) {
@@ -185,11 +219,12 @@ async function get() {
 // [--desc "..."] [--notes "..."] [--theme key] [--selectors '[...]'] [--scenarios '[...]']
 // [--project <target>]  moves the ticket to another project; it gets a new ID with
 //                       that project's prefix. Refused if any dependency touches it.
+// [--assignee <id|name>]  gives the ticket to a person; --assignee "" takes it back.
 // Prints: updated: KATA-03  |  moved: KATA-03 -> TK-12  |  duplicate: KATA-07  |  not_found
 async function update() {
   const { id } = flags
   if (!id) {
-    console.error('Usage: --update --id <ticket-id> [--title "..."] [--wave N] [--done true|false] [--deps ID1,ID2] [--desc "..."] [--notes "..."] [--theme key] [--project <target>] [--selectors \'[...]\'] [--scenarios \'[...]\']')
+    console.error('Usage: --update --id <ticket-id> [--title "..."] [--wave N] [--done true|false] [--deps ID1,ID2] [--desc "..."] [--notes "..."] [--theme key] [--project <target>] [--assignee <id|name>] [--selectors \'[...]\'] [--scenarios \'[...]\']')
     process.exit(1)
   }
 
@@ -211,6 +246,10 @@ async function update() {
     if (flags.deps === true) { console.error('--deps requires a value (use --deps "" to clear all)'); process.exit(1) }
     body.deps = flags.deps ? String(flags.deps).split(',').map(s => s.trim()).filter(Boolean) : []
   }
+  if ('assignee' in flags) {
+    if (flags.assignee === true) { console.error('--assignee requires a value (use --assignee "" to clear it)'); process.exit(1) }
+    body.assigneeId = flags.assignee ? String(flags.assignee) : null
+  }
 
   if ('selectors' in flags) {
     try { body.selectors = JSON.parse(flags.selectors) }
@@ -221,9 +260,9 @@ async function update() {
     catch { console.error('--scenarios must be valid JSON array'); process.exit(1) }
   }
 
-  const knownFields = ['title', 'desc', 'theme', 'wave', 'done', 'notes', 'deps', 'selectors', 'scenarios', 'projectId']
+  const knownFields = ['title', 'desc', 'theme', 'wave', 'done', 'notes', 'deps', 'selectors', 'scenarios', 'projectId', 'assigneeId']
   if (!knownFields.some(f => f in body)) {
-    console.error('Provide at least one field: --title, --wave, --done, --deps, --desc, --notes, --theme, --project, --selectors, --scenarios')
+    console.error('Provide at least one field: --title, --wave, --done, --deps, --desc, --notes, --theme, --project, --assignee, --selectors, --scenarios')
     process.exit(1)
   }
 
@@ -264,6 +303,8 @@ if (flags.projects !== undefined) {
   await projects()
 } else if (flags.waves !== undefined) {
   await waves()
+} else if (flags.assignees !== undefined) {
+  await assignees()
 } else if (flags.lookup !== undefined) {
   await lookup()
 } else if (flags.create !== undefined) {
@@ -275,6 +316,6 @@ if (flags.projects !== undefined) {
 } else if (flags.update !== undefined) {
   await update()
 } else {
-  console.error('Usage: node ai-client.mjs --projects|--waves|--lookup|--create|--list|--get|--update [options]')
+  console.error('Usage: node ai-client.mjs --projects|--waves|--assignees|--lookup|--create|--list|--get|--update [options]')
   process.exit(1)
 }

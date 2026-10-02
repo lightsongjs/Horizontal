@@ -57,6 +57,11 @@ node ticket-kit/ai-client.mjs --waves --project Katalist
 # output: 0  Scratchpad
 #         1  Val 1 / MVP
 
+# Listează oamenii cărora li se pot da tichete (id + nume)
+node ticket-kit/ai-client.mjs --assignees
+# output: a3fa07cf-b1ac-4b2e-8895-a855e1c55929  Ionut
+#         e9f3d61d-991d-40c3-90bb-80f5a8c8605d  Mihai
+
 # Listează toate tichetele unui proiect (opțional filtrare pe wave)
 node ticket-kit/ai-client.mjs --list --project Katalist --wave 1
 # output: KATA-01  [wave 1 · Val 1 / MVP]  Setup DB
@@ -69,6 +74,10 @@ node ticket-kit/ai-client.mjs --lookup --project Katalist --title "Setup DB" --w
 node ticket-kit/ai-client.mjs --create --project Katalist --title "Auth flow" --wave 1 --deps KATA-03
 # output: KATA-04   (sau "duplicate: KATA-03")
 
+# Creează un tichet direct pe numele cuiva
+node ticket-kit/ai-client.mjs --create --project Katalist --title "Auth flow" --wave 1 --assignee Ionut
+# output: KATA-04   (sau "assignee_not_found")
+
 # Vezi toate detaliile unui tichet (desc, deps, selectors, scenarios, notes etc.)
 node ticket-kit/ai-client.mjs --get --id KATA-03
 # output: JSON complet cu toate câmpurile
@@ -78,10 +87,41 @@ node ticket-kit/ai-client.mjs --update --id KATA-03 --title "Nou titlu"
 node ticket-kit/ai-client.mjs --update --id KATA-03 --wave 2 --done true
 node ticket-kit/ai-client.mjs --update --id KATA-03 --deps KATA-01,KATA-02
 node ticket-kit/ai-client.mjs --update --id KATA-03 --deps ""   # șterge toate deps
+node ticket-kit/ai-client.mjs --update --id KATA-03 --assignee Ionut
+node ticket-kit/ai-client.mjs --update --id KATA-03 --assignee ""   # scoate asignarea
 node ticket-kit/ai-client.mjs --update --id KATA-03 --selectors '["mobile","desktop"]'
 node ticket-kit/ai-client.mjs --update --id KATA-03 --scenarios '[{"given":"...","when":"...","then":"..."}]'
 # output: updated: KATA-03   (sau duplicate: KATA-07 / not_found)
 ```
+
+### Asignarea unui tichet unui om
+
+```bash
+# 1. Vezi cine există
+node ticket-kit/ai-client.mjs --assignees
+# output: a3fa07cf-b1ac-4b2e-8895-a855e1c55929  Ionut
+#         e9f3d61d-991d-40c3-90bb-80f5a8c8605d  Mihai
+
+# 2. Dă tichetul — merge cu numele, nu doar cu id-ul (ca la --project)
+node ticket-kit/ai-client.mjs --update --id KATA-03 --assignee Ionut
+# output: updated: KATA-03
+
+# 3. Confirmă
+node ticket-kit/ai-client.mjs --get --id KATA-03
+# output: ... "assigneeId": "a3fa07cf-b1ac-4b2e-8895-a855e1c55929" ...
+
+# 4. Scoate asignarea
+node ticket-kit/ai-client.mjs --update --id KATA-03 --assignee ""
+# output: updated: KATA-03
+```
+
+Lista de oameni e **globală**, nu per proiect: `assignees` n-are `project_id`, deci
+aceleași nume apar peste tot. Numele se potrivește fără sensibilitate la majuscule
+(`ionut` = `Ionut`); o valoare în formă de uuid e căutată direct după id.
+
+Un nume care nu există e refuzat cu `assignee_not_found`, iar tichetul rămâne
+neatins — nu se scrie o referință ruptă. Cine nu apare în `--assignees` n-are încă
+rând în `assignees`; se creează din aplicație, alegându-l o dată ca destinatar.
 
 ### Mutarea unui tichet în alt proiect
 
