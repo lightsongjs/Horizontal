@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildMetaRecap, obstaclesDirty, isFormDirty, type FormDirtyState } from './IssueForm'
+import { buildMetaRecap, obstaclesDirty, isFormDirty, saveTargetId, type FormDirtyState } from './IssueForm'
 import { NO_SCHEDULE } from '../lib/schedule'
 import type { Issue } from '../lib/types'
 
@@ -26,6 +26,34 @@ describe('obstaclesDirty', () => {
   it('formularul e murdar când setul de obstacole s-a schimbat', () => {
     expect(obstaclesDirty(['MCP-O01'], ['MCP-O01', 'MCP-O02'])).toBe(true)
     expect(obstaclesDirty(['MCP-O02', 'MCP-O01'], ['MCP-O01', 'MCP-O02'])).toBe(false)
+  })
+
+  // Salvarea întreabă asta înainte de `setIssueObstacles`, care cere rețea:
+  // un tichet nou fără obstacole n-are ce scrie, deci nu are de ce să cadă offline.
+  it('un tichet nou fără obstacole nu are nimic de scris', () => {
+    expect(obstaclesDirty([], [])).toBe(false)
+    expect(obstaclesDirty(['MCP-O01'], [])).toBe(true)
+  })
+})
+
+describe('saveTargetId — o reîncercare nu creează a doua oară', () => {
+  const same = (id: string) => id
+
+  it('un tichet nou, nesalvat încă: se creează', () => {
+    expect(saveTargetId(undefined, null, same)).toBeNull()
+  })
+
+  it('un tichet existent se actualizează pe id-ul lui', () => {
+    expect(saveTargetId('HZ-3', null, same)).toBe('HZ-3')
+  })
+
+  it('după o creare reușită urmată de un pas căzut, reîncercarea actualizează', () => {
+    expect(saveTargetId(undefined, 'HZ-~a1', same)).toBe('HZ-~a1')
+  })
+
+  it('id-ul provizoriu creat se traduce în numărul real primit între timp', () => {
+    const resolve = (id: string) => (id === 'HZ-~a1' ? 'HZ-14' : id)
+    expect(saveTargetId(undefined, 'HZ-~a1', resolve)).toBe('HZ-14')
   })
 })
 

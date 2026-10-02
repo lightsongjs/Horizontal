@@ -22,6 +22,7 @@ import type { Issue, ScenarioKind, TestScenario } from '../lib/types'
 import { Icon, type IconName } from './Icon'
 import { displayIssueId, isTempIssueId } from '../lib/issueId'
 import { repository } from '../data'
+import { errorMessage } from '../lib/errorMessage'
 
 const PALETTE = ['#0284C7', '#059669', '#D97706', '#EA580C', '#E11D48', '#7C3AED', '#06B6D4']
 
@@ -56,6 +57,23 @@ export function buildMetaRecap(input: MetaRecapInput): string {
  */
 export function obstaclesDirty(current: string[], saved: string[]): boolean {
   return current.slice().sort().join(',') !== saved.slice().sort().join(',')
+}
+
+/**
+ * Pe ce id scrie salvarea: `null` = tichet nou, se creează. O creare reușită
+ * urmată de un pas care cade (offline, de obicei) lasă formularul deschis tot
+ * pe „tichet nou" — fără `createdId`, a doua apăsare pe Salvează ar fi pus în
+ * coadă A DOUA creare provizorie, adică un duplicat. Id-ul creat poate fi unul
+ * provizoriu (`HZ-~…`) care între timp și-a primit numărul real, deci trece
+ * prin `resolveId` la fiecare încercare, nu o singură dată.
+ */
+export function saveTargetId(
+  existingId: string | undefined,
+  createdId: string | null,
+  resolveId: (id: string) => string,
+): string | null {
+  if (existingId) return existingId
+  return createdId ? resolveId(createdId) : null
 }
 
 type DraftIssue = { tempId: string; title: string }
@@ -257,7 +275,7 @@ function AssigneeSearch({ assigneeId, assignees, members, myAssigneeId, myUserId
  *   către `ui.tsx`, care oprește prima comutare pe alt tichet.
  */
 export function IssueForm({ issueId, docked = false }: { issueId?: string; docked?: boolean }) {
-  const { project, waves, themes, issues, byId, activeWave, createIssue, updateIssue, deleteIssue, createTheme, assignees, myAssigneeId, createAssignee, assigneeShort, projectMembers, ensureAssigneeForMember, obstacles, obstaclesOf, createObstacle, setIssueObstacles } = useHorizontal()
+  const { project, waves, themes, issues, byId, activeWave, createIssue, updateIssue, deleteIssue, createTheme, assignees, myAssigneeId, createAssignee, assigneeShort, projectMembers, ensureAssigneeForMember, obstacles, obstaclesOf, createObstacle, setIssueObstacles, reportError } = useHorizontal()
   const { closeSheet, setCloseGuard, pushSheet, openEditIssue, setDockedDirty, saveNudge } = useUI()
   const { session } = useAuth()
   const myUserId = session?.user.id ?? null
@@ -757,6 +775,13 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
     return cycle ? cycle.map(titleOf).join(' → ') : null
   }
 
+  // Ce a reușit deja să se creeze la o salvare care a căzut pe drum: tichetul
+  // însuși și ciornele (dependențe, „permite", obstacole), cheie = id-ul
+  // `__draft_…`. Refs, nu state: trebuie să supraviețuiască exact între două
+  // apăsări pe Salvează, fără să remonteze și fără să facă formularul „murdar".
+  const createdIdRef = useRef<string | null>(null)
+  const createdDraftsRef = useRef<Record<string, string>>({})
+
   const save = async ({ close }: { close: boolean }) => {
     if (!canWrite || !saveTitle || saving || waves.length === 0) return
     const cyc = cycleAfterSave()
@@ -767,37 +792,22 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
     // devine definitivă, exact ca la „curăță titlul".
     if (saveTitle !== title) { fillMemo.current = null; setTitle(saveTitle) }
     try {
+      const resolveId = repository.sync?.resolveId ?? ((id: string) => id)
+      // O ciornă creată la o încercare anterioară nu se mai creează o dată.
+      const draftIssue = async (d: DraftIssue): Promise<string> => {
+        const done = createdDraftsRef.current[d.tempId]
+        if (done) return resolveId(done)
+        const created = await createIssue({ projectId: project.id, title: d.title, desc: '', theme, wave, deps: [] })
+        createdDraftsRef.current[d.tempId] = created.id
+        return created.id
+      }
       const draftDepMap: Record<string, string> = {}
       for (const d of draftDeps) {
-        if (deps.includes(d.tempId)) {
-          const created = await createIssue({ projectId: project.id, title: d.title, desc: '', theme, wave, deps: [] })
-          draftDepMap[d.tempId] = created.id
-        }
+        if (deps.includes(d.tempId)) draftDepMap[d.tempId] = await draftIssue(d)
       }
       const draftBlockMap: Record<string, string> = {}
       for (const d of draftBlocks) {
-        if (blocks.includes(d.tempId)) {
-          const created = await createIssue({ projectId: project.id, title: d.title, desc: '', theme, wave, deps: [] })
-          draftBlockMap[d.tempId] = created.id
-        }
-      }
-      // Obstacolele ciornă se creează înaintea tichetului însuși — la fel ca
-      // draftDeps/draftBlocks mai sus — ca un eșec aici să oprească salvarea
-      // înainte ca tichetul să fi fost scris, nu la jumătate de mutație.
-      // `createObstacle` întoarce `null` doar când n-are proiect activ (store,
-      // `if (!projectId) return null`) — practic inatins cât timp formularul e
-      // randat (`if (!project) return null` mai sus îl garantează), dar tot nu
-      // trecem tăcut peste: titlul tastat rămâne exact cum l-a scris userul
-      // (nu atingem `obstIds`/`draftObstacles`), iar `setIssueObstacles` nu se
-      // mai cheamă deloc — tichetul nu iese legat de un set parțial.
-      const realObstIds: string[] = []
-      for (const id of obstIds) {
-        const draft = draftObstacles.find((d) => d.tempId === id)
-        if (!draft) { realObstIds.push(id); continue }
-        const created = await createObstacle({ title: draft.title })
-        if (created) { realObstIds.push(created.id); continue }
-        setObstacleError(`Nu am putut crea obstacolul „${draft.title}". Tichetul nu s-a salvat — încearcă din nou.`)
-        return
+        if (blocks.includes(d.tempId)) draftBlockMap[d.tempId] = await draftIssue(d)
       }
       // `deps`/`blocks` sunt capturate la montare și pot ține ID-ul provizoriu
       // al unui tichet care între timp a primit numărul real (cheia formularului
@@ -805,16 +815,51 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
       // aici se și COMPARĂ cu tichetele de acum, care au deja ID-ul real: fără
       // traducere, „HZ-~…" n-ar fi găsit în `currentBlockers`, iar „HZ-13"
       // ar fi părut scos de om — legătura s-ar fi șters în tăcere.
-      const resolveId = repository.sync?.resolveId ?? ((id: string) => id)
       const realDeps = (deps.map((id) => draftDepMap[id] ?? (id.startsWith('__draft_') ? null : id)).filter(Boolean) as string[]).map(resolveId)
       const qaPayload = {
         selectors: selectors.filter(Boolean), scenarios, assigneeId, urgent,
         dueAt: schedule.dueAt, allDay: schedule.allDay, remindAt: schedule.remindAt, rrule: rruleOut,
       }
-      const targetId = isEdit
-        ? (await updateIssue(existing!.id, { title: saveTitle, desc: desc.trim(), theme, wave, deps: realDeps, ...qaPayload }), existing!.id)
-        : (await createIssue({ projectId: project.id, title: saveTitle, desc: desc.trim(), theme, wave, deps: realDeps, ...qaPayload })).id
-      await setIssueObstacles(targetId, realObstIds)
+      const ticketFields = { title: saveTitle, desc: desc.trim(), theme, wave, deps: realDeps, ...qaPayload }
+      const prior = saveTargetId(existing?.id, createdIdRef.current, resolveId)
+      let targetId: string
+      if (prior !== null) {
+        await updateIssue(prior, ticketFields)
+        targetId = prior
+      } else {
+        targetId = (await createIssue({ projectId: project.id, ...ticketFields })).id
+        // Imediat, înaintea oricărui pas care cere rețea: de aici încolo o
+        // reîncercare actualizează tichetul acesta, nu creează altul.
+        createdIdRef.current = targetId
+      }
+
+      // Obstacolele vin DUPĂ tichet și au plasa lor: crearea și legarea lor
+      // cer rețea (nu trec prin coadă), iar sarcina capturată offline trebuie
+      // să se salveze oricum — un obstacol pierdut se pune la loc dintr-un
+      // click, o sarcină pierdută nu. Se scrie doar dacă setul chiar s-a
+      // schimbat față de ce avea tichetul: un apel cu lista neschimbată (sau
+      // goală, la un tichet nou) ar fi căzut offline fără să aibă ce trimite.
+      const obstaclesBefore = isEdit ? obstaclesOf(targetId).map((o) => o.id) : []
+      const realObstIds: string[] = []
+      let obstaclesFailed = false
+      try {
+        for (const id of obstIds) {
+          const draft = draftObstacles.find((d) => d.tempId === id)
+          if (!draft) { realObstIds.push(id); continue }
+          const done = createdDraftsRef.current[id]
+          if (done) { realObstIds.push(done); continue }
+          // `null` doar fără proiect activ — practic inatins cât formularul e
+          // randat, dar nu trecem tăcut peste: legarea nu se face cu un set parțial.
+          const created = await createObstacle({ title: draft.title })
+          if (!created) throw new Error(`Nu am putut crea obstacolul „${draft.title}".`)
+          createdDraftsRef.current[id] = created.id
+          realObstIds.push(created.id)
+        }
+        if (obstaclesDirty(realObstIds, obstaclesBefore)) await setIssueObstacles(targetId, realObstIds)
+      } catch (e) {
+        obstaclesFailed = true
+        setObstacleError(`Tichetul s-a salvat, obstacolele nu: ${errorMessage(e)}`)
+      }
       const realBlocks = (blocks.map((id) => draftBlockMap[id] ?? (id.startsWith('__draft_') ? null : id)).filter(Boolean) as string[]).map(resolveId)
       const currentBlockers = issues.filter((i) => i.deps?.includes(targetId)).map((i) => i.id)
       for (const b of realBlocks.filter((b) => !currentBlockers.includes(b))) {
@@ -854,6 +899,19 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
         }
       }
 
+      if (obstaclesFailed) {
+        // Formularul rămâne deschis cu bannerul obstacolelor și cu selecția
+        // omului intactă; ciornele deja create își iau id-ul real ca o nouă
+        // apăsare să nu le dubleze. Fără remontare (`openEditIssue`): ar citi
+        // obstacolele din store, adică exact setul care n-a ajuns la server.
+        setDeps(realDeps)
+        setBlocks(realBlocks)
+        setDraftDeps([])
+        setDraftBlocks([])
+        setObstIds(obstIds.map((id) => createdDraftsRef.current[id] ?? id))
+        setDraftObstacles(draftObstacles.filter((d) => !createdDraftsRef.current[d.tempId]))
+        return
+      }
       setCloseGuard(null)
       if (close) {
         closeSheet()
@@ -873,6 +931,11 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
         // (and any navigation stack) as-is.
         if (!isEdit) openEditIssue(targetId)
       }
+    } catch (e) {
+      // Fără `catch`, o eroare de aici era o promisiune respinsă pe care n-o
+      // vedea nimeni: formularul rămânea deschis și murdar, fără niciun mesaj.
+      // Rămâne deschis în continuare (nimic nu e pierdut), dar acum spune de ce.
+      reportError(errorMessage(e))
     } finally { setSaving(false) }
   }
 
