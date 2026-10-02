@@ -18,7 +18,7 @@
     "appId": "ro.horizontal.app",
     "productName": "Horizontal",
     "executableName": "horizontal",
-    "files": ["dist/**", "package.json"],
+    "files": ["dist/**", "assets/**", "package.json"],
     "directories": { "output": "release" },
     "npmRebuild": false,
     "linux": { "target": "dir", "category": "Office", "icon": "../public/pwa-512x512.png" }

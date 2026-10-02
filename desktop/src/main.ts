@@ -20,6 +20,10 @@ let barWin: BrowserWindow | null = null
 let quitting = false
 let notifier: Notifier | null = null
 
+// Pe Wayland, iconița din dash vine din lansator (`horizontal.desktop` + app_id);
+// iconița ferestrei acoperă restul (comutatorul de ferestre, X11, rularea din repo).
+const WINDOW_ICON = path.join(__dirname, '..', 'assets', 'icon.png')
+
 const webPreferences = () => ({
   preload: path.join(__dirname, 'preload.js'),
   contextIsolation: true,
@@ -47,7 +51,7 @@ function guard(wc: WebContents) {
 }
 
 function createMain() {
-  mainWin = new BrowserWindow({ width: 1400, height: 900, show: false, title: 'Horizontal', autoHideMenuBar: true, webPreferences: webPreferences() })
+  mainWin = new BrowserWindow({ width: 1400, height: 900, show: false, title: 'Horizontal', icon: WINDOW_ICON, autoHideMenuBar: true, webPreferences: webPreferences() })
   guard(mainWin.webContents)
   void mainWin.loadURL(START_URL)
   // Închiderea ascunde: fereastra principală e cea care știe mementourile, deci
@@ -62,7 +66,7 @@ function createBar() {
   // din prima. Pe Wayland poziția o alege compozitorul (centrat).
   barWin = new BrowserWindow({
     width: 720, height: 150, show: false, frame: false, resizable: false,
-    alwaysOnTop: true, skipTaskbar: true, center: true, title: 'Horizontal — captură',
+    alwaysOnTop: true, skipTaskbar: true, center: true, title: 'Horizontal — captură', icon: WINDOW_ICON,
     webPreferences: webPreferences(),
   })
   guard(barWin.webContents)

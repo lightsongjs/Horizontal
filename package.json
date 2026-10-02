@@ -9,6 +9,8 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
+    "desktop:install": "npm --prefix desktop install && npm --prefix desktop run app:install",
+    "desktop:uninstall": "npm --prefix desktop run app:uninstall",
     "test:watch": "vitest",
     "typecheck": "tsc -b --noEmit",
     "test:upgrade": "node scripts/test-upgrade-path.mjs",
