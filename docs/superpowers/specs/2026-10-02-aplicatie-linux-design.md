@@ -67,7 +67,12 @@ variante merge, iar planul începe cu proba.
 
 ## Componente
 
-Totul trăiește într-un folder nou, `desktop/`, în repo-ul Horizontal.
+Totul trăiește într-un folder nou, `desktop/`, în repo-ul Horizontal — nu într-un repo
+separat: stratul offline și ruta `/quick-add` sunt cod al site-ului oricum, iar contractul
+`window.horizontalDesktop` ar trebui ținut în pas de mână între două repo-uri (lecția
+`ticket-kit`). `desktop/` are **propriul `package.json`**, ca Electron să nu intre în
+build-ul site-ului, iar în Cloudflare Pages „build watch paths” exclude `desktop/**`, ca o
+schimbare doar în cutie să nu redeployeze site-ul. Lucrul se face pe ramură, nu pe `master`.
 
 ### 1. Procesul principal (rezident)
 

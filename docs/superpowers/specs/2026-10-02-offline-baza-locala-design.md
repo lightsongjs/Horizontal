@@ -46,7 +46,7 @@ acceptabil dacă scurtează codul; decizia în plan). Teste cu `fake-indexeddb` 
 |---|---|
 | Citirea a tot ce e în cache | Comentariu și pasare (`postToThread`) |
 | `createIssue` (bara de captură și aplicația) | Atașamente |
-| `updateIssue`: bifare, amânare, titlu, scadență, proiect, val, prioritate, dependențe | `createProject` / `deleteProject` / `updateProject` |
+| `updateIssue`: bifare, amânare, titlu, scadență, val, prioritate, dependențe (mutarea în alt proiect nu există în `Repository` nici online) | `createProject` / `deleteProject` / `updateProject` |
 | `deleteIssue`, `deleteIssues` | Valuri, teme, obstacole, membri, `ensureAssigneeForMember` |
 | `markSeen` (pus la coadă, nu e critic) | Citirea firului (`listEvents`) — firele nu intră în cache |
 
@@ -137,6 +137,12 @@ Service worker-ul face deja `precacheAndRoute` (`src/sw.ts:47`), deci JS/CSS sun
 locale. **De verificat în plan**: o navigare rece offline pe `/HZ-12` (deep link)
 trebuie să primească `index.html` din precache — nu e clar că există o rută de
 navigare. Orice atingere a lui `src/sw.ts` cere `npm run test:upgrade`.
+
+## Cum se lucrează
+
+Pe o ramură, nu pe `master`: un push pe `master` publică imediat în producție.
+Se îmbină abia după `npm test`, `npm run typecheck`, `npm run test:upgrade` (se atinge
+`src/sw.ts`) și acordul utilizatorului.
 
 ## Ce NU intră
 
