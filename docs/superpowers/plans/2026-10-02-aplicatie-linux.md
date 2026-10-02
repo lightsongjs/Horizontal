@@ -101,9 +101,10 @@ Azi ascultătorul din `src/App.tsx` (~linia 838) face `toggleDone(id)` la „Gat
 - Create: `src/lib/reminderAction.ts`
 - Test: `src/lib/reminderAction.test.ts`
 - Modify: `src/App.tsx` (ascultătorul `navigator.serviceWorker` `message`, ~838-854)
+- Modify: `src/store.tsx` (expune `dueIssues`)
 
 **Interfaces:**
-- Produces: `reminderMutation(action: 'done' | 'snooze', issue: Pick<Issue, 'done'> | undefined, now: Date): ReminderMutation`, cu `type ReminderMutation = { kind: 'toggle' } | { kind: 'patch'; patch: { remindAt: string } } | { kind: 'none' }`.
+- Produces: `dueIssues: Issue[]` în contextul store-ului; `reminderMutation(action: 'done' | 'snooze', issue: Pick<Issue, 'done'> | undefined, now: Date): ReminderMutation`, cu `type ReminderMutation = { kind: 'toggle' } | { kind: 'patch'; patch: { remindAt: string } } | { kind: 'none' }`.
 
 - [ ] **Step 1: Testul care pică**
 
@@ -187,19 +188,29 @@ cu:
 
 ```ts
       const { action, id } = e.data
-      const m = reminderMutation(action, byIdRef.current[id], new Date())
+      const m = reminderMutation(action, byIdRef.current[id] ?? dueRef.current.find((i) => i.id === id), new Date())
       if (m.kind === 'toggle') void toggleDone(id)
       else if (m.kind === 'patch') void updateIssue(id, m.patch)
 ```
 
-Componenta are nevoie de `byId` din `useHorizontal()` (e deja în context, `byId: Record<string, Issue>`). Ca efectul să nu se reabboneze la fiecare schimbare de date, ține-l într-un ref lângă celelalte hook-uri ale componentei:
+`byId` acoperă doar proiectul DESCHIS (`store.tsx`, indexat pe `issues`): un memento dintr-un alt proiect, apăsat din „Azi", ar fi fost iar comutat orb. De-aia căutarea cade și pe `dueIssues` — care există deja în store (`const dueIssues = useMemo(…)`, ~linia 519), dar nu e expus. Expune-l: în interfața contextului, lângă `smartLists`,
 
 ```ts
-  const byIdRef = useRef(byId)
-  byIdRef.current = byId
+  /** Sarcinile cu scadență din fereastra listelor inteligente (cache inclus) — „Gata" din notificare și mementourile de pe desktop le caută aici. */
+  dueIssues: Issue[]
 ```
 
-Importă `reminderMutation` din `./lib/reminderAction`. Dacă `SNOOZE_MINUTES` nu mai e folosit în `App.tsx`, scoate-l din import (typecheck-ul nu se plânge de importuri nefolosite — `grep -n SNOOZE_MINUTES src/App.tsx` ca să verifici).
+și în obiectul valorii, lângă `smartLists,`: `dueIssues,`. Apoi, în componenta cu ascultătorul, ca efectul să nu se reabboneze la fiecare schimbare de date:
+
+```ts
+  const { byId, dueIssues } = useHorizontal() // adaugă la destructurarea existentă
+  const byIdRef = useRef(byId)
+  byIdRef.current = byId
+  const dueRef = useRef(dueIssues)
+  dueRef.current = dueIssues
+```
+
+Importă `reminderMutation` din `./lib/reminderAction`. Dacă `SNOOZE_MINUTES` nu mai e folosit în `App.tsx`, scoate-l din import: `tsconfig.app.json` are `noUnusedLocals`, deci un import rămas nefolosit pică typecheck-ul.
 
 - [ ] **Step 6: Verificare și commit**
 
@@ -207,7 +218,7 @@ Run: `npm test && npm run typecheck`
 Expected: PASS.
 
 ```bash
-git add src/lib/reminderAction.ts src/lib/reminderAction.test.ts src/App.tsx
+git add src/lib/reminderAction.ts src/lib/reminderAction.test.ts src/App.tsx src/store.tsx
 git commit -m "fix(memento): „Gata" nu mai debifează o sarcină bifată între timp în altă parte"
 ```
 
@@ -227,7 +238,7 @@ git commit -m "fix(memento): „Gata" nu mai debifează o sarcină bifată într
   - `interface HorizontalDesktop { version: string; setReminders(list: DesktopReminder[]): void; onReminderAction(fn: (a: DesktopAction) => void): () => void; hideBar(): void }`
   - `getDesktopBridge(): HorizontalDesktop | null`
   - `upcomingReminders(issues: Issue[], projects: Pick<Project, 'id' | 'name'>[], now: Date): DesktopReminder[]`
-  - constantele `REMINDER_LOOKBACK_MS = 3_600_000`, `REMINDER_HORIZON_MS = 24 * 3_600_000`.
+  - constantele `REMINDER_LOOKBACK_MS = 24 * 3_600_000`, `REMINDER_HORIZON_MS = 24 * 3_600_000`.
 
 - [ ] **Step 1: Testul care pică**
 
@@ -255,11 +266,11 @@ describe('upcomingReminders', () => {
     expect(r.title).toBe('Sună la bancă')
     expect(r.body).toContain('Personal')
   })
-  it('unul trecut de mai puțin de o oră intră (poate n-a sunat încă)', () => {
-    expect(upcomingReminders([at('2026-10-02T09:30:00.000Z')], projects, now)).toHaveLength(1)
+  it('unul trecut, nebifat, intră — notificarea lui poate fi încă pe ecran', () => {
+    expect(upcomingReminders([at('2026-10-02T07:00:00.000Z')], projects, now)).toHaveLength(1)
   })
-  it('unul trecut de peste o oră nu intră', () => {
-    expect(upcomingReminders([at('2026-10-02T08:59:00.000Z')], projects, now)).toHaveLength(0)
+  it('unul trecut de peste 24 h nu intră', () => {
+    expect(upcomingReminders([at('2026-10-01T09:59:00.000Z')], projects, now)).toHaveLength(0)
   })
   it('unul peste mai mult de 24 h nu intră încă', () => {
     expect(upcomingReminders([at('2026-10-03T10:01:00.000Z')], projects, now)).toHaveLength(0)
@@ -320,8 +331,13 @@ export function getDesktopBridge(): HorizontalDesktop | null {
   return (window as unknown as { horizontalDesktop?: HorizontalDesktop }).horizontalDesktop ?? null
 }
 
-/** Cât de vechi poate fi un memento ca să mai sune: aceeași regulă ca `TTL: 3600` la push. */
-export const REMINDER_LOOKBACK_MS = 3_600_000
+/**
+ * Cât de vechi poate fi un memento ca să RĂMÂNĂ în listă. Nu e regula de sunet
+ * (aceea e în cutie: doar ultima oră sună) — e regula de retragere: cutia
+ * închide orice notificare a cărei cheie lipsește din listă, deci un memento
+ * nebifat, ieșit din listă după o oră, și-ar fi închis singur notificarea.
+ */
+export const REMINDER_LOOKBACK_MS = 24 * 3_600_000
 /** Cât în față planifică cutia. Pagina retrimite lista periodic, deci fereastra alunecă. */
 export const REMINDER_HORIZON_MS = 24 * 3_600_000
 
@@ -368,24 +384,16 @@ git commit -m "feat(desktop): contractul punții și mementourile din următoare
 ### Task 3: Pagina vorbește cu cutia
 
 **Files:**
-- Modify: `src/store.tsx` (interfața contextului ~linia 76, valoarea ~1039)
 - Create: `src/components/DesktopBridge.tsx`
 - Modify: `src/App.tsx` (montarea lângă `<SyncBridge />`, în ramura cu `HorizontalProvider > UIProvider`)
 
 **Interfaces:**
 - Consumes: `getDesktopBridge`, `upcomingReminders`, `DesktopAction` (Task 2); `reminderMutation` (Task 1); din store: `dueIssues`, `allIssues`/`issues`, `projects`, `byId`, `toggleDone`, `updateIssue`.
-- Produces: `dueIssues: Issue[]` în contextul store-ului; `<DesktopBridge />` care nu randează nimic.
+- Produces: `<DesktopBridge />`, care nu randează nimic.
 
 - [ ] **Step 1: `dueIssues` în context**
 
-În `src/store.tsx`: `dueIssues` există deja (`const dueIssues = useMemo(…)`, ~linia 519), dar nu e expus. Adaugă în interfața contextului (lângă `smartLists`):
-
-```ts
-  /** Sarcinile cu scadență din fereastra listelor inteligente (cache inclus) — sursa mementourilor de pe desktop. */
-  dueIssues: Issue[]
-```
-
-și în obiectul valorii, lângă `smartLists,`: `dueIssues,`.
+Deja expus în Task 1. Verifică: `grep -n "dueIssues: Issue\[\]" src/store.tsx` → o linie.
 
 - [ ] **Step 2: Componenta**
 
@@ -461,7 +469,7 @@ Run: `npm test && npm run typecheck && npm run test:nav`
 Expected: PASS. (`test:nav`: fără punte componenta nu face nimic, dar s-a atins `App.tsx`.)
 
 ```bash
-git add src/store.tsx src/components/DesktopBridge.tsx src/App.tsx
+git add src/components/DesktopBridge.tsx src/App.tsx
 git commit -m "feat(desktop): pagina trimite mementourile cutiei și execută butoanele notificării"
 ```
 
@@ -738,6 +746,8 @@ Semnătura devine `QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, defaultPro
       })
 ```
 
+Și linia de după, `localStorage.setItem(LAST_PROJECT_KEY, project.id)`, devine `if (!rich) localStorage.setItem(LAST_PROJECT_KEY, project.id)`: bara pornește mereu pe „Daily", deci n-are ce ține minte, iar o captură în alt proiect nu trebuie să schimbe proiectul implicit al adăugării rapide din „Azi".
+
 (O dată aleasă din buton anulează recurența din text: butonul a înlocuit data, iar „în fiecare luni" făcea parte din ea.)
 
 - [ ] **Step 4: Rândul de butoane**
@@ -791,7 +801,7 @@ Semnătura devine `QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, defaultPro
 
 Butoanele din `<form>` sunt `type="button"`, iar `<select>`/`<input>` nu trimit formularul la schimbare — Enter rămâne pe câmpul de titlu (`onKeyDown` existent). Verifică `toDateInput`/`toTimeInput` (`src/lib/schedule.ts:163,169`): primesc ISO și întorc `aaaa-ll-zz` / `hh:mm`, formatele inputurilor native.
 
-Importuri noi: `parseCaptureTokens` din `../lib/captureTokens`; `fromInputs`, `toDateInput`, `toTimeInput` din `../lib/schedule` (lângă `reminderAt`, `defaultReminder` deja importate).
+Importuri noi: `parseCaptureTokens` din `../lib/captureTokens`; `fromInputs`, `toDateInput` din `../lib/schedule`. `toTimeInput` e DEJA importat în `QuickAdd.tsx` — încă un import ar fi identificator duplicat. Verifică lista existentă cu `grep -n "from '../lib/schedule'" src/components/QuickAdd.tsx`.
 
 - [ ] **Step 5: Stilul**
 
@@ -904,11 +914,25 @@ import { dailyProjectId } from './lib/captureTokens'
  * aplicația întreagă: același `QuickAdd` ca în „Azi" — aceeași recunoaștere a
  * datei, același proiect ținut minte —, scris prin același repository, deci
  * prin coada offline. Fereastra stă ascunsă și se refolosește; fiecare arătare
- * aduce `focus` pe fereastră, iar asta e semnalul de „rundă nouă": câmp gol,
- * cursor în el.
+ * o face din nou vizibilă (`visibilitychange`), iar asta e semnalul de „rundă
+ * nouă": câmp gol, cursor în el. NU `focus`: popup-ul unui `<select>` sau al
+ * unui câmp de dată ia focusul și îl dă înapoi, iar o rundă nouă la întoarcere
+ * ar fi golit tot ce scrisese omul.
  */
 export function QuickAddPage() {
   const { enabled, session, loading } = useAuth()
+  // Esc ascunde fără să salveze — și înainte de login, când bara arată doar
+  // mesajul. În captură, ca `QuickAdd` (care la Esc doar golește câmpul) să
+  // nu-l vadă primul.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      e.preventDefault(); e.stopPropagation()
+      getDesktopBridge()?.hideBar()
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [])
   if (loading) return null
   if (enabled && !session) {
     return <p className="qab-empty">Deschide Horizontal și autentifică-te o dată — bara folosește aceeași sesiune.</p>
@@ -924,17 +948,9 @@ function QuickAddBar() {
   const { projects } = useHorizontal()
   const [round, setRound] = useState(0)
   useEffect(() => {
-    const onFocus = () => setRound((r) => r + 1)
-    // Esc ascunde fără să salveze, cu sau fără text. În captură, ca `QuickAdd`
-    // (care la Esc doar golește câmpul) să nu-l vadă primul.
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return
-      e.preventDefault(); e.stopPropagation()
-      getDesktopBridge()?.hideBar()
-    }
-    window.addEventListener('focus', onFocus)
-    window.addEventListener('keydown', onKey, true)
-    return () => { window.removeEventListener('focus', onFocus); window.removeEventListener('keydown', onKey, true) }
+    const onVisible = () => { if (document.visibilityState === 'visible') setRound((r) => r + 1) }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
   }, [])
   // `QuickAdd` focusează doar la o SCHIMBARE a semnalului, nu la montare —
   // iar remontarea (cheia) e cea care golește câmpul. Deci focusul îl cerem noi,
@@ -1151,6 +1167,7 @@ git commit -m "feat(desktop): ruta /quick-add — bara de captură, ramificată 
     "executableName": "horizontal",
     "files": ["dist/**", "package.json"],
     "directories": { "output": "release" },
+    "npmRebuild": false,
     "linux": { "target": "dir", "category": "Office", "icon": "../public/pwa-512x512.png" }
   },
   "dependencies": {
@@ -1236,6 +1253,12 @@ describe('planReminders', () => {
     expect(p.close).toEqual([old.key])
     expect(p.arm.map((x) => x.reminder.key)).toEqual([snoozed.key])
   })
+  it('o notificare nebifată, mai veche de o oră, încă în listă, nu se închide și nu sună iar', () => {
+    const a = r('A', now - 2 * MISSED_WINDOW_MS)
+    const p = planReminders([a], now, new Set([a.key]), new Set([a.key]))
+    expect(p.close).toEqual([])
+    expect(p.fireNow).toEqual([])
+  })
   it('o notificare afișată încă în listă rămâne', () => {
     const a = r('A', now - 60_000)
     expect(planReminders([a], now, new Set([a.key]), new Set([a.key])).close).toEqual([])
@@ -1314,7 +1337,7 @@ export function parseReminders(raw: unknown): Reminder[] {
 - [ ] **Step 5: Rulează, trebuie să treacă**
 
 Run: `npx vitest run desktop/src/scheduler.test.ts && npm --prefix desktop run typecheck`
-Expected: PASS, 9 teste; typecheck curat.
+Expected: PASS, 10 teste; typecheck curat.
 
 - [ ] **Step 6: Commit**
 
@@ -1526,7 +1549,9 @@ import { exportAppService } from './dbusService'
 
 const START_URL = process.env.HORIZONTAL_URL ?? 'https://horizontal-dyx.pages.dev'
 const ORIGIN = new URL(START_URL).origin
-const HIDDEN = process.argv.includes('--hidden')
+// `--quick-add` = rezerva scurtăturii cu aplicația oprită: omul a cerut bara,
+// nu fereastra principală (care pornește ascunsă și se încarcă în spate).
+const HIDDEN = process.argv.includes('--hidden') || process.argv.includes('--quick-add')
 
 let mainWin: BrowserWindow | null = null
 let barWin: BrowserWindow | null = null
@@ -1570,7 +1595,10 @@ function createBar() {
   })
   guard(barWin.webContents)
   void barWin.loadURL(`${START_URL}/quick-add`)
-  barWin.on('blur', () => barWin?.hide())
+  // Pierderea focusului ascunde — dar nu imediat: popup-ul unui `<select>` sau
+  // al unui câmp de dată din rândul de butoane ia focusul o clipă. Ascundem
+  // doar dacă, după o pauză, fereastra chiar nu l-a primit înapoi.
+  barWin.on('blur', () => setTimeout(() => { if (barWin && !barWin.isFocused()) barWin.hide() }, 150))
 }
 
 function showBar() {
@@ -1650,7 +1678,9 @@ Expected: `desktop/dist/main.js`, `preload.js`, `scheduler.js`, `notify.js`, `db
 Ruta `/quick-add` și puntea nu sunt încă în producție, deci cutia se verifică pe build-ul local, pe Supabase real:
 
 ```bash
-npm run build && npx vite preview --port 4173 --strictPort &
+npm run build
+npx vite preview --port 4173 --strictPort &
+until curl -s -o /dev/null http://localhost:4173; do sleep 0.5; done
 HORIZONTAL_URL=http://localhost:4173 npm --prefix desktop start
 ```
 
@@ -1909,6 +1939,7 @@ Bifează fiecare cu ce s-a văzut efectiv:
 
 1. Cu terminalul în față: **Ctrl+Shift+A** → bara apare, se scrie imediat, fără click. Repetă peste Chrome.
 2. Bara, Esc cu text scris → dispare; Ctrl+Shift+A din nou → câmpul e gol.
+2b. Bara cu text scris → deschide lista de proiecte, apoi data, apoi ora din butoane → bara NU dispare și textul rămâne; alege, Enter → sarcina are ce ai ales din butoane.
 3. „test desktop mâine la 10" + Enter → bara dispare; în fereastra principală sarcina e în „Mâine", la 10:00, fără reîncărcare.
 4. Wi-Fi oprit: Ctrl+Shift+A → „test offline desktop" + Enter → apare în fereastră cu ID provizoriu (`PREFIX-·`); Wi-Fi pornit → primește numărul real.
 5. O sarcină cu memento peste 2 minute → notificarea apare cu **ambele butoane vizibile**; „Amână 5 min" → notificarea dispare și revine după 5 min; „Gata" → sarcina e bifată (și pe telefon, după sincronizare).
