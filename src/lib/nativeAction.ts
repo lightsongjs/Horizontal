@@ -20,7 +20,12 @@ export interface NativeActionDeps {
 export function runNativeAction(a: DesktopAction, d: NativeActionDeps): void {
   if (a.action === 'open') { d.open(a.id); return }
   if (a.action === 'until') { void d.updateIssue(a.id, a.dueAt ? { remindAt: a.at, dueAt: a.dueAt } : { remindAt: a.at }); return }
-  const m = reminderMutation(a.action, d.find(a.id), d.now(), a.action === 'snooze' ? a.minutes : undefined)
+  const issue = d.find(a.id)
+  // Tichet neîncărcat (alt proiect, cache gol): comutarea ar fi un no-op în
+  // store, iar acțiunea — deja scoasă din coada cutiei — s-ar pierde. „Gata"
+  // e o stare, nu o comutare, deci se scrie absolut.
+  if (a.action === 'done' && !issue) { void d.updateIssue(a.id, { done: true }); return }
+  const m = reminderMutation(a.action, issue, d.now(), a.action === 'snooze' ? a.minutes : undefined)
   if (m.kind === 'toggle') void d.toggleDone(a.id)
   else if (m.kind === 'patch') void d.updateIssue(a.id, m.patch)
 }

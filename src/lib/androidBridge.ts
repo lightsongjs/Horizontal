@@ -50,9 +50,23 @@ interface CapacitorGlobal {
 
 const NAME = 'HorizontalAndroid'
 
+/**
+ * Același obiect la fiecare apel (cât timp `window.Capacitor` e același):
+ * componentele îl pun în dependențele efectelor, iar un obiect nou la fiecare
+ * randare ar fi demontat și remontat ascultătorii la fiecare schimbare de store.
+ */
+let cached: { cap: CapacitorGlobal; bridge: HorizontalAndroidPlugin } | null = null
+
 export function getAndroidBridge(): HorizontalAndroidPlugin | null {
   const cap = (window as unknown as { Capacitor?: CapacitorGlobal }).Capacitor
   if (!cap?.isNativePlatform?.() || cap.getPlatform?.() !== 'android') return null
+  if (cached?.cap === cap) return cached.bridge
+  const bridge = buildBridge(cap)
+  cached = { cap, bridge }
+  return bridge
+}
+
+function buildBridge(cap: CapacitorGlobal): HorizontalAndroidPlugin {
   // Fără @capacitor/core, `registerPlugin` nu există: apelurile merg prin
   // primitivele punții, exact cum le face și `registerPlugin` intern.
   const call = (method: string) => (o: unknown = {}) => cap.nativePromise(NAME, method, o)

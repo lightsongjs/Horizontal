@@ -25,6 +25,11 @@ describe('runNativeAction', () => {
     const d = deps({ done: false }); runNativeAction({ action: 'done', id: 'HZ-1' }, d)
     expect(d.toggleDone).toHaveBeenCalledWith('HZ-1')
   })
+  it('done pe un tichet neîncărcat: scriere absolută, nu comutare', () => {
+    const d = deps(); runNativeAction({ action: 'done', id: 'HZ-1' }, d)
+    expect(d.updateIssue).toHaveBeenCalledWith('HZ-1', { done: true })
+    expect(d.toggleDone).not.toHaveBeenCalled()
+  })
   it('snooze cu minute: ora absolută', () => {
     const d = deps({ done: false }); runNativeAction({ action: 'snooze', id: 'HZ-1', minutes: 15 }, d)
     expect(d.updateIssue).toHaveBeenCalledWith('HZ-1', { remindAt: '2026-10-02T09:15:00.000Z' })

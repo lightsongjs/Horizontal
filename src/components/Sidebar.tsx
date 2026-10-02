@@ -43,16 +43,33 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
   const { theme, toggle } = useTheme()
   const { enabled, signOut } = useAuth()
   const onSignOut = async () => {
-    // Acțiunile din notificări încă netrimise de cutia Android (coada ei).
-    const android = getAndroidBridge()
-    const nativePending = android ? (await android.status().catch(() => null))?.queued ?? 0 : 0
     const st = repository.sync?.status() ?? { offline: false, pending: 0 }
-    const plan = logoutPlan({ offline: st.offline || navigator.onLine === false, pending: st.pending, nativePending })
+    const offline = st.offline || navigator.onLine === false
     // Fără rețea, signOut-ul pică și sesiunea rămâne — dar coada ar fi fost deja
     // ștearsă: omul ar fi rămas logat, fără modificările lui și fără să știe.
-    if (plan === 'refuse') return reportError('Deconectarea necesită rețea.')
+    // Se decide ÎNAINTE de a întreba cutia: refuzul nu depinde de ea.
+    if (offline) return reportError('Deconectarea necesită rețea.')
+    // Acțiunile din notificări încă netrimise de cutia Android (coada ei). Dacă
+    // cutia nu răspunde în 2 s, numărul e NECUNOSCUT — nu zero: cerem confirmare.
+    const android = getAndroidBridge()
+    let nativePending = 0
+    let nativeUnknown = false
+    if (android) {
+      const q = await Promise.race([
+        android.status().then((x) => x.queued, () => null),
+        new Promise<null>((r) => setTimeout(() => r(null), 2000)),
+      ])
+      if (q === null) nativeUnknown = true
+      else nativePending = q
+    }
+    const plan = logoutPlan({ offline, pending: st.pending, nativePending: nativeUnknown ? 1 : nativePending })
     // Coada e locală: după logout nu mai are cine s-o trimită.
-    if (plan === 'confirm' && !window.confirm(`${st.pending + nativePending} modificări netrimise se vor pierde. Te deconectezi?`)) return
+    if (plan === 'confirm') {
+      const msg = nativeUnknown
+        ? `${st.pending} modificări în pagină și, posibil, altele în aplicație, netrimise, se vor pierde. Te deconectezi?`
+        : `${st.pending + nativePending} modificări netrimise se vor pierde. Te deconectezi?`
+      if (!window.confirm(msg)) return
+    }
     // Coada se șterge DOAR după ce serverul a încheiat sesiunea.
     const err = await signOut()
     if (err) return reportError(err)

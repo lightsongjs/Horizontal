@@ -3,8 +3,6 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 // Exportate ca să le poată da login-ul și cutiei Android (propria ei sesiune).
 export const supabaseUrl: string | undefined = import.meta.env.VITE_SUPABASE_URL
 export const supabaseAnonKey: string | undefined = import.meta.env.VITE_SUPABASE_ANON_KEY
-const url = supabaseUrl
-const anonKey = supabaseAnonKey
 
 /**
  * postgrest-js reîncearcă singur orice citire căzută pe rețea, de trei ori, cu
@@ -22,7 +20,7 @@ export function withoutReadRetries(client: SupabaseClient): SupabaseClient {
 
 /** Null until VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY are set in .env. */
 export const supabase: SupabaseClient | null =
-  url && anonKey ? withoutReadRetries(createClient(url, anonKey)) : null
+  supabaseUrl && supabaseAnonKey ? withoutReadRetries(createClient(supabaseUrl, supabaseAnonKey)) : null
 
 export function requireSupabase(): SupabaseClient {
   if (!supabase) {

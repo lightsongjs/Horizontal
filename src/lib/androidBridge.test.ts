@@ -14,6 +14,9 @@ function fakeCapacitor(platform: string, native = true) {
 
 describe('getAndroidBridge', () => {
   it('lipsește în browser', () => { w.window = {}; expect(getAndroidBridge()).toBeNull() })
+  it('același obiect la fiecare apel (intră în dependențele efectelor)', () => {
+    fakeCapacitor('android'); expect(getAndroidBridge()).toBe(getAndroidBridge())
+  })
   it('lipsește pe iOS / web Capacitor', () => { fakeCapacitor('ios'); expect(getAndroidBridge()).toBeNull() })
   it('cheamă metodele native prin nativePromise', async () => {
     const { nativePromise } = fakeCapacitor('android')
