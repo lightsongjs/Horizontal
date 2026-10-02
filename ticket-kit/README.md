@@ -12,6 +12,23 @@ cp ticket-kit/.env.example ticket-kit/.env
 node ticket-kit/create-tickets.mjs
 ```
 
+## Aplicația Horizontal pentru Linux (GNOME)
+
+Pe orice calculator cu Linux pe care ai kitul:
+
+```bash
+bash install-linux-app.sh
+```
+
+Scriptul descarcă Horizontal de pe GitHub (repo public), construiește aplicația și o
+instalează în `~/.local`, fără sudo. Pune iconița în meniu, scurtătura **Ctrl+Shift+A**
+(bara de captură) și pornirea la login. Durează în jur de un minut și descarcă ~100 MB
+prima dată. Are nevoie de `git` și Node 20+, iar dacă lipsește ceva îți spune comanda
+de instalare. După instalare: deschizi Horizontal din Activities și te loghezi o dată.
+
+Aceeași comandă face și **actualizarea**. Interfața se actualizează oricum singură;
+scriptul trebuie rulat din nou doar când se schimbă `desktop/` în repo-ul Horizontal.
+
 ## Utilizare cu AI (ai-client.mjs)
 
 `ai-client.mjs` e un CLI pentru agenți AI care vor să caute sau să creeze

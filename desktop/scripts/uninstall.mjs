@@ -7,7 +7,9 @@ import { formatStrv, KEYBINDING_PATH, parseStrv, withoutPath } from './gsettings
 
 const HOME = homedir()
 const run = (cmd, args) => execFileSync(cmd, args, { encoding: 'utf8' }).trim()
-try { run('gdbus', ['call', '--session', '--dest', 'ro.horizontal.App', '--object-path', '/ro/horizontal/App', '--method', 'ro.horizontal.App.Quit']) } catch { /* nu rula */ }
+// stderr închis: la prima instalare aplicația nu rulează, iar „The name is not
+// activatable” tipărit de gdbus ar arăta ca o eroare a instalării.
+try { execFileSync('gdbus', ['call', '--session', '--dest', 'ro.horizontal.App', '--object-path', '/ro/horizontal/App', '--method', 'ro.horizontal.App.Quit'], { stdio: 'ignore' }) } catch { /* nu rula */ }
 for (const p of [
   join(HOME, '.local', 'opt', 'horizontal'),
   join(HOME, '.local', 'bin', 'horizontal'),

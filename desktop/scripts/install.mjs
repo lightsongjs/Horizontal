@@ -18,7 +18,9 @@ const run = (cmd, args) => execFileSync(cmd, args, { encoding: 'utf8' }).trim()
 if (!existsSync(join(built, 'horizontal'))) throw new Error(`lipsește ${built}/horizontal — rulează întâi electron-builder`)
 
 // 1. Oprește instanța care rulează (binarul nu se poate înlocui de sub ea).
-try { run('gdbus', ['call', '--session', '--dest', 'ro.horizontal.App', '--object-path', '/ro/horizontal/App', '--method', 'ro.horizontal.App.Quit']) } catch { /* nu rula */ }
+// stderr închis: la prima instalare aplicația nu rulează, iar „The name is not
+// activatable” tipărit de gdbus ar arăta ca o eroare a instalării.
+try { execFileSync('gdbus', ['call', '--session', '--dest', 'ro.horizontal.App', '--object-path', '/ro/horizontal/App', '--method', 'ro.horizontal.App.Quit'], { stdio: 'ignore' }) } catch { /* nu rula */ }
 // `Quit` doar cere închiderea; înlocuirea fișierelor de sub o instanță încă vie
 // ar strica copia. Așteaptă (max ~5 s) să se elibereze numele de pe magistrală.
 const hasOwner = () => {
