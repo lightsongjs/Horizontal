@@ -7,6 +7,8 @@
     <color name="hz_muted">#5B6170</color>
     <color name="hz_accent">#1A237E</color>
     <!-- Voalul de deasupra foii. Desenat de noi, nu `backgroundDimEnabled`: acela lucrează doar pe ferestre plutitoare. -->
+    <!-- Unda rândului: accentul temei, cu alfa (~13%). -->
+    <color name="hz_ripple">#221A237E</color>
     <color name="hz_scrim">#66000000</color>
     <!-- Fără Material3 în dependințe: AppCompat vine cu Capacitor. -->
     <style name="Hz.Snooze" parent="Theme.AppCompat.DayNight.Dialog">

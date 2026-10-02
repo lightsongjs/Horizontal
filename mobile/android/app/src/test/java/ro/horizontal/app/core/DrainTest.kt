@@ -37,4 +37,11 @@ class DrainTest {
     @Test fun reincercareaElibereaza() {
         assertEquals(listOf(a("u1", inFlight = false)), afterAttempt(listOf(a("u1")), "u1", Outcome.RETRY, signedIn = true, now = 5))
     }
+
+    // Un worker omorât în cerere lasă `inFlight` pe disc; la pornire se eliberează, altfel coada s-ar bloca pe veci.
+    @Test fun inFlightRamasEEliberatLaPornire() {
+        val q = listOf(a("u1", inFlight = true), a("u2", inFlight = false).copy(drainedAt = 3))
+        assertEquals(listOf(a("u1", inFlight = false), a("u2", inFlight = false).copy(drainedAt = 3)), NativeQueue.releaseAllInFlight(q))
+        assertEquals(a("u1", inFlight = false), NativeQueue.nextToDrain(NativeQueue.releaseAllInFlight(q)))
+    }
 }

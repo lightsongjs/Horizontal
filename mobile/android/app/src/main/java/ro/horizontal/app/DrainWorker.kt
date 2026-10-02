@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.work.*
 import org.json.JSONObject
 import ro.horizontal.app.core.*
-import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 /**
@@ -16,17 +15,31 @@ class DrainWorker(ctx: Context, p: WorkerParameters) : Worker(ctx, p) {
     override fun doWork(): Result {
         val ctx = applicationContext
         var changed = false
+        // O încercare omorâtă (proces ucis, worker anulat de REPLACE) lasă `inFlight`
+        // pe disc, iar cât un element zboară `nextToDrain` și `take` nu mai dau nimic.
+        PlanStore.edit(ctx) { s -> s.copy(queue = NativeQueue.releaseAllInFlight(s.queue)) to Unit }
         while (true) {
             val a = PlanStore.edit(ctx) { s ->
                 val next = NativeQueue.nextToDrain(s.queue)
                 (if (next != null) s.copy(queue = NativeQueue.markInFlight(s.queue, next.uid)) else s) to next
             } ?: break
+            // Contul pentru care pleacă elementul. Un login pe alt cont între marcare și
+            // cerere ar da altfel tokenul NOULUI cont unei acțiuni a celui vechi;
+            // `AccountChanged` o oprește înainte de PATCH (coada o golește oricum `signIn`).
+            val owner = NativeSession.userId(ctx)
             val req = buildPatch(a)
             val body = JSONObject(req.body).toString()
             val outcome = try {
-                val r = SupabaseApi.rest(ctx, "PATCH", "issues?${req.query}", body, prefer = "return=representation")
+                val r = SupabaseApi.rest(ctx, "PATCH", "issues?${req.query}", body, prefer = "return=representation", asUser = owner)
                 if (r == null) outcomeOf(null, false, true) else outcomeOf(r.status, false, false)
-            } catch (e: IOException) { outcomeOf(null, true, false) }
+            } catch (e: AccountChanged) {
+                PlanStore.edit(ctx) { s -> (if (s.queue.any { it.uid == a.uid }) s.copy(queue = NativeQueue.release(s.queue, a.uid)) else null) to Unit }
+                return Result.success()
+            } catch (e: Exception) {
+                // Orice altă excepție (IOException, dar și un bug, un URL stricat): elementul
+                // se eliberează și se reîncearcă — rămas „în zbor", ar bloca coada.
+                outcomeOf(null, true, false)
+            }
             // Cererea a durat (până la 20s); între timp omul s-a putut deloga — `signOut`
             // golește coada. Decizia (`afterAttempt`) e luată SUB lacăt, ca un logout să
             // nu se strecoare între verificare și scriere. Element dispărut = nu scriem
@@ -54,11 +67,15 @@ class DrainWorker(ctx: Context, p: WorkerParameters) : Worker(ctx, p) {
 
     companion object {
         fun enqueue(ctx: Context) {
+            // REPLACE, nu APPEND_OR_REPLACE: o atingere nouă nu stă la coadă după o rundă
+            // în backoff (exponențial, până la 5 h). Dacă anulează un worker în plină
+            // cerere, elementul lui rămas „în zbor" e eliberat la pornirea celui nou.
+            // LINEAR 30s: o coadă de mementouri nu are ce câștiga din pauze de ore.
             val req = OneTimeWorkRequestBuilder<DrainWorker>()
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
-                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
+                .setBackoffCriteria(BackoffPolicy.LINEAR, 30, TimeUnit.SECONDS)
                 .build()
-            WorkManager.getInstance(ctx).enqueueUniqueWork("hz-drain", ExistingWorkPolicy.APPEND_OR_REPLACE, req)
+            WorkManager.getInstance(ctx).enqueueUniqueWork("hz-drain", ExistingWorkPolicy.REPLACE, req)
         }
     }
 }

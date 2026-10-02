@@ -7,6 +7,9 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
 
+/** Sesiunea e acum a altui cont decât cel pentru care s-a pregătit cererea. */
+class AccountChanged : Exception()
+
 object SupabaseApi {
     data class Response(val status: Int, val body: String)
 
@@ -32,9 +35,11 @@ object SupabaseApi {
      * cum sunt. Un `HttpUrl.Builder().addQueryParameter` le-ar coda a doua oară
      * (`%3A` → `%253A`) și filtrul n-ar mai prinde rândul. Proba: `SupabaseUrlTest`.
      */
-    fun rest(ctx: Context, method: String, pathAndQuery: String, body: String? = null, prefer: String? = null): Response? {
+    fun rest(ctx: Context, method: String, pathAndQuery: String, body: String? = null, prefer: String? = null, asUser: String? = null): Response? {
         val (url, anon) = NativeSession.config(ctx) ?: return null
-        val token = NativeSession.accessToken(ctx) ?: return null
+        val (token, user) = NativeSession.session(ctx) ?: return null
+        // Cererea e a contului `asUser`; dacă între timp s-a logat altcineva, nu pleacă deloc.
+        if (asUser != null && user != asUser) throw AccountChanged()
         val h = mutableMapOf("apikey" to anon, "Authorization" to "Bearer $token")
         prefer?.let { h["Prefer"] = it }
         return raw(method, "$url/rest/v1/$pathAndQuery", h, body)

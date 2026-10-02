@@ -9,6 +9,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.TextView
+import android.widget.Toast
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import ro.horizontal.app.core.*
@@ -63,10 +64,13 @@ class SnoozeActivity : Activity() {
             TimePickerDialog(this, { _, h, min ->
                 val ms = LocalDate.of(y, m + 1, d).atTime(h, min).atZone(zone).toInstant().toEpochMilli()
                 // O oră deja trecută ar suna imediat: nu e o amânare.
-                if (ms <= System.currentTimeMillis()) return@TimePickerDialog
+                if (ms <= System.currentTimeMillis()) { Toast.makeText(this, "Ora a trecut deja", Toast.LENGTH_SHORT).show(); return@TimePickerDialog }
                 apply(id, dueAt, snoozeTarget(SnoozeOption.At(ms), System.currentTimeMillis(), dueAt, zone))
             }, 9, 0, true).show()
-        }, today.year, today.monthValue - 1, today.dayOfMonth).show()
+        }, today.year, today.monthValue - 1, today.dayOfMonth).apply {
+            // Zilele trecute nici nu se pot alege; ora de azi deja trecută o prinde verificarea de mai sus.
+            datePicker.minDate = today.atStartOfDay(zone).toInstant().toEpochMilli()
+        }.show()
     }
 
     private fun apply(id: String, prevDue: String?, t: SnoozePatch) {

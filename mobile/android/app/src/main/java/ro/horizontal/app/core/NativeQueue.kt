@@ -19,6 +19,12 @@ object NativeQueue {
     fun markInFlight(q: List<NativeAction>, uid: String) = q.map { if (it.uid == uid) it.copy(inFlight = true) else it }
     fun markDrained(q: List<NativeAction>, uid: String, now: Long) = q.map { if (it.uid == uid) it.copy(inFlight = false, drainedAt = now) else it }
     fun release(q: List<NativeAction>, uid: String) = q.map { if (it.uid == uid) it.copy(inFlight = false) else it }
+    /**
+     * La pornirea workerului: un `inFlight` rămas pe disc e de la o încercare omorâtă
+     * (proces ucis, worker anulat de REPLACE). Lucrul `hz-drain` e unic, deci nimeni
+     * altcineva nu zboară acum; retrimiterea e sigură — scrieri absolute, „Gata" cu gardă.
+     */
+    fun releaseAllInFlight(q: List<NativeAction>) = q.map { if (it.inFlight) it.copy(inFlight = false) else it }
     fun drop(q: List<NativeAction>, uid: String) = q.filterNot { it.uid == uid }
     fun prune(q: List<NativeAction>, latestReadAt: Long) = q.filterNot { it.drainedAt != null && it.drainedAt < latestReadAt }
     fun pending(q: List<NativeAction>) = q.count { it.drainedAt == null }

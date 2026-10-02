@@ -83,7 +83,7 @@
         <LinearLayout
             android:id="@+id/optCustom"
             style="@style/Hz.Snooze.Row">
-            <TextView style="@style/Hz.Snooze.Label" android:text="Altă dată…" />
+            <TextView style="@style/Hz.Snooze.Label" android:text="Altă oră…" />
             <TextView android:id="@+id/optCustomTime" style="@style/Hz.Snooze.Time" android:text="alege" />
         </LinearLayout>
     </LinearLayout>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Rândul e butonul: fără chenar, doar unda la atingere, cu raza butoanelor (6dp). -->
-<ripple xmlns:android="http://schemas.android.com/apk/res/android" android:color="#22818CF8">
+<ripple xmlns:android="http://schemas.android.com/apk/res/android" android:color="@color/hz_ripple">
     <item android:id="@android:id/mask">
         <shape android:shape="rectangle">
             <solid android:color="#FFFFFFFF" />

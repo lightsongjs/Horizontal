@@ -5,5 +5,6 @@
     <color name="hz_text">#E8E8EE</color>
     <color name="hz_muted">#9A9AA6</color>
     <color name="hz_accent">#818CF8</color>
+    <color name="hz_ripple">#22818CF8</color>
     <color name="hz_scrim">#99000000</color>
 </resources>

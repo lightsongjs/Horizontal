@@ -69,7 +69,13 @@ object NativeSession {
     }
 
     /** Un access token valid, reîmprospătat la nevoie. `null` = sesiune moartă (șters + notificare „Reconectează"). */
-    fun accessToken(ctx: Context, now: Long = System.currentTimeMillis()): String? = synchronized(lock) {
+    fun accessToken(ctx: Context, now: Long = System.currentTimeMillis()): String? = session(ctx, now)?.first
+
+    /** Contul sesiunii, fără rețea. `null` = fără sesiune (sau cutie ilizibilă). */
+    fun userId(ctx: Context): String? = synchronized(lock) { (load(ctx) as? Loaded.Ok)?.t?.userId }
+
+    /** Tokenul ȘI contul căruia îi aparține, citite împreună — vezi `DrainWorker` (schimbarea de cont). */
+    fun session(ctx: Context, now: Long = System.currentTimeMillis()): Pair<String, String>? = synchronized(lock) {
         val t = when (val l = load(ctx)) {
             Loaded.Missing -> return null
             // Cutie care nu se mai deschide (cheia din Keystore s-a pierdut — restaurare
@@ -80,12 +86,12 @@ object NativeSession {
             is Loaded.Ok -> l.t
         }
         // Un minut de rezervă: un token care expiră în timpul cererii ar da 401 pe PATCH.
-        if (t.expiresAt - 60_000 > now) return t.access
+        if (t.expiresAt - 60_000 > now) return t.access to t.userId
         val (url, anon) = config(ctx) ?: return null
         val r = SupabaseApi.raw("POST", "$url/auth/v1/token?grant_type=refresh_token", mapOf("apikey" to anon), JSONObject().put("refresh_token", t.refresh).toString())
         // Un 200 care nu se citește (corp trunchiat, proxy) nu e o sesiune moartă: `null`
         // ar fi citit de apelanți ca „reconectează-te". E o problemă de drum — reîncearcă.
-        if (r.status == 200) { val n = parseTokens(r.body) ?: throw IOException("refresh: răspuns ilizibil"); save(ctx, n); return n.access }
+        if (r.status == 200) { val n = parseTokens(r.body) ?: throw IOException("refresh: răspuns ilizibil"); save(ctx, n); return n.access to n.userId }
         if (classifyAuth(r.status, r.body) == Failure.AUTH_DEAD) { dropSession(ctx); Notifier.showReconnect(ctx); return null }
         // 5xx: sesiunea poate fi încă bună; cine cheamă tratează ca rețea și reîncearcă.
         throw IOException("refresh ${r.status}")
