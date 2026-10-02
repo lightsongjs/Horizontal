@@ -23,6 +23,7 @@
 - Ratate la trezire: sună doar cele din **ultima oră** (`3_600_000` ms); cele mai vechi se sar.
 - Fără tray, fără Flatpak/AppImage, fără auto-update al cutiei, fără Web Push în Electron.
 - Serverul (`send-reminders`, pg_cron, `reminder-action`, trigger-ele) rămâne neatins.
+- Bara (cerința omului, 2026-10-02): proiect, persoană, dată/oră, urgent — **scris** (`#proiect`, `@persoană`, `!`, data ca azi) **și din butoane**; butonul are ultimul cuvânt. Proiectul implicit: **„✅Daily"** (după nume), nu ultimul folosit. Fără dată în text: azi, ca adăugarea rapidă din „Azi".
 - Bara: Enter salvează și ascunde; Esc sau pierderea focusului ascunde fără să salveze; la fiecare arătare câmpul e gol și focusat.
 - Fereastra barei se creează o dată la pornire și se refolosește (`show()` + `focus()` + `webContents.focus()`), nu se recreează — rezultatul probei.
 - Lucrul pe ramura `desktop`, nu pe `master`. Push pe `master` = producție (CLAUDE.md): doar cu acordul omului.
@@ -32,11 +33,12 @@
 
 ## Review Focus
 
-1. **Pagina principală reîncărcată de un build nou** (`pwa.ts` aplică update-ul la revenire) retrimite lista întreagă de mementouri → un memento deja sunat NU sună a doua oară. Test în Task 5 (`fired` respectat).
+1. **Pagina principală reîncărcată de un build nou** (`pwa.ts` aplică update-ul la revenire) retrimite lista întreagă de mementouri → un memento deja sunat NU sună a doua oară. Test în Task 7 (`fired` respectat).
 2. **„Gata" pe o sarcină deja bifată în altă parte** (telefonul a bifat-o, cache-ul paginii încă nu știe) → nu o debifează. Azi `toggleDone` comută orb. Test în Task 1.
-3. **Scurtătura apăsată fără sesiune** (prima pornire, sau după logout) → bara spune ce să faci, nu e albă și nu aruncă. Verificat în Task 7, Step 4: bara chemată ÎNAINTE de login (backendul local din `test:quick-add` n-are login, deci nu-l poate acoperi).
-4. **Bara chemată de două ori la rând / cu text scris și Esc** → la următoarea arătare câmpul e gol; Enter pe câmp gol nu creează nimic. Test de browser în Task 4.
-5. **Laptop adormit peste un memento** → la trezire sună doar dacă a trecut mai puțin de o oră; timerele Node nu numără timpul de somn, deci trezirea re-planifică de la zero. Teste în Task 5.
+3. **Scurtătura apăsată fără sesiune** (prima pornire, sau după logout) → bara spune ce să faci, nu e albă și nu aruncă. Verificat în Task 9, Step 4: bara chemată ÎNAINTE de login (backendul local din `test:quick-add` n-are login, deci nu-l poate acoperi).
+4. **Un semn care nu se potrivește** (`#zzz`, `@a` ambiguu) → nu alege nimic pe ghicite, rămâne în titlu și indiciul spune „nu știu #zzz". Teste în Task 4.
+5. **Bara chemată de două ori la rând / cu text scris și Esc** → la următoarea arătare câmpul e gol; Enter pe câmp gol nu creează nimic. Test de browser în Task 6.
+6. **Laptop adormit peste un memento** → la trezire sună doar dacă a trecut mai puțin de o oră; timerele Node nu numără timpul de somn, deci trezirea re-planifică de la zero. Teste în Task 7.
 
 ---
 
@@ -46,6 +48,8 @@
 - `src/lib/reminderAction.ts` (nou) — ce mutație cere o acțiune de memento („Gata", „Amână"), pur. Folosit de ascultătorul service worker-ului și de punte.
 - `src/lib/desktopBridge.ts` (nou) — tipurile punții (`HorizontalDesktop`, `DesktopReminder`, `DesktopAction`), `getDesktopBridge()` și `upcomingReminders()` (pur).
 - `src/components/DesktopBridge.tsx` (nou) — montat în `App`; trimite mementourile cutiei, execută acțiunile primite.
+- `src/lib/captureTokens.ts` (nou) — `#proiect`, `@persoană`, `!` din text, pur (+ test).
+- `src/components/QuickAdd.tsx` (modificat) — modul bogat (`rich`, `defaultProjectId`): semne + butoane.
 - `src/QuickAddPage.tsx` (nou) — pagina barei de captură.
 - `src/lib/deepLink.ts` (modificat) — `QUICK_ADD_PATH`, `isQuickAddPath`; `parseTicketPath` refuză `/quick-add`.
 - `src/main.tsx` (modificat) — ramificarea timpurie pe `/quick-add`.
@@ -463,7 +467,362 @@ git commit -m "feat(desktop): pagina trimite mementourile cutiei și execută bu
 
 ---
 
-### Task 4: Ruta `/quick-add` — bara de captură
+### Task 4: Semnele din bară — `#proiect`, `@persoană`, `!`
+
+Cerința omului (2026-10-02): din bară se aleg proiectul, cui îi e pasată sarcina, data/ora și urgența — **scris și cu butoane**. Partea scrisă e un parser pur, ca `parseDue`: în text, `#Daily` alege proiectul, `@Alex` persoana, un `!` singur marchează urgent. Data rămâne treaba lui `parseDue`/`useTitleDate`, neatinsă.
+
+**Files:**
+- Create: `src/lib/captureTokens.ts`
+- Test: `src/lib/captureTokens.test.ts`
+
+**Interfaces:**
+- Produces:
+  - `normalizeName(s: string): string` — fără diacritice, emoji, spații și semne; litere mici („✅Daily" → `daily`, „Racovița" → `racovita`).
+  - `interface CaptureTokens { title: string; projectId: string | null; assigneeId: string | null; urgent: boolean; unknown: string[] }`
+  - `parseCaptureTokens(raw: string, projects: Pick<Project, 'id' | 'name' | 'prefix'>[], assignees: Pick<Assignee, 'id' | 'name'>[]): CaptureTokens`
+  - `dailyProjectId(projects: Pick<Project, 'id' | 'name'>[]): string | null` — proiectul al cărui nume normalizat e `daily`.
+
+- [ ] **Step 1: Testele care pică**
+
+```ts
+// src/lib/captureTokens.test.ts
+import { describe, expect, it } from 'vitest'
+import { dailyProjectId, normalizeName, parseCaptureTokens } from './captureTokens'
+
+const projects = [
+  { id: 'd', name: '✅Daily', prefix: 'D' },
+  { id: 'kata', name: 'Katalist', prefix: 'KATA' },
+  { id: 'nk', name: 'Neveon-kata testare', prefix: 'NK' },
+  { id: 'pg', name: 'Predare GDPR', prefix: 'PG' },
+  { id: 'gdpr', name: 'GDPR', prefix: 'GDPR' },
+  { id: 'r', name: 'Racovița', prefix: 'R' },
+]
+const assignees = [
+  { id: 'a1', name: 'Alex Popescu' },
+  { id: 'a2', name: 'Andrei' },
+  { id: 'b1', name: 'Bogdan' },
+]
+const parse = (t: string) => parseCaptureTokens(t, projects, assignees)
+
+describe('normalizeName', () => {
+  it('scoate emoji, diacritice, spații', () => {
+    expect(normalizeName('✅Daily')).toBe('daily')
+    expect(normalizeName('Racovița')).toBe('racovita')
+    expect(normalizeName('Predare GDPR')).toBe('predaregdpr')
+  })
+})
+
+describe('parseCaptureTokens', () => {
+  it('fără semne: titlul rămâne, nimic ales', () => {
+    expect(parse('sună la bancă')).toEqual({ title: 'sună la bancă', projectId: null, assigneeId: null, urgent: false, unknown: [] })
+  })
+  it('#proiect după nume, fără emoji și fără diacritice', () => {
+    expect(parse('sună #daily la bancă').projectId).toBe('d')
+    expect(parse('sună #racovita').projectId).toBe('r')
+    expect(parse('sună #daily la bancă').title).toBe('sună la bancă')
+  })
+  it('#proiect după prefix', () => {
+    expect(parse('test #NK').projectId).toBe('nk')
+  })
+  it('numele exact bate începutul altui nume (#gdpr ≠ Predare GDPR)', () => {
+    expect(parse('x #gdpr').projectId).toBe('gdpr')
+  })
+  it('un început de nume unic e de ajuns; unul ambiguu nu alege nimic', () => {
+    expect(parse('x #kat').projectId).toBe('kata')
+    expect(parse('x #ne').projectId).toBe('nk')
+    expect(parse('x #zzz')).toMatchObject({ projectId: null, unknown: ['#zzz'], title: 'x #zzz' })
+  })
+  it('@persoană după prenume sau început unic', () => {
+    expect(parse('raport @alex').assigneeId).toBe('a1')
+    expect(parse('raport @bog').assigneeId).toBe('b1')
+    expect(parse('raport @a')).toMatchObject({ assigneeId: null, unknown: ['@a'] })
+  })
+  it('un ! singur e urgent; un ! lipit de cuvânt e punctuație', () => {
+    expect(parse('sună acum !')).toMatchObject({ urgent: true, title: 'sună acum' })
+    expect(parse('! sună')).toMatchObject({ urgent: true, title: 'sună' })
+    expect(parse('sună acum!')).toMatchObject({ urgent: false, title: 'sună acum!' })
+  })
+  it('toate deodată', () => {
+    expect(parse('sună la bancă #daily @alex !')).toEqual({ title: 'sună la bancă', projectId: 'd', assigneeId: 'a1', urgent: true, unknown: [] })
+  })
+  it('primul semn de un fel câștigă; al doilea rămâne text', () => {
+    expect(parse('x #daily #kata')).toMatchObject({ projectId: 'd', title: 'x #kata' })
+  })
+  it('un email sau un # din mijlocul cuvântului nu e semn', () => {
+    expect(parse('scrie lui ion@firma.ro despre C#')).toMatchObject({ assigneeId: null, projectId: null, title: 'scrie lui ion@firma.ro despre C#' })
+  })
+})
+
+describe('dailyProjectId', () => {
+  it('găsește „✅Daily" după nume', () => {
+    expect(dailyProjectId(projects)).toBe('d')
+    expect(dailyProjectId([{ id: 'x', name: 'Altceva' }])).toBeNull()
+  })
+})
+```
+
+- [ ] **Step 2: Rulează, trebuie să pice**
+
+Run: `npx vitest run src/lib/captureTokens.test.ts`
+Expected: FAIL — `Failed to resolve import "./captureTokens"`.
+
+- [ ] **Step 3: Implementarea**
+
+```ts
+// src/lib/captureTokens.ts
+import type { Assignee, Project } from './types'
+
+/**
+ * Semnele barei de captură: `#proiect`, `@persoană`, `!` (urgent). Pur, ca
+ * `parseDue` — data rămâne a lui; aici se citește doar ce nu e dată. Un semn
+ * se recunoaște numai la început de cuvânt (`ion@firma.ro`, `C#` rămân text),
+ * iar unul care nu se potrivește cu nimic RĂMÂNE în titlu și e raportat în
+ * `unknown`: mai bine un titlu cu „#zzz" decât o sarcină pusă în alt proiect.
+ */
+export interface CaptureTokens {
+  title: string
+  projectId: string | null
+  assigneeId: string | null
+  urgent: boolean
+  unknown: string[]
+}
+
+export function normalizeName(s: string): string {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '')
+}
+
+/** Potrivirea, în ordinea încrederii: exact, apoi un singur candidat care începe așa. */
+function pick<T extends { id: string }>(key: string, items: T[], exact: (t: T) => string[], starts: (t: T) => string[]): T | null {
+  if (!key) return null
+  const hit = items.find((t) => exact(t).includes(key))
+  if (hit) return hit
+  const cands = items.filter((t) => starts(t).some((n) => n.startsWith(key)))
+  return cands.length === 1 ? cands[0] : null
+}
+
+const TOKEN = /(^|\s)(?:([#@])([^\s#@!]+)|!(?=\s|$))/g
+
+export function parseCaptureTokens(
+  raw: string,
+  projects: Pick<Project, 'id' | 'name' | 'prefix'>[],
+  assignees: Pick<Assignee, 'id' | 'name'>[],
+): CaptureTokens {
+  let projectId: string | null = null
+  let assigneeId: string | null = null
+  let urgent = false
+  const unknown: string[] = []
+  const cut: [number, number][] = []
+  for (const m of raw.matchAll(TOKEN)) {
+    const start = m.index! + m[1].length
+    const end = m.index! + m[0].length
+    if (!m[2]) { if (!urgent) { urgent = true; cut.push([start, end]) } continue }
+    const key = normalizeName(m[3])
+    if (m[2] === '#') {
+      if (projectId !== null) continue
+      const p = pick(key, projects, (x) => [normalizeName(x.name), normalizeName(x.prefix)], (x) => [normalizeName(x.name)])
+      if (p) { projectId = p.id; cut.push([start, end]) } else unknown.push(raw.slice(start, end))
+    } else {
+      if (assigneeId !== null) continue
+      const words = (x: { name: string }) => x.name.split(/\s+/).map(normalizeName).filter(Boolean)
+      const a = pick(key, assignees, (x) => [normalizeName(x.name), ...words(x)], (x) => [normalizeName(x.name), ...words(x)])
+      if (a) { assigneeId = a.id; cut.push([start, end]) } else unknown.push(raw.slice(start, end))
+    }
+  }
+  let title = ''
+  let at = 0
+  for (const [s, e] of cut) { title += raw.slice(at, s); at = e }
+  title += raw.slice(at)
+  return { title: title.replace(/\s+/g, ' ').trim(), projectId, assigneeId, urgent, unknown }
+}
+
+/** Proiectul implicit al barei, ales de om: „✅Daily". După nume, ca să nu țină de un id. */
+export function dailyProjectId(projects: Pick<Project, 'id' | 'name'>[]): string | null {
+  return projects.find((p) => normalizeName(p.name) === 'daily')?.id ?? null
+}
+```
+
+Atenție la testul „un început de nume unic… `#ne` → nk": `ne` e începutul lui `neveonkatatestare` și al niciunui alt nume — trece. Dacă vreun test pică din cauza ordinii regulilor, schimbă implementarea, nu testul: testele sunt cerința.
+
+- [ ] **Step 4: Rulează, trebuie să treacă**
+
+Run: `npx vitest run src/lib/captureTokens.test.ts && npm run typecheck`
+Expected: PASS, toate.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/lib/captureTokens.ts src/lib/captureTokens.test.ts
+git commit -m "feat(captură): #proiect, @persoană și ! în textul sarcinii, ca parser pur"
+```
+
+---
+
+### Task 5: `QuickAdd` în modul bogat — semnele plus butoanele
+
+Bara refolosește `QuickAdd` (aceeași recunoaștere a datei, cu oglinda și refuzul pe fragment), cu două proprietăți noi, opționale: fără ele componenta se poartă **exact** ca azi în „Azi"/„Mâine".
+
+Regula de prioritate, una singură, pentru proiect, persoană, dată și urgență: **butonul are ultimul cuvânt** (o alegere explicită e o corectură), apoi semnul din text, apoi valoarea implicită (proiectul „Daily", fără persoană = al creatorului, data din text sau azi, neurgent). Un semn necunoscut (`#zzz`) rămâne în titlu și e semnalat în indiciu.
+
+**Files:**
+- Modify: `src/components/QuickAdd.tsx`
+- Modify: `src/styles.css` (`.qa-rich`, `.qa-who`, `.qa-when`, `.qa-urgent`)
+
+**Interfaces:**
+- Consumes: `parseCaptureTokens`, `CaptureTokens` (Task 4); din store `assignees: Assignee[]`; `fromInputs(date, time)`, `toDateInput(iso)`, `toTimeInput(iso)` din `src/lib/schedule.ts`; iconițele `people`, `urgent`, `due` din `Icon.tsx`.
+- Produces: props noi pe `QuickAdd`: `defaultProjectId?: string`, `rich?: boolean`.
+
+- [ ] **Step 1: Props și starea**
+
+În `interface Props` adaugă:
+
+```ts
+  /** Proiectul cu care pornește, peste cel ținut minte (bara de captură: „Daily"). */
+  defaultProjectId?: string
+  /** Bara de captură: semnele `#proiect`, `@persoană`, `!` în text și rândul de butoane, mereu vizibil. */
+  rich?: boolean
+```
+
+Semnătura devine `QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, defaultProjectId, rich = false }: Props)`.
+
+- `const { createIssue, assignees } = useHorizontal()`
+- inițializarea lui `projectId`: `defaultProjectId ?? localStorage.getItem(LAST_PROJECT_KEY) ?? ''`
+- o stare nouă pentru alegerile prin butoane (lipsa cheii = „n-a atins butonul"):
+
+```ts
+  // Ce a ales omul din butoane. Lipsa cheii = n-a atins butonul; `assigneeId:
+  // null` = a ales explicit „al meu". Butonul bate semnul din text: e corectura.
+  const [manual, setManual] = useState<{ projectId?: string; assigneeId?: string | null; urgent?: boolean; due?: { dueAt: string | null; allDay: boolean } }>({})
+```
+
+- [ ] **Step 2: Valorile efective**
+
+Înlocuiește blocul care calculează `project`, `dueAt`, `allDay`, `title` cu:
+
+```ts
+  const tokens = rich ? parseCaptureTokens(date.title, projects, assignees) : null
+  const effectiveProjectId = manual.projectId ?? tokens?.projectId ?? projectId
+  const project = projects.find((p) => p.id === effectiveProjectId)
+    ?? projects.find((p) => p.type === 'personal')
+    ?? projects[0]
+```
+
+(`project` se folosește mai jos, la `if (!project)` — ordinea rămâne: întâi `parsed`/`useParsed`, apoi restul.)
+
+```ts
+  const dueAt = manual.due ? manual.due.dueAt : useParsed ? parsed.dueAt! : defaultDueAt
+  const allDay = manual.due ? manual.due.allDay : useParsed ? parsed.allDay : true
+  const title = (tokens ? tokens.title : date.title).trim()
+  const assigneeId = manual.assigneeId !== undefined ? manual.assigneeId : tokens?.assigneeId ?? null
+  const urgent = manual.urgent ?? tokens?.urgent ?? false
+```
+
+`dueLabel(dueAt, allDay, …)` primește acum un `dueAt` care poate fi `null` (omul a golit data din buton): randează chip-ul de dată doar când `dueAt` nu e `null` (`{dueAt && (<span className="chip date">…)}`).
+
+`reset` golește și alegerile: `const reset = () => { setText(''); date.reset(); setTip(false); setManual({}) }`.
+
+- [ ] **Step 3: Salvarea**
+
+În `submit`, apelul devine:
+
+```ts
+      await createIssue({
+        projectId: project.id,
+        title,
+        dueAt,
+        allDay,
+        remindAt: reminderAt(dueAt, defaultReminder(allDay)),
+        rrule: useParsed && !manual.due ? parsed.rrule : null,
+        // Doar din bară: în „Azi" rândul nu are cum să le aleagă, iar un
+        // `assigneeId: null` explicit e tot „al creatorului".
+        ...(rich ? { assigneeId, urgent } : {}),
+      })
+```
+
+(O dată aleasă din buton anulează recurența din text: butonul a înlocuit data, iar „în fiecare luni" făcea parte din ea.)
+
+- [ ] **Step 4: Rândul de butoane**
+
+În JSX:
+- în rândul `qa-meta` existent, `<label className="qa-proj">…</label>` se randează doar când `!rich` (în modul bogat proiectul e în rândul nou);
+- în indiciu, când `tokens?.unknown.length`, textul devine `nu știu ${tokens.unknown.join(', ')}` cu clasa `warn` (înaintea ramurii `bare`);
+- după `qa-meta`, încă în `<form>`:
+
+```tsx
+      {rich && (
+        <div className="qa-meta qa-rich">
+          <label className="qa-proj" title="Proiectul sarcinii (sau #nume în text)">
+            <span className="t-dot" style={{ background: project.accent }} />
+            <select value={project.id} onChange={(e) => setManual((m) => ({ ...m, projectId: e.target.value }))}>
+              {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </label>
+          <label className="qa-who" title="Cui îi pasezi sarcina (sau @nume în text)">
+            <Icon name="people" size={13} />
+            <select value={assigneeId ?? ''} onChange={(e) => setManual((m) => ({ ...m, assigneeId: e.target.value || null }))}>
+              <option value="">al meu</option>
+              {assignees.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
+          </label>
+          <span className="qa-when" title="Data și ora (sau „mâine la 10" în text)">
+            <Icon name="due" size={13} />
+            <input
+              type="date"
+              value={dueAt ? toDateInput(dueAt) : ''}
+              onChange={(e) => setManual((m) => ({ ...m, due: fromInputs(e.target.value, dueAt && !allDay ? toTimeInput(dueAt) : '') }))}
+            />
+            <input
+              type="time"
+              value={dueAt && !allDay ? toTimeInput(dueAt) : ''}
+              onChange={(e) => setManual((m) => ({ ...m, due: fromInputs(dueAt ? toDateInput(dueAt) : toDateInput(defaultDueAt), e.target.value) }))}
+            />
+          </span>
+          <button
+            type="button"
+            className={`qa-urgent ${urgent ? 'on' : ''}`}
+            aria-pressed={urgent}
+            title="Urgent (sau ! în text)"
+            onClick={() => setManual((m) => ({ ...m, urgent: !urgent }))}
+          >
+            <Icon name="urgent" size={13} /> urgent
+          </button>
+        </div>
+      )}
+```
+
+Butoanele din `<form>` sunt `type="button"`, iar `<select>`/`<input>` nu trimit formularul la schimbare — Enter rămâne pe câmpul de titlu (`onKeyDown` existent). Verifică `toDateInput`/`toTimeInput` (`src/lib/schedule.ts:163,169`): primesc ISO și întorc `aaaa-ll-zz` / `hh:mm`, formatele inputurilor native.
+
+Importuri noi: `parseCaptureTokens` din `../lib/captureTokens`; `fromInputs`, `toDateInput`, `toTimeInput` din `../lib/schedule` (lângă `reminderAt`, `defaultReminder` deja importate).
+
+- [ ] **Step 5: Stilul**
+
+Lângă regulile `.qa-proj` din `src/styles.css` (~5083-5251), urmând cele cinci reguli din CLAUDE.md („Sistemul vizual": fără chenar decorativ, mono pe cifre, un singur accent, starea activă = text plin plus linie de 2px, nu casetă umplută):
+
+```css
+/* Rândul de butoane al barei de captură. Același limbaj ca .qa-proj: fără
+   chenar, fundal --surface-2, raza de buton. Activ = text plin + linie de 2px. */
+.qa-rich { flex-wrap: wrap; gap: 6px; }
+.qa-who, .qa-when, .qa-urgent { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: var(--r-s); background: var(--surface-2); color: var(--txt-dim); font: inherit; font-size: 12px; }
+.qa-who select, .qa-when input { border: 0; background: transparent; color: inherit; font: inherit; }
+.qa-when input { font-family: var(--mono); }
+.qa-urgent { border: 0; cursor: pointer; }
+.qa-urgent.on { color: var(--blocked); box-shadow: inset 0 -2px 0 var(--blocked); }
+```
+
+Excepția de la „fără linii" pentru câmpuri (CLAUDE.md, regula 1) nu se aplică aici: inputurile de dată/oră stau într-un jeton care ESTE delimitarea.
+
+- [ ] **Step 6: Verificare și commit**
+
+Run: `npm test && npm run typecheck && npm run test:nav && npm run test:layout`
+Expected: PASS — fără `rich`, „Azi"/„Mâine" se comportă ca înainte (test:nav acoperă adăugarea rapidă din „Azi").
+
+```bash
+git add src/components/QuickAdd.tsx src/styles.css
+git commit -m "feat(captură): adăugarea rapidă știe proiect, persoană, dată, oră și urgent — scris și din butoane"
+```
+
+---
+
+### Task 6: Ruta `/quick-add` — bara de captură
 
 `parseTicketPath` (`src/lib/deepLink.ts`) acceptă azi `/quick-add` drept tichetul `QUICK-ADD`; iar `settleUrl` din `App.tsx` ar rescrie calea. De-aia ramificarea se face în `src/main.tsx`, înainte de `App`.
 
@@ -475,7 +834,7 @@ git commit -m "feat(desktop): pagina trimite mementourile cutiei și execută bu
 - Create: `scripts/test-quick-add.mjs`; Modify: `package.json` (script `test:quick-add`)
 
 **Interfaces:**
-- Consumes: `getDesktopBridge` (Task 2); `QuickAdd` (`src/components/QuickAdd.tsx`, props `{ defaultDueAt: string; onAdded?(): void; focusSignal?: number }`); `startOfLocalDay` din `src/lib/schedule.ts`; `AuthProvider`/`useAuth` (`{ enabled, session, loading }`) din `src/auth.tsx`; `ThemeProvider` din `src/theme.tsx`; `HorizontalProvider` din `src/store.tsx`.
+- Consumes: `getDesktopBridge` (Task 2); `dailyProjectId` (Task 4); `QuickAdd` cu props `{ defaultDueAt: string; onAdded?(): void; focusSignal?: number; defaultProjectId?: string; rich?: boolean }` (Task 5); `startOfLocalDay` din `src/lib/schedule.ts`; `AuthProvider`/`useAuth` (`{ enabled, session, loading }`) din `src/auth.tsx`; `ThemeProvider` din `src/theme.tsx`; `HorizontalProvider` din `src/store.tsx`.
 - Produces: `QUICK_ADD_PATH = '/quick-add'`, `isQuickAddPath(pathname: string): boolean`; pagina servită la `/quick-add`.
 
 - [ ] **Step 1: Testele care pică (deepLink)**
@@ -534,10 +893,11 @@ Expected: PASS.
 // src/QuickAddPage.tsx
 import { useEffect, useState } from 'react'
 import { useAuth } from './auth'
-import { HorizontalProvider } from './store'
+import { HorizontalProvider, useHorizontal } from './store'
 import { QuickAdd } from './components/QuickAdd'
 import { startOfLocalDay } from './lib/schedule'
 import { getDesktopBridge } from './lib/desktopBridge'
+import { dailyProjectId } from './lib/captureTokens'
 
 /**
  * Bara de captură (aplicația de Linux, Ctrl+Shift+A). O intrare ușoară, nu
@@ -561,6 +921,7 @@ export function QuickAddPage() {
 }
 
 function QuickAddBar() {
+  const { projects } = useHorizontal()
   const [round, setRound] = useState(0)
   useEffect(() => {
     const onFocus = () => setRound((r) => r + 1)
@@ -588,7 +949,15 @@ function QuickAddBar() {
   const today = startOfLocalDay(new Date()).toISOString()
   return (
     <div className="qab">
-      <QuickAdd key={round} defaultDueAt={today} onAdded={() => getDesktopBridge()?.hideBar()} />
+      {/* Proiectul implicit e „✅Daily", ales de om — nu ultimul folosit: bara e
+          pentru captura zilnică, iar alt proiect se cere explicit (#nume sau butonul). */}
+      <QuickAdd
+        key={round}
+        rich
+        defaultProjectId={dailyProjectId(projects) ?? undefined}
+        defaultDueAt={today}
+        onAdded={() => getDesktopBridge()?.hideBar()}
+      />
     </div>
   )
 }
@@ -640,6 +1009,19 @@ try {
   await page.waitForTimeout(800)
   check('după Enter câmpul e gol', (await input.inputValue()) === '')
 
+  // Semnele: proiectul și urgența din text. Pe backendul local proiectul din
+  // seed e „Exemplu" (`src/lib/seed.ts`); „Daily" nu există acolo, deci bara
+  // pornește pe proiectul personal implicit.
+  await input.fill('test semne #exemplu ! poimâine')
+  await page.waitForTimeout(300)
+  const richRow = await page.locator('.qab .qa-rich').innerText()
+  check('rândul de butoane arată proiectul ales din text', /Exemplu/i.test(richRow), richRow)
+  check('urgent aprins din „!"', (await page.locator('.qab .qa-urgent.on').count()) === 1)
+  await page.locator('.qab .qa-urgent').click()
+  check('butonul are ultimul cuvânt (urgent stins)', (await page.locator('.qab .qa-urgent.on').count()) === 0)
+  await input.press('Enter')
+  await page.waitForTimeout(800)
+
   // Esc cu text: nu salvează (în browser nu există punte, deci bara nu se ascunde).
   await input.fill('nu trebuie salvat')
   await input.press('Escape')
@@ -653,6 +1035,7 @@ try {
   check('sarcina din bară apare în „Mâine", la 10:00', rows.some((r) => r.includes('test bară') && r.includes('10:00')), rows.join(' / '))
   check('textul de la Esc nu s-a salvat', !rows.some((r) => r.includes('nu trebuie salvat')))
   check('Enter pe câmp gol n-a creat nimic', !rows.some((r) => r.trim() === ''))
+  check('semnele nu rămân în titlu', !rows.some((r) => r.includes('#exemplu') || r.includes(' !')), rows.join(' / '))
 } finally {
   await browser.close()
   vite.kill('SIGTERM')
@@ -727,7 +1110,7 @@ git commit -m "feat(desktop): ruta /quick-add — bara de captură, ramificată 
 
 ---
 
-### Task 5: Cutia — schelet și planificatorul de mementouri
+### Task 7: Cutia — schelet și planificatorul de mementouri
 
 **Files:**
 - Create: `desktop/package.json`, `desktop/tsconfig.json`, `desktop/.gitignore`
@@ -942,14 +1325,14 @@ git commit -m "feat(desktop): cutia Electron — schelet și planificatorul de m
 
 ---
 
-### Task 6: Notificările și serviciul pe D-Bus
+### Task 8: Notificările și serviciul pe D-Bus
 
 **Files:**
 - Create: `desktop/src/notify.ts`, `desktop/src/dbusService.ts`
 - Create: `desktop/scripts/notify-probe.mjs`
 
 **Interfaces:**
-- Consumes: `Reminder` (Task 5).
+- Consumes: `Reminder` (Task 7).
 - Produces:
   - `type NotifyAction = { action: 'done' | 'snooze' | 'open'; id: string }`
   - `interface Notifier { show(r: Reminder): Promise<void>; close(key: string): Promise<void>; shownKeys(): Set<string> }`
@@ -1094,13 +1477,13 @@ git commit -m "feat(desktop): notificări cu butoane și serviciul ro.horizontal
 
 ---
 
-### Task 7: Procesul principal și puntea
+### Task 9: Procesul principal și puntea
 
 **Files:**
 - Create: `desktop/src/main.ts`, `desktop/src/preload.ts`
 
 **Interfaces:**
-- Consumes: `planReminders`, `parseReminders`, `Reminder` (Task 5); `createNotifier`, `NotifyAction`, `Notifier`, `exportAppService` (Task 6); contractul `HorizontalDesktop` din `src/lib/desktopBridge.ts` (Task 2) — preload-ul îl implementează.
+- Consumes: `planReminders`, `parseReminders`, `Reminder` (Task 7); `createNotifier`, `NotifyAction`, `Notifier`, `exportAppService` (Task 8); contractul `HorizontalDesktop` din `src/lib/desktopBridge.ts` (Task 2) — preload-ul îl implementează.
 - Produces: canalele IPC `hz:set-reminders` (pagină → cutie, `DesktopReminder[]`), `hz:hide-bar` (bară → cutie), `hz:reminder-action` (cutie → pagină, `{ action, id }`); argumentele `--hidden`, `--quick-add`; variabila `HORIZONTAL_URL`.
 
 - [ ] **Step 1: Preload-ul**
@@ -1292,7 +1675,7 @@ git commit -m "feat(desktop): procesul rezident — fereastra, bara, puntea și 
 
 ---
 
-### Task 8: Instalarea, scurtătura și autostart-ul
+### Task 10: Instalarea, scurtătura și autostart-ul
 
 **Files:**
 - Create: `desktop/scripts/gsettings.mjs`, `desktop/scripts/gsettings.test.mjs`
@@ -1481,7 +1864,7 @@ console.log('Dezinstalat. Iconițele din ~/.local/share/icons rămân (le folose
 - [ ] **Step 6: Verificare și commit**
 
 Run: `npm test && npm --prefix desktop run typecheck && npm --prefix desktop run dist`
-Expected: teste PASS; `desktop/release/linux-unpacked/horizontal` există. (Nu rula încă `desktop:install` — instalarea reală e în Task 9, după publicarea site-ului.)
+Expected: teste PASS; `desktop/release/linux-unpacked/horizontal` există. (Nu rula încă `desktop:install` — instalarea reală e în Task 11, după publicarea site-ului.)
 
 ```bash
 git add desktop/scripts/gsettings.mjs desktop/scripts/gsettings.test.mjs desktop/scripts/install.mjs desktop/scripts/uninstall.mjs package.json
@@ -1490,7 +1873,7 @@ git commit -m "feat(desktop): instalare în ~/.local, autostart ascuns și Ctrl+
 
 ---
 
-### Task 9: Documentație, publicare, instalare și verificarea pe mașina omului
+### Task 11: Documentație, publicare, instalare și verificarea pe mașina omului
 
 **Files:**
 - Modify: `CLAUDE.md` (secțiune nouă „## Aplicația de Linux", după „## Offline — baza locală și coada")
