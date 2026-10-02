@@ -797,7 +797,10 @@ Pro (HyperOS 3, Android 16).
   nativă (`SyncWorker`: −24 h / +7 zile / 100, la 15 min, după alarme, acțiuni
   și boot; `SyncWorker.now()` = APPEND_OR_REPLACE). Câștigă cea citită mai
   recent; `heldIds` rămân ale paginii. `readAt` al citirii native = PORNIREA
-  cererii. Pagina offline trimite `readAt = 0`. Regula: `core/Plan.kt` (`mergePlan`).
+  cererii; al paginii = PORNIREA ultimei citiri de REȚEA reușite a scadențelor
+  (`SyncControl.dueFetchedAt`, `pageReadAt`), 0 offline sau cât n-a fost niciuna —
+  nu „acum": lista din cache ar fi bătut una nativă mai nouă. Intră în cheia de
+  retrimitere. Regula: `core/Plan.kt` (`mergePlan`).
 - **Tot ce decide e în `core/`** (Kotlin pur, JUnit pe JVM: `npm run android:test`).
   Textul notificării și amânarea sunt scrise în DOUĂ limbi, cu fixtures comune:
   `src/lib/pushPayload.fixtures.json`, `src/lib/reminderAction.fixtures.json`.
@@ -807,8 +810,15 @@ Pro (HyperOS 3, Android 16).
 - **O acțiune, un executant.** Aplicația vizibilă → pagina (`reminderAction`).
   Altfel coada nativă: o trimite `DrainWorker`, SAU o preia pagina la deschidere
   (`takeActions`) — preluarea și „în zbor" sunt sub același lacăt (`PlanStore`).
-  O bifă executată de două ori pe o recurentă ar sări de două ori; de-aia și
-  garda `due_at=eq.` din `buildPatch`. `DrainWorker` eliberează la start
+  O bifă executată de două ori pe o recurentă ar sări de două ori; de-aia
+  garda `or=(due_at.eq.X,rrule.is.null)` din `buildPatch` — DOAR pe recurente (pe
+  celelalte `done` e idempotent, iar garda ar fi blocat un „Gata" pe o scadență
+  mutată în altă parte). Pagina are aceeași gardă (`prevDueAt` în acțiunea `done`,
+  `runNativeAction`; tichet necunoscut → nu se execută) și preia (`takeActions`)
+  abia după prima citire de rețea a scadențelor, nu pe cadrul din cache.
+  ID-urile provizorii (`HZ-~…`) nu le trimite `DrainWorker` (`nextToDrain` le
+  sare): crearea e încă în coada paginii, PATCH-ul ar da 0 rânduri = „făcut",
+  pierdut. Le preia pagina, care traduce ID-ul (`resolveId`). `DrainWorker` eliberează la start
   elementele rămase „în zbor" de o încercare ucisă; folosește REPLACE + backoff
   liniar de 30 s. Fiecare cerere poartă contul căruia îi aparține (`asUser`) și
   se aruncă dacă sesiunea nativă e acum a altcuiva.
