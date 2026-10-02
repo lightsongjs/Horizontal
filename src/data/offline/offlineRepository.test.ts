@@ -440,7 +440,7 @@ describe('golire', () => {
     const c = await repo.createIssue({ projectId: 'p', title: 'nou' })
     await repo.updateIssue(c.id, { title: 'x' })
     net.down = false
-    vi.mocked(remote.createIssue).mockRejectedValueOnce({ message: 'denied', code: '42501' })
+    vi.mocked(remote.createIssue).mockRejectedValueOnce({ message: 'violates check constraint', code: '23514' })
     vi.mocked(remote.updateIssue).mockClear()
     await repo.sync!.flush()
     expect(events.filter((e) => (e as { type: string }).type === 'failed')).toHaveLength(1)
@@ -452,11 +452,56 @@ describe('golire', () => {
     const { repo, net, remote } = await queued()
     await repo.updateIssue('HZ-01', { title: 'a' })
     net.down = false
-    vi.mocked(remote.updateIssue).mockRejectedValue({ message: 'denied', code: '42501' })
+    vi.mocked(remote.updateIssue).mockRejectedValue({ message: 'violates check constraint', code: '23514' })
     const broken = { ...kv, replaceOps: async () => { throw new DOMException('closed', 'InvalidStateError') } } as Kv
     const again = createOfflineRepository(remote, Promise.resolve(broken), { now: () => new Date('2026-10-02T09:00:00Z'), channel: null })
     await expect(again.sync!.flush()).resolves.toBeUndefined()
     await expect(again.sync!.flush()).resolves.toBeUndefined()
+  })
+})
+
+describe('golire fără sesiune', () => {
+  it('fără sesiune nu golește nimic; cu sesiune, coada pleacă întreagă', async () => {
+    const f = fakeRemote()
+    let signedIn = false
+    const repo = createOfflineRepository(f.remote, Promise.resolve(kv), {
+      now: () => new Date('2026-10-02T09:00:00Z'), channel: null, canFlush: () => signedIn,
+    })
+    await repo.sync!.prefetchAll()
+    f.net.down = true
+    await repo.updateIssue('HZ-01', { title: 'a' })
+    f.net.down = false
+    vi.mocked(f.remote.updateIssue).mockClear()
+    await repo.sync!.flush()
+    expect(f.remote.updateIssue).not.toHaveBeenCalled()
+    expect(repo.sync!.status().pending).toBe(1)
+    signedIn = true
+    await repo.sync!.flush()
+    expect(f.remote.updateIssue).toHaveBeenCalledWith('HZ-01', { title: 'a' })
+    expect(repo.sync!.status().pending).toBe(0)
+  })
+
+  it('o eroare de autentificare oprește golirea și păstrează elementul, fără „offline"', async () => {
+    const f = fakeRemote()
+    const repo = make(f.remote)
+    await repo.sync!.prefetchAll()
+    f.net.down = true
+    await repo.createIssue({ projectId: 'p', title: 'de păstrat' })
+    await repo.updateIssue('HZ-01', { title: 'a' })
+    f.net.down = false
+    const events: SyncEvent[] = []
+    repo.sync!.subscribe((e) => events.push(e))
+    // Cheia anonimă: inserarea trece de rețea, dar RLS n-o lasă să întoarcă rândul.
+    vi.mocked(f.remote.createIssue).mockRejectedValueOnce({ message: 'JSON object requested, multiple (or no) rows returned', code: 'PGRST116' })
+    vi.mocked(f.remote.updateIssue).mockClear()
+    await repo.sync!.flush()
+    expect(events.some((e) => e.type === 'failed')).toBe(false)
+    expect(repo.sync!.status()).toMatchObject({ offline: false, pending: 2 })
+    expect(f.remote.updateIssue).not.toHaveBeenCalled()
+    vi.mocked(f.remote.updateIssue).mockRejectedValueOnce({ message: 'JWT expired', code: 'PGRST301' })
+    await repo.sync!.flush()
+    expect(repo.sync!.status().pending).toBe(1) // crearea a trecut, actualizarea așteaptă sesiunea
+    expect(events.some((e) => e.type === 'failed')).toBe(false)
   })
 })
 

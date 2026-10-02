@@ -14,7 +14,15 @@ import { createBroadcastSyncChannel, webLock } from './offline/channel'
 import type { Repository } from './repository'
 
 let currentUserId: string | null = null
-supabase?.auth.onAuthStateChange((_e, s) => { currentUserId = s?.user.id ?? null })
+// Atribuit după `pick()`; evenimentele de auth vin oricum asincron, după el.
+let wrapped: Repository | null = null
+supabase?.auth.onAuthStateChange((event, s) => {
+  currentUserId = s?.user.id ?? null
+  // Coada așteaptă o sesiune (`canFlush`): pornită la încărcarea modulului sau
+  // la `online`, cât sesiunea încă nu era restaurată, golirea n-a făcut nimic.
+  // Aici e clipa în care are cine s-o semneze.
+  if (s && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION')) void wrapped?.sync?.flush()
+})
 
 function pick(): Repository {
   const source = import.meta.env.VITE_DATA_SOURCE
@@ -24,10 +32,12 @@ function pick(): Repository {
       userId: () => currentUserId,
       channel: createBroadcastSyncChannel(),
       lock: webLock('horizontal-outbox') ?? undefined,
+      canFlush: () => currentUserId !== null,
     })
   }
   return createLocalRepository()
 }
 
 export const repository: Repository = pick()
+wrapped = repository
 export type { Repository } from './repository'

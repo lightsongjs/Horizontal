@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { OfflineError, isNetworkError, withTimeout } from './netError'
+import { OfflineError, isAuthError, isNetworkError, withTimeout } from './netError'
 
 afterEach(() => vi.unstubAllGlobals())
 
@@ -42,5 +42,28 @@ describe('withTimeout', () => {
   })
   it('lasă rezultatul să treacă', async () => {
     await expect(withTimeout(Promise.resolve(7), 1000)).resolves.toBe(7)
+  })
+})
+
+describe('isAuthError', () => {
+  it('HTTP 401/403 înseamnă sesiune lipsă sau expirată', () => {
+    expect(isAuthError({ status: 401, message: 'Unauthorized' }, 'updateIssue')).toBe(true)
+    expect(isAuthError({ status: 403, message: 'Forbidden' }, 'updateIssue')).toBe(true)
+  })
+  it('codurile PostgREST de JWT și RLS', () => {
+    expect(isAuthError({ code: 'PGRST301', message: 'JWT expired' }, 'updateIssue')).toBe(true)
+    expect(isAuthError({ code: 'PGRST302', message: 'Anonymous access is disabled' }, 'deleteIssues')).toBe(true)
+    expect(isAuthError({ code: '42501', message: 'new row violates row-level security policy' }, 'markSeen')).toBe(true)
+  })
+  it('PGRST116 la creare: inserarea anonimă n-a întors rândul (RLS), nu e un refuz', () => {
+    expect(isAuthError({ code: 'PGRST116', message: 'JSON object requested, multiple (or no) rows returned' }, 'createIssue')).toBe(true)
+  })
+  it('PGRST116 la actualizare: tichetul chiar nu mai există — refuz adevărat', () => {
+    expect(isAuthError({ code: 'PGRST116', message: 'JSON object requested, multiple (or no) rows returned' }, 'updateIssue')).toBe(false)
+  })
+  it('o constrângere încălcată e refuz, nu autentificare', () => {
+    expect(isAuthError({ code: '23505', message: 'duplicate key value' }, 'createIssue')).toBe(false)
+    expect(isAuthError(new TypeError('Failed to fetch'), 'createIssue')).toBe(false)
+    expect(isAuthError(null, 'createIssue')).toBe(false)
   })
 })

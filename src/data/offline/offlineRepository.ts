@@ -11,7 +11,7 @@ import type { Repository } from '../repository'
 import type { Assignee, InboxRow, Issue, Project } from '../../lib/types'
 import type { Kv } from './kv'
 import { errorMessage } from '../../lib/errorMessage'
-import { OfflineError, isNetworkError, withTimeout } from './netError'
+import { OfflineError, isAuthError, isNetworkError, withTimeout } from './netError'
 import { applyIssuePatch } from '../../lib/issuePatch'
 import { isTempIssueId, makeTempIssueId } from '../../lib/issueId'
 import { cancelTempIssues, deriveDue, echoIssue, opIssueIds, overlay, remapOp, type OutboxOp, type QueuedOp } from './ops'
@@ -28,6 +28,12 @@ export interface OfflineOptions {
   readTimeoutMs?: number
   channel?: SyncChannel | null
   lock?: (fn: () => Promise<void>) => Promise<void>
+  /**
+   * Golirea pornește doar când e cine s-o semneze. Fără sesiune, supabase-js
+   * trimite cu cheia anonimă: RLS respinge totul, iar golirea ar fi luat
+   * fiecare respingere drept refuz și ar fi aruncat coada întreagă.
+   */
+  canFlush?: () => boolean
 }
 
 const K = {
@@ -396,6 +402,7 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
   }
 
   async function flush() {
+    if (opts.canFlush && !opts.canFlush()) return
     const kv = await kvReady
     if (!kv) return
     // Golirea e best-effort: ea e pornită cu `void` (la creare, la `online`, după
@@ -412,6 +419,10 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
           if (!removed) break // n-are rost să-l retrimitem în buclă
         } catch (e) {
           if (isNetworkError(e)) { setStatus({ offline: true }); break }
+          // Sesiune lipsă sau expirată: nu e refuz (elementul rămâne) și nici
+          // rețea: serverul a răspuns, deci „offline" se stinge. Se reia când
+          // revine sesiunea.
+          if (isAuthError(e, q.op.kind)) { setStatus({ offline: false }); break }
           // Refuz de server: nu blocăm coada la infinit. Elementul se scoate,
           // iar cine afișează tichetul primește valoarea serverului (sau află
           // că nu mai există). O creare refuzată își ia după ea și scrierile
