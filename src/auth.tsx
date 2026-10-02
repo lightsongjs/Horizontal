@@ -7,12 +7,21 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './lib/supabase'
-import { pickStoredSession, resolveBootSession } from './lib/storedSession'
+import {
+  clearAccess,
+  pickStoredSession,
+  readAccess,
+  resolveAccess,
+  resolveBootSession,
+  shouldApplyAuthEvent,
+  writeAccess,
+} from './lib/storedSession'
 import { isAdminSession, buildAccessMap, type AccessMap } from './lib/access'
 
 interface AuthState {
@@ -36,6 +45,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(enabled)
   const [access, setAccess] = useState<AccessMap>({})
   const isAdmin = isAdminSession(session)
+  // Cine era logat, ca SIGNED_OUT (care vine cu sesiune null) să știe ce cheie șterge.
+  const userIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (!supabase) return
@@ -47,24 +58,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Un `null` venit fără SIGNED_OUT e un refresh eșuat, nu o delogare — vezi
     // `storedSession.ts`. Delogarea reală vine mereu cu evenimentul ei.
     const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
-      if (!s && event !== 'SIGNED_OUT') return
+      if (!shouldApplyAuthEvent(event, s)) return
+      // La delogare harta păstrată pleacă odată cu sesiunea: următorul om de
+      // pe acest dispozitiv n-are de ce să moștenească drepturi.
+      if (!s && userIdRef.current && typeof localStorage !== 'undefined') clearAccess(localStorage, userIdRef.current)
       setSession(s)
     })
     return () => sub.subscription.unsubscribe()
   }, [])
 
   useEffect(() => {
+    userIdRef.current = session?.user.id ?? userIdRef.current
     if (!supabase || !session || isAdmin) {
       setAccess({})
       return
     }
+    const uid = session.user.id
+    const store = typeof localStorage === 'undefined' ? null : localStorage
     let ignore = false
     supabase
       .from('project_members')
       .select('project_id, role')
       .then(
-        ({ data }) => { if (!ignore) setAccess(buildAccessMap(data ?? [])) },
-        () => { if (!ignore) setAccess({}) },
+        ({ data, error }) => {
+          if (ignore) return
+          const map = error ? null : buildAccessMap(data ?? [])
+          // Doar o hartă proaspătă și bună se păstrează; o eroare nu o atinge.
+          if (map && store) writeAccess(store, uid, map)
+          setAccess(resolveAccess({ map, error }, () => (store ? readAccess(store, uid) : null)))
+        },
+        (err) => {
+          if (ignore) return
+          setAccess(resolveAccess({ map: null, error: err }, () => (store ? readAccess(store, uid) : null)))
+        },
       )
     return () => { ignore = true }
   }, [session, isAdmin])
