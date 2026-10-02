@@ -20,6 +20,7 @@
     "test:chime": "node scripts/test-chime.mjs",
     "test:layout": "node scripts/test-layout.mjs",
     "test:nav": "node scripts/test-nav.mjs",
+    "test:quick-add": "node scripts/test-quick-add.mjs",
     "test:recurrence-sql": "node scripts/test-recurrence-sql.mjs"
   },
   "dependencies": {

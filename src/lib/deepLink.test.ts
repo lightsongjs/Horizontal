@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { deepLinkNotice, parseTicketPath, prefixOf, resolveTicketProject, ticketPath, ticketUrl } from './deepLink'
+import { deepLinkNotice, isQuickAddPath, parseTicketPath, prefixOf, resolveTicketProject, ticketPath, ticketUrl, QUICK_ADD_PATH } from './deepLink'
 
 describe('parseTicketPath', () => {
   it('recunoaște un path de ticket', () => {
@@ -137,5 +137,19 @@ describe('ticketPath / ticketUrl', () => {
 
   it('nu dublează slash-ul dacă origin-ul are unul', () => {
     expect(ticketUrl('https://horizontal.app/', 'MS-03')).toBe('https://horizontal.app/MS-03')
+  })
+})
+
+describe('ruta barei de captură', () => {
+  it('/quick-add nu e un tichet', () => {
+    expect(parseTicketPath('/quick-add')).toBeNull()
+    expect(parseTicketPath('/quick-add/')).toBeNull()
+  })
+  it('isQuickAddPath recunoaște ruta, cu sau fără bară finală', () => {
+    expect(QUICK_ADD_PATH).toBe('/quick-add')
+    expect(isQuickAddPath('/quick-add')).toBe(true)
+    expect(isQuickAddPath('/quick-add/')).toBe(true)
+    expect(isQuickAddPath('/QUICK-ADD')).toBe(false)
+    expect(isQuickAddPath('/HZ-12')).toBe(false)
   })
 })

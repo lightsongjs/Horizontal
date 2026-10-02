@@ -17,6 +17,16 @@ import { displayIssueId } from './issueId'
 const TICKET_PATH = /^\/([A-Za-z0-9]+)-(~[a-z0-9]+|[A-Za-z0-9]+)\/?$/
 
 /**
+ * Bara de captură a aplicației de Linux. O rută a site-ului, nu un tichet:
+ * după forma ei („cuvânt-cuvânt") regexul de tichet ar fi citit-o `QUICK-ADD`.
+ */
+export const QUICK_ADD_PATH = '/quick-add'
+
+export function isQuickAddPath(pathname: string): boolean {
+  return pathname.replace(/\/$/, '') === QUICK_ADD_PATH
+}
+
+/**
  * Id-ul ticketului din pathname, sau null. Prefixul (și un sufix real) se
  * normalizează uppercase; sufixul provizoriu nu.
  *
@@ -25,6 +35,7 @@ const TICKET_PATH = /^\/([A-Za-z0-9]+)-(~[a-z0-9]+|[A-Za-z0-9]+)\/?$/
  * deschide `HZ-13`, nu un tichet care nu mai există sub numele vechi.
  */
 export function parseTicketPath(pathname: string, resolveId: (id: string) => string = (id) => id): string | null {
+  if (isQuickAddPath(pathname)) return null
   const match = TICKET_PATH.exec(pathname)
   if (!match) return null
   const [, prefix, suffix] = match

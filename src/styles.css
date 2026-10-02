@@ -5747,3 +5747,11 @@ main {
     flex: 1 1 100%;
   }
 }
+
+/* ── Bara de captură (aplicația de Linux, /quick-add) ─────────────────────
+   O fereastră mică, fără ramă: pagina ESTE bara. Fără chenar — fundalul
+   (--surface) peste nimic e delimitarea. */
+html:has(.qab), body:has(.qab) { margin: 0; height: 100%; background: var(--surface); overflow: hidden; }
+.qab { padding: 12px 16px; }
+.qab .qa { box-shadow: none; background: transparent; }
+.qab-empty { margin: 0; padding: 18px 20px; font-family: var(--display); color: var(--txt-dim); background: var(--surface); }
