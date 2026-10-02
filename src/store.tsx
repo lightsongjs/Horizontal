@@ -410,14 +410,18 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
           // gol e o degradare acceptabilă; boardul gol nu e.
           repository.listProjectMembers(projectId).catch(() => []),
         ])
-        applyProjectBundle(projectId, { waves: w, themes: t, issues: loaded, obstacles: o, obstacleLinks: ol, members: pm }, { authoritative: true })
+        // Ca în `selectProject`: omul a putut comuta cât a durat runda — un
+        // proiect care nu mai e cel deschis nu se declară încărcat.
+        if (projectId === currentProjectRef.current) {
+          applyProjectBundle(projectId, { waves: w, themes: t, issues: loaded, obstacles: o, obstacleLinks: ol, members: pm }, { authoritative: true })
+        }
       }
     } catch (e) {
       setError(errorMessage(e))
       // Același tratament ca în selectProject: marcăm eșecul, ca oricine
       // așteaptă datele proiectului să nu aștepte la infinit. `issuesLoadedFor`
       // rămâne cum era — datele vechi sunt încă în memorie și încă valide.
-      if (projectId) setIssuesLoadFailedFor(projectId)
+      if (projectId && projectId === currentProjectRef.current) setIssuesLoadFailedFor(projectId)
     } finally {
       // Și după un eșec: pragul măsoară „de când n-am mai încercat”, nu „de
       // când n-am mai reușit”. Altfel un Supabase căzut ar fi însemnat o

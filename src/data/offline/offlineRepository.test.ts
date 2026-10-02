@@ -5,6 +5,7 @@ import { openKv, type Kv } from './kv'
 import { OfflineError } from './netError'
 import type { Repository } from '../repository'
 import type { Issue, Project } from '../../lib/types'
+import type { SyncEvent } from './types'
 
 export const proj: Project = { id: 'p', name: 'P', description: '', prefix: 'HZ', currentWave: 1, accent: '#000', type: 'personal' }
 export const mk = (id: string, over: Partial<Issue> = {}): Issue => ({
@@ -427,5 +428,78 @@ describe('golire', () => {
     const again = createOfflineRepository(remote, Promise.resolve(broken), { now: () => new Date('2026-10-02T09:00:00Z'), channel: null })
     await expect(again.sync!.flush()).resolves.toBeUndefined()
     await expect(again.sync!.flush()).resolves.toBeUndefined()
+  })
+})
+
+describe('ID provizoriu rămas după remapare', () => {
+  // Un formular deschis ține ID-urile de la montare; cheia lui rămâne stabilă
+  // peste remapare, deci salvarea poate purta încă `HZ-~…`.
+  async function remapped() {
+    const f = fakeRemote()
+    const repo = make(f.remote)
+    await repo.sync!.prefetchAll()
+    f.net.down = true
+    const c = await repo.createIssue({ projectId: 'p', title: 'nou' })
+    f.net.down = false
+    await repo.sync!.flush()
+    expect(f.server.issues.some((i) => i.id === 'HZ-13')).toBe(true)
+    expect(repo.sync!.status().pending).toBe(0)
+    return { ...f, repo, temp: c.id }
+  }
+
+  it('(a) updateIssue pe ID-ul provizoriu pleacă pe ID-ul real', async () => {
+    const { repo, remote, temp } = await remapped()
+    await repo.updateIssue(temp, { title: 'redenumit' })
+    expect(remote.updateIssue).toHaveBeenLastCalledWith('HZ-13', { title: 'redenumit' })
+  })
+
+  it('(b) dependențele spre ID-ul provizoriu se traduc', async () => {
+    const { repo, remote, temp } = await remapped()
+    await repo.updateIssue('HZ-02', { deps: [temp, 'HZ-01'] })
+    expect(remote.updateIssue).toHaveBeenLastCalledWith('HZ-02', { deps: ['HZ-13', 'HZ-01'] })
+  })
+
+  it('(c) traducerea supraviețuiește repornirii: altă instanță pe aceeași bază', async () => {
+    const { remote, temp } = await remapped()
+    const again = make(remote)
+    await again.updateIssue(temp, { title: 'după repornire' })
+    expect(remote.updateIssue).toHaveBeenLastCalledWith('HZ-13', { title: 'după repornire' })
+  })
+
+  it('și la coadă: offline, scrierea intră deja tradusă', async () => {
+    const { repo, remote, net, temp } = await remapped()
+    net.down = true
+    await repo.createIssue({ projectId: 'p', title: 'altul', deps: [temp] })
+    await repo.updateIssue(temp, { title: 'offline' })
+    net.down = false
+    await repo.sync!.flush()
+    expect(remote.createIssue).toHaveBeenLastCalledWith(expect.objectContaining({ deps: ['HZ-13'] }))
+    expect(remote.updateIssue).toHaveBeenLastCalledWith('HZ-13', { title: 'offline' })
+  })
+
+  it('ștergerea unui ID provizoriu deja remapat șterge tichetul real, nu anulează o creare', async () => {
+    const { repo, remote, server, temp } = await remapped()
+    await repo.deleteIssues([temp])
+    expect(remote.deleteIssues).toHaveBeenCalledWith(['HZ-13'])
+    expect(server.issues.some((i) => i.id === 'HZ-13')).toBe(false)
+  })
+
+  it('markSeen pe ID-ul provizoriu remapat ajunge la server pe cel real', async () => {
+    const { repo, remote, temp } = await remapped()
+    await repo.markSeen(temp)
+    expect(remote.markSeen).toHaveBeenCalledWith('HZ-13')
+  })
+
+  it('o remapare venită pe canal din altă filă se traduce și aici', async () => {
+    const { remote } = fakeRemote()
+    let deliver: (e: SyncEvent) => void = () => {}
+    const repo = createOfflineRepository(remote, Promise.resolve(kv), {
+      now: () => new Date('2026-10-02T09:00:00Z'), readTimeoutMs: 1000,
+      channel: { post() {}, onMessage(fn) { deliver = fn } },
+    })
+    deliver({ type: 'remap', from: 'HZ-~zz9999', to: 'HZ-02' })
+    await repo.updateIssue('HZ-~zz9999', { title: 't' })
+    expect(remote.updateIssue).toHaveBeenLastCalledWith('HZ-02', { title: 't' })
+    expect(repo.sync!.resolveId('HZ-~zz9999')).toBe('HZ-02')
   })
 })

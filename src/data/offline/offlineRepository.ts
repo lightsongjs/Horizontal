@@ -35,6 +35,7 @@ const K = {
   assignees: 'assignees',
   inbox: 'inbox',
   due: 'due',
+  remaps: 'remaps',
   p: (pid: string, what: keyof ProjectBundle) => `p:${pid}:${what}`,
 }
 
@@ -82,9 +83,41 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
     if (e.type !== 'status') opts.channel?.post(e)
   }
   opts.channel?.onMessage((e) => {
+    if (e.type === 'remap') void recordRemap(e.from, e.to)
     emitLocal(e)
     void refreshPending()
   })
+
+  /**
+   * ID provizoriu → ID real, pentru tot ce s-a remapat vreodată pe dispozitivul
+   * ăsta. Un formular deschis ține ID-urile capturate la montare, iar cheia lui
+   * rămâne stabilă peste remapare (ca să nu piardă ce e nesalvat) — deci
+   * salvarea lui poate purta încă `HZ-~…`, după ce coada l-a trimis deja. Fără
+   * traducere, serverul n-ar găsi tichetul. Ținută în bază (`remaps`), ca o
+   * repornire sau altă filă să traducă la fel; scrierea e best-effort — o bază
+   * care pică lasă traducerea doar în memorie, nu strică scrierea.
+   */
+  const remaps = new Map<string, string>()
+  let remapsLoaded: Promise<void> | null = null
+  function loadRemaps(): Promise<void> {
+    remapsLoaded ??= (async () => {
+      const kv = await kvReady
+      const saved = kv ? await kv.get<Record<string, string>>(K.remaps).catch(() => undefined) : undefined
+      for (const [from, to] of Object.entries(saved ?? {})) if (!remaps.has(from)) remaps.set(from, to)
+    })()
+    return remapsLoaded
+  }
+  async function recordRemap(from: string, to: string) {
+    // În memorie ÎNTÂI, sincron: `resolveId` trebuie să știe imediat. Încărcarea
+    // nu suprascrie chei existente; o așteptăm doar ca scrierea de mai jos să
+    // nu calce peste ce era salvat.
+    remaps.set(from, to)
+    await loadRemaps()
+    const kv = await kvReady
+    await kv?.set(K.remaps, Object.fromEntries(remaps)).catch(() => {})
+  }
+  const resolveId = (id: string) => remaps.get(id) ?? id
+  const resolveDeps = <T extends { deps?: string[] }>(x: T): T => (x.deps ? { ...x, deps: x.deps.map(resolveId) } : x)
 
   const setStatus = (next: Partial<SyncStatus>) => {
     const s = { ...status, ...next }
@@ -322,6 +355,7 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
       const created = await remote.createIssue(op.input)
       const done = await settle(kv, q, rest, () => baseWritesUpsert(kv, created), { from: op.tempId, to: created.id })
       if (!done.cancelled) {
+        await recordRemap(op.tempId, created.id)
         emit({ type: 'remap', from: op.tempId, to: created.id })
         emit({ type: 'issue', issue: overlay([created], done.rest.map((r) => r.op), now())[0] ?? created })
       }
@@ -390,7 +424,8 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
     subscribe(fn) { listeners.add(fn); return () => { listeners.delete(fn) } },
     flush,
     prefetchAll,
-    async clear() { const kv = await kvReady; await kv?.clear(); setStatus({ pending: 0 }) },
+    resolveId,
+    async clear() { const kv = await kvReady; await kv?.clear(); remaps.clear(); setStatus({ pending: 0 }) },
   }
 
   const repo: Repository = {
@@ -446,8 +481,10 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
     postToThread: (input) => net(() => remote.postToThread(input)),
 
     // ── Merg offline ─────────────────────────────────────────────────────────
-    createIssue: (input) =>
-      write(
+    async createIssue(raw) {
+      await loadRemaps()
+      const input = resolveDeps(raw)
+      return write(
         () => remote.createIssue(input),
         async (kv, created) => { emit({ type: 'issue', issue: created }); await applyWrites(kv, await baseWritesUpsert(kv, created)) },
         async (kv) => {
@@ -460,10 +497,14 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
           emit({ type: 'issue', issue: echo })
           return echo
         },
-      ),
+      )
+    },
 
-    updateIssue: (id, patch) =>
-      write(
+    async updateIssue(rawId, rawPatch) {
+      await loadRemaps()
+      const id = resolveId(rawId)
+      const patch = resolveDeps(rawPatch)
+      return write(
         () => remote.updateIssue(id, patch),
         async (kv, saved) => { emit({ type: 'issue', issue: saved }); await applyWrites(kv, await baseWritesUpsert(kv, saved)) },
         async (kv) => {
@@ -474,11 +515,16 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
           emit({ type: 'issue', issue: echo })
           return echo
         },
-      ),
+      )
+    },
 
     deleteIssue: (id) => repo.deleteIssues([id]),
 
-    async deleteIssues(ids) {
+    async deleteIssues(rawIds) {
+      // Tradus ÎNAINTE de împărțire: un provizoriu deja remapat e un tichet
+      // real pe server — tratat ca anulare de creare, n-ar șterge nimic.
+      await loadRemaps()
+      const ids = rawIds.map(resolveId)
       const kv = await kvReady
       const temp = ids.filter(isTempIssueId)
       const real = ids.filter((id) => !isTempIssueId(id))
@@ -502,13 +548,16 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
       }
     },
 
-    markSeen: (iid) =>
-      isTempIssueId(iid)
-        ? Promise.resolve()
-        : write(() => remote.markSeen(iid), async () => {}, async (kv) => { await kv.append({ kind: 'markSeen', issueId: iid }) }),
+    async markSeen(rawId) {
+      await loadRemaps()
+      const iid = resolveId(rawId)
+      if (isTempIssueId(iid)) return
+      await write(() => remote.markSeen(iid), async () => {}, async (kv) => { await kv.append({ kind: 'markSeen', issueId: iid }) })
+    },
   }
 
   void refreshPending()
+  void loadRemaps() // ca `resolveId`, sincron, să știe și ce s-a remapat înainte de repornire
   // Golirea pornește singură: la deschidere (coada poate fi plină de ieri) și
   // la revenirea rețelei. Revenirea în tab o cere store-ul, prin `refresh`.
   void flush()

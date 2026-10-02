@@ -41,6 +41,8 @@ export interface SyncControl {
   /** Aduce în cache TOATE proiectele, nu doar cel deschis — altfel unul
    *  nedeschis recent n-ar avea nimic de arătat offline. */
   prefetchAll(): Promise<void>
+  /** ID-ul real al unui provizoriu deja remapat (sau ID-ul neschimbat). Sincron, din memorie. */
+  resolveId(id: string): string
   /** Logout: baza și coada de pe dispozitivul ăsta dispar. */
   clear(): Promise<void>
 }

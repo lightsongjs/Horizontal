@@ -21,6 +21,7 @@ import { PRESETS, RecurrencePicker, presetOf } from './RecurrencePicker'
 import type { Issue, ScenarioKind, TestScenario } from '../lib/types'
 import { Icon, type IconName } from './Icon'
 import { displayIssueId, isTempIssueId } from '../lib/issueId'
+import { repository } from '../data'
 
 const PALETTE = ['#0284C7', '#059669', '#D97706', '#EA580C', '#E11D48', '#7C3AED', '#06B6D4']
 
@@ -798,7 +799,14 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
         setObstacleError(`Nu am putut crea obstacolul „${draft.title}". Tichetul nu s-a salvat — încearcă din nou.`)
         return
       }
-      const realDeps = deps.map((id) => draftDepMap[id] ?? (id.startsWith('__draft_') ? null : id)).filter(Boolean) as string[]
+      // `deps`/`blocks` sunt capturate la montare și pot ține ID-ul provizoriu
+      // al unui tichet care între timp a primit numărul real (cheia formularului
+      // rămâne stabilă peste remapare). Repository-ul traduce ce TRIMITE, dar
+      // aici se și COMPARĂ cu tichetele de acum, care au deja ID-ul real: fără
+      // traducere, „HZ-~…" n-ar fi găsit în `currentBlockers`, iar „HZ-13"
+      // ar fi părut scos de om — legătura s-ar fi șters în tăcere.
+      const resolveId = repository.sync?.resolveId ?? ((id: string) => id)
+      const realDeps = (deps.map((id) => draftDepMap[id] ?? (id.startsWith('__draft_') ? null : id)).filter(Boolean) as string[]).map(resolveId)
       const qaPayload = {
         selectors: selectors.filter(Boolean), scenarios, assigneeId, urgent,
         dueAt: schedule.dueAt, allDay: schedule.allDay, remindAt: schedule.remindAt, rrule: rruleOut,
@@ -807,7 +815,7 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
         ? (await updateIssue(existing!.id, { title: saveTitle, desc: desc.trim(), theme, wave, deps: realDeps, ...qaPayload }), existing!.id)
         : (await createIssue({ projectId: project.id, title: saveTitle, desc: desc.trim(), theme, wave, deps: realDeps, ...qaPayload })).id
       await setIssueObstacles(targetId, realObstIds)
-      const realBlocks = blocks.map((id) => draftBlockMap[id] ?? (id.startsWith('__draft_') ? null : id)).filter(Boolean) as string[]
+      const realBlocks = (blocks.map((id) => draftBlockMap[id] ?? (id.startsWith('__draft_') ? null : id)).filter(Boolean) as string[]).map(resolveId)
       const currentBlockers = issues.filter((i) => i.deps?.includes(targetId)).map((i) => i.id)
       for (const b of realBlocks.filter((b) => !currentBlockers.includes(b))) {
         const bi = byId[b]; if (bi) await updateIssue(b, { deps: [...(bi.deps ?? []), targetId] })
