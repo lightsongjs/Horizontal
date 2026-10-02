@@ -62,6 +62,19 @@ object Notifier {
         try { NotificationManagerCompat.from(ctx).notify(r.id, 1, n.build()) } catch (e: SecurityException) { /* permisiunea lipsește: cardul din pagină o spune */ }
     }
 
+    private const val STATUS_ID = 2
+
+    /** Sesiunea nativă a murit: fără ea coada nu mai ajunge pe server, deci omul trebuie să afle. */
+    fun showReconnect(ctx: Context) {
+        val n = NotificationCompat.Builder(ctx, CH_STATUS).setSmallIcon(R.drawable.ic_stat_hz)
+            .setContentTitle("Reconectează mementourile")
+            .setContentText("Deschide Horizontal și scrie parola o dată.")
+            .setContentIntent(PendingIntent.getActivity(ctx, 7, Intent(ctx, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE))
+            .setAutoCancel(true)
+        try { NotificationManagerCompat.from(ctx).notify("stare", STATUS_ID, n.build()) } catch (e: SecurityException) {}
+    }
+    fun cancelStatus(ctx: Context) = NotificationManagerCompat.from(ctx).cancel("stare", STATUS_ID)
+
     fun cancel(ctx: Context, id: String) = NotificationManagerCompat.from(ctx).cancel(id, 1)
     fun cancelAll(ctx: Context) = NotificationManagerCompat.from(ctx).cancelAll()
 }

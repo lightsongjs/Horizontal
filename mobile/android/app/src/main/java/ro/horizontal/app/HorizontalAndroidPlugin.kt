@@ -86,8 +86,23 @@ class HorizontalAndroidPlugin : Plugin() {
             .put("queued", NativeQueue.pending(s.queue)))
     }
 
-    /** Task 8 o înlocuiește cu starea sesiunii native. */
-    private fun sessionState(): String = "missing"
+    /** Ieftin, fără rețea: o sesiune moartă se descoperă la primul refresh și își șterge singură cutia. */
+    private fun sessionState(): String = if (NativeSession.isSignedIn(context)) "ok" else "missing"
+
+    @PluginMethod fun signIn(call: PluginCall) {
+        val url = call.getString("url"); val anon = call.getString("anonKey"); val email = call.getString("email"); val pw = call.getString("password")
+        if (url == null || anon == null || email == null || pw == null) return call.reject("lipsesc câmpuri")
+        // Rețea: nu pe firul principal.
+        Thread {
+            try { NativeSession.signIn(context, url, anon, email, pw); Hooks.afterQueued(context); call.resolve() }
+            catch (e: Exception) { call.reject(e.message ?: "login nativ eșuat") }
+        }.start()
+    }
+
+    @PluginMethod fun signOut(call: PluginCall) {
+        // `finally`: pagina așteaptă răspunsul la logout; un apel rămas fără răspuns ar atârna deconectarea.
+        Thread { try { NativeSession.signOut(context) } finally { call.resolve() } }.start()
+    }
 
     private fun notifState(): String = when {
         NotificationManagerCompat.from(context).areNotificationsEnabled() -> "granted"
