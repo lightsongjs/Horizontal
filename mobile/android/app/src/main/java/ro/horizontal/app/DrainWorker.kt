@@ -19,6 +19,11 @@ class DrainWorker(ctx: Context, p: WorkerParameters) : Worker(ctx, p) {
         // pe disc, iar cât un element zboară `nextToDrain` și `take` nu mai dau nimic.
         PlanStore.edit(ctx) { s -> s.copy(queue = NativeQueue.releaseAllInFlight(s.queue)) to Unit }
         while (true) {
+            // REPLACE (vezi `enqueue`) poate anula un worker în plină buclă. Anularea doar
+            // ridică `isStopped`, nu oprește firul: fără verificarea asta, cel vechi ar
+            // continua să trimită PATCH-uri în paralel cu cel nou, pe aceeași coadă.
+            // Ce a rămas îl ia cel nou (care eliberează și „în zbor"-ul de la pornire).
+            if (isStopped) return Result.success()
             val a = PlanStore.edit(ctx) { s ->
                 val next = NativeQueue.nextToDrain(s.queue)
                 (if (next != null) s.copy(queue = NativeQueue.markInFlight(s.queue, next.uid)) else s) to next

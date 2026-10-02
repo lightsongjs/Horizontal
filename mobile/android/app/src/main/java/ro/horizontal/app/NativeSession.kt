@@ -66,7 +66,18 @@ object NativeSession {
         ctx.getSharedPreferences(PREFS, 0).edit().putString("url", url).putString("anon", anon).commit()
         save(ctx, t)
         Notifier.cancelStatus(ctx)
+        // Prima citire imediat, nu la următorul ciclu de 15 min: un cont proaspăt
+        // logat are planul gol, iar mementourile lui de azi ar tăcea până atunci.
+        SyncWorker.now(ctx)
     }
+
+    /**
+     * Ultimul cont logat, citit FĂRĂ lacătul sesiunii. Pentru verificări făcute sub
+     * lacătul lui PlanStore (`SyncWorker`): `signIn` ține lacătul sesiunii și ia apoi
+     * pe al lui PlanStore (`PlanStore.clear`), deci `userId` cerut de acolo ar lua
+     * lacătele în ordine inversă — impas.
+     */
+    fun lastAccount(ctx: Context): String? = ctx.getSharedPreferences(ACCOUNT_PREFS, 0).getString("lastUserId", null)
 
     /** Un access token valid, reîmprospătat la nevoie. `null` = sesiune moartă (șters + notificare „Reconectează"). */
     fun accessToken(ctx: Context, now: Long = System.currentTimeMillis()): String? = session(ctx, now)?.first
