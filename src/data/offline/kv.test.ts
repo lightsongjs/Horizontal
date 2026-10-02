@@ -42,4 +42,14 @@ describe('kv', () => {
     expect(await kv.get('projects')).toBeUndefined()
     expect(await kv.ops()).toEqual([])
   })
+  it('completeOp abortează tranzacția dacă scriere pică — niciun efect', async () => {
+    const kv = await fresh()
+    const seq = await kv.append({ kind: 'markSeen', issueId: 'A' })
+    // O valoare necopiabilă (funcție) forțează o eroare DataCloneError
+    await expect(kv.completeOp(seq, [['k', () => 1]])).rejects.toBeTruthy()
+    // Op trebuie să rămână în coadă
+    expect(await kv.ops()).toHaveLength(1)
+    // Cheia nu trebuie scrisă
+    expect(await kv.get('k')).toBeUndefined()
+  })
 })

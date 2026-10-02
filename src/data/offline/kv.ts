@@ -47,21 +47,90 @@ export async function openKv(name = 'horizontal-offline'): Promise<Kv> {
     },
     async replaceOps(rewrite, remove) {
       const tx = db.transaction('outbox', 'readwrite')
-      for (const q of rewrite) void tx.store.put(q)
-      for (const s of remove) void tx.store.delete(s)
-      await tx.done
+      let errorToThrow: unknown = null
+      try {
+        // Adună promisiunile cererilor: o eroare sincronă la put/delete ar duce la
+        // auto-commit cu doar o parte din cererile aplicate fără abort explicit.
+        const reqs = [
+          ...rewrite.map((q) => tx.store.put(q)),
+          ...remove.map((s) => tx.store.delete(s)),
+          tx.done,
+        ]
+        await Promise.all(reqs)
+      } catch (e) {
+        // O cerere a picat: salvează eroarea și abortează tranzacția
+        errorToThrow = (e as DOMException)?.name === 'AbortError' ? null : e
+        tx.abort()
+      }
+      // Dacă e să-și încheie abortul, așteptă-l pentru a consuma AbortErrors
+      if (errorToThrow === null) {
+        try {
+          await tx.done
+        } catch {
+          // Abort e gata, nicio problemă
+        }
+      } else {
+        // Tranzacția e abortată, dar raportează eroarea inițială
+        throw errorToThrow
+      }
     },
     async completeOp(seq, writes) {
       const tx = db.transaction(['outbox', 'kv'], 'readwrite')
-      void tx.objectStore('outbox').delete(seq)
-      for (const [k, v] of writes) void tx.objectStore('kv').put(v, k)
-      await tx.done
+      let errorToThrow: unknown = null
+      try {
+        // Șterge op și scrie răspunsul atomic: o eroare la put ar lăsa op-ul în coadă
+        // și răspunsul nescris, exact ce promite doc-comentariul.
+        const reqs = [
+          tx.objectStore('outbox').delete(seq),
+          ...writes.map(([k, v]) => tx.objectStore('kv').put(v, k)),
+          tx.done,
+        ]
+        await Promise.all(reqs)
+      } catch (e) {
+        // O cerere a picat: salvează eroarea și abortează tranzacția
+        errorToThrow = (e as DOMException)?.name === 'AbortError' ? null : e
+        tx.abort()
+      }
+      // Dacă e să-și încheie abortul, așteptă-l pentru a consuma AbortErrors
+      if (errorToThrow === null) {
+        try {
+          await tx.done
+        } catch {
+          // Abort e gata, nicio problemă
+        }
+      } else {
+        // Tranzacția e abortată, dar raportează eroarea inițială
+        throw errorToThrow
+      }
     },
     async clear() {
       const tx = db.transaction(['outbox', 'kv'], 'readwrite')
-      void tx.objectStore('outbox').clear()
-      void tx.objectStore('kv').clear()
-      await tx.done
+      let errorToThrow: unknown = null
+      try {
+        // Golește ambele magazine atomic: o eroare la orice clear ar duce la
+        // auto-commit parțial fără abort explicit.
+        const reqs = [
+          tx.objectStore('outbox').clear(),
+          tx.objectStore('kv').clear(),
+          tx.done,
+        ]
+        await Promise.all(reqs)
+      } catch (e) {
+        // O cerere a picat: salvează eroarea și abortează tranzacția
+        errorToThrow = (e as DOMException)?.name === 'AbortError' ? null : e
+        tx.abort()
+      }
+      // Dacă e să-și încheie abortul, așteptă-l pentru a consuma AbortErrors
+      if (errorToThrow === null) {
+        try {
+          await tx.done
+        } catch {
+          // Abort e gata, nicio problemă
+        }
+      } else {
+        // Tranzacția e abortată, dar raportează eroarea inițială
+        throw errorToThrow
+      }
     },
   }
 }
