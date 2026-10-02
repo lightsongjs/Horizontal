@@ -173,6 +173,7 @@ describe('scrieri', () => {
     await repo.updateIssue('HZ-01', { title: 'b' })
     // Singurul apel e încercarea directă a lui „a", picată pe rețea; „b" n-a mai încercat.
     expect(remote.updateIssue).toHaveBeenCalledTimes(1)
+    expect(remote.updateIssue).toHaveBeenNthCalledWith(1, 'HZ-01', { title: 'a' })
     expect(repo.sync!.status().pending).toBe(2)
   })
 
@@ -199,5 +200,68 @@ describe('scrieri', () => {
     const repo = make(remote)
     await expect(repo.updateIssue('NU-EXISTA', { title: 'x' })).rejects.toMatchObject({ code: 'PGRST116' })
     expect(repo.sync!.status().pending).toBe(0)
+  })
+
+  it('cache-ul stricat după o scriere acceptată de server nu o face eroare și nu o pune la coadă', async () => {
+    const { remote } = fakeRemote()
+    const broken = { ...kv, set: async () => { throw new DOMException('full', 'QuotaExceededError') } } as Kv
+    const repo = createOfflineRepository(remote, Promise.resolve(broken), { userId: () => 'u1', channel: null })
+    const seen: string[] = []
+    repo.sync!.subscribe((e) => { if (e.type === 'issue') seen.push(e.issue.id) })
+    const c = await repo.createIssue({ projectId: 'p', title: 'x' })
+    expect(c.id).toBe('HZ-13')
+    expect(repo.sync!.status().pending).toBe(0)
+    expect(remote.createIssue).toHaveBeenCalledTimes(1)
+    expect(seen).toEqual(['HZ-13'])
+  })
+
+  it('scrierile directe intră în bază: offline după ele, citirile arată valorile serverului', async () => {
+    const { repo, net } = await (async () => {
+      const f = fakeRemote()
+      const repo = make(f.remote)
+      await repo.sync!.prefetchAll()
+      return { ...f, repo }
+    })()
+    const c = await repo.createIssue({ projectId: 'p', title: 'nou' })
+    await repo.updateIssue('HZ-01', { title: 'schimbat' })
+    net.down = true
+    const issues = await repo.listIssues('p')
+    expect(issues.map((i) => i.id)).toContain(c.id)
+    expect(issues.find((i) => i.id === 'HZ-01')?.title).toBe('schimbat')
+    expect(repo.sync!.status().pending).toBe(0)
+  })
+
+  it('ștergerea directă scoate tichetul și dependențele spre el din bază', async () => {
+    const f = fakeRemote()
+    f.server.issues[1].deps = ['HZ-01']
+    const repo = make(f.remote)
+    await repo.sync!.prefetchAll()
+    await repo.deleteIssues(['HZ-01'])
+    f.net.down = true
+    const issues = await repo.listIssues('p')
+    expect(issues.map((i) => i.id)).toEqual(['HZ-02'])
+    expect(issues[0].deps).toEqual([])
+  })
+
+  it('scrierea directă nu inventează `due` când nu era în cache', async () => {
+    const f = fakeRemote()
+    const repo = make(f.remote)
+    await repo.sync!.prefetchAll()
+    await repo.updateIssue('HZ-01', { title: 'x' })
+    expect(await kv.get('due')).toBeUndefined()
+  })
+
+  it('deleteIssues: dacă scrierea ID-urilor reale pică, ștergerea celor provizorii tot se anunță', async () => {
+    const { remote, net } = fakeRemote()
+    const repo = make(remote)
+    await repo.sync!.prefetchAll()
+    net.down = true
+    const t = await repo.createIssue({ projectId: 'p', title: 'efemer' })
+    const removed: string[] = []
+    repo.sync!.subscribe((e) => { if (e.type === 'removed') removed.push(...e.ids) })
+    ;(remote.deleteIssues as ReturnType<typeof vi.fn>).mockRejectedValueOnce({ message: 'denied', code: '42501' })
+    net.down = false
+    await expect(repo.deleteIssues([t.id, 'HZ-01'])).rejects.toMatchObject({ code: '42501' })
+    expect(removed).toEqual([t.id])
   })
 })

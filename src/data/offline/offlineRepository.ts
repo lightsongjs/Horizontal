@@ -199,8 +199,10 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
     const key = K.p(issue.projectId, 'issues')
     const list = await kv.get<Issue[]>(key)
     if (list) writes.push([key, [...list.filter((i) => i.id !== issue.id), issue]])
-    const due = (await kv.get<Issue[]>(K.due)) ?? []
-    writes.push([K.due, issue.dueAt ? [...due.filter((i) => i.id !== issue.id), issue] : due.filter((i) => i.id !== issue.id)])
+    // `due` necache-uit înseamnă „nu știu" (cache.due întoarce null); o listă
+    // parțială l-ar face să pară cunoscut și gol.
+    const due = await kv.get<Issue[]>(K.due)
+    if (due) writes.push([K.due, issue.dueAt ? [...due.filter((i) => i.id !== issue.id), issue] : due.filter((i) => i.id !== issue.id)])
     return writes
   }
 
@@ -212,7 +214,8 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
       if (!key.endsWith(':issues')) continue
       writes.push([key, strip((await kv.get<Issue[]>(key)) ?? [])])
     }
-    writes.push([K.due, strip((await kv.get<Issue[]>(K.due)) ?? [])])
+    const due = await kv.get<Issue[]>(K.due) // ca mai sus: necache-uit rămâne necache-uit
+    if (due) writes.push([K.due, strip(due)])
     return writes
   }
 
@@ -230,15 +233,22 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
     const kv = await kvReady
     if (!kv) return net(direct)
     if ((await kv.ops()).length === 0) {
+      let r: T
       try {
-        const r = await direct()
-        setStatus({ offline: false })
-        await afterDirect(kv, r)
-        return r
+        r = await direct()
       } catch (e) {
         if (!isNetworkError(e)) throw e
         setStatus({ offline: true })
+        r = await enqueue(kv)
+        await refreshPending()
+        return r
       }
+      setStatus({ offline: false })
+      // Serverul a acceptat deja scrierea: o bază locală care pică (cotă plină,
+      // bază închisă) nu o poate face eroare — omul ar reîncerca și ar crea un
+      // duplicat, sau scrierea ar intra și la coadă și ar pleca a doua oară.
+      await afterDirect(kv, r).catch(() => {})
+      return r
     }
     const r = await enqueue(kv)
     await refreshPending()
@@ -309,7 +319,7 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
     createIssue: (input) =>
       write(
         () => remote.createIssue(input),
-        async (kv, created) => { await applyWrites(kv, await baseWritesUpsert(kv, created)); emit({ type: 'issue', issue: created }) },
+        async (kv, created) => { emit({ type: 'issue', issue: created }); await applyWrites(kv, await baseWritesUpsert(kv, created)) },
         async (kv) => {
           const projects = (await kv.get<Project[]>(K.projects)) ?? []
           const project = projects.find((p) => p.id === input.projectId)
@@ -325,7 +335,7 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
     updateIssue: (id, patch) =>
       write(
         () => remote.updateIssue(id, patch),
-        async (kv, saved) => { await applyWrites(kv, await baseWritesUpsert(kv, saved)); emit({ type: 'issue', issue: saved }) },
+        async (kv, saved) => { emit({ type: 'issue', issue: saved }); await applyWrites(kv, await baseWritesUpsert(kv, saved)) },
         async (kv) => {
           const cur = await currentIssue(kv, id)
           if (!cur) throw new OfflineError()
@@ -346,6 +356,9 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
         const { remove, rewrite } = cancelTempIssues(await kv.ops(), temp)
         await kv.replaceOps(rewrite, remove)
         await refreshPending()
+        // Anunțat acum: dacă scrierea ID-urilor reale aruncă, cele provizorii
+        // sunt deja scoase din coadă și interfața trebuie să afle.
+        emit({ type: 'removed', ids: temp })
       }
       if (real.length) {
         await write(
@@ -353,8 +366,8 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
           async (k) => { await applyWrites(k, await baseWritesRemove(k, real)) },
           async (k) => { await k.append({ kind: 'deleteIssues', ids: real }) },
         )
+        emit({ type: 'removed', ids: real })
       }
-      emit({ type: 'removed', ids })
     },
 
     markSeen: (iid) =>
