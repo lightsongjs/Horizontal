@@ -32,6 +32,7 @@ import { shortLabels } from './lib/initials'
 import type { Assignee, InboxRow, Issue, IssueState, Layers, Obstacle, ObstacleLink, Project, ProjectMember, Theme, Wave } from './lib/types'
 import { errorMessage } from './lib/errorMessage'
 import { shouldRefreshOnVisible } from './lib/refreshGate'
+import type { ProjectBundle, SyncEvent, SyncStatus } from './data/offline/types'
 
 interface HorizontalState {
   /**
@@ -45,6 +46,8 @@ interface HorizontalState {
   loading: boolean
   /** O reîmprospătare e în curs, dar datele vechi sunt pe ecran și rămân acolo. */
   refreshing: boolean
+  /** Starea cozii offline, pentru indicatorul din header. Fără strat offline: mereu online, nimic în coadă. */
+  syncStatus: SyncStatus
   error: string | null
   refresh(): Promise<void>
   projects: Project[]
@@ -276,6 +279,45 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
   )
 
   /**
+   * Așază datele unui proiect în store. O singură funcție pentru cele trei
+   * drumuri — cache la pornire, `selectProject`, `refresh` — fiindcă regula
+   * legăturilor de obstacol (scoase pe baza obstacolelor VECHI, citite din
+   * `prev` în actualizatorul funcțional) e ușor de greșit, și ar fi fost
+   * scrisă de trei ori.
+   */
+  const applyProjectBundle = useCallback((id: string, b: ProjectBundle) => {
+    setAllWaves((prev) => [...prev.filter((x) => x.projectId !== id), ...b.waves])
+    setAllThemes((prev) => [...prev.filter((x) => x.projectId !== id), ...b.themes])
+    setAllIssues((prev) => [...prev.filter((i) => i.projectId !== id), ...b.issues])
+    setAllProjectMembers((prev) => [
+      ...prev.filter((x) => x.projectId !== id),
+      ...b.members.map((m) => ({ ...m, projectId: id })),
+    ])
+    // `ObstacleLink` n-are `projectId` direct, deci legăturile stale ale
+    // acestui proiect (inclusiv ale unui obstacol între timp șters) se scot
+    // pe baza obstacolelor lui VECHI, nu doar completate peste — altfel un
+    // refresh repetat ar duplica aceleași legături la infinit.
+    //
+    // Setul de id-uri „vechi” se citește din `prev`, în interiorul
+    // actualizatorului funcțional al lui `setAllObstacles`, NU dintr-un
+    // `allObstacles` închis peste clojura apelantului: acela ar fi o poză
+    // dinaintea acestui load, iar filtrarea pe o poză veche ar lăsa
+    // legătura orfană a unui obstacol șters chiar în timpul lui Promise.all.
+    // Actualizatorul rămâne pur — fără await, fără citiri din alt state —
+    // fiindcă rulează în faza de randare a lui React.
+    setAllObstacles((prev) => {
+      const staleObstacleIds = new Set(prev.filter((x) => x.projectId === id).map((x) => x.id))
+      setAllObstacleLinks((links) => [
+        ...links.filter((l) => !staleObstacleIds.has(l.obstacleId)),
+        ...b.obstacleLinks,
+      ])
+      return [...prev.filter((x) => x.projectId !== id), ...b.obstacles]
+    })
+    setIssuesLoadedFor(id)
+    setLoadedProjects((prev) => new Set(prev).add(id))
+  }, [])
+
+  /**
    * Eticheta scurtă a fiecărui assignee, pentru pastila de pe card: cea mai
    * scurtă care îl distinge de ceilalți (vezi `shortLabels`). Se calculează o
    * dată aici, nu în fiecare card: regula se uită la TOATĂ lista, deci un
@@ -330,6 +372,9 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     void loadDue()
     void loadInbox()
     try {
+      // Întâi coada: datele aduse mai jos trebuie să conțină deja ce s-a
+      // scris offline, altfel refresh-ul ar arăta o clipă starea veche.
+      await repository.sync?.flush()
       const p = await repository.listProjects()
       setRawProjects(p)
       if (projectId) {
@@ -350,37 +395,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
           // gol e o degradare acceptabilă; boardul gol nu e.
           repository.listProjectMembers(projectId).catch(() => []),
         ])
-        setAllWaves((prev) => [...prev.filter((x) => x.projectId !== projectId), ...w])
-        setAllThemes((prev) => [...prev.filter((x) => x.projectId !== projectId), ...t])
-        setAllIssues((prev) => [...prev.filter((i) => i.projectId !== projectId), ...loaded])
-        setAllProjectMembers((prev) => [
-          ...prev.filter((x) => x.projectId !== projectId),
-          ...pm.map((m) => ({ ...m, projectId })),
-        ])
-        // `ObstacleLink` n-are `projectId` direct, deci legăturile stale ale
-        // acestui proiect (inclusiv ale unui obstacol între timp șters) se scot
-        // pe baza obstacolelor lui VECHI, nu doar completate peste — altfel un
-        // refresh repetat ar duplica aceleași legături la infinit.
-        //
-        // Setul de id-uri „vechi” se citește din `prev`, în interiorul
-        // actualizatorului funcțional al lui `setAllObstacles`, NU dintr-un
-        // `allObstacles` închis peste clojura lui `refresh`: acela ar fi o poză
-        // dinaintea acestui load, iar filtrarea pe o poză veche ar lăsa
-        // legătura orfană a unui obstacol șters chiar în timpul lui Promise.all.
-        // Actualizatorul rămâne pur — fără await, fără citiri din alt state —
-        // fiindcă rulează în faza de randare a lui React.
-        setAllObstacles((prev) => {
-          const staleObstacleIds = new Set(
-            prev.filter((x) => x.projectId === projectId).map((x) => x.id),
-          )
-          setAllObstacleLinks((links) => [
-            ...links.filter((l) => !staleObstacleIds.has(l.obstacleId)),
-            ...ol,
-          ])
-          return [...prev.filter((x) => x.projectId !== projectId), ...o]
-        })
-        setIssuesLoadedFor(projectId)
-        setLoadedProjects((prev) => new Set(prev).add(projectId))
+        applyProjectBundle(projectId, { waves: w, themes: t, issues: loaded, obstacles: o, obstacleLinks: ol, members: pm })
       }
     } catch (e) {
       setError(errorMessage(e))
@@ -395,11 +410,29 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
       lastRefreshAt.current = Date.now()
       setRefreshing(false)
     }
-  }, [projectId, loadDue, loadInbox])
+  }, [projectId, loadDue, loadInbox, applyProjectBundle])
 
   useEffect(() => {
     let alive = true
     ;(async () => {
+      // Primul cadru din baza locală, fără să aștepte rețeaua. `loading` cade
+      // aici — e doar al PORNIRII (CLAUDE.md, „Reîmprospătarea datelor"); ce
+      // urmează e o reîmprospătare obișnuită, cu datele vechi pe ecran.
+      const c = repository.cache
+      if (c) {
+        // O bază locală care nu răspunde e „n-am cache", nu un eșec de pornire:
+        // o respingere aici ar fi sărit peste rețea și ar fi lăsat „Se încarcă…"
+        // pe ecran pentru totdeauna.
+        const [cp, ca, cd, ci] = await Promise.all([c.projects(), c.assignees(), c.due(smartListRange(new Date())), c.inbox()])
+          .catch(() => [null, null, null, null] as const)
+        if (alive && cp) {
+          setRawProjects(cp)
+          setAssignees(ca ?? [])
+          if (cd) { setDueRaw(cd); setDueLoaded(true) }
+          if (ci) { setInboxRaw(ci); setInboxLoaded(true) }
+          setLoading(false)
+        }
+      }
       try {
         const [p, a] = await Promise.all([repository.listProjects(), repository.listAssignees()])
         if (alive) { setRawProjects(p); setAssignees(a) }
@@ -408,6 +441,8 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
         // La fel cutia de pase — ecranul „Ale mele" trebuie să aibă badge-ul
         // corect de la primul cadru, fără să aștepte deschiderea unui proiect.
         if (alive) { void loadDue(); void loadInbox() }
+        // Restul proiectelor în fundal, ca offline să existe și ce n-ai deschis azi.
+        void repository.sync?.prefetchAll()
       } catch (e) {
         if (alive) setError(errorMessage(e))
       } finally {
@@ -519,59 +554,39 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
       if (!id) return
       const proj = projects.find((p) => p.id === id)
       setActiveWave(proj?.currentWave ?? 1)
-      // Obstacolele în ACELAȘI Promise.all cu tichetele — vezi motivul din
-      // `refresh`: un `await` separat ar face poarta valului să apară goală și
-      // apoi să sară la patru, cu cardurile clipind din „liber" în „blocat".
-      Promise.all([
-        repository.listWaves(id),
-        repository.listThemes(id),
-        repository.listIssues(id),
-        repository.listObstacles(id),
-        repository.listObstacleLinks(id),
-        // Vezi motivul din `refresh`: izolat cu `.catch`, ca un eșec pe
-        // selector să nu picteze tot proiectul ca „n-a putut fi încărcat".
-        repository.listProjectMembers(id).catch(() => []),
-      ])
-        .then(([w, t, loaded, o, ol, pm]) => {
-          setAllWaves((prev) => [...prev.filter((x) => x.projectId !== id), ...w])
-          setAllThemes((prev) => [...prev.filter((x) => x.projectId !== id), ...t])
-          setAllIssues((prev) => [...prev.filter((i) => i.projectId !== id), ...loaded])
-          setAllProjectMembers((prev) => [
-            ...prev.filter((x) => x.projectId !== id),
-            ...pm.map((m) => ({ ...m, projectId: id })),
+      void (async () => {
+        // Primul cadru din cache — un proiect deschis ieri se vede imediat,
+        // și offline. Rețeaua vine după și îl înlocuiește.
+        // Un cache care nu răspunde nu oprește rețeaua — vezi pornirea.
+        const cached = await repository.cache?.project(id).catch(() => null)
+        if (cached) applyProjectBundle(id, cached)
+        try {
+          // Obstacolele în ACELAȘI Promise.all cu tichetele — vezi motivul din
+          // `refresh`: un `await` separat ar face poarta valului să apară goală și
+          // apoi să sară la patru, cu cardurile clipind din „liber" în „blocat".
+          const [w, t, loaded, o, ol, pm] = await Promise.all([
+            repository.listWaves(id),
+            repository.listThemes(id),
+            repository.listIssues(id),
+            repository.listObstacles(id),
+            repository.listObstacleLinks(id),
+            // Vezi motivul din `refresh`: izolat cu `.catch`, ca un eșec pe
+            // selector să nu picteze tot proiectul ca „n-a putut fi încărcat".
+            repository.listProjectMembers(id).catch(() => []),
           ])
-          // Ca în `refresh`: `ObstacleLink` n-are `projectId`, deci legăturile
-          // stale ale acestui proiect (revizitat după o încărcare anterioară)
-          // se scot pe baza obstacolelor lui VECHI, nu doar completate peste.
-          // Id-urile „vechi” vin din `prev`, în interiorul actualizatorului
-          // funcțional al lui `setAllObstacles`, nu dintr-un `allObstacles`
-          // închis peste clojura lui `selectProject` — acela ar fi o poză
-          // dinaintea acestui load, iar un obstacol șters chiar în timpul lui
-          // `Promise.all` ar rămâne cu legătura orfană. Actualizatorul rămâne
-          // pur — fără await, fără citiri din alt state.
-          setAllObstacles((prev) => {
-            const staleObstacleIds = new Set(prev.filter((x) => x.projectId === id).map((x) => x.id))
-            setAllObstacleLinks((links) => [
-              ...links.filter((l) => !staleObstacleIds.has(l.obstacleId)),
-              ...ol,
-            ])
-            return [...prev.filter((x) => x.projectId !== id), ...o]
-          })
-          setIssuesLoadedFor(id)
-          setLoadedProjects((prev) => new Set(prev).add(id))
-          if (w.length && !w.some((x) => x.number === (proj?.currentWave ?? 1))) {
-            setActiveWave(w[0].number)
-          }
-        })
-        .catch((e) => {
+          applyProjectBundle(id, { waves: w, themes: t, issues: loaded, obstacles: o, obstacleLinks: ol, members: pm })
+          if (w.length && !w.some((x) => x.number === (proj?.currentWave ?? 1))) setActiveWave(w[0].number)
+        } catch (e) {
           setError(errorMessage(e))
           // `issuesLoadedFor` rămâne null (n-avem date), dar semnalăm explicit
           // eșecul: altfel cine așteaptă încărcarea (deep link în curs de
-          // rezolvare) rămâne blocat pe vecie.
-          setIssuesLoadFailedFor(id)
-        })
+          // rezolvare) rămâne blocat pe vecie. Cu date din cache pe ecran,
+          // „n-a putut fi încărcat" ar minți.
+          if (!cached) setIssuesLoadFailedFor(id)
+        }
+      })()
     },
-    [projects, projectId],
+    [projects, projectId, applyProjectBundle],
   )
 
   const upsertIssue = useCallback((issue: Issue) => {
@@ -583,6 +598,39 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
       return next
     })
   }, [])
+
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>(() => repository.sync?.status() ?? { offline: false, pending: 0 })
+
+  // Ce scrie coada, ce refuză serverul, ce scrie altă filă. Store-ul nu
+  // inițiază nimic aici — doar își aliniază memoria cu ce s-a întâmplat.
+  useEffect(() => {
+    const s = repository.sync
+    if (!s) return
+    const forget = (ids: string[]) => {
+      const gone = new Set(ids)
+      const strip = (i: Issue) => (i.deps?.some((d) => gone.has(d)) ? { ...i, deps: i.deps.filter((d) => !gone.has(d)) } : i)
+      setAllIssues((prev) => prev.filter((i) => !gone.has(i.id)).map(strip))
+      setDueRaw((prev) => prev.filter((i) => !gone.has(i.id)))
+      setInboxRaw((prev) => prev.filter((r) => !gone.has(r.issueId)))
+    }
+    return s.subscribe((e: SyncEvent) => {
+      if (e.type === 'status') setSyncStatus(e.status)
+      else if (e.type === 'issue') {
+        upsertIssue(e.issue)
+        setDueRaw((prev) => prev.map((i) => (i.id === e.issue.id ? e.issue : i)))
+      } else if (e.type === 'removed') forget(e.ids)
+      else if (e.type === 'remap') {
+        const r = (id: string) => (id === e.from ? e.to : id)
+        const ren = (i: Issue) => (i.id === e.from || i.deps?.includes(e.from) ? { ...i, id: r(i.id), deps: i.deps.map(r) } : i)
+        setAllIssues((prev) => prev.map(ren))
+        setDueRaw((prev) => prev.map(ren))
+      } else if (e.type === 'failed') {
+        setError(e.message)
+        if (e.revert) upsertIssue(e.revert)
+        else if (e.issueId) forget([e.issueId])
+      }
+    })
+  }, [upsertIssue])
 
   const reorderProjects = useCallback((ids: string[]) => {
     setProjectOrder(ids)
@@ -933,6 +981,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
   const value: HorizontalState = {
     loading,
     refreshing,
+    syncStatus,
     error,
     refresh,
     projects,

@@ -56,6 +56,8 @@ interface UI {
   closeSheet(): boolean
   goBack(): void
   pushSheet(state: SheetState): void
+  /** Un tichet creat offline a primit numărul real: foile care-l țin trec pe ID-ul nou. */
+  renameIssueId(from: string, to: string): void
   /** Register a guard called before closing all sheets. Return false to block close. */
   setCloseGuard(fn: (() => boolean) | null): void
 }
@@ -156,6 +158,11 @@ export function UIProvider({ children }: { children: ReactNode }) {
       },
       goBack: () => setSheets((prev) => prev.slice(0, -1)),
       pushSheet: (state) => setSheets((prev) => [...prev, state]),
+      // Un tichet creat offline și deschis în foaie primește numărul real la
+      // sincronizare; foaia trebuie să-l urmeze, altfel ar căuta un ID care
+      // nu mai există și s-ar închide sub degetele omului.
+      renameIssueId: (from, to) =>
+        setSheets((prev) => prev.map((s) => ('issueId' in s && s.issueId === from ? { ...s, issueId: to } : s))),
       setCloseGuard: (fn) => { closeGuard.current = fn },
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps

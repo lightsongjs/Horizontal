@@ -20,6 +20,27 @@ import { isReminderAction, isReminderArrived, SNOOZE_MINUTES } from './lib/pushP
 import { announceChime, playChime, unlockChime } from './lib/chime'
 import type { Project } from './lib/types'
 import { Icon } from './components/Icon'
+import { repository } from './data'
+
+/**
+ * Puntea dintre coada offline și ce nu ține de store: foaia deschisă și URL-ul.
+ * Un tichet creat offline, deschis, are în bară `/HZ-~…`; la sincronizare
+ * primește `/HZ-13`, fără navigare (replaceState, nu push — nu e un pas nou în
+ * istoric, e același tichet).
+ */
+function SyncBridge() {
+  const { renameIssueId } = useUI()
+  useEffect(() => {
+    return repository.sync?.subscribe((e) => {
+      if (e.type !== 'remap') return
+      renameIssueId(e.from, e.to)
+      if (window.location.pathname === ticketPath(e.from)) {
+        window.history.replaceState(window.history.state, '', ticketPath(e.to))
+      }
+    })
+  }, [renameIssueId])
+  return null
+}
 
 function ThemeToggle({ className }: { className?: string }) {
   const { theme, toggle } = useTheme()
@@ -955,6 +976,7 @@ export function App() {
     <ThemeProvider>
       <HorizontalProvider>
         <UIProvider>
+          <SyncBridge />
           <Shell />
         </UIProvider>
       </HorizontalProvider>
