@@ -47,7 +47,18 @@ function QuickAddBar() {
   useEffect(() => {
     const onVisible = () => { if (document.visibilityState === 'visible') setRound((r) => r + 1) }
     document.addEventListener('visibilitychange', onVisible)
-    return () => document.removeEventListener('visibilitychange', onVisible)
+    // Prima arătare: o fereastră care n-a fost niciodată afișată raportează deja
+    // `visible`, deci `visibilitychange` nu vine și `round` ar rămâne 0 — bara
+    // s-ar deschide fără cursor. Primul `focus` (sau focusul deja existent la
+    // montare, în calea la rece) deschide runda 1, o singură dată; următoarele
+    // `focus`-uri NU, din motivul de mai sus (popup-urile native).
+    const onFirstFocus = () => setRound((r) => (r === 0 ? 1 : r))
+    if (document.hasFocus()) onFirstFocus()
+    else window.addEventListener('focus', onFirstFocus, { once: true })
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onFirstFocus)
+    }
   }, [])
   // `QuickAdd` focusează doar la o SCHIMBARE a semnalului, nu la montare —
   // iar remontarea (cheia) e cea care golește câmpul. Deci focusul îl cerem noi,

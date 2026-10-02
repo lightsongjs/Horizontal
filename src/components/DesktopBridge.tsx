@@ -13,7 +13,7 @@ const RESEND_MS = 15 * 60_000
  * Chromium cât fereastra stă ascunsă, de-aia stau în procesul principal.
  */
 export function DesktopBridge() {
-  const { dueIssues, issues, projects, byId, toggleDone, updateIssue } = useHorizontal()
+  const { dueLoaded, dueIssues, issues, projects, byId, toggleDone, updateIssue } = useHorizontal()
   const bridge = getDesktopBridge()
   const lastSent = useRef('')
   const byIdRef = useRef(byId)
@@ -22,7 +22,11 @@ export function DesktopBridge() {
   dueRef.current = dueIssues
 
   useEffect(() => {
-    if (!bridge) return
+    // Până nu s-au încărcat scadențele, lista ar fi goală — iar cutia retrage
+    // orice notificare a cărei cheie lipsește din listă. După o reîncărcare a
+    // ferestrei, un `[]` trimis prea devreme ar închide notificările de pe
+    // ecran, iar ele ar rămâne în `fired` și n-ar mai reveni.
+    if (!bridge || !dueLoaded) return
     const send = () => {
       const list = upcomingReminders([...dueIssues, ...issues], projects, new Date())
       const json = JSON.stringify(list)
@@ -33,7 +37,7 @@ export function DesktopBridge() {
     send()
     const t = setInterval(send, RESEND_MS)
     return () => clearInterval(t)
-  }, [bridge, dueIssues, issues, projects])
+  }, [bridge, dueLoaded, dueIssues, issues, projects])
 
   useEffect(() => {
     if (!bridge) return

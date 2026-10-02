@@ -28,12 +28,22 @@ const webPreferences = () => ({
   additionalArguments: [`--hz-origin=${ORIGIN}`, `--hz-version=${app.getVersion()}`],
 })
 
+/**
+ * Doar scheme inofensive: pagina arată linkuri din comentarii scrise de oameni,
+ * iar `openExternal` pe `file:`, `smb:` sau un handler înregistrat ar rula altceva.
+ */
+function openSafely(url: string) {
+  try {
+    if (['http:', 'https:', 'mailto:'].includes(new URL(url).protocol)) void shell.openExternal(url)
+  } catch { /* URL invalid: ignorat */ }
+}
+
 /** Orice altă origine pleacă în browserul sistemului; fereastra rămâne Horizontal. */
 function guard(wc: WebContents) {
   wc.on('will-navigate', (e, url) => {
-    if (new URL(url).origin !== ORIGIN) { e.preventDefault(); void shell.openExternal(url) }
+    if (new URL(url).origin !== ORIGIN) { e.preventDefault(); openSafely(url) }
   })
-  wc.setWindowOpenHandler(({ url }) => { void shell.openExternal(url); return { action: 'deny' } })
+  wc.setWindowOpenHandler(({ url }) => { openSafely(url); return { action: 'deny' } })
 }
 
 function createMain() {
