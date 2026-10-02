@@ -406,6 +406,35 @@ describe('golire', () => {
     expect(repo.sync!.status().pending).toBe(0)
   })
 
+  it('o salvare cerută cât `settle` încă scrie baza pleacă pe ID-ul real (remaparea e sub lacăt)', async () => {
+    const { repo, net, remote, events } = await queued()
+    const c = await repo.createIssue({ projectId: 'p', title: 'nou' })
+    net.down = false
+    // `completeOp` ținut în aer: crearea s-a făcut pe server, coada e încă
+    // sub `queueLock`. O salvare cerută acum trebuie să aștepte lacătul și să
+    // iasă cu ID-ul real, nu cu cel provizoriu.
+    let release!: () => void
+    const gate = new Promise<void>((r) => { release = r })
+    let entered!: () => void
+    const inSettle = new Promise<void>((r) => { entered = r })
+    const slow = { ...kv, completeOp: async (seq: number, w: [string, unknown][]) => { entered(); await gate; return kv.completeOp(seq, w) } } as Kv
+    const again = createOfflineRepository(remote, Promise.resolve(slow), { now: () => new Date('2026-10-02T09:00:00Z'), channel: null })
+    again.sync!.subscribe((e) => events.push(e))
+    vi.mocked(remote.updateIssue).mockClear()
+    const flushing = again.sync!.flush()
+    await inSettle
+    const saving = again.updateIssue(c.id, { title: 'x' })
+    await new Promise((r) => setTimeout(r, 10))
+    release()
+    await flushing
+    await saving
+    await again.sync!.flush()
+    expect(remote.updateIssue).toHaveBeenCalledWith('HZ-13', { title: 'x' })
+    expect(remote.updateIssue).not.toHaveBeenCalledWith(c.id, expect.anything())
+    expect(events.some((e) => (e as { type: string }).type === 'failed')).toBe(false)
+    void repo
+  })
+
   it('o creare refuzată scoate și scrierile care o urmau: un singur `failed`', async () => {
     const { repo, net, remote, events } = await queued()
     const c = await repo.createIssue({ projectId: 'p', title: 'nou' })

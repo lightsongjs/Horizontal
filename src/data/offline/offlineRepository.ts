@@ -108,10 +108,13 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
     return remapsLoaded
   }
   async function recordRemap(from: string, to: string) {
-    // În memorie ÎNTÂI, sincron: `resolveId` trebuie să știe imediat. Încărcarea
-    // nu suprascrie chei existente; o așteptăm doar ca scrierea de mai jos să
-    // nu calce peste ce era salvat.
+    // În memorie ÎNTÂI, sincron: `resolveId` trebuie să știe imediat.
     remaps.set(from, to)
+    await persistRemaps()
+  }
+  async function persistRemaps() {
+    // Încărcarea nu suprascrie chei existente; o așteptăm doar ca scrierea de
+    // mai jos să nu calce peste ce era salvat.
     await loadRemaps()
     const kv = await kvReady
     await kv?.set(K.remaps, Object.fromEntries(remaps)).catch(() => {})
@@ -325,22 +328,37 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
    */
   async function settle(kv: Kv, q: QueuedOp, rest: QueuedOp[], writes: () => Promise<[string, unknown][]>, remap?: { from: string; to: string }): Promise<Settled> {
     return queueLock(async () => {
-      try {
-        const all = await kv.ops()
-        const cancelled = !!remap && !all.some((o) => o.seq === q.seq)
-        let others = all.filter((o) => o.seq !== q.seq)
-        if (remap) {
-          others = others.map((o) => ({ ...o, op: remapOp(o.op, remap.from, remap.to) }))
-          if (others.length) await kv.replaceOps(others, [])
-        }
-        await kv.completeOp(q.seq, cancelled ? [] : await writes())
-        if (cancelled && remap) await kv.append({ kind: 'deleteIssues', ids: [remap.to] })
-        return { ok: true, cancelled, rest: others }
-      } catch {
-        const ok = await kv.replaceOps([], [q.seq]).then(() => true, () => false)
-        return { ok, cancelled: false, rest }
-      }
+      const done = await settleLocked(kv, q, rest, writes, remap)
+      // Remaparea se ține minte ÎNAINTE ca lacătul să se elibereze: o salvare
+      // care aștepta lacătul (formular deschis pe `HZ-~…`) trebuie să găsească
+      // traducerea gata. Ținută după eliberare, salvarea vedea coada goală și
+      // ID-ul încă netradus — pleca direct cu cel provizoriu și se pierdea.
+      if (remap && !done.cancelled) await persistRemaps()
+      return done
     })
+  }
+
+  async function settleLocked(kv: Kv, q: QueuedOp, rest: QueuedOp[], writes: () => Promise<[string, unknown][]>, remap?: { from: string; to: string }): Promise<Settled> {
+    try {
+      const all = await kv.ops()
+      const cancelled = !!remap && !all.some((o) => o.seq === q.seq)
+      // Sincron, înainte de orice scriere: din clipa în care elementul iese
+      // din coadă, cine o vede goală trebuie să știe deja ID-ul real.
+      if (remap && !cancelled) remaps.set(remap.from, remap.to)
+      let others = all.filter((o) => o.seq !== q.seq)
+      if (remap) {
+        others = others.map((o) => ({ ...o, op: remapOp(o.op, remap.from, remap.to) }))
+        if (others.length) await kv.replaceOps(others, [])
+      }
+      await kv.completeOp(q.seq, cancelled ? [] : await writes())
+      if (cancelled && remap) await kv.append({ kind: 'deleteIssues', ids: [remap.to] })
+      return { ok: true, cancelled, rest: others }
+    } catch {
+      // Serverul a creat tichetul oricum: traducerea e adevărată și aici.
+      if (remap) remaps.set(remap.from, remap.to)
+      const ok = await kv.replaceOps([], [q.seq]).then(() => true, () => false)
+      return { ok, cancelled: false, rest }
+    }
   }
 
   /**
@@ -355,7 +373,6 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
       const created = await remote.createIssue(op.input)
       const done = await settle(kv, q, rest, () => baseWritesUpsert(kv, created), { from: op.tempId, to: created.id })
       if (!done.cancelled) {
-        await recordRemap(op.tempId, created.id)
         emit({ type: 'remap', from: op.tempId, to: created.id })
         emit({ type: 'issue', issue: overlay([created], done.rest.map((r) => r.op), now())[0] ?? created })
       }
@@ -502,12 +519,15 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
 
     async updateIssue(rawId, rawPatch) {
       await loadRemaps()
-      const id = resolveId(rawId)
-      const patch = resolveDeps(rawPatch)
+      // Traducerea se face în ultima clipă, în fiecare ramură, nu o dată la
+      // intrare: o creare în zbor își poate înregistra remaparea între intrare
+      // și lacătul cozii, iar o traducere veche ar pune la coadă ID-ul provizoriu.
+      const tr = () => ({ id: resolveId(rawId), patch: resolveDeps(rawPatch) })
       return write(
-        () => remote.updateIssue(id, patch),
+        () => { const { id, patch } = tr(); return remote.updateIssue(id, patch) },
         async (kv, saved) => { emit({ type: 'issue', issue: saved }); await applyWrites(kv, await baseWritesUpsert(kv, saved)) },
         async (kv) => {
+          const { id, patch } = tr()
           const cur = await currentIssue(kv, id)
           if (!cur) throw new OfflineError()
           await kv.append({ kind: 'updateIssue', id, patch })
@@ -527,12 +547,18 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
       const ids = rawIds.map(resolveId)
       const kv = await kvReady
       const temp = ids.filter(isTempIssueId)
-      const real = ids.filter((id) => !isTempIssueId(id))
+      let real = ids.filter((id) => !isTempIssueId(id))
       if (kv && temp.length) {
-        await queueLock(async () => {
-          const { remove, rewrite } = cancelTempIssues(await kv.ops(), temp)
+        // Sub lacăt se traduce încă o dată: o creare în zbor poate să se fi
+        // încheiat cât am așteptat lacătul. Aceea e acum un tichet real pe
+        // server — anularea n-ar găsi nimic de scos, și tichetul ar rămâne.
+        const stillTemp = await queueLock(async () => {
+          const t = temp.filter((id) => isTempIssueId(resolveId(id)))
+          const { remove, rewrite } = cancelTempIssues(await kv.ops(), t)
           await kv.replaceOps(rewrite, remove)
+          return t
         })
+        real = [...real, ...temp.filter((id) => !stillTemp.includes(id)).map(resolveId)]
         await refreshPending()
         // Anunțat acum: dacă scrierea ID-urilor reale aruncă, cele provizorii
         // sunt deja scoase din coadă și interfața trebuie să afle.
@@ -550,9 +576,12 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
 
     async markSeen(rawId) {
       await loadRemaps()
-      const iid = resolveId(rawId)
-      if (isTempIssueId(iid)) return
-      await write(() => remote.markSeen(iid), async () => {}, async (kv) => { await kv.append({ kind: 'markSeen', issueId: iid }) })
+      if (isTempIssueId(resolveId(rawId))) return
+      // Ca la `updateIssue`: tradus în fiecare ramură, sub lacăt la coadă.
+      await write(() => remote.markSeen(resolveId(rawId)), async () => {}, async (kv) => {
+        const iid = resolveId(rawId)
+        if (!isTempIssueId(iid)) await kv.append({ kind: 'markSeen', issueId: iid })
+      })
     },
   }
 
