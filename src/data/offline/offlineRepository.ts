@@ -34,7 +34,11 @@ export interface OfflineOptions {
    * fiecare respingere drept refuz și ar fi aruncat coada întreagă.
    */
   canFlush?: () => boolean
+  /** Cât așteaptă o captură răspunsul serverului înainte să întoarcă ecoul provizoriu. */
+  createWaitMs?: number
 }
+
+type CreateOutcome = { issue: Issue } | { error: unknown }
 
 const K = {
   projects: 'projects',
@@ -68,6 +72,7 @@ function mutex() {
 export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv | null>, opts: OfflineOptions = {}): Repository {
   const now = opts.now ?? (() => new Date())
   const readTimeoutMs = opts.readTimeoutMs ?? 10_000
+  const createWaitMs = opts.createWaitMs ?? 3000
   const lock = opts.lock ?? localLock()
   // Lacăt scurt pentru MODIFICAREA cozii (adăugare, anulare, remapare), separat
   // de `lock`-ul golirii: acela se ține cât durează o rundă către server, iar
@@ -78,6 +83,8 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
   // vedea readuse de poza veche.
   const queueLock = mutex()
   const listeners = new Set<(e: SyncEvent) => void>()
+  /** Capturile care încă își așteaptă răspunsul (după ID-ul provizoriu) — vezi `createIssue`. */
+  const createWaiters = new Map<string, (r: CreateOutcome) => void>()
   let status: SyncStatus = { offline: false, pending: 0 }
 
   const emitLocal = (e: SyncEvent) => { for (const fn of listeners) fn(e) }
@@ -380,7 +387,9 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
       const done = await settle(kv, q, rest, () => baseWritesUpsert(kv, created), { from: op.tempId, to: created.id })
       if (!done.cancelled) {
         emit({ type: 'remap', from: op.tempId, to: created.id })
-        emit({ type: 'issue', issue: overlay([created], done.rest.map((r) => r.op), now())[0] ?? created })
+        const shown = overlay([created], done.rest.map((r) => r.op), now())[0] ?? created
+        emit({ type: 'issue', issue: shown })
+        createWaiters.get(op.tempId)?.({ issue: shown })
       }
       return done.ok
     }
@@ -446,13 +455,41 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
           const [issueId] = opIssueIds(q.op)
           let revert: Issue | null = null
           if (q.op.kind === 'updateIssue') revert = await currentIssue(kv, q.op.id).catch(() => null)
+          // O captură care încă își așteaptă răspunsul primește refuzul direct,
+          // ca o scriere directă de altădată: omul vede eroarea unde a scris,
+          // iar un `failed` în plus ar dubla mesajul.
+          const waiter = q.op.kind === 'createIssue' ? createWaiters.get(q.op.tempId) : undefined
           const message = title === null ? errorMessage(e) : `Sarcina „${title}” n-a putut fi salvată: ${errorMessage(e)}`
-          emit({ type: 'failed', message, issueId: issueId ?? null, revert })
+          if (waiter) waiter({ error: e })
+          else emit({ type: 'failed', message, issueId: issueId ?? null, revert })
           if (q.op.kind === 'createIssue') emit({ type: 'removed', ids: [q.op.tempId] })
         }
       }
       await refreshPending()
     }).catch(() => {})
+  }
+
+  /**
+   * Drumul de dinainte de captura-în-coadă: direct la server cu coada goală,
+   * la coadă altfel. Rămâne pentru când captura nu se poate pune întâi pe disc
+   * — proiect necache-uit încă (prima pornire), sau o bază care refuză scrierea.
+   */
+  function createDirect(raw: Parameters<Repository['createIssue']>[0]): Promise<Issue> {
+    return write(
+      () => remote.createIssue(resolveDeps(raw)),
+      async (kv, created) => { emit({ type: 'issue', issue: created }); await applyWrites(kv, await baseWritesUpsert(kv, created)) },
+      async (kv) => {
+        const input = resolveDeps(raw)
+        const projects = (await kv.get<Project[]>(K.projects)) ?? []
+        const project = projects.find((p) => p.id === input.projectId)
+        if (!project) throw new OfflineError()
+        const tempId = makeTempIssueId(project.prefix)
+        const echo = echoIssue(input, tempId, project, opts.userId?.() ?? null, now())
+        await kv.append({ kind: 'createIssue', tempId, input, echo })
+        emit({ type: 'issue', issue: echo })
+        return echo
+      },
+    )
   }
 
   const sync: SyncControl = {
@@ -517,23 +554,57 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
     postToThread: (input) => net(() => remote.postToThread(input)),
 
     // ── Merg offline ─────────────────────────────────────────────────────────
+    /**
+     * Captura intră ÎNTÂI în coadă, apoi pornește golirea și așteaptă puțin
+     * (`createWaitMs`) numărul real. Pe semnal slab `navigator.onLine` rămâne
+     * true, iar un fetch direct putea atârna minute întregi: adăugarea rapidă
+     * stătea în „se salvează…", iar o aplicație închisă între timp pierdea
+     * sarcina. Așa sarcina e pe disc înainte de orice rundă către server; după
+     * prag primești ecoul provizoriu, iar golirea continuă în fundal și
+     * remaparea îl redenumește când sosește.
+     *
+     * Pragul NU taie cererea: ea poate încă ajunge la server, iar o a doua
+     * trimitere ar dubla tichetul. Doar încetăm s-o așteptăm.
+     */
     async createIssue(raw) {
       await loadRemaps()
-      const input = resolveDeps(raw)
-      return write(
-        () => remote.createIssue(input),
-        async (kv, created) => { emit({ type: 'issue', issue: created }); await applyWrites(kv, await baseWritesUpsert(kv, created)) },
-        async (kv) => {
-          const projects = (await kv.get<Project[]>(K.projects)) ?? []
-          const project = projects.find((p) => p.id === input.projectId)
-          if (!project) throw new OfflineError()
+      const kv = await kvReady
+      const projects = kv ? ((await kv.get<Project[]>(K.projects).catch(() => undefined)) ?? []) : []
+      const project = projects.find((p) => p.id === raw.projectId)
+      if (!kv || !project) return createDirect(raw)
+      let queued: { tempId: string; echo: Issue }
+      try {
+        queued = await queueLock(async () => {
+          const input = resolveDeps(raw) // sub lacăt, ca la `updateIssue`
           const tempId = makeTempIssueId(project.prefix)
           const echo = echoIssue(input, tempId, project, opts.userId?.() ?? null, now())
           await kv.append({ kind: 'createIssue', tempId, input, echo })
-          emit({ type: 'issue', issue: echo })
-          return echo
-        },
-      )
+          return { tempId, echo }
+        })
+      } catch {
+        // Baza locală nu primește scrierea: rămâne drumul de dinainte, direct.
+        return createDirect(raw)
+      }
+      const { tempId, echo } = queued
+      let answer!: (r: CreateOutcome) => void
+      const outcome = new Promise<CreateOutcome>((res) => { answer = res })
+      createWaiters.set(tempId, answer)
+      let timer: ReturnType<typeof setTimeout> | undefined
+      const bound = new Promise<null>((res) => { timer = setTimeout(() => res(null), createWaitMs) })
+      // Golirea se poate încheia fără răspuns pentru noi (rețea căzută, fără
+      // sesiune): atunci n-are rost să așteptăm până la prag.
+      const r = await Promise.race([outcome, flush().then(() => null), bound])
+      clearTimeout(timer)
+      createWaiters.delete(tempId)
+      if (r && 'error' in r) throw r.error
+      if (r) return r.issue
+      // Altă filă poate să fi golit coada pentru noi (Web Locks): remaparea a
+      // venit pe canal, iar ecoul provizoriu ar fi deja un nume vechi.
+      const real = remaps.get(tempId)
+      if (real) return (await currentIssue(kv, real).catch(() => null)) ?? { ...echo, id: real }
+      await refreshPending()
+      emit({ type: 'issue', issue: echo })
+      return echo
     },
 
     async updateIssue(rawId, rawPatch) {

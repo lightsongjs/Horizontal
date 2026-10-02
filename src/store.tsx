@@ -841,6 +841,12 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
   const createIssue = useCallback(
     async (input: NewIssue) => {
       const created = await repository.createIssue(input)
+      // Ecoul provizoriu poate fi deja depășit: golirea a primit numărul real
+      // între răspunsul repository-ului și rândul ăsta, iar evenimentul de
+      // remapare a găsit lista fără tichet. Pus acum, `HZ-~…` ar rămâne lângă
+      // `HZ-13` până la refresh — evenimentul `issue` l-a adus deja pe cel real.
+      const real = repository.sync?.resolveId(created.id) ?? created.id
+      if (real !== created.id) return { ...created, id: real }
       upsertIssue(created)
       return created
     },

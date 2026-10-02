@@ -142,7 +142,7 @@ describe('scrieri', () => {
     return { ...f, repo }
   }
 
-  it('cu rețea: createIssue primește ID-ul real direct, fără coadă', async () => {
+  it('cu rețea: createIssue primește ID-ul real, iar coada rămâne goală', async () => {
     const { remote } = fakeRemote()
     const repo = make(remote)
     await repo.sync!.prefetchAll()
@@ -460,6 +460,56 @@ describe('golire', () => {
     const again = createOfflineRepository(remote, Promise.resolve(broken), { now: () => new Date('2026-10-02T09:00:00Z'), channel: null })
     await expect(again.sync!.flush()).resolves.toBeUndefined()
     await expect(again.sync!.flush()).resolves.toBeUndefined()
+  })
+})
+
+describe('captura pleacă întâi în coadă', () => {
+  async function online(waitMs = 3000) {
+    const f = fakeRemote()
+    const repo = createOfflineRepository(f.remote, Promise.resolve(kv), {
+      now: () => new Date('2026-10-02T09:00:00Z'), userId: () => 'u1', readTimeoutMs: 1000, channel: null, createWaitMs: waitMs,
+    })
+    await repo.sync!.prefetchAll()
+    return { ...f, repo }
+  }
+
+  it('rețea rapidă: întoarce tichetul real, coada rămâne goală', async () => {
+    const { repo } = await online()
+    const c = await repo.createIssue({ projectId: 'p', title: 'sună la bancă' })
+    expect(c.id).toBe('HZ-13')
+    expect(await kv.ops()).toEqual([])
+    expect(repo.sync!.status().pending).toBe(0)
+  })
+
+  it('serverul atârnă: după prag întoarce ecoul provizoriu, iar sarcina rămâne în coadă', async () => {
+    const { repo, remote } = await online(50)
+    vi.mocked(remote.createIssue).mockImplementationOnce(() => new Promise(() => {}))
+    const t0 = Date.now()
+    const c = await repo.createIssue({ projectId: 'p', title: 'pe semnal slab' })
+    expect(Date.now() - t0).toBeLessThan(1000)
+    expect(c.id).toMatch(/^HZ-~/)
+    const ops = await kv.ops()
+    expect(ops).toHaveLength(1)
+    expect(ops[0].op).toMatchObject({ kind: 'createIssue', tempId: c.id })
+    expect(repo.sync!.status().pending).toBe(1)
+  })
+
+  it('refuzul serverului în prag ajunge la cel care a cerut, fără un `failed` în plus', async () => {
+    const { repo, remote } = await online()
+    const events: SyncEvent[] = []
+    repo.sync!.subscribe((e) => events.push(e))
+    vi.mocked(remote.createIssue).mockRejectedValueOnce({ message: 'violates check constraint', code: '23514' })
+    await expect(repo.createIssue({ projectId: 'p', title: 'x' })).rejects.toMatchObject({ code: '23514' })
+    expect(events.some((e) => e.type === 'failed')).toBe(false)
+    expect(await kv.ops()).toEqual([])
+  })
+
+  it('fără proiect în cache: trece direct la server, ca înainte', async () => {
+    const f = fakeRemote()
+    const repo = make(f.remote)
+    const c = await repo.createIssue({ projectId: 'p', title: 'prima' })
+    expect(c.id).toBe('HZ-13')
+    expect(await kv.ops()).toEqual([])
   })
 })
 
