@@ -16,7 +16,8 @@ import { InboxView } from './components/InboxView'
 import { InfoPanel } from './components/InfoPanel'
 import { Toast } from './components/Toast'
 import { deepLinkNotice, parseTicketPath, resolveTicketProject, ticketPath } from './lib/deepLink'
-import { isReminderAction, isReminderArrived, SNOOZE_MINUTES } from './lib/pushPayload'
+import { isReminderAction, isReminderArrived } from './lib/pushPayload'
+import { reminderMutation } from './lib/reminderAction'
 import { announceChime, playChime, unlockChime } from './lib/chime'
 import type { Project } from './lib/types'
 import { Icon } from './components/Icon'
@@ -248,7 +249,7 @@ const slugify = (name: string) =>
   name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '')
 
 function Shell() {
-  const { loading, error, project, projects, issuesLoadedFor, issuesLoadFailedFor, byId, selectProject, refresh, toggleDone, updateIssue, inbox, recurrenceUndo, undoRecurrence, clearRecurrenceUndo } = useHorizontal()
+  const { loading, error, project, projects, issuesLoadedFor, issuesLoadFailedFor, byId, dueIssues, selectProject, refresh, toggleDone, updateIssue, inbox, recurrenceUndo, undoRecurrence, clearRecurrenceUndo } = useHorizontal()
   const { openNewIssue, openNewProject, openProjectSettings, openIssue, closeSheet, sheet, ticketId, dockedIssueId } = useUI()
   // Stabil peste randări nelegate de toast: `recurrenceUndo` (din store, un
   // `useState`) nu-și schimbă identitatea decât când SE SCHIMBĂ toast-ul, deci
@@ -396,6 +397,8 @@ function Shell() {
   projectsRef.current = projects
   const byIdRef = useRef(byId)
   byIdRef.current = byId
+  const dueRef = useRef(dueIssues)
+  dueRef.current = dueIssues
 
   // Adâncimea intrării curente în istoric, memorată în history.state. Intrarea
   // cu care s-a încărcat pagina nu are state → 0 → nu avem nimic al nostru în
@@ -843,11 +846,9 @@ function Shell() {
       if (isReminderArrived(e.data)) { playChime(); return }
       if (!isReminderAction(e.data)) return
       const { action, id } = e.data
-      if (action === 'done') void toggleDone(id)
-      // Amânarea mută mementoul, nu scadența: sarcina rămâne când era, doar
-      // sună din nou peste `SNOOZE_MINUTES` minute. Aceeași constantă o folosesc
-      // eticheta butonului și `supabase/functions/reminder-action`.
-      else void updateIssue(id, { remindAt: new Date(Date.now() + SNOOZE_MINUTES * 60_000).toISOString() })
+      const m = reminderMutation(action, byIdRef.current[id] ?? dueRef.current.find((i) => i.id === id), new Date())
+      if (m.kind === 'toggle') void toggleDone(id)
+      else if (m.kind === 'patch') void updateIssue(id, m.patch)
     }
     navigator.serviceWorker.addEventListener('message', onMessage)
     return () => navigator.serviceWorker.removeEventListener('message', onMessage)

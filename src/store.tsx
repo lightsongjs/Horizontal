@@ -76,6 +76,8 @@ interface HorizontalState {
    * Derivat, nu stocat separat — vezi `dueIssues` în implementare.
    */
   smartLists: SmartLists
+  /** Sarcinile cu scadență din fereastra listelor inteligente (cache inclus) — „Gata" din notificare și mementourile de pe desktop le caută aici. */
+  dueIssues: Issue[]
   /** Fereastra de scadențe a fost adusă cel puțin o dată. */
   dueLoaded: boolean
   assignees: Assignee[]
@@ -1037,6 +1039,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     issuesLoadFailedFor,
     activeWave,
     smartLists,
+    dueIssues,
     dueLoaded,
     assignees,
     projectMembers,
