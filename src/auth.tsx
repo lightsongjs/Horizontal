@@ -34,7 +34,8 @@ interface AuthState {
   /** projectId -> role for the signed-in user (empty for admin). */
   access: import('./lib/access').AccessMap
   signIn(email: string, password: string): Promise<string | null>
-  signOut(): Promise<void>
+  /** Mesajul erorii, sau null dacă sesiunea chiar s-a încheiat. */
+  signOut(): Promise<string | null>
 }
 
 const Ctx = createContext<AuthState | null>(null)
@@ -108,7 +109,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return error ? error.message : null
       },
       async signOut() {
-        await supabase?.auth.signOut()
+        const { error } = (await supabase?.auth.signOut()) ?? { error: null }
+        return error ? error.message : null
       },
     }),
     [enabled, session, loading, isAdmin, access],

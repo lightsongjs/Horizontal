@@ -7,6 +7,7 @@ import { useCanWrite } from '../hooks'
 import { SMART_LISTS, type SmartListKind } from './SmartListView'
 import { Icon } from './Icon'
 import { repository } from '../data'
+import { logoutPlan } from '../lib/logoutPlan'
 
 function getBuildAgo(): string {
   const diff = Math.floor((Date.now() - new Date(__BUILD_TIME__).getTime()) / 1000)
@@ -33,7 +34,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNavigate, smartList = null, onSmartList, inboxActive = false, inboxUnread = 0, inboxTotal = 0, onInbox }: SidebarProps = {}) {
-  const { projects, project, completion, selectProject, reorderProjects, smartLists } = useHorizontal()
+  const { projects, project, completion, selectProject, reorderProjects, smartLists, reportError } = useHorizontal()
 
   // Navigate away from any overlay (e.g. Users) then select a project.
   const goToProject = (id: string | null) => { onNavigate?.(); selectProject(id) }
@@ -41,11 +42,17 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
   const { theme, toggle } = useTheme()
   const { enabled, signOut } = useAuth()
   const onSignOut = async () => {
-    const pending = repository.sync?.status().pending ?? 0
+    const st = repository.sync?.status() ?? { offline: false, pending: 0 }
+    const plan = logoutPlan({ offline: st.offline || navigator.onLine === false, pending: st.pending })
+    // Fără rețea, signOut-ul pică și sesiunea rămâne — dar coada ar fi fost deja
+    // ștearsă: omul ar fi rămas logat, fără modificările lui și fără să știe.
+    if (plan === 'refuse') return reportError('Deconectarea necesită rețea.')
     // Coada e locală: după logout nu mai are cine s-o trimită.
-    if (pending > 0 && !window.confirm(`${pending} modificări netrimise se vor pierde. Te deconectezi?`)) return
+    if (plan === 'confirm' && !window.confirm(`${st.pending} modificări netrimise se vor pierde. Te deconectezi?`)) return
+    // Coada se șterge DOAR după ce serverul a încheiat sesiunea.
+    const err = await signOut()
+    if (err) return reportError(err)
     await repository.sync?.clear()
-    await signOut()
   }
   const canWrite = useCanWrite()
   // Cromul de proiect al piciorului de sidebar e legat de proiectul DESCHIS ca
@@ -226,7 +233,7 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
           )}
         </button>
         {enabled && (
-          <button className="sidebar-theme-btn" onClick={() => void onSignOut()} aria-label="Deconectare" title="Deconectare">
+          <button className="sidebar-theme-btn" onClick={() => void onSignOut().catch((e) => reportError(e instanceof Error ? e.message : String(e)))} aria-label="Deconectare" title="Deconectare">
             <Icon name="logout" size={15} />
           </button>
         )}

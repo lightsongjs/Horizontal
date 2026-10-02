@@ -49,6 +49,8 @@ interface HorizontalState {
   /** Starea cozii offline, pentru indicatorul din header. Fără strat offline: mereu online, nimic în coadă. */
   syncStatus: SyncStatus
   error: string | null
+  /** Pentru ce n-a trecut prin store (ex. deconectarea): același banner ca restul erorilor. */
+  reportError(message: string): void
   refresh(): Promise<void>
   projects: Project[]
   project: Project | null
@@ -1011,6 +1013,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     refreshing,
     syncStatus,
     error,
+    reportError: setError,
     refresh,
     projects,
     project,

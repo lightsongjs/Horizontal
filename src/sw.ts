@@ -49,8 +49,9 @@ precacheAndRoute(self.__WB_MANIFEST)
 // O navigare rece pe `/HZ-12` sau `/project/x` fără rețea: precache-ul știe doar
 // `index.html`, nu fiecare cale a aplicației. Fără ruta asta, un deep link
 // offline dădea pagina de eroare a browserului deși aplicația era toată pe disc.
-// `/api/` rămâne pe rețea — e `functions/api`, nu aplicația.
-registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html'), { denylist: [/^\/api\//] }))
+// `/api/` rămâne pe rețea — e `functions/api`, nu aplicația; la fel căile cu
+// extensie (`/sw.js`, `/manifest.webmanifest`), care nu sunt pagini.
+registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html'), { denylist: [/^\/api\//, /\/[^/?]+\.[a-z0-9]+$/i] }))
 cleanupOutdatedCaches()
 clientsClaim()
 
