@@ -17,6 +17,11 @@ if (location.origin === arg('hz-origin')) {
       ipcRenderer.on('hz:reminder-action', h)
       return () => { ipcRenderer.removeListener('hz:reminder-action', h) }
     },
+    onResync: (fn: () => void) => {
+      const h = () => fn()
+      ipcRenderer.on('hz:resync', h)
+      return () => { ipcRenderer.removeListener('hz:resync', h) }
+    },
     hideBar: () => ipcRenderer.send('hz:hide-bar'),
   })
 }

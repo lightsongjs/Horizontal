@@ -5,6 +5,13 @@ import { reminderMutation } from '../lib/reminderAction'
 
 /** Cât de des se retrimite lista chiar fără nicio schimbare: fereastra de 24 h alunecă. */
 const RESEND_MS = 15 * 60_000
+/**
+ * Cât de des își aduce fereastra ascunsă datele din nou. Singurul refresh al
+ * store-ului e la `visibilitychange`, iar aici fereastra nu devine vizibilă
+ * zile întregi: fără asta, un memento creat pe telefon nu sună niciodată, iar
+ * unul bifat acolo sună oricum.
+ */
+const REFRESH_MS = 5 * 60_000
 
 /**
  * Puntea către aplicația de Linux. Fără `window.horizontalDesktop` (browser,
@@ -13,7 +20,7 @@ const RESEND_MS = 15 * 60_000
  * Chromium cât fereastra stă ascunsă, de-aia stau în procesul principal.
  */
 export function DesktopBridge() {
-  const { dueLoaded, dueIssues, issues, projects, byId, toggleDone, updateIssue } = useHorizontal()
+  const { dueLoaded, dueIssues, issues, projects, byId, refresh, toggleDone, updateIssue } = useHorizontal()
   const bridge = getDesktopBridge()
   const lastSent = useRef('')
   const byIdRef = useRef(byId)
@@ -38,6 +45,18 @@ export function DesktopBridge() {
     const t = setInterval(send, RESEND_MS)
     return () => clearInterval(t)
   }, [bridge, dueLoaded, dueIssues, issues, projects])
+
+  // `refresh` ridică `refreshing`, nu `loading`: ecranul nu se golește. Calea
+  // explicită nu trece prin pragul de 30 s. Lista se retrimite singură: efectul
+  // de mai sus rulează din nou când store-ul se schimbă.
+  const refreshRef = useRef(refresh)
+  refreshRef.current = refresh
+  useEffect(() => {
+    if (!bridge) return
+    const t = setInterval(() => { void refreshRef.current() }, REFRESH_MS)
+    const off = bridge.onResync?.(() => { void refreshRef.current() })
+    return () => { clearInterval(t); off?.() }
+  }, [bridge])
 
   useEffect(() => {
     if (!bridge) return

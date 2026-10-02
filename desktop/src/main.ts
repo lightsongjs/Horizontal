@@ -137,6 +137,9 @@ function start() {
     try { await exportAppService({ quickAdd: showBar, show: showMain, quit: () => app.quit() }) } catch (e) { console.error('D-Bus ro.horizontal.App', e) }
 
     powerMonitor.on('resume', reschedule)
+    // Fereastra principală stă ascunsă, deci n-are `visibilitychange`: după somn
+    // îi cerem noi să-și aducă datele, altfel mementourile rămân cele de dinainte.
+    powerMonitor.on('resume', () => { if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send('hz:resync') })
     powerMonitor.on('unlock-screen', reschedule)
     reschedule()
   })

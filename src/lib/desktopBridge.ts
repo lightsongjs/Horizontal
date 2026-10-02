@@ -25,6 +25,8 @@ export interface HorizontalDesktop {
   setReminders(list: DesktopReminder[]): void
   onReminderAction(fn: (a: DesktopAction) => void): () => void
   hideBar(): void
+  /** După trezirea din somn: fereastra ascunsă n-a primit niciun `visibilitychange`, datele sunt vechi. */
+  onResync?(fn: () => void): () => void
 }
 
 export function getDesktopBridge(): HorizontalDesktop | null {
