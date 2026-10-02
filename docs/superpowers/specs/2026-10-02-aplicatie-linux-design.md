@@ -65,6 +65,23 @@ Dacă nu merge din prima, ocolișurile de încercat, în ordine: token de activa
 probei decide cum se implementează bara; designul de mai jos presupune că una dintre
 variante merge, iar planul începe cu proba.
 
+### Rezultatul probei (2 octombrie 2026) — merge din prima, fără ocolișuri
+
+GNOME Shell 50.5, Wayland nativ (fără `--ozone-platform=x11`), Electron 44.5.1. O
+singură fereastră fără ramă, `alwaysOnTop`, creată ascunsă la pornire; scurtătura
+GNOME scrie `show` într-un FIFO din `$XDG_RUNTIME_DIR`, iar procesul rezident face
+`show()` + `focus()` + `webContents.focus()`. Ascunderea la Esc și la `blur`.
+
+Măsurat pe mașina proprietarului, cu altă aplicație în față: **5 din 5** apariții au
+primit focusul în 32–83 ms, iar prima tastă a ajuns în `<input>` (`activeElement`
+verificat), inclusiv la apăsări la ~1 s una de alta și la a doua apariție după
+ascundere — cazul despre care era îndoiala. GNOME n-a afișat niciodată „e gata”.
+
+Consecințe pentru implementare: fereastra barei se creează o dată și se refolosește
+(`show()`, nu recreare); `XDG_ACTIVATION_TOKEN` nu e nevoie (GNOME nici nu-l trimite
+comenzii unei scurtături personalizate — `hasActivationToken: false` la toate); canalul
+de la scurtătură poate rămâne un FIFO sau `gdbus`, alegerea nu mai ține de focus.
+
 ## Componente
 
 Totul trăiește într-un folder nou, `desktop/`, în repo-ul Horizontal — nu într-un repo
