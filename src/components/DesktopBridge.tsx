@@ -60,18 +60,23 @@ export function DesktopBridge() {
 
   useEffect(() => {
     if (!bridge) return
-    return bridge.onReminderAction(({ action, id, minutes }) => {
+    return bridge.onReminderAction((a) => {
       // Click pe corpul notificării: același drum ca un deep link, prin
       // `popstate`-ul din App.tsx — nu un al doilea mod de a deschide un tichet.
-      if (action === 'open') {
-        history.pushState(null, '', `/${id}`)
+      if (a.action === 'open') {
+        history.pushState(null, '', `/${a.id}`)
         window.dispatchEvent(new PopStateEvent('popstate'))
         return
       }
-      const issue = byIdRef.current[id] ?? dueRef.current.find((i) => i.id === id)
-      const m = reminderMutation(action, issue, new Date(), minutes)
-      if (m.kind === 'toggle') void toggleDone(id)
-      else if (m.kind === 'patch') void updateIssue(id, m.patch)
+      // `until`: ținta e calculată de cutie; o recalculăm aici din cache ar putea da alt rezultat.
+      if (a.action === 'until') {
+        void updateIssue(a.id, a.dueAt ? { remindAt: a.at, dueAt: a.dueAt } : { remindAt: a.at })
+        return
+      }
+      const issue = byIdRef.current[a.id] ?? dueRef.current.find((i) => i.id === a.id)
+      const m = reminderMutation(a.action, issue, new Date(), a.action === 'snooze' ? a.minutes : undefined)
+      if (m.kind === 'toggle') void toggleDone(a.id)
+      else if (m.kind === 'patch') void updateIssue(a.id, m.patch)
     })
   }, [bridge, toggleDone, updateIssue])
 

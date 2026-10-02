@@ -1,5 +1,20 @@
 import { describe, expect, it } from 'vitest'
+import fixtures from './pushPayload.fixtures.json'
 import { isReminderAction, isReminderArrived, planNotification, SNOOZE_MINUTES } from './pushPayload'
+
+// Fixtures-urile sunt scrise pentru Europe/Bucharest (aceleași le citește JUnit,
+// cu fusul dat explicit). Node respectă TZ setat la rulare, înainte de primul Date.
+// Tipurile Node nu sunt în tsconfig.app (codul rulează în browser), deci process se atinge prin globalThis.
+;(globalThis as unknown as { process: { env: Record<string, string> } }).process.env.TZ = 'Europe/Bucharest'
+
+describe('planNotification — fixtures comune cu Kotlin', () => {
+  for (const f of fixtures) {
+    it(f.name, () => {
+      const p = planNotification(f.input)
+      expect({ title: p.title, body: p.body, tag: p.tag }).toEqual(f.want)
+    })
+  }
+})
 
 describe('planNotification', () => {
   it('ora și proiectul, în fusul dispozitivului', () => {

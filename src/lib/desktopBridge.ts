@@ -17,8 +17,17 @@ export interface DesktopReminder {
   body: string
 }
 
-/** `minutes` e prezent doar la `snooze`: cutia oferă 15 și 30, web-ul rămâne la SNOOZE_MINUTES. */
-export type DesktopAction = { action: 'done' | 'snooze' | 'open'; id: string; minutes?: number }
+/**
+ * Ce întoarce o cutie paginii. `minutes` doar la `snooze` (Linux: 15/30;
+ * lipsă = SNOOZE_MINUTES). `until` vine de pe Android: ora e deja calculată
+ * de cutie cu `snoozeTarget` (port Kotlin), iar `dueAt` e prezent doar când
+ * scadența se mută — pagina NU o recalculează din cache-ul ei, care poate fi
+ * mai vechi decât ce a văzut cutia.
+ */
+export type DesktopAction =
+  | { action: 'done' | 'open'; id: string }
+  | { action: 'snooze'; id: string; minutes?: number }
+  | { action: 'until'; id: string; at: string; dueAt?: string }
 
 export interface HorizontalDesktop {
   version: string

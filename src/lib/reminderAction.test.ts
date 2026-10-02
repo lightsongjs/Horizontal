@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { reminderMutation } from './reminderAction'
+import fixtures from './reminderAction.fixtures.json'
+import { reminderMutation, snoozeTarget, type SnoozeOption } from './reminderAction'
 import { SNOOZE_MINUTES } from './pushPayload'
 
 const now = new Date('2026-10-02T10:00:00.000Z')
@@ -26,4 +27,16 @@ describe('reminderMutation', () => {
       patch: { remindAt: new Date(now.getTime() + min * 60_000).toISOString() },
     })
   })
+})
+
+// Fixtures-urile presupun Europe/Bucharest, la fel ca în JUnit.
+// Tipurile Node nu sunt în tsconfig.app (codul rulează în browser), deci process se atinge prin globalThis.
+;(globalThis as unknown as { process: { env: Record<string, string> } }).process.env.TZ = 'Europe/Bucharest'
+
+describe('snoozeTarget — fixtures comune cu Kotlin', () => {
+  for (const f of fixtures) {
+    it(f.name, () => {
+      expect(snoozeTarget(f.option as SnoozeOption, new Date(f.now), f.issue)).toEqual(f.want)
+    })
+  }
 })
