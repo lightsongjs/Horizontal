@@ -6,6 +6,7 @@ import { useAuth } from '../auth'
 import { useCanWrite } from '../hooks'
 import { SMART_LISTS, type SmartListKind } from './SmartListView'
 import { Icon } from './Icon'
+import { repository } from '../data'
 
 function getBuildAgo(): string {
   const diff = Math.floor((Date.now() - new Date(__BUILD_TIME__).getTime()) / 1000)
@@ -39,6 +40,13 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
   const { openNewProject, openNewIssue } = useUI()
   const { theme, toggle } = useTheme()
   const { enabled, signOut } = useAuth()
+  const onSignOut = async () => {
+    const pending = repository.sync?.status().pending ?? 0
+    // Coada e locală: după logout nu mai are cine s-o trimită.
+    if (pending > 0 && !window.confirm(`${pending} modificări netrimise se vor pierde. Te deconectezi?`)) return
+    await repository.sync?.clear()
+    await signOut()
+  }
   const canWrite = useCanWrite()
   // Cromul de proiect al piciorului de sidebar e legat de proiectul DESCHIS ca
   // ecran, nu de orice proiect încărcat în store — o pasă docată deschisă din
@@ -218,7 +226,7 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
           )}
         </button>
         {enabled && (
-          <button className="sidebar-theme-btn" onClick={() => signOut()} aria-label="Deconectare" title="Deconectare">
+          <button className="sidebar-theme-btn" onClick={() => void onSignOut()} aria-label="Deconectare" title="Deconectare">
             <Icon name="logout" size={15} />
           </button>
         )}

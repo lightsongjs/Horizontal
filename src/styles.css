@@ -2392,6 +2392,15 @@ main {
   background: var(--accent-soft);
 }
 
+/* Starea cozii offline. Mono — e o cifră și o etichetă de stare, nu limbă. */
+.sync-status {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--txt-dim);
+  white-space: nowrap;
+}
+
 /* Butonul de referință împarte forma cu cel de reîncărcare — aceeași
    familie de acțiuni neutre din dreapta headerului. */
 .header-info-btn,

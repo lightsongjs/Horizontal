@@ -17,7 +17,8 @@
 // Dacă schimbi ceva aici, rulează `npm run test:upgrade`.
 
 import { clientsClaim } from 'workbox-core'
-import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching'
+import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching'
+import { NavigationRoute, registerRoute } from 'workbox-routing'
 import {
   CHIME_READY_CACHE,
   CHIME_READY_KEY,
@@ -45,6 +46,11 @@ type SwNotificationOptions = NotificationOptions & {
 
 // ── precache (echivalentul a ce genera `generateSW`) ────────────────────────
 precacheAndRoute(self.__WB_MANIFEST)
+// O navigare rece pe `/HZ-12` sau `/project/x` fără rețea: precache-ul știe doar
+// `index.html`, nu fiecare cale a aplicației. Fără ruta asta, un deep link
+// offline dădea pagina de eroare a browserului deși aplicația era toată pe disc.
+// `/api/` rămâne pe rețea — e `functions/api`, nu aplicația.
+registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html'), { denylist: [/^\/api\//] }))
 cleanupOutdatedCaches()
 clientsClaim()
 

@@ -80,7 +80,7 @@ function smartCrumb(kind: SmartListKind, now: Date): string {
 }
 
 function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, canWrite, smartList, onExitSmartList, sidebarCollapsed, onToggleSidebar, inbox = false }: { onNewIssue: () => void; onSearch: () => void; onProjectSettings: () => void; onRefresh: () => void; onInfo: () => void; canWrite: boolean; smartList: SmartListKind | null; onExitSmartList: () => void; sidebarCollapsed: boolean; onToggleSidebar: () => void; /** „Ale mele" — opțional, ca vechile call-site-uri (fără el) să rămână valide. */ inbox?: boolean }) {
-  const { project, completion, selectProject, smartLists, refreshing } = useHorizontal()
+  const { project, completion, selectProject, smartLists, refreshing, syncStatus } = useHorizontal()
   const list = smartList ? SMART_LISTS.find((s) => s.kind === smartList) : null
   // Cromul de proiect (progres, „+ Tichet", căutare, setări) e legat de
   // proiectul DESCHIS ca ecran, nu de orice proiect încărcat în store. O pasă
@@ -143,6 +143,13 @@ function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, ca
         <button className="header-settings-btn" onClick={onProjectSettings} aria-label="Setări proiect" title="Setări proiect">
           <Icon name="settingsProject" size={15} />
         </button>
+      )}
+      {/* Tăcut când totul e sincronizat: absența e informația. */}
+      {(syncStatus.offline || syncStatus.pending > 0) && (
+        <span className="sync-status" role="status">
+          {syncStatus.offline ? 'offline' : 'se trimite'}
+          {syncStatus.pending > 0 && ` · ${syncStatus.pending} în așteptare`}
+        </span>
       )}
       {/* Fără el, panoul de referință ar exista doar pentru cine are tastatură —
           adică pentru nimeni pe telefon, unde sidebar-ul e ascuns. */}
