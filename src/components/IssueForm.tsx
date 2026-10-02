@@ -23,6 +23,7 @@ import { Icon, type IconName } from './Icon'
 import { displayIssueId, isTempIssueId } from '../lib/issueId'
 import { repository } from '../data'
 import { errorMessage } from '../lib/errorMessage'
+import { OfflineError } from '../data/offline/netError'
 
 const PALETTE = ['#0284C7', '#059669', '#D97706', '#EA580C', '#E11D48', '#7C3AED', '#06B6D4']
 
@@ -619,6 +620,14 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
      schimbat de la o randare la alta. */
   const narrow = useMediaQuery('(max-width: 899px)')
 
+  // Ce a reușit deja să se creeze la o salvare care a căzut pe drum: tichetul
+  // însuși și ciornele (dependențe, „permite", obstacole), cheie = id-ul
+  // `__draft_…`. Refs, nu state: trebuie să supraviețuiască exact între două
+  // apăsări pe Salvează, fără să remonteze și fără să facă formularul „murdar".
+  // Tot deasupra lui `if (!project)`, din același motiv ca `narrow`.
+  const createdIdRef = useRef<string | null>(null)
+  const createdDraftsRef = useRef<Record<string, string>>({})
+
   if (!project) return null
 
   const candidates = issues.filter((i) => i.id !== issueId)
@@ -775,13 +784,6 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
     return cycle ? cycle.map(titleOf).join(' → ') : null
   }
 
-  // Ce a reușit deja să se creeze la o salvare care a căzut pe drum: tichetul
-  // însuși și ciornele (dependențe, „permite", obstacole), cheie = id-ul
-  // `__draft_…`. Refs, nu state: trebuie să supraviețuiască exact între două
-  // apăsări pe Salvează, fără să remonteze și fără să facă formularul „murdar".
-  const createdIdRef = useRef<string | null>(null)
-  const createdDraftsRef = useRef<Record<string, string>>({})
-
   const save = async ({ close }: { close: boolean }) => {
     if (!canWrite || !saveTitle || saving || waves.length === 0) return
     const cyc = cycleAfterSave()
@@ -839,7 +841,9 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
       // click, o sarcină pierdută nu. Se scrie doar dacă setul chiar s-a
       // schimbat față de ce avea tichetul: un apel cu lista neschimbată (sau
       // goală, la un tichet nou) ar fi căzut offline fără să aibă ce trimite.
-      const obstaclesBefore = isEdit ? obstaclesOf(targetId).map((o) => o.id) : []
+      // `prior`, nu `isEdit`: un tichet creat la o încercare anterioară are deja
+      // obstacolele legate atunci, iar scoaterea lor trebuie să se vadă ca schimbare.
+      const obstaclesBefore = prior !== null ? obstaclesOf(targetId).map((o) => o.id) : []
       const realObstIds: string[] = []
       let obstaclesFailed = false
       try {
@@ -855,7 +859,17 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
           createdDraftsRef.current[id] = created.id
           realObstIds.push(created.id)
         }
-        if (obstaclesDirty(realObstIds, obstaclesBefore)) await setIssueObstacles(targetId, realObstIds)
+        if (obstaclesDirty(realObstIds, obstaclesBefore)) {
+          // Pe semnal slab captura întoarce ecoul provizoriu după 3 s, cu
+          // crearea încă în coadă; legarea merge direct la server, care n-ar
+          // cunoaște `HZ-~…` și ar răspunde cu o constrângere de neînțeles.
+          if (isTempIssueId(targetId)) {
+            throw repository.sync?.status().offline
+              ? new OfflineError()
+              : new Error('tichetul încă își așteaptă numărul — salvează din nou după sincronizare.')
+          }
+          await setIssueObstacles(targetId, realObstIds)
+        }
       } catch (e) {
         obstaclesFailed = true
         setObstacleError(`Tichetul s-a salvat, obstacolele nu: ${errorMessage(e)}`)
