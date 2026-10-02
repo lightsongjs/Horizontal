@@ -47,6 +47,7 @@ export function fakeRemote() {
     deleteIssues: vi.fn(async (ids: string[]) => guard(() => { server.issues = server.issues.filter((i) => !ids.includes(i.id)) })()),
     deleteIssue: vi.fn(async (id: string) => guard(() => { server.issues = server.issues.filter((i) => i.id !== id) })()),
     markSeen: vi.fn(guard(() => undefined)),
+    postToThread: vi.fn(guard(() => ({}))),
   } as unknown as Repository
   return { remote, net, server }
 }
@@ -128,5 +129,75 @@ describe('citiri — robustețe', () => {
     const due = '2026-10-03T07:00:00.000Z'
     await kv.set('due', [mk('HZ-09', { dueAt: due }), mk('Q-01', { projectId: 'q', dueAt: due })])
     expect((await repo.cache!.due(range))?.map((i) => i.id)).toEqual(['Q-01'])
+  })
+})
+
+describe('scrieri', () => {
+  async function offlineRepo() {
+    const f = fakeRemote()
+    const repo = make(f.remote)
+    await repo.sync!.prefetchAll()
+    f.net.down = true
+    return { ...f, repo }
+  }
+
+  it('cu rețea: createIssue primește ID-ul real direct, fără coadă', async () => {
+    const { remote } = fakeRemote()
+    const repo = make(remote)
+    await repo.sync!.prefetchAll()
+    const c = await repo.createIssue({ projectId: 'p', title: 'sună la bancă' })
+    expect(c.id).toBe('HZ-13')
+    expect(repo.sync!.status().pending).toBe(0)
+  })
+
+  it('offline: createIssue întoarce un ID provizoriu și tichetul se vede în citiri', async () => {
+    const { repo } = await offlineRepo()
+    const c = await repo.createIssue({ projectId: 'p', title: 'sună la bancă' })
+    expect(c.id).toMatch(/^HZ-~/)
+    expect(c.createdBy).toBe('u1')
+    expect((await repo.listIssues('p')).map((i) => i.title)).toContain('sună la bancă')
+    expect(repo.sync!.status().pending).toBe(1)
+  })
+
+  it('offline: updateIssue întoarce ecoul și citirile îl arată', async () => {
+    const { repo } = await offlineRepo()
+    const saved = await repo.updateIssue('HZ-02', { title: 'nou' })
+    expect(saved.title).toBe('nou')
+    expect((await repo.listIssues('p')).find((i) => i.id === 'HZ-02')?.title).toBe('nou')
+  })
+
+  it('o scriere nouă cu coada nevidă intră la coadă chiar dacă rețeaua a revenit (ordinea contează)', async () => {
+    const { repo, net, remote } = await offlineRepo()
+    await repo.updateIssue('HZ-01', { title: 'a' })
+    net.down = false
+    await repo.updateIssue('HZ-01', { title: 'b' })
+    // Singurul apel e încercarea directă a lui „a", picată pe rețea; „b" n-a mai încercat.
+    expect(remote.updateIssue).toHaveBeenCalledTimes(1)
+    expect(repo.sync!.status().pending).toBe(2)
+  })
+
+  it('ștergerea unui tichet creat offline nu trimite nimic și scoate dependențele spre el', async () => {
+    const { repo, remote } = await offlineRepo()
+    const c = await repo.createIssue({ projectId: 'p', title: 'efemer' })
+    await repo.updateIssue('HZ-02', { deps: [c.id, 'HZ-01'] })
+    await repo.deleteIssue(c.id)
+    const issues = await repo.listIssues('p')
+    expect(issues.map((i) => i.id)).toEqual(['HZ-01', 'HZ-02'])
+    expect(issues.find((i) => i.id === 'HZ-02')?.deps).toEqual(['HZ-01'])
+    expect(repo.sync!.status().pending).toBe(1)
+    expect(remote.deleteIssues).not.toHaveBeenCalled()
+    expect(remote.deleteIssue).not.toHaveBeenCalled()
+  })
+
+  it('offline: o acțiune care cere rețea aruncă OfflineError', async () => {
+    const { repo } = await offlineRepo()
+    await expect(repo.postToThread({ issueId: 'HZ-01', projectId: 'p', body: 'x' })).rejects.toBeInstanceOf(OfflineError)
+  })
+
+  it('o eroare de server la scrierea directă se aruncă, nu se pune la coadă', async () => {
+    const { remote } = fakeRemote()
+    const repo = make(remote)
+    await expect(repo.updateIssue('NU-EXISTA', { title: 'x' })).rejects.toMatchObject({ code: 'PGRST116' })
+    expect(repo.sync!.status().pending).toBe(0)
   })
 })

@@ -11,7 +11,9 @@ import type { Repository } from '../repository'
 import type { Assignee, InboxRow, Issue, Project } from '../../lib/types'
 import type { Kv } from './kv'
 import { OfflineError, isNetworkError, withTimeout } from './netError'
-import { deriveDue, overlay, type OutboxOp } from './ops'
+import { applyIssuePatch } from '../../lib/issuePatch'
+import { isTempIssueId, makeTempIssueId } from '../../lib/issueId'
+import { cancelTempIssues, deriveDue, echoIssue, overlay, type OutboxOp } from './ops'
 import type { CacheReader, ProjectBundle, SyncControl, SyncEvent, SyncStatus } from './types'
 
 export interface SyncChannel {
@@ -185,6 +187,64 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
     }
   }
 
+  /** Varianta de acum a unui tichet: baza din cache + coada rejucată. */
+  async function currentIssue(kv: Kv, id: string): Promise<Issue | null> {
+    const all = overlay(await allCachedIssues(kv), await pendingOps(), now())
+    return all.find((i) => i.id === id) ?? null
+  }
+
+  /** Răspunsul serverului intră în bază: în lista proiectului și în `due`. */
+  async function baseWritesUpsert(kv: Kv, issue: Issue): Promise<[string, unknown][]> {
+    const writes: [string, unknown][] = []
+    const key = K.p(issue.projectId, 'issues')
+    const list = await kv.get<Issue[]>(key)
+    if (list) writes.push([key, [...list.filter((i) => i.id !== issue.id), issue]])
+    const due = (await kv.get<Issue[]>(K.due)) ?? []
+    writes.push([K.due, issue.dueAt ? [...due.filter((i) => i.id !== issue.id), issue] : due.filter((i) => i.id !== issue.id)])
+    return writes
+  }
+
+  async function baseWritesRemove(kv: Kv, ids: string[]): Promise<[string, unknown][]> {
+    const gone = new Set(ids)
+    const strip = (xs: Issue[]) => xs.filter((i) => !gone.has(i.id)).map((i) => (i.deps.some((d) => gone.has(d)) ? { ...i, deps: i.deps.filter((d) => !gone.has(d)) } : i))
+    const writes: [string, unknown][] = []
+    for (const key of await kv.keys('p:')) {
+      if (!key.endsWith(':issues')) continue
+      writes.push([key, strip((await kv.get<Issue[]>(key)) ?? [])])
+    }
+    writes.push([K.due, strip((await kv.get<Issue[]>(K.due)) ?? [])])
+    return writes
+  }
+
+  async function applyWrites(kv: Kv, writes: [string, unknown][]) {
+    for (const [k, v] of writes) await kv.set(k, v)
+  }
+
+  /**
+   * Coada goală → direct la server (ID real, ca azi). Eroare de rețea sau coadă
+   * nevidă → la coadă: o scriere care ar trece PE LÂNGĂ coadă ar ajunge la
+   * server înaintea celor mai vechi și ar inversa ordinea cerută de om.
+   * Eroarea de server se aruncă — nu e treaba cozii s-o ascundă.
+   */
+  async function write<T>(direct: () => Promise<T>, afterDirect: (kv: Kv, r: T) => Promise<void>, enqueue: (kv: Kv) => Promise<T>): Promise<T> {
+    const kv = await kvReady
+    if (!kv) return net(direct)
+    if ((await kv.ops()).length === 0) {
+      try {
+        const r = await direct()
+        setStatus({ offline: false })
+        await afterDirect(kv, r)
+        return r
+      } catch (e) {
+        if (!isNetworkError(e)) throw e
+        setStatus({ offline: true })
+      }
+    }
+    const r = await enqueue(kv)
+    await refreshPending()
+    return r
+  }
+
   const sync: SyncControl = {
     status: () => status,
     subscribe(fn) { listeners.add(fn); return () => { listeners.delete(fn) } },
@@ -245,12 +305,62 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
     listEvents: (iid) => net(() => remote.listEvents(iid)),
     postToThread: (input) => net(() => remote.postToThread(input)),
 
-    // ── Merg offline — înlocuite în Task 7 ───────────────────────────────────
-    createIssue: (input) => net(() => remote.createIssue(input)),
-    updateIssue: (id, patch) => net(() => remote.updateIssue(id, patch)),
-    deleteIssue: (id) => net(() => remote.deleteIssue(id)),
-    deleteIssues: (ids) => net(() => remote.deleteIssues(ids)),
-    markSeen: (iid) => net(() => remote.markSeen(iid)),
+    // ── Merg offline ─────────────────────────────────────────────────────────
+    createIssue: (input) =>
+      write(
+        () => remote.createIssue(input),
+        async (kv, created) => { await applyWrites(kv, await baseWritesUpsert(kv, created)); emit({ type: 'issue', issue: created }) },
+        async (kv) => {
+          const projects = (await kv.get<Project[]>(K.projects)) ?? []
+          const project = projects.find((p) => p.id === input.projectId)
+          if (!project) throw new OfflineError()
+          const tempId = makeTempIssueId(project.prefix)
+          const echo = echoIssue(input, tempId, project, opts.userId?.() ?? null, now())
+          await kv.append({ kind: 'createIssue', tempId, input, echo })
+          emit({ type: 'issue', issue: echo })
+          return echo
+        },
+      ),
+
+    updateIssue: (id, patch) =>
+      write(
+        () => remote.updateIssue(id, patch),
+        async (kv, saved) => { await applyWrites(kv, await baseWritesUpsert(kv, saved)); emit({ type: 'issue', issue: saved }) },
+        async (kv) => {
+          const cur = await currentIssue(kv, id)
+          if (!cur) throw new OfflineError()
+          await kv.append({ kind: 'updateIssue', id, patch })
+          const echo = applyIssuePatch(cur, patch, now())
+          emit({ type: 'issue', issue: echo })
+          return echo
+        },
+      ),
+
+    deleteIssue: (id) => repo.deleteIssues([id]),
+
+    async deleteIssues(ids) {
+      const kv = await kvReady
+      const temp = ids.filter(isTempIssueId)
+      const real = ids.filter((id) => !isTempIssueId(id))
+      if (kv && temp.length) {
+        const { remove, rewrite } = cancelTempIssues(await kv.ops(), temp)
+        await kv.replaceOps(rewrite, remove)
+        await refreshPending()
+      }
+      if (real.length) {
+        await write(
+          () => remote.deleteIssues(real),
+          async (k) => { await applyWrites(k, await baseWritesRemove(k, real)) },
+          async (k) => { await k.append({ kind: 'deleteIssues', ids: real }) },
+        )
+      }
+      emit({ type: 'removed', ids })
+    },
+
+    markSeen: (iid) =>
+      isTempIssueId(iid)
+        ? Promise.resolve()
+        : write(() => remote.markSeen(iid), async () => {}, async (kv) => { await kv.append({ kind: 'markSeen', issueId: iid }) }),
   }
 
   void refreshPending()
