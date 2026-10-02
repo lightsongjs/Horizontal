@@ -513,6 +513,46 @@ describe('captura pleacă întâi în coadă', () => {
   })
 })
 
+describe('citire în cursa cu golirea', () => {
+  // Serverul răspunde la citire ÎNAINTE ca scrierea golită să fi intrat, dar
+  // răspunsul sosește DUPĂ ce golirea a scos-o din coadă: n-ar mai rămâne nimic
+  // care să rejoace scrierea peste lista veche.
+  async function racing() {
+    const f = fakeRemote()
+    const repo = make(f.remote)
+    await repo.sync!.prefetchAll()
+    f.net.down = true
+    await repo.updateIssue('HZ-01', { title: 'abia sincronizat', dueAt: '2026-10-03T07:00:00.000Z' })
+    f.net.down = false
+    const stale = f.server.issues.map((i) => ({ ...i }))
+    let answer!: () => void
+    const gate = new Promise<void>((r) => { answer = r })
+    return { ...f, repo, stale, gate, answer }
+  }
+
+  it('listIssues: un răspuns depășit de o golire nu suprascrie baza și nu ascunde scrierea', async () => {
+    const { repo, remote, stale, gate, answer } = await racing()
+    vi.mocked(remote.listIssues).mockImplementationOnce(async () => { await gate; return stale })
+    const reading = repo.listIssues('p')
+    await repo.sync!.flush()
+    expect(repo.sync!.status().pending).toBe(0)
+    answer()
+    expect((await reading).find((i) => i.id === 'HZ-01')?.title).toBe('abia sincronizat')
+    expect((await kv.get<Issue[]>('p:p:issues'))?.find((i) => i.id === 'HZ-01')?.title).toBe('abia sincronizat')
+  })
+
+  it('listDueIssues: la fel', async () => {
+    const { repo, remote, stale, gate, answer } = await racing()
+    await kv.set('due', [])
+    vi.mocked(remote.listDueIssues).mockImplementationOnce(async () => { await gate; return stale.filter((i) => i.dueAt) })
+    const range = { to: '2026-10-09T21:00:00.000Z', doneFrom: '2026-10-01T21:00:00.000Z' }
+    const reading = repo.listDueIssues(range)
+    await repo.sync!.flush()
+    answer()
+    expect((await reading).map((i) => i.title)).toEqual(['abia sincronizat'])
+  })
+})
+
 describe('golire fără sesiune', () => {
   it('fără sesiune nu golește nimic; cu sesiune, coada pleacă întreagă', async () => {
     const f = fakeRemote()

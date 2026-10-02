@@ -135,6 +135,17 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
   const resolveId = (id: string) => remaps.get(id) ?? id
   const resolveDeps = <T extends { deps?: string[] }>(x: T): T => (x.deps ? { ...x, deps: x.deps.map(resolveId) } : x)
 
+  /**
+   * Câte scrieri a încheiat golirea. O citire care a plecat înainte ca o
+   * scriere să intre pe server, dar se întoarce după ce golirea a scos-o din
+   * coadă, ar pune în bază lista VECHE — fără niciun element rămas care s-o
+   * rejoace deasupra: modificarea abia sincronizată ar dispărea până la
+   * următorul refresh. Citirea compară generația de la plecare cu cea de la
+   * sosire și, dacă s-a mișcat, nu scrie baza (pe care `settle` a pus-o deja
+   * la zi) și răspunde din ea.
+   */
+  let generation = 0
+
   const setStatus = (next: Partial<SyncStatus>) => {
     const s = { ...status, ...next }
     if (s.offline === status.offline && s.pending === status.pending) return
@@ -151,12 +162,22 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
     return kv ? (await kv.ops()).map((q) => q.op) : []
   }
 
-  /** Server întâi; la eșec de rețea, cache-ul. O eroare de server NU cade pe cache. */
-  async function read<T>(key: string, fetch: () => Promise<T>): Promise<T> {
+  /**
+   * Server întâi; la eșec de rețea, cache-ul. O eroare de server NU cade pe cache.
+   * `racesFlush`: cheia e o listă de tichete, pe care golirea o scrie și ea
+   * (vezi `generation`).
+   */
+  async function read<T>(key: string, fetch: () => Promise<T>, racesFlush = false): Promise<T> {
     const kv = await kvReady
+    const gen = generation
     try {
       const v = await withTimeout(fetch(), readTimeoutMs)
       setStatus({ offline: false })
+      if (racesFlush && gen !== generation) {
+        const fresher = kv ? await kv.get<T>(key).catch(() => undefined) : undefined
+        if (fresher !== undefined) return fresher
+        return v
+      }
       // Cache-ul e bonus: o scriere care pică (cotă plină, bază închisă) nu
       // trebuie să arunce un răspuns de server deja primit.
       await kv?.set(key, v).catch(() => {})
@@ -243,7 +264,7 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
         await Promise.all([
           read(K.p(p.id, 'waves'), () => remote.listWaves(p.id)),
           read(K.p(p.id, 'themes'), () => remote.listThemes(p.id)),
-          read(K.p(p.id, 'issues'), () => remote.listIssues(p.id)),
+          read(K.p(p.id, 'issues'), () => remote.listIssues(p.id), true),
           read(K.p(p.id, 'obstacles'), () => remote.listObstacles(p.id)),
           read(K.p(p.id, 'obstacleLinks'), () => remote.listObstacleLinks(p.id)),
           read(K.p(p.id, 'members'), () => remote.listProjectMembers(p.id)).catch(() => []),
@@ -364,6 +385,7 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
         if (others.length) await kv.replaceOps(others, [])
       }
       await kv.completeOp(q.seq, cancelled ? [] : await writes())
+      generation++ // baza are acum răspunsul serverului — citirile în zbor sunt depășite
       if (cancelled && remap) await kv.append({ kind: 'deleteIssues', ids: [remap.to] })
       return { ok: true, cancelled, rest: others }
     } catch {
@@ -514,13 +536,19 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
     listProjectMembers: (pid) => read(K.p(pid, 'members'), () => remote.listProjectMembers(pid)),
     listInbox: () => read(K.inbox, () => remote.listInbox()),
     async listIssues(pid) {
-      const base = await read(K.p(pid, 'issues'), () => remote.listIssues(pid))
+      const base = await read(K.p(pid, 'issues'), () => remote.listIssues(pid), true)
       return overlay(base, await pendingOps(), now()).filter((i) => i.projectId === pid)
     },
     async listDueIssues(range) {
+      const gen = generation
       try {
         const base = await withTimeout(remote.listDueIssues(range), readTimeoutMs)
         setStatus({ offline: false })
+        if (gen !== generation) {
+          // Ca în `read`: răspunsul e mai vechi decât baza pusă la zi de golire.
+          const local = await cache.due(range).catch(() => null)
+          if (local !== null) return local
+        }
         const kv = await kvReady
         await kv?.set(K.due, base).catch(() => {}) // best-effort, ca în `read`
         return deriveDue(overlay(base, await pendingOps(), now()), range)
