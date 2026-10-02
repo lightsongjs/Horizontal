@@ -48,8 +48,8 @@ function localLock() {
 export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv | null>, opts: OfflineOptions = {}): Repository {
   const now = opts.now ?? (() => new Date())
   const readTimeoutMs = opts.readTimeoutMs ?? 10_000
-  // Folosit de scrieri și de flush, în Task 7 și 8.
-  void (opts.lock ?? localLock())
+  const lock = opts.lock ?? localLock()
+  void lock // folosit de scrieri și de flush, în Task 7 și 8
   const listeners = new Set<(e: SyncEvent) => void>()
   let status: SyncStatus = { offline: false, pending: 0 }
 
@@ -88,7 +88,9 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
     try {
       const v = await withTimeout(fetch(), readTimeoutMs)
       setStatus({ offline: false })
-      await kv?.set(key, v)
+      // Cache-ul e bonus: o scriere care pică (cotă plină, bază închisă) nu
+      // trebuie să arunce un răspuns de server deja primit.
+      await kv?.set(key, v).catch(() => {})
       return v
     } catch (e) {
       if (!isNetworkError(e)) throw e
@@ -113,15 +115,20 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
   }
 
   async function allCachedIssues(kv: Kv): Promise<Issue[]> {
-    const byId = new Map<string, Issue>()
-    for (const i of (await kv.get<Issue[]>(K.due)) ?? []) byId.set(i.id, i)
-    // Tichetele per proiect au prioritate peste `due`: sunt aduse complet și,
-    // de obicei, mai recent.
+    const out: Issue[] = []
+    const full = new Set<string>()
     for (const key of await kv.keys('p:')) {
       if (!key.endsWith(':issues')) continue
-      for (const i of (await kv.get<Issue[]>(key)) ?? []) byId.set(i.id, i)
+      full.add(key.slice(2, -':issues'.length))
+      out.push(...((await kv.get<Issue[]>(key)) ?? []))
     }
-    return [...byId.values()]
+    // Lista completă a unui proiect e autoritară pentru el: un tichet șters pe
+    // server dispare din ea, dar `due` nu se curăță niciodată și l-ar readuce
+    // ca fantomă. `due` contează doar pentru proiectele fără listă completă.
+    for (const i of (await kv.get<Issue[]>(K.due)) ?? []) {
+      if (!full.has(i.projectId)) out.push(i)
+    }
+    return out
   }
 
   const cache: CacheReader = {
@@ -152,9 +159,18 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
   }
 
   async function prefetchAll() {
+    let projects: Project[]
     try {
-      const projects = await read(K.projects, () => remote.listProjects())
-      for (const p of projects) {
+      projects = await read(K.projects, () => remote.listProjects())
+    } catch {
+      // Best-effort: un prefetch eșuat lasă cache-ul cum era. Nu e o eroare de
+      // arătat — omul n-a cerut nimic.
+      return
+    }
+    for (const p of projects) {
+      // Fiecare proiect pe cont propriu: o eroare de server la unul (permisiuni)
+      // nu trebuie să lase necache-uite toate cele de după el.
+      try {
         await Promise.all([
           read(K.p(p.id, 'waves'), () => remote.listWaves(p.id)),
           read(K.p(p.id, 'themes'), () => remote.listThemes(p.id)),
@@ -163,10 +179,9 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
           read(K.p(p.id, 'obstacleLinks'), () => remote.listObstacleLinks(p.id)),
           read(K.p(p.id, 'members'), () => remote.listProjectMembers(p.id)).catch(() => []),
         ])
+      } catch {
+        // Același motiv ca mai sus: se trece la următorul proiect.
       }
-    } catch {
-      // Best-effort: un prefetch eșuat lasă cache-ul cum era. Nu e o eroare de
-      // arătat — omul n-a cerut nimic.
     }
   }
 
@@ -199,7 +214,7 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
         const base = await withTimeout(remote.listDueIssues(range), readTimeoutMs)
         setStatus({ offline: false })
         const kv = await kvReady
-        await kv?.set(K.due, base)
+        await kv?.set(K.due, base).catch(() => {}) // best-effort, ca în `read`
         return deriveDue(overlay(base, await pendingOps(), now()), range)
       } catch (e) {
         if (!isNetworkError(e)) throw e

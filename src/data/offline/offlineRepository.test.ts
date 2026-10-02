@@ -99,3 +99,34 @@ describe('citiri', () => {
     expect(await repo.cache!.projects()).toBeNull()
   })
 })
+
+describe('citiri — robustețe', () => {
+  it('o scriere eșuată în cache nu aruncă răspunsul serverului', async () => {
+    const { remote } = fakeRemote()
+    const broken = { ...kv, set: async () => { throw new DOMException('full', 'QuotaExceededError') } } as Kv
+    const repo = createOfflineRepository(remote, Promise.resolve(broken), { channel: null })
+    expect((await repo.listIssues('p')).map((i) => i.id)).toEqual(['HZ-01', 'HZ-02'])
+    expect(repo.sync!.status().offline).toBe(false)
+  })
+  it('prefetchAll: eroarea unui proiect nu lasă necache-uite celelalte', async () => {
+    const { remote } = fakeRemote()
+    const q: Project = { ...proj, id: 'q', name: 'Q' }
+    ;(remote.listProjects as ReturnType<typeof vi.fn>).mockResolvedValue([proj, q])
+    ;(remote.listWaves as ReturnType<typeof vi.fn>).mockImplementation(async (pid: string) => {
+      if (pid === 'p') throw { message: 'permission denied', code: '42501' }
+      return []
+    })
+    const repo = make(remote)
+    await repo.sync!.prefetchAll()
+    expect(await repo.cache!.project('q')).not.toBeNull()
+  })
+  it('cache.due: lista completă a proiectului e autoritară; due doar pentru proiecte necache-uite', async () => {
+    const { remote } = fakeRemote()
+    const repo = make(remote)
+    await repo.listIssues('p')
+    const range = { to: '2026-10-09T21:00:00.000Z', doneFrom: '2026-10-01T21:00:00.000Z' }
+    const due = '2026-10-03T07:00:00.000Z'
+    await kv.set('due', [mk('HZ-09', { dueAt: due }), mk('Q-01', { projectId: 'q', dueAt: due })])
+    expect((await repo.cache!.due(range))?.map((i) => i.id)).toEqual(['Q-01'])
+  })
+})
