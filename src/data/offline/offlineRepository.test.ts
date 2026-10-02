@@ -265,3 +265,96 @@ describe('scrieri', () => {
     expect(removed).toEqual([t.id])
   })
 })
+
+describe('golire', () => {
+  async function queued() {
+    const f = fakeRemote()
+    const repo = make(f.remote)
+    await repo.sync!.prefetchAll()
+    f.net.down = true
+    const events: unknown[] = []
+    repo.sync!.subscribe((e) => events.push(e))
+    return { ...f, repo, events }
+  }
+
+  it('golește în ordine și remapează ID-ul provizoriu în scrierile care-l urmau', async () => {
+    const { repo, net, remote, events, server } = await queued()
+    const c = await repo.createIssue({ projectId: 'p', title: 'nou' })
+    await repo.updateIssue('HZ-02', { deps: [c.id] })
+    await repo.updateIssue(c.id, { title: 'nou, redenumit' })
+    net.down = false
+    await repo.sync!.flush()
+    expect(repo.sync!.status().pending).toBe(0)
+    expect(remote.updateIssue).toHaveBeenNthCalledWith(1, 'HZ-02', { deps: ['HZ-13'] })
+    expect(remote.updateIssue).toHaveBeenNthCalledWith(2, 'HZ-13', { title: 'nou, redenumit' })
+    expect(events).toContainEqual({ type: 'remap', from: c.id, to: 'HZ-13' })
+    expect(server.issues.find((i) => i.id === 'HZ-13')?.title).toBe('nou, redenumit')
+    expect((await repo.listIssues('p')).map((i) => i.id)).toEqual(['HZ-01', 'HZ-02', 'HZ-13'])
+  })
+
+  it('se oprește la o eroare de rețea și reia mai târziu', async () => {
+    const { repo, net } = await queued()
+    await repo.updateIssue('HZ-01', { title: 'a' })
+    await repo.sync!.flush()
+    expect(repo.sync!.status().pending).toBe(1)
+    net.down = false
+    await repo.sync!.flush()
+    expect(repo.sync!.status().pending).toBe(0)
+  })
+
+  it('o scriere refuzată de server se scoate, tichetul revine, restul cozii continuă', async () => {
+    const { repo, net, server, events } = await queued()
+    await repo.updateIssue('HZ-01', { title: 'pe un tichet care va dispărea' })
+    await repo.updateIssue('HZ-02', { title: 'b' })
+    server.issues = server.issues.filter((i) => i.id !== 'HZ-01') // șters pe alt dispozitiv
+    net.down = false
+    await repo.sync!.flush()
+    expect(repo.sync!.status().pending).toBe(0)
+    expect(events).toContainEqual(expect.objectContaining({ type: 'failed', issueId: 'HZ-01' }))
+    expect(server.issues.find((i) => i.id === 'HZ-02')?.title).toBe('b')
+  })
+
+  it('coada supraviețuiește repornirii', async () => {
+    const { repo, remote, net } = await queued()
+    await repo.updateIssue('HZ-01', { title: 'a' })
+    const again = make(remote)
+    net.down = false
+    await again.sync!.flush()
+    expect(remote.updateIssue).toHaveBeenCalledWith('HZ-01', { title: 'a' })
+  })
+
+  it('două golire simultane nu trimit de două ori', async () => {
+    const { repo, net, remote } = await queued()
+    await repo.updateIssue('HZ-01', { title: 'a' })
+    net.down = false
+    vi.mocked(remote.updateIssue).mockClear() // încercarea directă, căzută, s-a numărat și ea
+    await Promise.all([repo.sync!.flush(), repo.sync!.flush()])
+    expect(remote.updateIssue).toHaveBeenCalledTimes(1)
+  })
+
+  it('conflict pe câmpuri diferite: se păstrează amândouă', async () => {
+    const { repo, net, server } = await queued()
+    await repo.updateIssue('HZ-01', { title: 'de pe laptop' })
+    server.issues[0].dueAt = '2026-10-05T07:00:00.000Z' // de pe telefon, între timp
+    net.down = false
+    await repo.sync!.flush()
+    expect(server.issues[0]).toMatchObject({ title: 'de pe laptop', dueAt: '2026-10-05T07:00:00.000Z' })
+  })
+
+  it('o bază locală stricată după ce serverul a acceptat nu retrimite și nu raportează refuz', async () => {
+    const { repo, net, remote } = await queued()
+    await repo.createIssue({ projectId: 'p', title: 'nou' })
+    net.down = false
+    vi.mocked(remote.createIssue).mockClear() // încercarea directă, căzută, s-a numărat și ea
+    const broken = { ...kv, completeOp: async () => { throw new DOMException('closed', 'InvalidStateError') } } as Kv
+    const again = createOfflineRepository(remote, Promise.resolve(broken), { now: () => new Date('2026-10-02T09:00:00Z'), channel: null })
+    const events: unknown[] = []
+    again.sync!.subscribe((e) => events.push(e))
+    await again.sync!.flush()
+    await again.sync!.flush()
+    expect(remote.createIssue).toHaveBeenCalledTimes(1)
+    expect(events.some((e) => (e as { type: string }).type === 'failed')).toBe(false)
+    expect(events).toContainEqual(expect.objectContaining({ type: 'remap', to: 'HZ-13' }))
+    expect(await kv.ops()).toEqual([])
+  })
+})

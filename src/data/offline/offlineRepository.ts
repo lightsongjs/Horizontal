@@ -10,10 +10,11 @@
 import type { Repository } from '../repository'
 import type { Assignee, InboxRow, Issue, Project } from '../../lib/types'
 import type { Kv } from './kv'
+import { errorMessage } from '../../lib/errorMessage'
 import { OfflineError, isNetworkError, withTimeout } from './netError'
 import { applyIssuePatch } from '../../lib/issuePatch'
 import { isTempIssueId, makeTempIssueId } from '../../lib/issueId'
-import { cancelTempIssues, deriveDue, echoIssue, overlay, type OutboxOp } from './ops'
+import { cancelTempIssues, deriveDue, echoIssue, opIssueIds, overlay, remapOp, type OutboxOp, type QueuedOp } from './ops'
 import type { CacheReader, ProjectBundle, SyncControl, SyncEvent, SyncStatus } from './types'
 
 export interface SyncChannel {
@@ -51,7 +52,6 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
   const now = opts.now ?? (() => new Date())
   const readTimeoutMs = opts.readTimeoutMs ?? 10_000
   const lock = opts.lock ?? localLock()
-  void lock // folosit de scrieri și de flush, în Task 7 și 8
   const listeners = new Set<(e: SyncEvent) => void>()
   let status: SyncStatus = { offline: false, pending: 0 }
 
@@ -252,13 +252,97 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
     }
     const r = await enqueue(kv)
     await refreshPending()
+    if (!status.offline) void flush() // coada nevidă cu rețea prezentă se golește singură
     return r
+  }
+
+  /**
+   * Elementul trimis și acceptat de server iese din coadă — ACUM, orice ar face
+   * baza locală. Un element rămas în coadă după un răspuns reușit se retrimite
+   * la următoarea golire: un `createIssue` retrimis e un tichet duplicat. De
+   * aceea, dacă `completeOp` (scrierea bazei + scoaterea) pică, încercăm măcar
+   * scoaterea simplă; cache-ul stricat se vindecă la următorul refresh, un
+   * duplicat nu. Întoarce false doar dacă elementul n-a putut fi scos deloc.
+   */
+  async function settle(kv: Kv, q: QueuedOp, rewrite: QueuedOp[], writes: () => Promise<[string, unknown][]>): Promise<boolean> {
+    try {
+      if (rewrite.length) await kv.replaceOps(rewrite, [])
+      await kv.completeOp(q.seq, await writes())
+      return true
+    } catch {
+      return kv.replaceOps([], [q.seq]).then(() => true, () => false)
+    }
+  }
+
+  /**
+   * Trimite UN element. Doar eroarea apelului `remote.*` iese mai departe —
+   * decizia rețea/server e în `flush`. Tot ce vine după un răspuns reușit e
+   * local și nu poate fi tratat ca refuz al serverului. Întoarce dacă
+   * elementul a ieșit din coadă.
+   */
+  async function runOp(kv: Kv, q: QueuedOp, rest: QueuedOp[]): Promise<boolean> {
+    const op = q.op
+    if (op.kind === 'createIssue') {
+      const created = await remote.createIssue(op.input)
+      // Întâi coada: scrierile care urmau trebuie să vadă ID-ul real înainte
+      // de orice altă golire. Apoi baza, atomic cu scoaterea elementului.
+      const rewritten = rest.map((r) => ({ ...r, op: remapOp(r.op, op.tempId, created.id) }))
+      const removed = await settle(kv, q, rewritten, () => baseWritesUpsert(kv, created))
+      emit({ type: 'remap', from: op.tempId, to: created.id })
+      const later = rewritten.map((r) => r.op)
+      emit({ type: 'issue', issue: overlay([created], later, now())[0] ?? created })
+      return removed
+    }
+    if (op.kind === 'updateIssue') {
+      const saved = await remote.updateIssue(op.id, op.patch)
+      const removed = await settle(kv, q, [], () => baseWritesUpsert(kv, saved))
+      // Varianta serverului, cu scrierile încă netrimise rejucate peste ea —
+      // altfel ecranul ar „anula" pentru o clipă o modificare care urmează.
+      const shown = overlay([saved], rest.map((r) => r.op), now())[0]
+      if (shown) emit({ type: 'issue', issue: shown })
+      return removed
+    }
+    if (op.kind === 'deleteIssues') {
+      await remote.deleteIssues(op.ids)
+      return settle(kv, q, [], () => baseWritesRemove(kv, op.ids))
+    }
+    await remote.markSeen(op.issueId)
+    return settle(kv, q, [], async () => [])
+  }
+
+  async function flush() {
+    const kv = await kvReady
+    if (!kv) return
+    await lock(async () => {
+      for (;;) {
+        const all = await kv.ops()
+        if (!all.length) break
+        const [q, ...rest] = all
+        try {
+          const removed = await runOp(kv, q, rest)
+          setStatus({ offline: false })
+          if (!removed) break // n-are rost să-l retrimitem în buclă
+        } catch (e) {
+          if (isNetworkError(e)) { setStatus({ offline: true }); break }
+          // Refuz de server: nu blocăm coada la infinit. Elementul se scoate,
+          // iar cine afișează tichetul primește valoarea serverului (sau află
+          // că nu mai există).
+          await kv.replaceOps([], [q.seq])
+          const [issueId] = opIssueIds(q.op)
+          let revert: Issue | null = null
+          if (q.op.kind === 'updateIssue') revert = await currentIssue(kv, q.op.id)
+          emit({ type: 'failed', message: errorMessage(e), issueId: issueId ?? null, revert })
+          if (q.op.kind === 'createIssue') emit({ type: 'removed', ids: [q.op.tempId] })
+        }
+      }
+      await refreshPending()
+    })
   }
 
   const sync: SyncControl = {
     status: () => status,
     subscribe(fn) { listeners.add(fn); return () => { listeners.delete(fn) } },
-    flush: async () => {},
+    flush,
     prefetchAll,
     async clear() { const kv = await kvReady; await kv?.clear(); setStatus({ pending: 0 }) },
   }
@@ -377,5 +461,9 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
   }
 
   void refreshPending()
+  // Golirea pornește singură: la deschidere (coada poate fi plină de ieri) și
+  // la revenirea rețelei. Revenirea în tab o cere store-ul, prin `refresh`.
+  void flush()
+  if (typeof window !== 'undefined') window.addEventListener('online', () => void flush())
   return repo
 }
