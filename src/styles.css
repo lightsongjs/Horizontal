@@ -5755,3 +5755,9 @@ html:has(.qab), body:has(.qab) { margin: 0; height: 100%; background: var(--surf
 .qab { padding: 12px 16px; }
 .qab .qa { box-shadow: none; background: transparent; }
 .qab-empty { margin: 0; padding: 18px 20px; font-family: var(--display); color: var(--txt-dim); background: var(--surface); }
+/* Indiciul datei, în bară: fereastra taie ce iese din ea (overflow hidden), iar
+   poziția „deasupra rândului" din „Azi" l-ar scoate pe sus. Stă în banda de sus,
+   rezervată mereu, ca apariția lui să nu mute câmpul. */
+.qab { padding: 24px 16px 3px; position: relative; }
+.qab .qa { margin-bottom: 0; padding-block: 4px; }
+.qab .qa-tip { position: absolute; top: -21px; bottom: auto; box-shadow: none; background: transparent; padding: 0; }

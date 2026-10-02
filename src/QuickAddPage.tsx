@@ -59,15 +59,18 @@ function QuickAddBar() {
   }, [round])
   // Fără dată în text, sarcina e pentru azi — ca adăugarea rapidă din „Azi",
   // ca să apară imediat în lista pe care omul o deschide dimineața.
+  const dailyId = dailyProjectId(projects)
   const today = startOfLocalDay(new Date()).toISOString()
   return (
     <div className="qab">
       {/* Proiectul implicit e „✅Daily", ales de om — nu ultimul folosit: bara e
           pentru captura zilnică, iar alt proiect se cere explicit (#nume sau butonul). */}
       <QuickAdd
-        key={round}
+        // `QuickAdd` citește `defaultProjectId` doar la montare, iar proiectele
+        // se încarcă după ea: id-ul lui Daily în cheie remontează câmpul când apare.
+        key={`${round}:${dailyId ?? ''}`}
         rich
-        defaultProjectId={dailyProjectId(projects) ?? undefined}
+        defaultProjectId={dailyId ?? undefined}
         defaultDueAt={today}
         onAdded={() => getDesktopBridge()?.hideBar()}
       />
