@@ -244,6 +244,9 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
   const [allObstacles, setAllObstacles] = useState<Obstacle[]>([])
   const [allObstacleLinks, setAllObstacleLinks] = useState<ObstacleLink[]>([])
   const [projectId, setProjectId] = useState<string | null>(null)
+  // Proiectul cerut ULTIMA dată, citit de răspunsurile async din
+  // `selectProject` ca să nu așeze date sosite după o comutare.
+  const currentProjectRef = useRef<string | null>(null)
   const [issuesLoadedFor, setIssuesLoadedFor] = useState<string | null>(null)
   const [issuesLoadFailedFor, setIssuesLoadFailedFor] = useState<string | null>(null)
   const [activeWave, setActiveWave] = useState(1)
@@ -284,8 +287,16 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
    * legăturilor de obstacol (scoase pe baza obstacolelor VECHI, citite din
    * `prev` în actualizatorul funcțional) e ușor de greșit, și ar fi fost
    * scrisă de trei ori.
+   *
+   * `authoritative: false` = cadrul din cache: datele se ARATĂ, dar proiectul
+   * nu se declară încărcat. `issuesLoadedFor` e semnalul pe care rezolvitorul
+   * de deep link (App.tsx) îl citește ca „lista e completă": un `/HZ-12` mai
+   * nou decât cache-ul ar fi primit „nu mai există" și URL-ul rescris, înainte
+   * ca rețeaua să apuce să-l aducă. La fel `loadedProjects` — un procent de
+   * completare din cache ar fi unul vechi. Drumul de rețea rămâne autoritar,
+   * chiar când el însuși cade pe cache (offline): acela e tot ce vom ști.
    */
-  const applyProjectBundle = useCallback((id: string, b: ProjectBundle) => {
+  const applyProjectBundle = useCallback((id: string, b: ProjectBundle, { authoritative }: { authoritative: boolean }) => {
     setAllWaves((prev) => [...prev.filter((x) => x.projectId !== id), ...b.waves])
     setAllThemes((prev) => [...prev.filter((x) => x.projectId !== id), ...b.themes])
     setAllIssues((prev) => [...prev.filter((i) => i.projectId !== id), ...b.issues])
@@ -313,6 +324,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
       ])
       return [...prev.filter((x) => x.projectId !== id), ...b.obstacles]
     })
+    if (!authoritative) return
     setIssuesLoadedFor(id)
     setLoadedProjects((prev) => new Set(prev).add(id))
   }, [])
@@ -372,9 +384,12 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     void loadDue()
     void loadInbox()
     try {
-      // Întâi coada: datele aduse mai jos trebuie să conțină deja ce s-a
-      // scris offline, altfel refresh-ul ar arăta o clipă starea veche.
-      await repository.sync?.flush()
+      // Golirea cozii pornește, dar nu e așteptată: scrierile către server n-au
+      // prag de timp, iar golirea așteaptă și lacătul dintre file — pe o legătură
+      // agățată, `refreshing` s-ar fi învârtit la nesfârșit și butonul explicit
+      // ar fi arătat stricat. Nici nu e nevoie: citirile de mai jos rejoacă
+      // deja peste ele scrierile încă în coadă.
+      void repository.sync?.flush()
       const p = await repository.listProjects()
       setRawProjects(p)
       if (projectId) {
@@ -395,7 +410,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
           // gol e o degradare acceptabilă; boardul gol nu e.
           repository.listProjectMembers(projectId).catch(() => []),
         ])
-        applyProjectBundle(projectId, { waves: w, themes: t, issues: loaded, obstacles: o, obstacleLinks: ol, members: pm })
+        applyProjectBundle(projectId, { waves: w, themes: t, issues: loaded, obstacles: o, obstacleLinks: ol, members: pm }, { authoritative: true })
       }
     } catch (e) {
       setError(errorMessage(e))
@@ -547,6 +562,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
       // un singur tichet.
       setRecurrenceUndo(null)
       setProjectId(id)
+      currentProjectRef.current = id
       // La schimbarea proiectului, „încărcat” redevine fals până sosesc datele,
       // ca un consumator să nu citească snapshot-ul altui proiect.
       setIssuesLoadedFor((cur) => (cur === id ? cur : null))
@@ -559,7 +575,11 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
         // și offline. Rețeaua vine după și îl înlocuiește.
         // Un cache care nu răspunde nu oprește rețeaua — vezi pornirea.
         const cached = await repository.cache?.project(id).catch(() => null)
-        if (cached) applyProjectBundle(id, cached)
+        // Un răspuns sosit după ce omul a trecut pe alt proiect nu mai are ce
+        // căuta pe ecran — și ar fi declarat încărcat un proiect care nu mai e
+        // cel deschis.
+        if (id !== currentProjectRef.current) return
+        if (cached) applyProjectBundle(id, cached, { authoritative: false })
         try {
           // Obstacolele în ACELAȘI Promise.all cu tichetele — vezi motivul din
           // `refresh`: un `await` separat ar face poarta valului să apară goală și
@@ -574,15 +594,18 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
             // selector să nu picteze tot proiectul ca „n-a putut fi încărcat".
             repository.listProjectMembers(id).catch(() => []),
           ])
-          applyProjectBundle(id, { waves: w, themes: t, issues: loaded, obstacles: o, obstacleLinks: ol, members: pm })
+          if (id !== currentProjectRef.current) return
+          applyProjectBundle(id, { waves: w, themes: t, issues: loaded, obstacles: o, obstacleLinks: ol, members: pm }, { authoritative: true })
           if (w.length && !w.some((x) => x.number === (proj?.currentWave ?? 1))) setActiveWave(w[0].number)
         } catch (e) {
+          if (id !== currentProjectRef.current) return
           setError(errorMessage(e))
-          // `issuesLoadedFor` rămâne null (n-avem date), dar semnalăm explicit
-          // eșecul: altfel cine așteaptă încărcarea (deep link în curs de
-          // rezolvare) rămâne blocat pe vecie. Cu date din cache pe ecran,
-          // „n-a putut fi încărcat" ar minți.
-          if (!cached) setIssuesLoadFailedFor(id)
+          // `issuesLoadedFor` rămâne null (n-avem date autoritare), dar
+          // semnalăm explicit eșecul: altfel cine așteaptă încărcarea (deep
+          // link în curs de rezolvare) rămâne blocat pe vecie. Și cu un cadru
+          // din cache pe ecran — acela nu declară proiectul încărcat, deci fără
+          // semnalul ăsta deep link-ul ar aștepta la nesfârșit.
+          setIssuesLoadFailedFor(id)
         }
       })()
     },
@@ -690,6 +713,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     setAllProjectMembers((prev) => prev.filter((m) => m.projectId !== id))
     setLoadedProjects((prev) => { const n = new Set(prev); n.delete(id); return n })
     setProjectId((cur) => (cur === id ? null : cur))
+    if (currentProjectRef.current === id) currentProjectRef.current = null
     setIssuesLoadedFor((cur) => (cur === id ? null : cur))
   }, [])
 

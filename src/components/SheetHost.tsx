@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useUI } from '../ui'
+import { sheetKey, useUI } from '../ui'
 import { IssueSheet } from './IssueSheet'
 import { IssueForm } from './IssueForm'
 import { ProjectForm } from './ProjectForm'
@@ -52,8 +52,8 @@ export function SheetHost() {
             <Icon name="back" size={15} /> Înapoi
           </button>
         )}
-        {sheet.kind === 'issue' && <IssueSheet key={sheet.issueId} issueId={sheet.issueId} />}
-        {sheet.kind === 'issue-form' && !dockedIssueId && <IssueForm key={sheet.issueId ?? '__new__'} issueId={sheet.issueId} />}
+        {sheet.kind === 'issue' && <IssueSheet key={sheetKey(sheet)} issueId={sheet.issueId} />}
+        {sheet.kind === 'issue-form' && !dockedIssueId && <IssueForm key={sheetKey(sheet) ?? '__new__'} issueId={sheet.issueId} />}
         {sheet.kind === 'project-form' && <ProjectForm />}
         {sheet.kind === 'project-settings' && <ProjectSettings />}
         {sheet.kind === 'wave-manage' && <WaveManager />}

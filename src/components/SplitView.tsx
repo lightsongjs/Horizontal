@@ -23,7 +23,7 @@ const SPLIT_QUERY = '(min-width: 1200px)'
  */
 export function SplitView({ children }: { children: ReactNode }) {
   const wide = useMediaQuery(SPLIT_QUERY)
-  const { registerSplitHost, dockedIssueId, closeSheet } = useUI()
+  const { registerSplitHost, dockedIssueId, dockedKeyId, closeSheet } = useUI()
   const { byId } = useHorizontal()
   const paneRef = useRef<HTMLElement>(null)
 
@@ -71,9 +71,12 @@ export function SplitView({ children }: { children: ReactNode }) {
              câmpuri are voie să suprascrie și care sunt tocmai editate.
              Prețul, asumat: după o salvare din panou care schimbă scadența,
              formularul se remontează cu aceleași valori — se pierde poziția
-             derulării, nu date. */
+             derulării, nu date.
+
+             Prima parte e `dockedKeyId`, nu ID-ul: un tichet creat offline
+             care primește numărul real NU se remontează (vezi `sheetKey`). */
           <IssueForm
-            key={`${dockedIssueId}:${byId[dockedIssueId]?.dueAt ?? ''}`}
+            key={`${dockedKeyId}:${byId[dockedIssueId]?.dueAt ?? ''}`}
             issueId={dockedIssueId}
             docked
           />

@@ -4,8 +4,10 @@ import { createContext, useCallback, useContext, useMemo, useRef, useState, type
 
 export type SheetState =
   | { kind: 'none' }
-  | { kind: 'issue'; issueId: string }
-  | { kind: 'issue-form'; issueId?: string } // create when no id, edit otherwise
+  // `keyId`: cheia React de la montare, când `issueId` s-a schimbat sub foaie
+  // (tichet creat offline care a primit numărul real) — vezi `renameIssueInSheets`.
+  | { kind: 'issue'; issueId: string; keyId?: string }
+  | { kind: 'issue-form'; issueId?: string; keyId?: string } // create when no id, edit otherwise
   | { kind: 'project-form' }
   | { kind: 'project-settings' }
   | { kind: 'wave-manage' }
@@ -34,6 +36,8 @@ interface UI {
    * dependență împins deasupra rămâne modal — e o navigare temporară.
    */
   dockedIssueId: string | null
+  /** Cheia React a formularului docat — `keyId ?? issueId`, vezi `sheetKey`. */
+  dockedKeyId: string | null
   /** O vizualizare anunță că poate găzdui panoul. Întoarce dezabonarea. */
   registerSplitHost(): () => void
   /** Formularul docat își raportează starea „am modificări nesalvate”. */
@@ -80,6 +84,54 @@ export function dockedIssueIdFrom(sheets: SheetState[], hasSplitHost: boolean): 
   return only.kind === 'issue-form' ? only.issueId ?? null : null
 }
 
+/**
+ * Cheia React a unei foi de tichet: ID-ul de la montare, nu cel de acum.
+ *
+ * Un tichet creat offline și ținut deschis primește numărul real exact când
+ * revine rețeaua. Cu cheia pe `issueId`, `SheetHost`/`SplitView` ar remonta
+ * formularul atunci — și s-ar pierde tot ce scrii nesalvat, plus ciorna din
+ * `Thread`. E ACELAȘI tichet, deci cheia rămâne. Invers decât regula `dueAt`
+ * din `SplitView`, unde remontarea e chiar scopul: acolo datele din formular
+ * ar minți, aici doar eticheta s-a schimbat.
+ */
+export function sheetKey(s: Extract<SheetState, { kind: 'issue' | 'issue-form' }>): string | undefined {
+  return s.keyId ?? s.issueId
+}
+
+/** Cheia formularului docat, cu exact regulile lui `dockedIssueIdFrom`. */
+export function dockedKeyFrom(sheets: SheetState[], hasSplitHost: boolean): string | null {
+  if (!dockedIssueIdFrom(sheets, hasSplitHost)) return null
+  const only = sheets[0]
+  return only.kind === 'issue-form' ? sheetKey(only) ?? null : null
+}
+
+/**
+ * Foile cu `from` trec pe `to`, ținând minte cheia de la montare (prima, nu
+ * una intermediară). Aceeași stivă dacă n-are ce schimba — o redenumire a
+ * unui tichet care nu e deschis nu trebuie să randeze nimic.
+ */
+export function renameIssueInSheets(sheets: SheetState[], from: string, to: string): SheetState[] {
+  if (!sheets.some((s) => 'issueId' in s && s.issueId === from)) return sheets
+  return sheets.map((s) =>
+    (s.kind === 'issue' || s.kind === 'issue-form') && s.issueId === from
+      ? { ...s, issueId: to, keyId: s.keyId ?? from }
+      : s,
+  )
+}
+
+/**
+ * Foaia de editare pentru `issueId`. Dacă tichetul e deja singura foaie, își
+ * păstrează cheia: un click pe rândul lui după o redenumire ar fi schimbat
+ * cheia din `HZ-~…` în `HZ-13` și ar fi remontat formularul, cu tot ce conține.
+ */
+export function editSheet(prev: SheetState[], issueId: string): SheetState {
+  const only = prev.length === 1 ? prev[0] : null
+  if (only?.kind === 'issue-form' && only.issueId === issueId && only.keyId) {
+    return { kind: 'issue-form', issueId, keyId: only.keyId }
+  }
+  return { kind: 'issue-form', issueId }
+}
+
 const Ctx = createContext<UI | null>(null)
 
 export function UIProvider({ children }: { children: ReactNode }) {
@@ -108,6 +160,7 @@ export function UIProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const dockedIssueId = dockedIssueIdFrom(sheets, splitHosts > 0)
+  const dockedKeyId = dockedKeyFrom(sheets, splitHosts > 0)
 
   const ticketId = useMemo(() => {
     const found = sheets.find((s) => s.kind === 'issue-form' && s.issueId)
@@ -120,10 +173,11 @@ export function UIProvider({ children }: { children: ReactNode }) {
       ticketId,
       canGoBack: sheets.length > 1,
       dockedIssueId,
+      dockedKeyId,
       registerSplitHost,
       setDockedDirty,
       saveNudge,
-      openIssue: (issueId) => setSheets([{ kind: 'issue-form', issueId }]),
+      openIssue: (issueId) => setSheets((prev) => [editSheet(prev, issueId)]),
       openNewIssue: () => setSheets([{ kind: 'issue-form' }]),
       openEditIssue: (issueId) => {
         // Plasa de siguranță a panoului lateral. Comutarea pe alt tichet NU
@@ -144,7 +198,7 @@ export function UIProvider({ children }: { children: ReactNode }) {
           }
         }
         clearPendingSwitch()
-        setSheets([{ kind: 'issue-form', issueId }])
+        setSheets((prev) => [editSheet(prev, issueId)])
       },
       openNewProject: () => setSheets([{ kind: 'project-form' }]),
       openProjectSettings: () => setSheets([{ kind: 'project-settings' }]),
@@ -161,12 +215,18 @@ export function UIProvider({ children }: { children: ReactNode }) {
       // Un tichet creat offline și deschis în foaie primește numărul real la
       // sincronizare; foaia trebuie să-l urmeze, altfel ar căuta un ID care
       // nu mai există și s-ar închide sub degetele omului.
-      renameIssueId: (from, to) =>
-        setSheets((prev) => prev.map((s) => ('issueId' in s && s.issueId === from ? { ...s, issueId: to } : s))),
+      // Cheia React rămâne cea veche (`renameIssueInSheets`), ca formularul să
+      // nu se remonteze și să nu piardă ce e nesalvat. Și intenția de comutare
+      // în așteptare îl urmează — altfel a doua atingere pe rând n-ar mai
+      // recunoaște tichetul și ar cere din nou confirmarea.
+      renameIssueId: (from, to) => {
+        if (pendingSwitch.current?.id === from) pendingSwitch.current.id = to
+        setSheets((prev) => renameIssueInSheets(prev, from, to))
+      },
       setCloseGuard: (fn) => { closeGuard.current = fn },
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sheet, sheets.length, ticketId, dockedIssueId, registerSplitHost, setDockedDirty, saveNudge, clearPendingSwitch],
+    [sheet, sheets.length, ticketId, dockedIssueId, dockedKeyId, registerSplitHost, setDockedDirty, saveNudge, clearPendingSwitch],
   )
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

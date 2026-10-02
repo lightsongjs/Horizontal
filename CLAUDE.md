@@ -132,6 +132,14 @@ lui `Thread` într-un loc care supraviețuiește remontării — nu adăuga un e
 sincronizare în formular, care ar avea nevoie de propria conștiință a stării
 murdare.
 
+Invers, și deliberat: un tichet creat offline (`HZ-~…`) care primește numărul
+real la sincronizare **nu** se remontează. Foaia ține cheia de la montare
+(`keyId`, pus de `renameIssueInSheets` din `src/ui.tsx`), iar `SheetHost` și
+`SplitView` cheiază pe `sheetKey` = `keyId ?? issueId` (panoul își păstrează
+sufixul `:dueAt`). La `dueAt` remontarea repară date care ar minți; la
+redenumire s-a schimbat doar eticheta, iar o remontare ar arunca ce scrii
+nesalvat și ciorna din `Thread` exact în clipa în care revine rețeaua.
+
 **Comutarea nu salvează nimic singură.** Garda de close (`setCloseGuard`) vede
 doar închiderea explicită — un click pe alt rând o ocolește complet. De-aia
 formularul docat își raportează starea murdară (`setDockedDirty`) și
