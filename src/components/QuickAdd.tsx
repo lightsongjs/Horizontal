@@ -111,7 +111,7 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, defaultProjec
   const assigneeId = manual.assigneeId !== undefined ? manual.assigneeId : tokens?.assigneeId ?? null
   const urgent = manual.urgent ?? tokens?.urgent ?? false
   // Calculat o singură dată — nu de două ori în JSX (condiție + text).
-  const recur = useParsed && parsed.rrule ? describeRrule(parsed.rrule) : ''
+  const recur = useParsed && !manual.due && parsed.rrule ? describeRrule(parsed.rrule) : ''
   // Text numai-dată: „azi la 8" n-are ce să salveze.
   const bare = text.trim() !== '' && title === ''
 
