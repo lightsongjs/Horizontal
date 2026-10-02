@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Foaia „Amână…". Literă serif pe ce e limbă, mono pe ce e oră (regula 2); fără chenare. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- Voalul: o atingere pe el închide foaia, fără amânare. -->
+    <View
+        android:id="@+id/scrim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/hz_scrim" />
+
+    <LinearLayout
+        android:id="@+id/sheet"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="@drawable/bg_sheet"
+        android:clickable="true"
+        android:elevation="8dp"
+        android:orientation="vertical"
+        android:paddingStart="12dp"
+        android:paddingTop="20dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="12dp">
+
+        <TextView
+            android:id="@+id/title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:ellipsize="end"
+            android:fontFamily="serif"
+            android:maxLines="2"
+            android:textColor="@color/hz_text"
+            android:textSize="18sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingStart="12dp"
+            android:paddingTop="6dp"
+            android:paddingEnd="12dp"
+            android:paddingBottom="8dp"
+            android:fontFamily="monospace"
+            android:letterSpacing="0.08"
+            android:text="AMÂNĂ PÂNĂ LA"
+            android:textColor="@color/hz_muted"
+            android:textSize="12sp" />
+
+        <LinearLayout
+            android:id="@+id/opt5"
+            style="@style/Hz.Snooze.Row">
+            <TextView style="@style/Hz.Snooze.Label" android:text="5 minute" />
+            <TextView android:id="@+id/opt5Time" style="@style/Hz.Snooze.Time"  />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/opt30"
+            style="@style/Hz.Snooze.Row">
+            <TextView style="@style/Hz.Snooze.Label" android:text="30 de minute" />
+            <TextView android:id="@+id/opt30Time" style="@style/Hz.Snooze.Time"  />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/opt60"
+            style="@style/Hz.Snooze.Row">
+            <TextView style="@style/Hz.Snooze.Label" android:text="O oră" />
+            <TextView android:id="@+id/opt60Time" style="@style/Hz.Snooze.Time"  />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/opt180"
+            style="@style/Hz.Snooze.Row">
+            <TextView style="@style/Hz.Snooze.Label" android:text="3 ore" />
+            <TextView android:id="@+id/opt180Time" style="@style/Hz.Snooze.Time"  />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/optTomorrow"
+            style="@style/Hz.Snooze.Row">
+            <TextView style="@style/Hz.Snooze.Label" android:text="Mâine dimineață" />
+            <TextView android:id="@+id/optTomorrowTime" style="@style/Hz.Snooze.Time"  />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/optCustom"
+            style="@style/Hz.Snooze.Row">
+            <TextView style="@style/Hz.Snooze.Label" android:text="Altă dată…" />
+            <TextView android:id="@+id/optCustomTime" style="@style/Hz.Snooze.Time" android:text="alege" />
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

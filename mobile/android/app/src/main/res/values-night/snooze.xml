@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="hz_bg">#0B0B0E</color>
+    <color name="hz_surface">#17171C</color>
+    <color name="hz_text">#E8E8EE</color>
+    <color name="hz_muted">#9A9AA6</color>
+    <color name="hz_accent">#818CF8</color>
+    <color name="hz_scrim">#99000000</color>
+</resources>

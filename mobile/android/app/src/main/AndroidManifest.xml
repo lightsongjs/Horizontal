@@ -25,6 +25,10 @@
 
         </activity>
 
+        <!-- Foaia „Amână…": deschisă din notificare, fără WebView; nu rămâne în Recente și nu se lipește de sarcina aplicației. -->
+        <activity android:name=".SnoozeActivity" android:exported="false" android:theme="@style/Hz.Snooze"
+            android:excludeFromRecents="true" android:taskAffinity="" android:launchMode="singleInstance" />
+
         <receiver android:name=".AlarmReceiver" android:exported="false" />
         <receiver android:name=".ActionReceiver" android:exported="false" />
         <!-- Exportat fiindcă sistemul îl cheamă; acțiunile din filtru sunt toate protejate (doar sistemul le poate trimite). -->

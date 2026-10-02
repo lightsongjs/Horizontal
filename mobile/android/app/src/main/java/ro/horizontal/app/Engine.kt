@@ -13,10 +13,20 @@ import ro.horizontal.app.core.*
  * notificarea. Un proces omorât între cele două pierde o notificare, dar nu
  * sună de două ori la repornire — una ratată se vede oricum în „Azi", una
  * dublă e zgomot.
+ *
+ * Efectele (show/cancel) rulează tot SUB lacătul lui PlanStore. Două
+ * reschedule-uri din fire diferite (o alarmă și o acțiune) altfel s-ar putea
+ * intercala: al doilea calculează „retrage X", își face cancel-ul, iar abia
+ * apoi primul ajunge la show(X) — notificare orfană pe ecran, pe care niciun
+ * plan n-o mai retrage, fiindcă `shown` spune că nu e acolo.
  */
 object Engine {
     fun reschedule(ctx: Context, now: Long = System.currentTimeMillis()) {
         Notifier.ensureChannels(ctx)
+        PlanStore.locked { effects(ctx, now) }
+    }
+
+    private fun effects(ctx: Context, now: Long) {
         val (fire, cancel, _) = PlanStore.edit(ctx) { s ->
             val latest = maxOf(s.page?.readAt ?: 0, s.native?.readAt ?: 0)
             val queue = NativeQueue.prune(s.queue, latest)

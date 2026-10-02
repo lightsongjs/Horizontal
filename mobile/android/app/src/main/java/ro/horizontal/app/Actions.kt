@@ -13,9 +13,12 @@ import ro.horizontal.app.core.NativeAction
  */
 object Actions {
     fun dispatch(ctx: Context, a: NativeAction, now: Long = System.currentTimeMillis()) {
-        Notifier.cancel(ctx, a.id)
         val toPage = HorizontalAndroidPlugin.deliverIfVisible(Json.actionToPage(a))
         PlanStore.edit(ctx) { s -> s.copy(queue = s.queue + if (toPage) a.copy(drainedAt = now) else a) to Unit }
+        // Întâi pe disc, apoi retragerea: un proces omorât între cele două lasă o
+        // notificare în plus (atingi încă o dată, coada rămâne corectă), nu una
+        // dispărută ȘI o acțiune pierdută.
+        Notifier.cancel(ctx, a.id)
         Engine.reschedule(ctx, now)
         if (!toPage) Hooks.afterQueued(ctx)
     }

@@ -4,6 +4,7 @@ import android.content.Context
 import org.json.JSONObject
 import ro.horizontal.app.core.Failure
 import ro.horizontal.app.core.Tokens
+import ro.horizontal.app.core.accountSwitched
 import ro.horizontal.app.core.classifyAuth
 import ro.horizontal.app.core.parseTokens
 import java.io.IOException
@@ -18,6 +19,12 @@ import java.io.IOException
  */
 object NativeSession {
     private const val PREFS = "hz-session"
+    /**
+     * Ultimul cont, în afara lui PREFS: `dropSession` și `signOut` șterg acolo, iar
+     * comparația de la login trebuie să supraviețuiască exact acelor ștergeri.
+     * Nu e un secret (un uuid), deci nu stă în cutia criptată.
+     */
+    private const val ACCOUNT_PREFS = "hz-account"
     private val lock = Any()
 
     fun config(ctx: Context): Pair<String, String>? {
@@ -47,6 +54,15 @@ object NativeSession {
         val r = SupabaseApi.raw("POST", "$url/auth/v1/token?grant_type=password", mapOf("apikey" to anon),
             JSONObject().put("email", email).put("password", password).toString())
         val t = (if (r.status == 200) parseTokens(r.body) else null) ?: throw IllegalStateException("login refuzat (${r.status})")
+        // Alt cont decât ultimul: planul și coada sunt ale celuilalt. Golite ÎNAINTE de
+        // a salva sesiunea nouă, ca workerul să nu apuce să trimită coada veche cu ea.
+        val acct = ctx.getSharedPreferences(ACCOUNT_PREFS, 0)
+        if (accountSwitched(acct.getString("lastUserId", null), t.userId)) {
+            PlanStore.clear(ctx)
+            AlarmScheduler.arm(ctx, null)
+            Notifier.cancelAll(ctx)
+        }
+        acct.edit().putString("lastUserId", t.userId).commit()
         ctx.getSharedPreferences(PREFS, 0).edit().putString("url", url).putString("anon", anon).commit()
         save(ctx, t)
         Notifier.cancelStatus(ctx)
@@ -67,7 +83,9 @@ object NativeSession {
         if (t.expiresAt - 60_000 > now) return t.access
         val (url, anon) = config(ctx) ?: return null
         val r = SupabaseApi.raw("POST", "$url/auth/v1/token?grant_type=refresh_token", mapOf("apikey" to anon), JSONObject().put("refresh_token", t.refresh).toString())
-        if (r.status == 200) { val n = parseTokens(r.body) ?: return null; save(ctx, n); return n.access }
+        // Un 200 care nu se citește (corp trunchiat, proxy) nu e o sesiune moartă: `null`
+        // ar fi citit de apelanți ca „reconectează-te". E o problemă de drum — reîncearcă.
+        if (r.status == 200) { val n = parseTokens(r.body) ?: throw IOException("refresh: răspuns ilizibil"); save(ctx, n); return n.access }
         if (classifyAuth(r.status, r.body) == Failure.AUTH_DEAD) { dropSession(ctx); Notifier.showReconnect(ctx); return null }
         // 5xx: sesiunea poate fi încă bună; cine cheamă tratează ca rețea și reîncearcă.
         throw IOException("refresh ${r.status}")

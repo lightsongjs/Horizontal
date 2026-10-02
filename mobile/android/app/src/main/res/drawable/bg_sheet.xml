@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Foaia: colțurile de sus 16dp (raza foilor), fără `stroke` — regula 1, fără linii. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/hz_surface" />
+    <corners android:topLeftRadius="16dp" android:topRightRadius="16dp" />
+</shape>

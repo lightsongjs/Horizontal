@@ -1,6 +1,7 @@
 package ro.horizontal.app
 
 import android.Manifest
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -106,7 +107,8 @@ class HorizontalAndroidPlugin : Plugin() {
 
     private fun notifState(): String = when {
         NotificationManagerCompat.from(context).areNotificationsEnabled() -> "granted"
-        Build.VERSION.SDK_INT >= 33 && getPermissionState("notifications") == PermissionState.PROMPT -> "prompt"
+        // PROMPT_WITH_RATIONALE = refuzat o dată, dar sistemul încă afișează dialogul: tot „se poate cere".
+        Build.VERSION.SDK_INT >= 33 && getPermissionState("notifications").let { it == PermissionState.PROMPT || it == PermissionState.PROMPT_WITH_RATIONALE } -> "prompt"
         else -> "denied"
     }
 
@@ -125,7 +127,9 @@ class HorizontalAndroidPlugin : Plugin() {
             "battery" -> Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
             else -> null
         } ?: return call.reject("necunoscut")
-        activity.startActivity(i)
+        // Unii producători scot ecranele de setări (ex. optimizarea bateriei); fără catch,
+        // excepția ar omorî apelul fără răspuns, iar pagina ar aștepta la nesfârșit.
+        try { activity.startActivity(i) } catch (e: ActivityNotFoundException) { return call.reject("ecranul de setări lipsește pe acest telefon") }
         call.resolve()
     }
 

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Jetoanele „Scholarly Editorial" (CLAUDE.md) pentru foaia nativă „Amână…": un singur accent, suprafață peste fundal. -->
+<resources>
+    <color name="hz_bg">#F7F9FC</color>
+    <color name="hz_surface">#FFFFFF</color>
+    <color name="hz_text">#14161C</color>
+    <color name="hz_muted">#5B6170</color>
+    <color name="hz_accent">#1A237E</color>
+    <!-- Voalul de deasupra foii. Desenat de noi, nu `backgroundDimEnabled`: acela lucrează doar pe ferestre plutitoare. -->
+    <color name="hz_scrim">#66000000</color>
+    <!-- Fără Material3 în dependințe: AppCompat vine cu Capacitor. -->
+    <style name="Hz.Snooze" parent="Theme.AppCompat.DayNight.Dialog">
+        <item name="android:windowIsFloating">false</item>
+        <!-- Translucid: în spate se vede ce era pe ecran, nu un fundal negru. -->
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="windowNoTitle">true</item>
+        <item name="android:windowAnimationStyle">@android:style/Animation.InputMethod</item>
+        <item name="colorAccent">@color/hz_accent</item>
+        <item name="colorPrimary">@color/hz_accent</item>
+    </style>
+    <style name="Hz.Snooze.Row">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:minHeight">52dp</item>
+        <item name="android:orientation">horizontal</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:paddingStart">12dp</item>
+        <item name="android:paddingEnd">12dp</item>
+        <item name="android:background">@drawable/bg_row</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+    </style>
+    <style name="Hz.Snooze.Label">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:fontFamily">serif</item>
+        <item name="android:textColor">@color/hz_text</item>
+        <item name="android:textSize">16sp</item>
+    </style>
+    <style name="Hz.Snooze.Time">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:fontFamily">monospace</item>
+        <item name="android:textColor">@color/hz_muted</item>
+        <item name="android:textSize">14sp</item>
+    </style>
+</resources>

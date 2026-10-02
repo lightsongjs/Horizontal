@@ -15,6 +15,10 @@ const config: CapacitorConfig = {
     // Depanare prin `adb forward` + CDP (mobile/scripts/cdp.mjs). Pe un APK
     // instalat prin sideload cere oricum USB debugging autorizat.
     webContentsDebuggingEnabled: true,
+    // Bridge-ul Capacitor scrie în logcat datele fiecărui apel de plugin pe un
+    // build debuggable — inclusiv parola din `signIn`. Logcat-ul e citibil de
+    // oricine are `adb`; nu-l vrem plin de parole.
+    loggingBehavior: 'none',
   },
 }
 export default config

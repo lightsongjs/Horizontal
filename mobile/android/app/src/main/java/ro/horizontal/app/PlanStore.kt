@@ -27,11 +27,18 @@ object PlanStore {
 
     fun read(ctx: Context): State = synchronized(lock) { load(ctx) }
 
-    fun <T> edit(ctx: Context, fn: (State) -> Pair<State, T>): T = synchronized(lock) {
+    /** `fn` întoarce starea nouă; `null` = nimic de scris (vezi `DrainWorker`, după logout). */
+    fun <T> edit(ctx: Context, fn: (State) -> Pair<State?, T>): T = synchronized(lock) {
         val (next, out) = fn(load(ctx))
-        save(ctx, next)
+        if (next != null) save(ctx, next)
         out
     }
+
+    /**
+     * Lacătul stării, ținut și peste efectele care decurg din ea (notificări).
+     * Reentrant (`synchronized`), deci `edit` dinăuntru nu se blochează singur.
+     */
+    fun <T> locked(fn: () -> T): T = synchronized(lock) { fn() }
 
     fun clear(ctx: Context) = synchronized(lock) { ctx.getSharedPreferences(PREFS, 0).edit().clear().commit() }
 
