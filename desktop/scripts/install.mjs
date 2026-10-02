@@ -19,6 +19,12 @@ if (!existsSync(join(built, 'horizontal'))) throw new Error(`lipsește ${built}/
 
 // 1. Oprește instanța care rulează (binarul nu se poate înlocui de sub ea).
 try { run('gdbus', ['call', '--session', '--dest', 'ro.horizontal.App', '--object-path', '/ro/horizontal/App', '--method', 'ro.horizontal.App.Quit']) } catch { /* nu rula */ }
+// `Quit` doar cere închiderea; înlocuirea fișierelor de sub o instanță încă vie
+// ar strica copia. Așteaptă (max ~5 s) să se elibereze numele de pe magistrală.
+const hasOwner = () => {
+  try { return run('gdbus', ['call', '--session', '--dest', 'org.freedesktop.DBus', '--object-path', '/org/freedesktop/DBus', '--method', 'org.freedesktop.DBus.NameHasOwner', 'ro.horizontal.App']).includes('true') } catch { return false }
+}
+for (let i = 0; i < 25 && hasOwner(); i++) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 200)
 
 // 2. Programul.
 rmSync(opt, { recursive: true, force: true })
