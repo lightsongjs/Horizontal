@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Horizontal</string>
+    <string name="title_activity_main">Horizontal</string>
+    <string name="package_name">ro.horizontal.app</string>
+    <string name="custom_url_scheme">ro.horizontal.app</string>
+</resources>

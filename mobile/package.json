@@ -1,0 +1,19 @@
+{
+  "name": "horizontal-mobile",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "sync": "cap sync android",
+    "test": "cd android && ./gradlew --quiet testDebugUnitTest",
+    "apk": "cd android && ./gradlew --quiet assembleRelease",
+    "install-apk": "node scripts/install.mjs"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.2"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
+    "playwright": "^1.61.1"
+  }
+}
