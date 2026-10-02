@@ -3,6 +3,7 @@ import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { useCanWrite } from '../hooks'
 import { Icon } from './Icon'
+import { displayIssueId } from '../lib/issueId'
 
 export function ThemesView() {
   const { themes, issues, stateOf } = useHorizontal()
@@ -77,7 +78,7 @@ export function ThemesView() {
               <span className="check"><Icon name={it.done ? 'done' : 'notDone'} size={16} /></span>
               <span className="tk-body">
                 <span className="tk-top">
-                  <span className="tk-id">{it.id}</span>
+                  <span className="tk-id">{displayIssueId(it.id)}</span>
                 </span>
                 <h5>{it.title}</h5>
               </span>
@@ -100,7 +101,7 @@ function ThemeIssueRow({ id, color }: { id: string; color: string }) {
       <span className="tk-body">
         <span className="tk-top">
           <span className="theme-dot" style={{ background: color }} />
-          <span className="tk-id">{id}</span>
+          <span className="tk-id">{displayIssueId(id)}</span>
         </span>
         <h5>{it.title}</h5>
       </span>

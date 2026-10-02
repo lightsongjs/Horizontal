@@ -10,6 +10,7 @@ import { DueChip } from './DueChip'
 import { ObstacleChip } from './ObstacleChip'
 import { Icon } from './Icon'
 import { SplitView } from './SplitView'
+import { displayIssueId } from '../lib/issueId'
 
 export function ListView() {
   const { waves, activeWave, byId, stateOf, themeOf, toggleDone, blockedByObstacle, assignees, assigneeShort } = useHorizontal()
@@ -205,7 +206,7 @@ export function ListView() {
                       <Icon name={(inSelect ? isSelected : it.done) ? 'done' : 'notDone'} size={17} />
                     </span>
                     {theme && <span className="theme-dot" style={{ background: theme.color }} />}
-                    <span className="list-id">{id}</span>
+                    <span className="list-id">{displayIssueId(id)}</span>
                     <span className="list-title">{it.title}</span>
                     {/* Coada rândului: aceeași ordine ca `.t-tail` din TaskRow. */}
                     <span className="row-tail">

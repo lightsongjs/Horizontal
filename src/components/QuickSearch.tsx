@@ -3,6 +3,7 @@ import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import type { Issue } from '../lib/types'
 import { Icon } from './Icon'
+import { displayIssueId } from '../lib/issueId'
 
 interface Props {
   onClose: () => void
@@ -165,7 +166,7 @@ export function QuickSearch({ onClose }: Props) {
                 onClick={() => open(issue.id)}
                 onMouseEnter={() => setSelected(i)}
               >
-                <span className="qs-item-id">{issue.id}</span>
+                <span className="qs-item-id">{displayIssueId(issue.id)}</span>
                 <span className="qs-item-title">{highlight(query, issue.title)}</span>
                 {issue.done && <span className="qs-item-done"><Icon name="check" size={14} label="Gata" /></span>}
               </button>

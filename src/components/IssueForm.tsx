@@ -20,6 +20,7 @@ import { describeRrule } from '../lib/recurrence'
 import { PRESETS, RecurrencePicker, presetOf } from './RecurrencePicker'
 import type { Issue, ScenarioKind, TestScenario } from '../lib/types'
 import { Icon, type IconName } from './Icon'
+import { displayIssueId, isTempIssueId } from '../lib/issueId'
 
 const PALETTE = ['#0284C7', '#059669', '#D97706', '#EA580C', '#E11D48', '#7C3AED', '#06B6D4']
 
@@ -274,6 +275,16 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
   // arată doar la o copiere confirmată.
   const copyLink = useCallback(async (id: string | undefined) => {
     if (!id) return
+    // Un tichet creat offline n-are încă număr: linkul `/HZ-~…` n-ar deschide
+    // nimic pe alt dispozitiv. Se refuză vizibil, nu în tăcere.
+    // Cronometrul de revenire e același ca la o copiere eșuată, altfel „fail"
+    // ar rămâne agățat pe buton.
+    if (isTempIssueId(id)) {
+      setCopyState('fail')
+      if (copyResetTimer.current) clearTimeout(copyResetTimer.current)
+      copyResetTimer.current = setTimeout(() => setCopyState('idle'), 4000)
+      return
+    }
     const url = ticketUrl(window.location.origin, id)
     let ok = false
     try {
@@ -1194,7 +1205,9 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
             className={`sh-copy${copyState === 'ok' ? ' copied' : ''}${copyState === 'fail' ? ' copy-failed' : ''}`}
             onClick={() => void copyLink(existing?.id)}
             aria-label={copyState === 'fail' ? 'Copierea a eșuat' : 'Copiază link'}
-            title={copyState === 'fail'
+            title={existing && isTempIssueId(existing.id)
+              ? 'Linkul apare după sincronizare'
+              : copyState === 'fail'
               ? 'Nu am putut copia link-ul — copiază-l din bara de adrese'
               : 'Copiază link către ticket (y)'}
           >
@@ -1461,7 +1474,7 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
                         >
                           <span className="dep-dd-ic">+</span>
                           <span className="dep-dd-title">{item.title}</span>
-                          <span className="dep-dd-id">{item.id}</span>
+                          <span className="dep-dd-id">{displayIssueId(item.id)}</span>
                         </button>
                       ))}
                       {depFiltered.length === 0 && !depShowCreate && (
@@ -1497,7 +1510,7 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
                           {/* Un obstacol scris chiar acum e gol — titlu și nimic altceva — deci
                               corpul jetonului deschide direct foaia, ca „owner"/„stare" să fie o atingere. */}
                           <button className="dep-card-body" onClick={() => pushSheet({ kind: 'obstacle-form', obstacleId: id })}>
-                            <span className="dep-card-id">{id}</span>
+                            <span className="dep-card-id">{displayIssueId(id)}</span>
                             <span className="dep-card-title">{obstacle.title}</span>
                           </button>
                           <button className="dep-card-x" onClick={() => removeCurrentDep(id)} aria-label="Scoate obstacolul"><Icon name="close" size={12} /></button>
@@ -1509,7 +1522,7 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
                     return (
                       <div key={id} className="dep-card">
                         <button className="dep-card-body" onClick={() => pushSheet({ kind: 'issue', issueId: id })}>
-                          <span className="dep-card-id">{id}</span>
+                          <span className="dep-card-id">{displayIssueId(id)}</span>
                           <span className="dep-card-title">{issue.title}</span>
                         </button>
                         <button className="dep-card-x" onClick={() => removeCurrentDep(id)} aria-label="Scoate dependența"><Icon name="close" size={12} /></button>

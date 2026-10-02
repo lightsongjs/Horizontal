@@ -5,6 +5,7 @@ import { waitingDays } from '../lib/obstacles'
 import { fold } from '../lib/text'
 import { Icon } from './Icon'
 import type { ObstacleEvidence, ObstacleState } from '../lib/types'
+import { displayIssueId } from '../lib/issueId'
 
 /** Exportat — `WaveGate` folosește aceleași etichete la coada „depășit"/
  * „ocolit", ca o singură sursă de adevăr pentru cuvintele de stare. */
@@ -191,7 +192,7 @@ export function ObstacleForm({ obstacleId }: { obstacleId?: string }) {
               {linked.map((i) => (
                 <span key={i.id} className="obst-chip blk">
                   <span className="obst-chip-t">
-                    <span className="obst-chip-id">{i.id}</span> · {i.title}
+                    <span className="obst-chip-id">{displayIssueId(i.id)}</span> · {i.title}
                   </span>
                   <button
                     type="button"
@@ -227,7 +228,7 @@ export function ObstacleForm({ obstacleId }: { obstacleId?: string }) {
                 >
                   <Icon name={issueIds.includes(i.id) ? 'check' : 'add'} size={14} />
                   <span className="dep-result-title">{i.title}</span>
-                  <span className="dep-chip-id">{i.id}</span>
+                  <span className="dep-chip-id">{displayIssueId(i.id)}</span>
                 </button>
               ))}
               {results.length === 0 && <p className="dep-no-results">Niciun tichet găsit.</p>}

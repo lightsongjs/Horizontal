@@ -4,6 +4,7 @@ import { useCanWrite } from '../hooks'
 import { DueChip } from './DueChip'
 import { ObstacleChip } from './ObstacleChip'
 import { Icon } from './Icon'
+import { displayIssueId } from '../lib/issueId'
 
 interface Props {
   id: string
@@ -74,7 +75,7 @@ export function TicketCard({ id, contextWave, selectMode, isSelected, onToggleSe
       </span>
       <div className="tk-meta">
         {theme && <span className="theme-dot" style={{ background: theme.color }} />}
-        <span className="tk-id">{id}</span>
+        <span className="tk-id">{displayIssueId(id)}</span>
         {theme && <span className="tk-theme">{theme.name}</span>}
         {it.urgent && <span className="tk-urgent" title="Urgent"><Icon name="urgent" size={13} /></span>}
         {/* Cine ține tichetul, la capătul rândului de meta: o literă când
