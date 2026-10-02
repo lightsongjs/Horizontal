@@ -281,6 +281,49 @@ try {
 
   await fresh.close()
 
+  // ── Proiectul sarcinii se deschide din sidebar la PRIMUL click ──────────
+  // O sarcină deschisă din „Azi" încarcă proiectul ei în store, sub listă. O
+  // repornire peste card face ca închiderea să NU treacă prin `back()` →
+  // `popstate` → `selectProject(null)` (în spate nu e nimic al nostru), deci
+  // proiectul rămâne încărcat. Un click pe ACELAȘI proiect în sidebar chema
+  // `selectProject(null)` și `selectProject(id)` în același tick, iar garda
+  // „reselectare fără efect" citea `projectId` din clojură — încă proiectul,
+  // deci al doilea apel era ignorat și rămâneai pe „Toate proiectele".
+  const same = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+  await same.goto(BASE, { waitUntil: 'networkidle' })
+  await same.waitForTimeout(700)
+  await same.locator('.tabbar button, .sidebar-smart-item, .sidebar button')
+    .filter({ hasText: /^Azi/ }).locator('visible=true').first()
+    .click()
+  await same.waitForTimeout(800)
+  await same.locator('.qa-input').first().fill('Sarcină pentru click în sidebar')
+  await same.keyboard.press('Enter')
+  await same.waitForTimeout(1200)
+  await same.locator('.task-row').first().click()
+  await same.waitForTimeout(1200)
+  await same.reload({ waitUntil: 'networkidle' })
+  await same.waitForTimeout(1600)
+  // Panoul docat nu e modal, deci Escape nu-l închide: butonul, ca un om.
+  await same.locator('.sh-close').first().click()
+  await same.waitForTimeout(800)
+  const closedUrl = new URL(same.url()).pathname
+  check('închiderea cardului lasă URL-ul pe listă', closedUrl === '/', `URL=${closedUrl}`)
+  const loadedProj = same.locator('.sidebar-proj-item.on .sidebar-proj-btn').first()
+  const loadedName = (await loadedProj.locator('.sidebar-proj-name').textContent().catch(() => null))?.trim() ?? null
+  check('proiectul sarcinii e încărcat sub listă', loadedName !== null, `proiect=${loadedName}`)
+  if (loadedName) {
+    await loadedProj.click()
+    await same.waitForTimeout(900)
+    const sameUrl = new URL(same.url()).pathname
+    const sameH1 = (await same.locator('h1').first().textContent().catch(() => ''))?.trim()
+    check(
+      'primul click în sidebar deschide proiectul sarcinii',
+      sameUrl.startsWith('/project/'),
+      `URL=${sameUrl} h1="${sameH1}"`,
+    )
+  }
+  await same.close()
+
   // ── Ștergerea nu redeschide tichetul vizitat înainte ────────────────────
   // La închiderea unei foi se dădea `history.back()`, ca să se desfacă
   // intrarea împinsă la deschidere. Dar `back()` merge orbește: presupune că

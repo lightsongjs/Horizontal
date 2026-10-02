@@ -43,6 +43,12 @@ function SyncBridge() {
   return null
 }
 
+/**
+ * Un ID provizoriu din bară, tradus pe cel real dacă între timp s-a sincronizat.
+ * Fără înveliș offline (modul local) e identitatea.
+ */
+const resolveIssueId = (id: string) => repository.sync?.resolveId(id) ?? id
+
 function ThemeToggle({ className }: { className?: string }) {
   const { theme, toggle } = useTheme()
   return (
@@ -574,7 +580,10 @@ function Shell() {
   useEffect(() => {
     if (loading || bootDone.current) return
     bootDone.current = true
-    const target = parseTicketPath(window.location.pathname)
+    // Și un `/HZ-~…` e un path de tichet: o repornire offline peste foaia unei
+    // sarcini nesincronizate o redeschide (sarcina trăiește în coadă, deci e în
+    // `byId`). Dacă între timp a primit număr, `resolveIssueId` îl traduce.
+    const target = parseTicketPath(window.location.pathname, resolveIssueId)
     if (target) {
       // Un path de tichet spune CE e deschis, nu PE CE ecran. În aplicație, un
       // card dintr-o listă inteligentă se deschide PESTE listă (vezi
@@ -641,7 +650,12 @@ function Shell() {
     }
     if (issuesLoadedFor !== project.id) return
     deepLinkPending.current = null
-    if (byId[pending]) openIssue(pending)
+    // Încă o traducere: remaparea poate sosi cât se încărcau tichetele, iar
+    // `byId` le are deja pe ID-ul real. Un ID provizoriu care nu e nici în
+    // coadă, nici remapat (creare refuzată) cade pe ramura de mai jos, iar
+    // URL-ul se așază pe ecran — nu rămâne pe un ID mort.
+    const id = resolveIssueId(pending)
+    if (byId[id]) openIssue(id)
     else {
       setNotice(deepLinkNotice(pending, 'missing'))
       settleUrl(project)
@@ -664,16 +678,22 @@ function Shell() {
     const ticketOwnsUrl = deepLinkPending.current !== null || ticketIdRef.current !== null
     if (ticketOwnsUrl) return
 
-    const path = slug ? `/project/${slug}` : '/'
+    // Aceeași regulă ca `settleUrl`: cu o listă pe ecran, destinația e `/`.
+    // Și `screen` în dependențe: un click în sidebar pe proiectul DEJA încărcat
+    // sub listă (al sarcinii deschise din „Azi") schimbă doar ecranul, nu și
+    // `project.id` — fără el URL-ul rămânea `/` peste boardul proiectului.
+    const path = slug && !screen ? `/project/${slug}` : '/'
     if (window.location.pathname !== path) pushPath(path)
-  }, [project?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [project?.id, screen]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sheet de ticket → URL. `ticketId` vine din stiva de sheet-uri, nu din vârf,
   // deci un card de dependență deschis peste formular nu atinge URL-ul.
   // Deschiderea în aplicație împinge o intrare, deci Back închide sheet-ul.
   useEffect(() => {
     if (!urlSyncReady.current) return
-    const onTicketUrl = parseTicketPath(window.location.pathname)
+    // Tradus: bara pe `/HZ-~…` și foaia deschisă pe `HZ-13` (remapat) sunt
+    // același tichet — doar se canonizează, fără intrare nouă.
+    const onTicketUrl = parseTicketPath(window.location.pathname, resolveIssueId)
 
     if (ticketId) {
       const path = ticketPath(ticketId)
@@ -714,7 +734,7 @@ function Shell() {
   useEffect(() => {
     const onPop = () => {
       historyDepth.current = readDepth()
-      const target = parseTicketPath(window.location.pathname)
+      const target = parseTicketPath(window.location.pathname, resolveIssueId)
       // Ticketul cerut e deja cel deschis (ex. un card de dependență peste el)
       // → nu resetăm stiva și nu deranjăm garda de close.
       if (target && ticketIdRef.current === target) return

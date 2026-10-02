@@ -29,6 +29,29 @@ describe('parseTicketPath', () => {
     // nicio a doua cratimă.
     expect(parseTicketPath('/my-super-project')).toBeNull()
   })
+
+  // Bugul B2 (offline): foaia deschisă pe o sarcină creată offline are în
+  // bară `/HZ-~a1b2c3`. Un path respins aici nu era „tichet" pentru nimeni:
+  // repornirea nu redeschidea foaia, iar bara rămânea pe un ID mort.
+  it('recunoaște un ID provizoriu, cu sufixul neatins (nu e uppercase)', () => {
+    expect(parseTicketPath('/HZ-~a1b2c3')).toBe('HZ-~a1b2c3')
+    expect(parseTicketPath('/hz-~a1b2c3/')).toBe('HZ-~a1b2c3')
+  })
+
+  it('respinge un marcaj provizoriu fără sufix sau cu caractere străine', () => {
+    expect(parseTicketPath('/HZ-~')).toBeNull()
+    expect(parseTicketPath('/HZ-~a1-b2')).toBeNull()
+    expect(parseTicketPath('/~a1b2c3')).toBeNull()
+  })
+
+  it('traduce un ID provizoriu deja remapat prin `resolveId`', () => {
+    const remaps: Record<string, string> = { 'HZ-~a1b2c3': 'HZ-13' }
+    const resolveId = (id: string) => remaps[id] ?? id
+    expect(parseTicketPath('/HZ-~a1b2c3', resolveId)).toBe('HZ-13')
+    // Unul nesincronizat încă rămâne cum e — foaia se redeschide pe el.
+    expect(parseTicketPath('/HZ-~zzzzzz', resolveId)).toBe('HZ-~zzzzzz')
+    expect(parseTicketPath('/HZ-12', resolveId)).toBe('HZ-12')
+  })
 })
 
 describe('prefixOf', () => {
@@ -95,6 +118,10 @@ describe('deepLinkNotice', () => {
     expect(msg).toContain('MS-03')
     expect(msg).not.toContain('nu mai există')
     expect(msg).toBe('Nu am putut încărca datele pentru MS-03. Încearcă din nou.')
+  })
+
+  it('nu arată omului sufixul unui ID provizoriu', () => {
+    expect(deepLinkNotice('HZ-~a1b2c3', 'missing')).toBe('Ticketul HZ-· nu mai există')
   })
 
   it('are mesaje diferite pentru cele două motive', () => {

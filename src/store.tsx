@@ -561,7 +561,14 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
       // → `popstate` → `onPop` (App.tsx), care aterizează pe `/project/<slug>`-ul
       // proiectului curent și chema selectProject cu același id: valul activ
       // sărea de pe II pe `currentWave` (mereu 1), plus o reîncărcare inutilă.
-      if (id === projectId) return
+      //
+      // Comparat cu ref-ul, nu cu `projectId` din clojură: sidebarul cheamă
+      // `selectProject(null)` (ieșirea din lista inteligentă) și apoi
+      // `selectProject(id)` în ACELAȘI tick. Clojura vedea încă proiectul
+      // încărcat sub listă, deci al doilea apel trecea drept reselectare și
+      // primul click pe proiectul unei sarcini deschise ducea pe „Toate
+      // proiectele". Ref-ul e scris sincron mai jos, deci vede primul apel.
+      if (id === currentProjectRef.current) return
       // O navigare reală, nu o reselectare fără efect (vezi mai sus) — un pas
       // de anulare ținut pentru tichetul de pe ecranul VECHI n-are ce căuta
       // pe cel nou. Necondiționat, ca la `refresh`: e legat de navigare, nu de

@@ -13,8 +13,8 @@ describe('ID provizoriu', () => {
     expect(displayIssueId('HZ-~a1b2c3')).toBe('HZ-·')
     expect(displayIssueId('HZ-12')).toBe('HZ-12')
   })
-  it('nu e recunoscut ca deep link — un URL provizoriu nu deschide nimic la repornire', () => {
-    expect(parseTicketPath('/HZ-~a1b2c3')).toBeNull()
+  it('e recunoscut ca deep link — o repornire offline redeschide foaia pe el', () => {
+    expect(parseTicketPath('/HZ-~a1b2c3')).toBe('HZ-~a1b2c3')
   })
   it('două ID-uri generate implicit diferă', () => {
     expect(makeTempIssueId('HZ')).not.toBe(makeTempIssueId('HZ'))

@@ -4,13 +4,32 @@
 // Id-urile de issue au forma PREFIX-SUFIX (TUR-01, MS-03, TUR-API) — exact o
 // cratimă, doar litere și cifre. Regexul e deliberat strict ca un slug de
 // proiect (my-super-project) să nu fie confundat cu un id de ticket.
+//
+// Plus forma provizorie a unui tichet creat offline, `PREFIX-~abc123`
+// (`makeTempIssueId`). Și ea e un URL de tichet: foaia deschisă pe o sarcină
+// nesincronizată o pune în bară, iar o repornire offline peste ea trebuie să
+// redeschidă foaia. Respinsă aici, nu era „tichet" pentru nimeni — nici pentru
+// boot, nici pentru `popstate`, nici pentru garda lui `back()` — și bara rămânea
+// pe un ID mort. Sufixul rămâne cum e: e aleator, în minuscule, nu un număr.
 
-const TICKET_PATH = /^\/([A-Za-z0-9]+-[A-Za-z0-9]+)\/?$/
+import { displayIssueId } from './issueId'
 
-/** Id-ul ticketului din pathname, normalizat uppercase, sau null. */
-export function parseTicketPath(pathname: string): string | null {
+const TICKET_PATH = /^\/([A-Za-z0-9]+)-(~[a-z0-9]+|[A-Za-z0-9]+)\/?$/
+
+/**
+ * Id-ul ticketului din pathname, sau null. Prefixul (și un sufix real) se
+ * normalizează uppercase; sufixul provizoriu nu.
+ *
+ * `resolveId` (din `repository.sync`) traduce un ID provizoriu deja remapat pe
+ * cel real: un URL `/HZ-~abc` rămas din sesiunea dinainte de sincronizare
+ * deschide `HZ-13`, nu un tichet care nu mai există sub numele vechi.
+ */
+export function parseTicketPath(pathname: string, resolveId: (id: string) => string = (id) => id): string | null {
   const match = TICKET_PATH.exec(pathname)
-  return match ? match[1].toUpperCase() : null
+  if (!match) return null
+  const [, prefix, suffix] = match
+  const id = `${prefix.toUpperCase()}-${suffix.startsWith('~') ? suffix : suffix.toUpperCase()}`
+  return resolveId(id)
 }
 
 /** Prefixul de proiect al unui id de issue: 'MS-03' -> 'MS'. */
@@ -48,9 +67,11 @@ export type DeepLinkFailure = 'missing' | 'load-failed'
  * cu soluții diferite pentru user.
  */
 export function deepLinkNotice(ticketId: string, failure: DeepLinkFailure): string {
+  // Sufixul provizoriu nu-i spune nimic omului; pe ecran tichetul e `HZ-·`.
+  const shown = displayIssueId(ticketId)
   return failure === 'load-failed'
-    ? `Nu am putut încărca datele pentru ${ticketId}. Încearcă din nou.`
-    : `Ticketul ${ticketId} nu mai există`
+    ? `Nu am putut încărca datele pentru ${shown}. Încearcă din nou.`
+    : `Ticketul ${shown} nu mai există`
 }
 
 /** Path-ul canonic al unui ticket. */

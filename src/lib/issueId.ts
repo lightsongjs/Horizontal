@@ -3,8 +3,9 @@
 // `HZ-12` e calculat de client ca „cel mai mare + 1" (`nextIssueId` din
 // `supabaseRepository.ts`). Două dispozitive offline ar crea amândouă `HZ-13`.
 // Deci offline nu se inventează un număr: se pune un marcaj (`-~`) care nu
-// poate apărea într-un ID real (`TICKET_PATH` din `deepLink.ts` nu-l acceptă),
-// iar la sincronizare serverul dă numărul.
+// poate apărea într-un ID real, iar la sincronizare serverul dă numărul.
+// `TICKET_PATH` din `deepLink.ts` acceptă forma asta ca URL de tichet, separat
+// de cea reală — o repornire peste foaia deschisă trebuie s-o redeschidă.
 
 const MARK = '-~'
 
