@@ -5229,6 +5229,15 @@ main {
   max-width: 130px;
 }
 
+/* Rândul de butoane al barei de captură. Același limbaj ca .qa-proj: fără
+   chenar, fundal --surface-2, raza de buton. Activ = text plin + linie de 2px. */
+.qa-rich { flex-wrap: wrap; gap: 6px; }
+.qa-who, .qa-when, .qa-urgent { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: var(--r-s); background: var(--surface-2); color: var(--txt-dim); font: inherit; font-size: 12px; }
+.qa-who select, .qa-when input { border: 0; background: transparent; color: inherit; font: inherit; }
+.qa-when input { font-family: var(--mono); }
+.qa-urgent { border: 0; cursor: pointer; }
+.qa-urgent.on { color: var(--blocked); box-shadow: inset 0 -2px 0 var(--blocked); }
+
 /* ── jetoane de scadență din quick add ───────────────────────────── */
 .chip {
   display: inline-flex;

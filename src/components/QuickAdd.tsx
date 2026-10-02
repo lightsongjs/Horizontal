@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useHorizontal } from '../store'
 import { useTitleDate, useWritableProjects } from '../hooks'
-import { dayOffset, defaultReminder, reminderAt, toDisplayDate, toTimeInput } from '../lib/schedule'
+import { dayOffset, defaultReminder, fromInputs, reminderAt, toDateInput, toDisplayDate, toTimeInput } from '../lib/schedule'
+import { parseCaptureTokens } from '../lib/captureTokens'
 import { describeRrule } from '../lib/recurrence'
 import { Icon } from './Icon'
 
@@ -32,6 +33,10 @@ interface Props {
   onAdded?(): void
   /** Se schimbă la fiecare cerere de focus din afară (butonul „+" din bara de jos). */
   focusSignal?: number
+  /** Proiectul cu care pornește, peste cel ținut minte (bara de captură: „Daily"). */
+  defaultProjectId?: string
+  /** Bara de captură: semnele `#proiect`, `@persoană`, `!` în text și rândul de butoane, mereu vizibil. */
+  rich?: boolean
 }
 
 /**
@@ -47,8 +52,8 @@ interface Props {
  * Fără Inbox, fiecare sarcină are un proiect — de asta rândul poartă un
  * selector care ține minte ultima alegere.
  */
-export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0 }: Props) {
-  const { createIssue } = useHorizontal()
+export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, defaultProjectId, rich = false }: Props) {
+  const { createIssue, assignees } = useHorizontal()
   // Numai proiectele în care se poate scrie: un selector care oferă un proiect
   // read-only ar produce o salvare respinsă de RLS, după ce userul a scris tot.
   const projects = useWritableProjects()
@@ -60,9 +65,11 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0 }: Props) {
   const [tip, setTip] = useState(false)
   const [saving, setSaving] = useState(false)
   const [projectId, setProjectId] = useState<string>(() => {
-    const saved = localStorage.getItem(LAST_PROJECT_KEY)
-    return saved ?? ''
+    return defaultProjectId ?? localStorage.getItem(LAST_PROJECT_KEY) ?? ''
   })
+  // Ce a ales omul din butoane. Lipsa cheii = n-a atins butonul; `assigneeId:
+  // null` = a ales explicit „al meu". Butonul bate semnul din text: e corectura.
+  const [manual, setManual] = useState<{ projectId?: string; assigneeId?: string | null; urgent?: boolean; due?: { dueAt: string | null; allDay: boolean } }>({})
   const inputRef = useRef<HTMLInputElement>(null)
   // Recunoașterea datei, cu refuzul legat de fragment — vezi `useTitleDate`.
   const date = useTitleDate(text, { onChange: setText })
@@ -80,7 +87,9 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0 }: Props) {
     inputRef.current?.focus()
   }, [focusSignal])
 
-  const project = projects.find((p) => p.id === projectId)
+  const tokens = rich ? parseCaptureTokens(date.title, projects, assignees) : null
+  const effectiveProjectId = manual.projectId ?? tokens?.projectId ?? projectId
+  const project = projects.find((p) => p.id === effectiveProjectId)
     ?? projects.find((p) => p.type === 'personal')
     ?? projects[0]
 
@@ -96,15 +105,17 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0 }: Props) {
     const t = setTimeout(() => setTip(false), 4200)
     return () => clearTimeout(t)
   }, [useParsed])
-  const dueAt = useParsed ? parsed.dueAt! : defaultDueAt
-  const allDay = useParsed ? parsed.allDay : true
-  const title = date.title.trim()
+  const dueAt = manual.due ? manual.due.dueAt : useParsed ? parsed.dueAt! : defaultDueAt
+  const allDay = manual.due ? manual.due.allDay : useParsed ? parsed.allDay : true
+  const title = (tokens ? tokens.title : date.title).trim()
+  const assigneeId = manual.assigneeId !== undefined ? manual.assigneeId : tokens?.assigneeId ?? null
+  const urgent = manual.urgent ?? tokens?.urgent ?? false
   // Calculat o singură dată — nu de două ori în JSX (condiție + text).
   const recur = useParsed && parsed.rrule ? describeRrule(parsed.rrule) : ''
   // Text numai-dată: „azi la 8" n-are ce să salveze.
   const bare = text.trim() !== '' && title === ''
 
-  const reset = () => { setText(''); date.reset(); setTip(false) }
+  const reset = () => { setText(''); date.reset(); setTip(false); setManual({}) }
 
   /** „Nu e o dată." Tot ce e evidențiat acum rămâne text în titlu. */
   const rejectDate = () => {
@@ -130,9 +141,12 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0 }: Props) {
         dueAt,
         allDay,
         remindAt: reminderAt(dueAt, defaultReminder(allDay)),
-        rrule: useParsed ? parsed.rrule : null,
+        rrule: useParsed && !manual.due ? parsed.rrule : null,
+        // Doar din bară: în „Azi" rândul nu are cum să le aleagă, iar un
+        // `assigneeId: null` explicit e tot „al creatorului".
+        ...(rich ? { assigneeId, urgent } : {}),
       })
-      localStorage.setItem(LAST_PROJECT_KEY, project.id)
+      if (!rich) localStorage.setItem(LAST_PROJECT_KEY, project.id)
       reset()
       onAdded?.()
       inputRef.current?.focus()
@@ -210,6 +224,7 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0 }: Props) {
 
       {text.trim() !== '' && (
         <div className="qa-meta">
+          {dueAt && (
           <span className="chip date">
             <span className="chip-ico"><Icon name="due" size={13} /></span>
             {dueLabel(dueAt, allDay, new Date())}
@@ -224,8 +239,9 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0 }: Props) {
               </button>
             )}
           </span>
+          )}
 
-          {!allDay && (
+          {dueAt && !allDay && (
             <span className="chip bell">
               <span className="chip-ico"><Icon name="reminder" size={13} /></span> memento la oră
             </span>
@@ -239,6 +255,7 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0 }: Props) {
             <span className="chip"><Icon name="recurring" size={12} /> {recur}</span>
           )}
 
+          {!rich && (
           <label className="qa-proj" title="Proiectul sarcinii">
             <span className="t-dot" style={{ background: project.accent }} />
             <select
@@ -248,10 +265,51 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0 }: Props) {
               {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </label>
+          )}
 
-          <span className={`qa-hint ${bare ? 'warn' : ''}`}>
-            {bare ? 'și ce ai de făcut?' : saving ? 'se salvează…' : <><kbd>↵</kbd> adaugă</>}
+          <span className={`qa-hint ${bare || tokens?.unknown.length ? 'warn' : ''}`}>
+            {tokens?.unknown.length ? `nu știu ${tokens.unknown.join(', ')}` : bare ? 'și ce ai de făcut?' : saving ? 'se salvează…' : <><kbd>↵</kbd> adaugă</>}
           </span>
+        </div>
+      )}
+
+      {rich && (
+        <div className="qa-meta qa-rich">
+          <label className="qa-proj" title="Proiectul sarcinii (sau #nume în text)">
+            <span className="t-dot" style={{ background: project.accent }} />
+            <select value={project.id} onChange={(e) => setManual((m) => ({ ...m, projectId: e.target.value }))}>
+              {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </label>
+          <label className="qa-who" title="Cui îi pasezi sarcina (sau @nume în text)">
+            <Icon name="people" size={13} />
+            <select value={assigneeId ?? ''} onChange={(e) => setManual((m) => ({ ...m, assigneeId: e.target.value || null }))}>
+              <option value="">al meu</option>
+              {assignees.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
+          </label>
+          <span className="qa-when" title="Data și ora (sau „mâine la 10” în text)">
+            <Icon name="due" size={13} />
+            <input
+              type="date"
+              value={dueAt ? toDateInput(dueAt) : ''}
+              onChange={(e) => setManual((m) => ({ ...m, due: fromInputs(e.target.value, dueAt && !allDay ? toTimeInput(dueAt) : '') }))}
+            />
+            <input
+              type="time"
+              value={dueAt && !allDay ? toTimeInput(dueAt) : ''}
+              onChange={(e) => setManual((m) => ({ ...m, due: fromInputs(dueAt ? toDateInput(dueAt) : toDateInput(defaultDueAt), e.target.value) }))}
+            />
+          </span>
+          <button
+            type="button"
+            className={`qa-urgent ${urgent ? 'on' : ''}`}
+            aria-pressed={urgent}
+            title="Urgent (sau ! în text)"
+            onClick={() => setManual((m) => ({ ...m, urgent: !urgent }))}
+          >
+            <Icon name="urgent" size={13} /> urgent
+          </button>
         </div>
       )}
       </form>
