@@ -151,6 +151,9 @@ export interface Repository {
   markSeen(issueId: string): Promise<void>
   /** Cutia de pase: transversal pe proiecte, ca listDueIssues. */
   listInbox(): Promise<InboxRow[]>
+  /** Doar pe învelișul offline — vezi `src/data/offline/types.ts`. */
+  cache?: import('./offline/types').CacheReader
+  sync?: import('./offline/types').SyncControl
 }
 
 /** Slugify a theme name into a key, unique within `existing`. */
