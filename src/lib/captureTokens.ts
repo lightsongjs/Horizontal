@@ -22,8 +22,11 @@ export function normalizeName(s: string): string {
 /** Potrivirea, în ordinea încrederii: exact, apoi un singur candidat care începe așa. */
 function pick<T extends { id: string }>(key: string, items: T[], exact: (t: T) => string[], starts: (t: T) => string[]): T | null {
   if (!key) return null
-  const hit = items.find((t) => exact(t).includes(key))
-  if (hit) return hit
+  const hits = items.filter((t) => exact(t).includes(key))
+  // Doi „Alex" nu se aleg la nimereală: sarcina ar ajunge la omul greșit, în
+  // tăcere. Ambiguitatea cade în `unknown`, unde omul o vede.
+  if (hits.length > 1) return null
+  if (hits.length === 1) return hits[0]
   const cands = items.filter((t) => starts(t).some((n) => n.startsWith(key)))
   return cands.length === 1 ? cands[0] : null
 }

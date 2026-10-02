@@ -39,7 +39,7 @@ describe('parseCaptureTokens', () => {
   it('numele exact bate începutul altui nume (#gdpr ≠ Predare GDPR)', () => {
     expect(parse('x #gdpr').projectId).toBe('gdpr')
   })
-  it('un începu de nume unic e de ajuns; unul ambiguu nu alege nimic', () => {
+  it('un început de nume unic e de ajuns; unul ambiguu nu alege nimic', () => {
     expect(parse('x #kat').projectId).toBe('kata')
     expect(parse('x #ne').projectId).toBe('nk')
     expect(parse('x #zzz')).toMatchObject({ projectId: null, unknown: ['#zzz'], title: 'x #zzz' })
@@ -48,6 +48,10 @@ describe('parseCaptureTokens', () => {
     expect(parse('raport @alex').assigneeId).toBe('a1')
     expect(parse('raport @bog').assigneeId).toBe('b1')
     expect(parse('raport @a')).toMatchObject({ assigneeId: null, unknown: ['@a'] })
+  })
+  it('două persoane cu același prenume: nu alege pe niciuna, token-ul rămâne necunoscut', () => {
+    const dup = [...assignees, { id: 'a3', name: 'Alex Ionescu' }]
+    expect(parseCaptureTokens('raport @alex', projects, dup)).toMatchObject({ assigneeId: null, unknown: ['@alex'] })
   })
   it('un ! singur e urgent; un ! lipit de cuvânt e punctuație', () => {
     expect(parse('sună acum !')).toMatchObject({ urgent: true, title: 'sună acum' })
