@@ -31,4 +31,13 @@ class NativeQueueTest {
         val q = listOf(a("1", drained = 5), a("2", drained = 20), a("3"))
         assertEquals(listOf("2", "3"), NativeQueue.prune(q, latestReadAt = 10).map { it.uid })
     }
+    @Test fun idProvizoriuRamanePaginiiFaraSaOpreascaCoada() {
+        // `HZ-~abc` = creat offline, încă netrimis de pagină: un PATCH ar găsi 0
+        // rânduri, luat drept „făcut" — acțiunea s-ar pierde. Doar pagina știe ID-ul real.
+        val temp = a("1").copy(id = "HZ-~abc")
+        val q = listOf(temp, a("2"))
+        assertEquals("2", NativeQueue.nextToDrain(q)!!.uid)
+        assertNull(NativeQueue.nextToDrain(listOf(temp)))
+        assertEquals(listOf("1", "2"), NativeQueue.take(q, now = 10).first.map { it.uid })
+    }
 }

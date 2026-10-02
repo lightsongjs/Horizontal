@@ -13,9 +13,18 @@ object NativeQueue {
         val ids = taken.map { it.uid }.toSet()
         return taken to q.map { if (it.uid in ids) it.copy(drainedAt = now) else it }
     }
-    /** Una câte una, în ordine: o amânare și o bifă pe același tichet nu se depășesc. */
+    /**
+     * Una câte una, în ordine: o amânare și o bifă pe același tichet nu se depășesc.
+     * Sare peste ID-urile provizorii (`HZ-~abc`, tichet creat offline): crearea e
+     * încă în coada PAGINII, deci un PATCH ar găsi 0 rânduri — luat drept „făcut",
+     * iar acțiunea s-ar pierde. Rămân pentru `take`: pagina traduce ID-ul
+     * (`resolveId`) și scrie prin coada ei, DUPĂ creare. Sărite, nu oprire: o
+     * pagină nedeschisă zile întregi n-are voie să țină pe loc restul cozii.
+     */
     fun nextToDrain(q: List<NativeAction>): NativeAction? =
-        if (q.any { it.inFlight }) null else q.firstOrNull { it.drainedAt == null }
+        if (q.any { it.inFlight }) null else q.firstOrNull { it.drainedAt == null && !isTempId(it.id) }
+    /** Oglinda lui `isTempIssueId` din `src/lib/issueId.ts`: `PREFIX-~abc123`. */
+    fun isTempId(id: String) = id.contains("-~")
     fun markInFlight(q: List<NativeAction>, uid: String) = q.map { if (it.uid == uid) it.copy(inFlight = true) else it }
     fun markDrained(q: List<NativeAction>, uid: String, now: Long) = q.map { if (it.uid == uid) it.copy(inFlight = false, drainedAt = now) else it }
     fun release(q: List<NativeAction>, uid: String) = q.map { if (it.uid == uid) it.copy(inFlight = false) else it }

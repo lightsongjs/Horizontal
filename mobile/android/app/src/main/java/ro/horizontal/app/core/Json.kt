@@ -24,7 +24,9 @@ object Json {
     } catch (e: Exception) { null }
     /** `DesktopAction` din `src/lib/desktopBridge.ts`. */
     fun actionToPage(a: NativeAction): JSONObject = when (a.kind) {
-        NativeAction.Kind.DONE -> JSONObject().put("action", "done").put("id", a.id)
+        // `prevDueAt`: pagina refuză un „Gata" pe o recurentă care a sărit între timp
+        // (ar sări a doua oară) — aceeași gardă ca în `buildPatch`. `null` = fără scadență.
+        NativeAction.Kind.DONE -> JSONObject().put("action", "done").put("id", a.id).put("prevDueAt", a.prevDueAt ?: JSONObject.NULL)
         NativeAction.Kind.UNTIL -> JSONObject().put("action", "until").put("id", a.id).put("at", isoJs(a.remindAt ?: 0)).also { o -> a.dueAt?.let { o.put("dueAt", it) } }
     }
 }
