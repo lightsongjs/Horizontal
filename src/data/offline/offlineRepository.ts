@@ -567,6 +567,7 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
     flush,
     prefetchAll,
     resolveId,
+    async heldIds() { return [...new Set((await pendingOps()).flatMap(opIssueIds))] },
     async clear() { const kv = await kvReady; await kv?.clear(); remaps.clear(); setStatus({ pending: 0 }); scheduleRetry() },
   }
 

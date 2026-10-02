@@ -40,3 +40,25 @@ describe('upcomingReminders', () => {
     expect(list.map((r) => r.id)).toEqual(['HZ-1', 'HZ-2'])
   })
 })
+
+describe('upcomingReminders — fereastra Android', () => {
+  const now2 = new Date('2026-10-02T09:00:00Z')
+  const atH = (h: number) => new Date(now2.getTime() + h * 3_600_000).toISOString()
+  const mk = (id: string, remindAt: string, extra: Partial<Issue> = {}) =>
+    ({ id, title: id, projectId: 'p', done: false, remindAt, dueAt: remindAt, allDay: false, ...extra }) as Issue
+
+  it('implicit rămâne 24 h, ca pe Linux', () => {
+    expect(upcomingReminders([mk('A', atH(30))], [], now2)).toEqual([])
+  })
+  it('cu orizont de 7 zile ia și ce e peste 5 zile', () => {
+    expect(upcomingReminders([mk('A', atH(120))], [], now2, { horizonMs: 7 * 24 * 3_600_000 }).map((r) => r.id)).toEqual(['A'])
+  })
+  it('plafonul păstrează cele mai APROPIATE, nu primele din listă', () => {
+    const list = upcomingReminders([mk('C', atH(3)), mk('A', atH(1)), mk('B', atH(2))], [], now2, { limit: 2 })
+    expect(list.map((r) => r.id)).toEqual(['A', 'B'])
+  })
+  it('poartă scadența și ziua întreagă, pentru amânarea din cutie', () => {
+    const [r] = upcomingReminders([mk('A', atH(1), { dueAt: '2026-10-01T21:00:00.000Z', allDay: true })], [], now2)
+    expect(r).toMatchObject({ dueAt: '2026-10-01T21:00:00.000Z', allDay: true })
+  })
+})

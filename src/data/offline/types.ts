@@ -45,6 +45,10 @@ export interface SyncControl {
   prefetchAll(): Promise<void>
   /** ID-ul real al unui provizoriu deja remapat (sau ID-ul neschimbat). Sincron, din memorie. */
   resolveId(id: string): string
+  /** Id-urile cu scrieri încă netrimise. Cutia de Android NU le lasă suprascrise
+   *  de sincronizarea ei nativă: serverul încă n-a aflat de ele, iar o bifare
+   *  offline ar fi fost „înviată" de lista lui. */
+  heldIds(): Promise<string[]>
   /** Logout: baza și coada de pe dispozitivul ăsta dispar. */
   clear(): Promise<void>
 }

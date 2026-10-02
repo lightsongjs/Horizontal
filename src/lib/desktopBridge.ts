@@ -15,6 +15,9 @@ export interface DesktopReminder {
   at: string
   title: string
   body: string
+  /** Scadența, ISO sau null — pentru amânarea calculată în cutie (`snoozeTarget`). Linux o ignoră. */
+  dueAt: string | null
+  allDay: boolean
 }
 
 /**
@@ -57,9 +60,14 @@ export const REMINDER_HORIZON_MS = 24 * 3_600_000
  * (cache-ul offline inclus). Textul vine din `planNotification`, ca notificarea
  * de pe desktop să spună exact ce spune cea de pe telefon.
  */
-export function upcomingReminders(issues: Issue[], projects: Pick<Project, 'id' | 'name'>[], now: Date): DesktopReminder[] {
+export function upcomingReminders(
+  issues: Issue[],
+  projects: Pick<Project, 'id' | 'name'>[],
+  now: Date,
+  opts: { horizonMs?: number; limit?: number } = {},
+): DesktopReminder[] {
   const from = now.getTime() - REMINDER_LOOKBACK_MS
-  const to = now.getTime() + REMINDER_HORIZON_MS
+  const to = now.getTime() + (opts.horizonMs ?? REMINDER_HORIZON_MS)
   const names = new Map(projects.map((p) => [p.id, p.name]))
   const seen = new Set<string>()
   const out: DesktopReminder[] = []
@@ -70,7 +78,10 @@ export function upcomingReminders(issues: Issue[], projects: Pick<Project, 'id' 
     seen.add(i.id)
     const at = new Date(t).toISOString()
     const plan = planNotification({ id: i.id, title: i.title, dueAt: i.dueAt ?? undefined, allDay: i.allDay, projectName: names.get(i.projectId) })
-    out.push({ key: `${i.id}@${at}`, id: i.id, at, title: plan.title, body: plan.body })
+    out.push({ key: `${i.id}@${at}`, id: i.id, at, title: plan.title, body: plan.body, dueAt: i.dueAt ?? null, allDay: i.allDay })
   }
-  return out.sort((a, b) => a.at.localeCompare(b.at))
+  out.sort((a, b) => a.at.localeCompare(b.at))
+  // Plafonul taie din coadă, după sortare: un telefon nedeschis câteva zile
+  // are nevoie de ce urmează curând, nu de ce a fost primul în cache.
+  return opts.limit ? out.slice(0, opts.limit) : out
 }

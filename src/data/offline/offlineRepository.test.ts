@@ -717,3 +717,19 @@ describe('ID provizoriu rămas după remapare', () => {
     expect(repo.sync!.resolveId('HZ-~zz9999')).toBe('HZ-02')
   })
 })
+
+describe('heldIds', () => {
+  // Cutia de Android nu are voie să suprascrie ce serverul încă n-a aflat.
+  it('id-urile cu scrieri încă în coadă, fiecare o dată', async () => {
+    const f = fakeRemote()
+    const repo = createOfflineRepository(f.remote, Promise.resolve(kv), {
+      now: () => new Date('2026-10-02T09:00:00Z'), channel: null, canFlush: () => false,
+    })
+    await repo.sync!.prefetchAll()
+    f.net.down = true
+    await repo.updateIssue('HZ-01', { done: true })
+    await repo.updateIssue('HZ-01', { title: 'x' })
+    await repo.markSeen?.('HZ-02')
+    expect((await repo.sync!.heldIds()).sort()).toEqual(['HZ-01', 'HZ-02'])
+  })
+})
