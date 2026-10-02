@@ -17,12 +17,15 @@ import ro.horizontal.app.core.Reminder
  * (`mementouri-v2`), nu o modificare aici.
  */
 object Notifier {
-    const val CH_REMINDERS = "mementouri-v1"
+    const val CH_REMINDERS = "mementouri-v2"
     const val CH_STATUS = "stare"
     const val EXTRA_OPEN = "hz-open"
 
     fun ensureChannels(ctx: Context) {
         val nm = ctx.getSystemService(NotificationManager::class.java)
+        // Sunetul unui canal creat nu se mai schimbă: clopoțelul triplu a cerut id nou
+        // (v2). Îl ștergem pe v1 ca setările să nu arate două „Mementouri".
+        nm.deleteNotificationChannel("mementouri-v1")
         val sound = Uri.parse("android.resource://${ctx.packageName}/${R.raw.chime}")
         val attrs = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build()
         nm.createNotificationChannel(NotificationChannel(CH_REMINDERS, "Mementouri", NotificationManager.IMPORTANCE_HIGH).apply {
