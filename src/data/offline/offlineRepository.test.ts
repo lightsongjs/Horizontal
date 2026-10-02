@@ -444,6 +444,9 @@ describe('golire', () => {
     vi.mocked(remote.updateIssue).mockClear()
     await repo.sync!.flush()
     expect(events.filter((e) => (e as { type: string }).type === 'failed')).toHaveLength(1)
+    // Sarcina dispare din ecran: mesajul e singurul loc care mai spune care —
+    // cu titlul de acum (redenumită în coadă), nu cu cel de la creare.
+    expect(events).toContainEqual(expect.objectContaining({ type: 'failed', message: 'Sarcina „x” n-a putut fi salvată: violates check constraint' }))
     expect(remote.updateIssue).not.toHaveBeenCalled()
     expect(repo.sync!.status().pending).toBe(0)
   })

@@ -427,9 +427,16 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
           // iar cine afișează tichetul primește valoarea serverului (sau află
           // că nu mai există). O creare refuzată își ia după ea și scrierile
           // care-i foloseau ID-ul provizoriu — n-ar avea ce să trimită.
+          let title: string | null = null
           const removedOk = await queueLock(async () => {
             if (q.op.kind === 'createIssue') {
-              const { remove, rewrite } = cancelTempIssues(await kv.ops(), [q.op.tempId])
+              const queued = await kv.ops()
+              const tempId = q.op.tempId
+              // Titlul de ACUM (cu redenumirile din coadă), citit înainte de
+              // anulare: după ea sarcina dispare din ecran, iar mesajul e
+              // singurul loc care mai spune ce s-a pierdut.
+              title = overlay([], queued.map((o) => o.op), now()).find((i) => i.id === tempId)?.title ?? q.op.input.title
+              const { remove, rewrite } = cancelTempIssues(queued, [tempId])
               await kv.replaceOps(rewrite, remove)
             } else {
               await kv.replaceOps([], [q.seq])
@@ -439,7 +446,8 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
           const [issueId] = opIssueIds(q.op)
           let revert: Issue | null = null
           if (q.op.kind === 'updateIssue') revert = await currentIssue(kv, q.op.id).catch(() => null)
-          emit({ type: 'failed', message: errorMessage(e), issueId: issueId ?? null, revert })
+          const message = title === null ? errorMessage(e) : `Sarcina „${title}” n-a putut fi salvată: ${errorMessage(e)}`
+          emit({ type: 'failed', message, issueId: issueId ?? null, revert })
           if (q.op.kind === 'createIssue') emit({ type: 'removed', ids: [q.op.tempId] })
         }
       }
