@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { getAndroidBridge, type AndroidStatus } from '../lib/androidBridge'
-import { cardNeed } from '../lib/androidCard'
+import { cardNeed, isMissingNative } from '../lib/androidCard'
 import { deleteAndroidChromeSubs, readAndroidChromeSubIds } from '../lib/androidSubs'
 import { supabaseAnonKey, supabaseUrl } from '../lib/supabase'
 import { errorMessage } from '../lib/errorMessage'
@@ -32,21 +32,34 @@ export function AndroidReminderCard() {
     try { return sessionStorage.getItem(DISMISS_KEY) === '1' } catch { return false }
   })
 
+  // Citirile se pot suprapune (montare + revenire în tab + după o acțiune);
+  // doar cea mai nouă are voie să scrie, altfel un răspuns întârziat ar
+  // readuce un card deja rezolvat.
+  const seq = useRef(0)
   const read = useCallback(async () => {
     if (!bridge) return
+    const my = ++seq.current
+    const fresh = () => my === seq.current
+    let api: number
     try {
-      const [info, status, chromeSubIds] = await Promise.all([
-        bridge.getInfo(),
+      api = (await bridge.getInfo()).api
+    } catch (e) {
+      // Doar o cutie căreia îi lipsește pluginul/metoda e „prea veche". Orice
+      // alt eșec lasă fotografia anterioară (sau niciun card), nu un îndemn
+      // fals la actualizare.
+      if (!isMissingNative(e)) return
+      api = 0
+    }
+    try {
+      const [status, chromeSubIds] = await Promise.all([
         bridge.status(),
         // O interogare picată (offline) nu trebuie să ascundă o permisiune
         // lipsă: abonamentele sunt ultimul pe listă, deci „necunoscut" = 0.
         readAndroidChromeSubIds().catch(() => [] as string[]),
       ])
-      setSnap({ api: info.api, status, chromeSubIds })
+      if (fresh()) setSnap({ api, status, chromeSubIds })
     } catch {
-      // O cutie fără `getInfo` (prea veche pentru metodă) e chiar cazul
-      // „actualizează aplicația": api 0 o duce acolo.
-      try { setSnap({ api: 0, status: await bridge.status(), chromeSubIds: [] }) } catch { /* puntea tace: nimic de arătat */ }
+      /* puntea n-a răspuns la `status`: rămâne ce se știa */
     }
   }, [bridge])
 

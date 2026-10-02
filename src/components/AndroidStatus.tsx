@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { getAndroidBridge, type AndroidStatus as Status } from '../lib/androidBridge'
-import { batteryNeedsHint, formatStamp } from '../lib/androidCard'
+import { batteryNeedsHint, formatStamp, notificationsLabel } from '../lib/androidCard'
 import { readAndroidChromeSubIds } from '../lib/androidSubs'
 import { errorMessage } from '../lib/errorMessage'
 import { Icon } from './Icon'
@@ -52,8 +52,9 @@ export function AndroidStatus() {
   const rows: { label: string; value: ReactNode; extra?: ReactNode; note?: string }[] = status ? [
     {
       label: 'Notificări',
-      value: status.notifications === 'granted' ? 'permise' : 'blocate',
-      extra: status.notifications !== 'granted' && settings('notifications'),
+      value: notificationsLabel(status.notifications),
+      // Doar refuzul trimite în setări; „necerute încă" o cere cardul din „Azi".
+      extra: status.notifications === 'denied' && settings('notifications'),
     },
     {
       label: 'Alarme exacte',

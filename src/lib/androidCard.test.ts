@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { batteryNeedsHint, cardNeed, formatStamp, isAndroidChromeSub } from './androidCard'
+import { batteryNeedsHint, cardNeed, formatStamp, isAndroidChromeSub, isMissingNative, notificationsLabel } from './androidCard'
 import type { AndroidStatus } from './androidBridge'
 
 const ok: AndroidStatus = { notifications: 'granted', exactAlarms: true, exactUsed: true, batteryOptimized: true, manufacturer: 'Google', session: 'ok', lastSyncAt: null, nextAlarmAt: null, queued: 0 }
@@ -30,4 +30,18 @@ describe('batteryNeedsHint', () => {
   it('comparat fără majuscule', () => expect(batteryNeedsHint({ ...ok, manufacturer: 'SAMSUNG' })).toBe(true))
   it('Xiaomi fără restricții: nimic', () => expect(batteryNeedsHint({ ...ok, manufacturer: 'Xiaomi', batteryOptimized: false })).toBe(false))
   it('Google optimizat: doar starea, fără îndemn', () => expect(batteryNeedsHint(ok)).toBe(false))
+})
+
+describe('notificationsLabel', () => {
+  it('permise', () => expect(notificationsLabel('granted')).toBe('permise'))
+  it('blocate', () => expect(notificationsLabel('denied')).toBe('blocate'))
+  it('încă necerute: nu „blocate" — nimeni n-a refuzat nimic', () => expect(notificationsLabel('prompt')).toBe('necerute încă'))
+})
+
+describe('isMissingNative', () => {
+  it('codul Capacitor UNIMPLEMENTED', () => expect(isMissingNative({ code: 'UNIMPLEMENTED', message: 'x' })).toBe(true))
+  it('mesaj „not implemented"', () => expect(isMissingNative(new Error('"getInfo" not implemented on android'))).toBe(true))
+  it('pluginul lipsește din cutie (mesajul punții Android)', () => expect(isMissingNative('unable to find plugin : HorizontalAndroid')).toBe(true))
+  it('altă eroare nu e „cutie veche"', () => expect(isMissingNative(new Error('timeout'))).toBe(false))
+  it('nimic aruncat: nu ghicim', () => expect(isMissingNative(undefined)).toBe(false))
 })

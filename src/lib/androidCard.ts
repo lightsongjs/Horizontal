@@ -44,3 +44,28 @@ export function formatStamp(iso: string | null): string | null {
   if (Number.isNaN(d.getTime())) return null
   return `${pad(d.getDate())}.${pad(d.getMonth() + 1)} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
+
+/** „prompt" nu e „blocate": nimeni n-a refuzat nimic încă, iar cererea o face cardul din „Azi". */
+export function notificationsLabel(n: AndroidStatus['notifications']): string {
+  return n === 'granted' ? 'permise' : n === 'denied' ? 'blocate' : 'necerute încă'
+}
+
+/**
+ * A picat un apel fiindcă cutia nu ARE metoda/pluginul — singurul caz în care
+ * „actualizează aplicația" e adevărat. Orice altă eroare (o punte ocupată, un
+ * răspuns stricat) nu spune nimic despre versiune, iar un îndemn fals la
+ * actualizare ar trimite omul după o versiune pe care o are deja.
+ *
+ * Formele: `UNIMPLEMENTED` / „not implemented" sunt ale lui Capacitor;
+ * „unable to find plugin" e mesajul lui `Bridge.java` pentru un plugin
+ * neînregistrat. (O METODĂ lipsă dintr-un plugin existent nu respinge deloc
+ * pe Android — se loghează și promisiunea atârnă —, dar `getInfo` a venit
+ * odată cu pluginul, deci acel caz nu există în practică.)
+ */
+export function isMissingNative(e: unknown): boolean {
+  if (e == null) return false
+  const o = (typeof e === 'object' ? e : {}) as { code?: unknown; message?: unknown }
+  if (o.code === 'UNIMPLEMENTED') return true
+  const msg = typeof e === 'string' ? e : typeof o.message === 'string' ? o.message : ''
+  return /not implemented|unimplemented|unable to find plugin/i.test(msg)
+}
