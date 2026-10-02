@@ -24,14 +24,17 @@ class DrainWorker(ctx: Context, p: WorkerParameters) : Worker(ctx, p) {
             // continua să trimită PATCH-uri în paralel cu cel nou, pe aceeași coadă.
             // Ce a rămas îl ia cel nou (care eliberează și „în zbor"-ul de la pornire).
             if (isStopped) return Result.success()
-            val a = PlanStore.edit(ctx) { s ->
+            // Contul pentru care pleacă elementul, citit în ACEEAȘI editare care îl marchează
+            // „în zbor": `signIn` pe alt cont golește coada sub lacătul ăsta, deci contul
+            // citit aici e sigur cel căruia îi aparține coada. Citit după, un login strecurat
+            // între cele două ar fi dat tokenul NOULUI cont unei acțiuni a celui vechi.
+            // `lastAccount`, nu `userId`: sub lacătul planului, vezi `NativeSession.lastAccount`.
+            // `AccountChanged` oprește cererea dacă sesiunea e acum a altcuiva.
+            val (a, owner) = PlanStore.edit(ctx) { s ->
                 val next = NativeQueue.nextToDrain(s.queue)
-                (if (next != null) s.copy(queue = NativeQueue.markInFlight(s.queue, next.uid)) else s) to next
-            } ?: break
-            // Contul pentru care pleacă elementul. Un login pe alt cont între marcare și
-            // cerere ar da altfel tokenul NOULUI cont unei acțiuni a celui vechi;
-            // `AccountChanged` o oprește înainte de PATCH (coada o golește oricum `signIn`).
-            val owner = NativeSession.userId(ctx)
+                (if (next != null) s.copy(queue = NativeQueue.markInFlight(s.queue, next.uid)) else s) to (next to NativeSession.lastAccount(ctx))
+            }
+            if (a == null) break
             val req = buildPatch(a)
             val body = JSONObject(req.body).toString()
             val outcome = try {

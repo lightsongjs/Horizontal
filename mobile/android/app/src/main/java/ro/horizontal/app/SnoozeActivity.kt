@@ -58,6 +58,17 @@ class SnoozeActivity : Activity() {
         findViewById<View>(R.id.scrim).setOnClickListener { finish() }
     }
 
+    /**
+     * `singleInstance`: cu foaia deschisă pentru A, „Amână…" pe B nu creează o foaie
+     * nouă, ci livrează intentul aici. Fără asta foaia ar fi rămas legată de A
+     * (`intent` vechi, ascultătorii puși în `onCreate`) și ar fi amânat A.
+     */
+    override fun onNewIntent(i: Intent) {
+        super.onNewIntent(i)
+        setIntent(i)
+        recreate()
+    }
+
     private fun pickCustom(id: String, dueAt: String?) {
         val today = LocalDate.now(zone)
         DatePickerDialog(this, { _, y, m, d ->

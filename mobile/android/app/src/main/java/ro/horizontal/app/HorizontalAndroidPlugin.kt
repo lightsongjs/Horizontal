@@ -45,7 +45,11 @@ class HorizontalAndroidPlugin : Plugin() {
 
     /** Atingere pe notificare. `retain`: la pornire la rece pagina încă n-a pus listenerul. */
     private fun handleOpen(intent: Intent?) {
-        val id = intent?.getStringExtra(Notifier.EXTRA_OPEN) ?: return
+        // Relansată din Recente, activitatea primește intentul ORIGINAL al sarcinii —
+        // `removeExtra` de mai jos nu supraviețuiește morții procesului, deci după o
+        // repornire tichetul atins cândva pe notificare s-ar redeschide singur.
+        if (intent == null || (intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) != 0) return
+        val id = intent.getStringExtra(Notifier.EXTRA_OPEN) ?: return
         intent.removeExtra(Notifier.EXTRA_OPEN)
         notifyListeners("reminderAction", JSObject().put("action", "open").put("id", id), true)
     }

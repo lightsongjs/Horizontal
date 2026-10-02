@@ -45,7 +45,18 @@ object PlanStore {
     private fun reminders(a: JSONArray?) = (0 until (a?.length() ?: 0)).mapNotNull { Json.reminderFromJson(a!!.getJSONObject(it)) }
     private fun arr(list: List<Reminder>) = JSONArray().also { j -> list.forEach { j.put(Json.reminderToJson(it)) } }
 
-    private fun load(ctx: Context): State {
+    /**
+     * O stare ilizibilă (JSON stricat — scriere întreruptă, format schimbat între
+     * versiuni) ar arunca în FIECARE receiver și worker, pe veci: nicio alarmă,
+     * nicio acțiune. Starea goală e mai bună: următoarea listă a paginii sau
+     * sincronizare nativă o repopulează, iar următoarea scriere o suprascrie.
+     */
+    private fun load(ctx: Context): State = try { loadOrThrow(ctx) } catch (e: Exception) {
+        android.util.Log.w("hz-plan", "stare ilizibilă, pornesc de la zero", e)
+        State()
+    }
+
+    private fun loadOrThrow(ctx: Context): State {
         val p = ctx.getSharedPreferences(PREFS, 0)
         val page = p.getString("page", null)?.let { JSONObject(it) }?.let { o ->
             PageList(reminders(o.optJSONArray("list")), (0 until o.getJSONArray("held").length()).map { o.getJSONArray("held").getString(it) }.toSet(), o.getLong("readAt"))
