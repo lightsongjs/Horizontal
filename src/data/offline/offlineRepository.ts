@@ -147,6 +147,16 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
    * la zi) și răspunde din ea.
    */
   let generation = 0
+  /**
+   * PORNIREA ultimei citiri de REȚEA reușite a scadențelor (0 = niciuna).
+   * Cutia de Android compară lista paginii cu a ei după vârsta datelor, nu
+   * după ora trimiterii: o listă venită din cache (primul cadru, sau o citire
+   * căzută pe cache) poate fi mai veche decât ce a citit cutia singură, iar
+   * cu `readAt = acum` ar fi bătut-o — un memento mutat pe laptop ar fi sunat
+   * la ora veche. Pornirea, nu sosirea: o scriere intrată pe server în timpul
+   * cererii poate lipsi din răspuns.
+   */
+  let dueFetchedAt = 0
 
   const setStatus = (next: Partial<SyncStatus>) => {
     const s = { ...status, ...next }
@@ -568,7 +578,8 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
     prefetchAll,
     resolveId,
     async heldIds() { return [...new Set((await pendingOps()).flatMap(opIssueIds))] },
-    async clear() { const kv = await kvReady; await kv?.clear(); remaps.clear(); setStatus({ pending: 0 }); scheduleRetry() },
+    async clear() { const kv = await kvReady; await kv?.clear(); remaps.clear(); dueFetchedAt = 0; setStatus({ pending: 0 }); scheduleRetry() },
+    dueFetchedAt: () => dueFetchedAt,
   }
 
   const repo: Repository = {
@@ -589,9 +600,13 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
     },
     async listDueIssues(range) {
       const gen = generation
+      const startedAt = now().getTime()
       try {
         const base = await withTimeout(remote.listDueIssues(range), readTimeoutMs)
         setStatus({ offline: false })
+        // Și când răspunde mai jos baza pusă la zi de golire: ea e cel puțin
+        // la fel de proaspătă ca răspunsul.
+        dueFetchedAt = Math.max(dueFetchedAt, startedAt)
         if (gen !== generation) {
           // Ca în `read`: răspunsul e mai vechi decât baza pusă la zi de golire.
           const local = await cache.due(range).catch(() => null)

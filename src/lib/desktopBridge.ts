@@ -28,7 +28,11 @@ export interface DesktopReminder {
  * mai vechi decât ce a văzut cutia.
  */
 export type DesktopAction =
-  | { action: 'done' | 'open'; id: string }
+  /** `prevDueAt` vine doar de pe Android (scadența văzută de notificare; `null` =
+   *  fără scadență): pagina refuză un „Gata" pe o recurentă care a sărit între
+   *  timp. Linux nu-l trimite — acolo acțiunea pleacă imediat, din pagina vie. */
+  | { action: 'done'; id: string; prevDueAt?: string | null }
+  | { action: 'open'; id: string }
   | { action: 'snooze'; id: string; minutes?: number }
   | { action: 'until'; id: string; at: string; dueAt?: string }
 

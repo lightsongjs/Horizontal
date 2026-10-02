@@ -49,6 +49,9 @@ export interface SyncControl {
    *  de sincronizarea ei nativă: serverul încă n-a aflat de ele, iar o bifare
    *  offline ar fi fost „înviată" de lista lui. */
   heldIds(): Promise<string[]>
+  /** PORNIREA (ms) ultimei citiri de rețea reușite a scadențelor; 0 = niciuna
+   *  (doar cache). E `readAt` al listei trimise cutiei de Android. */
+  dueFetchedAt(): number
   /** Logout: baza și coada de pe dispozitivul ăsta dispar. */
   clear(): Promise<void>
 }

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useHorizontal } from '../store'
 import { repository } from '../data'
 import { getDesktopBridge, upcomingReminders, type DesktopAction } from '../lib/desktopBridge'
-import { ANDROID_WINDOW, getAndroidBridge, pageReadAt } from '../lib/androidBridge'
+import { ANDROID_WINDOW, androidListKey, canTakeActions, getAndroidBridge, pageReadAt } from '../lib/androidBridge'
 import { runNativeAction } from '../lib/nativeAction'
 
 /** Cât de des se retrimite lista chiar fără nicio schimbare: fereastra alunecă. */
@@ -25,7 +25,10 @@ export function NativeBridge() {
   // O dată pe montare: obiectele intră în dependențele efectelor de mai jos.
   const desktop = useMemo(() => getDesktopBridge(), [])
   const android = useMemo(() => getAndroidBridge(), [])
-  const loadedRef = useRef(dueLoaded); loadedRef.current = dueLoaded
+  // Recalculat la fiecare randare: o citire de rețea reușită a scadențelor pune
+  // `dueRaw` din nou în store, deci randează și mută `dueFetchedAt` deodată.
+  const fresh = dueLoaded && canTakeActions(repository.sync)
+  const freshRef = useRef(fresh); freshRef.current = fresh
   const lastDesktop = useRef('')
   const lastAndroid = useRef('')
   const byIdRef = useRef(byId); byIdRef.current = byId
@@ -40,6 +43,7 @@ export function NativeBridge() {
     // Același drum ca un deep link, prin `popstate`-ul din App.tsx — nu un al doilea mod de a deschide un tichet.
     open: (id) => { history.pushState(null, '', `/${id}`); window.dispatchEvent(new PopStateEvent('popstate')) },
     now: () => new Date(),
+    resolveId: (id) => repository.sync?.resolveId(id) ?? id,
   })
 
   useEffect(() => {
@@ -62,10 +66,10 @@ export function NativeBridge() {
         const list = upcomingReminders(all, projects, now, ANDROID_WINDOW)
         const heldIds = (await repository.sync?.heldIds()) ?? []
         if (cancelled) return
-        const readAt = pageReadAt(syncStatus, now)
-        // `readAt` nu intră în comparație (s-ar schimba la fiecare minut), dar
-        // trecerea offline → online da: atunci lista paginii redevine proaspătă.
-        const json = JSON.stringify([list, heldIds, readAt === 0])
+        const readAt = pageReadAt(syncStatus, repository.sync, now)
+        // `readAt` se mișcă doar la o citire de rețea (sau offline ↔ online), deci
+        // intră în comparație: lista paginii a devenit mai proaspătă decât cea nativă.
+        const json = androidListKey(list, heldIds, readAt)
         if (json !== lastAndroid.current) { lastAndroid.current = json; await android.setReminders({ list, heldIds, readAt }).catch(() => { lastAndroid.current = '' }) }
       }
     }
@@ -89,13 +93,26 @@ export function NativeBridge() {
   }, [desktop])
 
   // Android: acțiunile vin pe două căi. Cu aplicația vizibilă, cutia le dă
-  // direct (`reminderAction`). Altfel le pune în coada ei, iar pagina le
-  // PREIA la deschidere — o acțiune preluată nu mai pleacă din cutie, deci
-  // nu se execută de două ori (o bifă dublă pe o sarcină recurentă ar sări de două ori).
+  // direct (`reminderAction`) — doar cât pagina ascultă; altfel le pune în coada
+  // ei, iar pagina le PREIA la deschidere. O acțiune preluată nu mai pleacă din
+  // cutie, deci nu se execută de două ori (o bifă dublă pe o recurentă ar sări de două ori).
   useEffect(() => {
-    // Abia după încărcare: o acțiune preluată înainte ca store-ul să aibă
-    // datele n-ar mai avea de unde să fie rezolvată, iar cutia a scos-o deja.
+    // Abia după încărcare: `open` (atingerea pe notificare, reținută de cutie)
+    // are nevoie de store ca să găsească tichetul.
     if (!android || !dueLoaded) return
+    const subs = [
+      android.addListener('reminderAction', (a) => run.current(a)),
+      // Cutia a scris ceva pe server (coada ei, sincronizarea): datele paginii sunt vechi.
+      android.addListener('changed', () => { void refreshRef.current() }),
+    ]
+    return () => { for (const s of subs) void s.then((l) => l.remove()).catch(() => {}) }
+  }, [android, dueLoaded])
+
+  useEffect(() => {
+    // Preluarea abia după prima citire de REȚEA a scadențelor, nu pe cadrul din
+    // cache: garda recurenței din `runNativeAction` compară cu scadența din store,
+    // iar una veche ar arunca un „Gata" bun. Nepreluate, le trimite cutia singură.
+    if (!android || !fresh) return
     let alive = true
     const take = async () => {
       const { actions } = await android.takeActions()
@@ -104,19 +121,10 @@ export function NativeBridge() {
       for (const a of actions) run.current(a)
     }
     void take().catch(() => {})
-    const onVis = () => { if (alive && loadedRef.current && document.visibilityState === 'visible') void take().catch(() => {}) }
+    const onVis = () => { if (alive && freshRef.current && document.visibilityState === 'visible') void take().catch(() => {}) }
     document.addEventListener('visibilitychange', onVis)
-    const subs = [
-      android.addListener('reminderAction', (a) => run.current(a)),
-      // Cutia a scris ceva pe server (coada ei, sincronizarea): datele paginii sunt vechi.
-      android.addListener('changed', () => { void refreshRef.current() }),
-    ]
-    return () => {
-      alive = false
-      document.removeEventListener('visibilitychange', onVis)
-      for (const s of subs) void s.then((l) => l.remove()).catch(() => {})
-    }
-  }, [android, dueLoaded])
+    return () => { alive = false; document.removeEventListener('visibilitychange', onVis) }
+  }, [android, fresh])
 
   return null
 }

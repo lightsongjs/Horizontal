@@ -733,3 +733,44 @@ describe('heldIds', () => {
     expect((await repo.sync!.heldIds()).sort()).toEqual(['HZ-01', 'HZ-02'])
   })
 })
+
+describe('dueFetchedAt', () => {
+  const range = { to: '2026-10-09T21:00:00.000Z', doneFrom: '2026-10-01T21:00:00.000Z' }
+  it('0 până la prima citire de rețea a scadențelor', () => {
+    const { remote } = fakeRemote()
+    expect(make(remote).sync!.dueFetchedAt()).toBe(0)
+  })
+  it('citirea de rețea reușită: PORNIREA ei', async () => {
+    const { remote } = fakeRemote()
+    let t = Date.parse('2026-10-02T09:00:00Z')
+    const repo = createOfflineRepository(remote, Promise.resolve(kv), { now: () => new Date(t), readTimeoutMs: 1000, channel: null })
+    vi.mocked(remote.listDueIssues).mockImplementationOnce(async () => { t += 5000; return [] })
+    await repo.listDueIssues(range)
+    expect(repo.sync!.dueFetchedAt()).toBe(Date.parse('2026-10-02T09:00:00Z'))
+  })
+  it('căderea pe cache NU o mișcă: lista e cea veche', async () => {
+    const { remote, net } = fakeRemote()
+    const repo = make(remote)
+    await repo.listDueIssues(range)
+    const first = repo.sync!.dueFetchedAt()
+    net.down = true
+    await repo.listDueIssues(range)
+    expect(repo.sync!.dueFetchedAt()).toBe(first)
+    expect(first).toBeGreaterThan(0)
+  })
+  it('cache fără nicio citire de rețea: rămâne 0', async () => {
+    const { remote, net } = fakeRemote()
+    await kv.set('due', [])
+    const repo = make(remote)
+    net.down = true
+    await repo.listDueIssues(range)
+    expect(repo.sync!.dueFetchedAt()).toBe(0)
+  })
+  it('logout: înapoi la 0', async () => {
+    const { remote } = fakeRemote()
+    const repo = make(remote)
+    await repo.listDueIssues(range)
+    await repo.sync!.clear()
+    expect(repo.sync!.dueFetchedAt()).toBe(0)
+  })
+})

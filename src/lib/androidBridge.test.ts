@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { getAndroidBridge, pageReadAt } from './androidBridge'
+import { androidListKey, canTakeActions, getAndroidBridge, pageReadAt } from './androidBridge'
 
 const w = globalThis as unknown as { window?: unknown }
 
@@ -38,8 +38,28 @@ describe('getAndroidBridge', () => {
 
 describe('pageReadAt', () => {
   const now = new Date('2026-10-02T09:00:00Z')
-  it('online: acum', () => expect(pageReadAt({ offline: false }, now)).toBe(now.getTime()))
+  const sync = (t: number) => ({ dueFetchedAt: () => t })
+  // Vârsta DATELOR, nu ora trimiterii: o listă din cache (primul cadru, o citire
+  // căzută pe cache) ar fi bătut altfel o listă nativă mai proaspătă.
+  it('online: pornirea ultimei citiri de rețea a scadențelor', () => expect(pageReadAt({ offline: false }, sync(123), now)).toBe(123))
+  it('doar cache până acum: 0', () => expect(pageReadAt({ offline: false }, sync(0), now)).toBe(0))
   // Cache-ul unei pagini offline poate fi de ieri: lista nativă, citită de la
   // server, câștigă (mai puțin heldIds — vezi Kotlin mergePlan).
-  it('offline: 0, ca orice listă nativă să fie mai nouă', () => expect(pageReadAt({ offline: true }, now)).toBe(0))
+  it('offline: 0, ca orice listă nativă să fie mai nouă', () => expect(pageReadAt({ offline: true }, sync(123), now)).toBe(0))
+  it('fără strat offline (direct la server): acum', () => expect(pageReadAt({ offline: false }, undefined, now)).toBe(now.getTime()))
+})
+
+describe('canTakeActions', () => {
+  it('abia după o citire de rețea a scadențelor', () => {
+    expect(canTakeActions({ dueFetchedAt: () => 0 })).toBe(false)
+    expect(canTakeActions({ dueFetchedAt: () => 5 })).toBe(true)
+  })
+  it('fără strat offline: datele sunt mereu de la server', () => expect(canTakeActions(undefined)).toBe(true))
+})
+
+describe('androidListKey', () => {
+  it('o citire de rețea nouă (readAt mutat) retrimite chiar cu aceeași listă', () => {
+    expect(androidListKey([], [], 1)).not.toBe(androidListKey([], [], 2))
+    expect(androidListKey([], ['HZ-1'], 1)).toBe(androidListKey([], ['HZ-1'], 1))
+  })
 })

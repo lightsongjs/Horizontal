@@ -86,11 +86,35 @@ function buildBridge(cap: CapacitorGlobal): HorizontalAndroidPlugin {
   } as HorizontalAndroidPlugin
 }
 
+/** Ce știe stratul offline despre vârsta scadențelor (`SyncControl.dueFetchedAt`). */
+export interface DueFreshness { dueFetchedAt(): number }
+
 /**
- * Cât de proaspătă e lista trimisă cutiei. Offline, store-ul arată cache-ul,
- * care poate fi vechi; o listă nativă citită de la server trebuie să câștige
- * atunci, altfel un memento mutat pe laptop ar suna la ora veche.
+ * `readAt` al listei trimise cutiei = vârsta DATELOR, nu ora trimiterii: PORNIREA
+ * ultimei citiri de rețea reușite a scadențelor (0 = doar cache). Cutia păstrează
+ * lista citită mai recent; cu `acum`, o listă din cache (primul cadru, sau o citire
+ * căzută pe cache) ar fi bătut o listă nativă mai proaspătă — un memento mutat pe
+ * laptop ar fi sunat la ora veche, iar unul sunat de cutie s-ar fi retras.
+ * Offline tot 0: atunci store-ul arată cache-ul. Fără strat offline (nu e cazul pe
+ * Android, unde e mereu Supabase) datele vin direct de la server.
  */
-export function pageReadAt(status: { offline: boolean }, now: Date): number {
-  return status.offline ? 0 : now.getTime()
+export function pageReadAt(status: { offline: boolean }, sync: DueFreshness | undefined, now: Date): number {
+  if (status.offline) return 0
+  return sync ? sync.dueFetchedAt() : now.getTime()
+}
+
+/**
+ * Acțiunile preluate din cutie se execută abia peste date de la server. Peste
+ * cache, garda recurenței ar compara cu o scadență veche și ar arunca un „Gata"
+ * bun (sau, fără gardă, l-ar executa pe o stare depășită); nepreluate, le trimite
+ * cutia singură când are rețea.
+ */
+export function canTakeActions(sync: DueFreshness | undefined): boolean {
+  return !sync || sync.dueFetchedAt() > 0
+}
+
+/** Cheia de deduplicare a retrimiterii. `readAt` intră: o citire nouă de rețea
+ *  face lista paginii mai proaspătă decât cea nativă, chiar cu același conținut. */
+export function androidListKey(list: DesktopReminder[], heldIds: string[], readAt: number): string {
+  return JSON.stringify([list, heldIds, readAt])
 }
