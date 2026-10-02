@@ -17,7 +17,8 @@ export interface DesktopReminder {
   body: string
 }
 
-export type DesktopAction = { action: 'done' | 'snooze' | 'open'; id: string }
+/** `minutes` e prezent doar la `snooze`: cutia oferă 15 și 30, web-ul rămâne la SNOOZE_MINUTES. */
+export type DesktopAction = { action: 'done' | 'snooze' | 'open'; id: string; minutes?: number }
 
 export interface HorizontalDesktop {
   version: string

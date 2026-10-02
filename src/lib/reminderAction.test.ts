@@ -20,4 +20,10 @@ describe('reminderMutation', () => {
       patch: { remindAt: new Date(now.getTime() + SNOOZE_MINUTES * 60_000).toISOString() },
     })
   })
+  it.each([15, 30])('amânarea cu %i minute mută mementoul cu atât', (min) => {
+    expect(reminderMutation('snooze', { done: false }, now, min)).toEqual({
+      kind: 'patch',
+      patch: { remindAt: new Date(now.getTime() + min * 60_000).toISOString() },
+    })
+  })
 })
