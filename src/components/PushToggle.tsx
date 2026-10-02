@@ -3,6 +3,7 @@ import { disablePush, enablePush, pushHint, readPushState, type PushState } from
 import { errorMessage } from '../lib/errorMessage'
 import { announceChime, playChime, unlockChime } from '../lib/chime'
 import { Icon } from './Icon'
+import { getDesktopBridge } from '../lib/desktopBridge'
 
 /**
  * Comutatorul de notificări. Trăiește în capul listei „Azi" fiindcă acolo e
@@ -23,6 +24,10 @@ export function PushToggle() {
 
   useEffect(() => { void readPushState().then(setState) }, [])
 
+  // În aplicația de Linux mementourile le sună cutia (D-Bus), nu web push-ul.
+  // Electron n-are serviciu de push, deci „Activează" ar fi dat doar
+  // „Registration failed - push service not available".
+  if (getDesktopBridge()) return null
   // Nimic de arătat: încă nu știm, e deja pornit, sau nu se poate oricum.
   if (state === null || state === 'on' || state === 'unsupported' || state === 'no-account') return null
   if (dismissed) return null
