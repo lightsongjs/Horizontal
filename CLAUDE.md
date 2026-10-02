@@ -713,6 +713,77 @@ golirea, clasificarea erorilor, pragul capturii, generația) plus
 `src/lib/syncLabel.test.ts` și `src/lib/logoutPlan.test.ts`. Rulează
 `npx vitest run src/data/offline src/lib` după orice atingere a stratului.
 
+## Aplicația de Linux
+
+`desktop/` = cutie Electron rezidentă (Fedora/GNOME): bara de captură pe
+Ctrl+Shift+A și mementouri cu aplicația în fundal. Spec/plan:
+`docs/superpowers/{specs,plans}/2026-10-02-aplicatie-linux*`.
+
+- **Cutia încarcă site-ul publicat** (`loadURL` pe `horizontal-dyx.pages.dev`;
+  `HORIZONTAL_URL` pentru probă locală). Un push pe `master` ajunge pe desktop
+  prin service worker; cutia se reconstruiește doar când se schimbă `desktop/`:
+  `npm run desktop:install`. `/quick-add` și puntea trebuie publicate ÎNAINTE de
+  instalare. Fără punte (`window.horizontalDesktop` lipsește) site-ul se poartă
+  ca înainte.
+- **`desktop/` are `package.json` propriu**, dar testele lui (`scheduler.test.ts`,
+  `scripts/gsettings.test.mjs`) rulează din vitest-ul rădăcinii. Tipurile cutiei:
+  `npm --prefix desktop run typecheck`.
+- **Contractul `HorizontalDesktop` e scris de două ori**: `src/lib/desktopBridge.ts`
+  (tipuri) și `desktop/src/preload.ts` (sandbox, fără import). Se schimbă
+  împreună, ca și `DesktopAction` vs `NotifyAction` din `notify.ts`. Preload-ul
+  expune puntea doar pe originea aplicației.
+- **`/quick-add` e ramificată în `main.tsx` ÎNAINTE de `App`** (altfel boot-ul o
+  ia drept deep link de tichet și `settleUrl` o rescrie); `parseTicketPath`
+  întoarce `null` pentru ea. Cod: `QuickAddPage.tsx`, `QuickAdd` cu `rich` /
+  `defaultProjectId`, `src/lib/captureTokens.ts` (pur). Rulează
+  `npm run test:quick-add` după orice atingere.
+- **Capturi.** Semnele (`#proiect`, `@persoană`, `!`) se recunosc doar la început
+  de cuvânt; unul necunoscut rămâne în titlu. Butonul are ultimul cuvânt
+  (`manual ?? tokens ?? implicit`). Proiect implicit „✅Daily" **după nume**
+  (`dailyProjectId`), nu ultimul folosit; fără dată → azi. Id-ul lui Daily e în
+  `key`, fiindcă `QuickAdd` citește `defaultProjectId` doar la montare.
+- **Focusul barei.** Fereastra e creată o dată și refolosită; proba (2026-10-02,
+  GNOME Wayland): `show()` + `focus()` pe fereastra existentă primește
+  tastatura din prima. „Rundă nouă" (câmp gol, cursor) vine din
+  `visibilitychange`, NU din `focus` — popup-ul unui `<select>`/câmp de dată
+  ia focusul și l-ar goli. Excepție: la prima arătare `visibilitychange` nu vine
+  (fereastra e deja `visible`), deci primul `focus` deschide runda 1. `blur`
+  ascunde cu 150 ms întârziere + reverificare, din același motiv. Cutia rulează
+  cu `lang=ro-RO` (înainte de `ready`), altfel câmpurile native de dată arată
+  ll/zz în loc de zz.ll.
+- **Pagina ȘTIE, cutia SUNĂ.** Timerele sunt în procesul principal (Chromium
+  sugrumă timerele unei ferestre ascunse; cele Node nu numără somnul →
+  `resume`/`unlock-screen` re-planifică). `planReminders` rulează de la zero la
+  fiecare listă, timer și trezire. Pagina trimite mementourile din ultimele
+  **24 h** (`REMINDER_LOOKBACK_MS`), cutia sună doar pe cele din ultima **oră**
+  (`MISSED_WINDOW_MS`): cutia închide notificările ale căror chei lipsesc din
+  listă, deci o fereastră scurtă ar închide un memento nebifat după o oră.
+  `fired` (în memorie, nepersistat) previne dublurile la reîncărcarea paginii.
+  `DesktopBridge` NU trimite nimic până la `dueLoaded` — un `[]` timpuriu ar
+  închide notificările de pe ecran, care apoi nu mai revin (`fired`).
+- **„Gata" trece prin `reminderMutation`** (`src/lib/reminderAction.ts`, comun cu
+  service worker-ul): nu comută orb, ca o notificare veche să nu debifeze o
+  sarcină bifată pe telefon.
+- **Notificări pe D-Bus** (`notify.ts`; `Notification` din Electron n-are acțiuni
+  pe Linux). `urgency=2` ca butoanele să se vadă; `resident` → le închidem noi
+  imediat după acțiune. GNOME arată max 3 butoane: pe desktop **Gata · 15 min ·
+  30 min** (`minutes` în `DesktopAction`), pe web push **Gata · Amână 5 min**
+  (construit de server, neatins). Scurtătura cheamă `ro.horizontal.App.QuickAdd`
+  prin `gdbus` (~10 ms), cu rezervă `horizontal --quick-add`. X pe fereastra
+  principală o ascunde (ea știe mementourile); ieșire: Ctrl+Q / `Quit`.
+- **`openExternal` doar `http:`/`https:`/`mailto:`** (linkuri din comentarii scrise
+  de oameni); orice navigare în altă origine pleacă în browserul sistemului.
+- **Instalare**: `npm run desktop:install` → `~/.local/opt/horizontal` (build
+  `--linux dir`, re-rulabil, oprește întâi instanța prin `Quit`). Nu `.rpm`:
+  cere `sudo` la fiecare reinstalare și `fpm` nu merge pe Fedora fără
+  `libxcrypt`; se poate adăuga un target în `build.linux.target`. Scurtătura se
+  ADAUGĂ la `custom-keybindings` (nu rescrie lista). Iconița din dash depinde de
+  `horizontal.desktop` = `desktopName` + `StartupWMClass` (Wayland leagă după
+  `app_id`). `npm run desktop:uninstall` șterge tot, mai puțin iconițele — și
+  un `horizontal.desktop` vechi de la PWA, dacă are același nume.
+- **Dublură**: un Chrome abonat la web push + cutia = fiecare memento de două
+  ori; dezactivează notificările site-ului în Chrome.
+
 ## Teste care cer un browser
 
 `npm test` (vitest) nu face layout și nu are DOM real, deci nu poate vedea două
