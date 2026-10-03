@@ -38,8 +38,21 @@ describe('datePatch', () => {
   it('Mâine e ziua calendaristică următoare, chiar dacă e duminică', () => {
     expect(datePatch(allDay, { kind: 'tomorrow' }, NOW)).toEqual({ dueAt: iso(2026, 10, 4) })
   })
-  it('Azi pe o restanță păstrează ora ei', () => {
-    expect(datePatch(timed, { kind: 'today' }, NOW).dueAt).toBe(iso(2026, 10, 3, 9, 30))
+  it('Azi cu o oră deja trecută azi → zi întreagă azi, fără memento', () => {
+    // 09:30 azi e deja trecut la 15:00: altfel ar rămâne în Restanțe.
+    expect(datePatch(timed, { kind: 'today' }, NOW)).toEqual({ dueAt: iso(2026, 10, 3), allDay: true, remindAt: null })
+  })
+  it('Azi cu o oră încă înainte păstrează ora și mută mementoul', () => {
+    const evening = { ...timed, dueAt: iso(2026, 10, 1, 18, 0), remindAt: iso(2026, 10, 1, 17, 30) }
+    expect(datePatch(evening, { kind: 'today' }, NOW)).toEqual({ dueAt: iso(2026, 10, 3, 18, 0), remindAt: iso(2026, 10, 3, 17, 30) })
+  })
+  it('Azi pe o restanță de zi întreagă rămâne zi întreagă', () => {
+    expect(datePatch(allDay, { kind: 'today' }, NOW)).toEqual({ dueAt: iso(2026, 10, 3) })
+  })
+  it('anularea lui „Azi" trecut în zi întreagă întoarce toate câmpurile', () => {
+    const patch = datePatch(timed, { kind: 'today' }, NOW)
+    const undone = applyIssuePatch(applyIssuePatch(timed, patch, NOW), snapshot(timed, patch), NOW)
+    expect(undone).toMatchObject({ dueAt: timed.dueAt, allDay: false, remindAt: timed.remindAt })
   })
   it('+1 zi e relativ la scadența proprie', () => {
     expect(datePatch(timed, { kind: 'plus1' }, NOW).dueAt).toBe(iso(2026, 10, 2, 9, 30))
@@ -68,7 +81,7 @@ describe('datePatch', () => {
     expect('rrule' in datePatch(recurring, { kind: 'tomorrow' }, NOW)).toBe(false)
   })
   it('o mutare pe aceeași zi nu scrie nimic', () => {
-    const todayTask = { ...timed, dueAt: iso(2026, 10, 3, 9, 30), remindAt: null }
+    const todayTask = { ...timed, dueAt: iso(2026, 10, 3, 19, 30), remindAt: null }
     expect(datePatch(todayTask, { kind: 'today' }, NOW)).toEqual({})
   })
 })

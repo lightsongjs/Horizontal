@@ -6138,6 +6138,10 @@ body:has(.qab) { overflow-y: auto; }
   box-shadow: var(--amb);
 }
 .swipe-btn.primary { background: var(--accent); color: var(--on-accent); }
+/* Pe tema deschisă `--surface-2` (#F0F4F8) peste `--bg` (#F7F9FC) nu se
+   vede ca cerc: butonul urcă pe `--surface` (alb) cu umbra mai mare, fără
+   chenar. Pe tema închisă `--surface-2` se citește deja. */
+[data-theme='light'] .swipe-btn:not(.primary) { background: var(--surface); box-shadow: var(--amb-lg); }
 .swipe.crossed .swipe-strip { background: var(--accent); }
 .swipe.crossed .swipe-btn { background: transparent; color: var(--on-accent); box-shadow: none; }
 .swipe.crossed .swipe-btn:not(.primary) { visibility: hidden; }

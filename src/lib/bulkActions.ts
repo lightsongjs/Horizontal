@@ -102,6 +102,16 @@ export function datePatch(issue: Issue, preset: DatePreset, now: Date): Fields {
   if (!issue.dueAt) {
     if (preset.kind !== 'pick' || !preset.time) { allDay = true; time = null }
   }
+  // „Azi" cu o oră deja trecută ar lăsa sarcina restantă — exact unde era.
+  // Devine zi întreagă azi, iar mementoul pleacă: unul în trecut e zgomot.
+  if (preset.kind === 'today' && !allDay && onDay(target, time).getTime() < now.getTime()) {
+    const out: Fields = {}
+    const dueAt = onDay(target, null).toISOString()
+    if (dueAt !== issue.dueAt) out.dueAt = dueAt
+    if (!issue.allDay) out.allDay = true
+    if (issue.remindAt !== null) out.remindAt = null
+    return out
+  }
   const nextDue = onDay(target, allDay ? null : time).toISOString()
   const moved = moveDue(issue, nextDue)
   const out: Fields = {}
