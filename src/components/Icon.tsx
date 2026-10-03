@@ -10,6 +10,7 @@ import {
   CornerUpRight,
   CircleQuestionMark,
   Ellipsis,
+  EllipsisVertical,
   Eye,
   EyeOff,
   LogOut,
@@ -145,6 +146,8 @@ const ICONS = {
   // Foaia rapidă: trimite (rotund, accent) și „…” = formularul complet.
   send: ArrowUp,
   more: Ellipsis,
+  /** Meniul unui rând (⋮): acțiunile care nu încap pe bandă. */
+  menu: EllipsisVertical,
 } as const
 
 export type IconName = keyof typeof ICONS

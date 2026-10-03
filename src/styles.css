@@ -6088,3 +6088,180 @@ body:has(.qab) { overflow-y: auto; }
 .qab { padding: 24px 16px 3px; position: relative; }
 .qab .qa { margin-bottom: 0; padding-block: 4px; }
 .qab .qa-tip { position: absolute; top: -21px; bottom: auto; box-shadow: none; background: transparent; padding: 0; }
+
+/* ── TELEFON: glisarea unui rând de sarcină ──────────────────────────
+   Banda stă în spatele rândului și se vede doar pe partea spre care s-a
+   tras. Butoanele sunt rotunde, pe `--surface-2`, fără chenar; numai acțiunea
+   principală a fiecărei părți e pe accent (Mâine la stânga, Dată la dreapta).
+   Peste pragul glisării complete toată banda devine accent: semnul că la
+   ridicarea degetului se întâmplă ceva. Pragurile sunt în `src/lib/swipe.ts`. */
+.swipe {
+  position: relative;
+  margin-bottom: 6px;
+  border-radius: var(--r-m);
+  /* Derularea verticală rămâne a browserului; orizontala e a noastră. */
+  touch-action: pan-y;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.swipe > .list-row {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 0;
+  min-height: 48px;
+  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), background 120ms;
+}
+.swipe.dragging > .list-row { transition: none; }
+.swipe-strip {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  border-radius: var(--r-m);
+  transition: background 120ms;
+}
+.swipe.show-left .swipe-left { display: flex; justify-content: flex-start; }
+.swipe.show-right .swipe-right { display: flex; justify-content: flex-end; }
+.swipe-btn {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2);
+  color: var(--txt);
+  box-shadow: var(--amb);
+}
+.swipe-btn.primary { background: var(--accent); color: var(--on-accent); }
+.swipe.crossed .swipe-strip { background: var(--accent); }
+.swipe.crossed .swipe-btn { background: transparent; color: var(--on-accent); box-shadow: none; }
+.swipe.crossed .swipe-btn:not(.primary) { visibility: hidden; }
+
+/* ── TELEFON: modul de selecție ──────────────────────────────────── */
+.swipe > .task-row.selected {
+  background: var(--accent-soft);
+  box-shadow: var(--amb);
+}
+.sel-mark {
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.list-group-head.selectable { cursor: pointer; }
+.list-group-head.selectable .list-group-label { color: var(--accent); }
+.group-act {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: var(--r-s);
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+.sel-head .sel-count {
+  flex: 1;
+  min-width: 0;
+  font-size: 17px;
+  font-weight: 700;
+  font-family: var(--display);
+  letter-spacing: -0.02em;
+}
+.sel-num { font-family: var(--mono); font-weight: 600; }
+.sel-all {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: var(--r-s);
+  padding: 7px 12px;
+  flex-shrink: 0;
+}
+.sel-bar button { color: var(--txt-dim); }
+.sel-bar button.primary { color: var(--accent); }
+.sel-bar button.danger { color: var(--blocked); }
+.sel-bar button:disabled { opacity: 0.4; }
+
+/* ── Foile de acțiuni (dată, ⋮, pasare) ──────────────────────────── */
+.as-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 2px 2px 12px;
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+}
+.as-subject { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--txt-dim); font-weight: 500; }
+.ds-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.ds-opt {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: var(--r-m);
+  background: var(--surface-2);
+  color: var(--txt);
+  text-align: left;
+  min-width: 0;
+}
+.ds-opt.on { box-shadow: inset 0 -2px 0 var(--accent); }
+.ds-opt:disabled { opacity: 0.4; }
+.ds-label { font-size: 15px; font-weight: 600; }
+.ds-hint {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--txt-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.ds-opt.primary .ds-label { color: var(--accent); }
+.ds-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 2px 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--txt-dim);
+}
+.ds-apply {
+  margin-left: auto;
+  background: var(--accent);
+  color: var(--on-accent);
+  border-radius: var(--r-s);
+  padding: 6px 12px;
+  font-weight: 600;
+  font-size: 13px;
+}
+.ds-apply:disabled { opacity: 0.4; }
+.as-list { display: flex; flex-direction: column; gap: 2px; }
+.as-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: var(--r-m);
+  font-size: 15px;
+  color: var(--txt);
+  text-align: left;
+}
+.as-item:active { background: var(--surface-2); }
+.as-item.danger { color: var(--blocked); }

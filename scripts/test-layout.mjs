@@ -557,6 +557,103 @@ for (const width of PHONE_WIDTHS) {
   check(`fiecare control are fundal @${width}px`, m.invisible.length === 0, m.invisible.length ? `INVIZIBIL: ${m.invisible.join(', ')}` : 'toate')
 }
 
+/**
+ * Modul de selecție de pe telefon (`SelectionChrome.tsx`) și banda glisării
+ * (`TaskRow.tsx`). Bara de jos are cinci butoane, nu patru ca bara de tab-uri,
+ * deci la 320px fiecare primește mai puțin; banda din dreapta trebuie să
+ * încapă în lățimea pe care o dezvăluie glisarea (`REVEAL_RIGHT` din
+ * `src/lib/swipe.ts` — 172px), altfel ultimul buton rămâne sub rând.
+ */
+const REVEAL_RIGHT = 172
+const REVEAL_LEFT = 72
+const selection = () => `
+<header class="sel-head">
+  <button class="back"><svg width="20" height="20"></svg></button>
+  <h1 class="sel-count"><span class="sel-num">12</span> selectate</h1>
+  <button class="sel-all">Toate</button>
+</header>
+<div class="smart-list">
+  <div class="list-group">
+    <div class="list-group-head">
+      <span class="list-group-num">12</span><span class="list-group-label">Restanțe</span>
+      <button class="group-act">Mută restanțele pe azi</button>
+    </div>
+    <div class="swipe show-right" id="sr">
+      <div class="swipe-strip swipe-right">
+        <button class="swipe-btn primary"><svg width="18" height="18"></svg></button>
+        <button class="swipe-btn"><svg width="18" height="18"></svg></button>
+        <button class="swipe-btn"><svg width="18" height="18"></svg></button>
+      </div>
+      <button class="list-row task-row" style="transform: translateX(-${REVEAL_RIGHT}px)">
+        <span class="list-check"></span><span class="t-time">09:30</span><span class="list-title">Sună la bancă pentru extras</span>
+      </button>
+    </div>
+    <div class="swipe show-left" id="sl">
+      <div class="swipe-strip swipe-left">
+        <button class="swipe-btn primary"><svg width="18" height="18"></svg></button>
+      </div>
+      <button class="list-row task-row selected" style="transform: translateX(${REVEAL_LEFT}px)">
+        <span class="list-check"><span class="sel-mark"></span></span><span class="t-time">—</span><span class="list-title">Plătește chiria</span>
+      </button>
+    </div>
+  </div>
+</div>
+<nav class="tabbar sel-bar">
+  <button class="primary"><span class="tb-ico"><svg width="21" height="21"></svg></span>Dată</button>
+  <button><span class="tb-ico"><svg width="21" height="21"></svg></span>Urgent</button>
+  <button><span class="tb-ico"><svg width="21" height="21"></svg></span>Gata</button>
+  <button class="danger"><span class="tb-ico"><svg width="21" height="21"></svg></span>Șterge</button>
+  <button><span class="tb-ico"><svg width="21" height="21"></svg></span>Mai mult</button>
+</nav>`
+
+console.log('\nModul de selecție și banda glisării (telefon):')
+for (const width of PHONE_WIDTHS) {
+  const page = await browser.newPage({ viewport: { width, height: 844 } })
+  await page.setContent(`<style>${CSS}</style>${selection()}`)
+  const m = await page.evaluate(([revR, revL]) => {
+    const r = (el) => el.getBoundingClientRect()
+    const bar = document.querySelector('.sel-bar')
+    const btns = [...bar.querySelectorAll('button')]
+    const head = document.querySelector('.sel-head')
+    const all = document.querySelector('.sel-all')
+    const count = document.querySelector('.sel-count')
+    const sr = document.querySelector('#sr')
+    const srBtns = [...sr.querySelectorAll('.swipe-btn')]
+    const sl = document.querySelector('#sl')
+    const slBtn = sl.querySelector('.swipe-btn')
+    const gh = document.querySelector('.list-group-head')
+    const act = document.querySelector('.group-act')
+    const bgOf = (el) => getComputedStyle(el).backgroundColor
+    return {
+      barOverflow: Math.round(bar.scrollWidth - r(bar).width),
+      narrowestBtn: Math.round(Math.min(...btns.map((b) => r(b).width))),
+      clippedLabel: btns.some((b) => b.scrollWidth > b.clientWidth + 1),
+      allInside: r(all).right <= window.innerWidth + 0.5 && r(all).width >= 44,
+      countClipped: count.scrollWidth > count.clientWidth + 1,
+      headOverflow: Math.round(head.scrollWidth - r(head).width),
+      // Banda din dreapta: toate butoanele în zona dezvăluită, niciunul sub rând.
+      stripFits: srBtns.every((b) => r(b).left >= r(sr).right - revR - 0.5 && r(b).right <= r(sr).right + 0.5),
+      leftFits: r(slBtn).right <= r(sl).left + revL + 0.5,
+      round: srBtns.every((b) => getComputedStyle(b).borderRadius === '50%' && Math.round(r(b).width) === Math.round(r(b).height)),
+      btnSize: Math.round(Math.min(...srBtns.map((b) => r(b).width))),
+      invisible: [...srBtns, slBtn].filter((b) => bgOf(b) === 'rgba(0, 0, 0, 0)').length,
+      noBorder: [...srBtns, slBtn].every((b) => getComputedStyle(b).borderStyle === 'none' || getComputedStyle(b).borderWidth === '0px'),
+      groupOverflow: Math.round(gh.scrollWidth - r(gh).width),
+      actClipped: act.scrollWidth > act.clientWidth + 1,
+    }
+  }, [REVEAL_RIGHT, REVEAL_LEFT])
+  await page.close()
+  check(`bara de selecție fără overflow @${width}px`, m.barOverflow <= 0, `${m.barOverflow}px peste bară`)
+  check(`butoanele barei nestrivite @${width}px`, m.narrowestBtn >= 48, `cel mai îngust ${m.narrowestBtn}px`)
+  check(`etichetele barei netăiate @${width}px`, !m.clippedLabel, m.clippedLabel ? 'o etichetă e tăiată' : 'întregi')
+  check(`antetul selecției încape @${width}px`, m.headOverflow <= 0 && m.allInside && !m.countClipped, `overflow=${m.headOverflow}px, Toate în ecran=${m.allInside}, număr tăiat=${m.countClipped}`)
+  check(`banda din dreapta încape în ${REVEAL_RIGHT}px @${width}px`, m.stripFits, m.stripFits ? 'toate trei în zona dezvăluită' : 'un buton rămâne sub rând')
+  check(`banda din stânga încape în ${REVEAL_LEFT}px @${width}px`, m.leftFits, m.leftFits ? 'Mâine în zona dezvăluită' : 'sub rând')
+  check(`butoanele benzii rotunde @${width}px`, m.round && m.btnSize >= 40, `${m.btnSize}px, rotunde=${m.round}`)
+  check(`butoanele benzii au fundal, fără chenar @${width}px`, m.invisible === 0 && m.noBorder, `fără fundal: ${m.invisible}, fără chenar: ${m.noBorder}`)
+  check(`„Mută restanțele pe azi" încape @${width}px`, m.groupOverflow <= 0 && !m.actClipped, `overflow=${m.groupOverflow}px, tăiat=${m.actClipped}`)
+}
+
 await browser.close()
 
 if (failures.length) {

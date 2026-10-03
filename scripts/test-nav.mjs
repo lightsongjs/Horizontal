@@ -15,6 +15,7 @@
 // fără login) — la fel ca `design/preview.html`: aplicația reală, fără cont.
 import { chromium } from 'playwright'
 import { spawn } from 'node:child_process'
+import { touchApi } from './lib-touch.mjs'
 
 const PORT = 5211
 const BASE = `http://localhost:${PORT}`
@@ -572,6 +573,121 @@ try {
   check('Back închide formularul complet', (await tel.locator('.sheet.on').count()) === 0, 'închis')
   check('…și rămâi pe „Azi"', (await telOnAzi()) && new URL(tel.url()).pathname === '/', `URL=${new URL(tel.url()).pathname}`)
   await tel.close()
+
+  // ── Gesturile de pe telefon: glisare, apăsare lungă, selecție ─────────
+  // Atingeri reale (CDP, vezi `lib-touch.mjs`), pe un context cu ecran tactil:
+  // `click()` ar ocoli exact ce se testează — blocarea direcției, pragurile,
+  // anularea atingerii după mișcare. Filă curată, ca un `back()` să nu
+  // aterizeze pe tichetele testelor de mai sus.
+  const tctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
+  const touch = await tctx.newPage()
+  await touch.goto(BASE, { waitUntil: 'networkidle' })
+  await touch.waitForTimeout(800)
+  const T = await touchApi(touch)
+  const names = ['Gest unu', 'Gest doi', 'Gest trei']
+  for (const t of names) {
+    await touch.locator('.fab').click()
+    await touch.waitForTimeout(300)
+    await touch.keyboard.type(t)
+    await touch.keyboard.press('Enter')
+    await touch.waitForTimeout(700)
+  }
+  // Toastul „Adăugat" nu are voie să încurce citirea toastului de anulare.
+  await touch.waitForTimeout(2800)
+  const titles = async () => (await touch.locator('.task-row .list-title').allInnerTexts()).filter((t) => t.startsWith('Gest'))
+  const rowOf = (name) => touch.locator('.swipe', { hasText: name })
+  const selecting = () => touch.locator('.sel-head').count().then((n) => n > 0)
+  const touchOnAzi = async () => /Azi/.test((await touch.locator('.tabbar button.on').textContent().catch(() => '')) ?? '')
+  check('telefon: trei sarcini de gest în „Azi"', (await titles()).length === 3, JSON.stringify(await titles()))
+
+  // Derularea verticală nu e o glisare.
+  {
+    const c = await T.center(rowOf('Gest unu'))
+    await T.drag(c.x, c.y, c.x + 12, c.y + 90)
+    await touch.waitForTimeout(300)
+    const cls = await rowOf('Gest unu').getAttribute('class')
+    const style = await rowOf('Gest unu').locator('.task-row').getAttribute('style')
+    check('mișcarea verticală nu glisează rândul', !/show-/.test(cls ?? '') && !style, `class="${cls}" style="${style}"`)
+    check('…și nu deschide foaia', (await touch.locator('.edit-sheet').count()) === 0, 'fără foaie')
+  }
+
+  // Glisare scurtă spre stânga: banda rămâne deschisă cu trei butoane.
+  {
+    const c = await T.center(rowOf('Gest unu'))
+    await T.drag(c.x + 40, c.y, c.x - 90, c.y)
+    await touch.waitForTimeout(350)
+    const open = /show-right/.test((await rowOf('Gest unu').getAttribute('class')) ?? '')
+    const btns = await rowOf('Gest unu').locator('.swipe-right .swipe-btn').count()
+    check('glisarea scurtă spre stânga deschide banda', open && btns === 3, `deschisă=${open}, butoane=${btns}`)
+    check('banda nu deschide foaia', (await touch.locator('.edit-sheet').count()) === 0, 'fără foaie')
+    // Un alt rând glisat închide primul: unul singur deschis.
+    const c2 = await T.center(rowOf('Gest doi'))
+    await T.drag(c2.x - 40, c2.y, c2.x + 10, c2.y)
+    await touch.waitForTimeout(350)
+    const firstClosed = !/show-/.test((await rowOf('Gest unu').getAttribute('class')) ?? '')
+    check('o atingere în altă parte închide rândul deschis', firstClosed, firstClosed ? 'închis' : 'a rămas deschis')
+  }
+
+  // Glisare completă spre dreapta: „Mâine", cu anulare.
+  {
+    const c = await T.center(rowOf('Gest trei'))
+    await T.drag(c.box.x + 40, c.y, c.box.x + 40 + c.box.width * 0.7, c.y)
+    await touch.waitForTimeout(700)
+    const gone = !(await titles()).includes('Gest trei')
+    const toastTxt = ((await touch.locator('.toast').textContent()) ?? '').trim()
+    check('glisarea completă spre dreapta mută pe mâine', gone, gone ? 'a plecat din „Azi"' : 'a rămas în „Azi"')
+    check('toastul spune „Mutat pe mâine"', /Mutat pe mâine/.test(toastTxt), `toast="${toastTxt}"`)
+    await touch.locator('.toast-act').click()
+    await touch.waitForTimeout(700)
+    check('„Anulează" o aduce înapoi', (await titles()).includes('Gest trei'), JSON.stringify(await titles()))
+  }
+
+  // Apăsarea lungă intră în selecție; Back iese și lasă ecranul pe „Azi".
+  {
+    const c = await T.center(rowOf('Gest doi'))
+    await T.longPress(c.x, c.y)
+    await touch.waitForTimeout(400)
+    const head = ((await touch.locator('.sel-head').textContent().catch(() => '')) ?? '').trim()
+    check('apăsarea lungă intră în selecție', /1\s*selectat/.test(head), `antet="${head}"`)
+    check('…cu rândul apăsat ales', (await rowOf('Gest doi').locator('.task-row.selected').count()) === 1, 'ales')
+    check('…bara de selecție ține locul barei de tab-uri', (await touch.locator('.sel-bar').count()) === 1 && (await touch.locator('.tabbar:not(.sel-bar)').count()) === 0, 'înlocuită')
+    check('…și FAB-ul e ascuns', (await touch.locator('.fab').count()) === 0, 'ascuns')
+    check('…și nu s-a deschis foaia', (await touch.locator('.edit-sheet').count()) === 0, 'fără foaie')
+    await touch.goBack()
+    await touch.waitForTimeout(600)
+    check('Back iese din selecție', !(await selecting()), (await selecting()) ? 'a rămas în selecție' : 'ieșit')
+    check('…și rămâi pe „Azi"', (await touchOnAzi()) && new URL(touch.url()).pathname === '/', `URL=${new URL(touch.url()).pathname}`)
+  }
+
+  // Capul grupului alege tot grupul; „Dată → Mâine" în bloc, cu anulare.
+  {
+    const c = await T.center(rowOf('Gest unu'))
+    await T.longPress(c.x, c.y)
+    await touch.waitForTimeout(400)
+    const group = touch.locator('.list-group-head', { hasText: 'Azi' }).first()
+    const g = await T.center(group)
+    await T.tap(g.x, g.y)
+    await touch.waitForTimeout(300)
+    const inGroup = await touch.locator('.list-group', { has: group }).locator('.task-row').count()
+    const head = ((await touch.locator('.sel-num').textContent()) ?? '').trim()
+    check('capul grupului alege tot grupul', Number(head) === inGroup && inGroup >= 3, `selectate=${head}, în grup=${inGroup}`)
+    await touch.locator('.sel-bar button', { hasText: 'Dată' }).click()
+    await touch.waitForTimeout(400)
+    check('„Dată" deschide foaia de dată', (await touch.locator('.date-sheet').count()) === 1, 'foaie')
+    await touch.locator('.date-sheet .ds-opt', { hasText: 'Mâine' }).click()
+    await touch.waitForTimeout(800)
+    const left = await titles()
+    check('„Mâine" în bloc mută sarcinile din „Azi"', left.length === 0, JSON.stringify(left))
+    check('…și iese singur din selecție', !(await selecting()), 'ieșit')
+    const toastTxt = ((await touch.locator('.toast').textContent()) ?? '').trim()
+    check('toastul numără sarcinile mutate', /mutate pe mâine/.test(toastTxt), `toast="${toastTxt}"`)
+    const st = await touch.evaluate(() => history.state?.hzSheet ?? null)
+    check('ieșirea desface intrările din istoric', st === null && new URL(touch.url()).pathname === '/', `hzSheet=${st}`)
+    await touch.locator('.toast-act').click()
+    await touch.waitForTimeout(800)
+    check('„Anulează" le aduce pe toate înapoi', (await titles()).length === 3, JSON.stringify(await titles()))
+  }
+  await tctx.close()
 
   await page.close()
 } finally {

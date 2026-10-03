@@ -539,6 +539,51 @@ nu pornește în paralel cu ea.
 
 Setup: `npm run migrate supabase/migration-recurrence.sql`.
 
+## Gesturile de pe telefon — glisare și selecție
+
+Sub 900px, rândurile din listele inteligente se glisează (dreapta: „Mâine";
+stânga: Dată, Urgent, ⋮) și intră în selecție la apăsare lungă. Pragurile și
+blocarea direcției sunt în `src/lib/swipe.ts`, calculul scrierilor în
+`src/lib/bulkActions.ts` — amândouă pure, cu fixtures. Pe desktop nu se
+schimbă nimic: `TaskRow` randează același buton ca înainte.
+
+**Glisarea completă spre dreapta execută, cea spre stânga nu.** „Mâine" e o
+mutare mică și reversibilă; spre stânga sunt trei acțiuni, iar o glisare n-are
+cum să aleagă între ele — deschide foaia de dată. „Dreapta = gata" a fost
+refuzat: bifa face deja asta, la un deget distanță.
+
+**O singură regulă de direcție pentru rând și pentru tragerea de refresh.**
+`lockAxis` decide o dată, după 10px; trage-pentru-refresh din `App.tsx`
+folosește aceeași funcție, deci un gest blocat pe orizontală nu poate porni și
+reîmprospătarea. Două praguri scrise separat ar fi lăsat un unghi în care se
+declanșau amândouă.
+
+**Selecția de pe telefon e `useSelection` din `hooks.ts`** — aceeași stare pe
+care o folosește `useWaveActions` pentru bara de pe desktop, nu un al doilea
+sistem. Ce e nou e doar cromul (`SelectionChrome.tsx`) și foile de acțiuni
+(`TaskActions.tsx`). Selecția și foile au intrare în istoric (`hzSheet:
+'layer'`, ca foaia rapidă), ca Back pe Android să iasă din selecție, nu din
+aplicație; o acțiune care iese singură le desface cu un singur `go(-n)`.
+
+**Anularea ține câmpurile de dinainte, nu o comandă inversă.** `snapshot` pune
+deoparte exact ce atinge patch-ul, plus scadența la o bifă pe o recurentă —
+triggerul o mută, deci anularea trebuie s-o știe (același motiv ca
+`recurrenceUndo`). Scrierile trec prin `applyWrites` → `enqueueWrite`, ca o
+anulare rapidă să nu fie depășită de scrierea pe care o anulează.
+
+**Ștergerea nu întreabă, întârzie.** Rândurile dispar acum (`hideIssues`), iar
+cererea pleacă la expirarea toastului sau când pagina se ascunde. Un dialog
+„sigur?" la fiecare ștergere ar fi învățat omul să apese „da" fără să citească;
+fereastra de 5s e confirmarea. Dacă aplicația e omorâtă înainte, sarcina pur și
+simplu rămâne — prețul acceptat.
+
+**„Fără dată" e oprit cât selecția are o recurentă**: `reschedule` ar șterge și
+repetarea (o repetare fără zi de pornire e o stare din care interfața nu iese).
+
+Teste: `npm run test:nav` glisează și apasă lung cu atingeri reale (CDP, vezi
+`scripts/lib-touch.mjs` — `page.touchscreen` știe doar `tap`); `npm run
+test:layout` măsoară bara de selecție și banda la 320–430px.
+
 ## Obstacole — a doua axă de blocare
 
 Un obstacol e o condiție din AFARA muncii, care trebuie să cadă înainte ca

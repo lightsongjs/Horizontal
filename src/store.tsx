@@ -26,6 +26,7 @@ import {
 } from './lib/engine'
 import { buildSmartLists, smartListRange, type SmartLists } from './lib/schedule'
 import { didJumpOnComplete, jumpNotice } from './lib/recurrence'
+import { applyIssuePatch } from './lib/issuePatch'
 import { blockedBy, detectObstacleCycle } from './lib/obstacles'
 import { groupInbox, reconcileInbox } from './lib/thread'
 import { shortLabels } from './lib/initials'
@@ -151,6 +152,29 @@ interface HorizontalState {
   clearRecurrenceUndo(): void
   createIssue(input: NewIssue): Promise<Issue>
   updateIssue(id: string, patch: Partial<Issue>): Promise<void>
+  /**
+   * Mai multe scrieri deodată (glisarea unui rând, bara de selecție), fiecare
+   * prin coada per-tichet (`enqueueWrite`) și cu ecou optimist — rândul se
+   * mută pe ecran înainte să răspundă baza, ca la `toggleDone`. Întoarce ce a
+   * răspuns baza (pentru „au sărit" la recurente) și câte au picat.
+   */
+  applyWrites(writes: { id: string; patch: Partial<Issue> }[]): Promise<{ saved: Issue[]; failed: number }>
+  /**
+   * Ștergerea amânată: rândurile dispar din listele inteligente acum, iar
+   * ștergerea pleacă abia când expiră toastul (vezi `offerUndo`).
+   */
+  hideIssues(ids: string[]): void
+  unhideIssues(ids: string[]): void
+  /**
+   * Toastul cu „Anulează" al unei acțiuni din listă. Unul singur: o acțiune
+   * nouă îl închide pe cel vechi ca expirat (o ștergere amânată pleacă atunci).
+   */
+  undoEntry: UndoEntry | null
+  offerUndo(entry: Omit<UndoEntry, 'seq'>): void
+  /** „Anulează" apăsat. */
+  takeUndo(): void
+  /** Toastul a expirat (sau pagina se ascunde): ce era amânat se execută. */
+  expireUndo(): void
   deleteIssue(id: string): Promise<void>
   deleteIssues(ids: string[]): Promise<void>
   /**
@@ -208,6 +232,15 @@ function enqueueWrite<T>(queue: Map<string, Promise<unknown>>, id: string, run: 
   return next
 }
 
+export interface UndoEntry {
+  /** Crește la fiecare intrare: cheia toastului, ca cronometrul să repornească. */
+  seq: number
+  label: string
+  undo(): void
+  /** Ce se face când fereastra de anulare se închide fără anulare. */
+  expire?(): void
+}
+
 const Ctx = createContext<HorizontalState | null>(null)
 
 export function HorizontalProvider({ children }: { children: ReactNode }) {
@@ -259,6 +292,12 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
   // încărcat, ca o bifă dată într-o listă inteligentă să nu trebuiască scrisă
   // în două locuri (și deci să nu se poată desincroniza).
   const [dueRaw, setDueRaw] = useState<Issue[]>([])
+  // Șterse în așteptare (toastul de anulare încă e pe ecran): invizibile în
+  // listele inteligente, dar încă în bază. Vezi `hideIssues`.
+  const [hiddenIds, setHiddenIds] = useState<ReadonlySet<string>>(() => new Set())
+  const [undoEntry, setUndoEntry] = useState<UndoEntry | null>(null)
+  const undoRef = useRef<UndoEntry | null>(null)
+  const undoSeq = useRef(0)
   const [dueLoaded, setDueLoaded] = useState(false)
   // Cutia de pase. Transversal pe proiecte, ca `dueRaw` — vezi `loadInbox`.
   const [inboxRaw, setInboxRaw] = useState<InboxRow[]>([])
@@ -523,10 +562,12 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     const known = new Set(dueRaw.map((i) => i.id))
     const merged = dueRaw.map((i) => fresh.get(i.id) ?? i)
     for (const i of allIssues) if (i.dueAt && !known.has(i.id)) merged.push(i)
-    return merged.filter((i) => i.dueAt)
-  }, [dueRaw, allIssues])
+    return merged.filter((i) => i.dueAt && !hiddenIds.has(i.id))
+  }, [dueRaw, allIssues, hiddenIds])
 
   const smartLists = useMemo(() => buildSmartLists(dueIssues, new Date()), [dueIssues])
+  const dueIssuesRef = useRef<Issue[]>([])
+  dueIssuesRef.current = dueIssues
 
   /**
    * Cutia de pase, cu aceeași regulă ca `dueIssues`: instantaneul din
@@ -811,6 +852,12 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
         // Saltul e recunoscut după rezultat, nu ghicit dinainte — vezi
         // `didJumpOnComplete` pentru motiv și teste.
         if (didJumpOnComplete(done, current.dueAt, saved)) {
+          // Un singur toast de anulare: cel al unei acțiuni din listă se
+          // închide ca expirat (o ștergere amânată pleacă acum).
+          const old = undoRef.current
+          undoRef.current = null
+          setUndoEntry(null)
+          old?.expire?.()
           setRecurrenceUndo({ id, label: jumpNotice(saved.dueAt!), dueAt: current.dueAt, remindAt: current.remindAt })
         }
       } catch (e) {
@@ -918,6 +965,90 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     // toast, nu la orice ștergere în bloc.
     if (recurrenceUndoRef.current && gone.has(recurrenceUndoRef.current.id)) setRecurrenceUndo(null)
   }, [])
+
+  const applyWrites = useCallback(
+    async (writes: { id: string; patch: Partial<Issue> }[]) => {
+      const now = new Date()
+      // Starea de dinainte, din poza curentă: o sarcină dintr-un proiect
+      // nedeschis trăiește doar în `dueIssues`, ca la `toggleDone`.
+      const before = new Map<string, Issue>()
+      for (const w of writes) {
+        const cur = allIssuesRef.current.find((i) => i.id === w.id) ?? dueIssuesRef.current.find((i) => i.id === w.id)
+        if (!cur) continue
+        before.set(w.id, cur)
+        upsertIssue(applyIssuePatch(cur, w.patch, now))
+      }
+      const results = await Promise.allSettled(
+        writes.map((w) => enqueueWrite(writeQueue.current, w.id, () => repository.updateIssue(w.id, w.patch))),
+      )
+      const saved: Issue[] = []
+      let failed = 0
+      results.forEach((r, i) => {
+        if (r.status === 'fulfilled') { saved.push(r.value); upsertIssue(r.value) } else {
+          failed++
+          const prev = before.get(writes[i].id)
+          if (prev) upsertIssue(prev)
+        }
+      })
+      if (failed) {
+        const first = results.find((r) => r.status === 'rejected') as PromiseRejectedResult
+        setError(errorMessage(first.reason))
+      }
+      // Ca la `updateIssue`: „Ale mele" se reîmprospătează doar la o pasă.
+      if (writes.some((w) => 'assigneeId' in w.patch)) void loadInbox()
+      return { saved, failed }
+    },
+    [upsertIssue, loadInbox],
+  )
+
+  const hideIssues = useCallback((ids: string[]) => {
+    setHiddenIds((prev) => new Set([...prev, ...ids]))
+  }, [])
+  const unhideIssues = useCallback((ids: string[]) => {
+    setHiddenIds((prev) => {
+      const next = new Set(prev)
+      for (const id of ids) next.delete(id)
+      return next
+    })
+  }, [])
+
+  const setUndo = useCallback((e: UndoEntry | null) => {
+    undoRef.current = e
+    setUndoEntry(e)
+  }, [])
+  const expireUndo = useCallback(() => {
+    const e = undoRef.current
+    setUndo(null)
+    e?.expire?.()
+  }, [setUndo])
+  const offerUndo = useCallback((entry: Omit<UndoEntry, 'seq'>) => {
+    // O singură fereastră de anulare: cea veche se închide ca expirată (o
+    // ștergere amânată pleacă acum), nu se pierde în tăcere.
+    const old = undoRef.current
+    undoSeq.current += 1
+    setUndo({ ...entry, seq: undoSeq.current })
+    setRecurrenceUndo(null)
+    old?.expire?.()
+  }, [setUndo])
+  const takeUndo = useCallback(() => {
+    const e = undoRef.current
+    setUndo(null)
+    e?.undo()
+  }, [setUndo])
+
+  // O ștergere amânată nu trebuie să se piardă când pagina se ascunde (tab
+  // schimbat, aplicație trimisă în fundal): fereastra se închide acolo. Dacă
+  // aplicația e omorâtă înainte, sarcina pur și simplu nu se șterge.
+  useEffect(() => {
+    const flush = () => { if (document.visibilityState === 'hidden') expireUndo() }
+    const onHide = () => expireUndo()
+    document.addEventListener('visibilitychange', flush)
+    window.addEventListener('pagehide', onHide)
+    return () => {
+      document.removeEventListener('visibilitychange', flush)
+      window.removeEventListener('pagehide', onHide)
+    }
+  }, [expireUndo])
 
   const createObstacle = useCallback(
     async (input: Omit<NewObstacle, 'projectId'>) => {
@@ -1078,6 +1209,13 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     deleteIssue,
     deleteIssues,
     upsertIssue,
+    applyWrites,
+    hideIssues,
+    unhideIssues,
+    undoEntry,
+    offerUndo,
+    takeUndo,
+    expireUndo,
     createObstacle,
     updateObstacle,
     deleteObstacle,

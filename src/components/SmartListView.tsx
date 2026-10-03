@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useHorizontal } from '../store'
 import { PushToggle } from './PushToggle'
 import { QuickAdd } from './QuickAdd'
@@ -8,6 +8,7 @@ import type { Issue } from '../lib/types'
 import { Icon, type IconName } from './Icon'
 import { SplitView } from './SplitView'
 import { useMediaQuery } from '../hooks'
+import { useTaskActions } from './TaskActions'
 
 export type SmartListKind = 'today' | 'tomorrow' | 'week'
 
@@ -42,16 +43,28 @@ interface GroupProps {
   late?: boolean
   /** Ce se scrie când grupul e gol. Absent = grupul dispare cu totul. */
   empty?: string
+  /** Un buton în capul grupului (restanțele: „Mută pe azi"). */
+  action?: { label: string; onClick(): void }
 }
 
-function Group({ label, date, issues, color, onOpen, late, empty }: GroupProps) {
+function Group({ label, date, issues, color, onOpen, late, empty, action }: GroupProps) {
+  const ta = useTaskActions()
   if (issues.length === 0 && !empty) return null
+  // În selecție, capul grupului alege tot grupul (sau îl scoate, dacă era ales tot).
+  const selecting = ta.narrow && ta.selectMode && issues.length > 0
   return (
     <div className="list-group" style={color ? ({ ['--gc' as string]: color }) : undefined}>
-      <div className="list-group-head">
+      <div
+        className={`list-group-head${selecting ? ' selectable' : ''}`}
+        role={selecting ? 'button' : undefined}
+        onClick={selecting ? () => ta.toggleMany(issues.map((i) => i.id)) : undefined}
+      >
         <span className="list-group-num">{issues.length}</span>
         <span className="list-group-label">{label}</span>
         {date && <span className="list-group-date">{date}</span>}
+        {action && !ta.selectMode && issues.length > 0 && (
+          <button type="button" className="group-act" onClick={action.onClick}>{action.label}</button>
+        )}
       </div>
       {issues.length > 0
         ? issues.map((it) => <TaskRow key={it.id} issue={it} onOpen={onOpen} late={late} />)
@@ -85,6 +98,18 @@ export function SmartListView({ kind, onOpenTask, focusSignal = 0 }: Props) {
   // de intrare, ar ocupa capul listei și ar ridica tastatura în mijlocul unei
   // liste care derulează — exact experiența pe care foaia o înlocuiește.
   const narrow = useMediaQuery('(max-width: 899px)')
+  const ta = useTaskActions()
+
+  // Rândurile de pe ecran, pentru „Toate" din antetul selecției.
+  const visible = kind === 'today'
+    ? [...smartLists.overdue, ...smartLists.today, ...(showDone ? smartLists.doneToday : [])]
+    : kind === 'tomorrow' ? smartLists.tomorrow
+    : smartLists.week.flatMap((d) => d.issues)
+  const visibleKey = visible.map((i) => i.id).join(',')
+  const { setVisible, exitSelectMode } = ta
+  useEffect(() => { setVisible(visibleKey ? visibleKey.split(',') : []) }, [visibleKey, setVisible])
+  // Selecția e a unei liste: alt ecran (sau altă listă) o închide.
+  useEffect(() => () => exitSelectMode(), [kind, exitSelectMode])
 
   if (!dueLoaded) return <p className="empty">Se încarcă…</p>
 
@@ -102,6 +127,10 @@ export function SmartListView({ kind, onOpenTask, focusSignal = 0 }: Props) {
               color="var(--blocked)"
               onOpen={onOpenTask}
               late
+              action={narrow ? {
+                label: 'Mută restanțele pe azi',
+                onClick: () => void ta.run({ kind: 'date', preset: { kind: 'today' } }, smartLists.overdue.map((i) => i.id)),
+              } : undefined}
             />
             <Group
               label="Azi"

@@ -36,6 +36,18 @@ export function useCanWriteIn(projectId: string | null): boolean {
   return isAdmin || (projectId ? access[projectId] === 'write' : false)
 }
 
+/**
+ * `useCanWriteIn` ca funcție, pentru o listă de sarcini din proiecte diferite
+ * (bara de selecție): un hook nu se poate chema într-o buclă. Aceeași regulă.
+ */
+export function useCanWriteFn(): (projectId: string) => boolean {
+  const { enabled, isAdmin, access } = useAuth()
+  return useCallback(
+    (projectId: string) => !enabled || isAdmin || access[projectId] === 'write',
+    [enabled, isAdmin, access],
+  )
+}
+
 /** Dreptul de scriere în proiectul deschis. */
 export function useCanWrite(): boolean {
   const { project } = useHorizontal()
@@ -148,24 +160,78 @@ export interface WaveActions {
  * bulk actions, tree-highlight mode, and the T/Esc keyboard shortcuts. Extracted
  * so both views stay in lockstep instead of drifting.
  */
+export interface Selection {
+  selectMode: boolean
+  selectedIds: Set<string>
+  /** Intră în selecție, opțional cu câteva rânduri deja alese (apăsarea lungă). */
+  enterSelectMode: (ids?: string[]) => void
+  exitSelectMode: () => void
+  toggleSelected: (id: string) => void
+  /** Un grup întreg: îl alege, sau îl scoate dacă era deja ales tot. */
+  toggleMany: (ids: string[]) => void
+  setSelected: (ids: string[]) => void
+}
+
+/**
+ * Selecția multiplă, fără nimic legat de valuri: aceeași stare pentru bara de
+ * pe desktop (`useWaveActions`, „Cards"/„Listă") și pentru modul de selecție
+ * de pe telefon din listele inteligente — un singur sistem, nu două.
+ */
+export function useSelection(): Selection {
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+
+  const exitSelectMode = useCallback(() => {
+    setSelectMode(false)
+    setSelectedIds(new Set())
+  }, [])
+  const enterSelectMode = useCallback((ids?: string[]) => {
+    setSelectMode(true)
+    if (ids) setSelectedIds(new Set(ids))
+  }, [])
+  const toggleSelected = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
+  const toggleMany = useCallback((ids: string[]) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      const all = ids.length > 0 && ids.every((id) => prev.has(id))
+      for (const id of ids) {
+        if (all) next.delete(id)
+        else next.add(id)
+      }
+      return next
+    })
+  }, [])
+  const setSelected = useCallback((ids: string[]) => setSelectedIds(new Set(ids)), [])
+
+  return { selectMode, selectedIds, enterSelectMode, exitSelectMode, toggleSelected, toggleMany, setSelected }
+}
+
 export function useWaveActions(): WaveActions {
   const { activeWave, deleteIssues, updateIssue, byId } = useHorizontal()
   const { sheet, dockedIssueId } = useUI()
   const modalOpen = sheet.kind !== 'none' && !dockedIssueId
 
-  const [selectMode, setSelectMode] = useState(false)
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const sel = useSelection()
+  const { selectMode, selectedIds, toggleSelected } = sel
   const [confirmDel, setConfirmDel] = useState(false)
   const [treeViewActive, setTreeViewActive] = useState(false)
   const [treeHighlightId, setTreeHighlightId] = useState<string | null>(null)
 
+  const exitSelect = sel.exitSelectMode
   const exitSelectMode = useCallback(() => {
-    setSelectMode(false)
-    setSelectedIds(new Set())
+    exitSelect()
     setConfirmDel(false)
-  }, [])
+  }, [exitSelect])
 
-  const enterSelectMode = useCallback(() => setSelectMode(true), [])
+  const enterSelect = sel.enterSelectMode
+  const enterSelectMode = useCallback(() => enterSelect(), [enterSelect])
 
   const exitTreeView = useCallback(() => {
     setTreeViewActive(false)
@@ -179,24 +245,13 @@ export function useWaveActions(): WaveActions {
         return false
       }
       // entering tree — leave select mode
-      setSelectMode(false)
-      setSelectedIds(new Set())
-      setConfirmDel(false)
+      exitSelectMode()
       return true
     })
-  }, [])
+  }, [exitSelectMode])
 
   const handleTreeSelect = useCallback((id: string) => {
     setTreeHighlightId((prev) => (prev === id ? null : id))
-  }, [])
-
-  const toggleSelected = useCallback((id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
   }, [])
 
   const openConfirm = useCallback(() => setConfirmDel(true), [])

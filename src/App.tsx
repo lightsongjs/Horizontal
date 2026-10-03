@@ -26,6 +26,9 @@ import { Icon } from './components/Icon'
 import { NativeBridge } from './components/NativeBridge'
 import { repository } from './data'
 import { syncLabel } from './lib/syncLabel'
+import { lockAxis, type Axis } from './lib/swipe'
+import { TaskActionsProvider, useTaskActions } from './components/TaskActions'
+import { SelectionBar, SelectionHeader } from './components/SelectionChrome'
 
 /**
  * Puntea dintre coada offline și ce nu ține de store: foaia deschisă și URL-ul.
@@ -252,7 +255,11 @@ const slugify = (name: string) =>
   name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '')
 
 function Shell() {
-  const { loading, error, project, projects, issuesLoadedFor, issuesLoadFailedFor, byId, dueIssues, selectProject, refresh, toggleDone, updateIssue, inbox, recurrenceUndo, undoRecurrence, clearRecurrenceUndo, activeWave } = useHorizontal()
+  const { loading, error, project, projects, issuesLoadedFor, issuesLoadFailedFor, byId, dueIssues, selectProject, refresh, toggleDone, updateIssue, inbox, recurrenceUndo, undoRecurrence, clearRecurrenceUndo, activeWave, undoEntry, takeUndo, expireUndo } = useHorizontal()
+  const ta = useTaskActions()
+  // Pentru `onPop`, care se atașează rar: stratul de închis e cel de ACUM.
+  const taRef = useRef(ta)
+  taRef.current = ta
   const { openNewIssue, openNewProject, openProjectSettings, openIssue, closeSheet, pushSheet, sheet, ticketId, dockedIssueId, toast, clearToast } = useUI()
   // Stabil peste randări nelegate de toast: `recurrenceUndo` (din store, un
   // `useState`) nu-și schimbă identitatea decât când SE SCHIMBĂ toast-ul, deci
@@ -263,8 +270,9 @@ function Shell() {
   // consumator al lui `action` care COMPARĂ identitatea (React.memo, alt
   // efect) să nu reintroducă exact bug-ul reparat acolo.
   const toastAction = useMemo(
-    () => (recurrenceUndo ? { label: 'ANULEAZĂ', onClick: undoRecurrence } : undefined),
-    [recurrenceUndo, undoRecurrence],
+    () => (undoEntry ? { label: 'ANULEAZĂ', onClick: takeUndo }
+      : recurrenceUndo ? { label: 'ANULEAZĂ', onClick: undoRecurrence } : undefined),
+    [undoEntry, takeUndo, recurrenceUndo, undoRecurrence],
   )
   const { isAdmin } = useAuth()
   const canWrite = useCanWrite()
@@ -472,19 +480,30 @@ function Shell() {
   }
   const mainRef = useRef<HTMLElement>(null)
   const [pullY, setPullY] = useState(0)
-  const pullStart = useRef<number | null>(null)
+  const pullStart = useRef<{ x: number; y: number; axis: Axis } | null>(null)
   const pullYRef = useRef(0)
   const THRESHOLD = 72
 
+  // Aceeași regulă de direcție ca glisarea rândurilor (`lockAxis` din
+  // `lib/swipe`): un gest blocat pe orizontală e al rândului și nu poate
+  // porni și reîmprospătarea, nici invers. Până la blocare, o tragere în jos
+  // e doar reținută (`preventDefault`), nu încă numărată.
   useEffect(() => {
     const el = mainRef.current
     if (!el) return
     const onStart = (e: TouchEvent) => {
-      if (el.scrollTop === 0) pullStart.current = e.touches[0].clientY
+      if (el.scrollTop === 0) pullStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, axis: 'pending' }
     }
     const onMove = (e: TouchEvent) => {
-      if (pullStart.current === null) return
-      const dy = e.touches[0].clientY - pullStart.current
+      const p = pullStart.current
+      if (p === null) return
+      const dx = e.touches[0].clientX - p.x
+      const dy = e.touches[0].clientY - p.y
+      if (p.axis === 'pending') {
+        p.axis = lockAxis(dx, dy)
+        if (p.axis === 'pending') { if (dy > 0 && e.cancelable) e.preventDefault(); return }
+      }
+      if (p.axis === 'h') { pullStart.current = null; return }
       if (dy > 0) {
         e.preventDefault()
         pullYRef.current = Math.min(dy, THRESHOLD * 1.5)
@@ -787,6 +806,31 @@ function Shell() {
     else replacePath(window.location.pathname)
   }, [sheet.kind]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  /**
+   * Straturile acțiunilor pe sarcini (modul de selecție, foaia de dată/⋮) au
+   * fiecare o intrare în istoric, ca foaia rapidă: Back pe Android iese din
+   * selecție, nu din aplicație. Închise pe altă cale (o acțiune care iese
+   * singură din selecție, săgeata din antet), intrările se desfac cu un singur
+   * `go(-n)`, pe care `onPop` îl înghite (`layerPop`).
+   */
+  const layerEntries = useRef(0)
+  const layerPop = useRef(false)
+  useEffect(() => {
+    const want = ta.layers
+    const have = layerEntries.current
+    if (want > have) {
+      for (let i = have; i < want; i++) {
+        historyDepth.current += 1
+        window.history.pushState({ hzDepth: historyDepth.current, hzSheet: 'layer' }, '', window.location.pathname)
+      }
+      layerEntries.current = want
+    } else if (want < have) {
+      layerEntries.current = want
+      layerPop.current = true
+      window.history.go(want - have)
+    }
+  }, [ta.layers])
+
   // Browser back/forward → sync store. Un path de ticket nu schimbă proiectul;
   // doar deschide sau închide sheet-ul.
   useEffect(() => {
@@ -795,6 +839,14 @@ function Shell() {
       // Desfacerea intrării foii rapide, cerută chiar de noi (vezi efectul de
       // mai jos): foaia e deja închisă, iar URL-ul e același.
       if (quickPop.current) { quickPop.current = false; return }
+      if (layerPop.current) { layerPop.current = false; return }
+      // Back peste selecție sau peste o foaie de acțiuni: închide stratul de
+      // sus și atât — ecranul rămâne același.
+      if (layerEntries.current > 0) {
+        layerEntries.current -= 1
+        taRef.current.popLayer()
+        return
+      }
       // Back peste foaia rapidă o închide și atât. Fără `return`, pe `/` cu o
       // listă deschisă s-ar ajunge la `selectProject(null)` de mai jos.
       if (sheetRef.current.kind === 'quick-add') {
@@ -987,7 +1039,7 @@ function Shell() {
         onInbox={() => openScreen('inbox')}
       />
       <div className="app-body">
-        <Header onNewIssue={openNewIssue} onSearch={() => setShowSearch(true)} onProjectSettings={openProjectSettings} onRefresh={refresh} onInfo={() => setShowInfo(true)} canWrite={canWrite} smartList={smartList} onExitSmartList={exitSmartList} sidebarCollapsed={sidebarCollapsed} onToggleSidebar={toggleSidebar} inbox={inInbox} />
+        {ta.selectMode && ta.narrow && smartList ? <SelectionHeader /> : <Header onNewIssue={openNewIssue} onSearch={() => setShowSearch(true)} onProjectSettings={openProjectSettings} onRefresh={refresh} onInfo={() => setShowInfo(true)} canWrite={canWrite} smartList={smartList} onExitSmartList={exitSmartList} sidebarCollapsed={sidebarCollapsed} onToggleSidebar={toggleSidebar} inbox={inInbox} />}
         <main ref={mainRef}>
           {pullY > 0 && (
             <div style={{ textAlign: 'center', padding: '6px 0', fontSize: '13px', color: 'var(--txt-dim)', transform: `translateY(${pullY * 0.4}px)`, transition: pullY === 0 ? 'transform 0.3s' : 'none' }}>
@@ -1014,7 +1066,7 @@ function Shell() {
         {/* „Ale mele" n-are FAB: nu există „sarcină nouă" fără o zi și, cu
             proiectul curent gol pe acest ecran, condiția de mai jos ar fi
             arătat „Adaugă proiect" unui admin — un buton fără sens aici. */}
-        {!inInbox && (smartList || (project ? canWrite : isAdmin)) && (
+        {!inInbox && !(ta.selectMode && ta.narrow) && (smartList || (project ? canWrite : isAdmin)) && (
           <button
             className="fab"
             aria-label={smartList ? 'Sarcină nouă' : project ? 'Adaugă tichet' : 'Adaugă proiect'}
@@ -1025,12 +1077,14 @@ function Shell() {
             <Icon name="add" size={24} />
           </button>
         )}
-        <TabBar
-          screen={screen}
-          onScreen={openScreen}
-          onProjects={() => { exitSmartList(); setShowUsers(false); selectProject(null) }}
-          inProjects={!screen && !showUsers}
-        />
+        {ta.selectMode && ta.narrow && smartList ? <SelectionBar /> : (
+          <TabBar
+            screen={screen}
+            onScreen={openScreen}
+            onProjects={() => { exitSmartList(); setShowUsers(false); selectProject(null) }}
+            inProjects={!screen && !showUsers}
+          />
+        )}
       </div>
       {/* Două surse pentru un singur toast. `recurrenceUndo` are prioritate:
           e legat de o atingere chiar acum (bifarea) și e ACȚIONABIL — un
@@ -1039,10 +1093,16 @@ function Shell() {
           de anulare care nu apare deloc. În practică nu se ciocnesc: `notice`
           se scrie doar din efectele de boot/deep-link, `recurrenceUndo` doar
           dintr-o bifă explicită după ce aplicația e deja pornită. */}
+      {/* Și o a treia, `undoEntry` (glisarea, bara de selecție): cea mai
+          nouă dintre cele două anulări — store-ul le ține reciproc exclusive.
+          Cheia pe `seq` repornește cronometrul la fiecare acțiune nouă, chiar
+          cu același text („Mutat pe mâine" de două ori la rând). */}
       <Toast
-        message={recurrenceUndo ? recurrenceUndo.label : notice ?? toast}
-        onDone={recurrenceUndo ? clearRecurrenceUndo : notice ? clearNotice : clearToast}
+        key={undoEntry ? `u${undoEntry.seq}` : 't'}
+        message={undoEntry ? undoEntry.label : recurrenceUndo ? recurrenceUndo.label : notice ?? toast}
+        onDone={undoEntry ? expireUndo : recurrenceUndo ? clearRecurrenceUndo : notice ? clearNotice : clearToast}
         action={toastAction}
+        duration={undoEntry ? 5000 : undefined}
       />
       <SheetHost />
       {showSearch && <QuickSearch onClose={() => setShowSearch(false)} />}
@@ -1074,7 +1134,9 @@ export function App() {
         <UIProvider>
           <SyncBridge />
           <NativeBridge />
-          <Shell />
+          <TaskActionsProvider>
+            <Shell />
+          </TaskActionsProvider>
         </UIProvider>
       </HorizontalProvider>
     </ThemeProvider>

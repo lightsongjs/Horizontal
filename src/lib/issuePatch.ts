@@ -20,11 +20,25 @@ export function applyIssuePatch(issue: Issue, patch: Partial<Issue>, now: Date):
     if (nxt) {
       // Perechea din starea FINALĂ a patch-ului — ca `new.due_at - new.remind_at`
       // din trigger, nu `old.due_at`.
-      const delta = out.remindAt ? new Date(out.dueAt).getTime() - new Date(out.remindAt).getTime() : null
-      out.dueAt = nxt
-      out.remindAt = delta === null ? null : new Date(new Date(nxt).getTime() - delta).toISOString()
+      Object.assign(out, moveDue(out, nxt))
       out.done = false
     }
   }
   return out
+}
+
+/**
+ * Scadența mutată pe `nextDueAt`, cu mementoul dus după ea: aceeași distanță
+ * între memento și scadență, deci un „cu 30 de minute înainte" rămâne „cu 30
+ * de minute înainte". E regula triggerului de recurență, folosită și de
+ * mutările din listă (glisarea „Mâine", foaia de dată) — un singur loc care
+ * decide ce se întâmplă cu mementoul când pleacă scadența.
+ */
+export function moveDue(
+  issue: Pick<Issue, 'dueAt' | 'remindAt'>,
+  nextDueAt: string,
+): { dueAt: string; remindAt: string | null } {
+  if (!issue.remindAt || !issue.dueAt) return { dueAt: nextDueAt, remindAt: issue.remindAt }
+  const delta = new Date(issue.dueAt).getTime() - new Date(issue.remindAt).getTime()
+  return { dueAt: nextDueAt, remindAt: new Date(new Date(nextDueAt).getTime() - delta).toISOString() }
 }

@@ -11,10 +11,13 @@ export function Toast({
   message,
   onDone,
   action,
+  duration,
 }: {
   message: string | null
   onDone: () => void
   action?: { label: string; onClick: () => void }
+  /** Altă durată decât cea implicită (anularea din listă: 5s, din spec). */
+  duration?: number
 }) {
   // Depinde de PREZENȚA unei acțiuni (`hasAction`), nu de identitatea lui
   // `action`: obiectul e reconstruit la fiecare randare a părintelui (un
@@ -25,9 +28,9 @@ export function Toast({
   const hasAction = !!action
   useEffect(() => {
     if (!message) return
-    const id = setTimeout(onDone, hasAction ? DURATION_ACTION : DURATION)
+    const id = setTimeout(onDone, duration ?? (hasAction ? DURATION_ACTION : DURATION))
     return () => clearTimeout(id)
-  }, [message, onDone, hasAction])
+  }, [message, onDone, hasAction, duration])
 
   return (
     <div className={`toast ${message ? 'on' : ''}`} role="status" aria-live="polite">
