@@ -202,9 +202,12 @@ function SwipeRow({ issue, cls, onOpen, canWrite, selecting, selected, children 
 
     const onEnd = () => {
       if (!g) return
+      // Întâi anularea, apoi `g = null`: `clearLong` citește `g`. Invers,
+      // temporizatorul supraviețuia ridicării și orice atingere scurtă intra
+      // în selecție după 450 ms, sub foaia deschisă.
+      clearLong()
       const cur = g
       g = null
-      clearLong()
       if (cur.moved || cur.longFired) swallowClick.current = true
       if (cur.axis !== 'h' || !live.current.canSwipe) { setDrag(null); return }
       const r = release(cur.offset, cur.width)

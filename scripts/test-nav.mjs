@@ -692,6 +692,21 @@ try {
     check('„Anulează" o aduce înapoi', (await titles()).includes('Gest trei'), JSON.stringify(await titles()))
   }
 
+  // O atingere scurtă deschide foaia și atât: temporizatorul apăsării lungi
+  // se anulează la ridicare. Altfel, după 450 ms, vibra și intra în selecție
+  // sub foaie — iar selecția își punea propria intrare, deci Back cerea două.
+  {
+    const c = await T.center(rowOf('Gest unu'))
+    await T.tap(c.x, c.y)
+    await touch.waitForTimeout(700)
+    check('atingerea scurtă deschide foaia', (await touch.locator('.edit-sheet').count()) === 1, 'foaie deschisă')
+    check('…fără să intre în selecție sub ea', !(await selecting()) && (await touch.locator('.task-row.selected').count()) === 0, (await selecting()) ? 'a intrat în selecție' : 'fără selecție')
+    await touch.goBack()
+    await touch.waitForTimeout(600)
+    check('un singur Back închide foaia', (await touch.locator('.edit-sheet').count()) === 0, 'închisă')
+    check('…și rămâi pe „Azi", fără selecție', (await touchOnAzi()) && !(await selecting()) && new URL(touch.url()).pathname === '/', `URL=${new URL(touch.url()).pathname}`)
+  }
+
   // Apăsarea lungă intră în selecție; Back iese și lasă ecranul pe „Azi".
   {
     const c = await T.center(rowOf('Gest doi'))
