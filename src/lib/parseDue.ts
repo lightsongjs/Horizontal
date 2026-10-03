@@ -290,15 +290,20 @@ export function parseDue(raw: string, now: Date = new Date()): ParsedDue {
   // Cantitatea e opțională fiindcă „într-o oră" o poartă în prefix: după
   // „intr-o" urmează direct unitatea. Prefixul `intr-?o` NU e admis pentru zile,
   // ca să nu transformăm idiomul „într-o zi" (= cândva) într-o scadență.
-  m = hay.match(/\b(?:peste|in|intr-?o)\s+(?:(\d+|o|una|un|an|a)\s*(?:de\s+)?)?(?:hours|hour|ore|ora|h)\b/)
+  //
+  // Orele pot purta și minute, într-un singur fragment: „in 1h30", „peste 1 h
+  // 15 min", „într-o oră și 30 de minute", „peste o oră și jumătate". Altfel
+  // „în 1 oră și 30 min" lua doar ora și lăsa „și 30 min" lipit de titlu.
+  m = hay.match(/\b(?:peste|in|intr-?o)\s+(?:(\d+|o|una|un|an|a)\s*(?:de\s+)?)?(?:hours|hour|ore|ora|h)(?:(\d{1,2})|\s*(?:(?:si|and)\s+)?(\d+)\s*(?:de\s+)?(?:minutes|minute|minut|mins|min|m)|\s+(?:si|and)\s+(?:jumatate|jumate|a half))?\b/)
   if (m) {
+    const extra = m[2] ? Number(m[2]) : m[3] ? Number(m[3]) : /jumat|half/.test(m[0]) ? 30 : 0
     const d = new Date(now)
-    d.setHours(d.getHours() + qty(m[1]), d.getMinutes(), 0, 0)
+    d.setHours(d.getHours() + qty(m[1]), d.getMinutes() + extra, 0, 0)
     day = d
     time = [d.getHours(), d.getMinutes()]
     hit(m)
   }
-  m = hay.match(/\b(?:peste|in|intr-?o)\s+(?:(\d+|o|una|un|an|a)\s*(?:de\s+)?)?(?:minutes|minute|minut|mins|min|m)\b/)
+  m = time ? null : hay.match(/\b(?:peste|in|intr-?o)\s+(?:(\d+|o|una|un|an|a)\s*(?:de\s+)?)?(?:minutes|minute|minut|mins|min|m)\b/)
   if (m) {
     const d = new Date(now)
     d.setMinutes(d.getMinutes() + qty(m[1]), 0, 0)

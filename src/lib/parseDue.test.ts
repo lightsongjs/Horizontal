@@ -103,6 +103,19 @@ describe('parseDue — decalaje de la acum', () => {
     expect(p('ședință in 1 hour')).toMatchObject({ title: 'ședință', time: '09:40' })
     expect(p('ședință in 3 hours')).toMatchObject({ title: 'ședință', time: '11:40' })
     expect(p('peste 2 ore plecăm')).toMatchObject({ title: 'plecăm', time: '10:40' })
+    expect(p('sună în 2 h')).toMatchObject({ title: 'sună', time: '10:40' })
+    expect(p('sună in 2h')).toMatchObject({ title: 'sună', time: '10:40' })
+  })
+
+  it('ore și minute într-un singur fragment', () => {
+    expect(p('sună in 1h30')).toMatchObject({ title: 'sună', time: '10:10' })
+    expect(p('sună peste 1 h 15 min')).toMatchObject({ title: 'sună', time: '09:55' })
+    expect(p('sună în 1 oră și 30 min')).toMatchObject({ title: 'sună', time: '10:10' })
+    expect(p('plecăm într-o oră și 30 de minute')).toMatchObject({ title: 'plecăm', time: '10:10' })
+    expect(p('plecăm peste o oră și jumătate')).toMatchObject({ title: 'plecăm', time: '10:10' })
+    expect(p('leave in 2 hours and 5 minutes')).toMatchObject({ title: 'leave', time: '10:45' })
+    // „și" fără minute după el nu e al orei: rămâne în titlu.
+    expect(p('sună în 1 oră și pleacă')).toMatchObject({ title: 'sună și pleacă', time: '09:40' })
   })
 
   it('cantitatea scrisă în litere înseamnă 1', () => {

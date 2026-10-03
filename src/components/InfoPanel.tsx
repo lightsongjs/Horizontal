@@ -29,7 +29,7 @@ const GROUPS: Group[] = [
   {
     title: 'De acum înainte',
     note: 'Cantitatea poate fi scrisă în litere.',
-    examples: ['in 5 min', 'peste 20 de minute', 'in 1 hour', 'in 3 hours', 'într-o oră', 'in an hour'],
+    examples: ['in 5 min', 'peste 20 de minute', 'in 1 hour', 'in 3 hours', 'într-o oră', 'in an hour', 'în 1h30', 'peste o oră și jumătate'],
   },
   {
     title: 'Ora',
