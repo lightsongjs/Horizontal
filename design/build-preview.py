@@ -932,11 +932,12 @@ FOAIE = ('<div class="sheet-bg on"></div>'
          '<button type="button" class="qs-ico qs-urgent on" aria-label="Urgent">%s</button>'
          '<label class="qs-sel qs-proj"><span class="t-dot" style="background:#6e7bff"></span>'
          '<span class="qs-sel-t">Aplicație Turism</span><select><option>Aplicație Turism</option></select></label>'
-         '<label class="qs-sel qs-who">%s<select><option>al meu</option></select></label>'
+         '<span class="qs-attach-wrap"><button type="button" class="qs-ico qs-attach on" aria-label="Atașează">%s'
+         '<span class="qs-attach-n">2</span></button></span>'
          '<button type="button" class="qs-ico qs-more" aria-label="Formularul complet">%s</button>'
          '<button type="submit" class="qs-send" aria-label="Adaugă">%s</button>'
          '</div></form></div>'
-         % (ic('calendar-check', 14), ic('calendar-check', 15), ic('zap', 16), ic('user', 15),
+         % (ic('calendar-check', 14), ic('calendar-check', 15), ic('zap', 16), ic('paperclip', 16),
             ic('ellipsis', 16), ic('arrow-up', 18)))
 
 SCREENS = {

@@ -21,6 +21,14 @@ export interface ParsedDue {
   rrule: string | null
   /** Intervalele `[start, end)` din textul ORIGINAL care au fost interpretate. */
   spans: [number, number][]
+  /**
+   * Textul a numit o ZI („mâine", „vineri", „peste 3 ore", prima apariție a lui
+   * „vinerea"). Fals când ziua din `dueAt` e doar implicitul (azi, sau mâine
+   * după rostogolirea unei ore trecute).
+   */
+  hasDay: boolean
+  /** Textul a numit o ORĂ. Fals = `allDay`. */
+  hasTime: boolean
 }
 
 const DAYS_RO = ['duminica', 'luni', 'marti', 'miercuri', 'joi', 'vineri', 'sambata']
@@ -101,6 +109,23 @@ export function maskRejected(raw: string, rejected: string[]): string {
  */
 export function liveRejections(text: string, rejected: string[]): string[] {
   return rejected.filter((f) => text.includes(f))
+}
+
+/**
+ * Toate fragmentele pe care parserul le-ar recunoaște în `raw`, pentru a le
+ * refuza dinainte (`useTitleDate({ initialRejected })`). Se repetă cu
+ * fragmentele găsite mascate, fiindcă o potrivire poate ascunde alta — la fel
+ * cum le-ar dezgropa refuzul lor unul câte unul.
+ */
+export function dateFragments(raw: string, now: Date = new Date()): string[] {
+  const out: string[] = []
+  for (let i = 0; i < 8; i++) {
+    const r = parseDue(maskRejected(raw, out), now)
+    const fresh = r.spans.map(([s, e]) => raw.slice(s, e)).filter((f) => f && !out.includes(f))
+    if (!r.dueAt || !fresh.length) break
+    out.push(...fresh)
+  }
+  return out
 }
 
 /**
@@ -372,7 +397,7 @@ export function parseDue(raw: string, now: Date = new Date()): ParsedDue {
   }
 
   if (spans.length === 0) {
-    return { title: raw.trim(), dueAt: null, allDay: true, rrule: null, spans: [] }
+    return { title: raw.trim(), dueAt: null, allDay: true, rrule: null, spans: [], hasDay: false, hasTime: false }
   }
 
   const base = day ? new Date(day) : startOfLocalDay(now)
@@ -387,5 +412,9 @@ export function parseDue(raw: string, now: Date = new Date()): ParsedDue {
   // Titlul are voie să rămână GOL: „azi la 8" e numai dată. NU întoarcem textul
   // brut ca titlu — ar salva o sarcină numită „azi la 8". Apelantul decide;
   // quick add blochează Enter și cere ce e de făcut.
-  return { title, dueAt: base.toISOString(), allDay: !time, rrule, spans: merged }
+  // `hasDay`/`hasTime` spun CE a fost scris, nu ce a ieșit: peste un tichet care
+  // are deja o scadență (`mergeTitleDue`), „la 17" înseamnă „ora 17 în ziua
+  // lui", iar ziua implicită de aici (azi, sau mâine după rostogolire) ar fi
+  // mutat sarcina fără să fi cerut-o nimeni.
+  return { title, dueAt: base.toISOString(), allDay: !time, rrule, spans: merged, hasDay: day !== null, hasTime: time !== null }
 }

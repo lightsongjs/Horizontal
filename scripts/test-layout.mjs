@@ -489,7 +489,8 @@ for (const width of PHONE_WIDTHS) {
  * rămâne fără fundal. Plus cazul obișnuit, „Mâine 10:00" și „Exemplu": la
  * 390px amândouă se citesc întregi — înainte ieșea „Mâine 10:…" și „Exem…".
  */
-const quickBar = ({ day = 'Mie 07/10', time = '10:00', proj = 'Aplicație Turism și încă ceva lung', send = true } = {}) => `
+const ATTACH = (menu = false) => `<span class="qs-attach-wrap"><button type="button" class="qs-ico qs-attach on"><svg width="16" height="16"></svg><span class="qs-attach-n">3</span></button>${menu ? '<span class="qs-attach-menu"><button type="button"><svg width="16" height="16"></svg> Fă o poză</button><button type="button"><svg width="16" height="16"></svg> Alege fișier</button></span>' : ''}<input class="att-pick-input" type="file"></span>`
+const quickBar = ({ day = 'Mie 07/10', time = '10:00', proj = 'Aplicație Turism și încă ceva lung', send = true, menu = false } = {}) => `
 <div class="kb-sheet quick-sheet" style="animation:none"><form class="qs-form">
   <span class="qa-wrap"><span class="qa-mirror"></span><input class="qa-input" value="Sună la bancă"></span>
   <textarea class="qa-desc" rows="1" placeholder="Descriere"></textarea>
@@ -497,7 +498,8 @@ const quickBar = ({ day = 'Mie 07/10', time = '10:00', proj = 'Aplicație Turism
     <button type="button" class="qs-due on"><svg width="15" height="15"></svg><span class="qs-due-t">${day}</span><span class="qs-due-h">${time}</span></button>
     <button type="button" class="qs-ico qs-urgent on"><svg width="16" height="16"></svg></button>
     <label class="qs-sel qs-proj"><span class="t-dot" style="background:#6e7bff"></span><span class="qs-sel-t">${proj}</span><select><option>x</option></select></label>
-    <label class="qs-sel qs-who on"><svg width="15" height="15"></svg><select><option>x</option></select></label>
+    ${send ? '' : '<button type="button" class="qs-ico qs-who-badge">MIH</button>'}
+    ${ATTACH(menu)}
     <button type="button" class="qs-ico qs-more"><svg width="16" height="16"></svg></button>
     ${send ? '<button type="submit" class="qs-send"><svg width="18" height="18"></svg></button>' : ''}
   </div>
@@ -526,16 +528,18 @@ for (const send of [true, false]) {
   if (!send) check(`${name}: ora se citește întreagă`, r.time === 'întreg', r.time)
 }
 
-console.log('\nRândul de controale al foii rapide (`.qs-bar`):')
+for (const send of [true, false]) {
+console.log(`\nRândul de controale al foii ${send ? 'rapide' : 'de tichet (cu inițiale)'} (\`.qs-bar\`) — cu agrafa:`)
 for (const width of PHONE_WIDTHS) {
   const page = await browser.newPage({ viewport: { width, height: 844 } })
-  await page.setContent(`<style>${CSS}</style>${quickBar()}`)
+  await page.setContent(`<style>${CSS}</style>${quickBar({ send })}`)
   const m = await page.evaluate(() => {
     const bar = document.querySelector('.qs-bar')
     const r = (sel) => document.querySelector(sel).getBoundingClientRect()
     const barR = bar.getBoundingClientRect()
-    const send = r('.qs-send')
-    const kids = [...bar.children]
+    const send = document.querySelector('.qs-send')?.getBoundingClientRect() ?? r('.qs-more')
+    const attach = r('.qs-attach')
+    const kids = [...bar.children].filter((el) => !el.classList.contains('qs-attach-wrap')).concat([document.querySelector('.qs-attach')])
     const invisible = kids.filter((el) => {
       const cs = getComputedStyle(el)
       return cs.backgroundColor === 'rgba(0, 0, 0, 0)' && cs.borderStyle === 'none'
@@ -546,15 +550,82 @@ for (const width of PHONE_WIDTHS) {
       sendInside: send.right <= barR.right + 0.5,
       proj: Math.round(r('.qs-proj').width),
       due: Math.round(r('.qs-due').width),
+      attachW: Math.round(attach.width),
       invisible,
     }
   })
   await page.close()
   check(`fără overflow @${width}px`, m.overflow <= 0, `${m.overflow}px peste rând`)
-  check(`trimite nestrivit @${width}px`, m.sendW >= 36 && m.sendInside, `${m.sendW}px${m.sendInside ? '' : ', împins afară'}`)
+  check(`${send ? 'trimite' : '„…"'} nestrivit @${width}px`, m.sendW >= 34 && m.sendInside, `${m.sendW}px${m.sendInside ? '' : ', împins afară'}`)
+  check(`agrafa nestrivită @${width}px`, m.attachW >= 34, `${m.attachW}px`)
   check(`proiectul vizibil @${width}px`, m.proj >= 40, `${m.proj}px`)
   check(`jetonul de dată vizibil @${width}px`, m.due >= 34, `${m.due}px`)
   check(`fiecare control are fundal @${width}px`, m.invisible.length === 0, m.invisible.length ? `INVIZIBIL: ${m.invisible.join(', ')}` : 'toate')
+}
+}
+
+/**
+ * Meniul agrafei („Fă o poză" / „Alege fișier") stă deasupra butonului,
+ * aliniat la dreapta lui. La 320px nu are voie să iasă din ecran pe stânga,
+ * iar cele două rânduri se citesc întregi.
+ */
+console.log('\nMeniul agrafei:')
+for (const width of PHONE_WIDTHS) {
+  const page = await browser.newPage({ viewport: { width, height: 844 } })
+  await page.setContent(`<style>${CSS}</style><div style="height:300px"></div>${quickBar({ menu: true })}`)
+  const m = await page.evaluate(() => {
+    const menu = document.querySelector('.qs-attach-menu').getBoundingClientRect()
+    const btns = [...document.querySelectorAll('.qs-attach-menu button')]
+    const cs = getComputedStyle(document.querySelector('.qs-attach-menu'))
+    return {
+      left: Math.round(menu.left), right: Math.round(menu.right),
+      cut: btns.some((b) => b.scrollWidth > b.clientWidth + 0.5),
+      bg: cs.backgroundColor !== 'rgba(0, 0, 0, 0)',
+    }
+  })
+  await page.close()
+  check(`meniul în ecran @${width}px`, m.left >= 0 && m.right <= width, `${m.left}–${m.right}px`)
+  check(`rândurile meniului întregi @${width}px`, !m.cut, m.cut ? 'tăiate' : 'întregi')
+  check(`meniul are fundal @${width}px`, m.bg, m.bg ? 'da' : 'INVIZIBIL')
+}
+
+/**
+ * Rândul de miniaturi din foaia de tichet (`ThumbRow`): 44px, aliniat cu
+ * titlul (după bifă), derulează pe orizontală — mai multe poze nu lățesc
+ * foaia. O miniatură în curs de urcare are rotița deasupra.
+ */
+const thumbs = (n) => `
+<div class="kb-sheet edit-sheet" style="animation:none"><div class="qs-form">
+  <div class="es-head"><button class="es-check"><svg width="20" height="20"></svg></button>
+    <span class="es-title-wrap"><span class="es-title-mirror">Ședință <mark>la 17</mark></span><textarea class="es-title" rows="1">Ședință la 17</textarea></span></div>
+  <div class="es-files att-strip">${Array.from({ length: n }, (_, i) => i === n - 1
+    ? '<span class="att-chip img es-file-up"><span class="att-ic off"><svg width="20" height="20"></svg></span><span class="es-file-veil"><svg width="16" height="16"></svg></span></span>'
+    : '<span class="att-chip img"><button class="att-open"><svg width="20" height="20"></svg></button></span>').join('')}</div>
+  <textarea class="qa-desc" rows="1">Descriere</textarea>
+</div></div>`
+console.log('\nMiniaturile din foaia de tichet:')
+for (const width of PHONE_WIDTHS) {
+  const page = await browser.newPage({ viewport: { width, height: 844 } })
+  await page.setContent(`<style>${CSS}</style>${thumbs(12)}`)
+  const m = await page.evaluate(() => {
+    const row = document.querySelector('.es-files')
+    const chip = document.querySelector('.es-files .att-chip').getBoundingClientRect()
+    const title = document.querySelector('.es-title').getBoundingClientRect()
+    const sheet = document.querySelector('.kb-sheet')
+    const mark = document.querySelector('.es-title-mirror mark').getBoundingClientRect()
+    return {
+      w: Math.round(chip.width), h: Math.round(chip.height),
+      scrolls: row.scrollWidth > row.clientWidth,
+      sheetOverflow: sheet.scrollWidth - sheet.clientWidth,
+      aligned: Math.abs(row.getBoundingClientRect().left - title.left) < 1,
+      markH: Math.round(mark.height),
+    }
+  })
+  await page.close()
+  check(`miniatura 44px @${width}px`, m.w === 44 && m.h === 44, `${m.w}×${m.h}`)
+  check(`rândul derulează, foaia nu se lățește @${width}px`, m.scrolls && m.sheetOverflow <= 0, `scroll=${m.scrolls}, foaie +${m.sheetOverflow}px`)
+  check(`miniaturile aliniate cu titlul @${width}px`, m.aligned, m.aligned ? 'da' : 'decalate')
+  check(`marcajul de dată pe un rând de titlu @${width}px`, m.markH > 0 && m.markH <= 30, `${m.markH}px`)
 }
 
 /**

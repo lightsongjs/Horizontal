@@ -56,6 +56,18 @@
         </provider>
     </application>
 
+    <!-- „Fă o poză" (`<input capture>`): Capacitor (BridgeWebChromeClient) pornește
+         camera cu ACTION_IMAGE_CAPTURE doar dacă `resolveActivity` o găsește, iar de la
+         targetSdk 30 vizibilitatea pachetelor o ascunde fără declarația asta — atunci
+         cade, cu un avertisment în logcat, pe alegătorul de fișiere. Fără permisiunea
+         CAMERA, deliberat: declarată, Capacitor ar cere-o la runtime; nedeclarată,
+         aplicația de cameră face poza, iar noi doar primim fișierul. -->
+    <queries>
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
+    </queries>
+
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />

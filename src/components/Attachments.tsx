@@ -5,12 +5,11 @@ import {
   listAttachments,
   signedDownloadUrl,
   signedUrls,
-  uploadAttachment,
+  uploadPicked,
   type Attachment,
 } from '../data/attachments'
 import { afterDelete } from '../lib/gallery'
 import { carriesFiles, pickFiles, rejectMessage } from '../lib/pickFiles'
-import { attachmentFilename, shrinkImage } from '../lib/shrinkImage'
 import { Lightbox } from './Lightbox'
 import { AttachmentPicker } from './AttachmentPicker'
 import { Icon, type IconName } from './Icon'
@@ -144,17 +143,9 @@ export function Attachments({
       setBusy((n) => n + picked.accept.length)
       for (const [index, original] of picked.accept.entries()) {
         try {
-          const small = await shrinkImage(original)
           // Numele de bază e cel sintetizat dacă browserul a dat unul generic
           // (screenshot-urile lipite ajung toate `image.png`), altfel cel real.
-          // Extensia urmează formatul CHIAR produs de micșorare.
-          const base = picked.renamed[index] ?? original.name
-          const changed = small !== original
-          const filename = attachmentFilename(
-            base,
-            changed ? (small.type as 'image/jpeg' | 'image/webp') : null,
-          )
-          const saved = await uploadAttachment({ issueId, projectId, file: small, filename })
+          const saved = await uploadPicked({ issueId, projectId, file: original, name: picked.renamed[index] })
           setItems((prev) => [...prev, saved])
           if (isRenderableImage(saved.contentType)) {
             // Se așteaptă ÎNAINTE de setState: un `await` în funcția de

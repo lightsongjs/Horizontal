@@ -489,9 +489,18 @@ export interface TitleDate {
 
 export function useTitleDate(
   text: string,
-  { enabled = true, onChange }: { enabled?: boolean; onChange?(next: string): void } = {},
+  { enabled = true, onChange, initialRejected }: {
+    enabled?: boolean
+    onChange?(next: string): void
+    /**
+     * Fragmente refuzate din start. Foaia de tichet le dă pe cele aflate deja
+     * în titlu la deschidere (`dateFragments`): „Ședință la 17", scris cândva,
+     * e text de-acum, nu o cerere de a muta scadența azi.
+     */
+    initialRejected?: () => string[]
+  } = {},
 ): TitleDate {
-  const [rejected, setRejected] = useState<string[]>([])
+  const [rejected, setRejected] = useState<string[]>(() => initialRejected?.() ?? [])
   const [onDate, setOnDate] = useState(false)
   const mirrorRef = useRef<HTMLSpanElement>(null)
 

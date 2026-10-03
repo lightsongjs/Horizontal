@@ -5373,6 +5373,13 @@ body:has(.kb-sheet) .toast {
 .qs-due svg { flex-shrink: 0; }
 .qs-due-t { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .qs-due.on { background: var(--accent-soft); color: var(--accent); }
+/* Scadența care SE VA aplica din titlu (foaia de tichet): același inel ca
+   fragmentul evidențiat, ca ochiul să lege jetonul de textul care îl face. */
+.qs-due.pending {
+  background: var(--accent-soft);
+  color: var(--accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent);
+}
 .qs-ico { width: 34px; justify-content: center; flex-shrink: 0; }
 .qs-urgent.on { color: var(--blocked); box-shadow: inset 0 -2px 0 var(--blocked); }
 .qs-sel {
@@ -5396,11 +5403,43 @@ body:has(.kb-sheet) .toast {
   font-size: 16px;
 }
 .qs-proj { flex: 0 3 auto; min-width: 44px; max-width: 150px; }
-/* Persoana e numai iconiță (numele se vede în select și în `title`): pe un
-   rând de 390px, inițialele luau exact locul numelui de proiect. Aleasă =
-   accent plus linia de 2px, ca urgent. */
-.qs-who { flex-shrink: 0; width: 34px; padding: 0; justify-content: center; }
-.qs-who.on { color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent); }
+/* Agrafa a luat locul persoanei, la aceeași lățime de iconiță: pe un rând de
+   390px orice cuvânt în plus ar fi luat locul numelui de proiect. Cu fișiere
+   alese (foaia rapidă) = accent plus linia de 2px, ca urgent, și miniatura
+   primei poze în locul agrafei. */
+.qs-attach-wrap { position: relative; flex-shrink: 0; display: inline-flex; }
+.qs-attach { position: relative; overflow: visible; }
+.qs-attach.on { color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent); }
+.qs-attach.has-thumb { padding: 0; }
+.qs-attach img { width: 100%; height: 100%; object-fit: cover; border-radius: var(--r-s); display: block; }
+.qs-attach-n {
+  position: absolute; top: -5px; right: -5px;
+  min-width: 16px; height: 16px; padding: 0 4px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--accent); color: var(--on-accent);
+  font-family: var(--mono); font-size: 10px; font-weight: 600; line-height: 1;
+}
+/* Meniul mic deasupra agrafei: două rânduri, fără chenar — se desprinde prin
+   fundal și umbra ambientală, ca orice panou. */
+.qs-attach-menu {
+  position: absolute; bottom: calc(100% + 8px); right: 0; z-index: 3;
+  display: flex; flex-direction: column; min-width: 168px; padding: 4px;
+  border-radius: var(--r-m); background: var(--surface-2); box-shadow: var(--amb-lg);
+}
+.qs-attach-menu button {
+  display: flex; align-items: center; gap: 10px;
+  height: 40px; padding: 0 12px; border-radius: var(--r-s);
+  background: none; color: var(--txt); font-size: 14px; text-align: left; white-space: nowrap;
+}
+.qs-attach-menu button svg { color: var(--txt-dim); flex-shrink: 0; }
+.qs-attach-menu button:active,
+.qs-attach-menu button:focus-visible { background: var(--accent-soft); }
+/* Persoana, numai citită (foaia de tichet): inițialele, mono — sunt cod, nu
+   nume. Atingerea duce la formularul complet, unde pasarea trece prin fir. */
+.qs-who-badge {
+  font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: 0.02em;
+  color: var(--accent);
+}
 .qs-due-h { flex-shrink: 0; }
 /* Cu Trimite pe rând (foaia rapidă), sub ~380px ora e prima care cedează
    locul: se vede oricum în panoul de dată pe care îl deschide jetonul, iar
@@ -5446,7 +5485,43 @@ body:has(.kb-sheet) .toast {
 }
 .es-check.on { color: var(--done); }
 .es-check:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* Titlul cu oglindă (`EditTitle`): textarea transparentă peste stratul care
+   desenează data. Tiparul `.sh-title-wrap` din formular: `pre-wrap` și
+   aceeași literă pe ambele straturi, altfel marcajul alunecă pe rânduri. */
+.es-title-wrap { position: relative; flex: 1; min-width: 0; display: block; }
+.es-title-mirror {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  color: transparent;
+  overflow: hidden;
+  font-size: 17px;
+  line-height: 28px;
+  /* Textarea primește `letter-spacing: normal` din foaia browserului; oglinda
+     ar moșteni-o pe a părintelui. */
+  letter-spacing: normal;
+  word-spacing: normal;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+.es-title-mirror mark {
+  background: var(--accent-soft);
+  color: transparent;
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.es-title-wrap.on-date .es-title { cursor: pointer; }
+.es-title-wrap.on-date .es-title-mirror mark {
+  background: color-mix(in srgb, var(--blocked) 16%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--blocked) 38%, transparent);
+}
 .es-title {
+  position: relative;
+  width: 100%;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: normal;
   flex: 1;
   min-width: 0;
   display: block;
@@ -5464,6 +5539,16 @@ body:has(.kb-sheet) .toast {
 }
 .es-title::placeholder { color: var(--placeholder, var(--txt-faint)); }
 .edit-sheet.done .es-title { text-decoration: line-through; color: var(--txt-dim); }
+/* Miniaturile tichetului, între titlu și descriere, aliniate cu textul (după
+   bifă). Refolosesc `.att-strip`/`.att-chip` din bara formularului. */
+.es-files { margin: 8px 0 0 31px; flex: none; }
+.es-file-up { position: relative; display: grid; place-items: center; background: var(--surface-2); }
+.es-file-up img { width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0.55; }
+.es-file-veil {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  color: var(--accent);
+}
+.es-file-veil svg { animation: header-refresh-spin 0.9s linear infinite; }
 /* Fără tastatură, foaia ocupă ~43% din înălțimea vizibilă, ca titlul să
    cadă la ~57% de sus, adică sub degetul mare sprijinit puțin sub mijlocul
    telefonului. 20% era prea jos, 70% prea sus — ambele încercate pe telefon.

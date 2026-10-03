@@ -7,6 +7,7 @@
 // locală (localRepository), iar attachment-urile n-au sens în modul local seeded.
 
 import { requireSupabase } from '../lib/supabase'
+import { attachmentFilename, shrinkImage } from '../lib/shrinkImage'
 
 export interface Attachment {
   id: string
@@ -190,6 +191,30 @@ export async function uploadAttachment(input: {
     throw new Error(`Fișierul nu s-a putut salva: ${error?.message ?? 'rând lipsă'}`)
   }
   return rowToAttachment(data as AttachmentRow)
+}
+
+/**
+ * Un fișier ales de om, așa cum pleacă: micșorat (dacă e poză) și numit după
+ * formatul CHIAR produs. Un singur drum pentru bara formularului
+ * (`Attachments.tsx`) și foile de pe telefon (`EditSheet`, `QuickSheet`) —
+ * două copii ale pașilor ar fi divergent la prima schimbare de format.
+ *
+ * `name` e numele de bază, dacă browserul a dat unul generic (screenshot-urile
+ * lipite ajung toate `image.png` — vezi `pickFiles`).
+ */
+export async function uploadPicked(input: {
+  issueId: string
+  projectId: string
+  file: File
+  name?: string
+}): Promise<Attachment> {
+  const small = await shrinkImage(input.file)
+  const changed = small !== input.file
+  const filename = attachmentFilename(
+    input.name ?? input.file.name,
+    changed ? (small.type as 'image/jpeg' | 'image/webp') : null,
+  )
+  return uploadAttachment({ issueId: input.issueId, projectId: input.projectId, file: small, filename })
 }
 
 /** Rândul întâi, octeții după. Vezi comentariul din `removeObjects`. */

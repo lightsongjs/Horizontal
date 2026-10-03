@@ -572,6 +572,56 @@ try {
   await tel.waitForTimeout(700)
   check('Back închide formularul complet', (await tel.locator('.sheet.on').count()) === 0, 'închis')
   check('…și rămâi pe „Azi"', (await telOnAzi()) && new URL(tel.url()).pathname === '/', `URL=${new URL(tel.url()).pathname}`)
+
+  // ── Data din titlul foii de tichet ──────────────────────────────────────
+  // Sarcina are scadență (azi, toată ziua, din „Azi"). „… la 17" scris în
+  // titlu se evidențiază, iar jetonul arată dinainte rezultatul; abia blurul
+  // aplică: titlul pierde fragmentul, scadența rămâne AZI, cu ora 17:00 —
+  // fără rostogolirea „ora a trecut → mâine" a adăugării rapide. O atingere
+  // pe fragment îl refuză: textul rămâne în titlu, scadența nu se mișcă.
+  const TITLE = 'Sarcină pentru foaia de tichet'
+  const dueText = () => tel.locator('.edit-sheet .qs-due').textContent()
+  const typeAtEnd = async (txt) => {
+    await tel.locator('.edit-sheet .es-title').focus()
+    await tel.evaluate(() => { const el = document.querySelector('.edit-sheet .es-title'); el.setSelectionRange(el.value.length, el.value.length) })
+    await tel.keyboard.type(txt)
+  }
+  await openTask()
+  const dayBefore = (await dueText())?.trim()
+  await typeAtEnd(' la 17')
+  await tel.waitForTimeout(300)
+  const mark = await tel.locator('.edit-sheet .es-title-mirror mark').first().textContent().catch(() => null)
+  check('titlu: „la 17" evidențiat în foaia de tichet', mark === 'la 17', `mark=${JSON.stringify(mark)}`)
+  const pend = await tel.locator('.edit-sheet .qs-due.pending').count()
+  check('jetonul arată dinainte 17:00', pend === 1 && /17:00/.test((await dueText()) ?? ''), `jeton="${await dueText()}"`)
+  await tel.waitForTimeout(1300) // peste pauza de 800ms: titlul NU pleacă cât e evidențiată data
+  check('…și pauza nu aplică data', (await tel.locator('.edit-sheet .es-title').inputValue()).endsWith('la 17'), 'titlul încă are „la 17"')
+  await tel.locator('.edit-sheet .qa-desc').focus() // blur pe titlu
+  await tel.waitForTimeout(600)
+  const tAfter = await tel.locator('.edit-sheet .es-title').inputValue()
+  check('după blur titlul e fără fragment', tAfter === TITLE, JSON.stringify(tAfter))
+  const dAfter = (await dueText()) ?? ''
+  check('…și scadența: aceeași zi, la 17:00', dAfter.includes('17:00') && dAfter.replace('17:00', '').trim() === dayBefore, `înainte="${dayBefore}", după="${dAfter}"`)
+  await tel.reload({ waitUntil: 'networkidle' })
+  await tel.waitForTimeout(1600)
+  check('…salvat (verificat prin reîncărcare)', (await tel.locator('.edit-sheet .es-title').inputValue().catch(() => null)) === TITLE && ((await dueText()) ?? '').includes('17:00'), `jeton="${await dueText()}"`)
+  check('…la redeschidere nimic evidențiat', (await tel.locator('.edit-sheet .es-title-mirror mark').count()) === 0, 'fără marcaj')
+
+  await typeAtEnd(' la 18')
+  await tel.waitForTimeout(300)
+  const box = await tel.locator('.edit-sheet .es-title-mirror mark').first().boundingBox()
+  if (box) {
+    await tel.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+    await tel.waitForTimeout(300)
+  }
+  check('atingerea pe „la 18" îl refuză', !!box && (await tel.locator('.edit-sheet .es-title-mirror mark').count()) === 0, box ? 'fără marcaj' : 'n-a apărut marcajul')
+  await tel.locator('.edit-sheet .qa-desc').focus()
+  await tel.waitForTimeout(600)
+  const tRej = await tel.locator('.edit-sheet .es-title').inputValue()
+  check('…textul rămâne în titlu', tRej.trim() === `${TITLE} la 18`, JSON.stringify(tRej))
+  check('…și scadența nu s-a mișcat', ((await dueText()) ?? '').includes('17:00'), `jeton="${await dueText()}"`)
+  await tel.keyboard.press('Escape')
+  await tel.waitForTimeout(400)
   await tel.close()
 
   // ── Gesturile de pe telefon: glisare, apăsare lungă, selecție ─────────

@@ -429,10 +429,28 @@ pe lista din care ai pornit. Un tichet creat din formularul complet
 (`openEditIssue(id, { full: true })`) rămâne în formular.
 
 **Nu ia focusul la deschidere:** deschizi ca să citești, iar tastatura ar
-acoperi exact descrierea. Titlul n-are recunoaștere de dată (spre deosebire de
-captură): cu salvare automată, un „mâine" scris în titlu și-ar muta scadența
-sub degete, la prima pauză. Proiectul e afișat, nu ales — ID-ul îi poartă
+acoperi exact descrierea. Proiectul e afișat, nu ales — ID-ul îi poartă
 prefixul, iar formularul complet nu-l schimbă nici el.
+
+**Data din titlu se aplică la un gest de încheiere, nu la pauză.** Titlul
+recunoaște data (`useTitleDate`, evidențiere + refuz la atingere, oglinda
+`EditTitle` după tiparul `sh-title-mirror` — titlul se rupe pe rânduri, deci nu
+`QuickTitle`). Cu salvare automată, un „mâine" aplicat la pauza de 800ms și-ar
+muta scadența sub degete, la jumătatea frazei. De-aia: cât e evidențiată o
+dată, `normalize` ține titlul pe loc (pauza nu-l trimite), iar aplicarea vine
+la blur, Enter, „…" sau închidere — un singur patch, titlul fără fragment plus
+scadența. Jetonul de dată arată dinainte rezultatul (`.qs-due.pending`, inelul
+evidențierii). Ce era deja în titlu la deschidere pornește refuzat
+(`initialRejected` + `dateFragments`): „Ședință la 17", scris acum o lună, e
+text, nu o cerere de a muta scadența azi.
+
+**Peste o scadență existentă textul înseamnă altceva** decât la captură:
+„la 17" pe o ședință de joi e „joi la 17", nu „azi/mâine la 17". Regula e
+`mergeTitleDue` (`src/lib/titleDue.ts`, pur, tabel de cazuri în test), iar
+`parseDue` spune ce a fost SCRIS (`hasDay`/`hasTime`), nu doar ce a ieșit —
+ziua implicită a parserului nu se poate deosebi altfel de una scrisă. Pe o
+recurentă, ora schimbă seria, ziua mută doar apariția; `rrule` se schimbă
+numai la o expresie de recurență.
 
 **Fără buton de salvare.** `src/lib/autosave.ts` (pur, cu teste) + `useAutosave`
 din `hooks.ts` — gândite să fie reluate de formularul complet când pierde și el
@@ -450,7 +468,7 @@ la fiecare randare, deci saltul unei recurențe bifate din foaie se vede pe loc.
 Toastul de anulare urcă sus cât e o foaie lipită de jos deschisă — altfel
 stătea peste titlu.
 
-**Rândul de controale la 390px:** persoana e numai iconiță, anul curent nu se
+**Rândul de controale la 390px:** agrafa e numai iconiță, anul curent nu se
 scrie în jeton, iar pe rândul cu Trimite (foaia rapidă) ora cedează locul sub
 ~380px (container query pe `.qs-form`) — altfel ieșea „Mâine 10:…" și „Exem…".
 `npm run test:layout` verifică „Mâine" + „Exemplu" întregi în ambele foi.
@@ -460,6 +478,28 @@ scrie în jeton, iar pe rândul cu Trimite (foaia rapidă) ora cedează locul su
 mijlocul telefonului. Încercate pe telefon, 2026-10-03: 20% (foaia lipită de
 bara de navigare) era prea jos, 70% prea sus. Spațiul în plus e al descrierii, deci o atingere sub text începe
 scrisul. Pe `--vvh`, nu `dvh`, ca la tastatura deschisă minimul să scadă singur.
+
+### Fișierele din foi și de ce persoana a ieșit din rând
+
+În ambele foi, locul persoanei e al agrafei (meniu: „Fă o poză" = `<input
+capture>`, „Alege fișier" = input simplu). De pe telefon se face poza tablei
+sau a bonului; pasarea nu e un gest de rând de controale. **Foaia de tichet
+nu mai scrie `assigneeId`:** pasarea trece prin fir (`post_to_thread`, în
+formularul complet), unde comentariul și pasa sunt un singur gest — un select
+în foaie pasa fără niciun cuvânt, pe lângă fir. Rămân inițialele, numai
+citite, care deschid formularul. Captura păstrează `@nume` în text.
+
+Foaia de tichet urcă pe TICHET (`event_id` null, ca bara formularului) prin
+`uploadPicked` (`data/attachments.ts`, un singur drum de micșorare + nume
+pentru bară și foi). Rândul de miniaturi apare doar cu fișiere; ștergerea e în
+`Lightbox`, nu pe miniatura de sub degetul mare. Progresul e „se urcă", nu un
+procent: `storage.upload` nu dă octeți.
+
+Foaia rapidă ține fișierele în memorie și le urcă după creare. **Fișierele nu
+trec prin coada offline:** offline sau cu ID provizoriu (`HZ-~…`) se refuză cu
+un toast (`attachBlocked`). O coadă de poze ar fi pus octeți în IndexedDB lângă
+tichete și ar fi reluat urcări pe date mobile ore mai târziu — v1 spune pe
+față ce n-a plecat.
 
 ## Recurențe — un tichet care sare
 
@@ -991,6 +1031,12 @@ Pro (HyperOS 3, Android 16).
   bateriei pentru asta.
 - **Depanare**: `node mobile/scripts/cdp.mjs '<expr>'` evaluează în WebView
   (adb forward + CDP). Doze: `adb shell dumpsys deviceidle force-idle`.
+- **Camera din `<input capture>`**: `BridgeWebChromeClient` (Capacitor) pornește
+  `ACTION_IMAGE_CAPTURE` doar dacă `resolveActivity` o vede, iar de la targetSdk
+  30 n-o vede fără `<queries>` în manifest (din `versionCode 2`). Fără ea cade în
+  tăcere pe alegătorul de fișiere — „Fă o poză" merge, dar ca „Alege fișier".
+  Permisiunea CAMERA NU se declară: declarată, Capacitor o cere la runtime;
+  nedeclarată, aplicația de cameră face poza și noi doar primim fișierul.
 - **Contractul** `HorizontalAndroidPlugin` e scris de două ori:
   `src/lib/androidBridge.ts` și `HorizontalAndroidPlugin.kt`. Se schimbă împreună.
 
