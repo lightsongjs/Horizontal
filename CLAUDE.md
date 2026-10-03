@@ -455,6 +455,12 @@ scrie în jeton, iar pe rândul cu Trimite (foaia rapidă) ora cedează locul su
 ~380px (container query pe `.qs-form`) — altfel ieșea „Mâine 10:…" și „Exem…".
 `npm run test:layout` verifică „Mâine" + „Exemplu" întregi în ambele foi.
 
+**Fără tastatură, foaia are minim 70% din înălțimea vizibilă** (`--vvh`, nu
+`dvh`). O sarcină scurtă dădea o foaie de 20%, lipită de bara de navigare, adică
+titlul și descrierea în colțul cel mai greu de atins cu degetul (cerut de om pe
+2026-10-03). Spațiul în plus e al descrierii, deci o atingere sub text începe
+scrisul. Pe `--vvh`, nu `dvh`, ca la tastatura deschisă minimul să scadă singur.
+
 ## Recurențe — un tichet care sare
 
 O sarcină cu `rrule` bifată **nu se închide**: `due_at` avansează la următoarea

@@ -5464,7 +5464,22 @@ body:has(.kb-sheet) .toast {
 }
 .es-title::placeholder { color: var(--placeholder, var(--txt-faint)); }
 .edit-sheet.done .es-title { text-decoration: line-through; color: var(--txt-dim); }
+/* Fără tastatură, foaia ocupă 70% din înălțimea vizibilă: o foaie de 20%
+   lipită de bara de navigare cerea degetul în colțul cel mai greu de atins.
+   Se calculează din `--vvh`, nu din `dvh`, ca la tastatura deschisă minimul
+   să scadă singur (~330px) în loc să sară foaia pe tot ecranul. Spațiul în
+   plus îl umple descrierea, deci o atingere oriunde sub text începe scrisul. */
+.edit-sheet {
+  display: flex;
+  flex-direction: column;
+  min-height: min(calc(var(--vvh, 100dvh) * 0.7), calc(var(--vvh, 100dvh) - env(safe-area-inset-top) - 8px));
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+}
+.edit-sheet .qs-form { flex: 1 0 auto; display: flex; flex-direction: column; }
 .edit-sheet .qa-desc {
+  flex: 1 0 auto;
+  min-height: 88px;
+  cursor: text;
   margin: 4px 0 0 31px;
   width: calc(100% - 31px);
   font-size: 15px;
@@ -5472,10 +5487,10 @@ body:has(.kb-sheet) .toast {
 }
 .edit-sheet .qs-bar {
   position: sticky;
-  bottom: calc(-10px - env(safe-area-inset-bottom));
-  margin-top: 6px;
-  padding: 8px 0 calc(10px + env(safe-area-inset-bottom));
-  margin-bottom: calc(-10px - env(safe-area-inset-bottom));
+  bottom: calc(-16px - env(safe-area-inset-bottom));
+  margin-top: auto;
+  padding: 8px 0 calc(16px + env(safe-area-inset-bottom));
+  margin-bottom: calc(-16px - env(safe-area-inset-bottom));
   background: var(--surface);
 }
 
