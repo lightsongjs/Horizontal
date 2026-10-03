@@ -5464,15 +5464,16 @@ body:has(.kb-sheet) .toast {
 }
 .es-title::placeholder { color: var(--placeholder, var(--txt-faint)); }
 .edit-sheet.done .es-title { text-decoration: line-through; color: var(--txt-dim); }
-/* Fără tastatură, foaia ocupă 70% din înălțimea vizibilă: o foaie de 20%
-   lipită de bara de navigare cerea degetul în colțul cel mai greu de atins.
+/* Fără tastatură, foaia ocupă ~43% din înălțimea vizibilă, ca titlul să
+   cadă la ~57% de sus, adică sub degetul mare sprijinit puțin sub mijlocul
+   telefonului. 20% era prea jos, 70% prea sus — ambele încercate pe telefon.
    Se calculează din `--vvh`, nu din `dvh`, ca la tastatura deschisă minimul
    să scadă singur (~330px) în loc să sară foaia pe tot ecranul. Spațiul în
    plus îl umple descrierea, deci o atingere oriunde sub text începe scrisul. */
 .edit-sheet {
   display: flex;
   flex-direction: column;
-  min-height: min(calc(var(--vvh, 100dvh) * 0.7), calc(var(--vvh, 100dvh) - env(safe-area-inset-top) - 8px));
+  min-height: min(calc(var(--vvh, 100dvh) * 0.43 + 14px), calc(var(--vvh, 100dvh) - env(safe-area-inset-top) - 8px));
   padding-bottom: calc(16px + env(safe-area-inset-bottom));
 }
 .edit-sheet .qs-form { flex: 1 0 auto; display: flex; flex-direction: column; }
