@@ -763,6 +763,35 @@ creează ȘI se leagă într-un singur pas: `node scripts/link-assignees.mjs
 --create <nume> <email>`. Fără argumente, scriptul listează conturile și
 rândurile existente, ca să știi ce id să folosești la o legare ulterioară.
 
+## Tab-urile de sus și Back
+
+„Azi", „7 zile", „Ale mele" și „Proiecte" sunt tab-uri de sus (bara de jos),
+nu pagini una sub alta — de-aia antetul lor n-are săgeată: ar promite un
+„înapoi" spre un loc care nu e în spatele lor. Săgeata există doar ÎN proiect,
+unde are un părinte („Proiecte"). Pe desktop `.back` e oricum ascunsă.
+
+**„Azi" e rădăcina istoricului.** Convenția Android pentru o bară de jos: Back
+de pe orice alt tab duce pe „Azi", Back de pe „Azi" iese. `goTop` din `App.tsx`
+desface tot ce e peste rădăcină (`go(-n)`) și reclădește stiva canonică
+`[Azi]` sau `[Azi, tab]`, toate pe `/`. Fiindcă toate tab-urile au același URL,
+fiecare intrare pe `/` își poartă ecranul în `history.state.hzScreen` — fără el
+`popstate` n-ar ști pe ce tab a aterizat. `go` e asincron, deci cât așteaptă
+(`tabPop`) efectul proiect → URL tace, altfel s-ar înfige un push în mijloc.
+Cu o foaie / selecție / foaie rapidă deschisă, `goTop` nu atinge istoricul:
+intrările lor au propria mașinărie și se închid primele. Sidebar-ul de desktop
+nu trece prin `goTop`; acolo doar se rescrie marcajul intrării curente.
+
+**Pornirea rece aterizează pe „Azi", reîncărcarea rămâne unde erai**
+(`SESSION_KEY` + `LAST_VIEW_KEY`). Lista memorată nu bate „Azi" la o pornire,
+dar trebuie să bată la reîncărcare: `pwa.ts` aplică un build nou la revenirea
+în tab, adică reîncarcă pagina sub om — n-are voie să-l mute pe „Azi".
+
+**În APK, Back-ul era al activității, nu al paginii.** Fără `@capacitor/app`,
+`BridgeActivity` lasă comportamentul implicit (închide aplicația de pe orice
+ecran, chiar cu o foaie deschisă). `MainActivity.java` urmează acum istoricul
+WebView-ului (`canGoBack` → `goBack`, altfel iese) — cere un APK nou; până
+atunci, în cutie Back iese ca înainte, iar în Chrome/PWA merge deja.
+
 ## Reîmprospătarea datelor — de ce nu golește ecranul
 
 Datele se cer din nou la revenirea în tab: asta e tot ce face „un tichet creat

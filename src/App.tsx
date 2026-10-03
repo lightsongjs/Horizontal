@@ -93,8 +93,8 @@ function smartCrumb(kind: SmartListKind, now: Date): string {
   return `${DAYS_FULL[d.getDay()]}, ${d.getDate()} ${MON_FULL[d.getMonth()]}`
 }
 
-function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, canWrite, smartList, onExitSmartList, sidebarCollapsed, onToggleSidebar, inbox = false }: { onNewIssue: () => void; onSearch: () => void; onProjectSettings: () => void; onRefresh: () => void; onInfo: () => void; canWrite: boolean; smartList: SmartListKind | null; onExitSmartList: () => void; sidebarCollapsed: boolean; onToggleSidebar: () => void; /** „Ale mele" — opțional, ca vechile call-site-uri (fără el) să rămână valide. */ inbox?: boolean }) {
-  const { project, completion, selectProject, smartLists, refreshing, syncStatus } = useHorizontal()
+function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, canWrite, smartList, onBackToProjects, sidebarCollapsed, onToggleSidebar, inbox = false }: { onNewIssue: () => void; onSearch: () => void; onProjectSettings: () => void; onRefresh: () => void; onInfo: () => void; canWrite: boolean; smartList: SmartListKind | null; onBackToProjects: () => void; sidebarCollapsed: boolean; onToggleSidebar: () => void; /** „Ale mele" — opțional, ca vechile call-site-uri (fără el) să rămână valide. */ inbox?: boolean }) {
+  const { project, completion, smartLists, refreshing, syncStatus } = useHorizontal()
   const syncText = syncLabel(syncStatus)
   const list = smartList ? SMART_LISTS.find((s) => s.kind === smartList) : null
   // Cromul de proiect (progres, „+ Tichet", căutare, setări) e legat de
@@ -122,8 +122,11 @@ function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, ca
       >
         <Icon name="sidebar" size={15} />
       </button>
-      {(projectChrome || list || inbox) && (
-        <button className="back" aria-label="Înapoi" onClick={() => ((list || inbox) ? onExitSmartList() : selectProject(null))}>
+      {/* Săgeata există doar ÎNĂUNTRUL unui proiect, unde are un părinte
+          („Proiecte"). Listele și „Ale mele" sunt tab-uri de sus: o săgeată
+          acolo promitea un „înapoi" spre un loc care nu e în spatele lor. */}
+      {projectChrome && !list && (
+        <button className="back" aria-label="Înapoi la proiecte" onClick={onBackToProjects}>
           <Icon name="back" size={20} />
         </button>
       )}
@@ -244,6 +247,16 @@ const SESSION_KEY = 'horizontal:session-started'
  * `screen`, ca `Header`/`Sidebar`/`SmartListView` să rămână neatinse.
  */
 type Screen = SmartListKind | 'inbox'
+/**
+ * Ce ecran arată o intrare de istoric pe `/` (`history.state.hzScreen`).
+ * `/` e URL-ul tuturor tab-urilor de sus, deci fără marcaj un Back n-ar avea
+ * de unde ști pe ce tab aterizează. `projects` = lista de proiecte.
+ */
+type TopScreen = Screen | 'projects'
+const readTopScreen = (): TopScreen | null => {
+  const v = (window.history.state as { hzScreen?: string } | null)?.hzScreen
+  return v === 'projects' || v === 'inbox' || v === 'today' || v === 'tomorrow' || v === 'week' ? v : null
+}
 
 /** `smart:today` → `today`. Orice altceva → null. */
 function parseLastView(raw: string | null): Screen | null {
@@ -442,12 +455,17 @@ function Shell() {
   /** Un back ne-ar duce pe alt ticket? Atunci rescriem URL-ul în loc să navigăm. */
   const backLandsOnTicket = () =>
     behindTicket.current === null || parseTicketPath(behindTicket.current) !== null
+  // O intrare pe `/` își poartă și ecranul (`hzScreen`), ca Back să știe pe
+  // ce tab aterizează — vezi `TopScreen`.
+  const entryState = (path: string) => (path === '/'
+    ? { hzDepth: historyDepth.current, hzScreen: screenRef.current ?? 'projects' }
+    : { hzDepth: historyDepth.current })
   const pushPath = (path: string) => {
     historyDepth.current += 1
-    window.history.pushState({ hzDepth: historyDepth.current }, '', path)
+    window.history.pushState(entryState(path), '', path)
   }
   const replacePath = (path: string) => {
-    window.history.replaceState({ hzDepth: historyDepth.current }, '', path)
+    window.history.replaceState(entryState(path), '', path)
   }
   const projectPath = (p: Project | null) => (p ? `/project/${slugify(p.name)}` : '/')
   /**
@@ -721,6 +739,9 @@ function Shell() {
     // Un deep link eșuat lasă /ZZ-99 în bară și trebuie suprascris.
     const ticketOwnsUrl = deepLinkPending.current !== null || ticketIdRef.current !== null
     if (ticketOwnsUrl) return
+    // Un `goTop` își desface stiva cu `go(-n)`, asincron: până la `popstate`
+    // bara e încă pe intrarea veche, iar un push aici s-ar înfige în mijloc.
+    if (tabPop.current) return
 
     // Aceeași regulă ca `settleUrl`: cu o listă pe ecran, destinația e `/`.
     // Și `screen` în dependențe: un click în sidebar pe proiectul DEJA încărcat
@@ -728,6 +749,12 @@ function Shell() {
     // `project.id` — fără el URL-ul rămânea `/` peste boardul proiectului.
     const path = slug && !screen ? `/project/${slug}` : '/'
     if (window.location.pathname !== path) pushPath(path)
+    // Pe același `/` doar se schimbă ecranul (sidebar-ul nu trece prin
+    // `goTop`): intrarea curentă își rescrie marcajul, ca un Back care se
+    // întoarce aici să găsească ecranul de acum, nu pe cel de la împingere.
+    // O intrare de foaie (`hzSheet`) nu se atinge — și-ar pierde marcajul.
+    else if (path === '/' && !(window.history.state as { hzSheet?: string } | null)?.hzSheet
+      && readTopScreen() !== (screen ?? 'projects')) replacePath(path)
   }, [project?.id, screen]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sheet de ticket → URL. `ticketId` vine din stiva de sheet-uri, nu din vârf,
@@ -831,11 +858,76 @@ function Shell() {
     }
   }, [ta.layers])
 
+  /**
+   * Tab-urile de sus (bara de jos; săgeata din proiect) și istoricul lor.
+   *
+   * „Azi" e ecranul de start, deci rădăcina istoricului (adâncimea 0). Orice
+   * alt tab stă într-o SINGURĂ intrare peste ea, pe `/`, marcată `hzScreen`.
+   * De aici iese convenția Android pentru o bară de jos: Back de pe „7 zile",
+   * „Ale mele" sau „Proiecte" duce pe „Azi", iar de pe „Azi" iese din
+   * aplicație (nu mai e nimic al nostru în spate). Un proiect se împinge
+   * peste intrarea „Proiecte", deci Back din proiect duce acolo.
+   *
+   * Comutarea unui tab desface tot ce era deasupra rădăcinii (`go(-n)`) și
+   * reclădește stiva canonică `[Azi]` sau `[Azi, tab]`. Altfel fiecare atingere
+   * a barei ar fi adăugat o intrare și Back ar fi refăcut drumul tab cu tab.
+   * `go` e asincron: între timp efectul proiect → URL tace (`tabPop`), iar
+   * `onPop` termină treaba.
+   *
+   * Cu o foaie, o selecție sau foaia rapidă deschise, istoricul nu se atinge:
+   * intrările lor au propria mașinărie, iar pe telefon bara nici nu se vede
+   * atunci. Rămâne doar comutarea de stare, ca înainte.
+   */
+  const tabPop = useRef<TopScreen | null>(null)
+  const applyTop = (t: TopScreen) => {
+    setShowUsers(false)
+    if (t === 'projects') {
+      setScreen(null)
+      localStorage.removeItem(LAST_VIEW_KEY)
+    } else setScreen(t)
+    selectProject(null)
+  }
+  /** Așază stiva canonică de pe rădăcină: `[Azi]`, sau `[Azi, t]`. */
+  const settleTop = (t: TopScreen) => {
+    if (historyDepth.current !== 0) {
+      window.history.replaceState({ hzDepth: historyDepth.current, hzScreen: t }, '', '/')
+      return
+    }
+    window.history.replaceState({ hzDepth: 0, hzScreen: 'today' }, '', '/')
+    if (t === 'today') return
+    historyDepth.current = 1
+    window.history.pushState({ hzDepth: 1, hzScreen: t }, '', '/')
+  }
+  const goTop = (t: TopScreen) => {
+    applyTop(t)
+    if (sheetRef.current.kind !== 'none' || layerEntries.current > 0 || quickEntry.current) return
+    if (historyDepth.current === 0) settleTop(t)
+    else {
+      tabPop.current = t
+      window.history.go(-historyDepth.current)
+      // Plasă: dacă adâncimea ținută ar minți și `go` n-ar avea unde merge,
+      // `popstate` nu vine — iar fără asta efectul proiect → URL ar tăcea
+      // toată sesiunea. Atunci doar marcăm intrarea curentă.
+      window.setTimeout(() => {
+        if (tabPop.current !== t) return
+        tabPop.current = null
+        window.history.replaceState({ hzDepth: historyDepth.current, hzScreen: t }, '', '/')
+      }, 1000)
+    }
+  }
+
   // Browser back/forward → sync store. Un path de ticket nu schimbă proiectul;
   // doar deschide sau închide sheet-ul.
   useEffect(() => {
     const onPop = () => {
       historyDepth.current = readDepth()
+      // Desfacerea cerută de `goTop`: suntem pe rădăcină, starea e deja pusă.
+      if (tabPop.current) {
+        const t = tabPop.current
+        tabPop.current = null
+        settleTop(t)
+        return
+      }
       // Desfacerea intrării foii rapide, cerută chiar de noi (vezi efectul de
       // mai jos): foaia e deja închisă, iar URL-ul e același.
       if (quickPop.current) { quickPop.current = false; return }
@@ -873,8 +965,13 @@ function Shell() {
         resolveTicketUrl(target)
         return
       }
+      // Pe `/`, intrarea spune ce tab arată (vezi `goTop`). Fără marcaj (o
+      // intrare dinainte de el) rămâne vechiul comportament: doar iese din proiect.
+      const top = window.location.pathname === '/' ? readTopScreen() : null
+      if (top) { applyTop(top); return }
       const match = window.location.pathname.match(/^\/project\/(.+)$/)
       const found = match ? findBySlug(match[1]) : null
+      if (found) setScreen(null)
       selectProject(found?.id ?? null)
     }
     window.addEventListener('popstate', onPop)
@@ -1039,7 +1136,7 @@ function Shell() {
         onInbox={() => openScreen('inbox')}
       />
       <div className="app-body">
-        {ta.selectMode && ta.narrow && smartList ? <SelectionHeader /> : <Header onNewIssue={openNewIssue} onSearch={() => setShowSearch(true)} onProjectSettings={openProjectSettings} onRefresh={refresh} onInfo={() => setShowInfo(true)} canWrite={canWrite} smartList={smartList} onExitSmartList={exitSmartList} sidebarCollapsed={sidebarCollapsed} onToggleSidebar={toggleSidebar} inbox={inInbox} />}
+        {ta.selectMode && ta.narrow && smartList ? <SelectionHeader /> : <Header onNewIssue={openNewIssue} onSearch={() => setShowSearch(true)} onProjectSettings={openProjectSettings} onRefresh={refresh} onInfo={() => setShowInfo(true)} canWrite={canWrite} smartList={smartList} onBackToProjects={() => goTop('projects')} sidebarCollapsed={sidebarCollapsed} onToggleSidebar={toggleSidebar} inbox={inInbox} />}
         <main ref={mainRef}>
           {pullY > 0 && (
             <div style={{ textAlign: 'center', padding: '6px 0', fontSize: '13px', color: 'var(--txt-dim)', transform: `translateY(${pullY * 0.4}px)`, transition: pullY === 0 ? 'transform 0.3s' : 'none' }}>
@@ -1080,8 +1177,8 @@ function Shell() {
         {ta.selectMode && ta.narrow && smartList ? <SelectionBar /> : (
           <TabBar
             screen={screen}
-            onScreen={openScreen}
-            onProjects={() => { exitSmartList(); setShowUsers(false); selectProject(null) }}
+            onScreen={goTop}
+            onProjects={() => goTop('projects')}
             inProjects={!screen && !showUsers}
           />
         )}

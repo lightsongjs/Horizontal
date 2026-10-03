@@ -739,6 +739,75 @@ try {
   }
   await tctx.close()
 
+  // ── Tab-urile de sus pe telefon: fără săgeată, Back spre „Azi" ─────────
+  // „Azi", „7 zile", „Ale mele" și „Proiecte" sunt tab-uri de sus, nu pagini
+  // una sub alta: nicio săgeată în antet. Săgeata trăiește doar ÎN proiect și
+  // duce la „Proiecte". Back-ul (gestul Android) urmează convenția barei de
+  // jos: de pe orice tab → „Azi", de pe „Azi" → afară din aplicație. Filă
+  // curată: pornirea trebuie să fie chiar prima, iar `about:blank` din spate
+  // e „afară".
+  {
+    const nav = await browser.newPage({ viewport: { width: 390, height: 844 } })
+    await nav.goto(BASE, { waitUntil: 'networkidle' })
+    await nav.waitForTimeout(800)
+    const active = async () => ((await nav.locator('.tabbar button.on').textContent().catch(() => '')) ?? '').trim()
+    const arrow = () => nav.locator('header .back').isVisible().catch(() => false)
+    const tab = async (t) => { await nav.click(`[data-tab="${t}"]`); await nav.waitForTimeout(500) }
+    const back = async () => { await nav.goBack().catch(() => null); await nav.waitForTimeout(600) }
+    const path = () => new URL(nav.url()).pathname
+
+    check('telefon: pornirea aterizează pe „Azi"', /Azi/.test(await active()), `tab activ="${await active()}"`)
+    check('…fără săgeată pe „Azi"', !(await arrow()), 'antet')
+    for (const [t, label] of [['week', '7 zile'], ['inbox', 'Ale mele'], ['projects', 'Proiecte']]) {
+      await tab(t)
+      check(`fără săgeată pe „${label}"`, (await active()).includes(label) && !(await arrow()), `tab activ="${await active()}"`)
+    }
+
+    // Comutarea nu adună intrări: după trei tab-uri, un singur Back e „Azi".
+    await back()
+    check('Back de pe „Proiecte" (după trei tab-uri) → „Azi"', /Azi/.test(await active()) && path() === '/', `tab activ="${await active()}" URL=${path()}`)
+
+    await tab('week')
+    await back()
+    check('Back de pe „7 zile" → „Azi"', /Azi/.test(await active()), `tab activ="${await active()}"`)
+
+    // Proiect: săgeata duce la „Proiecte", iar Back de acolo la „Azi".
+    await tab('projects')
+    await nav.locator('.proj').first().click()
+    await nav.waitForTimeout(800)
+    check('în proiect există săgeata', await arrow(), path())
+    await nav.locator('header .back').click()
+    await nav.waitForTimeout(600)
+    check('săgeata din proiect → „Proiecte"', (await nav.locator('.proj').count()) > 0 && path() === '/' && !(await arrow()), `URL=${path()}`)
+    await back()
+    check('…și Back de acolo → „Azi", nu înapoi în proiect', /Azi/.test(await active()) && path() === '/', `tab activ="${await active()}" URL=${path()}`)
+
+    // Back din proiect (gestul) → „Proiecte".
+    await tab('projects')
+    await nav.locator('.proj').first().click()
+    await nav.waitForTimeout(800)
+    await back()
+    check('Back din proiect → „Proiecte"', (await nav.locator('.proj').count()) > 0 && path() === '/', `URL=${path()}`)
+    await back()
+    check('…apoi → „Azi"', /Azi/.test(await active()), `tab activ="${await active()}"`)
+
+    // Reîncărcarea pe „7 zile" (pwa.ts aplică un build nou exact așa) rămâne
+    // pe „7 zile", iar Back tot pe „Azi" duce.
+    await tab('week')
+    await nav.reload({ waitUntil: 'networkidle' })
+    await nav.waitForTimeout(1200)
+    check('reîncărcarea pe „7 zile" rămâne pe „7 zile"', (await active()).includes('7 zile'), `tab activ="${await active()}"`)
+    await back()
+    check('…și Back după ea → „Azi"', /Azi/.test(await active()), `tab activ="${await active()}"`)
+
+    // De pe „Azi", Back iese: nu mai e nimic al aplicației în spate.
+    const depth = await nav.evaluate(() => history.state?.hzDepth ?? 0)
+    check('„Azi" e rădăcina istoricului', depth === 0, `hzDepth=${depth}`)
+    await back()
+    check('Back de pe „Azi" iese din aplicație', !nav.url().startsWith(BASE), `URL=${nav.url()}`)
+    await nav.close()
+  }
+
   await page.close()
 } finally {
   if (browser) await browser.close()
