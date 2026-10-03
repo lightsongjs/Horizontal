@@ -4624,6 +4624,12 @@ main {
   opacity: 1;
   transform: translate(-50%, 0);
 }
+/* Cu o foaie lipită de jos deschisă (bifa unei recurențe din foaia de
+   tichet), toastul ar sta exact peste titlu: urcă sus, unde nu acoperă nimic. */
+body:has(.kb-sheet) .toast {
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
+  bottom: auto;
+}
 .toast-act {
   font-family: var(--mono);
   font-size: 11px;
@@ -5289,7 +5295,7 @@ main {
   to { transform: none; opacity: 1; }
 }
 .kb-sheet.shake { animation: qa-shake 0.3s; }
-.qs-form { display: block; }
+.qs-form { display: block; container-type: inline-size; }
 /* Titlul e același `QuickTitle` ca în rândul din listă, mai mare: aici e
    singurul lucru de pe ecran. Oglinda și inputul primesc ACEEAȘI mărime. */
 .quick-sheet .qa-wrap { display: block; height: 28px; }
@@ -5390,9 +5396,18 @@ main {
   font-size: 16px;
 }
 .qs-proj { flex: 0 3 auto; min-width: 44px; max-width: 150px; }
-.qs-who { flex-shrink: 0; }
-.qs-who .qs-sel-t { font-family: var(--mono); font-size: 11.5px; font-weight: 600; }
-.qs-who.on { color: var(--accent); }
+/* Persoana e numai iconiță (numele se vede în select și în `title`): pe un
+   rând de 390px, inițialele luau exact locul numelui de proiect. Aleasă =
+   accent plus linia de 2px, ca urgent. */
+.qs-who { flex-shrink: 0; width: 34px; padding: 0; justify-content: center; }
+.qs-who.on { color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent); }
+.qs-due-h { flex-shrink: 0; }
+/* Cu Trimite pe rând (foaia rapidă), sub ~380px ora e prima care cedează
+   locul: se vede oricum în panoul de dată pe care îl deschide jetonul, iar
+   numele proiectului altfel ajungea „Exem…". */
+@container (max-width: 379px) {
+  .qs-bar:has(.qs-send) .qs-due-h { display: none; }
+}
 .qs-send {
   margin-left: auto;
   width: 38px;
@@ -5408,6 +5423,61 @@ main {
 .qs-send:disabled { opacity: 0.45; }
 .qs-bar button:focus-visible,
 .qs-sel:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.qs-bar button:disabled:not(.qs-send),
+.qs-sel:has(select:disabled) { opacity: 0.55; }
+
+/* ── FOAIA DE TICHET (telefon) ───────────────────────────────────────
+   Aceeași cochilie ca foaia rapidă (`.kb-sheet`), pentru un tichet existent:
+   bifa lângă titlu, titlul pe mai multe rânduri, descrierea întreagă.
+   Rândul de controale rămâne lipit de fundul foii când descrierea e mai
+   lungă decât ecranul — altfel ar trebui derulat până la capăt ca să ajungi
+   la „…". */
+.es-head { display: flex; align-items: flex-start; gap: 6px; }
+.es-check {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  margin: -1px 0 0 -5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: var(--txt-faint);
+}
+.es-check.on { color: var(--done); }
+.es-check:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.es-title {
+  flex: 1;
+  min-width: 0;
+  display: block;
+  field-sizing: content;
+  min-height: 28px;
+  resize: none;
+  border: 0;
+  outline: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  font-size: 17px;
+  line-height: 28px;
+  color: var(--txt);
+}
+.es-title::placeholder { color: var(--placeholder, var(--txt-faint)); }
+.edit-sheet.done .es-title { text-decoration: line-through; color: var(--txt-dim); }
+.edit-sheet .qa-desc {
+  margin: 4px 0 0 31px;
+  width: calc(100% - 31px);
+  font-size: 15px;
+  max-height: none;
+}
+.edit-sheet .qs-bar {
+  position: sticky;
+  bottom: calc(-10px - env(safe-area-inset-bottom));
+  margin-top: 6px;
+  padding: 8px 0 calc(10px + env(safe-area-inset-bottom));
+  margin-bottom: calc(-10px - env(safe-area-inset-bottom));
+  background: var(--surface);
+}
 
 /* ── jetoane de scadență din quick add ───────────────────────────── */
 .chip {

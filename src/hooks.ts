@@ -8,6 +8,7 @@ import { liveRejections, maskRejected, parseDue, stripSpans, type ParsedDue } fr
 import { buildOrderedLayers, type OrderedLayer } from './lib/ordering'
 import type { Issue, Project } from './lib/types'
 import { parseCaptureTokens, type CaptureTokens } from './lib/captureTokens'
+import { Autosaver, type AutosaveStatus, type Fields, type Normalize } from './lib/autosave'
 import { draftSchedule, keyboardInset, resolveDraft, type DraftError, type DraftSchedule, type ManualPick, type QuickCtx } from './lib/quickDraft'
 
 const HIDE_DONE_KEY = 'horizontal:hide-done'
@@ -674,4 +675,68 @@ export function useKeyboardInset(ref: React.RefObject<HTMLElement>) {
       window.removeEventListener('resize', apply)
     }
   }, [ref])
+}
+
+export interface AutosaveHandle<T extends Fields> {
+  draft: T
+  status: AutosaveStatus
+  /** Tastare: pleacă după pauză. */
+  type(patch: Partial<T>): void
+  /** Un jeton atins: pleacă acum. */
+  commit(patch: Partial<T>): Promise<boolean>
+  /** Trimite ce așteaptă (blur, „…"). */
+  flush(): Promise<boolean>
+}
+
+/**
+ * Legătura dintre `Autosaver` (`lib/autosave.ts`) și React: poza din store
+ * intră prin `source`, ciorna iese ca stare. Ce așteaptă pleacă și la
+ * demontare (orice închidere: fundal, Back, Esc, „…") și când pagina trece în
+ * fundal — pe telefon, comutarea pe altă aplicație e adesea ultimul moment în
+ * care pagina mai rulează cod.
+ *
+ * `source` se compară pe valori (cheia JSON), nu pe identitate: store-ul
+ * reconstruiește obiectele de tichet la fiecare reîmprospătare.
+ */
+export function useAutosave<T extends Fields>(source: T, opts: {
+  save(patch: Partial<T>): Promise<void>
+  normalize?: Normalize<T>
+  delay?: number
+}): AutosaveHandle<T> {
+  const [, bump] = useState(0)
+  const optsRef = useRef(opts)
+  optsRef.current = opts
+  const saver = useRef<Autosaver<T> | null>(null)
+  if (!saver.current) {
+    saver.current = new Autosaver<T>({
+      initial: source,
+      delay: opts.delay,
+      normalize: opts.normalize,
+      save: (patch) => optsRef.current.save(patch),
+      onChange: () => bump((n) => n + 1),
+    })
+  }
+  const s = saver.current
+  const sourceKey = JSON.stringify(source)
+  useEffect(() => {
+    s.receive(JSON.parse(sourceKey) as T)
+  }, [s, sourceKey])
+  useEffect(() => {
+    const onHide = () => { if (document.visibilityState === 'hidden') void s.flush() }
+    document.addEventListener('visibilitychange', onHide)
+    window.addEventListener('pagehide', onHide)
+    return () => {
+      document.removeEventListener('visibilitychange', onHide)
+      window.removeEventListener('pagehide', onHide)
+      void s.flush()
+      s.dispose()
+    }
+  }, [s])
+  return {
+    draft: s.draft,
+    status: s.status,
+    type: (patch) => { void s.set(patch, 'debounce') },
+    commit: (patch) => s.set(patch, 'now'),
+    flush: () => s.flush(),
+  }
 }

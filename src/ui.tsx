@@ -25,7 +25,9 @@ export type SheetState =
   // `keyId`: cheia React de la montare, când `issueId` s-a schimbat sub foaie
   // (tichet creat offline care a primit numărul real) — vezi `renameIssueInSheets`.
   | { kind: 'issue'; issueId: string; keyId?: string }
-  | { kind: 'issue-form'; issueId?: string; keyId?: string; draft?: IssueDraft } // create when no id, edit otherwise
+  // create when no id, edit otherwise. `full`: formularul complet chiar și pe
+  // telefon — cerut din „…" al foii de tichet (vezi `compactIssueIdFrom`).
+  | { kind: 'issue-form'; issueId?: string; keyId?: string; draft?: IssueDraft; full?: boolean }
   // Foaia rapidă de pe telefon (FAB). Altă cochilie decât `.sheet` — vezi `QuickSheet`.
   | { kind: 'quick-add'; ctx: QuickCtx }
   | { kind: 'project-form' }
@@ -69,7 +71,10 @@ interface UI {
   saveNudge: number
   openIssue(id: string): void
   openNewIssue(): void
-  openEditIssue(id: string): void
+  /** `full`: sare peste foaia de telefon (după crearea unui tichet din formularul complet). */
+  openEditIssue(id: string, opts?: { full?: boolean }): void
+  /** „…" din foaia de tichet de pe telefon: același tichet, în formularul complet. */
+  expandIssue(): void
   openNewProject(): void
   openProjectSettings(): void
   openWaveManage(): void
@@ -112,6 +117,25 @@ export function dockedIssueIdFrom(sheets: SheetState[], hasSplitHost: boolean): 
 }
 
 /**
+ * Tichetul care se arată în foaia de telefon (`EditSheet`) în loc de
+ * formularul complet, sau null.
+ *
+ * Aceeași idee ca `dockedIssueIdFrom`: decizia se ia la RANDARE, dintr-un
+ * singur loc, nu în fiecare handler de click. Orice drum care deschide un
+ * tichet — rândul din „Azi", cardul din „Ordine", căutarea, un deep link,
+ * Back/Forward — ajunge la aceeași stivă, deci la aceeași foaie. Starea din
+ * stivă rămâne `issue-form` cu id, deci URL-ul (`/HZ-12`), `behindTicket` și
+ * Back merg exact ca pentru formular, fără nicio ramură nouă în `App.tsx`.
+ *
+ * Numai sub 900px (pragul FAB-ului), numai pentru un tichet existent, numai
+ * când e singura foaie, și niciodată după „…" (`full`).
+ */
+export function compactIssueIdFrom(top: SheetState, depth: number, narrow: boolean): string | null {
+  if (!narrow || depth !== 1 || top.kind !== 'issue-form' || top.full) return null
+  return top.issueId ?? null
+}
+
+/**
  * Cheia React a unei foi de tichet: ID-ul de la montare, nu cel de acum.
  *
  * Un tichet creat offline și ținut deschis primește numărul real exact când
@@ -151,12 +175,22 @@ export function renameIssueInSheets(sheets: SheetState[], from: string, to: stri
  * păstrează cheia: un click pe rândul lui după o redenumire ar fi schimbat
  * cheia din `HZ-~…` în `HZ-13` și ar fi remontat formularul, cu tot ce conține.
  */
-export function editSheet(prev: SheetState[], issueId: string): SheetState {
+export function editSheet(prev: SheetState[], issueId: string, full = false): SheetState {
   const only = prev.length === 1 ? prev[0] : null
-  if (only?.kind === 'issue-form' && only.issueId === issueId && only.keyId) {
-    return { kind: 'issue-form', issueId, keyId: only.keyId }
-  }
-  return { kind: 'issue-form', issueId }
+  const same = only?.kind === 'issue-form' && only.issueId === issueId ? only : null
+  // Formularul complet deja deschis pe același tichet rămâne complet.
+  const isFull = full || !!same?.full
+  const out: SheetState = { kind: 'issue-form', issueId }
+  if (same?.keyId) out.keyId = same.keyId
+  if (isFull) out.full = true
+  return out
+}
+
+/** „…": singura foaie de tichet trece în formularul complet, cu aceeași cheie. */
+export function expandSheets(prev: SheetState[]): SheetState[] {
+  const only = prev.length === 1 ? prev[0] : null
+  if (only?.kind !== 'issue-form' || !only.issueId || only.full) return prev
+  return [{ ...only, full: true }]
 }
 
 const Ctx = createContext<UI | null>(null)
@@ -209,7 +243,7 @@ export function UIProvider({ children }: { children: ReactNode }) {
       saveNudge,
       openIssue: (issueId) => setSheets((prev) => [editSheet(prev, issueId)]),
       openNewIssue: () => setSheets([{ kind: 'issue-form' }]),
-      openEditIssue: (issueId) => {
+      openEditIssue: (issueId, opts) => {
         // Plasa de siguranță a panoului lateral. Comutarea pe alt tichet NU
         // trece prin `closeSheet`, deci garda de close n-o vede niciodată:
         // fără asta, un click în listă ar arunca în tăcere ce tocmai ai scris.
@@ -228,8 +262,9 @@ export function UIProvider({ children }: { children: ReactNode }) {
           }
         }
         clearPendingSwitch()
-        setSheets((prev) => [editSheet(prev, issueId)])
+        setSheets((prev) => [editSheet(prev, issueId, opts?.full)])
       },
+      expandIssue: () => setSheets(expandSheets),
       openNewProject: () => setSheets([{ kind: 'project-form' }]),
       openProjectSettings: () => setSheets([{ kind: 'project-settings' }]),
       openWaveManage: () => setSheets([{ kind: 'wave-manage' }]),

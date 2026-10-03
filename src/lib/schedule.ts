@@ -208,6 +208,30 @@ export function reminderAt(dueAt: string | null, kind: ReminderKind): string | n
   return new Date(t - 24 * 60 * 60_000).toISOString()
 }
 
+/**
+ * Scadența mutată dintr-un jeton (foaia de tichet de pe telefon), ca patch.
+ *
+ * Mementoul își păstrează decalajul față de scadență — „cu 30 de minute
+ * înainte" rămâne „cu 30 de minute înainte" și după mutare. Excepția e
+ * schimbarea de formă (cu oră ↔ toată ziua): acolo decalajul vechi nu mai
+ * înseamnă ce însemna (un memento „la scadență" pe o zi întreagă ar suna la
+ * miezul nopții), deci se ia implicitul formei noi, ca la o scadență nouă.
+ *
+ * Fără dată pleacă și recurența: o repetare fără zi de pornire e o stare din
+ * care interfața nu mai poate ieși — aceeași regulă ca `rruleOut` din
+ * `IssueForm`. Cu dată, `rrule` lipsește din patch: nu s-a atins.
+ */
+export function reschedule(
+  prev: { dueAt: string | null; allDay: boolean; remindAt: string | null },
+  next: { dueAt: string | null; allDay: boolean },
+): { dueAt: string | null; allDay: boolean; remindAt: string | null; rrule?: null } {
+  if (!next.dueAt) return { dueAt: null, allDay: true, remindAt: null, rrule: null }
+  const kind = prev.dueAt && prev.allDay === next.allDay
+    ? reminderKindOf(prev.dueAt, prev.remindAt)
+    : defaultReminder(next.allDay)
+  return { dueAt: next.dueAt, allDay: next.allDay, remindAt: reminderAt(next.dueAt, kind) }
+}
+
 /** Inversul: din ce e salvat, ce opțiune e bifată în formular. */
 export function reminderKindOf(dueAt: string | null, remindAt: string | null): ReminderKind {
   if (!dueAt || !remindAt) return 'none'

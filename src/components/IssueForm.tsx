@@ -947,7 +947,9 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
         // sheet's issueId remounts the form in edit mode (SheetHost keys it by
         // issueId). Existing cards already have the right id — leave the sheet
         // (and any navigation stack) as-is.
-        if (!isEdit) openEditIssue(targetId)
+        // `full`: pe telefon, fără el, tichetul abia creat ar sări din
+        // formularul complet în foaia scurtă (`compactIssueIdFrom`).
+        if (!isEdit) openEditIssue(targetId, { full: true })
       }
     } catch (e) {
       // Fără `catch`, o eroare de aici era o promisiune respinsă pe care n-o

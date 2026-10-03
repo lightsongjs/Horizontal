@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import quickAddSrc from '../components/QuickAdd.tsx?raw'
 import quickSheetSrc from '../components/QuickSheet.tsx?raw'
-import { draftSchedule, keyboardInset, quickKey, resolveDraft, type DraftDate, type DraftInput, type QuickCtx } from './quickDraft'
+import { draftSchedule, dueLabel, dueLabelParts, keyboardInset, quickKey, resolveDraft, type DraftDate, type DraftInput, type QuickCtx } from './quickDraft'
 import type { CaptureTokens } from './captureTokens'
 
 const TODAY = '2026-10-03T00:00:00.000Z'
@@ -131,5 +131,19 @@ describe('un singur titlu de captură', () => {
     expect(src).toMatch(/import \{[^}]*\bQuickTitle\b[^}]*\} from '\.\/QuickFields'/)
     expect(src).toContain('<QuickTitle')
     expect(src).not.toContain('qa-mirror')
+  })
+})
+
+describe('dueLabel', () => {
+  const now = new Date(2026, 9, 3, 9, 0)
+  it('azi și mâine în cuvinte, cu ora separată', () => {
+    expect(dueLabelParts(new Date(2026, 9, 4, 10, 0).toISOString(), false, now)).toEqual({ day: 'Mâine', time: '10:00' })
+    expect(dueLabel(new Date(2026, 9, 3).toISOString(), true, now)).toBe('Azi')
+  })
+  it('anul curent nu se scrie — pe rândul îngust lua locul proiectului', () => {
+    expect(dueLabel(new Date(2026, 9, 7, 10, 0).toISOString(), false, now)).toBe('Mie 07/10 10:00')
+  })
+  it('alt an se scrie', () => {
+    expect(dueLabel(new Date(2027, 0, 5).toISOString(), true, now)).toBe('Mar 05/01/2027')
   })
 })

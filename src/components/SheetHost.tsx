@@ -1,5 +1,7 @@
 import { useEffect } from 'react'
-import { sheetKey, useUI } from '../ui'
+import { compactIssueIdFrom, sheetKey, useUI } from '../ui'
+import { useMediaQuery } from '../hooks'
+import { EditSheet } from './EditSheet'
 import { IssueSheet } from './IssueSheet'
 import { IssueForm } from './IssueForm'
 import { ProjectForm } from './ProjectForm'
@@ -19,7 +21,11 @@ export function SheetHost() {
   // Foaia rapidă are altă cochilie (`KeyboardSheet`), deci nu deschide `.sheet`
   // — doar Escape-ul de mai jos îi e comun.
   const quick = sheet.kind === 'quick-add'
-  const open = sheet.kind !== 'none' && !dockedIssueId && !quick
+  // Pe telefon, un tichet existent se deschide în foaia scurtă, nu în
+  // formular — vezi `compactIssueIdFrom`. Același prag ca FAB-ul.
+  const narrow = useMediaQuery('(max-width: 899px)')
+  const compactId = dockedIssueId ? null : compactIssueIdFrom(sheet, canGoBack ? 2 : 1, narrow)
+  const open = sheet.kind !== 'none' && !dockedIssueId && !quick && !compactId
   const tall =
     sheet.kind === 'issue-form' ||
     sheet.kind === 'project-form' ||
@@ -30,7 +36,7 @@ export function SheetHost() {
     sheet.kind === 'user-form'
 
   useEffect(() => {
-    if (!open && !quick) return
+    if (!open && !quick && !compactId) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (canGoBack) goBack()
@@ -39,7 +45,7 @@ export function SheetHost() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open, quick, canGoBack, closeSheet, goBack])
+  }, [open, quick, compactId, canGoBack, closeSheet, goBack])
 
   // Vizualizarea unui tichet primește o clasă proprie ca să poată fi mai lată
   // și mai înaltă pe desktop decât un sheet obișnuit: conținutul ei e text de
@@ -57,7 +63,7 @@ export function SheetHost() {
           </button>
         )}
         {sheet.kind === 'issue' && <IssueSheet key={sheetKey(sheet)} issueId={sheet.issueId} />}
-        {sheet.kind === 'issue-form' && !dockedIssueId && <IssueForm key={sheetKey(sheet) ?? '__new__'} issueId={sheet.issueId} draft={sheet.draft} />}
+        {sheet.kind === 'issue-form' && !dockedIssueId && !compactId && <IssueForm key={sheetKey(sheet) ?? '__new__'} issueId={sheet.issueId} draft={sheet.draft} />}
         {sheet.kind === 'project-form' && <ProjectForm />}
         {sheet.kind === 'project-settings' && <ProjectSettings />}
         {sheet.kind === 'wave-manage' && <WaveManager />}
@@ -68,6 +74,7 @@ export function SheetHost() {
         {sheet.kind === 'user-form' && <UserForm key={sheet.userId ?? '__new__'} userId={sheet.userId} />}
       </div>
       {sheet.kind === 'quick-add' && <QuickSheet ctx={sheet.ctx} />}
+      {compactId && sheet.kind === 'issue-form' && <EditSheet key={sheetKey(sheet)} issueId={compactId} />}
     </>
   )
 }

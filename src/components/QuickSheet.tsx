@@ -2,7 +2,7 @@ import { useRef, useState, type PointerEvent } from 'react'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { useQuickDraft } from '../hooks'
-import { dueLabel, quickKey, type QuickCtx } from '../lib/quickDraft'
+import { dueLabelParts, quickKey, type QuickCtx } from '../lib/quickDraft'
 import { fromInputs, toDateInput, toTimeInput } from '../lib/schedule'
 import { describeRrule } from '../lib/recurrence'
 import { Icon } from './Icon'
@@ -79,6 +79,7 @@ export function QuickSheet({ ctx }: { ctx: QuickCtx }) {
 
   const { dueAt, allDay } = schedule
   const recur = schedule.rrule ? describeRrule(schedule.rrule) : ''
+  const parts = dueAt ? dueLabelParts(dueAt, allDay, new Date()) : null
   const warn = tokens?.unknown.length ? `nu știu ${tokens.unknown.join(', ')}` : error === 'bare' ? 'și ce ai de făcut?' : null
   const status = warn ?? (saving ? 'se salvează…' : '')
   const setDue = (date: string, time: string) => {
@@ -160,7 +161,8 @@ export function QuickSheet({ ctx }: { ctx: QuickCtx }) {
             onClick={() => setWhenOpen((v) => !v)}
           >
             <Icon name={recur ? 'recurring' : 'due'} size={15} />
-            <span className="qs-due-t">{dueAt ? dueLabel(dueAt, allDay, new Date()) : 'Fără dată'}</span>
+            <span className="qs-due-t">{parts ? parts.day : 'Fără dată'}</span>
+            {parts?.time && <span className="qs-due-h">{parts.time}</span>}
           </button>
           <button
             type="button"
@@ -187,9 +189,13 @@ export function QuickSheet({ ctx }: { ctx: QuickCtx }) {
               {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </label>
-          <label className={`qs-sel qs-who ${assigneeId ? 'on' : ''}`} title="Cui îi pasezi sarcina (sau @nume în text)">
+          {/* Numai iconița: numele lua locul proiectului pe un rând de 390px.
+              Cine e ales se vede deschizând selectul și în `title`. */}
+          <label
+            className={`qs-sel qs-who ${assigneeId ? 'on' : ''}`}
+            title={assigneeId ? `Pasat: ${assignees.find((a) => a.id === assigneeId)?.name ?? assigneeShort[assigneeId] ?? '?'}` : 'Cui îi pasezi sarcina (sau @nume în text)'}
+          >
             <Icon name="people" size={15} />
-            {assigneeId && <span className="qs-sel-t">{assigneeShort[assigneeId] ?? '?'}</span>}
             <select
               aria-label="Persoana"
               value={assigneeId ?? ''}

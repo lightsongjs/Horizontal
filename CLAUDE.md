@@ -414,6 +414,47 @@ Backspace pe descriere goală te întorc, Ctrl+Enter salvează din ea (tabelul e
 înălțimea prin `resizeBar` (puntea, opțional); o cutie instalată înainte de el
 derulează în loc să crească — se reface cu `npm run desktop:install`.
 
+### Foaia de tichet (telefon): același gest pentru a citi și a edita
+
+Sub 900px, un tichet **existent** se deschide în `EditSheet.tsx` — aceeași
+cochilie ca foaia rapidă (`KeyboardSheet`), cu bifa lângă titlu și descrierea
+întreagă; „…" duce la formularul complet. Decizia se ia la RANDARE
+(`compactIssueIdFrom` din `ui.tsx`, citită de `SheetHost`), ca la panoul
+lateral: stiva rămâne un `issue-form` cu id, deci URL-ul `/HZ-12`,
+`behindTicket`, Back și deep linkul merg fără nicio ramură nouă în `App.tsx`
+— un deep link pe telefon aterizează în foaie, fiindcă asta e forma unui
+tichet acolo, iar formularul e la o atingere. „…" pune `full: true` pe
+aceeași intrare (fără istoric nou), deci Back închide formularul și te lasă
+pe lista din care ai pornit. Un tichet creat din formularul complet
+(`openEditIssue(id, { full: true })`) rămâne în formular.
+
+**Nu ia focusul la deschidere:** deschizi ca să citești, iar tastatura ar
+acoperi exact descrierea. Titlul n-are recunoaștere de dată (spre deosebire de
+captură): cu salvare automată, un „mâine" scris în titlu și-ar muta scadența
+sub degete, la prima pauză. Proiectul e afișat, nu ales — ID-ul îi poartă
+prefixul, iar formularul complet nu-l schimbă nici el.
+
+**Fără buton de salvare.** `src/lib/autosave.ts` (pur, cu teste) + `useAutosave`
+din `hooks.ts` — gândite să fie reluate de formularul complet când pierde și el
+butonul. Textul pleacă după 800ms de pauză și la orice închidere (demontare,
+`pagehide`); jetoanele imediat. Patch-ul conține **numai** câmpurile schimbate
+față de ultima valoare știută ca fiind în bază: un patch cu tot tichetul ar
+rescrie în tăcere o schimbare venită de pe alt dispozitiv sau saltul unei
+recurențe. O poză nouă din store nu calcă un câmp murdar sau în zbor. Ordinea
+spre bază o ține `enqueueWrite` — `updateIssue` trece acum și el prin coadă,
+nu doar `toggleDone`.
+
+**De ce n-are nevoie de cheia cu `dueAt`** (regula din „Panoul lateral"):
+scadența din foaie nu e o copie făcută la montare, ci ciorna rebazată din store
+la fiecare randare, deci saltul unei recurențe bifate din foaie se vede pe loc.
+Toastul de anulare urcă sus cât e o foaie lipită de jos deschisă — altfel
+stătea peste titlu.
+
+**Rândul de controale la 390px:** persoana e numai iconiță, anul curent nu se
+scrie în jeton, iar pe rândul cu Trimite (foaia rapidă) ora cedează locul sub
+~380px (container query pe `.qs-form`) — altfel ieșea „Mâine 10:…" și „Exem…".
+`npm run test:layout` verifică „Mâine" + „Exemplu" întregi în ambele foi.
+
 ## Recurențe — un tichet care sare
 
 O sarcină cu `rrule` bifată **nu se închide**: `due_at` avansează la următoarea

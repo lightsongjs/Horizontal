@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { dockedIssueIdFrom, dockedKeyFrom, editSheet, renameIssueInSheets, sheetKey, type SheetState } from './ui'
+import { compactIssueIdFrom, dockedIssueIdFrom, dockedKeyFrom, editSheet, expandSheets, renameIssueInSheets, sheetKey, type SheetState } from './ui'
 
 const form = (issueId?: string): SheetState => ({ kind: 'issue-form', issueId })
 
@@ -65,5 +65,38 @@ describe('redenumirea temp → real păstrează cheia React', () => {
     expect(editSheet(renamed, 'HZ-13')).toEqual({ kind: 'issue-form', issueId: 'HZ-13', keyId: 'HZ-~ab12cd' })
     expect(editSheet(renamed, 'HZ-14')).toEqual(form('HZ-14'))
     expect(editSheet([], 'HZ-14')).toEqual(form('HZ-14'))
+  })
+})
+
+describe('compactIssueIdFrom (foaia de tichet de pe telefon)', () => {
+  it('pe telefon, un tichet existent singur pe stivă → foaia scurtă', () => {
+    expect(compactIssueIdFrom(form('HZ-12'), 1, true)).toBe('HZ-12')
+  })
+  it('pe ecran lat rămâne formularul', () => {
+    expect(compactIssueIdFrom(form('HZ-12'), 1, false)).toBeNull()
+  })
+  it('un tichet nou și „…" (full) merg în formularul complet', () => {
+    expect(compactIssueIdFrom(form(), 1, true)).toBeNull()
+    expect(compactIssueIdFrom({ kind: 'issue-form', issueId: 'HZ-12', full: true }, 1, true)).toBeNull()
+  })
+  it('cu ceva sub ea pe stivă (card de dependență deasupra) nu e foaia scurtă', () => {
+    expect(compactIssueIdFrom(form('HZ-12'), 2, true)).toBeNull()
+  })
+})
+
+describe('expandSheets / editSheet cu full', () => {
+  it('„…" păstrează cheia și pune full', () => {
+    expect(expandSheets([{ kind: 'issue-form', issueId: 'HZ-13', keyId: 'HZ-~a' }])).toEqual([
+      { kind: 'issue-form', issueId: 'HZ-13', keyId: 'HZ-~a', full: true },
+    ])
+  })
+  it('fără un singur tichet existent, stiva rămâne aceeași', () => {
+    const stack: SheetState[] = [form('HZ-1'), { kind: 'issue', issueId: 'HZ-2' }]
+    expect(expandSheets(stack)).toBe(stack)
+  })
+  it('formularul complet redeschis pe același tichet rămâne complet', () => {
+    expect(editSheet([{ kind: 'issue-form', issueId: 'HZ-1', full: true }], 'HZ-1')).toEqual({ kind: 'issue-form', issueId: 'HZ-1', full: true })
+    expect(editSheet([{ kind: 'issue-form', issueId: 'HZ-1', full: true }], 'HZ-2')).toEqual(form('HZ-2'))
+    expect(editSheet([], 'HZ-3', true)).toEqual({ kind: 'issue-form', issueId: 'HZ-3', full: true })
   })
 })

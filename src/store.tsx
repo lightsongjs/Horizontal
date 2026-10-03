@@ -865,7 +865,11 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
   const updateIssue = useCallback(
     async (id: string, patch: Partial<Issue>) => {
       const before = allIssuesRef.current.find((i) => i.id === id)?.assigneeId ?? null
-      const saved = await repository.updateIssue(id, patch)
+      // Prin coada per-id, ca `toggleDone`: foaia de tichet de pe telefon
+      // salvează singură (textul după o pauză, jetoanele imediat), deci o
+      // bifă și un titlu pot fi în zbor pe același tichet deodată. Fără
+      // coadă, un răspuns mai lent ar ajunge al doilea și ar rescrie peste.
+      const saved = await enqueueWrite(writeQueue.current, id, () => repository.updateIssue(id, patch))
       upsertIssue(saved)
       // `reconcileInbox` pune deja rândul la locul lui instantaneu; asta cere
       // doar momentele firului (ora, bulina), pe care instantaneul local nu

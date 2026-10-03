@@ -481,25 +481,50 @@ for (const width of PHONE_WIDTHS) {
 }
 
 /**
- * Rândul de controale al foii rapide (`QuickSheet.tsx`): trimite și iconițele
- * au `flex-shrink: 0`, jetonul de dată și proiectul se micșorează. Cazul cel
- * mai rău: dată lungă cu oră, nume de proiect lung, om ales. Trimite nu are
- * voie să fie strivit sau împins afară, proiectul nu are voie să dispară, și
- * niciun control nu rămâne fără fundal.
+ * Rândul de controale al foii rapide (`QuickSheet.tsx`) și al foii de tichet
+ * (`EditSheet.tsx`, fără Trimite): trimite și iconițele au `flex-shrink: 0`,
+ * jetonul de dată și proiectul se micșorează. Cazul cel mai rău: dată lungă
+ * cu oră, nume de proiect lung, om ales. Trimite nu are voie să fie strivit
+ * sau împins afară, proiectul nu are voie să dispară, și niciun control nu
+ * rămâne fără fundal. Plus cazul obișnuit, „Mâine 10:00" și „Exemplu": la
+ * 390px amândouă se citesc întregi — înainte ieșea „Mâine 10:…" și „Exem…".
  */
-const quickBar = () => `
+const quickBar = ({ day = 'Mie 07/10', time = '10:00', proj = 'Aplicație Turism și încă ceva lung', send = true } = {}) => `
 <div class="kb-sheet quick-sheet" style="animation:none"><form class="qs-form">
   <span class="qa-wrap"><span class="qa-mirror"></span><input class="qa-input" value="Sună la bancă"></span>
   <textarea class="qa-desc" rows="1" placeholder="Descriere"></textarea>
   <div class="qs-bar">
-    <button type="button" class="qs-due on"><svg width="15" height="15"></svg><span class="qs-due-t">Mie 07.10.2026 10:00</span></button>
+    <button type="button" class="qs-due on"><svg width="15" height="15"></svg><span class="qs-due-t">${day}</span><span class="qs-due-h">${time}</span></button>
     <button type="button" class="qs-ico qs-urgent on"><svg width="16" height="16"></svg></button>
-    <label class="qs-sel qs-proj"><span class="t-dot" style="background:#6e7bff"></span><span class="qs-sel-t">Aplicație Turism și încă ceva lung</span><select><option>x</option></select></label>
-    <label class="qs-sel qs-who on"><svg width="15" height="15"></svg><span class="qs-sel-t">AL</span><select><option>x</option></select></label>
+    <label class="qs-sel qs-proj"><span class="t-dot" style="background:#6e7bff"></span><span class="qs-sel-t">${proj}</span><select><option>x</option></select></label>
+    <label class="qs-sel qs-who on"><svg width="15" height="15"></svg><select><option>x</option></select></label>
     <button type="button" class="qs-ico qs-more"><svg width="16" height="16"></svg></button>
-    <button type="submit" class="qs-send"><svg width="18" height="18"></svg></button>
+    ${send ? '<button type="submit" class="qs-send"><svg width="18" height="18"></svg></button>' : ''}
   </div>
 </form></div>`
+
+/** Se citește întreg: textul nu e tăiat cu „…" (nici ascuns de container query). */
+const readable = (page) => page.evaluate(() => {
+  const cut = (el) => !el || el.offsetParent === null ? 'ascuns' : el.scrollWidth > el.clientWidth + 0.5 ? 'tăiat' : 'întreg'
+  return {
+    day: cut(document.querySelector('.qs-due-t')),
+    time: cut(document.querySelector('.qs-due-h')),
+    proj: cut(document.querySelector('.qs-proj .qs-sel-t')),
+  }
+})
+
+console.log('\nRândul obișnuit la 390px — „Mâine 10:00", „Exemplu":')
+for (const send of [true, false]) {
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } })
+  await page.setContent(`<style>${CSS}</style>${quickBar({ day: 'Mâine', proj: 'Exemplu', send })}`)
+  const r = await readable(page)
+  await page.close()
+  const name = send ? 'foaia rapidă' : 'foaia de tichet'
+  check(`${name}: ziua se citește întreagă`, r.day === 'întreg', r.day)
+  check(`${name}: proiectul se citește întreg`, r.proj === 'întreg', r.proj)
+  // Cu Trimite pe rând ora cedează locul (container query); fără el, încape.
+  if (!send) check(`${name}: ora se citește întreagă`, r.time === 'întreg', r.time)
+}
 
 console.log('\nRândul de controale al foii rapide (`.qs-bar`):')
 for (const width of PHONE_WIDTHS) {

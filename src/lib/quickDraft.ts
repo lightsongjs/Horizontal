@@ -153,14 +153,29 @@ const DAYS = ['Dum', 'Lun', 'Mar', 'Mie', 'Joi', 'Vin', 'Sâm']
  * Pentru zilele apropiate, cuvântul e mai clar decât cifrele: „Azi 15:00" se
  * citește dintr-o privire, „24-08-2026 15:00" cere o secundă de socoteală.
  * Mai departe de mâine, data numerică e cea neambiguă — cu ziua săptămânii
- * înaintea ei, fiindcă întrebarea reală e adesea „în ce zi cade?".
+ * înaintea ei, fiindcă întrebarea reală e adesea „în ce zi cade?". Anul doar
+ * dacă nu e cel curent: în rândul de controale de pe un telefon de 390px,
+ * „/2026" lua exact locul în care ar fi încăput numele proiectului.
  */
 export function dueLabel(iso: string, allDay: boolean, now: Date): string {
+  const { day, time } = dueLabelParts(iso, allDay, now)
+  return time ? `${day} ${time}` : day
+}
+
+/**
+ * Ziua și ora jetonului, separat: pe rândul îngust ora e prima care cedează
+ * locul (`.qs-due-h`, ascunsă dintr-un container query), fiindcă se vede
+ * oricum în panoul de dată deschis de jeton.
+ */
+export function dueLabelParts(iso: string, allDay: boolean, now: Date): { day: string; time: string | null } {
   const off = dayOffset(iso, now)
+  const d = new Date(iso)
+  const full = toDisplayDate(iso)
+  const date = d.getFullYear() === now.getFullYear() ? full.slice(0, 5) : full
   const day =
     off === 0 ? 'Azi'
       : off === 1 ? 'Mâine'
         : off === -1 ? 'Ieri'
-          : `${DAYS[new Date(iso).getDay()]} ${toDisplayDate(iso)}`
-  return allDay ? day : `${day} ${toTimeInput(iso)}`
+          : `${DAYS[d.getDay()]} ${date}`
+  return { day, time: allDay ? null : toTimeInput(iso) }
 }

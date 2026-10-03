@@ -101,6 +101,10 @@ interface DescProps {
   placeholder?: string
   onFocus?(): void
   onBlur?(): void
+  /** Foaia de tichet folosește același câmp și pentru titlul pe mai multe rânduri. */
+  className?: string
+  ariaLabel?: string
+  readOnly?: boolean
 }
 
 const growsByItself = typeof CSS !== 'undefined' && CSS.supports?.('field-sizing', 'content')
@@ -110,7 +114,7 @@ const growsByItself = typeof CSS !== 'undefined' && CSS.supports?.('field-sizing
  * content` face asta singur; unde lipsește (Firefox, Safari mai vechi),
  * înălțimea se ia din `scrollHeight` la fiecare schimbare.
  */
-export function QuickDesc({ value, onChange, textareaRef, onKeyDown, placeholder = 'Descriere', onFocus, onBlur }: DescProps) {
+export function QuickDesc({ value, onChange, textareaRef, onKeyDown, placeholder = 'Descriere', onFocus, onBlur, className = 'qa-desc', ariaLabel = 'Descrierea sarcinii', readOnly }: DescProps) {
   useLayoutEffect(() => {
     const el = textareaRef.current
     if (!el || growsByItself) return
@@ -120,11 +124,12 @@ export function QuickDesc({ value, onChange, textareaRef, onKeyDown, placeholder
   return (
     <textarea
       ref={textareaRef}
-      className="qa-desc"
+      className={className}
       rows={1}
       value={value}
       placeholder={placeholder}
-      aria-label="Descrierea sarcinii"
+      aria-label={ariaLabel}
+      readOnly={readOnly}
       onChange={(e) => onChange(e.target.value)}
       onKeyDown={onKeyDown}
       onFocus={onFocus}

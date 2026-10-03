@@ -512,6 +512,67 @@ try {
   }
   await phone.close()
 
+  // ── Foaia de tichet de pe telefon (un tichet existent) ──────────────────
+  // Sub 900px, atingerea unei sarcini deschide aceeași foaie ca adăugarea
+  // rapidă, nu formularul complet — fără focus (deschizi ca să citești).
+  // N-are buton de salvare: descrierea pleacă după pauză, iar reîncărcarea o
+  // dovedește. Back o închide și te lasă pe „Azi"; „…" deschide formularul
+  // complet pe ACELAȘI tichet, iar Back îl închide tot pe „Azi". Filă curată.
+  const tel = await browser.newPage({ viewport: { width: 390, height: 844 } })
+  await tel.goto(BASE, { waitUntil: 'networkidle' })
+  await tel.waitForTimeout(800)
+  const editOpen = () => tel.locator('.edit-sheet').count().then((n) => n > 0)
+  const telOnAzi = async () => /Azi/.test((await tel.locator('.tabbar button.on').textContent().catch(() => '')) ?? '')
+  await tel.locator('.fab').click()
+  await tel.waitForTimeout(400)
+  await tel.keyboard.type('Sarcină pentru foaia de tichet')
+  await tel.keyboard.press('Enter')
+  await tel.waitForTimeout(1000)
+  const openTask = async () => {
+    await tel.locator('.task-row', { hasText: 'Sarcină pentru foaia de tichet' }).first().click()
+    await tel.waitForTimeout(900)
+  }
+  await openTask()
+  check('telefon: atingerea sarcinii deschide foaia de tichet', await editOpen(), (await editOpen()) ? 'foaie deschisă' : 'nu s-a deschis')
+  check('…nu formularul complet', (await tel.locator('.sheet.on').count()) === 0, 'fără `.sheet.on`')
+  const editFocus = await tel.evaluate(() => !!document.activeElement?.closest('.edit-sheet'))
+  check('foaia de tichet nu ia focusul (fără tastatură)', !editFocus, editFocus ? `activ=${await tel.evaluate(() => document.activeElement?.className)}` : 'focusul e în afara foii')
+  const editUrl = new URL(tel.url()).pathname
+  check('foaia de tichet ține URL de tichet', /^\/[A-Z]+-\d+$/.test(editUrl), `URL=${editUrl}`)
+
+  await tel.goBack()
+  await tel.waitForTimeout(600)
+  check('Back închide foaia de tichet', !(await editOpen()), (await editOpen()) ? 'a rămas deschisă' : 'închisă')
+  check('Back lasă ecranul pe „Azi"', (await telOnAzi()) && new URL(tel.url()).pathname === '/', `URL=${new URL(tel.url()).pathname}`)
+
+  await openTask()
+  await tel.locator('.edit-sheet .qa-desc').fill('Descriere salvată singură')
+  await tel.waitForTimeout(1300) // peste pauza de 800ms
+  await tel.reload({ waitUntil: 'networkidle' })
+  await tel.waitForTimeout(1600)
+  // Reîncărcată peste foaie, aplicația o redeschide din URL (deep link) — tot
+  // foaia de tichet, nu formularul.
+  const reDesc = await tel.locator('.edit-sheet .qa-desc').inputValue().catch(() => null)
+  check('descrierea s-a salvat după pauză (verificat prin reîncărcare)', reDesc === 'Descriere salvată singură', JSON.stringify(reDesc))
+  check('deep link pe telefon → foaia de tichet', await editOpen(), (await editOpen()) ? 'foaie' : 'altceva')
+  await tel.keyboard.press('Escape')
+  await tel.waitForTimeout(600)
+  check('Esc închide foaia și rămâi pe „Azi"', !(await editOpen()) && (await telOnAzi()), `URL=${new URL(tel.url()).pathname}`)
+
+  await openTask()
+  const titleBefore = await tel.locator('.edit-sheet .es-title').inputValue()
+  await tel.locator('.edit-sheet .qs-more').click()
+  await tel.waitForTimeout(900)
+  const fullTitle = await tel.locator('.sheet.on .sh-title-input').first().inputValue().catch(() => null)
+  check('„…" deschide formularul complet pe același tichet', fullTitle === titleBefore, `titlu="${fullTitle}"`)
+  check('…și foaia scurtă dispare', !(await editOpen()), 'închisă')
+  check('„…" nu schimbă URL-ul tichetului', new URL(tel.url()).pathname !== '/', `URL=${new URL(tel.url()).pathname}`)
+  await tel.goBack()
+  await tel.waitForTimeout(700)
+  check('Back închide formularul complet', (await tel.locator('.sheet.on').count()) === 0, 'închis')
+  check('…și rămâi pe „Azi"', (await telOnAzi()) && new URL(tel.url()).pathname === '/', `URL=${new URL(tel.url()).pathname}`)
+  await tel.close()
+
   await page.close()
 } finally {
   if (browser) await browser.close()

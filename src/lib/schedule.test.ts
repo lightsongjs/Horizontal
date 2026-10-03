@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   NO_SCHEDULE, buildSmartLists, compareDue, dayOffset, defaultReminder, fromInputs, isOverdue,
-  reminderAt, reminderKindOf, smartListRange, startOfLocalDay, toDateInput, toTimeInput,
+  reminderAt, reminderKindOf, reschedule, smartListRange, startOfLocalDay, toDateInput, toTimeInput,
   toDisplayDate, fromDisplayDate, maskDateInput, displayFromInputDate,
   maskTimeInput, fromTimeText,
 } from './schedule'
@@ -241,5 +241,31 @@ describe('ora în forma hh:mm', () => {
     for (const bad of ['24:00', '25:00', '12:60', '', '15', '15:3', 'hh:mm']) {
       expect(fromTimeText(bad)).toBeNull()
     }
+  })
+})
+
+describe('reschedule', () => {
+  const T10 = new Date(2026, 9, 4, 10, 0).toISOString()
+  const T12 = new Date(2026, 9, 6, 12, 0).toISOString()
+  const DAY = new Date(2026, 9, 6).toISOString()
+  it('mementoul își păstrează decalajul', () => {
+    const prev = { dueAt: T10, allDay: false, remindAt: new Date(new Date(T10).getTime() - 30 * 60_000).toISOString() }
+    expect(reschedule(prev, { dueAt: T12, allDay: false })).toEqual({
+      dueAt: T12, allDay: false, remindAt: new Date(new Date(T12).getTime() - 30 * 60_000).toISOString(),
+    })
+  })
+  it('fără memento rămâne fără memento', () => {
+    expect(reschedule({ dueAt: T10, allDay: false, remindAt: null }, { dueAt: T12, allDay: false }).remindAt).toBeNull()
+  })
+  it('schimbarea formei ia implicitul formei noi', () => {
+    expect(reschedule({ dueAt: T10, allDay: false, remindAt: T10 }, { dueAt: DAY, allDay: true }).remindAt).toBeNull()
+    expect(reschedule({ dueAt: DAY, allDay: true, remindAt: null }, { dueAt: T12, allDay: false }).remindAt).toBe(T12)
+  })
+  it('o scadență nouă ia implicitul', () => {
+    expect(reschedule({ dueAt: null, allDay: true, remindAt: null }, { dueAt: T12, allDay: false }).remindAt).toBe(T12)
+  })
+  it('fără dată pleacă și recurența; cu dată, recurența nu e în patch', () => {
+    expect(reschedule({ dueAt: T10, allDay: false, remindAt: T10 }, { dueAt: null, allDay: true })).toEqual({ dueAt: null, allDay: true, remindAt: null, rrule: null })
+    expect('rrule' in reschedule({ dueAt: T10, allDay: false, remindAt: T10 }, { dueAt: T12, allDay: false })).toBe(false)
   })
 })
