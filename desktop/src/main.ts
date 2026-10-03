@@ -132,6 +132,20 @@ function start() {
       reschedule()
     })
     ipcMain.on('hz:hide-bar', (e) => { if (e.sender === barWin?.webContents) barWin?.hide() })
+    // Bara crește cu descrierea (Tab). Limitată: o pagină stricată n-are voie
+    // să întindă fereastra peste ecran. 150 = înălțimea de la creare, deci fără
+    // descriere bara arată exact ca înainte. `setResizable` în jurul lui
+    // `setContentSize`: pe GTK o fereastră non-resizable poate ignora mărimea.
+    ipcMain.on('hz:resize-bar', (e, height) => {
+      if (!barWin || barWin.isDestroyed() || e.sender !== barWin.webContents) return
+      const h = Math.round(Number(height))
+      if (!Number.isFinite(h)) return
+      const clamped = Math.min(420, Math.max(150, h))
+      if (barWin.getContentSize()[1] === clamped) return
+      barWin.setResizable(true)
+      barWin.setContentSize(720, clamped)
+      barWin.setResizable(false)
+    })
 
     try { notifier = await createNotifier(onNotifyAction) } catch (e) { console.error('D-Bus Notifications indisponibil', e) }
     try { await exportAppService({ quickAdd: showBar, show: showMain, quit: () => app.quit() }) } catch (e) { console.error('D-Bus ro.horizontal.App', e) }

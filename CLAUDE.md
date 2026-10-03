@@ -373,6 +373,47 @@ Pentru a itera pe sunet fără deploy: `tmp-calibrare/sunet/` (gitignorat) conț
 variantele randate în WAV cu aceeași sinteză. Nota actuală (E5, o singură notă) a
 fost aleasă prin ascultare comparativă.
 
+## Foaia rapidă (telefon) și descrierea din quick add
+
+Sub 900px FAB-ul deschide **numai** foaia rapidă (`QuickSheet.tsx`), lipită de
+tastatură — și într-o listă, și într-un proiect. Rândul de quick add din listă
+nu se mai randează sub prag: ar fi fost a doua intrare și ar fi ridicat
+tastatura în mijlocul unei liste care derulează. Pe desktop rămân rândul (tasta
+C) și „+ Tichet".
+
+**O singură stare de captură.** Rândul din listă, bara de captură de pe Linux
+și foaia stau toate pe `useQuickDraft` (`hooks.ts`), iar regulile pe
+`src/lib/quickDraft.ts` (pur, cu teste). Titlul e un singur component,
+`QuickTitle` (`QuickFields.tsx`) — oglinda care desenează data se strică la
+orice diferență de font între straturi, deci un test `?raw` cere ca ambele
+capturi să-l importe. Într-un proiect, fără dată în text tichetul rămâne
+**fără scadență** și intră în valul activ; în listă primește ziua listei.
+
+**Focusul se dă în handlerul atingerii** (`openQuick` din `App.tsx`:
+`flushSync` + `focus()`), nu din efect: Android și iOS ridică tastatura doar la
+un focus venit dintr-un gest. Butoanele foii au `onPointerDown` cu
+`preventDefault`, ca atingerea lor să nu ia focusul și să nu coboare tastatura.
+
+**Tastatura se măsoară, nu se presupune.** `useKeyboardInset` scrie `--kb` din
+`visualViewport`: 0 unde WebView-ul se micșorează, exact tastatura unde nu
+(iOS, edge-to-edge pe targetSdk 36). Neverificat încă pe telefon real:
+`node mobile/scripts/cdp.mjs 'innerHeight+"/"+visualViewport.height'` cu
+tastatura deschisă. Dacă nici nu se micșorează, nici nu mișcă
+`visualViewport`, rămâne `@capacitor/keyboard` (APK nou).
+
+**Istoricul.** Foaia n-are URL, dar împinge o intrare marcată `hzSheet:
+'quick'`, ca Back să o închidă în loc să iasă din aplicație. Orice altă
+închidere (trimite, fundal, Esc) desface intrarea cu un `back()` pe care
+`onPop` îl înghite (`quickPop`); „…" (formularul complet) o moștenește prin
+`replaceState`. După trimitere foaia se închide, iar confirmarea e Toast-ul
+(`showToast` din `ui.tsx`) — cu tastatura jos, nu mai e acoperit.
+
+**Descrierea pe desktop:** Tab peste un titlu început o deschide, Shift+Tab sau
+Backspace pe descriere goală te întorc, Ctrl+Enter salvează din ea (tabelul e
+`quickKey`). Pe un titlu gol Tab rămâne navigare. Bara de captură își cere
+înălțimea prin `resizeBar` (puntea, opțional); o cutie instalată înainte de el
+derulează în loc să crească — se reface cu `npm run desktop:install`.
+
 ## Recurențe — un tichet care sare
 
 O sarcină cu `rrule` bifată **nu se închide**: `due_at` avansează la următoarea

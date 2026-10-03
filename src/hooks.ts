@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type React from 'react'
 import { useHorizontal } from './store'
 import { useUI } from './ui'
@@ -6,7 +6,9 @@ import { useAuth } from './auth'
 import { getRelatedIds } from './lib/treeTraversal'
 import { liveRejections, maskRejected, parseDue, stripSpans, type ParsedDue } from './lib/parseDue'
 import { buildOrderedLayers, type OrderedLayer } from './lib/ordering'
-import type { Project } from './lib/types'
+import type { Issue, Project } from './lib/types'
+import { parseCaptureTokens, type CaptureTokens } from './lib/captureTokens'
+import { draftSchedule, keyboardInset, resolveDraft, type DraftError, type DraftSchedule, type ManualPick, type QuickCtx } from './lib/quickDraft'
 
 const HIDE_DONE_KEY = 'horizontal:hide-done'
 const SIDEBAR_KEY = 'horizontal:sidebar-collapsed'
@@ -533,4 +535,143 @@ export function useTitleDate(
     reset: () => { setRejected([]); setOnDate(false) },
     rejectedKey: liveKey,
   }
+}
+
+/** Proiectul ultimei sarcini adăugate dintr-o listă — fără Inbox, captura pornește de acolo. */
+export const LAST_PROJECT_KEY = 'horizontal:last-task-project'
+
+export interface QuickDraftOptions {
+  ctx: QuickCtx
+  /** Citește `#proiect @om !` din text și trimite omul și urgența (bara, foaia). */
+  tokens?: boolean
+  /** Ține minte proiectul ales, pentru următoarea captură din listă. */
+  rememberProject?: boolean
+  /** Proiectul cu care pornește, peste cel ținut minte (bara de captură: „Daily"). */
+  defaultProjectId?: string
+}
+
+export interface QuickDraft {
+  text: string
+  setText(next: string): void
+  desc: string
+  setDesc(next: string): void
+  date: TitleDate
+  tokens: CaptureTokens | null
+  manual: ManualPick
+  setManual: React.Dispatch<React.SetStateAction<ManualPick>>
+  /** Proiectul în care se va scrie, sau undefined dacă nu există niciunul permis. */
+  project: Project | undefined
+  projects: Project[]
+  /** Alegerea din selector: bate semnul din text și rămâne peste rafală. */
+  pickProject(id: string): void
+  schedule: DraftSchedule
+  /** Titlul care se va salva (fără dată, fără semne). */
+  title: string
+  assigneeId: string | null
+  urgent: boolean
+  /** De ce nu se poate trimite acum, sau null. */
+  error: DraftError | null
+  saving: boolean
+  shake: boolean
+  /** Trimite. Întoarce tichetul creat, sau null dacă n-a plecat nimic. */
+  submit(): Promise<Issue | null>
+  reset(): void
+}
+
+/**
+ * Starea unei capturi: textul, descrierea, ce s-a ales din butoane, și
+ * trimiterea. Un singur hook pentru rândul din listă, bara de captură și foaia
+ * rapidă, ca cele trei să nu poată înțelege diferit același text — regulile
+ * stau în `lib/quickDraft`, aici doar starea și legătura cu depozitul.
+ */
+export function useQuickDraft({ ctx, tokens: withTokens = false, rememberProject = false, defaultProjectId }: QuickDraftOptions): QuickDraft {
+  const { createIssue, assignees } = useHorizontal()
+  // Numai proiectele în care se poate scrie: un selector care oferă un proiect
+  // read-only ar produce o salvare respinsă de RLS, după ce userul a scris tot.
+  const projects = useWritableProjects()
+  const [text, setText] = useState('')
+  const [desc, setDesc] = useState('')
+  const [manual, setManual] = useState<ManualPick>({})
+  const [saving, setSaving] = useState(false)
+  const [shake, setShake] = useState(false)
+  const [projectId, setProjectId] = useState<string>(() => {
+    if (ctx.mode === 'project') return ctx.projectId
+    return defaultProjectId ?? localStorage.getItem(LAST_PROJECT_KEY) ?? ''
+  })
+  // Recunoașterea datei, cu refuzul legat de fragment — vezi `useTitleDate`.
+  const date = useTitleDate(text, { onChange: setText })
+  const tokens = withTokens ? parseCaptureTokens(date.title, projects, assignees) : null
+  const effectiveProjectId = manual.projectId ?? tokens?.projectId ?? projectId
+  const project = projects.find((p) => p.id === effectiveProjectId)
+    ?? projects.find((p) => p.type === 'personal')
+    ?? projects[0]
+
+  const draftDate = { active: date.active, dueAt: date.parsed.dueAt, allDay: date.parsed.allDay, rrule: date.parsed.rrule ?? null, title: date.title }
+  const resolved = resolveDraft({ text, desc, date: draftDate, tokens, manual, projectId: project?.id ?? '', ctx })
+  const error = 'error' in resolved ? resolved.error : null
+  const schedule = draftSchedule(draftDate, manual, ctx)
+
+  const reset = () => { setText(''); setDesc(''); date.reset(); setManual({}) }
+
+  const pickProject = (id: string) => {
+    setProjectId(id)
+    setManual((m) => ({ ...m, projectId: id }))
+    if (rememberProject) localStorage.setItem(LAST_PROJECT_KEY, id)
+  }
+
+  const submit = async (): Promise<Issue | null> => {
+    if (saving || !project) return null
+    if (error === 'empty') return null
+    if ('error' in resolved) { setShake(true); setTimeout(() => setShake(false), 320); return null }
+    setSaving(true)
+    try {
+      const created = await createIssue(resolved)
+      if (rememberProject) localStorage.setItem(LAST_PROJECT_KEY, resolved.projectId)
+      // Proiectul ales din selector rămâne peste rafală (e în `projectId`);
+      // restul alegerilor sunt ale sarcinii trimise.
+      reset()
+      return created
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return {
+    text, setText, desc, setDesc, date, tokens, manual, setManual, project, projects, pickProject,
+    schedule,
+    title: (tokens ? tokens.title : date.title).trim(),
+    assigneeId: manual.assigneeId !== undefined ? manual.assigneeId : tokens?.assigneeId ?? null,
+    urgent: manual.urgent ?? tokens?.urgent ?? false,
+    error, saving, shake, submit, reset,
+  }
+}
+
+/**
+ * Ridică o foaie deasupra tastaturii de pe telefon: scrie `--kb` (cât acoperă
+ * tastatura) și `--vvh` (înălțimea vizibilă) pe element.
+ *
+ * Măsurat, nu presupus. `interactive-widget=resizes-content` micșorează
+ * fereastra în Chrome, dar WebView-ul Android cu edge-to-edge forțat (targetSdk
+ * 36) poate să n-o facă, iar iOS nu o face niciodată. `keyboardInset` dă 0 în
+ * primul caz și exact tastatura în celelalte, deci aceeași foaie merge în toate.
+ */
+export function useKeyboardInset(ref: React.RefObject<HTMLElement>) {
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const vv = window.visualViewport
+    const apply = () => {
+      el.style.setProperty('--kb', `${vv ? keyboardInset(window.innerHeight, vv) : 0}px`)
+      el.style.setProperty('--vvh', `${Math.round(vv ? vv.height : window.innerHeight)}px`)
+    }
+    apply()
+    vv?.addEventListener('resize', apply)
+    vv?.addEventListener('scroll', apply)
+    window.addEventListener('resize', apply)
+    return () => {
+      vv?.removeEventListener('resize', apply)
+      vv?.removeEventListener('scroll', apply)
+      window.removeEventListener('resize', apply)
+    }
+  }, [ref])
 }

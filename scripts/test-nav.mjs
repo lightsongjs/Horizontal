@@ -434,6 +434,84 @@ try {
   )
   await pass.close()
 
+  // ── Foaia rapidă de pe telefon (FAB) ────────────────────────────────────
+  // Sub 900px FAB-ul deschide NUMAI foaia rapidă, cu focusul dat chiar în
+  // handlerul atingerii (altfel telefonul nu ridică tastatura). Enter creează
+  // sarcina și închide foaia; Back o închide fără să părăsească ecranul; o
+  // închidere pe fundal nu lasă în istoric o intrare moartă. Într-un proiect,
+  // tichetul nu primește scadența implicită a listei. Filă curată, ca un
+  // `back()` să nu aterizeze pe tichetele testelor de mai sus.
+  const phone = await browser.newPage({ viewport: { width: 390, height: 844 } })
+  await phone.goto(BASE, { waitUntil: 'networkidle' })
+  await phone.waitForTimeout(800)
+  const sheetOpen = () => phone.locator('.quick-sheet').count().then((n) => n > 0)
+  const onAzi = async () => /Azi/.test((await phone.locator('.tabbar button.on').textContent().catch(() => '')) ?? '')
+  check('telefon: fără rând de captură în listă', (await phone.locator('.smart-list .qa').count()) === 0, 'captura e foaia din FAB')
+
+  await phone.locator('.fab').click()
+  await phone.waitForTimeout(400)
+  const focusInTitle = await phone.evaluate(() => !!document.activeElement?.closest('.quick-sheet') && document.activeElement.classList.contains('qa-input'))
+  check('FAB pe „Azi" deschide foaia rapidă', await sheetOpen(), (await sheetOpen()) ? 'foaie deschisă' : 'nu s-a deschis nimic')
+  check('focusul e în titlul foii', focusInTitle, focusInTitle ? 'cursorul e în titlu' : `activ=${await phone.evaluate(() => document.activeElement?.className)}`)
+  const marked = await phone.evaluate(() => history.state?.hzSheet === 'quick')
+  check('foaia are intrare în istoric', marked, `state=${JSON.stringify(await phone.evaluate(() => history.state))}`)
+
+  await phone.keyboard.type('Sarcină din foaia rapidă')
+  await phone.keyboard.press('Enter')
+  await phone.waitForTimeout(1200)
+  const rowsAfter = await phone.locator('.task-row').allInnerTexts()
+  check('Enter creează sarcina în „Azi"', rowsAfter.some((r) => r.includes('Sarcină din foaia rapidă')), `${rowsAfter.length} rânduri`)
+  check('după trimitere foaia se închide', !(await sheetOpen()), (await sheetOpen()) ? 'a rămas deschisă' : 'închisă')
+  check('după trimitere rămâi pe „Azi"', await onAzi(), `URL=${new URL(phone.url()).pathname}`)
+  const toastTxt = (await phone.locator('.toast').textContent().catch(() => '')) ?? ''
+  check('confirmarea vine în Toast', /Adăugat/.test(toastTxt), `toast="${toastTxt.trim()}"`)
+  check('trimiterea desface intrarea foii', !(await phone.evaluate(() => history.state?.hzSheet)), `state=${JSON.stringify(await phone.evaluate(() => history.state))}`)
+
+  await phone.locator('.fab').click()
+  await phone.waitForTimeout(400)
+  await phone.keyboard.type('nu se salvează')
+  await phone.goBack()
+  await phone.waitForTimeout(600)
+  check('Back închide foaia', !(await sheetOpen()), (await sheetOpen()) ? 'a rămas deschisă' : 'închisă')
+  check('Back lasă ecranul pe „Azi"', (await onAzi()) && new URL(phone.url()).pathname === '/', `URL=${new URL(phone.url()).pathname}`)
+  const notSaved = !(await phone.locator('.task-row').allInnerTexts()).some((r) => r.includes('nu se salvează'))
+  check('Back nu salvează', notSaved, notSaved ? 'nimic nou' : 'a creat sarcina')
+
+  await phone.locator('.fab').click()
+  await phone.waitForTimeout(400)
+  const lenOpen = await phone.evaluate(() => history.length)
+  await phone.mouse.click(195, 60) // fundalul estompat, deasupra foii
+  await phone.waitForTimeout(600)
+  check('atingerea fundalului închide foaia', !(await sheetOpen()), (await sheetOpen()) ? 'a rămas deschisă' : 'închisă')
+  const afterBg = await phone.evaluate(() => ({ marked: history.state?.hzSheet ?? null, path: location.pathname }))
+  check('închiderea pe fundal nu lasă intrare moartă', afterBg.marked === null && afterBg.path === '/', `${JSON.stringify(afterBg)}, history.length=${lenOpen}`)
+  check('…și rămâi pe „Azi"', await onAzi(), 'ecranul nu s-a schimbat')
+
+  // Proiect: tichet fără scadență.
+  await phone.locator('.tabbar button', { hasText: 'Proiecte' }).click()
+  await phone.waitForTimeout(600)
+  await phone.locator('.proj').first().click()
+  await phone.waitForTimeout(900)
+  await phone.locator('.fab').click()
+  await phone.waitForTimeout(400)
+  check('FAB într-un proiect deschide foaia rapidă', await sheetOpen(), 'foaie')
+  const dueTxt = (await phone.locator('.qs-due').textContent().catch(() => '')) ?? ''
+  check('în proiect jetonul spune „Fără dată"', /Fără dată/.test(dueTxt), `jeton="${dueTxt.trim()}"`)
+  await phone.keyboard.type('Tichet din foaia rapidă')
+  await phone.keyboard.press('Enter')
+  await phone.waitForTimeout(1200)
+  check('foaia din proiect se închide după trimitere', !(await sheetOpen()), 'închisă')
+  await phone.locator('.tab', { hasText: /^List/ }).first().click().catch(() => {})
+  await phone.waitForTimeout(600)
+  const row = phone.locator('.list-row', { hasText: 'Tichet din foaia rapidă' }).first()
+  const rowFound = (await row.count()) > 0
+  check('tichetul din foaie apare în „Listă"', rowFound, rowFound ? 'găsit' : 'lipsește')
+  if (rowFound) {
+    const dueChips = await row.locator('.due-chip').count()
+    check('tichetul de proiect n-are scadență', dueChips === 0, dueChips ? 'are jeton de scadență' : 'fără scadență')
+  }
+  await phone.close()
+
   await page.close()
 } finally {
   if (browser) await browser.close()

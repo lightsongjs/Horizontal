@@ -9,6 +9,7 @@ import {
   OctagonAlert,
   CornerUpRight,
   CircleQuestionMark,
+  Ellipsis,
   Eye,
   EyeOff,
   LogOut,
@@ -141,6 +142,9 @@ const ICONS = {
   tomorrow: CalendarClock,
   due: CalendarCheck,
   urgent: Zap,
+  // Foaia rapidă: trimite (rotund, accent) și „…” = formularul complet.
+  send: ArrowUp,
+  more: Ellipsis,
 } as const
 
 export type IconName = keyof typeof ICONS

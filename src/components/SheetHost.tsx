@@ -9,13 +9,17 @@ import { ThemeManager } from './ThemeManager'
 import { ObstacleForm } from './ObstacleForm'
 import { UserForm } from './UserForm'
 import { Icon } from './Icon'
+import { QuickSheet } from './QuickSheet'
 
 export function SheetHost() {
   const { sheet, canGoBack, closeSheet, goBack, dockedIssueId } = useUI()
   // Când formularul stă în panoul lateral, stiva e exact el — deci aici nu mai
   // rămâne nimic de arătat, nici modal, nici fundal. Un card de dependență
   // împins deasupra lui iese din condiția de docare și modalul revine.
-  const open = sheet.kind !== 'none' && !dockedIssueId
+  // Foaia rapidă are altă cochilie (`KeyboardSheet`), deci nu deschide `.sheet`
+  // — doar Escape-ul de mai jos îi e comun.
+  const quick = sheet.kind === 'quick-add'
+  const open = sheet.kind !== 'none' && !dockedIssueId && !quick
   const tall =
     sheet.kind === 'issue-form' ||
     sheet.kind === 'project-form' ||
@@ -26,7 +30,7 @@ export function SheetHost() {
     sheet.kind === 'user-form'
 
   useEffect(() => {
-    if (!open) return
+    if (!open && !quick) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (canGoBack) goBack()
@@ -35,7 +39,7 @@ export function SheetHost() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open, canGoBack, closeSheet, goBack])
+  }, [open, quick, canGoBack, closeSheet, goBack])
 
   // Vizualizarea unui tichet primește o clasă proprie ca să poată fi mai lată
   // și mai înaltă pe desktop decât un sheet obișnuit: conținutul ei e text de
@@ -53,7 +57,7 @@ export function SheetHost() {
           </button>
         )}
         {sheet.kind === 'issue' && <IssueSheet key={sheetKey(sheet)} issueId={sheet.issueId} />}
-        {sheet.kind === 'issue-form' && !dockedIssueId && <IssueForm key={sheetKey(sheet) ?? '__new__'} issueId={sheet.issueId} />}
+        {sheet.kind === 'issue-form' && !dockedIssueId && <IssueForm key={sheetKey(sheet) ?? '__new__'} issueId={sheet.issueId} draft={sheet.draft} />}
         {sheet.kind === 'project-form' && <ProjectForm />}
         {sheet.kind === 'project-settings' && <ProjectSettings />}
         {sheet.kind === 'wave-manage' && <WaveManager />}
@@ -63,6 +67,7 @@ export function SheetHost() {
         )}
         {sheet.kind === 'user-form' && <UserForm key={sheet.userId ?? '__new__'} userId={sheet.userId} />}
       </div>
+      {sheet.kind === 'quick-add' && <QuickSheet ctx={sheet.ctx} />}
     </>
   )
 }

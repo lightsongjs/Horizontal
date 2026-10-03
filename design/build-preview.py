@@ -915,6 +915,30 @@ CONTROALE = ''.join([
       '<div class="holder free">nepasat — stă la Alex</div>'),
 ])
 
+# ═══ FOAIA RAPIDĂ (telefon) ══════════════════════════════════════════════════
+# Ce deschide FAB-ul sub 900px: lista „Azi" estompată în spate, foaia lipită de
+# tastatură (aici de fundul ecranului — bancul n-are tastatură). Titlul cu o dată
+# recunoscută, descrierea, banda de dată deschisă și rândul de controale cu
+# urgent aprins, ca starea activă să se vadă lângă cea normală.
+FOAIE = ('<div class="sheet-bg on"></div>'
+         '<div class="kb-sheet quick-sheet" role="dialog"><form class="qs-form">'
+         '<span class="qa-wrap"><span class="qa-mirror">Sună la bancă <mark>mâine la 10</mark></span>'
+         '<input class="qa-input" value="Sună la bancă mâine la 10" /></span>'
+         '<textarea class="qa-desc" rows="2" placeholder="Descriere">Întreabă de dobânda la depozit</textarea>'
+         '<div class="qs-when">%s<input type="date" value="2026-09-10" /><input type="time" value="10:00" />'
+         '<button type="button" class="qs-clear">fără dată</button></div>'
+         '<div class="qs-bar">'
+         '<button type="button" class="qs-due on">%s<span class="qs-due-t">Mâine 10:00</span></button>'
+         '<button type="button" class="qs-ico qs-urgent on" aria-label="Urgent">%s</button>'
+         '<label class="qs-sel qs-proj"><span class="t-dot" style="background:#6e7bff"></span>'
+         '<span class="qs-sel-t">Aplicație Turism</span><select><option>Aplicație Turism</option></select></label>'
+         '<label class="qs-sel qs-who">%s<select><option>al meu</option></select></label>'
+         '<button type="button" class="qs-ico qs-more" aria-label="Formularul complet">%s</button>'
+         '<button type="submit" class="qs-send" aria-label="Adaugă">%s</button>'
+         '</div></form></div>'
+         % (ic('calendar-check', 14), ic('calendar-check', 15), ic('zap', 16), ic('user', 15),
+            ic('ellipsis', 16), ic('arrow-up', 18)))
+
 SCREENS = {
     'ordine': ('Aplicație Turism', 'Ordine · val I', 'TU', True, True,
                '<div class="tabs"><button class="tab on">Ordine</button><button class="tab">Listă</button>'
@@ -961,6 +985,8 @@ SCREENS = {
             + '</aside></div>'),
     # Cutia de pase — al patrulea tab, fără crumb de proiect (InboxView.tsx
     # n-are `project`, vezi Header cu `inbox` prop în App.tsx).
+    'foaie': ('Azi', 'foaia rapidă · telefon', None, False, False,
+              '<div class="panel smart-list">' + AZI.replace(QA, '') + '</div>' + FOAIE),
     'pe-mine': ('Ale mele', 'Ce ți-a pasat cineva.', ic('user', 18), False, False,
                 '<div class="panel inbox-pad">' + PE_MINE + '</div>'),
 }
@@ -1057,6 +1083,7 @@ SHELL = """<!doctype html>
   <button data-go="lista-gol">Listă · gol</button>
   <button data-go="harta">Hartă</button>
   <button data-go="fir">Fir</button>
+  <button data-go="foaie">Foaie rapidă</button>
   <button data-go="pe-mine">Ale mele</button>
   <button data-go="utilizatori">Utilizatori</button>
   <button data-go="cont">Cont</button>
@@ -1094,7 +1121,7 @@ __TABBAR__
 """
 
 html = (SHELL
-        .replace('__SCREENS__', ''.join(screen(k) for k in ('ordine', 'proiecte', 'azi', 'lista', 'lista-gol', 'harta', 'fir', 'pe-mine', 'utilizatori', 'cont', 'controale')))
+        .replace('__SCREENS__', ''.join(screen(k) for k in ('ordine', 'proiecte', 'azi', 'lista', 'lista-gol', 'harta', 'fir', 'foaie', 'pe-mine', 'utilizatori', 'cont', 'controale')))
         .replace('__TABBAR__', TABBAR))
 out = os.path.join(ROOT, 'design/preview.html')
 io.open(out, 'w', encoding='utf-8').write(html)

@@ -1,37 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { useHorizontal } from '../store'
-import { useTitleDate, useWritableProjects } from '../hooks'
-import { dayOffset, defaultReminder, fromInputs, reminderAt, toDateInput, toDisplayDate, toTimeInput } from '../lib/schedule'
-import { parseCaptureTokens } from '../lib/captureTokens'
+import { useQuickDraft } from '../hooks'
+import { fromInputs, toDateInput, toTimeInput } from '../lib/schedule'
 import { describeRrule } from '../lib/recurrence'
+import { dueLabel, quickKey } from '../lib/quickDraft'
 import { Icon } from './Icon'
-
-const LAST_PROJECT_KEY = 'horizontal:last-task-project'
-const DAYS = ['Dum', 'Lun', 'Mar', 'Mie', 'Joi', 'Vin', 'Sâm']
-
-/**
- * Ce scrie jetonul de scadență.
- *
- * Pentru zilele apropiate, cuvântul e mai clar decât cifrele: „Azi 15:00" se
- * citește dintr-o privire, „24-08-2026 15:00" cere o secundă de socoteală.
- * Mai departe de mâine, data numerică e cea neambiguă — cu ziua săptămânii
- * înaintea ei, fiindcă întrebarea reală e adesea „în ce zi cade?".
- */
-function dueLabel(iso: string, allDay: boolean, now: Date): string {
-  const off = dayOffset(iso, now)
-  const day =
-    off === 0 ? 'Azi'
-      : off === 1 ? 'Mâine'
-        : off === -1 ? 'Ieri'
-          : `${DAYS[new Date(iso).getDay()]} ${toDisplayDate(iso)}`
-  return allDay ? day : `${day} ${toTimeInput(iso)}`
-}
+import { QuickDesc, QuickTitle } from './QuickFields'
 
 interface Props {
   /** Scadența implicită când textul nu conține niciuna (ziua listei deschise). */
   defaultDueAt: string
   onAdded?(): void
-  /** Se schimbă la fiecare cerere de focus din afară (butonul „+" din bara de jos). */
+  /** Se schimbă la fiecare cerere de focus din afară (tasta C). */
   focusSignal?: number
   /** Proiectul cu care pornește, peste cel ținut minte (bara de captură: „Daily"). */
   defaultProjectId?: string
@@ -40,44 +20,42 @@ interface Props {
 }
 
 /**
- * Rândul de adăugare rapidă. Parsează data din titlu pe măsură ce se scrie și
- * o arată în două locuri: fragmentul recunoscut, evidențiat CHIAR ÎN input
- * printr-un strat-oglindă poziționat identic, și un jeton cu ce a înțeles, cu
- * un × care îl respinge.
+ * Rândul de adăugare rapidă (desktop) și bara de captură (`rich`). Parsează
+ * data din titlu pe măsură ce se scrie și o arată în două locuri: fragmentul
+ * recunoscut, evidențiat CHIAR ÎN input printr-un strat-oglindă poziționat
+ * identic (`QuickTitle`), și un jeton cu ce a înțeles, cu un × care îl respinge.
  *
  * Fără cele două, un parser bun devine dușman la primul „Întâlnire la Podul 5":
  * userul trebuie să vadă ce s-a interpretat înainte să apese Enter, și să poată
  * spune nu.
  *
+ * Tab peste un titlu început deschide descrierea dedesubt; acolo Enter e rând
+ * nou, iar Ctrl+Enter salvează (tabelul e `quickKey`). Pe telefon rândul nu se
+ * arată: acolo captura e foaia rapidă (`QuickSheet`), peste aceeași stare.
+ *
  * Fără Inbox, fiecare sarcină are un proiect — de asta rândul poartă un
  * selector care ține minte ultima alegere.
  */
 export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, defaultProjectId, rich = false }: Props) {
-  const { createIssue, assignees } = useHorizontal()
-  // Numai proiectele în care se poate scrie: un selector care oferă un proiect
-  // read-only ar produce o salvare respinsă de RLS, după ce userul a scris tot.
-  const projects = useWritableProjects()
-  const [text, setText] = useState('')
-  const [focus, setFocus] = useState(false)
-  const [shake, setShake] = useState(false)
-  // Indiciul care spune că evidențierea se poate refuza cu o atingere. Apare o
-  // dată, la prima recunoaștere, și pleacă singur: e o instrucțiune, nu o stare.
-  const [tip, setTip] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [projectId, setProjectId] = useState<string>(() => {
-    return defaultProjectId ?? localStorage.getItem(LAST_PROJECT_KEY) ?? ''
+  const { assignees } = useHorizontal()
+  const q = useQuickDraft({
+    ctx: { mode: 'list', defaultDueAt },
+    tokens: rich,
+    // Bara pornește mereu pe „Daily" — ce alegi acolo e al rundei, nu al listei.
+    rememberProject: !rich,
+    defaultProjectId,
   })
-  // Ce a ales omul din butoane. Lipsa cheii = n-a atins butonul; `assigneeId:
-  // null` = a ales explicit „al meu". Butonul bate semnul din text: e corectura.
-  const [manual, setManual] = useState<{ projectId?: string; assigneeId?: string | null; urgent?: boolean; due?: { dueAt: string | null; allDay: boolean } }>({})
+  const { text, desc, date, tokens, project, projects, schedule, error, saving, assigneeId, urgent } = q
+  const [focus, setFocus] = useState(false)
+  const [descOpen, setDescOpen] = useState(false)
+  const [descFocus, setDescFocus] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
-  // Recunoașterea datei, cu refuzul legat de fragment — vezi `useTitleDate`.
-  const date = useTitleDate(text, { onChange: setText })
+  const descRef = useRef<HTMLTextAreaElement>(null)
 
-  // Focus cerut din afară, prin butonul „+". Reținem valoarea de la montare
+  // Focus cerut din afară (tasta C). Reținem valoarea de la montare
   // și focusăm numai când se SCHIMBĂ față de ea — nu la montare.
   //
-  // Altfel: contorul din `Shell` rămâne ≥1 după primul „+", deci fiecare
+  // Altfel: contorul din `Shell` rămâne ≥1 după primul „C", deci fiecare
   // revenire pe listă remonta componenta cu un semnal deja pozitiv și ridica
   // tastatura nechemată. Deschiderea unei liste nu e o cerere de a scrie.
   const signalAtMount = useRef(focusSignal)
@@ -87,40 +65,17 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, defaultProjec
     inputRef.current?.focus()
   }, [focusSignal])
 
-  const tokens = rich ? parseCaptureTokens(date.title, projects, assignees) : null
-  const effectiveProjectId = manual.projectId ?? tokens?.projectId ?? projectId
-  const project = projects.find((p) => p.id === effectiveProjectId)
-    ?? projects.find((p) => p.type === 'personal')
-    ?? projects[0]
-
-  const parsed = date.parsed
   const useParsed = date.active
-
-  // Indiciul apare când recunoașterea se aprinde și pleacă singur. Depinde de
-  // TRECEREA în „am înțeles ceva", nu de fiecare tastă: altfel ar sta lipit pe
-  // ecran cât timp scrii, adică exact peste textul pe care îl citești.
-  useEffect(() => {
-    if (!useParsed) return
-    setTip(true)
-    const t = setTimeout(() => setTip(false), 4200)
-    return () => clearTimeout(t)
-  }, [useParsed])
-  const dueAt = manual.due ? manual.due.dueAt : useParsed ? parsed.dueAt! : defaultDueAt
-  const allDay = manual.due ? manual.due.allDay : useParsed ? parsed.allDay : true
-  const title = (tokens ? tokens.title : date.title).trim()
-  const assigneeId = manual.assigneeId !== undefined ? manual.assigneeId : tokens?.assigneeId ?? null
-  const urgent = manual.urgent ?? tokens?.urgent ?? false
+  const { dueAt, allDay } = schedule
   // Calculat o singură dată — nu de două ori în JSX (condiție + text).
-  const recur = useParsed && !manual.due && parsed.rrule ? describeRrule(parsed.rrule) : ''
-  // Text numai-dată: „azi la 8" n-are ce să salveze.
-  const bare = text.trim() !== '' && title === ''
+  const recur = schedule.rrule ? describeRrule(schedule.rrule) : ''
+  const bare = error === 'bare'
 
-  const reset = () => { setText(''); date.reset(); setTip(false); setManual({}) }
+  const reset = () => { q.reset(); setDescOpen(false) }
 
   /** „Nu e o dată." Tot ce e evidențiat acum rămâne text în titlu. */
   const rejectDate = () => {
     date.rejectAll()
-    setTip(false)
     const el = inputRef.current
     if (!el) return
     // Cursorul la sfârșit, ca după atingerea pe fragment: refuzul e o comandă,
@@ -130,29 +85,37 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, defaultProjec
   }
 
   const submit = async () => {
-    if (saving || !project) return
-    if (!text.trim()) return
-    if (bare) { setShake(true); setTimeout(() => setShake(false), 320); return }
-    setSaving(true)
-    try {
-      await createIssue({
-        projectId: project.id,
-        title,
-        dueAt,
-        allDay,
-        remindAt: reminderAt(dueAt, defaultReminder(allDay)),
-        rrule: useParsed && !manual.due ? parsed.rrule : null,
-        // Doar din bară: în „Azi" rândul nu are cum să le aleagă, iar un
-        // `assigneeId: null` explicit e tot „al creatorului".
-        ...(rich ? { assigneeId, urgent } : {}),
-      })
-      if (!rich) localStorage.setItem(LAST_PROJECT_KEY, project.id)
-      reset()
-      onAdded?.()
-      inputRef.current?.focus()
-    } finally {
-      setSaving(false)
-    }
+    const created = await q.submit()
+    if (!created) return
+    setDescOpen(false)
+    onAdded?.()
+    inputRef.current?.focus()
+  }
+
+  const openDesc = () => {
+    setDescOpen(true)
+    // După randare: textarea abia apare.
+    requestAnimationFrame(() => descRef.current?.focus())
+  }
+
+  const toTitle = () => {
+    if (!desc.trim()) { q.setDesc(''); setDescOpen(false) }
+    inputRef.current?.focus()
+  }
+
+  const onKey = (field: 'title' | 'desc') => (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const action = quickKey({
+      key: e.key,
+      shift: e.shiftKey,
+      mod: e.ctrlKey || e.metaKey,
+      field,
+      titleEmpty: text.trim() === '',
+      descEmpty: desc === '',
+    })
+    if (action === 'submit') { e.preventDefault(); void submit() }
+    else if (action === 'open-desc') { e.preventDefault(); openDesc() }
+    else if (action === 'to-title') { e.preventDefault(); toTitle() }
+    else if (e.key === 'Escape' && (text || desc)) { e.preventDefault(); reset(); inputRef.current?.focus() }
   }
 
   if (!project) {
@@ -166,7 +129,7 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, defaultProjec
   }
 
   return (
-    <div className={`qa ${focus ? 'focus' : ''} ${shake ? 'shake' : ''}`}>
+    <div className={`qa ${focus ? 'focus' : ''} ${q.shake ? 'shake' : ''}`}>
       <form
         className="qa-form"
         autoComplete="off"
@@ -174,53 +137,31 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, defaultProjec
       >
       <div className="qa-row">
         <span className="qa-plus" aria-hidden="true">+</span>
-        <span
-          className={`qa-wrap ${date.onDate ? 'on-date' : ''}`}
-          // Titlul stă pe înveliș, nu pe input: inputul e transparent și acoperă
-          // tot rândul, deci un `title` pe el ar explica „atinge ca să anulezi"
-          // și acolo unde nu e nicio dată de anulat.
-          title={date.onDate ? 'Nu e o dată — atinge ca să rămână text în titlu' : undefined}
-        >
-          {tip && (
-            <span className="qa-tip" role="status">
-              Am recunoscut o dată — atinge fragmentul evidențiat ca să o anulezi.
-            </span>
-          )}
-          {/* Oglinda desenează evidențierea, inputul stă transparent deasupra. */}
-          <span className="qa-mirror" ref={date.mirrorRef} aria-hidden="true">
-            {date.pieces.map((p, i) => (p.mark ? <mark key={i}>{p.text}</mark> : <span key={i}>{p.text}</span>))}
-          </span>
-          <input
-            ref={inputRef}
-            className="qa-input"
-            // Vezi comentariul din IssueForm: `search` e ultima pârghie peste
-            // bara de autofill a Chrome. Butonul nativ de golire e ascuns din
-            // CSS — ar fi stat peste stratul-oglindă care desenează data.
-            type="search"
-            value={text}
-            name="titlu-sarcina"
-            autoComplete="off"
-            autoCorrect="off"
-            enterKeyHint="done"
-            spellCheck={false}
-            placeholder="Adaugă o sarcină… încearcă „mâine la 9”"
-            onChange={(e) => setText(e.target.value)}
-            onFocus={() => setFocus(true)}
-            onBlur={() => setFocus(false)}
-            // O atingere PE fragmentul recunoscut înseamnă „nu e o dată".
-            {...date.inputProps}
-            // Oglinda nu se derulează singură: fără asta, evidențierea rămâne
-            // în urmă la un titlu mai lung decât inputul.
-            onScroll={(e) => {
-              if (date.mirrorRef.current) date.mirrorRef.current.scrollLeft = e.currentTarget.scrollLeft
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') { e.preventDefault(); void submit() }
-              else if (e.key === 'Escape' && text) { e.preventDefault(); reset() }
-            }}
-          />
-        </span>
+        <QuickTitle
+          date={date}
+          text={text}
+          onText={q.setText}
+          inputRef={inputRef}
+          placeholder="Adaugă o sarcină… încearcă „mâine la 9”"
+          enterKeyHint="done"
+          onFocus={() => setFocus(true)}
+          onBlur={() => setFocus(false)}
+          onKeyDown={onKey('title')}
+        />
       </div>
+
+      {descOpen && (
+        <div className="qa-desc-row">
+          <QuickDesc
+            value={desc}
+            onChange={q.setDesc}
+            textareaRef={descRef}
+            onKeyDown={onKey('desc')}
+            onFocus={() => { setFocus(true); setDescFocus(true) }}
+            onBlur={() => { setFocus(false); setDescFocus(false) }}
+          />
+        </div>
+      )}
 
       {text.trim() !== '' && (
         <div className="qa-meta">
@@ -260,7 +201,7 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, defaultProjec
             <span className="t-dot" style={{ background: project.accent }} />
             <select
               value={project.id}
-              onChange={(e) => { setProjectId(e.target.value); localStorage.setItem(LAST_PROJECT_KEY, e.target.value) }}
+              onChange={(e) => q.pickProject(e.target.value)}
             >
               {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
@@ -268,7 +209,12 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, defaultProjec
           )}
 
           <span className={`qa-hint ${bare || tokens?.unknown.length ? 'warn' : ''}`}>
-            {tokens?.unknown.length ? `nu știu ${tokens.unknown.join(', ')}` : bare ? 'și ce ai de făcut?' : saving ? 'se salvează…' : <><kbd>↵</kbd> adaugă</>}
+            {tokens?.unknown.length ? `nu știu ${tokens.unknown.join(', ')}`
+              : bare ? 'și ce ai de făcut?'
+                : saving ? 'se salvează…'
+                  : descFocus ? <><kbd>Ctrl+↵</kbd> adaugă</>
+                    : descOpen ? <><kbd>↵</kbd> adaugă</>
+                      : <><kbd>Tab</kbd> descriere · <kbd>↵</kbd> adaugă</>}
           </span>
         </div>
       )}
@@ -277,13 +223,13 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, defaultProjec
         <div className="qa-meta qa-rich">
           <label className="qa-proj" title="Proiectul sarcinii (sau #nume în text)">
             <span className="t-dot" style={{ background: project.accent }} />
-            <select value={project.id} onChange={(e) => setManual((m) => ({ ...m, projectId: e.target.value }))}>
+            <select value={project.id} onChange={(e) => q.pickProject(e.target.value)}>
               {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </label>
           <label className="qa-who" title="Cui îi pasezi sarcina (sau @nume în text)">
             <Icon name="people" size={13} />
-            <select value={assigneeId ?? ''} onChange={(e) => setManual((m) => ({ ...m, assigneeId: e.target.value || null }))}>
+            <select value={assigneeId ?? ''} onChange={(e) => q.setManual((m) => ({ ...m, assigneeId: e.target.value || null }))}>
               <option value="">al meu</option>
               {assignees.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
@@ -293,12 +239,12 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, defaultProjec
             <input
               type="date"
               value={dueAt ? toDateInput(dueAt) : ''}
-              onChange={(e) => setManual((m) => ({ ...m, due: fromInputs(e.target.value, dueAt && !allDay ? toTimeInput(dueAt) : '') }))}
+              onChange={(e) => q.setManual((m) => ({ ...m, due: fromInputs(e.target.value, dueAt && !allDay ? toTimeInput(dueAt) : '') }))}
             />
             <input
               type="time"
               value={dueAt && !allDay ? toTimeInput(dueAt) : ''}
-              onChange={(e) => setManual((m) => ({ ...m, due: fromInputs(dueAt ? toDateInput(dueAt) : toDateInput(defaultDueAt), e.target.value) }))}
+              onChange={(e) => q.setManual((m) => ({ ...m, due: fromInputs(dueAt ? toDateInput(dueAt) : toDateInput(defaultDueAt), e.target.value) }))}
             />
           </span>
           <button
@@ -306,7 +252,7 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, defaultProjec
             className={`qa-urgent ${urgent ? 'on' : ''}`}
             aria-pressed={urgent}
             title="Urgent (sau ! în text)"
-            onClick={() => setManual((m) => ({ ...m, urgent: !urgent }))}
+            onClick={() => q.setManual((m) => ({ ...m, urgent: !urgent }))}
           >
             <Icon name="urgent" size={13} /> urgent
           </button>

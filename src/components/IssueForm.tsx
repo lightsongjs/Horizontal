@@ -3,7 +3,7 @@ import { detectCycle, requiredDepWave } from '../lib/engine'
 import { buildAssigneeOptions, type AssigneeOption } from '../lib/assigneeOptions'
 import { useAuth } from '../auth'
 import { useHorizontal } from '../store'
-import { useUI } from '../ui'
+import { useUI, type IssueDraft } from '../ui'
 import { useCanWrite, useMediaQuery, useTitleDate } from '../hooks'
 import { ticketUrl } from '../lib/deepLink'
 import { stripSpans } from '../lib/parseDue'
@@ -275,7 +275,7 @@ function AssigneeSearch({ assigneeId, assignees, members, myAssigneeId, myUserId
  *   focusul la fiecare click în listă, și își raportează starea „nesalvat”
  *   către `ui.tsx`, care oprește prima comutare pe alt tichet.
  */
-export function IssueForm({ issueId, docked = false }: { issueId?: string; docked?: boolean }) {
+export function IssueForm({ issueId, docked = false, draft }: { issueId?: string; docked?: boolean; draft?: IssueDraft }) {
   const { project, waves, themes, issues, byId, activeWave, createIssue, updateIssue, deleteIssue, createTheme, assignees, myAssigneeId, createAssignee, assigneeShort, projectMembers, ensureAssigneeForMember, obstacles, obstaclesOf, createObstacle, setIssueObstacles, reportError } = useHorizontal()
   const { closeSheet, setCloseGuard, pushSheet, openEditIssue, setDockedDirty, saveNudge } = useUI()
   const { session } = useAuth()
@@ -344,11 +344,14 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
     // listener-ul la fiecare mutație de ticket.
   }, [isEdit, copyLink, existing?.id])
 
-  const [title, setTitle] = useState(existing?.title ?? '')
-  const [desc, setDesc] = useState(existing?.desc ?? '')
+  // `draft`: ce a scris omul în foaia rapidă înainte de „…” — numai pentru un
+  // tichet nou; unul existent se citește din store, ca până acum.
+  const seed = existing ? undefined : draft
+  const [title, setTitle] = useState(existing?.title ?? seed?.title ?? '')
+  const [desc, setDesc] = useState(existing?.desc ?? seed?.desc ?? '')
   const [theme, setTheme] = useState(existing?.theme ?? '')
   const [wave, setWave] = useState(existing?.wave ?? activeWave)
-  const [assigneeId, setAssigneeId] = useState<string | null>(existing?.assigneeId ?? null)
+  const [assigneeId, setAssigneeId] = useState<string | null>(existing?.assigneeId ?? seed?.assigneeId ?? null)
   const [deps, setDeps] = useState<string[]>(existing?.deps ?? [])
   const [blocks, setBlocks] = useState<string[]>(
     existing ? issues.filter((i) => i.deps?.includes(existing.id)).map((i) => i.id) : []
@@ -369,13 +372,14 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
    * ca `isDirty` să știe că există ceva netrimis. Vezi `isFormDirty`.
    */
   const [commentDraftDirty, setCommentDraftDirty] = useState(false)
-  const [urgent, setUrgent] = useState(existing?.urgent ?? false)
+  const [urgent, setUrgent] = useState(existing?.urgent ?? seed?.urgent ?? false)
   // Scadența trăiește în formular ca cele două valori pe care le scrie userul,
   // nu ca ISO: inputurile native vorbesc local, iar conversia stă în
   // `lib/schedule`. Ora goală = toată ziua, deci `allDay` nu are stare proprie.
   // Textul scris de utilizator, în `zz/ll/aaaa`. Valoarea canonică se derivă din
   // el — o singură stare, deci textul din câmp și data salvată nu pot diverge.
-  const [dueText, setDueText] = useState(existing?.dueAt ? toDisplayDate(existing.dueAt) : '')
+  const seedDue = existing ?? (seed?.dueAt ? { dueAt: seed.dueAt, allDay: seed.allDay } : undefined)
+  const [dueText, setDueText] = useState(seedDue?.dueAt ? toDisplayDate(seedDue.dueAt) : '')
   const dueDate = fromDisplayDate(dueText) ?? ''
   // Text scris pe jumătate: nu e o eroare, doar nu e încă o dată. Semnalul e
   // discret, ca să nu certe pe cineva care tocmai a apăsat prima cifră.
@@ -384,7 +388,7 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
   // Ca la dată: textul e starea, valoarea validată se derivă. `dueTime` rămâne
   // numele valorii validate, ca `fromInputs` să primească exact ce primea.
   const [timeText, setTimeText] = useState(
-    existing?.dueAt && !existing.allDay ? toTimeInput(existing.dueAt) : '',
+    seedDue?.dueAt && !seedDue.allDay ? toTimeInput(seedDue.dueAt) : '',
   )
   const dueTime = fromTimeText(timeText) ?? ''
   const timeIncomplete = timeText.trim() !== '' && dueTime === ''
@@ -421,7 +425,7 @@ export function IssueForm({ issueId, docked = false }: { issueId?: string; docke
   )
   // Mementoul implicit urmează forma scadenței cât timp userul nu l-a atins.
   const [reminderTouched, setReminderTouched] = useState(false)
-  const [rrule, setRrule] = useState<string | null>(existing?.rrule ?? null)
+  const [rrule, setRrule] = useState<string | null>(existing?.rrule ?? seed?.rrule ?? null)
   const [showRecur, setShowRecur] = useState(false)
   const schedule = (() => {
     const { dueAt, allDay } = fromInputs(dueDate, dueTime)

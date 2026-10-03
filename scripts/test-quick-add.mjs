@@ -83,6 +83,53 @@ try {
   const signs = rows.find((r) => r.includes('test semne')) ?? ''
   check('sarcina cu semne a ajuns în „Mâine"', signs !== '', rows.join(' / '))
   check('semnele nu rămân în titlu', signs !== '' && !signs.includes('#') && !signs.includes('!') && signs.split('\n').includes('test semne'), signs)
+
+  // ── Descrierea (Tab) și fereastra care crește ────────────────────────────
+  // Puntea e simulată: în browser `window.horizontalDesktop` lipsește. Cu ea,
+  // `.qab` își cere înălțimea prin `resizeBar` — aici doar se înregistrează.
+  // Aceeași pagină (deci același context): depozitul local e al contextului,
+  // iar sarcina scrisă din bară trebuie văzută apoi din aplicație. Puntea
+  // simulată rămâne și pe aplicația de după — inofensiv, metodele sunt goale.
+  const desk = page
+  await desk.setViewportSize({ width: 720, height: 150 })
+  await desk.addInitScript(() => {
+    window.__sizes = []
+    window.horizontalDesktop = {
+      version: 'test',
+      setReminders() {},
+      onReminderAction() { return () => {} },
+      hideBar() { window.__hidden = (window.__hidden ?? 0) + 1 },
+      resizeBar(h) { window.__sizes.push(h) },
+    }
+  })
+  await desk.goto(`${BASE}/quick-add`, { waitUntil: 'networkidle' })
+  const dIn = desk.locator('.qab .qa-input')
+  await dIn.fill('test descriere mâine')
+  await dIn.press('Tab')
+  await desk.waitForTimeout(300)
+  const descShown = (await desk.locator('.qab .qa-desc').count()) === 1
+  check('Tab deschide descrierea', descShown)
+  check('cursorul trece în descriere', await desk.evaluate(() => document.activeElement?.classList.contains('qa-desc') ?? false))
+  const before = await desk.evaluate(() => Math.max(0, ...window.__sizes.slice(0, 1)))
+  await desk.keyboard.type('rândul unu')
+  await desk.keyboard.press('Enter')
+  await desk.keyboard.type('rândul doi')
+  await desk.keyboard.press('Enter')
+  await desk.keyboard.type('rândul trei')
+  await desk.waitForTimeout(300)
+  const sizes = await desk.evaluate(() => window.__sizes)
+  check('fereastra își cere mai multă înălțime', sizes.length > 1 && sizes[sizes.length - 1] > before, sizes.join(' → '))
+  check('Enter în descriere nu salvează', (await desk.evaluate(() => window.__hidden ?? 0)) === 0)
+  await desk.keyboard.press('Control+Enter')
+  await desk.waitForTimeout(800)
+  check('Ctrl+Enter salvează (bara se ascunde)', (await desk.evaluate(() => window.__hidden ?? 0)) === 1)
+  await page.setViewportSize({ width: 1400, height: 900 })
+  await page.goto(BASE, { waitUntil: 'networkidle' })
+  await openList('Mâine')
+  await page.locator('.task-row', { hasText: 'test descriere' }).first().click()
+  await page.waitForTimeout(1000)
+  const savedDesc = await page.locator('.desc-fixed').first().inputValue().catch(() => null)
+  check('tichetul are descrierea', savedDesc === 'rândul unu\nrândul doi\nrândul trei', JSON.stringify(savedDesc))
 } finally {
   await browser.close()
   vite.kill('SIGTERM')

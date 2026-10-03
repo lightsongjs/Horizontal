@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from './auth'
 import { HorizontalProvider, useHorizontal } from './store'
 import { QuickAdd } from './components/QuickAdd'
@@ -44,6 +44,7 @@ export function QuickAddPage() {
 function QuickAddBar() {
   const { projects } = useHorizontal()
   const [round, setRound] = useState(0)
+  const barRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const onVisible = () => { if (document.visibilityState === 'visible') setRound((r) => r + 1) }
     document.addEventListener('visibilitychange', onVisible)
@@ -68,12 +69,23 @@ function QuickAddBar() {
     const id = requestAnimationFrame(() => document.querySelector<HTMLInputElement>('.qab .qa-input')?.focus())
     return () => cancelAnimationFrame(id)
   }, [round])
+  // Fereastra crește cu conținutul: Tab deschide descrierea sub titlu, iar o
+  // fereastră fixă de 150px ar tăia-o. Fiecare rundă nouă remontează câmpul
+  // (descrierea închisă), deci observatorul o readuce singur la loc.
+  useEffect(() => {
+    const el = barRef.current
+    const bridge = getDesktopBridge()
+    if (!el || !bridge?.resizeBar) return
+    const ro = new ResizeObserver(() => bridge.resizeBar?.(Math.ceil(el.getBoundingClientRect().height)))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
   // Fără dată în text, sarcina e pentru azi — ca adăugarea rapidă din „Azi",
   // ca să apară imediat în lista pe care omul o deschide dimineața.
   const dailyId = dailyProjectId(projects)
   const today = startOfLocalDay(new Date()).toISOString()
   return (
-    <div className="qab">
+    <div className="qab" ref={barRef}>
       {/* Proiectul implicit e „✅Daily", ales de om — nu ultimul folosit: bara e
           pentru captura zilnică, iar alt proiect se cere explicit (#nume sau butonul). */}
       <QuickAdd

@@ -7,6 +7,7 @@ import { addDays, startOfLocalDay, toShortDate } from '../lib/schedule'
 import type { Issue } from '../lib/types'
 import { Icon, type IconName } from './Icon'
 import { SplitView } from './SplitView'
+import { useMediaQuery } from '../hooks'
 
 export type SmartListKind = 'today' | 'tomorrow' | 'week'
 
@@ -15,6 +16,16 @@ export const SMART_LISTS: { kind: SmartListKind; label: string; icon: IconName }
   { kind: 'tomorrow', label: 'Mâine', icon: 'tomorrow' },
   { kind: 'week', label: 'Next 7 days', icon: 'list' },
 ]
+
+/**
+ * Scadența implicită a unei sarcini adăugate din listă: ziua listei. În
+ * „Next 7 days" nu există o zi anume, deci azi. Comună rândului de captură și
+ * foii rapide deschise din FAB.
+ */
+export function smartListDueAt(kind: SmartListKind, now = new Date()): string {
+  const today = startOfLocalDay(now)
+  return (kind === 'tomorrow' ? addDays(today, 1) : today).toISOString()
+}
 
 const DAYS_FULL = ['duminică', 'luni', 'marți', 'miercuri', 'joi', 'vineri', 'sâmbătă']
 const MON_FULL = ['ianuarie', 'februarie', 'martie', 'aprilie', 'mai', 'iunie', 'iulie', 'august', 'septembrie', 'octombrie', 'noiembrie', 'decembrie']
@@ -69,16 +80,18 @@ export function SmartListView({ kind, onOpenTask, focusSignal = 0 }: Props) {
   const now = new Date()
   const today = startOfLocalDay(now)
 
-  // Scadența implicită a unei sarcini adăugate din listă e ziua listei. În
-  // „Next 7 days" nu există o zi anume, deci azi.
-  const defaultDueAt = (kind === 'tomorrow' ? addDays(today, 1) : today).toISOString()
+  const defaultDueAt = smartListDueAt(kind, now)
+  // Pe telefon captura e foaia rapidă din FAB. Rândul ar fi un al doilea punct
+  // de intrare, ar ocupa capul listei și ar ridica tastatura în mijlocul unei
+  // liste care derulează — exact experiența pe care foaia o înlocuiește.
+  const narrow = useMediaQuery('(max-width: 899px)')
 
   if (!dueLoaded) return <p className="empty">Se încarcă…</p>
 
   return (
     <SplitView>
       <div className="panel smart-list">
-        <QuickAdd defaultDueAt={defaultDueAt} focusSignal={focusSignal} />
+        {!narrow && <QuickAdd defaultDueAt={defaultDueAt} focusSignal={focusSignal} />}
         {kind === 'today' && <PushToggle />}
 
         {kind === 'today' && (

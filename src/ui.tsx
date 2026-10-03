@@ -1,13 +1,33 @@
 // UI context for the bottom sheet — supports a navigation stack.
 
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react'
+import type { QuickCtx } from './lib/quickDraft'
+
+/**
+ * Ce trece din foaia rapidă în formularul complet („…"): ce a scris și ce a
+ * ales omul acolo, deja curățat — titlul fără dată și fără semne, scadența ca
+ * valoare. Formularul nu reparsează titlul (recunoașterea lui pornește doar la
+ * tastare), deci nimic nu se înțelege de două ori.
+ */
+export interface IssueDraft {
+  title: string
+  desc: string
+  projectId: string
+  dueAt: string | null
+  allDay: boolean
+  rrule: string | null
+  urgent: boolean
+  assigneeId: string | null
+}
 
 export type SheetState =
   | { kind: 'none' }
   // `keyId`: cheia React de la montare, când `issueId` s-a schimbat sub foaie
   // (tichet creat offline care a primit numărul real) — vezi `renameIssueInSheets`.
   | { kind: 'issue'; issueId: string; keyId?: string }
-  | { kind: 'issue-form'; issueId?: string; keyId?: string } // create when no id, edit otherwise
+  | { kind: 'issue-form'; issueId?: string; keyId?: string; draft?: IssueDraft } // create when no id, edit otherwise
+  // Foaia rapidă de pe telefon (FAB). Altă cochilie decât `.sheet` — vezi `QuickSheet`.
+  | { kind: 'quick-add'; ctx: QuickCtx }
   | { kind: 'project-form' }
   | { kind: 'project-settings' }
   | { kind: 'wave-manage' }
@@ -64,6 +84,13 @@ interface UI {
   renameIssueId(from: string, to: string): void
   /** Register a guard called before closing all sheets. Return false to block close. */
   setCloseGuard(fn: (() => boolean) | null): void
+  /**
+   * Un mesaj scurt pentru Toast-ul aplicației, cerut dintr-o foaie (foaia
+   * rapidă: „Adăugat: X", după ce s-a închis și tastatura a coborât).
+   */
+  toast: string | null
+  showToast(message: string): void
+  clearToast(): void
 }
 
 /** Cât ține „am înțeles, comută” înainte să se uite. */
@@ -138,6 +165,9 @@ export function UIProvider({ children }: { children: ReactNode }) {
   const [sheets, setSheets] = useState<SheetState[]>([])
   const [splitHosts, setSplitHosts] = useState(0)
   const [saveNudge, setSaveNudge] = useState(0)
+  const [toast, setToast] = useState<string | null>(null)
+  const showToast = useCallback((m: string) => setToast(m), [])
+  const clearToast = useCallback(() => setToast(null), [])
   const closeGuard = useRef<(() => boolean) | null>(null)
   const dockedDirty = useRef(false)
   const pendingSwitch = useRef<{ id: string; timer: ReturnType<typeof setTimeout> } | null>(null)
@@ -224,9 +254,12 @@ export function UIProvider({ children }: { children: ReactNode }) {
         setSheets((prev) => renameIssueInSheets(prev, from, to))
       },
       setCloseGuard: (fn) => { closeGuard.current = fn },
+      toast,
+      showToast,
+      clearToast,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sheet, sheets.length, ticketId, dockedIssueId, dockedKeyId, registerSplitHost, setDockedDirty, saveNudge, clearPendingSwitch],
+    [sheet, sheets.length, ticketId, dockedIssueId, dockedKeyId, registerSplitHost, setDockedDirty, saveNudge, clearPendingSwitch, toast, showToast, clearToast],
   )
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

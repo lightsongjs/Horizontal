@@ -5241,6 +5241,174 @@ main {
 .qa-urgent { border: 0; cursor: pointer; }
 .qa-urgent.on { color: var(--blocked); box-shadow: inset 0 -2px 0 var(--blocked); }
 
+/* Descrierea de sub titlu, deschisă cu Tab. Stă în aceeași casetă `.qa` ca
+   titlul — e a doua jumătate a aceluiași câmp, deci fără chenar propriu.
+   Aliniată cu textul titlului (20px „+" + 9px spațiu). */
+.qa-desc-row { padding: 6px 0 0 29px; }
+.qa-desc {
+  display: block;
+  width: 100%;
+  field-sizing: content;
+  min-height: 22px;
+  max-height: 40vh;
+  resize: none;
+  border: 0;
+  outline: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--txt-dim);
+}
+.qa-desc::placeholder { color: var(--placeholder, var(--txt-faint)); }
+
+/* ── FOAIA RAPIDĂ (telefon) ──────────────────────────────────────────
+   Lipită de tastatură: `--kb` și `--vvh` le scrie `useKeyboardInset`.
+   Crește în sus cu textul; peste ce încape între tastatură și marginea de
+   sus, derulează înăuntru. O singură umbră, rază de foaie sus, fără chenar. */
+.kb-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: var(--kb, 0px);
+  z-index: 41;
+  max-width: 480px;
+  margin: 0 auto;
+  max-height: calc(var(--vvh, 100dvh) - env(safe-area-inset-top) - 8px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--surface);
+  border-radius: var(--r) var(--r) 0 0;
+  box-shadow: var(--amb-lg);
+  padding: 14px 14px calc(10px + env(safe-area-inset-bottom));
+  animation: kb-sheet-in 0.2s cubic-bezier(0.18, 0.9, 0.24, 1);
+}
+@keyframes kb-sheet-in {
+  from { transform: translateY(14px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+.kb-sheet.shake { animation: qa-shake 0.3s; }
+.qs-form { display: block; }
+/* Titlul e același `QuickTitle` ca în rândul din listă, mai mare: aici e
+   singurul lucru de pe ecran. Oglinda și inputul primesc ACEEAȘI mărime. */
+.quick-sheet .qa-wrap { display: block; height: 28px; }
+.quick-sheet .qa-mirror,
+.quick-sheet .qa-input { font-size: 17px; line-height: 28px; }
+/* Deasupra titlului e marginea foii (și `overflow` o taie): indiciul coboară,
+   în flux, între titlu și descriere — nu peste ea. */
+.qa-tip.below {
+  position: static;
+  display: block;
+  margin-top: 4px;
+  white-space: normal;
+  box-shadow: none;
+  background: transparent;
+  padding: 0;
+}
+.quick-sheet .qa-desc { margin-top: 4px; font-size: 15px; max-height: none; }
+.qs-status { margin: 6px 0 0; font-size: 12.5px; color: var(--txt-faint); }
+.qs-status:empty { display: none; }
+.qs-status.warn { color: var(--blocked); font-weight: 600; }
+.qs-when {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 6px 8px;
+  border-radius: var(--r-m);
+  background: var(--surface-2);
+  color: var(--txt-dim);
+}
+.qs-when input {
+  border: 0;
+  border-radius: var(--r-s);
+  background: var(--surface);
+  color: var(--txt);
+  font-family: var(--mono);
+  font-size: 14px;
+  padding: 5px 7px;
+}
+.qs-clear {
+  margin-left: auto;
+  padding: 5px 9px;
+  border-radius: var(--r-s);
+  background: var(--surface);
+  color: var(--txt-dim);
+  font-size: 12.5px;
+}
+/* Rândul de controale. Trimite și iconițele NU se micșorează; jetonul de
+   dată și numele proiectului da, tăiate cu „…" — la 320px rândul încape
+   întreg (verificat de `npm run test:layout`). */
+.qs-bar { display: flex; align-items: center; gap: 6px; margin-top: 12px; }
+.qs-due,
+.qs-ico,
+.qs-sel {
+  height: 34px;
+  border-radius: var(--r-s);
+  background: var(--surface-2);
+  color: var(--txt-dim);
+  display: inline-flex;
+  align-items: center;
+}
+.qs-due {
+  gap: 5px;
+  padding: 0 10px;
+  flex: 0 1 auto;
+  min-width: 34px;
+  overflow: hidden;
+  white-space: nowrap;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--txt-faint);
+}
+.qs-due svg { flex-shrink: 0; }
+.qs-due-t { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.qs-due.on { background: var(--accent-soft); color: var(--accent); }
+.qs-ico { width: 34px; justify-content: center; flex-shrink: 0; }
+.qs-urgent.on { color: var(--blocked); box-shadow: inset 0 -2px 0 var(--blocked); }
+.qs-sel {
+  position: relative;
+  gap: 6px;
+  padding: 0 10px;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  cursor: pointer;
+}
+.qs-sel-t { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+/* Selectul nativ, transparent, peste etichetă: atingerea deschide lista. */
+.qs-sel select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  font-size: 16px;
+}
+.qs-proj { flex: 0 3 auto; min-width: 44px; max-width: 150px; }
+.qs-who { flex-shrink: 0; }
+.qs-who .qs-sel-t { font-family: var(--mono); font-size: 11.5px; font-weight: 600; }
+.qs-who.on { color: var(--accent); }
+.qs-send {
+  margin-left: auto;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.qs-send:disabled { opacity: 0.45; }
+.qs-bar button:focus-visible,
+.qs-sel:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+
 /* ── jetoane de scadență din quick add ───────────────────────────── */
 .chip {
   display: inline-flex;
@@ -5822,6 +5990,9 @@ main {
    O fereastră mică, fără ramă: pagina ESTE bara. Fără chenar — fundalul
    (--surface) peste nimic e delimitarea. */
 html:has(.qab), body:has(.qab) { margin: 0; height: 100%; background: var(--surface); overflow: hidden; }
+/* Cutia instalată înainte de `resizeBar` n-are cum să crească fereastra: acolo
+   descrierea deschisă cu Tab se derulează, nu se taie. */
+body:has(.qab) { overflow-y: auto; }
 .qab { padding: 12px 16px; }
 .qab .qa { box-shadow: none; background: transparent; }
 .qab-empty { margin: 0; padding: 18px 20px; font-family: var(--display); color: var(--txt-dim); background: var(--surface); }

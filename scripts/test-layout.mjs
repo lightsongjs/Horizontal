@@ -480,6 +480,58 @@ for (const width of PHONE_WIDTHS) {
   check(`rândurile de stare încap @${width}px`, m.rowOverflow <= 0 && m.secInside, `${m.rowOverflow}px peste rând`)
 }
 
+/**
+ * Rândul de controale al foii rapide (`QuickSheet.tsx`): trimite și iconițele
+ * au `flex-shrink: 0`, jetonul de dată și proiectul se micșorează. Cazul cel
+ * mai rău: dată lungă cu oră, nume de proiect lung, om ales. Trimite nu are
+ * voie să fie strivit sau împins afară, proiectul nu are voie să dispară, și
+ * niciun control nu rămâne fără fundal.
+ */
+const quickBar = () => `
+<div class="kb-sheet quick-sheet" style="animation:none"><form class="qs-form">
+  <span class="qa-wrap"><span class="qa-mirror"></span><input class="qa-input" value="Sună la bancă"></span>
+  <textarea class="qa-desc" rows="1" placeholder="Descriere"></textarea>
+  <div class="qs-bar">
+    <button type="button" class="qs-due on"><svg width="15" height="15"></svg><span class="qs-due-t">Mie 07.10.2026 10:00</span></button>
+    <button type="button" class="qs-ico qs-urgent on"><svg width="16" height="16"></svg></button>
+    <label class="qs-sel qs-proj"><span class="t-dot" style="background:#6e7bff"></span><span class="qs-sel-t">Aplicație Turism și încă ceva lung</span><select><option>x</option></select></label>
+    <label class="qs-sel qs-who on"><svg width="15" height="15"></svg><span class="qs-sel-t">AL</span><select><option>x</option></select></label>
+    <button type="button" class="qs-ico qs-more"><svg width="16" height="16"></svg></button>
+    <button type="submit" class="qs-send"><svg width="18" height="18"></svg></button>
+  </div>
+</form></div>`
+
+console.log('\nRândul de controale al foii rapide (`.qs-bar`):')
+for (const width of PHONE_WIDTHS) {
+  const page = await browser.newPage({ viewport: { width, height: 844 } })
+  await page.setContent(`<style>${CSS}</style>${quickBar()}`)
+  const m = await page.evaluate(() => {
+    const bar = document.querySelector('.qs-bar')
+    const r = (sel) => document.querySelector(sel).getBoundingClientRect()
+    const barR = bar.getBoundingClientRect()
+    const send = r('.qs-send')
+    const kids = [...bar.children]
+    const invisible = kids.filter((el) => {
+      const cs = getComputedStyle(el)
+      return cs.backgroundColor === 'rgba(0, 0, 0, 0)' && cs.borderStyle === 'none'
+    }).map((el) => el.className)
+    return {
+      overflow: bar.scrollWidth - Math.round(barR.width),
+      sendW: Math.round(send.width),
+      sendInside: send.right <= barR.right + 0.5,
+      proj: Math.round(r('.qs-proj').width),
+      due: Math.round(r('.qs-due').width),
+      invisible,
+    }
+  })
+  await page.close()
+  check(`fără overflow @${width}px`, m.overflow <= 0, `${m.overflow}px peste rând`)
+  check(`trimite nestrivit @${width}px`, m.sendW >= 36 && m.sendInside, `${m.sendW}px${m.sendInside ? '' : ', împins afară'}`)
+  check(`proiectul vizibil @${width}px`, m.proj >= 40, `${m.proj}px`)
+  check(`jetonul de dată vizibil @${width}px`, m.due >= 34, `${m.due}px`)
+  check(`fiecare control are fundal @${width}px`, m.invisible.length === 0, m.invisible.length ? `INVIZIBIL: ${m.invisible.join(', ')}` : 'toate')
+}
+
 await browser.close()
 
 if (failures.length) {

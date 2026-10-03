@@ -23,5 +23,6 @@ if (location.origin === arg('hz-origin')) {
       return () => { ipcRenderer.removeListener('hz:resync', h) }
     },
     hideBar: () => ipcRenderer.send('hz:hide-bar'),
+    resizeBar: (height: number) => ipcRenderer.send('hz:resize-bar', height),
   })
 }

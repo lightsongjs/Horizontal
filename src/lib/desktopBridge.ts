@@ -41,6 +41,12 @@ export interface HorizontalDesktop {
   setReminders(list: DesktopReminder[]): void
   onReminderAction(fn: (a: DesktopAction) => void): () => void
   hideBar(): void
+  /**
+   * Bara de captură își cere înălțimea conținutului (px CSS), ca descrierea
+   * deschisă cu Tab să încapă. Opțional: o cutie instalată înainte de el n-o
+   * are, iar bara cade atunci pe derulare. Cutia o limitează la 150–420.
+   */
+  resizeBar?(height: number): void
   /** După trezirea din somn: fereastra ascunsă n-a primit niciun `visibilitychange`, datele sunt vechi. */
   onResync?(fn: () => void): () => void
 }

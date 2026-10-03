@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { flushSync } from 'react-dom'
 import { useAuth } from './auth'
-import { useCanWrite, useSidebarCollapsed, useWritableProjects } from './hooks'
+import { useCanWrite, useMediaQuery, useSidebarCollapsed, useWritableProjects } from './hooks'
 import { HorizontalProvider, useHorizontal } from './store'
 import { UIProvider, useUI } from './ui'
 import { ThemeProvider, useTheme } from './theme'
@@ -11,7 +12,8 @@ import { SheetHost } from './components/SheetHost'
 import { Sidebar } from './components/Sidebar'
 import { QuickSearch } from './components/QuickSearch'
 import { UsersView } from './components/UsersView'
-import { SmartListView, SMART_LISTS, type SmartListKind } from './components/SmartListView'
+import { SmartListView, SMART_LISTS, smartListDueAt, type SmartListKind } from './components/SmartListView'
+import type { QuickCtx } from './lib/quickDraft'
 import { InboxView } from './components/InboxView'
 import { InfoPanel } from './components/InfoPanel'
 import { Toast } from './components/Toast'
@@ -250,8 +252,8 @@ const slugify = (name: string) =>
   name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '')
 
 function Shell() {
-  const { loading, error, project, projects, issuesLoadedFor, issuesLoadFailedFor, byId, dueIssues, selectProject, refresh, toggleDone, updateIssue, inbox, recurrenceUndo, undoRecurrence, clearRecurrenceUndo } = useHorizontal()
-  const { openNewIssue, openNewProject, openProjectSettings, openIssue, closeSheet, sheet, ticketId, dockedIssueId } = useUI()
+  const { loading, error, project, projects, issuesLoadedFor, issuesLoadFailedFor, byId, dueIssues, selectProject, refresh, toggleDone, updateIssue, inbox, recurrenceUndo, undoRecurrence, clearRecurrenceUndo, activeWave } = useHorizontal()
+  const { openNewIssue, openNewProject, openProjectSettings, openIssue, closeSheet, pushSheet, sheet, ticketId, dockedIssueId, toast, clearToast } = useUI()
   // Stabil peste randări nelegate de toast: `recurrenceUndo` (din store, un
   // `useState`) nu-și schimbă identitatea decât când SE SCHIMBĂ toast-ul, deci
   // memoizarea aici ține `toastAction` la același obiect exact atunci când
@@ -292,6 +294,23 @@ function Shell() {
   // Contor, nu boolean: fiecare apăsare pe „+" trebuie să refocuseze inputul,
   // chiar dacă lista era deja deschisă. Un boolean ar fi „true" a doua oară.
   const [focusQuickAdd, setFocusQuickAdd] = useState(0)
+  // Același prag ca bara de jos și FAB-ul: sub el, captura e foaia rapidă.
+  const narrow = useMediaQuery('(max-width: 899px)')
+  /**
+   * Foaia rapidă, din FAB (sau din C pe telefon). `flushSync` + focus în
+   * ACELAȘI handler: Android și iOS ridică tastatura doar la un focus dat
+   * dintr-un gest al omului. Un focus din efect sau din `autoFocus` (care
+   * rămâne doar ca plasă) vine după gest, iar foaia ar sta deschisă fără
+   * tastatură.
+   */
+  const openQuick = () => {
+    const ctx: QuickCtx | null = smartList
+      ? { mode: 'list', defaultDueAt: smartListDueAt(smartList) }
+      : project ? { mode: 'project', projectId: project.id, wave: activeWave } : null
+    if (!ctx) return
+    flushSync(() => pushSheet({ kind: 'quick-add', ctx }))
+    document.querySelector<HTMLInputElement>('.quick-sheet .qa-input')?.focus()
+  }
   const [tab, setTab] = useState<Tab>(() => {
     const saved = localStorage.getItem('horizontal:last-tab')
     return saved === 'ordine' || saved === 'list' || saved === 'graf' || saved === 'teme' ? saved : 'list'
@@ -446,7 +465,9 @@ function Shell() {
    */
   const reassertUrl = () => {
     const open = ticketIdRef.current
-    const path = open ? ticketPath(open) : projectPath(projectRef.current)
+    // Cu o listă pe ecran, destinația e `/` (aceeași regulă ca `settleUrl`):
+    // formularul deschis din „…" al foii rapide încarcă proiectul doar în store.
+    const path = open ? ticketPath(open) : projectPath(screenRef.current ? null : projectRef.current)
     if (window.location.pathname !== path) pushPath(path)
   }
   const mainRef = useRef<HTMLElement>(null)
@@ -733,11 +754,54 @@ function Shell() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ticketId])
 
+  /**
+   * Foaia rapidă n-are URL, dar are intrare în istoric: Back (gestul de pe
+   * Android) trebuie s-o închidă, nu să iasă din aplicație. Se împinge aceeași
+   * cale, marcată `hzSheet`.
+   *
+   * Închisă pe altă cale (fundalul, Esc), intrarea se desface cu un `back()`
+   * pe care `onPop` îl înghite (`quickPop`) — altfel ar rămâne în istoric o
+   * intrare moartă, iar următorul Back n-ar face nimic vizibil. Trecută în
+   * formularul complet („…"), intrarea se moștenește: `replaceState` scoate
+   * doar marcajul, iar Back închide formularul.
+   *
+   * O reîncărcare cu marcajul în stare lasă un Back în gol (foaia nu se
+   * redeschide). Acceptat: o singură apăsare, fără nimic stricat.
+   */
+  const quickEntry = useRef(false)
+  const quickPop = useRef(false)
+  useEffect(() => {
+    if (!urlSyncReady.current) return
+    const marked = (window.history.state as { hzSheet?: string } | null)?.hzSheet === 'quick'
+    if (sheet.kind === 'quick-add') {
+      if (quickEntry.current) return
+      quickEntry.current = true
+      historyDepth.current += 1
+      window.history.pushState({ hzDepth: historyDepth.current, hzSheet: 'quick' }, '', window.location.pathname)
+      return
+    }
+    if (!quickEntry.current) return
+    quickEntry.current = false
+    if (!marked) return
+    if (sheet.kind === 'none') { quickPop.current = true; window.history.back() }
+    else replacePath(window.location.pathname)
+  }, [sheet.kind]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Browser back/forward → sync store. Un path de ticket nu schimbă proiectul;
   // doar deschide sau închide sheet-ul.
   useEffect(() => {
     const onPop = () => {
       historyDepth.current = readDepth()
+      // Desfacerea intrării foii rapide, cerută chiar de noi (vezi efectul de
+      // mai jos): foaia e deja închisă, iar URL-ul e același.
+      if (quickPop.current) { quickPop.current = false; return }
+      // Back peste foaia rapidă o închide și atât. Fără `return`, pe `/` cu o
+      // listă deschisă s-ar ajunge la `selectProject(null)` de mai jos.
+      if (sheetRef.current.kind === 'quick-add') {
+        quickEntry.current = false
+        closeSheet()
+        return
+      }
       const target = parseTicketPath(window.location.pathname, resolveIssueId)
       // Ticketul cerut e deja cel deschis (ex. un card de dependență peste el)
       // → nu resetăm stiva și nu deranjăm garda de close.
@@ -814,7 +878,13 @@ function Shell() {
       if (e.key === 'c' || e.key === 'C') {
         e.preventDefault()
         if (inInbox) return
-        if (smartList) { if (writableProjects.length) setFocusQuickAdd((n) => n + 1); return }
+        if (smartList) {
+          if (!writableProjects.length) return
+          // Pe telefon rândul de captură nu există — foaia ține locul lui.
+          if (narrow) openQuick()
+          else setFocusQuickAdd((n) => n + 1)
+          return
+        }
         if (!canWrite) return
         if (!leaveDocked()) return
         project && openNewIssue()
@@ -830,7 +900,7 @@ function Shell() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [project, openNewIssue, openNewProject, modalOpen, showInfo, showSearch, showUsers, canWrite, isAdmin, toggleSidebar, changeTab, leaveDocked, smartList, writableProjects, inInbox])
+  }, [project, openNewIssue, openNewProject, modalOpen, showInfo, showSearch, showUsers, canWrite, isAdmin, toggleSidebar, changeTab, leaveDocked, smartList, writableProjects, inInbox, narrow, activeWave]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
    * Butoanele notificării („Gata", „Amână"). Cu o filă deschisă, PAGINA e
@@ -948,9 +1018,9 @@ function Shell() {
           <button
             className="fab"
             aria-label={smartList ? 'Sarcină nouă' : project ? 'Adaugă tichet' : 'Adaugă proiect'}
-            onClick={smartList
-              ? () => setFocusQuickAdd((n) => n + 1)
-              : project ? openNewIssue : openNewProject}
+            // FAB-ul se vede doar sub 900px, deci e mereu captura de telefon:
+            // foaia rapidă, și într-o listă, și într-un proiect.
+            onClick={smartList || project ? openQuick : openNewProject}
           >
             <Icon name="add" size={24} />
           </button>
@@ -970,8 +1040,8 @@ function Shell() {
           se scrie doar din efectele de boot/deep-link, `recurrenceUndo` doar
           dintr-o bifă explicită după ce aplicația e deja pornită. */}
       <Toast
-        message={recurrenceUndo ? recurrenceUndo.label : notice}
-        onDone={recurrenceUndo ? clearRecurrenceUndo : clearNotice}
+        message={recurrenceUndo ? recurrenceUndo.label : notice ?? toast}
+        onDone={recurrenceUndo ? clearRecurrenceUndo : notice ? clearNotice : clearToast}
         action={toastAction}
       />
       <SheetHost />
