@@ -18,7 +18,11 @@ import { readFileSync } from 'node:fs'
 // ci și `:root{}` de după, deci NICIO variabilă CSS (`--surface-3`, `--amb`
 // etc.) nu se mai rezolvă. Latent până acum: niciun check de mai jos n-a citit
 // o culoare calculată — abia bara de om verifică fundal/umbră.
-const CSS = readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8').replace(/^﻿/, '')
+const BASE_CSS = readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8').replace(/^﻿/, '')
+// `TEXT_SCALE=1.5 npm run test:layout` — aceiași invarianți cu textul mărit din
+// rotița de setări (treapta „Maxim"). Variabila se pune DUPĂ foaie, ca să bată
+// `--text-scale: 1` din `:root`.
+const CSS = process.env.TEXT_SCALE ? `${BASE_CSS}\n:root{--text-scale:${process.env.TEXT_SCALE}}` : BASE_CSS
 
 /** Lățimile la care se uită oamenii pe telefon. 320 = cel mai îngust ecran
  *  pe care merită să funcționeze; 430 = iPhone Pro Max. */
@@ -60,6 +64,20 @@ const depsBar = () => `
 </div></div></div>`
 
 const browser = await chromium.launch()
+// Cu text mărit, `theme.tsx` pune și `data-text-large` pe <html> — regulile care
+// rup rândurile pe două linii depind de el, deci îl punem după fiecare setContent.
+if (process.env.TEXT_SCALE) {
+  const newPage = browser.newPage.bind(browser)
+  browser.newPage = async (opts) => {
+    const page = await newPage(opts)
+    const setContent = page.setContent.bind(page)
+    page.setContent = async (...args) => {
+      await setContent(...args)
+      await page.evaluate(() => document.documentElement.setAttribute('data-text-large', ''))
+    }
+    return page
+  }
+}
 
 console.log('Bara de dependențe (IssueForm) — câmpul de căutare pe telefon:')
 for (const width of PHONE_WIDTHS) {

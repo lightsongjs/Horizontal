@@ -8,6 +8,7 @@ import { ProjectForm } from './ProjectForm'
 import { ProjectSettings } from './ProjectSettings'
 import { WaveManager } from './WaveManager'
 import { ThemeManager } from './ThemeManager'
+import { AppSettings } from './AppSettings'
 import { ObstacleForm } from './ObstacleForm'
 import { UserForm } from './UserForm'
 import { Icon } from './Icon'
@@ -68,6 +69,7 @@ export function SheetHost() {
         {sheet.kind === 'project-settings' && <ProjectSettings />}
         {sheet.kind === 'wave-manage' && <WaveManager />}
         {sheet.kind === 'theme-manage' && <ThemeManager />}
+        {sheet.kind === 'app-settings' && <AppSettings />}
         {sheet.kind === 'obstacle-form' && (
           <ObstacleForm key={sheet.obstacleId ?? '__new__'} obstacleId={sheet.obstacleId} />
         )}

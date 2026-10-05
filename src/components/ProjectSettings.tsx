@@ -86,7 +86,7 @@ export function ProjectSettings() {
         </div>
 
         <div className="sheet-section-t" style={{ marginTop: 28, color: 'var(--blocked)' }}>Zonă periculoasă</div>
-        <div style={{ padding: '4px 0 8px', fontSize: 12, color: 'var(--txt-dim)', lineHeight: 1.5 }}>
+        <div style={{ padding: '4px 0 8px', fontSize: 'calc(12px * var(--text-scale))', color: 'var(--txt-dim)', lineHeight: 1.5 }}>
           {confirmDelete
             ? `Ești sigur? Aceasta va șterge „${project.name}" și toate tichetele sale. Acțiunea este ireversibilă.`
             : 'Ștergerea proiectului va elimina toate wave-urile, temele și tichetele asociate.'}
@@ -108,7 +108,7 @@ export function ProjectSettings() {
           <div style={{ textAlign: 'center', marginTop: 6 }}>
             <button
               onClick={() => setConfirmDelete(false)}
-              style={{ background: 'none', border: 'none', color: 'var(--txt-dim)', fontSize: 12, cursor: 'pointer' }}
+              style={{ background: 'none', border: 'none', color: 'var(--txt-dim)', fontSize: 'calc(12px * var(--text-scale))', cursor: 'pointer' }}
             >
               Anulează
             </button>

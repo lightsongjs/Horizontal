@@ -4,7 +4,6 @@ import { useAuth } from './auth'
 import { useCanWrite, useMediaQuery, useSidebarCollapsed, useWritableProjects } from './hooks'
 import { HorizontalProvider, useHorizontal } from './store'
 import { UIProvider, useUI } from './ui'
-import { ThemeProvider, useTheme } from './theme'
 import { Login } from './components/Login'
 import { ProjectsView } from './components/ProjectsView'
 import { ProjectDetail, type Tab } from './components/ProjectDetail'
@@ -56,15 +55,11 @@ function SyncBridge() {
  */
 const resolveIssueId = (id: string) => repository.sync?.resolveId(id) ?? id
 
-function ThemeToggle({ className }: { className?: string }) {
-  const { theme, toggle } = useTheme()
+function SettingsButton({ className }: { className?: string }) {
+  const { openAppSettings } = useUI()
   return (
-    <button className={`theme-toggle ${className ?? ''}`} onClick={toggle} aria-label="Schimbă tema">
-      {theme === 'dark' ? (
-        <Icon name="themeLight" size={16} />
-      ) : (
-        <Icon name="themeDark" size={16} />
-      )}
+    <button className={`theme-toggle ${className ?? ''}`} onClick={openAppSettings} aria-label="Setări" title="Setări">
+      <Icon name="settingsApp" size={16} />
     </button>
   )
 }
@@ -135,7 +130,7 @@ function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, ca
         <h1>{inbox ? 'Ale mele' : list ? list.label : projectChrome ? projectChrome.name : 'Horizontal'}</h1>
         <div className="crumb">
           {inbox ? 'Ce ți-a pasat cineva.' : list ? smartCrumb(list.kind, new Date()) : projectChrome ? projectChrome.description : 'Toate proiectele tale'}
-          {!projectChrome && !list && !inbox && <span style={{ display: 'block', fontSize: '10px', opacity: 0.5, marginTop: '1px' }}>Built: {getBuildAgo()}</span>}
+          {!projectChrome && !list && !inbox && <span style={{ display: 'block', fontSize: 'calc(10px * var(--text-scale))', opacity: 0.5, marginTop: '1px' }}>Built: {getBuildAgo()}</span>}
         </div>
       </div>
       {list && listCount > 0 && <div className="hcount">{listCount}</div>}
@@ -177,7 +172,7 @@ function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, ca
       >
         <Icon name="refresh" size={15} />
       </button>
-      <ThemeToggle className="theme-toggle-mobile" />
+      <SettingsButton className="theme-toggle-mobile" />
     </header>
   )
 }
@@ -1139,7 +1134,7 @@ function Shell() {
         {ta.selectMode && ta.narrow && smartList ? <SelectionHeader /> : <Header onNewIssue={openNewIssue} onSearch={() => setShowSearch(true)} onProjectSettings={openProjectSettings} onRefresh={refresh} onInfo={() => setShowInfo(true)} canWrite={canWrite} smartList={smartList} onBackToProjects={() => goTop('projects')} sidebarCollapsed={sidebarCollapsed} onToggleSidebar={toggleSidebar} inbox={inInbox} />}
         <main ref={mainRef}>
           {pullY > 0 && (
-            <div style={{ textAlign: 'center', padding: '6px 0', fontSize: '13px', color: 'var(--txt-dim)', transform: `translateY(${pullY * 0.4}px)`, transition: pullY === 0 ? 'transform 0.3s' : 'none' }}>
+            <div style={{ textAlign: 'center', padding: '6px 0', fontSize: 'calc(13px * var(--text-scale))', color: 'var(--txt-dim)', transform: `translateY(${pullY * 0.4}px)`, transition: pullY === 0 ? 'transform 0.3s' : 'none' }}>
               {pullY >= THRESHOLD ? '↑ Eliberează' : '↓ Trage pentru refresh'}
             </div>
           )}
@@ -1226,16 +1221,14 @@ export function App() {
   if (enabled && !session) return <Login />
 
   return (
-    <ThemeProvider>
-      <HorizontalProvider>
-        <UIProvider>
-          <SyncBridge />
-          <NativeBridge />
-          <TaskActionsProvider>
-            <Shell />
-          </TaskActionsProvider>
-        </UIProvider>
-      </HorizontalProvider>
-    </ThemeProvider>
+    <HorizontalProvider>
+      <UIProvider>
+        <SyncBridge />
+        <NativeBridge />
+        <TaskActionsProvider>
+          <Shell />
+        </TaskActionsProvider>
+      </UIProvider>
+    </HorizontalProvider>
   )
 }

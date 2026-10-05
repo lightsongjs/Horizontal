@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
-import { useTheme } from '../theme'
 import { useAuth } from '../auth'
 import { useCanWrite } from '../hooks'
 import { SMART_LISTS, type SmartListKind } from './SmartListView'
@@ -39,8 +38,7 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
 
   // Navigate away from any overlay (e.g. Users) then select a project.
   const goToProject = (id: string | null) => { onNavigate?.(); selectProject(id) }
-  const { openNewProject, openNewIssue } = useUI()
-  const { theme, toggle } = useTheme()
+  const { openNewProject, openNewIssue, openAppSettings } = useUI()
   const { enabled, signOut } = useAuth()
   const onSignOut = async () => {
     const st = repository.sync?.status() ?? { offline: false, pending: 0 }
@@ -112,7 +110,7 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
         <div className="logo">H</div>
         <div className="sidebar-brand-txt">
           <span className="sidebar-app-name">Horizontal</span>
-          <span style={{ display: 'block', fontSize: '9px', color: 'var(--txt-dim)', opacity: 0.6, lineHeight: 1.4 }}>Built: {getBuildAgo()}</span>
+          <span style={{ display: 'block', fontSize: 'calc(9px * var(--text-scale))', color: 'var(--txt-dim)', opacity: 0.6, lineHeight: 1.4 }}>Built: {getBuildAgo()}</span>
         </div>
       </div>
 
@@ -182,7 +180,7 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
       <div style={{ display: 'flex', gap: 4, margin: '6px 0 2px', padding: '0 2px' }}>
         {(['all', 'personal', 'work'] as const).map((f) => (
           <button key={f} onClick={() => setFilter(f)}
-            style={{ flex: 1, fontSize: 10, padding: '3px 0', borderRadius: 5, border: '1px solid var(--line-soft)',
+            style={{ flex: 1, fontSize: 'calc(10px * var(--text-scale))', padding: '3px 0', borderRadius: 5, border: '1px solid var(--line-soft)',
               background: filter === f ? 'var(--accent)' : 'transparent',
               color: filter === f ? '#fff' : 'var(--txt-dim)', cursor: 'pointer', fontWeight: filter === f ? 600 : 400 }}>
             {f === 'all' ? 'Toate' : f === 'personal' ? 'Personal' : 'Serviciu'}
@@ -249,12 +247,8 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
             {projectChrome ? 'Tichet nou' : 'Proiect nou'}
           </button>
         )}
-        <button className="sidebar-theme-btn" onClick={toggle} aria-label="Schimbă tema">
-          {theme === 'dark' ? (
-            <Icon name="themeLight" size={15} />
-          ) : (
-            <Icon name="themeDark" size={15} />
-          )}
+        <button className="sidebar-theme-btn" onClick={openAppSettings} aria-label="Setări" title="Setări">
+          <Icon name="settingsApp" size={15} />
         </button>
         {enabled && (
           <button className="sidebar-theme-btn" onClick={() => void onSignOut().catch((e) => reportError(e instanceof Error ? e.message : String(e)))} aria-label="Deconectare" title="Deconectare">

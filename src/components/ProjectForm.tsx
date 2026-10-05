@@ -100,7 +100,7 @@ export function ProjectForm() {
             autoCorrect="off"
             inputMode="text"
           />
-          <p style={{ fontSize: 11, color: 'var(--txt-faint)', marginTop: 6 }}>
+          <p style={{ fontSize: 'calc(11px * var(--text-scale))', color: 'var(--txt-faint)', marginTop: 6 }}>
             Tichetele vor fi {cleanPrefix || 'XXX'}-01, {cleanPrefix || 'XXX'}-02…
             {taken && <span style={{ color: 'var(--blocked)' }}> · prefix deja folosit</span>}
           </p>

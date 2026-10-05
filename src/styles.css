@@ -62,6 +62,11 @@
   --font: var(--display);
   --mono: 'IBM Plex Mono', ui-monospace, monospace;
   --display: 'Literata', 'Iowan Old Style', Georgia, serif;
+  /* Mărimea textului, aleasă din rotița de setări (`src/theme.tsx`). Fiecare
+     `font-size` din foaie e `calc(Npx * var(--text-scale))` — un test cere asta.
+     Numai textul crește, nu pagina: un `zoom` ar fi stricat foile lipite de
+     tastatură, care măsoară în pixeli reali (`--kb`, `--vvh`). */
+  --text-scale: 1;
   /* Spune browserului in ce tema e pagina, ca widgeturile NATIVE (calendarul
      lui <input type=date>, ceasul lui type=time, scrollbar-ele) sa se randeze
      in tonul corect. Fara asta, selectorul de data apare alb pe tema inchisa. */
@@ -82,7 +87,7 @@ body {
   background: var(--bg);
   color: var(--txt);
   font-family: var(--display);
-  font-size: 17px;
+  font-size: calc(17px * var(--text-scale));
   line-height: 1.5;
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
@@ -192,7 +197,7 @@ header {
   color: var(--accent);
   font-family: var(--display);
   font-weight: 700;
-  font-size: 19px;
+  font-size: calc(19px * var(--text-scale));
   letter-spacing: -0.04em;
 }
 .htxt {
@@ -200,7 +205,7 @@ header {
   min-width: 0;
 }
 .htxt h1 {
-  font-size: 17px;
+  font-size: calc(17px * var(--text-scale));
   font-weight: 700;
   letter-spacing: -0.025em;
   line-height: 1.2;
@@ -210,7 +215,7 @@ header {
   text-overflow: ellipsis;
 }
 .htxt .crumb {
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale));
   color: var(--txt-faint);
   font-weight: 500;
   margin-top: 2px;
@@ -236,7 +241,7 @@ header {
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale));
   font-weight: 700;
   color: var(--done);
   background: var(--done-soft);
@@ -274,7 +279,7 @@ main {
 
 /* PROJECTS LIST */
 .section-label {
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale));
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -285,7 +290,7 @@ main {
   align-items: center;
 }
 .section-label .cnt {
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale));
   font-weight: 600;
   color: var(--txt-faint);
   background: var(--surface-2);
@@ -311,14 +316,14 @@ main {
   transform: scale(0.984);
 }
 .proj h3 {
-  font-size: 18px;
+  font-size: calc(18px * var(--text-scale));
   font-weight: 700;
   letter-spacing: -0.025em;
   margin-bottom: 3px;
   font-family: var(--display);
 }
 .proj > p {
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale));
   color: var(--txt-dim);
   margin-bottom: 13px;
   line-height: 1.4;
@@ -343,7 +348,7 @@ main {
   transition: width 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .pct {
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale));
   font-weight: 700;
   color: var(--txt);
   min-width: 32px;
@@ -357,7 +362,7 @@ main {
   flex-wrap: wrap;
 }
 .mini {
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale));
   font-weight: 600;
   padding: 2px 7px;
   border-radius: var(--r-s);
@@ -382,7 +387,7 @@ main {
 .tab {
   flex: 0 0 auto;
   text-align: left;
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   font-weight: 600;
   color: var(--txt-faint);
   padding: 0 0 9px;
@@ -417,7 +422,7 @@ main {
   border-radius: var(--r);
   padding: 12px 14px;
   margin-bottom: 16px;
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale));
   color: var(--txt-dim);
   line-height: 1.55;
   position: relative;
@@ -469,7 +474,7 @@ main {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale));
   font-weight: 700;
   color: var(--layer-color, var(--txt-faint));
   font-family: var(--mono);
@@ -488,14 +493,14 @@ main {
 
 .layer-head h4 {
   font-family: var(--display);
-  font-size: 16px;
+  font-size: calc(16px * var(--text-scale));
   font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--txt);
 }
 .layer-head .sub {
   font-family: var(--mono);
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--text-scale));
   letter-spacing: 0.05em;
   color: var(--txt-faint);
   margin-top: 2px;
@@ -504,7 +509,7 @@ main {
   margin-left: auto;
   flex-shrink: 0;
   font-family: var(--mono);
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--text-scale));
   font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -604,12 +609,12 @@ main {
 .list-group { margin-bottom: 14px; }
 .list-group-head {
   display: flex; align-items: center; gap: 8px;
-  padding: 6px 4px; font-size: 12px; color: var(--txt-dim);
+  padding: 6px 4px; font-size: calc(12px * var(--text-scale)); color: var(--txt-dim);
 }
 .list-group-num {
   display: inline-flex; align-items: center; justify-content: center;
   width: 18px; height: 18px; border-radius: var(--r-s);
-  font-size: 11px; font-weight: 700; font-family: var(--mono);
+  font-size: calc(11px * var(--text-scale)); font-weight: 700; font-family: var(--mono);
   background: color-mix(in srgb, var(--layer-color, var(--txt-faint)) 12%, transparent);
   color: var(--layer-color, var(--txt-faint));
 }
@@ -649,8 +654,8 @@ main {
   gap: 7px;
   margin-bottom: 3px;
 }
-.list-id { font-size: 11px; color: var(--txt-dim); flex: 0 0 auto; }
-.list-title { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.list-id { font-size: calc(11px * var(--text-scale)); color: var(--txt-dim); flex: 0 0 auto; }
+.list-title { font-size: calc(13px * var(--text-scale)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .list-row .tk-urgent { margin-left: auto; }
 /* List-row parity with .tk states (tree / select / vim) */
 .list-row.vim-focused {
@@ -684,7 +689,7 @@ main {
   cursor: pointer;
 }
 .tk-id {
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale));
   font-weight: 700;
   color: var(--txt-faint);
   font-family: var(--mono);
@@ -697,7 +702,7 @@ main {
   flex-shrink: 0;
 }
 .type-badge {
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale));
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -714,7 +719,7 @@ main {
    complet (`.tk[data-title]::after`) nu se poate atinge — un titlu tăiat la
    primul rând nu se mai poate citi nicăieri. */
 .tk h5 {
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale));
   font-weight: 400;
   letter-spacing: -0.012em;
   line-height: 1.35;
@@ -733,7 +738,7 @@ main {
   left: 0;
   background: var(--surface-2);
   color: var(--txt);
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale));
   font-weight: 400;
   line-height: 1.4;
   white-space: normal;
@@ -756,7 +761,7 @@ main {
   text-decoration: line-through;
 }
 .tk-sub {
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale));
   color: var(--txt-faint);
   margin-top: 4px;
   display: flex;
@@ -773,11 +778,11 @@ main {
   padding: 2px 7px 2px 5px;
   border-radius: var(--r-s);
   font-family: var(--mono);
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--text-scale));
   letter-spacing: 0.03em;
 }
 .tk-children {
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale));
   color: var(--txt-faint);
   background: var(--surface-2);
   padding: 1px 6px;
@@ -796,7 +801,7 @@ main {
   gap: 5px;
   flex: 0 0 auto;
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale));
   font-weight: 500;
   line-height: 1.5;
   color: var(--txt-dim);
@@ -860,13 +865,13 @@ main {
 }
 .wbtn .wname {
   font-family: var(--display);
-  font-size: 19px;
+  font-size: calc(19px * var(--text-scale));
   font-weight: 700;
   letter-spacing: -0.02em;
 }
 .wbtn .wsub {
   font-family: var(--mono);
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--text-scale));
   letter-spacing: 0.13em;
   text-transform: uppercase;
   color: inherit;
@@ -950,7 +955,7 @@ main {
   border-radius: var(--r-s);
   padding: 6px 10px;
   color: var(--txt-dim);
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale));
   cursor: pointer;
 }
 /* Activ = text plin + linie de 2px. Nicio casetă umplută, niciun gradient. */
@@ -958,7 +963,7 @@ main {
   color: var(--txt);
   box-shadow: inset 0 -2px 0 var(--accent);
 }
-.who-chip .n { font-family: var(--mono); font-size: 10px; color: var(--txt-faint); }
+.who-chip .n { font-family: var(--mono); font-size: calc(10px * var(--text-scale)); color: var(--txt-faint); }
 .who-chip.on .n { color: var(--accent); }
 
 /* BOTTOM SHEET */
@@ -1016,7 +1021,7 @@ main {
   background: none;
   border: none;
   color: var(--accent);
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale));
   font-weight: 500;
   padding: 6px 16px 2px;
   cursor: pointer;
@@ -1035,7 +1040,7 @@ main {
   color: var(--done);
 }
 .sheet-head .eyebrow {
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale));
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1047,14 +1052,14 @@ main {
   font-family: var(--mono);
 }
 .sheet-head h2 {
-  font-size: 22px;
+  font-size: calc(22px * var(--text-scale));
   font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1.2;
   font-family: var(--display);
 }
 .sheet-head p {
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale));
   color: var(--txt-dim);
   margin-top: 5px;
   line-height: 1.5;
@@ -1068,13 +1073,13 @@ main {
   align-items: center;
   gap: 6px;
   margin-top: 8px;
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--text-scale));
   color: var(--txt-faint);
 }
 .origin .dot { color: var(--txt-faint); }
 .origin .mono {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale));
 }
 .origin-avatar {
   flex-shrink: 0;
@@ -1087,7 +1092,7 @@ main {
   background: var(--surface-3);
   color: var(--txt-dim);
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale));
   font-weight: 700;
 }
 /* ── cine ține tichetul ──────────────────────────────────────────────
@@ -1108,7 +1113,7 @@ main {
   background: var(--surface-3);
   color: var(--txt-dim);
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale));
   font-weight: 700;
   letter-spacing: 0.02em;
 }
@@ -1122,7 +1127,7 @@ main {
   overflow: hidden;
   text-overflow: ellipsis;
   color: var(--txt-dim);
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale));
   white-space: nowrap;
 }
 /* Sub 560px numele se strânge în aceeași pastilă ca pe card. */
@@ -1141,7 +1146,7 @@ main {
     background: var(--surface-3);
     color: var(--txt-dim);
     font-family: var(--mono);
-    font-size: 9px;
+    font-size: calc(9px * var(--text-scale));
     font-weight: 700;
   }
 }
@@ -1155,7 +1160,7 @@ main {
   padding: 3px 9px 3px 6px;
   background: var(--surface-3);
   border-radius: var(--r-s);
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--text-scale));
   color: var(--txt-dim);
 }
 .holder .arrow {
@@ -1180,7 +1185,7 @@ main {
    lipeau într-un singur paragraf, iar o listă tastată pe rânduri devenea
    ilizibilă exact în locul unde e citită. */
 .issue-desc {
-  font-size: 14.5px;
+  font-size: calc(14.5px * var(--text-scale));
   color: var(--txt-dim);
   line-height: 1.6;
   white-space: pre-wrap;
@@ -1194,7 +1199,7 @@ main {
   min-height: 0;
 }
 .sheet-section-t {
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale));
   font-weight: 700;
   letter-spacing: 0.09em;
   text-transform: uppercase;
@@ -1222,7 +1227,7 @@ main {
   border-radius: var(--r-m);
   padding: 9px 11px;
   margin-bottom: 6px;
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale));
 }
 .dep-row .ic {
   width: 20px;
@@ -1244,14 +1249,14 @@ main {
 .dep-row .arr {
   margin-left: auto;
   color: var(--txt-faint);
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
 }
 .dep-row.cross {
   opacity: 0.8;
 }
 .dep-row .wtag {
   margin-left: auto;
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale));
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -1276,7 +1281,7 @@ main {
   border-radius: var(--r-m);
   padding: 10px;
   color: var(--txt-dim);
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale));
   font-weight: 600;
   background: transparent;
   margin-top: 3px;
@@ -1293,7 +1298,7 @@ main {
 }
 .fld label {
   display: block;
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale));
   font-weight: 700;
   letter-spacing: 0.09em;
   text-transform: uppercase;
@@ -1310,7 +1315,7 @@ main {
   padding: 10px 12px;
   color: var(--txt);
   font-family: inherit;
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   resize: none;
   line-height: 1.5;
 }
@@ -1339,7 +1344,7 @@ main {
   border-radius: var(--r-m);
   padding: 9px 11px;
   color: var(--txt);
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   font-family: inherit;
 }
 .inline-new input:focus {
@@ -1352,7 +1357,7 @@ main {
   border-radius: var(--r-s);
   padding: 0 15px;
   font-weight: 700;
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale));
 }
 .save-bar {
   position: sticky;
@@ -1368,7 +1373,7 @@ main {
   border-radius: var(--r-s);
   padding: 14px;
   font-weight: 700;
-  font-size: 14.5px;
+  font-size: calc(14.5px * var(--text-scale));
   letter-spacing: -0.01em;
 }
 .save-bar button:disabled {
@@ -1386,7 +1391,7 @@ main {
   border-radius: var(--r);
   background: var(--accent);
   color: var(--on-accent);
-  font-size: 24px;
+  font-size: calc(24px * var(--text-scale));
   font-weight: 300;
   display: flex;
   align-items: center;
@@ -1412,7 +1417,7 @@ main {
 }
 .chip {
   flex-shrink: 0;
-  font-size: 11.5px;
+  font-size: calc(11.5px * var(--text-scale));
   font-weight: 600;
   padding: 6px 12px;
   border-radius: var(--r-s);
@@ -1450,7 +1455,7 @@ main {
 }
 
 .tk-theme {
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale));
   font-weight: 600;
   color: var(--txt-faint);
 }
@@ -1470,7 +1475,7 @@ main {
   padding: 9px 11px;
   color: var(--txt);
   font-family: inherit;
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   min-width: 0;
 }
 .theme-edit input:focus {
@@ -1500,7 +1505,7 @@ main {
   min-width: 38px;
   text-align: center;
   font-weight: 700;
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   color: var(--txt-dim);
   background: var(--surface-3);
   border-radius: var(--r-s);
@@ -1519,7 +1524,7 @@ main {
   padding: 9px 11px;
   color: var(--txt);
   font-family: inherit;
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   min-width: 0;
 }
 .wave-edit input:first-child {
@@ -1538,7 +1543,7 @@ main {
   border-radius: var(--r-s);
   padding: 9px 11px;
   color: var(--blocked);
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale));
   font-weight: 600;
 }
 
@@ -1563,12 +1568,12 @@ main {
   margin: 0 auto 14px;
 }
 .login-card h1 {
-  font-size: 22px;
+  font-size: calc(22px * var(--text-scale));
   font-weight: 700;
   letter-spacing: -0.03em;
 }
 .login-sub {
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale));
   color: var(--txt-dim);
   margin: 4px 0 20px;
 }
@@ -1581,14 +1586,14 @@ main {
   color: var(--txt-faint);
   text-align: center;
   padding: 40px 0;
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
 }
 .banner {
   background: var(--blocked-soft);
   color: var(--blocked);
   border-radius: var(--r-m);
   padding: 10px 12px;
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale));
   margin-bottom: 12px;
 }
 
@@ -1607,7 +1612,7 @@ main {
 }
 .chip-add {
   flex-shrink: 0;
-  font-size: 18px;
+  font-size: calc(18px * var(--text-scale));
   font-weight: 400;
   width: 32px;
   padding: 0;
@@ -1649,7 +1654,7 @@ main {
   align-items: center;
   border-radius: var(--r-s);
   background: var(--surface-3);
-  font-size: 11.5px;
+  font-size: calc(11.5px * var(--text-scale));
   font-weight: 500;
   color: var(--txt-dim);
   transition: border-color 0.13s;
@@ -1694,7 +1699,7 @@ main {
   border: none;
   color: inherit;
   opacity: 0.4;
-  font-size: 16px;
+  font-size: calc(16px * var(--text-scale));
   font-weight: 300;
   padding: 4px 8px;
   cursor: pointer;
@@ -1708,7 +1713,7 @@ main {
 }
 .dep-chip-id {
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale));
   font-weight: 700;
   color: var(--txt-faint);
   letter-spacing: 0.03em;
@@ -1725,7 +1730,7 @@ main {
 }
 .dep-chip-x {
   display: none;
-  font-size: 16px;
+  font-size: calc(16px * var(--text-scale));
   font-weight: 300;
   opacity: 0.6;
   margin-left: 2px;
@@ -1746,7 +1751,7 @@ main {
   padding: 9px 12px;
   color: var(--txt);
   font-family: inherit;
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
 }
 .dep-search-input:focus {
   outline: none;
@@ -1770,7 +1775,7 @@ main {
   align-items: center;
   gap: 9px;
   padding: 9px 11px;
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale));
   width: 100%;
   text-align: left;
   border-bottom: 1px solid var(--line-soft);
@@ -1797,7 +1802,7 @@ main {
 }
 .dep-no-results {
   padding: 10px 12px;
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale));
   color: var(--txt-faint);
 }
 .dep-create-btn {
@@ -1807,7 +1812,7 @@ main {
   padding: 10px 12px;
   width: 100%;
   text-align: left;
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   color: var(--accent);
   border-top: 1px solid var(--line-soft);
   background: transparent;
@@ -1818,7 +1823,7 @@ main {
   background: var(--accent-soft);
 }
 .dep-create-plus {
-  font-size: 21px;
+  font-size: calc(21px * var(--text-scale));
   font-weight: 300;
   line-height: 1;
 }
@@ -1843,7 +1848,7 @@ main {
   border-radius: var(--r-s);
   background: var(--surface-2);
   color: var(--txt-faint);
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale));
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s;
@@ -1879,7 +1884,7 @@ main {
 }
 .bulk-count {
   font-family: var(--mono);
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale));
   color: var(--accent);
   padding-right: 10px;
   border-right: 1px solid var(--line);
@@ -1890,7 +1895,7 @@ main {
   gap: 8px;
 }
 .bulk-label {
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale));
   color: var(--txt-faint);
   font-family: var(--mono);
 }
@@ -1901,7 +1906,7 @@ main {
   background: var(--surface);
   color: var(--txt);
   font-family: var(--sans);
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale));
   cursor: pointer;
   outline: none;
 }
@@ -1919,7 +1924,7 @@ main {
   background: var(--surface-3);
   color: var(--txt);
   font-family: var(--sans);
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale));
   font-weight: 500;
   cursor: pointer;
   transition: all 0.12s;
@@ -1947,12 +1952,12 @@ main {
   width: min(340px, 90vw);
   box-shadow: 0 32px 80px rgba(0,0,0,.8);
 }
-.bulk-confirm-box h3 { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
-.bulk-confirm-box p { font-size: 15px; color: var(--txt-faint); line-height: 1.55; margin-bottom: 20px; }
+.bulk-confirm-box h3 { font-size: calc(18px * var(--text-scale)); font-weight: 600; margin-bottom: 8px; }
+.bulk-confirm-box p { font-size: calc(15px * var(--text-scale)); color: var(--txt-faint); line-height: 1.55; margin-bottom: 20px; }
 .bulk-confirm-actions { display: flex; gap: 8px; }
 .bulk-confirm-actions button {
   flex: 1; padding: 10px; border-radius: var(--r-s);
-  font-family: var(--sans); font-size: 15px; font-weight: 500; cursor: pointer; transition: all 0.12s;
+  font-family: var(--sans); font-size: calc(15px * var(--text-scale)); font-weight: 500; cursor: pointer; transition: all 0.12s;
 }
 .bulk-confirm-cancel {
   background: var(--surface-3); color: var(--txt-faint);
@@ -1998,7 +2003,7 @@ main {
 }
 .if-header-left { display: flex; flex-direction: column; gap: 3px; }
 .if-eyebrow {
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale));
   font-weight: 600;
   letter-spacing: 0.09em;
   text-transform: uppercase;
@@ -2020,7 +2025,7 @@ main {
   50%      { box-shadow: 0 0 0 4px color-mix(in srgb, var(--done) 10%, transparent); }
 }
 .if-title {
-  font-size: 21px;
+  font-size: calc(21px * var(--text-scale));
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1.2;
@@ -2031,7 +2036,7 @@ main {
   width: 32px; height: 32px;
   border-radius: var(--r-s);
   display: flex; align-items: center; justify-content: center;
-  font-size: 16px;
+  font-size: calc(16px * var(--text-scale));
   cursor: pointer;
   flex-shrink: 0;
   transition: background 0.15s, color 0.15s;
@@ -2051,7 +2056,7 @@ main {
   display: inline-flex; align-items: center; gap: 4px;
   border-radius: var(--r-s);
   padding: 3px 10px;
-  font-size: 12px; font-weight: 600;
+  font-size: calc(12px * var(--text-scale)); font-weight: 600;
   cursor: pointer;
   background: var(--surface-3);
   color: var(--txt-faint);
@@ -2072,7 +2077,7 @@ main {
   display: inline-flex; align-items: center;
   border-radius: var(--r-s);
   padding: 3px 10px;
-  font-size: 12px; font-weight: 600;
+  font-size: calc(12px * var(--text-scale)); font-weight: 600;
   cursor: pointer;
   background: var(--surface-3);
   color: var(--txt-faint);
@@ -2091,7 +2096,7 @@ main {
   border: 1.5px dashed var(--line);
   background: none;
   color: var(--txt-faint);
-  font-size: 16px; font-weight: 600; line-height: 1;
+  font-size: calc(16px * var(--text-scale)); font-weight: 600; line-height: 1;
   cursor: pointer;
   transition: all 0.13s;
   flex-shrink: 0;
@@ -2102,7 +2107,7 @@ main {
   margin-top: 6px;
 }
 .if-meta-new-theme input {
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale));
   padding: 4px 10px;
   border-radius: var(--r-s);
   border: 1.5px solid var(--accent);
@@ -2113,7 +2118,7 @@ main {
   font-family: var(--display);
 }
 .if-meta-new-theme button {
-  font-size: 12px; font-weight: 600;
+  font-size: calc(12px * var(--text-scale)); font-weight: 600;
   padding: 4px 10px;
   border-radius: var(--r-s);
   border: none;
@@ -2123,7 +2128,7 @@ main {
 }
 
 .if-field-label {
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale));
   font-weight: 600;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -2144,7 +2149,7 @@ main {
   flex-shrink: 0;
 }
 .if-footer-hint {
-  font-size: 11.5px;
+  font-size: calc(11.5px * var(--text-scale));
   color: var(--txt-faint);
   display: flex;
   align-items: center;
@@ -2157,7 +2162,7 @@ main {
   border-radius: var(--r-s);
   padding: 1px 6px;
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale));
   color: var(--txt-dim);
 }
 .if-footer-actions { display: flex; gap: 8px; }
@@ -2166,7 +2171,7 @@ main {
   color: var(--txt-dim);
   border-radius: var(--r-s);
   padding: 7px 16px;
-  font-size: 15px; font-weight: 500;
+  font-size: calc(15px * var(--text-scale)); font-weight: 500;
   cursor: pointer;
   transition: color 0.15s;
 }
@@ -2177,7 +2182,7 @@ main {
   color: var(--on-accent);
   border-radius: var(--r-s);
   padding: 7px 20px;
-  font-size: 15px; font-weight: 600;
+  font-size: calc(15px * var(--text-scale)); font-weight: 600;
   cursor: pointer;
   box-shadow: 0 3px 12px color-mix(in srgb, var(--accent) 35%, transparent);
   display: flex; align-items: center; gap: 6px;
@@ -2196,7 +2201,7 @@ main {
   background: var(--surface-3);
   border-radius: var(--r-m);
   padding: 7px 11px;
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   color: var(--txt-dim);
 }
 .if-sc-item input {
@@ -2204,7 +2209,7 @@ main {
   border: none;
   outline: none;
   font-family: var(--display);
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   color: var(--txt);
   flex: 1;
   min-width: 0;
@@ -2214,7 +2219,7 @@ main {
   background: none; border: none;
   color: var(--line);
   cursor: pointer;
-  font-size: 17px; padding: 0 2px;
+  font-size: calc(17px * var(--text-scale)); padding: 0 2px;
   line-height: 1;
   transition: color 0.12s;
   flex-shrink: 0;
@@ -2224,7 +2229,7 @@ main {
   width: 22px; height: 22px;
   border-radius: var(--r-s);
   display: flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: 700;
+  font-size: calc(12px * var(--text-scale)); font-weight: 700;
   flex-shrink: 0;
   cursor: pointer;
   user-select: none;
@@ -2235,7 +2240,7 @@ main {
 .if-badge.pass    { background: color-mix(in srgb, var(--done) 15%, transparent);  color: var(--done); }
 .if-badge.fail    { background: color-mix(in srgb, var(--blocked) 12%, transparent);  color: var(--blocked); }
 .if-badge.neutral { background: var(--accent-soft);  color: var(--accent); }
-.if-badge.selector { background: var(--accent-soft); color: var(--accent); font-size: 10px; }
+.if-badge.selector { background: var(--accent-soft); color: var(--accent); font-size: calc(10px * var(--text-scale)); }
 
 .if-add-btn {
   display: flex; align-items: center; gap: 8px;
@@ -2246,7 +2251,7 @@ main {
   padding: 8px 13px;
   color: var(--accent);
   font-family: var(--display);
-  font-size: 15px; font-weight: 500;
+  font-size: calc(15px * var(--text-scale)); font-weight: 500;
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
 }
@@ -2275,7 +2280,7 @@ main {
   box-shadow: 0 16px 48px rgba(0,0,0,0.4);
 }
 .ccm-msg {
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   font-weight: 600;
   color: var(--txt);
   text-align: center;
@@ -2291,7 +2296,7 @@ main {
   border-radius: var(--r-s);
   background: var(--accent);
   color: var(--on-accent);
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale));
   font-weight: 700;
   cursor: pointer;
   transition: opacity 0.12s;
@@ -2303,7 +2308,7 @@ main {
   border-radius: var(--r-s);
   background: var(--surface-3);
   color: var(--txt-dim);
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale));
   font-weight: 500;
   cursor: pointer;
   transition: color 0.12s;
@@ -2318,7 +2323,7 @@ main {
   border-radius: var(--r-s);
   background: var(--accent-soft);
   color: var(--accent);
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale));
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
@@ -2395,7 +2400,7 @@ main {
 /* Starea cozii offline. Mono — e o cifră și o etichetă de stare, nu limbă. */
 .sync-status {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale));
   letter-spacing: 0.02em;
   color: var(--txt-dim);
   white-space: nowrap;
@@ -2476,7 +2481,7 @@ main {
   flex-shrink: 0;
 }
 .info-head h2 {
-  font-size: 16px;
+  font-size: calc(16px * var(--text-scale));
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -2484,7 +2489,7 @@ main {
 }
 .info-now {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale));
   color: var(--txt-faint);
   flex: 1;
 }
@@ -2492,7 +2497,7 @@ main {
   width: 26px; height: 26px;
   border-radius: 50%;
   color: var(--txt-faint);
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale));
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
   background: var(--surface-3);
@@ -2508,7 +2513,7 @@ main {
 }
 .info-sec h3 {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale));
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -2516,7 +2521,7 @@ main {
   margin-bottom: 12px;
 }
 .info-lead {
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale));
   color: var(--txt-dim);
   line-height: 1.55;
   margin-bottom: 14px;
@@ -2524,7 +2529,7 @@ main {
 
 /* scurtături */
 .info-keys { width: 100%; border-collapse: collapse; }
-.info-keys td { font-size: 13.5px; color: var(--txt); padding: 4px 0; vertical-align: middle; }
+.info-keys td { font-size: calc(13.5px * var(--text-scale)); color: var(--txt); padding: 4px 0; vertical-align: middle; }
 .info-keys td.info-kbd { width: 120px; padding-right: 14px; white-space: nowrap; }
 .info-keys kbd,
 .info-card kbd {
@@ -2535,11 +2540,11 @@ main {
   background: var(--line-soft);
   border: 1px solid var(--line);
   font-family: var(--mono);
-  font-size: 11.5px;
+  font-size: calc(11.5px * var(--text-scale));
   font-weight: 600;
   color: var(--txt);
 }
-.info-where { color: var(--txt-faint); font-size: 12px; }
+.info-where { color: var(--txt-faint); font-size: calc(12px * var(--text-scale)); }
 
 /* exemple de recunoaștere */
 .info-grp { margin-bottom: 14px; }
@@ -2550,14 +2555,14 @@ main {
   flex-wrap: wrap;
   margin-bottom: 5px;
 }
-.info-grp-title { font-size: 12.5px; font-weight: 700; color: var(--txt); }
-.info-grp-note { font-size: 11.5px; color: var(--txt-faint); font-style: italic; }
+.info-grp-title { font-size: calc(12.5px * var(--text-scale)); font-weight: 700; color: var(--txt); }
+.info-grp-note { font-size: calc(11.5px * var(--text-scale)); color: var(--txt-faint); font-style: italic; }
 .info-ex { width: 100%; border-collapse: collapse; }
-.info-ex td { font-size: 12.5px; padding: 2px 0; vertical-align: baseline; }
+.info-ex td { font-size: calc(12.5px * var(--text-scale)); padding: 2px 0; vertical-align: baseline; }
 .info-ex td:first-child { width: 44%; padding-right: 8px; }
 .info-ex code {
   font-family: var(--mono);
-  font-size: 11.5px;
+  font-size: calc(11.5px * var(--text-scale));
   background: var(--surface-2);
   border: 1px solid var(--line-soft);
   border-radius: 4px;
@@ -2565,19 +2570,19 @@ main {
   color: var(--txt);
 }
 .info-ex-arrow { width: 18px; color: var(--txt-faint); }
-.info-due { font-family: var(--mono); font-size: 11.5px; color: var(--done); font-weight: 600; }
+.info-due { font-family: var(--mono); font-size: calc(11.5px * var(--text-scale)); color: var(--done); font-weight: 600; }
 .info-title-left { color: var(--txt-faint); }
 .info-none { color: var(--txt-faint); font-style: italic; }
 
 /* reguli */
 .info-rules > div + div { margin-top: 12px; }
 .info-rules dt {
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--text-scale));
   font-weight: 700;
   color: var(--txt);
   margin-bottom: 3px;
 }
-.info-rules dd { font-size: 12.5px; color: var(--txt-dim); line-height: 1.55; }
+.info-rules dd { font-size: calc(12.5px * var(--text-scale)); color: var(--txt-dim); line-height: 1.55; }
 
 /* Pe ecran lat, scurtăturile și regulile stau alături, iar exemplele — care
    sunt partea lungă — trec pe toată lățimea dedesubt. Numărate de la COADĂ:
@@ -2603,7 +2608,7 @@ main {
   border: none;
   color: var(--txt-faint);
   cursor: pointer;
-  font-size: 18px;
+  font-size: calc(18px * var(--text-scale));
   padding: 4px 8px;
   border-radius: var(--r-s);
   line-height: 1;
@@ -2618,7 +2623,7 @@ main {
   color: var(--txt-dim);
   border-radius: var(--r-m);
   padding: 7px 12px;
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale));
   cursor: pointer;
   width: 100%;
   text-align: left;
@@ -2646,7 +2651,7 @@ main {
   border: none;
   color: var(--txt-faint);
   cursor: pointer;
-  font-size: 16px;
+  font-size: calc(16px * var(--text-scale));
   padding: 2px 7px;
   border-radius: var(--r-s);
   line-height: 1;
@@ -2720,20 +2725,20 @@ main {
     width: 28px;
     height: 28px;
     border-radius: var(--r-s);
-    font-size: 12px;
+    font-size: calc(12px * var(--text-scale));
     flex-shrink: 0;
   }
 
   .sidebar-app-name {
     font-family: var(--display);
-    font-size: 17px;
+    font-size: calc(17px * var(--text-scale));
     font-weight: 700;
     letter-spacing: -0.02em;
     color: var(--txt);
   }
 
   .sidebar-section-label {
-    font-size: 11px;
+    font-size: calc(11px * var(--text-scale));
     font-weight: 700;
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -2748,7 +2753,7 @@ main {
     gap: 9px;
     padding: 8px 10px;
     border-radius: var(--r-s);
-    font-size: 15px;
+    font-size: calc(15px * var(--text-scale));
     font-weight: 500;
     color: var(--txt-dim);
     text-align: left;
@@ -2831,7 +2836,7 @@ main {
     padding: 7px 10px 7px 4px;
     flex: 1;
     min-width: 0;
-    font-size: 14px;
+    font-size: calc(14px * var(--text-scale));
     font-weight: 500;
     color: var(--txt-dim);
     text-align: left;
@@ -2862,7 +2867,7 @@ main {
   }
 
   .sidebar-proj-pct {
-    font-size: 11px;
+    font-size: calc(11px * var(--text-scale));
     font-weight: 700;
     color: var(--txt-faint);
     font-family: var(--mono);
@@ -2870,7 +2875,7 @@ main {
   }
 
   .sidebar-empty {
-    font-size: 14px;
+    font-size: calc(14px * var(--text-scale));
     color: var(--txt-faint);
     padding: 8px 10px;
     font-style: italic;
@@ -2894,7 +2899,7 @@ main {
     border-radius: var(--r-s);
     background: var(--surface-2);
     color: var(--txt-dim);
-    font-size: 14px;
+    font-size: calc(14px * var(--text-scale));
     font-weight: 600;
     flex: 1;
     text-align: left;
@@ -2906,7 +2911,7 @@ main {
   background: var(--accent-soft);
   }
   .sidebar-new-plus {
-    font-size: 18px;
+    font-size: calc(18px * var(--text-scale));
     font-weight: 400;
     line-height: 1;
     opacity: 0.8;
@@ -2945,7 +2950,7 @@ main {
     display: none;
   }
   .htxt h1 {
-    font-size: 17px;
+    font-size: calc(17px * var(--text-scale));
   }
 
   /* ── MAIN CONTENT ───────────────────────────── */
@@ -3034,7 +3039,7 @@ main {
 
   /* ── SECTION LABEL ────────────────────────────── */
   .section-label {
-    font-size: 12px;
+    font-size: calc(12px * var(--text-scale));
     margin-bottom: 18px;
   }
 
@@ -3245,7 +3250,7 @@ main {
     max-width: 260px;
   }
   .split-empty p {
-    font-size: 13px;
+    font-size: calc(13px * var(--text-scale));
     line-height: 1.6;
   }
 }
@@ -3305,7 +3310,7 @@ main {
   color: var(--txt-dim);
   display: flex; align-items: center; justify-content: center;
   cursor: pointer;
-  font-size: 18px; font-weight: 300;
+  font-size: calc(18px * var(--text-scale)); font-weight: 300;
   transition: all 0.15s;
 }
 .sh-close:hover { background: var(--blocked-soft); color: var(--blocked); }
@@ -3392,7 +3397,7 @@ main {
 .sh-title-mirror,
 .sh-title-input {
   font-family: var(--display);
-  font-size: 18px;
+  font-size: calc(18px * var(--text-scale));
   font-weight: 500;
   line-height: 26px;
   letter-spacing: -0.015em;
@@ -3452,7 +3457,7 @@ main {
    citește singur ca rând cu care poți interacționa; eticheta îl ancorează. */
 .meta-recap-label {
   flex-shrink: 0;
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale));
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -3465,7 +3470,7 @@ main {
 .meta-recap-text {
   flex: 1;
   min-width: 0;
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale));
   font-weight: 500;
   color: var(--txt);
   white-space: nowrap;
@@ -3504,7 +3509,7 @@ main {
   border-radius: var(--r-s);
   background: var(--surface-3);
   color: var(--txt);
-  font-size: 13.5px;
+  font-size: calc(13.5px * var(--text-scale));
   cursor: pointer;
   white-space: nowrap;
   max-width: 190px;
@@ -3525,7 +3530,7 @@ main {
   width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
   background: var(--accent-soft); color: var(--accent);
-  font-family: var(--mono); font-size: 9px; font-weight: 700;
+  font-family: var(--mono); font-size: calc(9px * var(--text-scale)); font-weight: 700;
 }
 /* `.nobody`, nu `.empty`: `.empty` e clasa globală a stărilor goale de ecran
    (`padding: 40px 0`), iar un jeton de 22px care o prinde devine o elipsă. */
@@ -3553,7 +3558,7 @@ main {
   background: transparent;
   color: var(--txt-faint);
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale));
   font-weight: 600;
   letter-spacing: 0.06em;
   cursor: pointer;
@@ -3588,7 +3593,7 @@ main {
 }
 .if-sub-label {
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale));
   font-weight: 600;
   letter-spacing: 0.11em;
   text-transform: uppercase;
@@ -3607,7 +3612,7 @@ main {
 .inline-search-input {
   width: 100%;
   font-family: var(--font);
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   color: var(--txt);
   background: var(--card-hi);
   border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
@@ -3620,7 +3625,7 @@ main {
 .inline-ok-btn {
   margin-top: 5px;
   font-family: var(--font);
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale));
   font-weight: 600;
   padding: 5px 14px;
   border-radius: var(--r-s);
@@ -3640,7 +3645,7 @@ main {
 }
 .sh-dep-tab {
   font-family: var(--font);
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale));
   font-weight: 500;
   padding: 5px 12px;
   border-radius: var(--r-s);
@@ -3654,12 +3659,12 @@ main {
   color: var(--accent);
 }
 .dep-count {
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale));
   font-weight: 400;
   opacity: 0.65;
 }
 .dep-tab-hint {
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale));
   color: var(--txt-faint);
   font-style: italic;
   margin-bottom: 8px;
@@ -3712,7 +3717,7 @@ main {
   background: none;
   border: none;
   outline: none;
-  font-size: 17px;
+  font-size: calc(17px * var(--text-scale));
   font-family: inherit;
   color: var(--txt);
   caret-color: var(--accent);
@@ -3721,7 +3726,7 @@ main {
   color: var(--txt-faint);
 }
 .qs-esc-badge {
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale));
   font-family: var(--mono);
   color: var(--txt-faint);
   background: var(--surface-3);
@@ -3750,7 +3755,7 @@ main {
   background: var(--surface-2);
 }
 .qs-item-id {
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale));
   font-family: var(--mono);
   color: var(--txt-faint);
   flex-shrink: 0;
@@ -3758,7 +3763,7 @@ main {
 }
 .qs-item-title {
   flex: 1;
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3776,7 +3781,7 @@ main {
 .qs-empty {
   padding: 24px 18px;
   color: var(--txt-faint);
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale));
   text-align: center;
 }
 .qs-footer {
@@ -3790,11 +3795,11 @@ main {
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale));
   color: var(--txt-faint);
 }
 .qs-footer kbd {
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale));
   font-family: var(--mono);
   background: var(--surface-3);
   border: 1px solid var(--line);
@@ -3865,7 +3870,7 @@ main {
   border-radius: var(--r-m);
   color: var(--txt);
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale));
   line-height: 1.7;
   padding: 12px 14px;
   resize: none;
@@ -3908,7 +3913,7 @@ main {
   background: var(--surface-3);
   color: var(--txt-faint);
   font-family: var(--font);
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale));
   font-weight: 500;
   cursor: pointer;
   transition: all 0.12s;
@@ -3921,7 +3926,7 @@ main {
 }
 
 .dep-tab-count {
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale));
   background: color-mix(in srgb, var(--accent) 15%, transparent);
   color: var(--accent);
   border-radius: var(--r-s);
@@ -3961,7 +3966,7 @@ main {
   outline: none;
   color: var(--txt);
   font-family: var(--font);
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale));
   padding: 1px 0;
 }
 .dep-search-input-sm::placeholder { color: var(--txt-faint); }
@@ -4006,13 +4011,13 @@ main {
 
 .dep-card-id {
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale));
   color: var(--accent);
   opacity: 0.8;
   flex-shrink: 0;
 }
 .dep-card-title {
-  font-size: 11.5px;
+  font-size: calc(11.5px * var(--text-scale));
   color: var(--txt);
   white-space: nowrap;
   overflow: hidden;
@@ -4027,7 +4032,7 @@ main {
   border-left: 1px solid var(--line);
   color: var(--txt-faint);
   cursor: pointer;
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4071,10 +4076,10 @@ main {
 .dep-dd-item:last-child { border-bottom: none; }
 .dep-dd-item:hover, .dep-dd-item.hl { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 
-.dep-dd-ic { color: var(--accent); font-size: 13px; flex-shrink: 0; }
-.dep-dd-title { font-size: 12px; color: var(--txt); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dep-dd-id { font-family: var(--mono); font-size: 10px; color: var(--txt-faint); flex-shrink: 0; }
-.dep-dd-empty { padding: 10px 12px; font-size: 12px; color: var(--txt-faint); }
+.dep-dd-ic { color: var(--accent); font-size: calc(13px * var(--text-scale)); flex-shrink: 0; }
+.dep-dd-title { font-size: calc(12px * var(--text-scale)); color: var(--txt); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dep-dd-id { font-family: var(--mono); font-size: calc(10px * var(--text-scale)); color: var(--txt-faint); flex-shrink: 0; }
+.dep-dd-empty { padding: 10px 12px; font-size: calc(12px * var(--text-scale)); color: var(--txt-faint); }
 
 .dep-dd-create {
   display: flex;
@@ -4088,12 +4093,12 @@ main {
   text-align: left;
   cursor: pointer;
   font-family: var(--font);
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale));
   color: var(--accent);
   transition: background 0.1s;
 }
 .dep-dd-create:hover, .dep-dd-create.hl { background: color-mix(in srgb, var(--accent) 8%, transparent); }
-.dep-dd-plus { font-size: 15px; font-weight: 700; line-height: 1; }
+.dep-dd-plus { font-size: calc(15px * var(--text-scale)); font-weight: 700; line-height: 1; }
 .dep-dd-create strong { font-weight: 700; }
 
 /* ── QA ACCORDION ──────────────────────────────── */
@@ -4120,7 +4125,7 @@ main {
 .acc-icon { color: var(--txt-faint); flex-shrink: 0; display: flex; align-items: center; }
 
 .acc-title {
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale));
   font-weight: 600;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -4129,7 +4134,7 @@ main {
 }
 
 .acc-count {
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale));
   background: color-mix(in srgb, var(--accent) 12%, transparent);
   color: var(--accent);
   border-radius: var(--r-s);
@@ -4158,7 +4163,7 @@ main {
 }
 
 .qa-sub-label {
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale));
   font-weight: 600;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -4169,7 +4174,7 @@ main {
   background: transparent;
   border: none;
   color: var(--txt-faint);
-  font-size: 16px;
+  font-size: calc(16px * var(--text-scale));
   font-weight: 300;
   line-height: 1;
   cursor: pointer;
@@ -4188,7 +4193,7 @@ main {
 .thread { padding: 0 16px 16px; flex: 1; }
 
 .thread-events { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
-.thread-loading, .thread-empty { color: var(--txt-faint); font-size: 13px; font-style: italic; padding: 2px 0; }
+.thread-loading, .thread-empty { color: var(--txt-faint); font-size: calc(13px * var(--text-scale)); font-style: italic; padding: 2px 0; }
 
 .thread-comment { display: flex; gap: 8px; align-items: flex-start; }
 .thread-avatar {
@@ -4197,7 +4202,7 @@ main {
   border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   background: var(--surface-3); color: var(--txt-dim);
-  font-family: var(--mono); font-size: 10px; font-weight: 700;
+  font-family: var(--mono); font-size: calc(10px * var(--text-scale)); font-weight: 700;
   margin-top: 2px;
 }
 .thread-comment.mine .thread-avatar { background: var(--accent-soft); color: var(--accent); }
@@ -4211,9 +4216,9 @@ main {
 }
 .thread-comment.mine .thread-comment-card { background: var(--surface-2); }
 .thread-comment-head { display: flex; align-items: baseline; gap: 7px; margin-bottom: 3px; }
-.thread-comment-name { font-size: 13px; font-weight: 600; color: var(--txt); }
-.thread-comment-time { font-family: var(--mono); font-size: 11px; color: var(--txt-faint); }
-.thread-comment-text { font-size: 13px; line-height: 1.55; color: var(--txt); white-space: pre-wrap; overflow-wrap: break-word; }
+.thread-comment-name { font-size: calc(13px * var(--text-scale)); font-weight: 600; color: var(--txt); }
+.thread-comment-time { font-family: var(--mono); font-size: calc(11px * var(--text-scale)); color: var(--txt-faint); }
+.thread-comment-text { font-size: calc(13px * var(--text-scale)); line-height: 1.55; color: var(--txt); white-space: pre-wrap; overflow-wrap: break-word; }
 /* Refolosește `.att-strip`/`.att-chip` din Attachments.tsx — aceleași
    miniaturi și același lightbox ca bara tichetului, doar grupate sub
    comentariul care le-a adus. Fără `.att-del`: firul e istoric, nu se editează. */
@@ -4225,7 +4230,7 @@ main {
    privire de firul de comentarii. */
 .thread-handoff {
   text-align: right;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale));
   color: var(--txt-dim);
   padding: 2px 4px;
 }
@@ -4237,7 +4242,7 @@ main {
 .thread-pending-chip {
   display: flex; align-items: center; gap: 5px;
   background: var(--surface-3); border-radius: var(--r-s);
-  padding: 4px 6px 4px 8px; font-size: 11.5px; color: var(--txt-dim);
+  padding: 4px 6px 4px 8px; font-size: calc(11.5px * var(--text-scale)); color: var(--txt-dim);
 }
 .thread-pending-chip button { display: flex; padding: 2px; background: none; border: none; color: inherit; opacity: 0.6; cursor: pointer; }
 .thread-pending-chip button:hover { opacity: 1; color: var(--blocked); }
@@ -4246,7 +4251,7 @@ main {
 .thread-att-msg {
   display: flex; align-items: center; gap: 8px;
   margin-bottom: 6px; padding: 6px 10px;
-  border-radius: var(--r-m); background: var(--accent-soft); font-size: 12px;
+  border-radius: var(--r-m); background: var(--accent-soft); font-size: calc(12px * var(--text-scale));
 }
 .thread-att-msg button { margin-left: auto; background: none; border: none; color: inherit; cursor: pointer; }
 
@@ -4257,7 +4262,7 @@ main {
   border-radius: var(--r-m);
   color: var(--txt);
   font-family: var(--font);
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale));
   line-height: 1.6;
   padding: 10px 12px;
   outline: none;
@@ -4275,14 +4280,14 @@ main {
   display: flex; align-items: center; gap: 5px;
   background: var(--surface-3); color: var(--txt-dim);
   border: none; border-radius: var(--r-s);
-  padding: 6px 10px; font-size: 12px; font-weight: 500; font-family: var(--font);
+  padding: 6px 10px; font-size: calc(12px * var(--text-scale)); font-weight: 500; font-family: var(--font);
   cursor: pointer; white-space: nowrap;
 }
 .thread-to-btn:hover { background: var(--surface-2); }
 /* Stare activă = text plin + linie de 2px, niciodată casetă umplută. */
 .thread-to-btn.set { color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent); }
 .thread-to-menu { min-width: 200px; z-index: 70; }
-.thread-to-sub { display: block; font-family: var(--font); font-size: 10.5px; color: var(--txt-faint); margin-top: 1px; }
+.thread-to-sub { display: block; font-family: var(--font); font-size: calc(10.5px * var(--text-scale)); color: var(--txt-faint); margin-top: 1px; }
 
 .thread-send-btn {
   margin-left: auto;
@@ -4290,7 +4295,7 @@ main {
   color: var(--on-accent);
   border: none; border-radius: var(--r-s);
   padding: 7px 14px;
-  font-size: 12.5px; font-weight: 600; font-family: var(--font);
+  font-size: calc(12.5px * var(--text-scale)); font-weight: 600; font-family: var(--font);
   cursor: pointer;
   transition: all 0.14s;
 }
@@ -4374,7 +4379,7 @@ main {
   }
   .wave-action-btn {
     padding: 9px 14px;
-    font-size: 13px;
+    font-size: calc(13px * var(--text-scale));
   }
 
   /* ── Issue form meta: stack Temă / Val / Assigned vertically instead of
@@ -4453,10 +4458,10 @@ main {
 }
 .users-title {
   font-family: var(--display);
-  font-size: 26px; font-weight: 700; letter-spacing: -0.02em;
+  font-size: calc(26px * var(--text-scale)); font-weight: 700; letter-spacing: -0.02em;
   color: var(--txt); margin: 0;
 }
-.users-sub { margin: 5px 0 0; font-size: 13px; color: var(--txt-dim); }
+.users-sub { margin: 5px 0 0; font-size: calc(13px * var(--text-scale)); color: var(--txt-dim); }
 
 /* ── Lista de conturi ─────────────────────────────────────────────────
    Un rând nu are chenar: se desprinde de fundal prin `--surface` plus
@@ -4481,31 +4486,31 @@ main {
 .user-avatar {
   flex: none; display: grid; place-items: center;
   width: 38px; height: 38px; border-radius: var(--r-m);
-  font-family: var(--display); font-size: 16px; font-weight: 700; color: var(--on-accent);
+  font-family: var(--display); font-size: calc(16px * var(--text-scale)); font-weight: 700; color: var(--on-accent);
   background: var(--accent);
 }
 .user-id { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .user-name {
   display: flex; align-items: baseline; gap: 8px; min-width: 0;
-  font-family: var(--display); font-size: 15px; font-weight: 600; color: var(--txt);
+  font-family: var(--display); font-size: calc(15px * var(--text-scale)); font-weight: 600; color: var(--txt);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .user-unnamed {
-  flex: none; font-family: var(--mono); font-size: 10px;
+  flex: none; font-family: var(--mono); font-size: calc(10px * var(--text-scale));
   text-transform: uppercase; letter-spacing: 0.06em; color: var(--txt-faint);
 }
 .user-email {
-  font-family: var(--mono); font-size: 12px; color: var(--txt-dim);
+  font-family: var(--mono); font-size: calc(12px * var(--text-scale)); color: var(--txt-dim);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .user-access {
-  flex: none; font-family: var(--mono); font-size: 11.5px; color: var(--txt-faint);
+  flex: none; font-family: var(--mono); font-size: calc(11.5px * var(--text-scale)); color: var(--txt-faint);
 }
 .user-chev { flex: none; color: var(--txt-faint); }
 
 /* ── Accesul, în foaie ────────────────────────────────────────────── */
 .grant-badge {
-  font-family: var(--mono); font-size: 10px; text-transform: none; letter-spacing: 0;
+  font-family: var(--mono); font-size: calc(10px * var(--text-scale)); text-transform: none; letter-spacing: 0;
   color: var(--accent); background: var(--accent-soft); border-radius: var(--r-s); padding: 2px 7px;
 }
 .acc-grid {
@@ -4517,7 +4522,7 @@ main {
 .acc-row + .acc-row { border-top: 1px solid var(--line-soft); }
 .acc-dot { flex: none; width: 9px; height: 9px; border-radius: 50%; }
 .acc-name {
-  flex: 1 1 auto; min-width: 0; font-size: 13.5px; color: var(--txt);
+  flex: 1 1 auto; min-width: 0; font-size: calc(13.5px * var(--text-scale)); color: var(--txt);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
@@ -4528,7 +4533,7 @@ main {
 }
 .acc-opt {
   border: none; background: transparent; cursor: pointer; font-family: inherit;
-  font-size: 12px; font-weight: 600; color: var(--txt-dim);
+  font-size: calc(12px * var(--text-scale)); font-weight: 600; color: var(--txt-dim);
   padding: 6px 12px; border-radius: var(--r-s);
   transition: background 0.14s, color 0.14s;
 }
@@ -4538,10 +4543,10 @@ main {
 .acc-opt.on.is-write { background: var(--accent); color: var(--on-accent); }
 
 /* ── Câmpuri auxiliare din foaia contului ─────────────────────────── */
-.fld-hint { margin: 6px 0 0; font-size: 12px; color: var(--txt-faint); line-height: 1.5; }
+.fld-hint { margin: 6px 0 0; font-size: calc(12px * var(--text-scale)); color: var(--txt-faint); line-height: 1.5; }
 .fld-hint.ok { color: var(--accent); }
 .fld-static {
-  font-family: var(--mono); font-size: 13.5px; color: var(--txt-dim);
+  font-family: var(--mono); font-size: calc(13.5px * var(--text-scale)); color: var(--txt-dim);
   padding: 10px 12px; background: var(--surface-2); border-radius: var(--r-m);
 }
 .pw-row { display: flex; gap: 8px; align-items: center; }
@@ -4549,19 +4554,19 @@ main {
   flex: 1 1 auto; min-width: 0;
   background: var(--surface-2); border: 1px solid var(--line);
   border-radius: var(--r-m); padding: 10px 12px;
-  color: var(--txt); font-family: inherit; font-size: 15px;
+  color: var(--txt); font-family: inherit; font-size: calc(15px * var(--text-scale));
 }
 .pw-row input:focus { outline: none; border-color: color-mix(in srgb, var(--accent) 53%, transparent); }
 .pw-row .btn-ghost { flex: none; }
 .link-btn {
   background: none; border: none; cursor: pointer;
-  color: var(--txt-dim); font-family: inherit; font-size: 12px;
+  color: var(--txt-dim); font-family: inherit; font-size: calc(12px * var(--text-scale));
 }
 
 .btn-primary {
   display: inline-flex; align-items: center; gap: 7px;
   border: none; cursor: pointer; font-family: inherit;
-  font-size: 14px; font-weight: 600; color: var(--on-accent);
+  font-size: calc(14px * var(--text-scale)); font-weight: 600; color: var(--on-accent);
   background: var(--accent);
   padding: 11px 20px; border-radius: var(--r-s);
   box-shadow: 0 4px 14px -6px var(--accent);
@@ -4569,12 +4574,12 @@ main {
 }
 .btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 18px -6px var(--accent); }
 .btn-primary:active:not(:disabled) { transform: translateY(0); }
-.btn-primary.sm { padding: 8px 16px; font-size: 13px; }
+.btn-primary.sm { padding: 8px 16px; font-size: calc(13px * var(--text-scale)); }
 .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
 
 .btn-ghost, .btn-danger {
   cursor: pointer; font-family: inherit; border: none;
-  font-size: 12.5px; font-weight: 600;
+  font-size: calc(12.5px * var(--text-scale)); font-weight: 600;
   background: var(--surface-2); color: var(--txt-dim);
   padding: 9px 14px; border-radius: var(--r-s);
   transition: background 0.14s, color 0.14s;
@@ -4585,10 +4590,10 @@ main {
 .btn-danger:hover { background: color-mix(in srgb, var(--blocked) 16%, transparent); color: var(--blocked); }
 
 .users-empty {
-  color: var(--txt-faint); font-size: 13.5px; padding: 20px; text-align: center;
+  color: var(--txt-faint); font-size: calc(13.5px * var(--text-scale)); padding: 20px; text-align: center;
   border: 1px dashed var(--line); border-radius: var(--r-m);
 }
-.users-empty.sm { padding: 12px; font-size: 12.5px; border-radius: var(--r-m); }
+.users-empty.sm { padding: 12px; font-size: calc(12.5px * var(--text-scale)); border-radius: var(--r-m); }
 
 @media (max-width: 640px) {
   .user-access { display: none; }
@@ -4610,7 +4615,7 @@ main {
   background: var(--surface);
   color: var(--txt);
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.22);
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale));
   font-weight: 500;
   text-align: center;
   opacity: 0;
@@ -4632,7 +4637,7 @@ body:has(.kb-sheet) .toast {
 }
 .toast-act {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale));
   font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--accent);
@@ -4661,7 +4666,7 @@ body:has(.kb-sheet) .toast {
    plus numărul — cifră, deci mono. Fără fișiere nu apare niciun număr; acolo
    absența E informația, ca la scadențe. */
 .att-anchor { display: flex; align-items: center; gap: 5px; flex: none; color: var(--txt-faint); }
-.att-n { font-family: var(--mono); font-size: 11px; line-height: 1; color: var(--txt-dim); font-variant-numeric: tabular-nums; }
+.att-n { font-family: var(--mono); font-size: calc(11px * var(--text-scale)); line-height: 1; color: var(--txt-dim); font-variant-numeric: tabular-nums; }
 
 /* Miniaturile SUNT lista. Se derulează orizontal ca bara să rămână de o linie
    oricâte fișiere ar fi; bara verticală a coloanei nu se mișcă. */
@@ -4677,7 +4682,7 @@ body:has(.kb-sheet) .toast {
 .att-chip.busy {
   display: grid; place-items: center; min-width: 44px; height: 44px; padding: 0 8px;
   background: var(--accent-soft); color: var(--accent);
-  font-family: var(--mono); font-size: 11px;
+  font-family: var(--mono); font-size: calc(11px * var(--text-scale));
 }
 .att-open {
   display: flex; align-items: center; gap: 6px;
@@ -4692,7 +4697,7 @@ body:has(.kb-sheet) .toast {
 /* Imagine care n-a putut fi încărcată (tipic: offline). Locul rămâne ocupat cu
    iconița de tip — un gol ar arăta a fișier pierdut. */
 .att-ic.off { margin: 0 auto; opacity: 0.6; }
-.att-name { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.att-name { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: calc(12px * var(--text-scale)); }
 
 /* X-ul apare la hover; pe ecran tactil, unde nu există hover, stă permanent.
    Confirmarea din două atingeri a rămas: prima armează, a doua șterge. */
@@ -4718,7 +4723,7 @@ body:has(.kb-sheet) .toast {
 .att-act:disabled { opacity: 0.4; cursor: default; }
 .att-pick-input { display: none; }
 
-.att-msg { display: flex; align-items: center; gap: 8px; margin-top: 6px; padding: 8px 10px; border-radius: var(--r-m); background: var(--accent-soft); font-size: 13px; }
+.att-msg { display: flex; align-items: center; gap: 8px; margin-top: 6px; padding: 8px 10px; border-radius: var(--r-m); background: var(--accent-soft); font-size: calc(13px * var(--text-scale)); }
 .att-msg-x { margin-left: auto; border: 0; background: none; cursor: pointer; color: inherit; }
 
 /* Zona de drop e coloana de descriere, nu bara: o bandă de 36px e o țintă
@@ -4734,12 +4739,12 @@ body:has(.kb-sheet) .toast {
    negru opac, nu o suprafață a temei, deci un salt de fundal n-ar delimita
    nimic. Chenarul subțire alb E delimitarea. */
 .lb-back { position: fixed; inset: 0; z-index: 60; display: grid; grid-template-rows: auto 1fr; background: rgba(0, 0, 0, 0.92); }
-.lb-bar { display: flex; align-items: center; gap: 10px; padding: 10px 12px; color: #fff; font-size: 13px; }
+.lb-bar { display: flex; align-items: center; gap: 10px; padding: 10px 12px; color: #fff; font-size: calc(13px * var(--text-scale)); }
 .lb-name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* „3 / 7" — cifre, deci mono, ca peste tot. */
-.lb-count { flex: none; font-family: var(--mono); font-size: 12px; color: rgba(255, 255, 255, 0.62); font-variant-numeric: tabular-nums; }
+.lb-count { flex: none; font-family: var(--mono); font-size: calc(12px * var(--text-scale)); color: rgba(255, 255, 255, 0.62); font-variant-numeric: tabular-nums; }
 .lb-actions { margin-left: auto; display: flex; gap: 8px; }
-.lb-bar button { border: 1px solid rgba(255, 255, 255, 0.35); background: transparent; color: #fff; border-radius: var(--r-s); padding: 5px 10px; cursor: pointer; font-size: 13px; }
+.lb-bar button { border: 1px solid rgba(255, 255, 255, 0.35); background: transparent; color: #fff; border-radius: var(--r-s); padding: 5px 10px; cursor: pointer; font-size: calc(13px * var(--text-scale)); }
 .lb-bar button:hover { background: rgba(255, 255, 255, 0.14); }
 .lb-del { display: grid; place-items: center; width: 34px; padding: 0 !important; }
 /* Armat = a doua apăsare șterge. Aceeași culoare ca X-ul armat din bară, ca
@@ -4748,7 +4753,7 @@ body:has(.kb-sheet) .toast {
 .lb-del.armed:hover { background: var(--blocked); }
 .lb-body { position: relative; display: grid; place-items: center; overflow: auto; padding: 8px; }
 .lb-body img { max-width: 100%; max-height: 100%; object-fit: contain; }
-.lb-off { color: #fff; font-size: 13px; }
+.lb-off { color: #fff; font-size: calc(13px * var(--text-scale)); }
 
 /* Săgețile stau PESTE imagine, pe margini. Rotunde de-a binelea, deci 50% —
    nu o a patra rază. Fără chenar: discul translucid e deja delimitarea.
@@ -4799,7 +4804,7 @@ body:has(.kb-sheet) .toast {
   background: transparent;
   border: 0;
   padding: 0 2px;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale));
   font-weight: 600;
   font-family: var(--mono);
   color: var(--txt);
@@ -4846,7 +4851,7 @@ body:has(.kb-sheet) .toast {
   flex-wrap: wrap;
 }
 .due-clean-title {
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale));
   font-weight: 600;
   color: var(--txt-faint);
   text-decoration: underline;
@@ -4875,7 +4880,7 @@ body:has(.kb-sheet) .toast {
   width: 20px; height: 20px;
   border-radius: 50%;
   color: var(--txt-faint);
-  font-size: 13px; line-height: 1;
+  font-size: calc(13px * var(--text-scale)); line-height: 1;
   display: inline-flex; align-items: center; justify-content: center;
   flex-shrink: 0;
   background: transparent;
@@ -4884,11 +4889,11 @@ body:has(.kb-sheet) .toast {
 .due-reminder { margin-top: 2px; }
 .if-meta-pill.reminder-pill {
   padding: 2px 8px;
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale));
   font-family: var(--mono);
 }
 .due-hint {
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale));
   color: var(--txt-faint);
   font-style: italic;
   white-space: nowrap;
@@ -4931,7 +4936,7 @@ body:has(.kb-sheet) .toast {
   background: var(--surface-2);
   color: var(--txt);
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale));
 }
 .rp-day { min-width: 30px; justify-content: center; font-family: var(--mono); }
 .rp-acts { display: flex; justify-content: flex-end; gap: 8px; }
@@ -4959,7 +4964,7 @@ body:has(.kb-sheet) .toast {
 .sl-count {
   margin-left: auto;
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale));
   font-weight: 700;
   color: var(--txt-faint);
 }
@@ -4970,7 +4975,7 @@ body:has(.kb-sheet) .toast {
      de etichetă, în timp ce un rând cu un singur număr era aliniat la dreapta. */
   margin-left: auto;
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale));
   font-weight: 700;
   color: var(--on-accent);
   background: var(--blocked);
@@ -4985,7 +4990,7 @@ body:has(.kb-sheet) .toast {
 .sl-new {
   margin-left: auto;
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale));
   font-weight: 700;
   color: var(--on-accent);
   background: var(--accent);
@@ -5003,7 +5008,7 @@ body:has(.kb-sheet) .toast {
 .list-group-date { color: var(--txt-faint); font-weight: 500; margin-left: 2px; }
 .list-group-num { min-width: 18px; padding: 0 4px; }
 .day-empty {
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--text-scale));
   color: var(--txt-faint);
   font-style: italic;
   padding: 0 4px 2px;
@@ -5017,7 +5022,7 @@ body:has(.kb-sheet) .toast {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale));
   color: var(--txt-faint);
   padding: 8px 4px;
   font-weight: 600;
@@ -5032,7 +5037,7 @@ body:has(.kb-sheet) .toast {
    lățime fixă, ca titlurile să se alinieze pe coloană. */
 .t-time {
   font-family: var(--mono);
-  font-size: 11.5px;
+  font-size: calc(11.5px * var(--text-scale));
   font-weight: 700;
   color: var(--txt-dim);
   flex: 0 0 auto;
@@ -5051,7 +5056,7 @@ body:has(.kb-sheet) .toast {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale));
   color: var(--txt-faint);
   max-width: 130px;
 }
@@ -5074,12 +5079,12 @@ body:has(.kb-sheet) .toast {
 .inbox-body .list-title { white-space: normal; }
 .inbox-meta {
   display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
-  font-size: 11px; color: var(--txt-faint); margin-top: 2px;
+  font-size: calc(11px * var(--text-scale)); color: var(--txt-faint); margin-top: 2px;
 }
 .inbox-meta .mono { font-family: var(--mono); }
 .inbox-empty .big {
   display: block;
-  font-size: 15.5px;
+  font-size: calc(15.5px * var(--text-scale));
   font-weight: 600;
   color: var(--txt-dim);
   margin-bottom: 6px;
@@ -5125,7 +5130,7 @@ body:has(.kb-sheet) .toast {
   border: 1px dashed var(--line);
   color: var(--txt-faint);
   display: flex; align-items: center; justify-content: center;
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale));
   flex-shrink: 0;
 }
 .qa-wrap { position: relative; flex: 1; min-width: 0; height: 24px; }
@@ -5134,7 +5139,7 @@ body:has(.kb-sheet) .toast {
   position: absolute;
   inset: 0;
   font-family: inherit;
-  font-size: 14.5px;
+  font-size: calc(14.5px * var(--text-scale));
   line-height: 24px;
   letter-spacing: normal;
   white-space: pre;
@@ -5171,7 +5176,7 @@ body:has(.kb-sheet) .toast {
   background: var(--surface-2);
   border-radius: var(--r-m);
   padding: 5px 8px;
-  font-size: 11.5px;
+  font-size: calc(11.5px * var(--text-scale));
   line-height: 1.35;
   color: var(--txt-dim);
   box-shadow: var(--shadow-md);
@@ -5199,11 +5204,11 @@ body:has(.kb-sheet) .toast {
   border-top: 1px dashed var(--line-soft);
   flex-wrap: wrap;
 }
-.qa-hint { margin-left: auto; font-size: 11px; color: var(--txt-faint); white-space: nowrap; }
+.qa-hint { margin-left: auto; font-size: calc(11px * var(--text-scale)); color: var(--txt-faint); white-space: nowrap; }
 .qa-hint.warn { color: var(--blocked); font-weight: 600; }
 .qa-hint kbd {
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale));
   border: 1px solid var(--line);
   border-radius: var(--r-s);
   padding: 1px 4px;
@@ -5211,7 +5216,7 @@ body:has(.kb-sheet) .toast {
 }
 .qa-noproject {
   color: var(--txt-faint);
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale));
   font-style: italic;
   padding: 10px 2px 16px;
 }
@@ -5219,7 +5224,7 @@ body:has(.kb-sheet) .toast {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 11.5px;
+  font-size: calc(11.5px * var(--text-scale));
   font-weight: 600;
   padding: 3px 8px 3px 9px;
   border-radius: var(--r-s);
@@ -5241,7 +5246,7 @@ body:has(.kb-sheet) .toast {
 /* Rândul de butoane al barei de captură. Același limbaj ca .qa-proj: fără
    chenar, fundal --surface-2, raza de buton. Activ = text plin + linie de 2px. */
 .qa-rich { flex-wrap: wrap; gap: 6px; }
-.qa-who, .qa-when, .qa-urgent { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: var(--r-s); background: var(--surface-2); color: var(--txt-dim); font: inherit; font-size: 12px; }
+.qa-who, .qa-when, .qa-urgent { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: var(--r-s); background: var(--surface-2); color: var(--txt-dim); font: inherit; font-size: calc(12px * var(--text-scale)); }
 .qa-who select, .qa-when input { border: 0; background: transparent; color: inherit; font: inherit; }
 .qa-when input { font-family: var(--mono); }
 .qa-urgent { border: 0; cursor: pointer; }
@@ -5263,7 +5268,7 @@ body:has(.kb-sheet) .toast {
   background: transparent;
   padding: 0;
   font: inherit;
-  font-size: 13.5px;
+  font-size: calc(13.5px * var(--text-scale));
   line-height: 1.5;
   color: var(--txt-dim);
 }
@@ -5300,7 +5305,7 @@ body:has(.kb-sheet) .toast {
    singurul lucru de pe ecran. Oglinda și inputul primesc ACEEAȘI mărime. */
 .quick-sheet .qa-wrap { display: block; height: 28px; }
 .quick-sheet .qa-mirror,
-.quick-sheet .qa-input { font-size: 17px; line-height: 28px; }
+.quick-sheet .qa-input { font-size: calc(17px * var(--text-scale)); line-height: 28px; }
 /* Deasupra titlului e marginea foii (și `overflow` o taie): indiciul coboară,
    în flux, între titlu și descriere — nu peste ea. */
 .qa-tip.below {
@@ -5312,8 +5317,8 @@ body:has(.kb-sheet) .toast {
   background: transparent;
   padding: 0;
 }
-.quick-sheet .qa-desc { margin-top: 4px; font-size: 15px; max-height: none; }
-.qs-status { margin: 6px 0 0; font-size: 12.5px; color: var(--txt-faint); }
+.quick-sheet .qa-desc { margin-top: 4px; font-size: calc(15px * var(--text-scale)); max-height: none; }
+.qs-status { margin: 6px 0 0; font-size: calc(12.5px * var(--text-scale)); color: var(--txt-faint); }
 .qs-status:empty { display: none; }
 .qs-status.warn { color: var(--blocked); font-weight: 600; }
 .qs-when {
@@ -5333,7 +5338,7 @@ body:has(.kb-sheet) .toast {
   background: var(--surface);
   color: var(--txt);
   font-family: var(--mono);
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale));
   padding: 5px 7px;
 }
 .qs-clear {
@@ -5342,7 +5347,7 @@ body:has(.kb-sheet) .toast {
   border-radius: var(--r-s);
   background: var(--surface);
   color: var(--txt-dim);
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--text-scale));
 }
 /* Rândul de controale. Trimite și iconițele NU se micșorează; jetonul de
    dată și numele proiectului da, tăiate cu „…" — la 320px rândul încape
@@ -5366,7 +5371,7 @@ body:has(.kb-sheet) .toast {
   overflow: hidden;
   white-space: nowrap;
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale));
   font-weight: 600;
   color: var(--txt-faint);
 }
@@ -5386,7 +5391,7 @@ body:has(.kb-sheet) .toast {
   position: relative;
   gap: 6px;
   padding: 0 10px;
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale));
   white-space: nowrap;
   overflow: hidden;
   cursor: pointer;
@@ -5400,7 +5405,7 @@ body:has(.kb-sheet) .toast {
   height: 100%;
   opacity: 0;
   cursor: pointer;
-  font-size: 16px;
+  font-size: calc(16px * var(--text-scale));
 }
 .qs-proj { flex: 0 3 auto; min-width: 44px; max-width: 150px; }
 /* Agrafa a luat locul persoanei, la aceeași lățime de iconiță: pe un rând de
@@ -5417,7 +5422,7 @@ body:has(.kb-sheet) .toast {
   min-width: 16px; height: 16px; padding: 0 4px; border-radius: 50%;
   display: grid; place-items: center;
   background: var(--accent); color: var(--on-accent);
-  font-family: var(--mono); font-size: 10px; font-weight: 600; line-height: 1;
+  font-family: var(--mono); font-size: calc(10px * var(--text-scale)); font-weight: 600; line-height: 1;
 }
 /* Meniul mic deasupra agrafei: două rânduri, fără chenar — se desprinde prin
    fundal și umbra ambientală, ca orice panou. */
@@ -5429,7 +5434,7 @@ body:has(.kb-sheet) .toast {
 .qs-attach-menu button {
   display: flex; align-items: center; gap: 10px;
   height: 40px; padding: 0 12px; border-radius: var(--r-s);
-  background: none; color: var(--txt); font-size: 14px; text-align: left; white-space: nowrap;
+  background: none; color: var(--txt); font-size: calc(14px * var(--text-scale)); text-align: left; white-space: nowrap;
 }
 .qs-attach-menu button svg { color: var(--txt-dim); flex-shrink: 0; }
 .qs-attach-menu button:active,
@@ -5437,7 +5442,7 @@ body:has(.kb-sheet) .toast {
 /* Persoana, numai citită (foaia de tichet): inițialele, mono — sunt cod, nu
    nume. Atingerea duce la formularul complet, unde pasarea trece prin fir. */
 .qs-who-badge {
-  font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: 0.02em;
+  font-family: var(--mono); font-size: calc(11px * var(--text-scale)); font-weight: 600; letter-spacing: 0.02em;
   color: var(--accent);
 }
 .qs-due-h { flex-shrink: 0; }
@@ -5495,7 +5500,7 @@ body:has(.kb-sheet) .toast {
   pointer-events: none;
   color: transparent;
   overflow: hidden;
-  font-size: 17px;
+  font-size: calc(17px * var(--text-scale));
   line-height: 28px;
   /* Textarea primește `letter-spacing: normal` din foaia browserului; oglinda
      ar moșteni-o pe a părintelui. */
@@ -5533,7 +5538,7 @@ body:has(.kb-sheet) .toast {
   background: transparent;
   padding: 0;
   font: inherit;
-  font-size: 17px;
+  font-size: calc(17px * var(--text-scale));
   line-height: 28px;
   color: var(--txt);
 }
@@ -5568,7 +5573,7 @@ body:has(.kb-sheet) .toast {
   cursor: text;
   margin: 4px 0 0 31px;
   width: calc(100% - 31px);
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   max-height: none;
 }
 .edit-sheet .qs-bar {
@@ -5585,7 +5590,7 @@ body:has(.kb-sheet) .toast {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 11.5px;
+  font-size: calc(11.5px * var(--text-scale));
   font-weight: 600;
   padding: 3px 8px;
   border-radius: var(--r-s);
@@ -5625,7 +5630,7 @@ body:has(.kb-sheet) .toast {
     flex-direction: column;
     align-items: center;
     gap: 3px;
-    font-size: 10px;
+    font-size: calc(10px * var(--text-scale));
     font-weight: 600;
     color: var(--txt-faint);
     padding: 4px 0;
@@ -5643,7 +5648,7 @@ body:has(.kb-sheet) .toast {
     background: var(--accent);
     color: var(--on-accent);
     font-family: var(--mono);
-    font-size: 9px; font-weight: 700; line-height: 14px;
+    font-size: calc(9px * var(--text-scale)); font-weight: 700; line-height: 14px;
     text-align: center;
   }
 
@@ -5680,14 +5685,14 @@ body:has(.kb-sheet) .toast {
   flex-shrink: 0;
 }
 .push-cta-txt { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
-.push-cta-txt strong { font-size: 13.5px; font-weight: 600; }
-.push-cta-txt span { font-size: 12px; color: var(--txt-dim); }
+.push-cta-txt strong { font-size: calc(13.5px * var(--text-scale)); font-weight: 600; }
+.push-cta-txt span { font-size: calc(12px * var(--text-scale)); color: var(--txt-dim); }
 .push-cta-btn {
   flex-shrink: 0;
   border-radius: var(--r-s);
   background: var(--active);
   color: var(--on-accent);
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--text-scale));
   font-weight: 600;
   padding: 6px 12px;
 }
@@ -5697,7 +5702,7 @@ body:has(.kb-sheet) .toast {
   width: 22px; height: 22px;
   border-radius: 50%;
   color: var(--txt-faint);
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale));
   display: flex; align-items: center; justify-content: center;
 }
 .push-cta-x:hover { color: var(--txt); background: var(--surface-2); }
@@ -5710,7 +5715,7 @@ body:has(.kb-sheet) .toast {
   flex: 1;
   min-width: 0;
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale));
   padding: 6px 9px;
   border-radius: var(--r-m);
   background: var(--surface);
@@ -5734,7 +5739,7 @@ body:has(.kb-sheet) .toast {
   flex-shrink: 0;
   display: inline-flex; align-items: center; gap: 5px;
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale));
   color: var(--txt-dim);
   background: var(--surface-3);
   border-radius: var(--r-s);
@@ -5742,7 +5747,7 @@ body:has(.kb-sheet) .toast {
 }
 .and-reload:hover { color: var(--txt); }
 .and-reload:disabled { opacity: 0.6; cursor: default; }
-.and-err { font-size: 12.5px; color: var(--blocked); margin-bottom: 8px; }
+.and-err { font-size: calc(12.5px * var(--text-scale)); color: var(--blocked); margin-bottom: 8px; }
 .and-rows { margin: 0; }
 .and-row {
   display: flex;
@@ -5751,7 +5756,7 @@ body:has(.kb-sheet) .toast {
   padding: 6px 0;
 }
 .and-row + .and-row { border-top: 1px solid var(--line-soft); } /* separator de rând */
-.and-row dt { flex: 1; min-width: 0; font-size: 13px; color: var(--txt); }
+.and-row dt { flex: 1; min-width: 0; font-size: calc(13px * var(--text-scale)); color: var(--txt); }
 .and-row dd {
   margin: 0;
   max-width: 62%;
@@ -5759,15 +5764,15 @@ body:has(.kb-sheet) .toast {
   gap: 4px 8px;
   text-align: right;
 }
-.and-val { font-family: var(--mono); font-size: 12px; color: var(--txt-dim); }
+.and-val { font-family: var(--mono); font-size: calc(12px * var(--text-scale)); color: var(--txt-dim); }
 .and-link {
   font-family: var(--mono);
-  font-size: 11.5px;
+  font-size: calc(11.5px * var(--text-scale));
   color: var(--accent);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
-.and-note { flex-basis: 100%; font-size: 11.5px; color: var(--txt-faint); font-style: italic; }
+.and-note { flex-basis: 100%; font-size: calc(11.5px * var(--text-scale)); color: var(--txt-faint); font-style: italic; }
 
 /* OBSTACOLE ─────────────────────────────────────────────────────────────
    Vocabularul vizual pentru obstacole: poarta valului, rândul de obstacol,
@@ -5792,18 +5797,18 @@ body:has(.kb-sheet) .toast {
 }
 .wave-gate-n {
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale));
   font-weight: 600;
   color: var(--blocked);
 }
 .wave-gate-l {
   flex: 1;
-  font-size: 13.5px;
+  font-size: calc(13.5px * var(--text-scale));
   color: var(--txt);
 }
 .wave-gate-c {
   font-family: var(--mono);
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--text-scale));
   letter-spacing: 0.09em;
   text-transform: uppercase;
   color: var(--txt-faint);
@@ -5841,7 +5846,7 @@ body:has(.kb-sheet) .toast {
 [data-theme='light'] .obst-row:hover { background: color-mix(in srgb, black 6%, var(--surface-3)); }
 .obst-row-id {
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale));
   font-weight: 600;
   color: var(--blocked);
   min-width: 44px;
@@ -5851,13 +5856,13 @@ body:has(.kb-sheet) .toast {
    niciun tichet") — id-ul iese din roșu-blocant, la fel de neutru ca un
    obstacol depășit, dar FĂRĂ tăietură: e încă deschis, doar nu oprește. */
 .obst-row.soft .obst-row-id { color: var(--txt-faint); }
-.obst-row-title { flex: 1; font-size: 13px; min-width: 0; }
+.obst-row-title { flex: 1; font-size: calc(13px * var(--text-scale)); min-width: 0; }
 .obst-row.ok .obst-row-title { color: var(--txt-faint); text-decoration: line-through; }
 /* Limbă (stare, nume de owner, „nu blochează"), deci serif, nu mono — regula
    2. Singurul mono rămas e `.obst-n`, folosit doar pe cifra din „N zile". */
 .obst-row-own {
   font-family: var(--display);
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--text-scale));
   color: var(--txt-faint);
 }
 /* Cifră inline într-o propoziție serif — obst-row-own („N zile") și
@@ -5909,7 +5914,7 @@ body:has(.kb-sheet) .toast {
   align-items: center;
   gap: 5px;
   font-family: var(--mono);
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--text-scale));
   letter-spacing: 0.07em;
   text-transform: uppercase;
   padding: 3px 7px;
@@ -5934,13 +5939,13 @@ body:has(.kb-sheet) .toast {
   white-space: nowrap;
   max-width: 240px;
   font-family: var(--display);
-  font-size: 11.5px;
+  font-size: calc(11.5px * var(--text-scale));
   text-transform: none;
   letter-spacing: normal;
 }
 .obst-chip-t .obst-chip-id {
   font-family: var(--mono);
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--text-scale));
   text-transform: uppercase;
   letter-spacing: 0.07em;
 }
@@ -5981,7 +5986,7 @@ body:has(.kb-sheet) .toast {
   border-radius: var(--r-s);
   background: var(--surface-2);
   color: var(--txt-dim);
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale));
   font-weight: 600;
   border: none;
   border-bottom: 2px solid transparent;
@@ -5995,6 +6000,23 @@ body:has(.kb-sheet) .toast {
   font-weight: 700;
 }
 .seg.sm { padding: 5px 14px; }
+
+/* Rotița de setări (AppSettings.tsx). Butoane mai mari decât `.seg` de rând:
+   foaia e chiar pentru cine nu vede de aproape, deci trebuie nimerită și
+   înainte de a mări textul. */
+.app-settings .seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 10px 16px;
+  font-size: calc(15px * var(--text-scale));
+}
+.app-settings-sample {
+  margin: 14px 0 6px;
+  font-size: calc(15px * var(--text-scale));
+  color: var(--txt);
+}
 
 /* .srow/.skey/.sval — rând de setare simplă (etichetă + control). Singura
    linie decorativă e separatorul de rând — permis de regula 1 (separator de
@@ -6010,7 +6032,7 @@ body:has(.kb-sheet) .toast {
 .srow:last-child { border-bottom: none; }
 .skey {
   font-family: var(--display);
-  font-size: 14.5px;
+  font-size: calc(14.5px * var(--text-scale));
   color: var(--txt);
 }
 .sval {
@@ -6023,12 +6045,12 @@ body:has(.kb-sheet) .toast {
    definit lângă `.obst-row-own`). */
 .obst-wait {
   font-family: var(--display);
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--text-scale));
   color: var(--txt-faint);
   margin: 6px 0 4px;
 }
 .obst-help {
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--text-scale));
   color: var(--txt-faint);
   margin: 2px 0 4px;
   line-height: 1.5;
@@ -6045,27 +6067,27 @@ body:has(.kb-sheet) .toast {
 .map-band { fill: var(--surface-2); }
 .map-bandtxt {
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale));
   letter-spacing: 0.14em;
   text-transform: uppercase;
   fill: var(--txt-faint);
 }
 .map-id {
   font-family: var(--mono);
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--text-scale));
   letter-spacing: 0.09em;
   text-transform: uppercase;
   fill: var(--txt-faint);
 }
 .map-own {
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale));
   letter-spacing: 0.07em;
   text-transform: uppercase;
   fill: var(--txt-faint);
   text-anchor: end;
 }
-.map-title { font-family: var(--display); font-size: 12.5px; fill: var(--txt); }
+.map-title { font-family: var(--display); font-size: calc(12.5px * var(--text-scale)); fill: var(--txt); }
 .map-title.dim { fill: var(--txt-dim); }
 /* Umbra ambientală se leagă aici, nu pe `.map-node` (grupul), ca textul
    (`.map-id`, `.map-own`, `.map-title`) să nu fie blurat de ea — regula 4,
@@ -6117,7 +6139,7 @@ body:has(.kb-sheet) .toast {
     height: 38px;
   }
   .due-input {
-    font-size: 14px;
+    font-size: calc(14px * var(--text-scale));
   }
   /* Data ia golul; ora rămâne pe măsura a cinci cifre — altfel „09:30" ar
      pluti în mijlocul unei jumătăți de rând. */
@@ -6144,7 +6166,7 @@ body:has(.kb-sheet) .toast {
 .origin-foot {
   margin-top: 22px;
   padding-top: 12px;
-  font-size: 11.5px;
+  font-size: calc(11.5px * var(--text-scale));
   opacity: 0.75;
 }
 
@@ -6251,7 +6273,7 @@ body:has(.qab) { overflow-y: auto; }
 .group-act {
   margin-left: auto;
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale));
   font-weight: 600;
   color: var(--accent);
   background: var(--accent-soft);
@@ -6262,14 +6284,14 @@ body:has(.qab) { overflow-y: auto; }
 .sel-head .sel-count {
   flex: 1;
   min-width: 0;
-  font-size: 17px;
+  font-size: calc(17px * var(--text-scale));
   font-weight: 700;
   font-family: var(--display);
   letter-spacing: -0.02em;
 }
 .sel-num { font-family: var(--mono); font-weight: 600; }
 .sel-all {
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale));
   font-weight: 600;
   color: var(--accent);
   background: var(--accent-soft);
@@ -6284,7 +6306,7 @@ body:has(.qab) { overflow-y: auto; }
 
 /* ── Foile de acțiuni (dată, ⋮, pasare) ──────────────────────────── */
 .as-title {
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   font-weight: 600;
   margin: 2px 2px 12px;
   display: flex;
@@ -6311,10 +6333,10 @@ body:has(.qab) { overflow-y: auto; }
 }
 .ds-opt.on { box-shadow: inset 0 -2px 0 var(--accent); }
 .ds-opt:disabled { opacity: 0.4; }
-.ds-label { font-size: 15px; font-weight: 600; }
+.ds-label { font-size: calc(15px * var(--text-scale)); font-weight: 600; }
 .ds-hint {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale));
   color: var(--txt-faint);
   white-space: nowrap;
   overflow: hidden;
@@ -6328,7 +6350,7 @@ body:has(.qab) { overflow-y: auto; }
   gap: 6px;
   margin: 10px 2px 0;
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale));
   color: var(--txt-dim);
 }
 .ds-apply {
@@ -6338,7 +6360,7 @@ body:has(.qab) { overflow-y: auto; }
   border-radius: var(--r-s);
   padding: 6px 12px;
   font-weight: 600;
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale));
 }
 .ds-apply:disabled { opacity: 0.4; }
 .as-list { display: flex; flex-direction: column; gap: 2px; }
@@ -6348,9 +6370,23 @@ body:has(.qab) { overflow-y: auto; }
   gap: 12px;
   padding: 12px;
   border-radius: var(--r-m);
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   color: var(--txt);
   text-align: left;
 }
 .as-item:active { background: var(--surface-2); }
 .as-item.danger { color: var(--blocked); }
+
+/* ── TEXT MĂRIT (rotița de setări) ────────────────────────────────────
+   `theme.tsx` pune `data-text-large` pe <html> peste treapta „Normal". La
+   mărimea obișnuită rândurile de mai jos se strâng (ellipsis pe proiect, ora
+   ascunsă sub ~380px) și așa trebuie să rămână; cu textul mărit, strânsul ar
+   tăia exact ce omul a cerut să vadă mai bine — „Mâi…" — deci se rup pe două
+   linii. `TEXT_SCALE=1.5 npm run test:layout` le verifică. */
+[data-text-large] .qs-bar { flex-wrap: wrap; row-gap: 8px; position: relative; }
+[data-text-large] .qs-bar .qs-due { flex-shrink: 0; }
+/* Rupt pe două linii, agrafa poate ajunge la începutul rândului al doilea, iar
+   meniul ancorat la dreapta ei ar ieși din ecran prin stânga. Se ancorează de
+   bară. */
+[data-text-large] .qs-attach-wrap { position: static; }
+[data-text-large] .list-group-head { flex-wrap: wrap; }

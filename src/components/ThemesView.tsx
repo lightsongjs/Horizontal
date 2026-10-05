@@ -52,7 +52,7 @@ export function ThemesView() {
           <div key={g.key}>
             <div className="layer-head" style={{ margin: '18px 0 10px' }}>
               <span className="theme-dot" style={{ width: 10, height: 10, background: g.color }} />
-              <h4 style={{ fontSize: 13 }}>{g.name}</h4>
+              <h4 style={{ fontSize: 'calc(13px * var(--text-scale))' }}>{g.name}</h4>
               <div className="sub" style={{ marginLeft: 'auto' }}>
                 {list.length} tichete
               </div>
@@ -70,7 +70,7 @@ export function ThemesView() {
         <div>
           <div className="layer-head" style={{ margin: '18px 0 10px' }}>
             <span className="theme-dot" style={{ width: 10, height: 10, background: 'var(--txt-faint)' }} />
-            <h4 style={{ fontSize: 13 }}>Fără temă</h4>
+            <h4 style={{ fontSize: 'calc(13px * var(--text-scale))' }}>Fără temă</h4>
             <div className="sub" style={{ marginLeft: 'auto' }}>{untagged.length} tichete</div>
           </div>
           {untagged.map((it) => (

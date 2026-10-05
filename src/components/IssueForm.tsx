@@ -1672,7 +1672,7 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
                         <span className="if-badge selector"><Icon name="selector" size={12} /></span>
                         <input value={s} onChange={(e) => updateSelector(i, e.target.value)}
                           placeholder="getByRole('button', { name: 'Login' })"
-                          style={{ fontFamily: 'var(--mono)', fontSize: 11 }}
+                          style={{ fontFamily: 'var(--mono)', fontSize: 'calc(11px * var(--text-scale))' }}
                           autoComplete="off" autoCorrect="off" inputMode="text" />
                         <button className="if-sc-del" onClick={() => removeSelector(i)} aria-label="Șterge selectorul"><Icon name="close" size={13} /></button>
                       </div>

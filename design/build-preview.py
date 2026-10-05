@@ -669,7 +669,19 @@ CONTROALE = ''.join([
       '<button class="header-new-btn">+ Tichet</button>'
       '<button class="theme-toggle">%s</button>'
       % (ic('arrow-left', 20), ic('panel-left', 15), ic('panel-left', 15), ic('search', 15),
-         ic('settings', 15), ic('circle-question-mark', 15), ic('refresh-cw', 15), ic('moon', 16))),
+         ic('settings-2', 15), ic('circle-question-mark', 15), ic('refresh-cw', 15), ic('settings', 16))),
+
+    # Rotița de setări (AppSettings.tsx): fundalul și mărimea textului, cu câte
+    # o treaptă activă — butoanele neapăsate stau pe --surface-2, fără chenar.
+    g('Setări (rotița)',
+      '<div class="app-settings" style="width:100%%">'
+      '<div class="sheet-section-t">Fundal</div>'
+      '<div class="seg-row"><button class="seg on">%s Luminos</button><button class="seg">%s Întunecat</button></div>'
+      '<div class="sheet-section-t">Mărimea textului</div>'
+      '<div class="seg-row"><button class="seg">Normal</button><button class="seg on">Mare</button>'
+      '<button class="seg">Foarte mare</button><button class="seg">Maxim</button></div>'
+      '<p class="app-settings-sample">Așa arată textul unei sarcini.</p></div>'
+      % (ic('sun', 15), ic('moon', 15))),
 
     g('Jetoane și badge-uri',
       '<span class="mini">TUR</span><span class="mini">val I / III</span>'

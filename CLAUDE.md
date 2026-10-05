@@ -102,6 +102,18 @@ python3 design/build-preview.py   # regenerează, dacă s-a schimbat markup-ul
 > ușoară regresie de făcut e un control care rămâne fără fundal ȘI fără chenar:
 > typecheck-ul și testele trec, iar butonul e invizibil.
 
+### Rotița de setări: fundal și mărimea textului
+
+Rotița (antet pe telefon, sidebar pe desktop) deschide `AppSettings.tsx`:
+fundal + mărimea textului (`src/lib/textScale.ts`, patru trepte), ambele pe
+DISPOZITIV (`localStorage`), aplicate în `theme.tsx`. **Orice `font-size` e
+`calc(Npx * var(--text-scale))`**, și în CSS, și inline — un test
+(`textScale.test.ts`) pică pe un px fix. Numai textul crește, nu pagina: un
+`zoom` ar fi stricat foile lipite de tastatură (`--kb`, `--vvh` sunt în pixeli
+reali). Peste „Normal", `<html data-text-large>` rupe pe două linii rândurile
+care altfel ar tăia cu „…" (`.qs-bar`, `.list-group-head`). Verificare:
+`TEXT_SCALE=1.5 npm run test:layout`.
+
 ## Panoul lateral (split view)
 
 Peste 1200px, „Listă" și listele inteligente se împart în două: lista în

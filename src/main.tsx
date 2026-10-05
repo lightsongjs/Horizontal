@@ -25,7 +25,11 @@ if (isQuickAddPath(window.location.pathname)) {
   root.render(
     <StrictMode>
       <AuthProvider>
-        <App />
+        {/* Deasupra lui `App`, nu în el: și ecranul de login trebuie să
+            respecte fundalul și mărimea textului alese pe dispozitiv. */}
+        <ThemeProvider>
+          <App />
+        </ThemeProvider>
       </AuthProvider>
     </StrictMode>,
   )

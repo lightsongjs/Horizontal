@@ -22,7 +22,7 @@ export function Login() {
     <div id="app">
       <div className="login">
         <div className="login-card">
-          <div className="logo" style={{ width: 48, height: 48, borderRadius: 14, fontSize: 18 }}>
+          <div className="logo" style={{ width: 48, height: 48, borderRadius: 14, fontSize: 'calc(18px * var(--text-scale))' }}>
             H
           </div>
           <h1>Horizontal</h1>

@@ -134,7 +134,11 @@ const ICONS = {
   scratch: NotepadText,
   search: Search,
   settings: Settings2,
-  settingsProject: Settings,
+  // Rotița e a setărilor APLICAȚIEI (fundal, mărimea textului) — cea pe care o
+  // caută cine nu vede bine. Proiectul ia glisoarele, ca în antetul unui
+  // proiect să nu stea două rotițe identice una lângă alta.
+  settingsApp: Settings,
+  settingsProject: Settings2,
   check: Check,
   checkAll: CheckCheck,
   themeDark: Moon,
