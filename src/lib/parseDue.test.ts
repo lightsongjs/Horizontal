@@ -555,6 +555,11 @@ describe('parseDue — zile lucrătoare', () => {
     ['standup every weekday', 'standup'],
     ['standup on weekdays', 'standup'],
     ['standup weekdays', 'standup'],
+    ['standup every workday', 'standup'],
+    ['standup on workdays', 'standup'],
+    ['standup workdays', 'standup'],
+    ['standup every working day', 'standup'],
+    ['standup every business day', 'standup'],
     ['standup monday to friday', 'standup'],
     ['standup mon-fri', 'standup'],
   ])('%s', (text, title) => {

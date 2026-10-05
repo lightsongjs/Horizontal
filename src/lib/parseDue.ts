@@ -169,7 +169,7 @@ export function parseDue(raw: string, now: Date = new Date()): ParsedDue {
   // „în fiecare zi lucrătoare" ar fi fost prins altfel ca „în fiecare zi"
   // (zilnic, cu tot cu weekendul). „luni"/„vineri" singure rămân date; numai
   // perechea legată e recurență. „o zi lucrătoare" nu e aici: e o durată.
-  m = hay.match(/\b(?:(?:in\s+)?(?:fiecare\s+zi\s+lucratoare|zilele\s+lucratoare)|de\s+luni\s+(?:pana\s+)?(?:la\s+)?vineri|luni\s*-\s*vineri|(?:every|on)\s+weekdays?|weekdays|monday\s+(?:to|through|-)\s+friday|mon\s*-\s*fri)\b/)
+  m = hay.match(/\b(?:(?:in\s+)?(?:fiecare\s+zi\s+lucratoare|zilele\s+lucratoare)|de\s+luni\s+(?:pana\s+)?(?:la\s+)?vineri|luni\s*-\s*vineri|(?:every|on)\s+(?:weekdays?|workdays?|(?:working|business)\s+days?)|weekdays|workdays|monday\s+(?:to|through|-)\s+friday|mon\s*-\s*fri)\b/)
   if (m) { rrule = formatRrule({ freq: 'WEEKLY', interval: 1, byday: [1, 2, 3, 4, 5], bymonthday: null }); hit(m) }
 
   // „la 2 zile", „din 3 în 3 zile", „every 2 days"
