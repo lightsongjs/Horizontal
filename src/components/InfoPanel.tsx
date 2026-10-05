@@ -41,6 +41,7 @@ const GROUPS: Group[] = [
     note: 'Forma articulată e semnalul: „luni" e o zi, „lunea" se repetă. Sâmbăta și duminica se scriu la fel în ambele forme, deci cer „în fiecare".',
     examples: [
       'zilnic', 'la 2 zile', 'în fiecare luni', 'lunea și joia',
+      'în zilele lucrătoare', 'de luni până vineri', 'every weekday',
       'săptămânal', 'la 2 săptămâni', 'lunar', 'pe 15 ale lunii', 'anual',
       'sâmbătă tuns', 'în fiecare sâmbătă tuns',
     ],

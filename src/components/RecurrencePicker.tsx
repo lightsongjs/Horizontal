@@ -5,7 +5,7 @@
 // nu formularul. Un control dintr-un formular se poartă ca un `<select>`, nu ca
 // un ecran — se închide cu Escape sau cu un click pe fundal, și atât.
 //
-// Preseturile (zilnic/săptămânal/lunar/anual) NU sunt aici: stau ca jetoane pe
+// Preseturile (zilnic/zile lucrătoare/săptămânal/lunar/anual) NU sunt aici: stau ca jetoane pe
 // rândul din formular, la o atingere distanță. Aici se intră doar pentru ce nu
 // încape pe un rând.
 
@@ -13,9 +13,13 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { formatRrule, parseRrule, type Rec } from '../lib/recurrence'
 
+/** Luni–vineri. Exact șirul pe care îl scrie `formatRrule`, ca `presetOf` să-l recunoască. */
+export const WEEKDAYS = 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR'
+
 export const PRESETS: { value: string | null; label: string }[] = [
   { value: null, label: 'fără' },
   { value: 'FREQ=DAILY', label: 'zilnic' },
+  { value: WEEKDAYS, label: 'zile lucrătoare' },
   { value: 'FREQ=WEEKLY', label: 'săptămânal' },
   { value: 'FREQ=MONTHLY', label: 'lunar' },
   { value: 'FREQ=YEARLY', label: 'anual' },

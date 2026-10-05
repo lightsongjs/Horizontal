@@ -46,6 +46,8 @@ describe('parseRrule', () => {
 describe('describeRrule', () => {
   it('spune în română ce s-a ales', () => {
     expect(describeRrule('FREQ=DAILY')).toBe('zilnic')
+    expect(describeRrule('FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR')).toBe('în zilele lucrătoare')
+    expect(describeRrule('FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,TU,WE,TH,FR')).toBe('la 2 săptămâni, în zilele lucrătoare')
     expect(describeRrule('FREQ=DAILY;INTERVAL=2')).toBe('la 2 zile')
     expect(describeRrule('FREQ=WEEKLY')).toBe('săptămânal')
     expect(describeRrule('FREQ=WEEKLY;BYDAY=MO')).toBe('lunea')

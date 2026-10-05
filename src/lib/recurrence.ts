@@ -125,7 +125,7 @@ export function describeRrule(s: string | null): string {
     case 'WEEKLY': {
       const head = every(rec.interval, 'săptămânal', 'săptămâni')
       if (!rec.byday.length) return head
-      const days = joinRo(rec.byday.map((i) => DAY_NAMES[i]))
+      const days = rec.byday.join() === '1,2,3,4,5' ? 'în zilele lucrătoare' : joinRo(rec.byday.map((i) => DAY_NAMES[i]))
       return rec.interval === 1 ? days : `${head}, ${days}`
     }
     case 'MONTHLY': {

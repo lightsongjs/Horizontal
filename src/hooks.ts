@@ -487,6 +487,26 @@ export interface TitleDate {
   rejectedKey: string
 }
 
+/**
+ * Înghite click-ul care urmează gestului curent. Click-ul vine imediat după
+ * ridicarea degetului, deci termenul pornește de acolo, nu de la apăsare (o
+ * atingere ținută ar fi trecut de el): dacă nu vine, nu fură următorul click.
+ */
+function swallowNextClick() {
+  let t = setTimeout(() => done(), 5000)
+  const stop = (e: MouseEvent) => { e.preventDefault(); e.stopPropagation(); done() }
+  const up = () => { clearTimeout(t); t = setTimeout(() => done(), 400) }
+  const done = () => {
+    clearTimeout(t)
+    window.removeEventListener('click', stop, true)
+    window.removeEventListener('pointerup', up, true)
+    window.removeEventListener('pointercancel', done, true)
+  }
+  window.addEventListener('click', stop, true)
+  window.addEventListener('pointerup', up, true)
+  window.addEventListener('pointercancel', done, true)
+}
+
 export function useTitleDate(
   text: string,
   { enabled = true, onChange, initialRejected }: {
@@ -582,6 +602,11 @@ export function useTitleDate(
         // și „0" din „la 10" — adică în mijlocul textului tocmai eliberat.
         // Sfârșitul rândului e locul din care se scrie mai departe.
         e.preventDefault()
+        // …dar pe atingere `preventDefault` nu oprește click-ul de după
+        // ridicarea degetului. Refuzul scoate indiciul și jetonul, foaia
+        // lipită de jos scade sub deget, iar click-ul cădea pe fundal și o
+        // închidea. Click-ul gestului ăstuia e înghițit, oriunde ar cădea.
+        swallowNextClick()
         reject([text.slice(spans[i][0], spans[i][1])])
         el.focus()
         // După randare: textul tocmai a crescut cu spațiul de mai sus, iar o

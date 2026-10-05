@@ -541,3 +541,38 @@ describe('excluderea de recurență din tiparul de oră liberă', () => {
     expect(p('mergi la cumpărături la 14:00')).toMatchObject({ time: '14:00' })
   })
 })
+
+describe('parseDue — zile lucrătoare', () => {
+  // NOW = luni 24 august 2026, 08:40.
+  const WD = 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR'
+  it.each([
+    ['standup în zilele lucrătoare', 'standup'],
+    ['standup zilele lucrătoare', 'standup'],
+    ['standup în fiecare zi lucrătoare', 'standup'],
+    ['standup de luni până vineri', 'standup'],
+    ['standup luni-vineri', 'standup'],
+    ['standup luni - vineri', 'standup'],
+    ['standup every weekday', 'standup'],
+    ['standup on weekdays', 'standup'],
+    ['standup weekdays', 'standup'],
+    ['standup monday to friday', 'standup'],
+    ['standup mon-fri', 'standup'],
+  ])('%s', (text, title) => {
+    const p = parseDue(text, NOW)
+    expect(p.rrule).toBe(WD)
+    expect(p.title).toBe(title)
+  })
+  it('„Daily" rămâne nume de ședință când zilele sunt scrise explicit', () => {
+    const p = parseDue('Daily cu șeful în zilele lucrătoare la 10', NOW)
+    expect(p.rrule).toBe(WD)
+    expect(p.title).toBe('Daily cu șeful')
+    expect(p.hasTime).toBe(true)
+  })
+  it('sâmbătă: prima apariție e lunea următoare', () => {
+    const p = parseDue('raport zilele lucrătoare', new Date(2026, 7, 29, 10, 0))
+    expect(new Date(p.dueAt!).getDate()).toBe(31)
+  })
+  it('„luni" singur rămâne o dată, nu o recurență', () => {
+    expect(parseDue('ședință luni', NOW).rrule).toBeNull()
+  })
+})

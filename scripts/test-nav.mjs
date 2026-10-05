@@ -634,6 +634,24 @@ try {
   await touch.goto(BASE, { waitUntil: 'networkidle' })
   await touch.waitForTimeout(800)
   const T = await touchApi(touch)
+
+  // Refuzul unei date prin ATINGERE: indiciul și jetonul pleacă, foaia lipită
+  // de jos scade sub deget, iar click-ul de după ridicare cădea pe fundal și
+  // închidea foaia („Daily cu șeful" → atingi „Daily" → dispare tot).
+  await touch.locator('.fab').click()
+  await touch.waitForTimeout(300)
+  await touch.keyboard.type('Daily cu șeful')
+  await touch.waitForTimeout(300)
+  const dailyMark = touch.locator('.kb-sheet mark').first()
+  const hadMark = (await dailyMark.count()) > 0
+  if (hadMark) { const c = await T.center(dailyMark); await T.tap(c.x, c.y) }
+  await touch.waitForTimeout(500)
+  const quickVal = await touch.locator('.kb-sheet .qa-input').inputValue().catch(() => null)
+  check('atingerea pe „Daily" refuză data și foaia rapidă rămâne deschisă', hadMark && quickVal?.trim() === 'Daily cu șeful' && (await touch.locator('.kb-sheet mark').count()) === 0,
+    hadMark ? `valoare=${JSON.stringify(quickVal)}` : 'n-a apărut marcajul')
+  await touch.keyboard.press('Escape')
+  await touch.waitForTimeout(400)
+
   const names = ['Gest unu', 'Gest doi', 'Gest trei']
   for (const t of names) {
     await touch.locator('.fab').click()

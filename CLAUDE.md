@@ -561,7 +561,11 @@ Fusul din SQL e constanta `'Europe/Bucharest'`. Un utilizator în alt fus ar
 sări cu o zi; atunci `p_tz` devine o coloană, nu un default.
 
 Vocabularul din text (`parseDue`): `zilnic`, `la 2 zile`, `în fiecare luni`,
-`lunea și joia`, `săptămânal`, `lunar`, `pe 15 ale lunii`, `anual`, plus EN.
+`lunea și joia`, `în zilele lucrătoare`/`de luni până vineri`/`every weekday`
+(caută-le PRIMELE: altfel „în fiecare zi lucrătoare” ar fi prins ca „în fiecare zi”), `săptămânal`, `lunar`, `pe 15 ale lunii`, `anual`, plus EN.
+„daily” e cuvânt-cheie, deși e și numele unei ședințe. Se refuză prin atingere,
+iar click-ul care urmează atingerii e înghițit (`swallowNextClick`, `hooks.ts`):
+foaia scade sub deget, iar click-ul ar fi căzut pe fundal și ar fi închis-o.
 **Forma articulată e semnalul:** „luni" e o dată, „lunea" e o recurență — fără
 distincția asta, „programează luni" (o dată) și „în fiecare luni" (o
 recurență) ar cere același cuvânt pentru două lucruri diferite, și parserul

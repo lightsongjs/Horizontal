@@ -9,6 +9,8 @@ describe('preseturi de repetare', () => {
     expect(presetOf('FREQ=WEEKLY')).toBe('FREQ=WEEKLY')
     expect(presetOf('FREQ=MONTHLY')).toBe('FREQ=MONTHLY')
     expect(presetOf('FREQ=YEARLY')).toBe('FREQ=YEARLY')
+    // Cum îl scrie parserul pentru „în zilele lucrătoare" — jetonul trebuie să se aprindă.
+    expect(presetOf('FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR')).toBe('FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR')
   })
 
   it('orice altceva e „personalizat" — inclusiv un RRULE nerecunoscut', () => {
@@ -17,8 +19,8 @@ describe('preseturi de repetare', () => {
     expect(presetOf('FREQ=DAILY;COUNT=3')).toBe('custom')
   })
 
-  it('preseturile sunt exact cele cinci de pe rând', () => {
-    expect(PRESETS.map((p) => p.value)).toEqual([null, 'FREQ=DAILY', 'FREQ=WEEKLY', 'FREQ=MONTHLY', 'FREQ=YEARLY'])
+  it('preseturile sunt exact cele șase de pe rând', () => {
+    expect(PRESETS.map((p) => p.value)).toEqual([null, 'FREQ=DAILY', 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR', 'FREQ=WEEKLY', 'FREQ=MONTHLY', 'FREQ=YEARLY'])
   })
 })
 

@@ -165,6 +165,13 @@ export function parseDue(raw: string, now: Date = new Date()): ParsedDue {
   //    regexul de mai jos caută doar cinci; vezi comentariul de acolo.
   const DAYS_RO_ART = ['duminica', 'lunea', 'martea', 'miercurea', 'joia', 'vinerea', 'sambata']
 
+  // „în zilele lucrătoare", „de luni până vineri", „every weekday" — PRIMUL:
+  // „în fiecare zi lucrătoare" ar fi fost prins altfel ca „în fiecare zi"
+  // (zilnic, cu tot cu weekendul). „luni"/„vineri" singure rămân date; numai
+  // perechea legată e recurență. „o zi lucrătoare" nu e aici: e o durată.
+  m = hay.match(/\b(?:(?:in\s+)?(?:fiecare\s+zi\s+lucratoare|zilele\s+lucratoare)|de\s+luni\s+(?:pana\s+)?(?:la\s+)?vineri|luni\s*-\s*vineri|(?:every|on)\s+weekdays?|weekdays|monday\s+(?:to|through|-)\s+friday|mon\s*-\s*fri)\b/)
+  if (m) { rrule = formatRrule({ freq: 'WEEKLY', interval: 1, byday: [1, 2, 3, 4, 5], bymonthday: null }); hit(m) }
+
   // „la 2 zile", „din 3 în 3 zile", „every 2 days"
   //
   // Numărul e plafonat la trei cifre, nu din pedanterie: `INTERVAL=99999999999`
@@ -172,17 +179,19 @@ export function parseDue(raw: string, now: Date = new Date()): ParsedDue {
   // adică tichetul nu se mai putea bifa DELOC. Peste trei cifre fragmentul nu
   // se mai recunoaște ca recurență și rămâne text în titlu, ceea ce e onest:
   // „la 99999999999 zile" nu e o rată, e o greșeală de tastare.
-  m = hay.match(/\b(?:la|every)\s+(\d{1,3})\s*(?:de\s+)?(zile|zi|days|day|saptamani|saptamana|weeks|week|luni|luna|months|month|ani|an|years|year)\b/)
-    ?? hay.match(/\bdin\s+(\d{1,3})\s+in\s+\d+\s+(zile|zi|saptamani|saptamana|luni|luna|ani|an)\b/)
-  if (m) {
-    const n = Number(m[1])
-    const unit = m[2]
-    // Atenție: „luni" e ambiguu — ziua sau pluralul lui „lună". Aici, după un
-    // număr („la 2 luni"), e unitatea; ca zi a săptămânii n-ar avea sens.
-    const freq = /^(zile|zi|days|day)$/.test(unit) ? 'DAILY'
-      : /^(saptamani|saptamana|weeks|week)$/.test(unit) ? 'WEEKLY'
-      : /^(luni|luna|months|month)$/.test(unit) ? 'MONTHLY' : 'YEARLY'
-    if (n >= 1) { rrule = formatRrule({ freq, interval: n, byday: [], bymonthday: null }); hit(m) }
+  if (!rrule) {
+    m = hay.match(/\b(?:la|every)\s+(\d{1,3})\s*(?:de\s+)?(zile|zi|days|day|saptamani|saptamana|weeks|week|luni|luna|months|month|ani|an|years|year)\b/)
+      ?? hay.match(/\bdin\s+(\d{1,3})\s+in\s+\d+\s+(zile|zi|saptamani|saptamana|luni|luna|ani|an)\b/)
+    if (m) {
+      const n = Number(m[1])
+      const unit = m[2]
+      // Atenție: „luni" e ambiguu — ziua sau pluralul lui „lună". Aici, după un
+      // număr („la 2 luni"), e unitatea; ca zi a săptămânii n-ar avea sens.
+      const freq = /^(zile|zi|days|day)$/.test(unit) ? 'DAILY'
+        : /^(saptamani|saptamana|weeks|week)$/.test(unit) ? 'WEEKLY'
+        : /^(luni|luna|months|month)$/.test(unit) ? 'MONTHLY' : 'YEARLY'
+      if (n >= 1) { rrule = formatRrule({ freq, interval: n, byday: [], bymonthday: null }); hit(m) }
+    }
   }
 
   // „în fiecare luni", „every monday", „în fiecare zi/săptămână/lună/an"
