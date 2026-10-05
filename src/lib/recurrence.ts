@@ -283,6 +283,9 @@ export function nextOccurrence(rrule: string | null, from: Date, dueAt: string |
  *   SEPTEMBRIE, o lună și jumătate mai târziu, iar nimeni n-a cerut asta. Ziua
  *   de azi se numără: „pe 15" spus pe 15 începe azi.
  *
+ * Funcția nu știe de oră. Cu o oră scrisă, `parseDue` numără și azi („every
+ * workday at 1230" spus luni la 10 e azi), dar numai dacă ora n-a trecut.
+ *
  * Regula de SALT (după o bifare) rămâne neatinsă de asta — acolo apariția
  * următoare e strict după azi pe ambele axe, e regula centrală din spec și o
  * fixează fixture-urile de paritate.

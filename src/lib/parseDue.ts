@@ -10,7 +10,7 @@
 // la primul „Întâlnire la Podul 5".
 
 import { startOfLocalDay, addDays } from './schedule'
-import { firstOccurrence, formatRrule } from './recurrence'
+import { firstOccurrence, formatRrule, nextOccurrence, parseRrule } from './recurrence'
 
 export interface ParsedDue {
   /** Titlul cu fragmentele de dată scoase. Poate fi GOL — vezi mai jos. */
@@ -347,22 +347,6 @@ export function parseDue(raw: string, now: Date = new Date()): ParsedDue {
     }
   }
 
-  // ── prima apariție a unei recurențe care NUMEȘTE o zi
-  //
-  // „vinerea raport" e vinerea care vine, „pe 15 ale lunii factura" e pe 15 —
-  // nu azi. Regula „recurență fără dată ⇒ azi" e pentru recurențele care nu
-  // numesc nimic (zilnic, lunar simplu); peste una care numește, ea producea o
-  // scadență pe care n-a cerut-o nimeni, în „Azi", și pe care omul o acționa.
-  //
-  // Ziua se cere motorului, nu se calculează aici: un al doilea „care e
-  // următoarea vineri" ar fi driftat de `nextOccurrence` în tăcere, exact
-  // clasa de bug pentru care există `test:recurrence-sql`. O zi scrisă
-  // explicit învinge, ca peste tot în funcția asta.
-  if (!day && rrule) {
-    const first = firstOccurrence(rrule, now)
-    if (first) day = new Date(first)
-  }
-
   // ── oră militară lipită: „at 1500", „la 0830", „ora 900".
   //
   // Se încearcă ÎNAINTE de forma cu două puncte: aceea nu poate prinde „1500"
@@ -412,6 +396,42 @@ export function parseDue(raw: string, now: Date = new Date()): ParsedDue {
 
   if (spans.length === 0) {
     return { title: raw.trim(), dueAt: null, allDay: true, rrule: null, spans: [], hasDay: false, hasTime: false }
+  }
+
+  // ── prima apariție a unei recurențe care NUMEȘTE o zi
+  //
+  // „vinerea raport" e vinerea care vine, „pe 15 ale lunii factura" e pe 15 —
+  // nu azi. Regula „recurență fără dată ⇒ azi" e pentru recurențele care nu
+  // numesc nimic (zilnic, lunar simplu); peste una care numește, ea producea o
+  // scadență pe care n-a cerut-o nimeni, în „Azi", și pe care omul o acționa.
+  //
+  // Ziua se cere motorului, nu se calculează aici: un al doilea „care e
+  // următoarea vineri" ar fi driftat de `nextOccurrence` în tăcere, exact
+  // clasa de bug pentru care există `test:recurrence-sql`. O zi scrisă
+  // explicit învinge, ca peste tot în funcția asta.
+  //
+  // Cu ORĂ scrisă, azi contează: „every workday at 1230" spus luni la 10 e
+  // azi la 12:30, „în fiecare luni la 15" spus luni dimineața e azi. Fără oră,
+  // sau cu ora deja trecută, pornește de la apariția de după azi — inclusiv
+  // „pe 5 ale lunii la 8" spus pe 5 la 9, care altfel s-ar fi născut restant.
+  // De-aia blocul stă DUPĂ oră, nu lângă recurență.
+  if (!day && rrule) {
+    const today = startOfLocalDay(now)
+    const at = new Date(today)
+    if (time) at.setHours(time[0], time[1], 0, 0)
+    const ahead = at.getTime() >= now.getTime()
+    const rec = parseRrule(rrule)
+    if (time && ahead && rec?.freq === 'WEEKLY' && rec.byday.includes(today.getDay())) day = today
+    else {
+      const first = firstOccurrence(rrule, now)
+      if (first) {
+        day = new Date(first)
+        if (time && !ahead && day.getTime() === today.getTime()) {
+          const next = nextOccurrence(rrule, today, today.toISOString())
+          if (next) day = new Date(next)
+        }
+      }
+    }
   }
 
   const base = day ? new Date(day) : startOfLocalDay(now)

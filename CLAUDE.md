@@ -563,6 +563,11 @@ sări cu o zi; atunci `p_tz` devine o coloană, nu un default.
 Vocabularul din text (`parseDue`): `zilnic`, `la 2 zile`, `în fiecare luni`,
 `lunea și joia`, `în zilele lucrătoare`/`de luni până vineri`/`every weekday`
 (caută-le PRIMELE: altfel „în fiecare zi lucrătoare” ar fi prins ca „în fiecare zi”), `săptămânal`, `lunar`, `pe 15 ale lunii`, `anual`, plus EN.
+**Prima apariție (decizia omului, 2026-10-05):** cu oră scrisă, azi contează,
+dacă azi se potrivește și ora n-a trecut („în fiecare luni la 15”, spus luni
+dimineața, e azi). Fără oră pornește de după azi („în fiecare luni”, spus luni,
+e lunea viitoare). O oră deja trecută azi sare la următoarea apariție, și pe
+`pe N ale lunii`. Regula stă în `parseDue`, după oră, nu în `firstOccurrence`.
 „daily” e cuvânt-cheie, deși e și numele unei ședințe. Se refuză prin atingere,
 iar click-ul care urmează atingerii e înghițit (`swallowNextClick`, `hooks.ts`):
 foaia scade sub deget, iar click-ul ar fi căzut pe fundal și ar fi închis-o.

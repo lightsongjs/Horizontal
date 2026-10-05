@@ -581,3 +581,26 @@ describe('parseDue — zile lucrătoare', () => {
     expect(parseDue('ședință luni', NOW).rrule).toBeNull()
   })
 })
+
+describe('parseDue — prima apariție: cu oră, azi contează; fără oră, de după azi', () => {
+  const at = (t: string, now: Date) => {
+    const d = new Date(parseDue(t, now).dueAt!)
+    return `${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  }
+  const MON = new Date(2026, 7, 24, 8, 40)
+  const FRI_AM = new Date(2026, 7, 28, 9, 0)
+  const FRI_PM = new Date(2026, 7, 28, 13, 0)
+  it('luni dimineața, ora încă n-a venit → azi', () => expect(at('status every workday at 1230', MON)).toBe('24 12:30'))
+  it('luni, ora a trecut → marți', () => expect(at('status every workday at 8', MON)).toBe('25 08:00'))
+  it('luni, fără oră → marți', () => expect(at('status în zilele lucrătoare', MON)).toBe('25 00:00'))
+  it('vineri dimineața → vineri', () => expect(at('status every workday at 1230', FRI_AM)).toBe('28 12:30'))
+  it('vineri după oră → luni, nu sâmbătă', () => expect(at('status every workday at 1230', FRI_PM)).toBe('31 12:30'))
+  it('„în fiecare luni" spus luni, fără oră → lunea viitoare', () => expect(at('raport în fiecare luni', MON)).toBe('31 00:00'))
+  it('„în fiecare luni la 15" spus luni dimineața → azi', () => expect(at('raport în fiecare luni la 15', MON)).toBe('24 15:00'))
+  it('„lunea și joia la 8" spus luni la 08:40 → joi', () => expect(at('sala lunea și joia la 8', MON)).toBe('27 08:00'))
+  it('„pe 24 ale lunii la 8" spus pe 24 la 08:40 → luna viitoare, nu restant', () => {
+    const d = new Date(parseDue('factura pe 24 ale lunii la 8', MON).dueAt!)
+    expect([d.getMonth() + 1, d.getDate(), d.getHours()]).toEqual([9, 24, 8])
+  })
+  it('„pe 24 ale lunii la 10" spus pe 24 la 08:40 → azi', () => expect(at('factura pe 24 ale lunii la 10', MON)).toBe('24 10:00'))
+})
