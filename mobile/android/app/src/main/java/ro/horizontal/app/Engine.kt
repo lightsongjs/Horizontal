@@ -21,12 +21,18 @@ import ro.horizontal.app.core.*
  * plan n-o mai retrage, fiindcă `shown` spune că nu e acolo.
  */
 object Engine {
-    fun reschedule(ctx: Context, now: Long = System.currentTimeMillis()) {
+    /**
+     * `hold`: ce e de sunat se întoarce, nu se arată — `DeferGate` decide (din
+     * alarmă, cu rețea, în afara firului principal). E marcat totuși ca sunat
+     * și ca afișat: o listă nouă care îl retrage îl scoate din `shown`, iar
+     * poarta arată numai ce mai e acolo.
+     */
+    fun reschedule(ctx: Context, now: Long = System.currentTimeMillis(), hold: Boolean = false): List<Reminder> {
         Notifier.ensureChannels(ctx)
-        PlanStore.locked { effects(ctx, now) }
+        return PlanStore.locked { effects(ctx, now, hold) }
     }
 
-    private fun effects(ctx: Context, now: Long) {
+    private fun effects(ctx: Context, now: Long, hold: Boolean): List<Reminder> {
         val (fire, cancel, _) = PlanStore.edit(ctx) { s ->
             val latest = maxOf(s.page?.readAt ?: 0, s.native?.readAt ?: 0)
             val queue = NativeQueue.prune(s.queue, latest)
@@ -38,6 +44,8 @@ object Engine {
                 Triple(ap.fireNow, ap.cancelIds, ap.nextAt)
         }
         cancel.forEach { Notifier.cancel(ctx, it) }
+        if (hold) return fire
         fire.forEach { Notifier.show(ctx, it) }
+        return emptyList()
     }
 }

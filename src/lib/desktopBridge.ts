@@ -49,6 +49,12 @@ export interface HorizontalDesktop {
   resizeBar?(height: number): void
   /** După trezirea din somn: fereastra ascunsă n-a primit niciun `visibilitychange`, datele sunt vechi. */
   onResync?(fn: () => void): () => void
+  /**
+   * La 30 s: omul e la laptop (deblocat, atins în ultimele 2 min). Pagina o
+   * scrie în bază (`touch_presence`), ca telefonul să-și amâne mementoul.
+   * Opțional: o cutie instalată înainte de el n-o are, iar telefonul sună atunci la minut.
+   */
+  onPresence?(fn: (active: boolean) => void): () => void
 }
 
 export function getDesktopBridge(): HorizontalDesktop | null {

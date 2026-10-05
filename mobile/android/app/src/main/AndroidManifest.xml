@@ -33,6 +33,7 @@
             android:excludeFromRecents="true" android:taskAffinity="" android:launchMode="singleInstance" />
 
         <receiver android:name=".AlarmReceiver" android:exported="false" />
+        <receiver android:name=".RecheckReceiver" android:exported="false" />
         <receiver android:name=".ActionReceiver" android:exported="false" />
         <!-- Exportat fiindcă sistemul îl cheamă; acțiunile din filtru sunt toate protejate (doar sistemul le poate trimite). -->
         <receiver android:name=".BootReceiver" android:exported="true">

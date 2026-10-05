@@ -22,6 +22,11 @@ if (location.origin === arg('hz-origin')) {
       ipcRenderer.on('hz:resync', h)
       return () => { ipcRenderer.removeListener('hz:resync', h) }
     },
+    onPresence: (fn: (active: boolean) => void) => {
+      const h = (_e: unknown, active: unknown) => fn(active === true)
+      ipcRenderer.on('hz:presence', h)
+      return () => { ipcRenderer.removeListener('hz:presence', h) }
+    },
     hideBar: () => ipcRenderer.send('hz:hide-bar'),
     resizeBar: (height: number) => ipcRenderer.send('hz:resize-bar', height),
   })

@@ -4,6 +4,7 @@ import { repository } from '../data'
 import { getDesktopBridge, upcomingReminders, type DesktopAction } from '../lib/desktopBridge'
 import { ANDROID_WINDOW, androidListKey, canTakeActions, getAndroidBridge, pageReadAt } from '../lib/androidBridge'
 import { runNativeAction } from '../lib/nativeAction'
+import { supabase } from '../lib/supabase'
 
 /** Cât de des se retrimite lista chiar fără nicio schimbare: fereastra alunecă. */
 const RESEND_MS = 15 * 60_000
@@ -90,6 +91,19 @@ export function NativeBridge() {
   useEffect(() => {
     if (!desktop) return
     return desktop.onReminderAction((a) => run.current(a))
+  }, [desktop])
+
+  // Bătaia de inimă a laptopului: fiecare „activ" se scrie (ora e a serverului),
+  // „inactiv" doar la trecere. Un eșec e tăcut: telefonul sună atunci la minut.
+  useEffect(() => {
+    if (!desktop?.onPresence || !supabase) return
+    const db = supabase
+    let last = false
+    return desktop.onPresence((active) => {
+      if (!active && !last) return
+      last = active
+      void db.rpc('touch_presence', { p_device: 'linux', p_active: active }).then(() => {}, () => {})
+    })
   }, [desktop])
 
   // Android: acțiunile vin pe două căi. Cu aplicația vizibilă, cutia le dă

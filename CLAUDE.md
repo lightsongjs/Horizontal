@@ -1100,6 +1100,30 @@ Pro (HyperOS 3, Android 16).
 - **Contractul** `HorizontalAndroidPlugin` e scris de două ori:
   `src/lib/androidBridge.ts` și `HorizontalAndroidPlugin.kt`. Se schimbă împreună.
 
+## Laptopul activ amână telefonul (30 s)
+
+Când omul lucrează la laptop, mementoul telefonului așteaptă 30 s. Dacă în
+intervalul ăsta omul dă „Gata” sau „15 min” pe laptop, telefonul nu mai sună.
+Decizia omului, 2026-10-05. Telefonul tace doar la un răspuns sigur. Orice
+eroare, lipsă de rețea sau Doze înseamnă „sună acum”: o regulă de confort n-are
+voie să piardă un memento.
+
+- **Laptop:** `desktop/src/presence.ts` întreabă GNOME la 30 s. „Activ” =
+  deblocat (`ScreenSaver.GetActive`) + atins în ultimele 2 min
+  (`Mutter.IdleMonitor`). Prin D-Bus, nu prin `powerMonitor`: pe Wayland acela
+  nu vede intrarea. Cutia trimite starea paginii (`onPresence`, contract scris
+  de două ori), iar pagina o scrie cu `touch_presence` (`NativeBridge.tsx`).
+- **Server:** `supabase/migration-presence.sql`. `desktop_active()` = bătaie în
+  ultimele 75 s, după ceasul SERVERULUI. Ceasurile dispozitivelor nu se compară.
+- **Telefon:** `AlarmReceiver` → `DeferGate.onAlarm`, cu regula în `core/Gate.kt`.
+  Laptop activ și telefonul nu e în Doze → pune mementoul în `deferred` și
+  armează `RecheckReceiver` la +30 s. Acolo citește tichetul și sună doar dacă
+  e nebifat și cu `remind_at` neschimbat. În Doze nu amână: Android lasă ~o
+  alarmă `AllowWhileIdle` la 9 min, deci reverificarea ar putea întârzia.
+  Repornirea în cele 30 s → `flush`: sună tot ce aștepta.
+- **Ce NU face:** retrage o notificare deja afișată pe telefon când acționezi
+  după cele 30 s. Pentru asta e nevoie de FCM (Etapa 2).
+
 ## Teste care cer un browser
 
 `npm test` (vitest) nu face layout și nu are DOM real, deci nu poate vedea două

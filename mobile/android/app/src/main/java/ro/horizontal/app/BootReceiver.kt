@@ -11,6 +11,7 @@ import android.content.Intent
  */
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
+        DeferGate.flush(ctx)
         Engine.reschedule(ctx)
         Hooks.afterBoot(ctx)
     }

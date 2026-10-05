@@ -17,13 +17,15 @@ object SupabaseApi {
     // nu acceptă X-HTTP-Method-Override.
     private val http = OkHttpClient.Builder().connectTimeout(15, TimeUnit.SECONDS).readTimeout(20, TimeUnit.SECONDS).build()
     private val JSON = "application/json".toMediaType()
+    /** Pentru poarta din alarmă: un receiver are ~10 s, iar un răspuns întârziat valorează cât unul lipsă. */
+    private val quick = http.newBuilder().callTimeout(4, TimeUnit.SECONDS).build()
 
     /** Excepția de rețea urcă (IOException): cine cheamă decide dacă reîncearcă. */
-    fun raw(method: String, url: String, headers: Map<String, String>, body: String?): Response {
+    fun raw(method: String, url: String, headers: Map<String, String>, body: String?, fast: Boolean = false): Response {
         val b = Request.Builder().url(url)
         headers.forEach { (k, v) -> b.header(k, v) }
         b.method(method, body?.toRequestBody(JSON) ?: if (method == "GET") null else "".toRequestBody(JSON))
-        http.newCall(b.build()).execute().use { r -> return Response(r.code, r.body?.string() ?: "") }
+        (if (fast) quick else http).newCall(b.build()).execute().use { r -> return Response(r.code, r.body?.string() ?: "") }
     }
 
     /**
@@ -35,13 +37,13 @@ object SupabaseApi {
      * cum sunt. Un `HttpUrl.Builder().addQueryParameter` le-ar coda a doua oară
      * (`%3A` → `%253A`) și filtrul n-ar mai prinde rândul. Proba: `SupabaseUrlTest`.
      */
-    fun rest(ctx: Context, method: String, pathAndQuery: String, body: String? = null, prefer: String? = null, asUser: String? = null): Response? {
+    fun rest(ctx: Context, method: String, pathAndQuery: String, body: String? = null, prefer: String? = null, asUser: String? = null, fast: Boolean = false): Response? {
         val (url, anon) = NativeSession.config(ctx) ?: return null
         val (token, user) = NativeSession.session(ctx) ?: return null
         // Cererea e a contului `asUser`; dacă între timp s-a logat altcineva, nu pleacă deloc.
         if (asUser != null && user != asUser) throw AccountChanged()
         val h = mutableMapOf("apikey" to anon, "Authorization" to "Bearer $token")
         prefer?.let { h["Prefer"] = it }
-        return raw(method, "$url/rest/v1/$pathAndQuery", h, body)
+        return raw(method, "$url/rest/v1/$pathAndQuery", h, body, fast)
     }
 }

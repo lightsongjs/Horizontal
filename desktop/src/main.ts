@@ -3,6 +3,7 @@ import * as path from 'node:path'
 import { parseReminders, planReminders, type Reminder } from './scheduler'
 import { createNotifier, type Notifier, type NotifyAction } from './notify'
 import { exportAppService } from './dbusService'
+import { PRESENCE_TICK_MS, readActive } from './presence'
 
 const START_URL = process.env.HORIZONTAL_URL ?? 'https://horizontal-dyx.pages.dev'
 const ORIGIN = new URL(START_URL).origin
@@ -156,6 +157,17 @@ function start() {
     powerMonitor.on('resume', () => { if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send('hz:resync') })
     powerMonitor.on('unlock-screen', reschedule)
     reschedule()
+
+    // „Omul e la laptop" → pagina (care are sesiunea) o scrie în bază, iar
+    // telefonul își amână mementoul cu 30 s. Bătaia vine din procesul principal:
+    // timerele ferestrei ascunse sunt sugrumate.
+    const presence = () => void readActive().then((active) => {
+      if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send('hz:presence', active)
+    })
+    setInterval(presence, PRESENCE_TICK_MS)
+    powerMonitor.on('resume', presence)
+    powerMonitor.on('suspend', () => { if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send('hz:presence', false) })
+    presence()
   })
 }
 
