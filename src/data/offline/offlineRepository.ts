@@ -262,7 +262,26 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
     for (const i of (await kv.get<Issue[]>(K.due)) ?? []) {
       if (!full.has(i.projectId)) out.push(i)
     }
-    return out
+    // Iar lista de proiecte e autoritară peste toate: un proiect pe care
+    // serverul nu-l mai întoarce (șters, acces pierdut) nu are voie să-și
+    // arate tichetele offline. Fără listă încă, nu se filtrează nimic.
+    const known = await kv.get<Project[]>(K.projects)
+    if (!known) return out
+    const ids = new Set(known.map((p) => p.id))
+    return out.filter((i) => ids.has(i.projectId))
+  }
+
+  /** Lista de proiecte; cea venită de la server șterge de pe disc proiectele dispărute. */
+  async function readProjects(): Promise<Project[]> {
+    let fresh: Project[] | null = null
+    const projects = await read(K.projects, async () => (fresh = await remote.listProjects()))
+    const kv = await kvReady
+    if (fresh && kv) {
+      const ids = new Set((fresh as Project[]).map((p) => p.id))
+      const stale = (await kv.keys('p:').catch(() => [] as string[])).filter((k) => !ids.has(k.slice(2, k.lastIndexOf(':'))))
+      if (stale.length) await kv.remove(stale).catch(() => {}) // igienă: citirile filtrează oricum
+    }
+    return projects
   }
 
   const cache: CacheReader = {
@@ -295,7 +314,7 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
   async function prefetchAll() {
     let projects: Project[]
     try {
-      projects = await read(K.projects, () => remote.listProjects())
+      projects = await readProjects()
     } catch {
       // Best-effort: un prefetch eșuat lasă cache-ul cum era. Nu e o eroare de
       // arătat — omul n-a cerut nimic.
@@ -586,7 +605,7 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
     cache,
     sync,
 
-    listProjects: () => read(K.projects, () => remote.listProjects()),
+    listProjects: () => readProjects(),
     listAssignees: () => read(K.assignees, () => remote.listAssignees()),
     listWaves: (pid) => read(K.p(pid, 'waves'), () => remote.listWaves(pid)),
     listThemes: (pid) => read(K.p(pid, 'themes'), () => remote.listThemes(pid)),

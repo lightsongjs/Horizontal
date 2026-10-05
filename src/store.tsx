@@ -32,7 +32,7 @@ import { groupInbox, reconcileInbox } from './lib/thread'
 import { shortLabels } from './lib/initials'
 import type { Assignee, InboxRow, Issue, IssueState, Layers, Obstacle, ObstacleLink, Project, ProjectMember, Theme, Wave } from './lib/types'
 import { errorMessage } from './lib/errorMessage'
-import { shouldRefreshOnVisible } from './lib/refreshGate'
+import { shouldRefreshOnVisible, syncRefreshStep } from './lib/refreshGate'
 import type { ProjectBundle, SyncEvent, SyncStatus } from './data/offline/types'
 
 interface HorizontalState {
@@ -527,6 +527,27 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [refresh])
 
+  // Reconectarea și golirea cozii: reîncărcare completă, fără prag (vezi
+  // `syncRefreshStep`). Una singură odată; ce cere o alta cât rulează se
+  // strânge într-o reluare, fiindcă o citire din runda în curs poate să fi
+  // căzut pe baza locală înainte să revină rețeaua.
+  const refreshRef = useRef(refresh)
+  refreshRef.current = refresh
+  const syncRefresh = useRef({ running: false, again: false })
+  const refreshAfterSync = useCallback(() => {
+    const r = syncRefresh.current
+    if (r.running) { r.again = true; return }
+    r.running = true
+    void (async () => {
+      do { r.again = false; await refreshRef.current() } while (r.again)
+      r.running = false
+    })()
+  }, [])
+  useEffect(() => {
+    window.addEventListener('online', refreshAfterSync)
+    return () => window.removeEventListener('online', refreshAfterSync)
+  }, [refreshAfterSync])
+
   const projects = useMemo(() => applyOrder(rawProjects, projectOrder), [rawProjects, projectOrder])
   const project = useMemo(() => projects.find((p) => p.id === projectId) ?? null, [projects, projectId])
   const issues = useMemo(() => allIssues.filter((i) => i.projectId === projectId), [allIssues, projectId])
@@ -692,8 +713,16 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
       setDueRaw((prev) => prev.filter((i) => !gone.has(i.id)))
       setInboxRaw((prev) => prev.filter((r) => !gone.has(r.issueId)))
     }
+    let prev = s.status()
+    let owed = false
     return s.subscribe((e: SyncEvent) => {
-      if (e.type === 'status') setSyncStatus(e.status)
+      if (e.type === 'status') {
+        setSyncStatus(e.status)
+        const step = syncRefreshStep(owed, prev, e.status)
+        owed = step.owed
+        if (step.refresh) refreshAfterSync()
+        prev = e.status
+      }
       else if (e.type === 'issue') {
         upsertIssue(e.issue)
         setDueRaw((prev) => prev.map((i) => (i.id === e.issue.id ? e.issue : i)))
@@ -709,7 +738,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
         else if (e.issueId) forget([e.issueId])
       }
     })
-  }, [upsertIssue])
+  }, [upsertIssue, refreshAfterSync])
 
   const reorderProjects = useCallback((ids: string[]) => {
     setProjectOrder(ids)

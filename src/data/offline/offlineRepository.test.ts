@@ -131,6 +131,23 @@ describe('citiri — robustețe', () => {
     await kv.set('due', [mk('HZ-09', { dueAt: due }), mk('Q-01', { projectId: 'q', dueAt: due })])
     expect((await repo.cache!.due(range))?.map((i) => i.id)).toEqual(['Q-01'])
   })
+  it('un proiect dispărut din lista serverului nu mai apare offline (nici din `due`)', async () => {
+    const { remote, net } = fakeRemote()
+    const q: Project = { ...proj, id: 'q', name: 'Q' }
+    const due = '2026-10-01T07:00:00.000Z'
+    ;(remote.listProjects as ReturnType<typeof vi.fn>).mockResolvedValueOnce([proj, q])
+    ;(remote.listIssues as ReturnType<typeof vi.fn>).mockImplementation(async (pid: string) =>
+      pid === 'q' ? [mk('Q-01', { projectId: 'q', dueAt: due })] : [mk('HZ-01', { dueAt: due })])
+    const repo = make(remote)
+    await repo.sync!.prefetchAll()
+    await kv.set('due', [mk('Q-02', { projectId: 'q', dueAt: due })])
+    await repo.listProjects() // serverul nu mai știe de `q` (șters, sau acces pierdut)
+    net.down = true
+    const range = { to: '2026-10-09T21:00:00.000Z', doneFrom: '2026-10-01T21:00:00.000Z' }
+    expect((await repo.cache!.due(range))?.map((i) => i.id)).toEqual(['HZ-01'])
+    expect(await repo.cache!.project('q')).toBeNull()
+    expect(await kv.keys('p:q:')).toEqual([])
+  })
 })
 
 describe('scrieri', () => {

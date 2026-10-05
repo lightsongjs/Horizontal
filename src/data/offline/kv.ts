@@ -45,6 +45,7 @@ export interface Kv {
   get<T>(key: string): Promise<T | undefined>
   set(key: string, value: unknown): Promise<void>
   keys(prefix: string): Promise<string[]>
+  remove(keys: string[]): Promise<void>
   ops(): Promise<QueuedOp[]>
   append(op: OutboxOp): Promise<number>
   replaceOps(rewrite: QueuedOp[], remove: number[]): Promise<void>
@@ -74,6 +75,10 @@ export async function openKv(name = 'horizontal-offline'): Promise<Kv> {
     },
     async keys(prefix) {
       return ((await db.getAllKeys('kv')) as string[]).filter((k) => k.startsWith(prefix))
+    },
+    async remove(keys) {
+      const tx = db.transaction('kv', 'readwrite')
+      await atomic(tx, (track) => keys.forEach((k) => track(tx.store.delete(k))))
     },
     async ops() {
       return (await db.getAll('outbox')) as QueuedOp[]

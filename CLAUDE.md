@@ -914,6 +914,16 @@ refresh. `settle` crește `generation` la fiecare element încheiat; citirea
 compară generația de la plecare cu cea de la sosire și, dacă s-a mișcat,
 răspunde din bază în loc s-o suprascrie.
 
+**Reconectarea reîncarcă tot, fără prag.** Pornit offline, ecranul e din baza
+locală, iar revenirea rețelei golea doar coada, deci listele rămâneau vechi.
+`syncRefreshStep` (`refreshGate.ts`) cere un `refresh()` la offline → online și
+încă unul când coada rămasă de offline ajunge la 0. O captură online (1 → 0) nu
+contează. Mai declanșează și evenimentul `online`. **Lista de proiecte e
+autoritară peste bază:** un proiect pe care serverul nu-l mai întoarce (șters,
+acces pierdut) e filtrat din citirile offline (`allCachedIssues`), iar cheile
+lui `p:<pid>:*` se șterg (`readProjects`). Altfel tichetele lui reapăreau ca
+fantome la fiecare pornire fără rețea (2026-10-05, tichetele de probă Android).
+
 Ce NU există, deliberat: o cheie de idempotență pe server pentru `createIssue`
 (cere o migrare pe baza de producție — decizia omului; până atunci, singura
 plasă contra dublurilor e că nimic nu retrimite o creare încă în zbor), un

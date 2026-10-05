@@ -29,3 +29,24 @@ export function shouldRefreshOnVisible(
   if (now < lastRefreshAt) return true
   return now - lastRefreshAt >= minIntervalMs
 }
+
+type QueueState = { offline: boolean; pending: number }
+
+/**
+ * Cere starea cozii o reîncărcare completă, peste prag?
+ *
+ * Reconectarea (offline → online) și golirea cozii rămase de offline (N → 0)
+ * sunt momentele în care ce e pe ecran poate fi altă versiune decât serverul:
+ * listele au venit din baza locală, iar ce s-a scris offline abia a ajuns.
+ * Pragul de mai sus e pentru ping-pong între taburi, nu pentru asta.
+ *
+ * `owed` ține minte că există o coadă rămasă de offline. Fără el, orice
+ * adăugare rapidă (trece prin coadă și online: 1 → 0) ar fi cerut o rundă
+ * completă către Supabase.
+ */
+export function syncRefreshStep(owed: boolean, prev: QueueState, next: QueueState): { owed: boolean; refresh: boolean } {
+  if (next.offline) return { owed: owed || next.pending > 0 || prev.pending > 0, refresh: false }
+  if (prev.offline) return { owed: next.pending > 0, refresh: true }
+  if (owed && next.pending === 0) return { owed: false, refresh: true }
+  return { owed, refresh: false }
+}
