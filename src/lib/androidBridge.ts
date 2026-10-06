@@ -11,6 +11,15 @@ import type { DesktopAction, DesktopReminder } from './desktopBridge'
 export const ANDROID_API_REQUIRED = 1
 /** API 2: widget-urile (`setAgenda`, `leave`, `showKeyboard`, evenimentul `widget`). */
 export const ANDROID_API_WIDGETS = 2
+/** API 3: fereastra nativă de quick add (`setCaptureData`). */
+export const ANDROID_API_CAPTURE = 3
+
+/** Ce îi trebuie ferestrei de quick add: proiectele în care se poate scrie și oamenii. */
+export interface CaptureData {
+  projects: { id: string; name: string; prefix: string; type: string }[]
+  assignees: { id: string; name: string }[]
+  readAt: number
+}
 
 /** Atingere pe widget, reținută de cutie până pune pagina ascultătorul. */
 export type WidgetEvent = { kind: 'open'; id: string } | { kind: 'quick' }
@@ -49,6 +58,8 @@ export interface HorizontalAndroidPlugin {
   leave(): Promise<void>
   /** API 2. Ridică tastatura pe WebView (foaia rapidă deschisă din widget). */
   showKeyboard(): Promise<void>
+  /** API 3. */
+  setCaptureData(o: CaptureData): Promise<void>
   addListener(event: 'reminderAction', fn: (a: DesktopAction) => void): Promise<Listener>
   addListener(event: 'changed', fn: () => void): Promise<Listener>
   addListener(event: 'widget', fn: (e: WidgetEvent) => void): Promise<Listener>
@@ -95,6 +106,7 @@ function buildBridge(cap: CapacitorGlobal): HorizontalAndroidPlugin {
     setAgenda: call('setAgenda'),
     leave: call('leave'),
     showKeyboard: call('showKeyboard'),
+    setCaptureData: call('setCaptureData'),
     async addListener(eventName: string, fn: (d: never) => void) {
       const callbackId = cap.nativeCallback(NAME, 'addListener', { eventName }, fn as (d: unknown) => void)
       return { remove: async () => { await cap.nativePromise(NAME, 'removeListener', { eventName, callbackId }) } }
@@ -138,4 +150,21 @@ export function androidListKey(list: DesktopReminder[], heldIds: string[], readA
 /** Cheia de deduplicare a agendei trimise widget-ului; `readAt` intră, ca la `androidListKey`. */
 export function agendaKey(items: AgendaItem[], readAt: number): string {
   return JSON.stringify([readAt, items])
+}
+
+export function captureData(
+  projects: { id: string; name: string; prefix: string; type: string }[],
+  assignees: { id: string; name: string }[],
+  readAt: number,
+): CaptureData {
+  return {
+    projects: projects.map(({ id, name, prefix, type }) => ({ id, name, prefix, type })),
+    assignees: assignees.map(({ id, name }) => ({ id, name })),
+    readAt,
+  }
+}
+
+/** Fără `readAt`: lista se retrimite doar când se schimbă ce vede fereastra. */
+export function captureKey(d: CaptureData): string {
+  return JSON.stringify([d.projects, d.assignees])
 }

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { agendaKey, androidListKey, canTakeActions, getAndroidBridge, pageReadAt } from './androidBridge'
+import { agendaKey, androidListKey, captureData, captureKey, canTakeActions, getAndroidBridge, pageReadAt } from './androidBridge'
 
 const w = globalThis as unknown as { window?: unknown }
 
@@ -70,5 +70,18 @@ describe('agendaKey', () => {
     expect(agendaKey([item], 5)).toBe(agendaKey([{ ...item }], 5))
     expect(agendaKey([item], 5)).not.toBe(agendaKey([item], 6))
     expect(agendaKey([item], 5)).not.toBe(agendaKey([{ ...item, title: 'S' }], 5))
+  })
+})
+
+describe('captureData', () => {
+  it('ia doar câmpurile ferestrei, iar cheia se schimbă doar cu ele', () => {
+    const p = { id: 'p', name: '✅Daily', prefix: 'HZ', type: 'work' as const, accent: '#fff', description: 'x' }
+    const ana = { id: 'a', name: 'Ana', email: 'x' }
+    const d = captureData([p], [ana], 7)
+    expect(d).toEqual({ projects: [{ id: 'p', name: '✅Daily', prefix: 'HZ', type: 'work' }], assignees: [{ id: 'a', name: 'Ana' }], readAt: 7 })
+    const p2 = { ...p, description: 'altceva' }
+    const ana2 = { ...ana, email: 'y' }
+    expect(captureKey(d)).toBe(captureKey(captureData([p2], [ana2], 7)))
+    expect(captureKey(d)).not.toBe(captureKey(captureData([{ ...p, name: 'Daily' }], [], 7)))
   })
 })

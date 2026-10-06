@@ -92,6 +92,13 @@ class HorizontalAndroidPlugin : Plugin() {
         call.resolve()
     }
 
+    /** Proiectele în care se poate scrie și oamenii, pentru fereastra de quick add (`QuickAddActivity`). */
+    @PluginMethod fun setCaptureData(call: PluginCall) {
+        val d = CaptureJson.fromJson(call.data) ?: return call.reject("date de captură ilizibile")
+        PlanStore.edit(context) { s -> s.copy(capture = d) to Unit }
+        call.resolve()
+    }
+
     /** Pagina a închis ce deschisese widget-ul: omul se întoarce pe ecranul de start, nu pe alt ecran al aplicației. */
     @PluginMethod fun leave(call: PluginCall) {
         activity?.runOnUiThread { activity?.moveTaskToBack(true) }
@@ -181,7 +188,8 @@ class HorizontalAndroidPlugin : Plugin() {
 
     companion object {
         // 2: setAgenda, leave, showKeyboard, evenimentul „widget" (widget-urile).
-        const val API = 2
+        // 3: setCaptureData (fereastra nativă de quick add).
+        const val API = 3
         @Volatile private var instance: HorizontalAndroidPlugin? = null
 
         /**

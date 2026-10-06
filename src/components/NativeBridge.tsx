@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useHorizontal } from '../store'
+import { useWritableProjects } from '../hooks'
 import { repository } from '../data'
 import { getDesktopBridge, upcomingReminders, type DesktopAction } from '../lib/desktopBridge'
-import { ANDROID_API_WIDGETS, ANDROID_WINDOW, agendaKey, androidListKey, canTakeActions, getAndroidBridge, pageReadAt } from '../lib/androidBridge'
+import { ANDROID_API_CAPTURE, ANDROID_API_WIDGETS, ANDROID_WINDOW, agendaKey, captureData, captureKey, androidListKey, canTakeActions, getAndroidBridge, pageReadAt } from '../lib/androidBridge'
 import { agendaItems } from '../lib/agenda'
 import { parseTicketPath } from '../lib/deepLink'
 import { runNativeAction } from '../lib/nativeAction'
@@ -24,7 +25,7 @@ const REFRESH_MS = 5 * 60_000
  * timerele din pagină ar fi sugrumate cât fereastra stă ascunsă.
  */
 export function NativeBridge() {
-  const { dueLoaded, dueIssues, issues, projects, byId, refresh, toggleDone, updateIssue, syncStatus } = useHorizontal()
+  const { dueLoaded, dueIssues, issues, projects, assignees, byId, refresh, toggleDone, updateIssue, syncStatus } = useHorizontal()
   // O dată pe montare: obiectele intră în dependențele efectelor de mai jos.
   const desktop = useMemo(() => getDesktopBridge(), [])
   const android = useMemo(() => getAndroidBridge(), [])
@@ -43,6 +44,18 @@ export function NativeBridge() {
   useEffect(() => { if (android) void android.getInfo().then((i) => setAndroidApi(i.api), () => {}) }, [android])
   const widgets = !!android && androidApi >= ANDROID_API_WIDGETS
   const lastAgenda = useRef('')
+  // Fereastra de quick add (API 3): proiectele în care se poate scrie, ca selectorul
+  // din pagină — un proiect read-only ar da o creare respinsă de RLS.
+  const writable = useWritableProjects()
+  const lastCapture = useRef('')
+  useEffect(() => {
+    if (!android || androidApi < ANDROID_API_CAPTURE || !writable.length) return
+    const d = captureData(writable, assignees, Date.now())
+    const key = captureKey(d)
+    if (key === lastCapture.current) return
+    lastCapture.current = key
+    void android.setCaptureData(d).catch(() => { lastCapture.current = '' })
+  }, [android, androidApi, writable, assignees])
 
   // Reatribuit la fiecare randare: listenerii (puși o dată) văd mereu store-ul de acum.
   const run = useRef<(a: DesktopAction) => void>(() => {})
