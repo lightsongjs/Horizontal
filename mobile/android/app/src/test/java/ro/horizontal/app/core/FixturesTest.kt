@@ -36,4 +36,22 @@ class FixturesTest {
             assertEquals(f.getString("name"), want.str("dueAt"), got.dueAt?.let(::isoJs))
         }
     }
+
+    @Test fun agenda() {
+        val all = load("agenda.fixtures.json")
+        for (i in 0 until all.length()) {
+            val f = all.getJSONObject(i)
+            val items = f.getJSONArray("items").let { a -> (0 until a.length()).map { a.getJSONObject(it) }.map { o ->
+                AgendaItem(o.getString("id"), o.getString("id"), null, o.getString("dueAt"), o.getBoolean("allDay"), false, false, o.getBoolean("urgent"))
+            } }
+            val got = buildAgenda(items, parseIso(f.getString("now"))!!, zone).map { s ->
+                if (s.overdue) "overdue:${s.items.joinToString(",") { it.id }}" else "day${s.offset}:${s.items.joinToString(",") { it.id }}"
+            }
+            val want = f.getJSONArray("want").let { a -> (0 until a.length()).map { a.getJSONObject(it) }.map { w ->
+                val ids = w.getJSONArray("ids").let { x -> (0 until x.length()).joinToString(",") { x.getString(it) } }
+                if (w.getString("section") == "overdue") "overdue:$ids" else "day${w.getInt("offset")}:$ids"
+            } }
+            assertEquals(f.getString("name"), want, got)
+        }
+    }
 }

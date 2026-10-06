@@ -29,4 +29,19 @@ object Json {
         NativeAction.Kind.DONE -> JSONObject().put("action", "done").put("id", a.id).put("prevDueAt", a.prevDueAt ?: JSONObject.NULL)
         NativeAction.Kind.UNTIL -> JSONObject().put("action", "until").put("id", a.id).put("at", isoJs(a.remindAt ?: 0)).also { o -> a.dueAt?.let { o.put("dueAt", it) } }
     }
+    fun agendaItemToJson(i: AgendaItem) = JSONObject().put("id", i.id).put("title", i.title).put("project", i.project ?: JSONObject.NULL)
+        .put("dueAt", i.dueAt).put("allDay", i.allDay).put("hasReminder", i.hasReminder).put("recurring", i.recurring).put("urgent", i.urgent)
+    /** Și forma de pe punte (`AgendaItem` din `src/lib/agenda.ts`). */
+    fun agendaItemFromJson(o: JSONObject): AgendaItem? {
+        val id = o.str("id") ?: return null
+        val due = parseIso(o.str("dueAt")) ?: return null
+        return AgendaItem(id, o.str("title") ?: return null, o.str("project"), isoJs(due), o.optBoolean("allDay", false),
+            o.optBoolean("hasReminder", false), o.optBoolean("recurring", false), o.optBoolean("urgent", false))
+    }
+    fun agendaToJson(l: AgendaList) = JSONObject().put("readAt", l.readAt)
+        .put("items", org.json.JSONArray().also { a -> l.items.forEach { a.put(agendaItemToJson(it)) } })
+    fun agendaFromJson(o: JSONObject): AgendaList? = try {
+        val a = o.getJSONArray("items")
+        AgendaList((0 until a.length()).mapNotNull { agendaItemFromJson(a.getJSONObject(it)) }, o.getLong("readAt"))
+    } catch (e: Exception) { null }
 }
