@@ -78,6 +78,16 @@ object Notifier {
     }
     fun cancelStatus(ctx: Context) = NotificationManagerCompat.from(ctx).cancel("stare", STATUS_ID)
 
+    /** Serverul a refuzat o sarcină din fereastra de quick add: fereastra nu mai e acolo, deci omul află de aici. */
+    fun showCreateFailed(ctx: Context, title: String) {
+        val n = NotificationCompat.Builder(ctx, CH_STATUS).setSmallIcon(R.drawable.ic_stat_hz)
+            .setContentTitle("Sarcina n-a putut fi salvată")
+            .setContentText("„$title”")
+            .setContentIntent(PendingIntent.getActivity(ctx, 8, Intent(ctx, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE))
+            .setAutoCancel(true)
+        try { NotificationManagerCompat.from(ctx).notify("creare", title.hashCode(), n.build()) } catch (e: SecurityException) {}
+    }
+
     fun cancel(ctx: Context, id: String) = NotificationManagerCompat.from(ctx).cancel(id, 1)
     fun cancelAll(ctx: Context) = NotificationManagerCompat.from(ctx).cancelAll()
 }

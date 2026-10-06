@@ -120,7 +120,7 @@ class HorizontalAndroidPlugin : Plugin() {
 
     @PluginMethod fun takeActions(call: PluginCall) {
         val now = System.currentTimeMillis()
-        val taken = PlanStore.edit(context) { s -> val (t, rest) = NativeQueue.take(s.queue, now); s.copy(queue = rest) to t }
+        val taken = PlanStore.edit(context) { s -> val (t, rest) = NativeQueue.take(s.queue, now, s.creates.filter { it.realId == null }.map { it.tempId }.toSet()); s.copy(queue = rest) to t }
         call.resolve(JSObject().put("actions", JSArray().also { a -> taken.forEach { a.put(Json.actionToPage(it)) } }))
     }
 

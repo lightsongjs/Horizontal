@@ -17,7 +17,16 @@ class DrainWorker(ctx: Context, p: WorkerParameters) : Worker(ctx, p) {
         var changed = false
         // O încercare omorâtă (proces ucis, worker anulat de REPLACE) lasă `inFlight`
         // pe disc, iar cât un element zboară `nextToDrain` și `take` nu mai dau nimic.
-        PlanStore.edit(ctx) { s -> s.copy(queue = NativeQueue.releaseAllInFlight(s.queue)) to Unit }
+        PlanStore.edit(ctx) { s -> s.copy(queue = NativeQueue.releaseAllInFlight(s.queue), creates = s.creates.map { it.copy(inFlight = false) }) to Unit }
+        // Creările întâi: o bifă din widget pe o sarcină abia capturată pleacă pe ID-ul
+        // real doar după ce sarcina există (remaparea din `sendCreate`).
+        when (drainCreates(ctx)) {
+            Outcome.RETRY -> { finish(ctx, true); return Result.retry() }
+            Outcome.KEEP_NO_SESSION -> { finish(ctx, true); return Result.success() }
+            else -> {}
+        }
+        if (isStopped) return Result.success()
+        changed = changed || createdAny
         while (true) {
             // REPLACE (vezi `enqueue`) poate anula un worker în plină buclă. Anularea doar
             // ridică `isStopped`, nu oprește firul: fără verificarea asta, cel vechi ar
@@ -66,6 +75,91 @@ class DrainWorker(ctx: Context, p: WorkerParameters) : Worker(ctx, p) {
         }
         finish(ctx, changed)
         return Result.success()
+    }
+
+    private var createdAny = false
+
+    /** `DONE` = coada de creări e goală (sau a rămas doar ce nu se mai poate trimite acum). */
+    private fun drainCreates(ctx: Context): Outcome {
+        while (true) {
+            if (isStopped) return Outcome.DONE
+            val (c, owner) = PlanStore.edit(ctx) { s ->
+                val next = s.creates.firstOrNull { it.realId == null }
+                (if (next != null) s.copy(creates = s.creates.map { if (it.uid == next.uid) it.copy(inFlight = true) else it }) else s) to (next to NativeSession.lastAccount(ctx))
+            }
+            if (c == null) return Outcome.DONE
+            val outcome = try { sendCreate(ctx, c, owner ?: return release(ctx, c, Outcome.KEEP_NO_SESSION)) }
+                catch (e: AccountChanged) { return release(ctx, c, Outcome.KEEP_NO_SESSION) }
+                catch (e: Exception) { Outcome.RETRY }
+            when (outcome) {
+                Outcome.DONE -> createdAny = true
+                Outcome.DROP -> {
+                    PlanStore.edit(ctx) { s -> s.copy(creates = s.creates.filterNot { it.uid == c.uid }) to Unit }
+                    Notifier.showCreateFailed(ctx, c.title)
+                    createdAny = true
+                }
+                else -> return release(ctx, c, outcome)
+            }
+        }
+    }
+
+    private fun release(ctx: Context, c: NativeCreate, o: Outcome): Outcome {
+        PlanStore.edit(ctx) { s -> s.copy(creates = s.creates.map { if (it.uid == c.uid) it.copy(inFlight = false) else it }) to Unit }
+        return o
+    }
+
+    /**
+     * O creare: ID ales și SALVAT înainte de POST (`attemptId`), deci o retrimitere
+     * după rețea căzută sau proces omorât folosește același ID și nu dublează.
+     * 409 → al nostru (retrimitere) = gata; al altcuiva → ID nou, max 5 încercări.
+     */
+    private fun sendCreate(ctx: Context, c0: NativeCreate, owner: String): Outcome {
+        var c = c0
+        while (true) {
+            val proj = SupabaseApi.rest(ctx, "GET", "projects?id=eq.${c.projectId}&select=prefix,current_wave", asUser = owner) ?: return Outcome.KEEP_NO_SESSION
+            if (proj.status !in 200..299) return outcomeOf(proj.status, false, false)
+            val p = org.json.JSONArray(proj.body).optJSONObject(0) ?: return Outcome.DROP   // proiect șters / fără acces
+            val id = c.attemptId ?: run {
+                val ex = SupabaseApi.rest(ctx, "GET", "issues?project_id=eq.${c.projectId}&select=id", asUser = owner) ?: return Outcome.KEEP_NO_SESSION
+                if (ex.status !in 200..299) return outcomeOf(ex.status, false, false)
+                val a = org.json.JSONArray(ex.body)
+                val next = nextIssueId((0 until a.length()).map { a.getJSONObject(it).getString("id") }, p.getString("prefix"))
+                PlanStore.edit(ctx) { s -> s.copy(creates = s.creates.map { if (it.uid == c.uid) it.copy(attemptId = next) else it }) to Unit }
+                c = c.copy(attemptId = next)
+                next
+            }
+            val r = SupabaseApi.rest(ctx, "POST", "issues", insertBody(c, id, p.optInt("current_wave", 1)).toString(), prefer = "return=minimal", asUser = owner)
+                ?: return Outcome.KEEP_NO_SESSION
+            val done = when {
+                r.status in 200..299 -> true
+                r.status == 409 -> {
+                    val g = SupabaseApi.rest(ctx, "GET", "issues?id=eq.$id&select=title,created_by,project_id", asUser = owner) ?: return Outcome.KEEP_NO_SESSION
+                    if (g.status !in 200..299) return outcomeOf(g.status, false, false)
+                    conflictOf(org.json.JSONArray(g.body).optJSONObject(0), owner, c) == Conflict.OURS
+                }
+                else -> return outcomeOf(r.status, false, false)
+            }
+            if (done) { markCreated(ctx, c, id); return Outcome.DONE }
+            // Numărul l-a luat altcineva între citire și insert: altul, de la zero.
+            if (c.tries + 1 >= 5) return Outcome.DROP
+            c = c.copy(attemptId = null, tries = c.tries + 1)
+            PlanStore.edit(ctx) { s -> s.copy(creates = s.creates.map { if (it.uid == c.uid) it.copy(attemptId = null, tries = c.tries) else it }) to Unit }
+        }
+    }
+
+    /** Sub lacăt: ID-ul provizoriu devine cel real peste tot unde îl ține cutia. */
+    private fun markCreated(ctx: Context, c: NativeCreate, id: String) {
+        val now = System.currentTimeMillis()
+        PlanStore.edit(ctx) { s ->
+            s.copy(
+                creates = s.creates.map { if (it.uid == c.uid) it.copy(realId = id, attemptId = id, drainedAt = now, inFlight = false) else it },
+                queue = remapActions(s.queue, c.tempId, id),
+                fired = remapFired(s.fired, c.tempId, id),
+                shown = remapShown(s.shown, c.tempId, id),
+            ) to Unit
+        }
+        // O notificare deja afișată pe ID-ul provizoriu (tag = id) ar rămâne orfană.
+        Notifier.cancel(ctx, c.tempId)
     }
 
     private fun finish(ctx: Context, changed: Boolean) {

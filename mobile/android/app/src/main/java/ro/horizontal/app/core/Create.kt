@@ -75,7 +75,9 @@ fun pruneCreates(creates: List<NativeCreate>, agendaReadAt: Long) =
     creates.filterNot { it.drainedAt != null && it.drainedAt < agendaReadAt && it.files.all { f -> f.uploaded } }
 
 /** Mementoul unei sarcini capturate offline sună și înainte să ajungă pe server. */
-fun createReminders(creates: List<NativeCreate>, zone: ZoneId): List<Reminder> = creates.filter { it.drainedAt == null }.mapNotNull { c ->
+fun createReminders(creates: List<NativeCreate>, zone: ZoneId, latestReadAt: Long = Long.MAX_VALUE): List<Reminder> =
+    // Trimise, dar încă necitite de o listă: altfel mementoul ar lipsi din plan până la sincronizare.
+    creates.filter { it.drainedAt == null || it.drainedAt >= latestReadAt }.mapNotNull { c ->
     val at = parseIso(c.remindAt) ?: return@mapNotNull null
     val t = planNotification(c.id, c.title, c.dueAt, c.allDay, c.projectName, zone)
     Reminder(reminderKey(c.id, at), c.id, at, t.title, t.body, c.dueAt, c.allDay)
