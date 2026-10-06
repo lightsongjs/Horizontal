@@ -27,6 +27,10 @@ object PlanStore {
         val agendaNative: AgendaList? = null,
         /** „Gata" prunate din coadă, încă nevăzute de o agendă mai nouă (`holdDone`). */
         val agendaHeld: Map<String, Long> = emptyMap(),
+        /** Sarcinile din fereastra de quick add, până ajung pe server (`core/Create.kt`). */
+        val creates: List<NativeCreate> = emptyList(),
+        /** Proiectele și oamenii pentru fereastră, împinși de pagină (`setCaptureData`). */
+        val capture: CaptureData? = null,
     )
 
     private const val PREFS = "hz-plan"
@@ -73,10 +77,12 @@ object PlanStore {
         val shown = p.getString("shown", null)?.let { JSONObject(it) }?.let { o -> o.keys().asSequence().associateWith { o.getString(it) } }.orEmpty()
         val agendaPage = p.getString("agendaPage", null)?.let { Json.agendaFromJson(JSONObject(it)) }
         val agendaNative = p.getString("agendaNative", null)?.let { Json.agendaFromJson(JSONObject(it)) }
+        val creates = p.getString("creates", null)?.let { JSONArray(it) }?.let { a -> (0 until a.length()).mapNotNull { Json.createFromJson(a.getJSONObject(it)) } }.orEmpty()
+        val capture = p.getString("capture", null)?.let { CaptureJson.fromJson(JSONObject(it)) }
         val agendaHeld = p.getString("agendaHeld", null)?.let { JSONObject(it) }?.let { o -> o.keys().asSequence().associateWith { o.getLong(it) } }.orEmpty()
         return State(page, native, queue, p.getStringSet("fired", emptySet())!!.toSet(), shown,
             p.getLong("nextAlarmAt", -1).takeIf { it >= 0 }, p.getBoolean("exactUsed", true), p.getLong("lastSyncAt", -1).takeIf { it >= 0 },
-            reminders(p.getString("deferred", null)?.let { JSONArray(it) }), agendaPage, agendaNative, agendaHeld)
+            reminders(p.getString("deferred", null)?.let { JSONArray(it) }), agendaPage, agendaNative, agendaHeld, creates, capture)
     }
 
     private fun save(ctx: Context, s: State) {
@@ -91,6 +97,8 @@ object PlanStore {
             .putString("agendaPage", s.agendaPage?.let { Json.agendaToJson(it).toString() })
             .putString("agendaNative", s.agendaNative?.let { Json.agendaToJson(it).toString() })
             .putString("agendaHeld", JSONObject(s.agendaHeld as Map<*, *>).toString())
+            .putString("creates", JSONArray().also { a -> s.creates.forEach { a.put(Json.createToJson(it)) } }.toString())
+            .putString("capture", s.capture?.let { CaptureJson.toJson(it).toString() })
             .commit()
     }
 }

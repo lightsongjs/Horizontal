@@ -44,4 +44,21 @@ object Json {
         val a = o.getJSONArray("items")
         AgendaList((0 until a.length()).mapNotNull { agendaItemFromJson(a.getJSONObject(it)) }, o.getLong("readAt"))
     } catch (e: Exception) { null }
+    fun createToJson(c: NativeCreate) = JSONObject().put("uid", c.uid).put("tempId", c.tempId).put("projectId", c.projectId)
+        .put("projectName", c.projectName ?: JSONObject.NULL).put("title", c.title).put("desc", c.desc)
+        .put("dueAt", c.dueAt ?: JSONObject.NULL).put("allDay", c.allDay).put("remindAt", c.remindAt ?: JSONObject.NULL)
+        .put("rrule", c.rrule ?: JSONObject.NULL).put("urgent", c.urgent).put("assigneeId", c.assigneeId ?: JSONObject.NULL)
+        .put("createdAt", c.createdAt).put("attemptId", c.attemptId ?: JSONObject.NULL).put("realId", c.realId ?: JSONObject.NULL)
+        .put("drainedAt", c.drainedAt ?: JSONObject.NULL).put("inFlight", c.inFlight).put("tries", c.tries)
+        .put("files", org.json.JSONArray().also { a -> c.files.forEach { f -> a.put(JSONObject().put("path", f.path).put("filename", f.filename)
+            .put("contentType", f.contentType).put("size", f.size).put("attachmentId", f.attachmentId).put("uploaded", f.uploaded)) } })
+    fun createFromJson(o: JSONObject): NativeCreate? = try {
+        val fs = o.optJSONArray("files") ?: org.json.JSONArray()
+        NativeCreate(o.getString("uid"), o.getString("tempId"), o.getString("projectId"), o.str("projectName"), o.getString("title"),
+            o.optString("desc", ""), o.str("dueAt"), o.optBoolean("allDay", true), o.str("remindAt"), o.str("rrule"), o.optBoolean("urgent"),
+            o.str("assigneeId"), o.getLong("createdAt"), o.str("attemptId"), o.str("realId"),
+            if (o.isNull("drainedAt")) null else o.getLong("drainedAt"), o.optBoolean("inFlight"), o.optInt("tries"),
+            (0 until fs.length()).map { val f = fs.getJSONObject(it)
+                NativeFile(f.getString("path"), f.getString("filename"), f.getString("contentType"), f.getLong("size"), f.getString("attachmentId"), f.optBoolean("uploaded")) })
+    } catch (e: Exception) { null }
 }

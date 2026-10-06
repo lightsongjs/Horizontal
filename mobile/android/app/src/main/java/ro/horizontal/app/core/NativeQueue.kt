@@ -8,8 +8,13 @@ package ro.horizontal.app.core
  * `drainedAt`, iar acțiunea rămâne ca strat peste plan până la o listă mai nouă.
  */
 object NativeQueue {
-    fun take(q: List<NativeAction>, now: Long): Pair<List<NativeAction>, List<NativeAction>> {
-        val taken = q.filter { it.drainedAt == null && !it.inFlight }
+    /**
+     * `nativeTemp`: ID-urile provizorii ale creărilor NATIVE (fereastra de quick add).
+     * Pagina nu le cunoaște (`resolveId` ar întoarce tot provizoriul) și ar arunca
+     * acțiunea; rămân în coadă până le remapează `DrainWorker`.
+     */
+    fun take(q: List<NativeAction>, now: Long, nativeTemp: Set<String> = emptySet()): Pair<List<NativeAction>, List<NativeAction>> {
+        val taken = q.filter { it.drainedAt == null && !it.inFlight && it.id !in nativeTemp }
         val ids = taken.map { it.uid }.toSet()
         return taken to q.map { if (it.uid in ids) it.copy(drainedAt = now) else it }
     }
