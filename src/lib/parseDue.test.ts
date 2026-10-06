@@ -247,6 +247,15 @@ describe('parseDue — ce NU are voie să facă', () => {
   it('ore imposibile sunt ignorate', () => {
     expect(p('la 99:00 ceva')).toMatchObject({ date: null })
   })
+  it('un semn de captură (#proiect, @om) nu e citit ca dată', () => {
+    // „#daily" e proiectul ✅Daily, nu recurența „daily"; „@luni" e un om.
+    expect(p('Ședință mâine la 10 #daily !')).toMatchObject({
+      title: 'Ședință #daily !', date: '2026-08-25', time: '10:00', rrule: null,
+    })
+    expect(p('sună @luni azi')).toMatchObject({ title: 'sună @luni', date: '2026-08-24' })
+    // Dar un cuvânt lipit de semn în mijlocul altuia rămâne text obișnuit (ca la `captureTokens`).
+    expect(p('raport zilnic')).toMatchObject({ rrule: 'FREQ=DAILY' })
+  })
 })
 
 describe('parseDue — spans', () => {

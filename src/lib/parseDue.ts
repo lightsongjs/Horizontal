@@ -142,8 +142,18 @@ export function stripSpans(raw: string, spans: [number, number][]): string {
   return out.replace(/\s{2,}/g, ' ').trim().replace(/^[,–-]\s*|[,–-]\s*$/g, '').trim()
 }
 
+/**
+ * Semnele de captură (`#proiect`, `@om`) nu sunt text de dată: „#daily" e
+ * proiectul ✅Daily, nu recurența „daily". Se maschează cu lungimea păstrată
+ * (indicii rămân valizi), cu aceeași regulă de început de cuvânt ca
+ * `captureTokens` — `ion@firma.ro` rămâne text obișnuit.
+ */
+function maskSigils(hay: string): string {
+  return hay.replace(/(^|\s)([#@][^\s#@!]+)/g, (_, pre: string, tok: string) => pre + MASK.repeat(tok.length))
+}
+
 export function parseDue(raw: string, now: Date = new Date()): ParsedDue {
-  const hay = fold(raw)
+  const hay = maskSigils(fold(raw))
   const spans: [number, number][] = []
   const hit = (m: RegExpMatchArray) => {
     if (m.index !== undefined) spans.push([m.index, m.index + m[0].length])
