@@ -32,6 +32,12 @@
         <activity android:name=".SnoozeActivity" android:exported="false" android:theme="@style/Hz.Snooze"
             android:excludeFromRecents="true" android:taskAffinity="" android:launchMode="singleInstance" />
 
+        <!-- Fereastra de quick add a widget-ului: nativă, peste ecranul de start, fără WebView.
+             Sarcină proprie (`taskAffinity`), ca să nu aducă în față aplicația; tastatura o ridică ea (`onWindowFocusChanged`). -->
+        <activity android:name=".QuickAddActivity" android:exported="false" android:theme="@style/Hz.Quick"
+            android:excludeFromRecents="true" android:taskAffinity="ro.horizontal.app.quick" android:launchMode="singleTask"
+            android:windowSoftInputMode="stateAlwaysVisible|adjustNothing" />
+
         <receiver android:name=".AlarmReceiver" android:exported="false" />
         <receiver android:name=".RecheckReceiver" android:exported="false" />
         <receiver android:name=".ActionReceiver" android:exported="false" />

@@ -47,8 +47,8 @@ object Widgets {
     fun openApp(ctx: Context): PendingIntent = PendingIntent.getActivity(ctx, 4,
         Intent(ctx, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), PendingIntent.FLAG_IMMUTABLE)
 
-    fun quick(ctx: Context): PendingIntent = PendingIntent.getActivity(ctx, 5,
-        Intent(ctx, MainActivity::class.java).putExtra(EXTRA_QUICK, true)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+    /** Fereastra nativă de quick add (`QuickAddActivity`), nu aplicația. `EXTRA_QUICK` rămâne pentru intenturi vechi. */
+    fun quick(ctx: Context): PendingIntent = PendingIntent.getActivity(ctx, 6,
+        Intent(ctx, QuickAddActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
 }

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fereastra de quick add (`QuickAddActivity`): aceleași jetoane ca foaia „Amână…". -->
+<resources>
+    <color name="hz_chip">#F0F4F8</color>
+    <!-- Fragmentul de dată recunoscut: accentul, cu alfa — ca `<mark>` din pagină. -->
+    <color name="hz_mark">#261A237E</color>
+    <color name="hz_on_accent">#F7F9FC</color>
+    <color name="hz_danger">#A0333F</color>
+    <style name="Hz.Quick" parent="Hz.Snooze" />
+    <style name="Hz.Quick.Chip">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">36dp</item>
+        <item name="android:layout_marginEnd">6dp</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:paddingStart">10dp</item>
+        <item name="android:paddingEnd">10dp</item>
+        <item name="android:drawablePadding">6dp</item>
+        <item name="android:drawableTint">@color/hz_muted</item>
+        <item name="android:background">@drawable/bg_chip</item>
+        <item name="android:fontFamily">monospace</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textColor">@color/hz_text</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">false</item>
+    </style>
+</resources>

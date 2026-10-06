@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="hz_chip">#26262C</color>
+    <color name="hz_mark">#33818CF8</color>
+    <color name="hz_on_accent">#0B0B0E</color>
+    <color name="hz_danger">#DF8B84</color>
+</resources>

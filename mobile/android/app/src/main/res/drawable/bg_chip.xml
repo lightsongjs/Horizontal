@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Jeton: 6dp (raza butoanelor/jetoanelor), ton peste foaie, fără chenar. Unda = accentul. -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android" android:color="@color/hz_ripple">
+    <item><shape android:shape="rectangle"><solid android:color="@color/hz_chip" /><corners android:radius="6dp" /></shape></item>
+</ripple>
