@@ -20,7 +20,7 @@ widget cu [+] (quick add-ul trebuie să stea unde ajunge degetul mare).
 
 ## Conținutul
 
-- **Rând:** căsuță · titlu (un rând, „…") · proiectul sub titlu, mono mic ·
+- **Rând:** căsuță · titlu (un rând, „…") ·
   în dreapta ora DOAR dacă are una (regula `DueChip`), ↻ dacă e recurentă,
   clopoțel dacă are memento. La restanțe, în dreapta stă ziua scadenței
   („ieri", „vin 2"), nu ora.
