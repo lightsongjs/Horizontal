@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useHorizontal } from '../store'
 import { repository } from '../data'
 import { getDesktopBridge, upcomingReminders, type DesktopAction } from '../lib/desktopBridge'
-import { ANDROID_WINDOW, androidListKey, canTakeActions, getAndroidBridge, pageReadAt } from '../lib/androidBridge'
+import { ANDROID_API_WIDGETS, ANDROID_WINDOW, agendaKey, androidListKey, canTakeActions, getAndroidBridge, pageReadAt } from '../lib/androidBridge'
+import { agendaItems } from '../lib/agenda'
+import { parseTicketPath } from '../lib/deepLink'
 import { runNativeAction } from '../lib/nativeAction'
 import { supabase } from '../lib/supabase'
 
@@ -35,6 +37,12 @@ export function NativeBridge() {
   const byIdRef = useRef(byId); byIdRef.current = byId
   const dueRef = useRef(dueIssues); dueRef.current = dueIssues
   const refreshRef = useRef(refresh); refreshRef.current = refresh
+  // Versiunea cutiei: metodele widget-urilor există doar de la API 2 (un apel către
+  // o metodă lipsă nu e respins de Capacitor — atârnă).
+  const [androidApi, setAndroidApi] = useState(0)
+  useEffect(() => { if (android) void android.getInfo().then((i) => setAndroidApi(i.api), () => {}) }, [android])
+  const widgets = !!android && androidApi >= ANDROID_API_WIDGETS
+  const lastAgenda = useRef('')
 
   // Reatribuit la fiecare randare: listenerii (puși o dată) văd mereu store-ul de acum.
   const run = useRef<(a: DesktopAction) => void>(() => {})
@@ -73,11 +81,17 @@ export function NativeBridge() {
         const json = androidListKey(list, heldIds, readAt)
         if (json !== lastAndroid.current) { lastAndroid.current = json; await android.setReminders({ list, heldIds, readAt }).catch(() => { lastAndroid.current = '' }) }
       }
+      if (android && widgets) {
+        const items = agendaItems(all, projects, now)
+        const readAt = pageReadAt(syncStatus, repository.sync, now)
+        const key = agendaKey(items, readAt)
+        if (key !== lastAgenda.current) { lastAgenda.current = key; await android.setAgenda({ items, readAt }).catch(() => { lastAgenda.current = '' }) }
+      }
     }
     void send().catch(() => {})
     const t = setInterval(() => void send().catch(() => {}), RESEND_MS)
     return () => { cancelled = true; clearInterval(t) }
-  }, [desktop, android, dueLoaded, dueIssues, issues, projects, syncStatus])
+  }, [desktop, android, widgets, dueLoaded, dueIssues, issues, projects, syncStatus])
 
   // Linux: `refresh` ridică `refreshing`, nu `loading`, deci ecranul nu se
   // golește; calea explicită nu trece prin pragul de 30 s.
@@ -121,6 +135,38 @@ export function NativeBridge() {
     ]
     return () => { for (const s of subs) void s.then((l) => l.remove()).catch(() => {}) }
   }, [android, dueLoaded])
+
+  // Ce s-a deschis din widget. Când omul iese de acolo (Back, X, trimite), istoricul
+  // face un `popstate` pe un ecran care nu mai e tichet sau foaie: atunci cutia se
+  // duce în fundal, ca Back să ducă pe ecranul de start, nu pe ecranul de sub foaie.
+  const fromWidget = useRef(false)
+  useEffect(() => {
+    if (!android || !widgets || !dueLoaded) return
+    const sub = android.addListener('widget', (e) => {
+      if (e.kind === 'open') {
+        run.current({ action: 'open', id: e.id })
+      } else {
+        window.dispatchEvent(new Event('hz:widget-quick'))
+        void android.showKeyboard().catch(() => {})
+      }
+      fromWidget.current = true
+    })
+    const onPop = () => {
+      if (!fromWidget.current) return
+      const st = history.state as { hzSheet?: unknown } | null
+      if (parseTicketPath(location.pathname) || st?.hzSheet) return
+      fromWidget.current = false
+      void android.leave().catch(() => {})
+    }
+    const onVis = () => { if (document.visibilityState === 'hidden') fromWidget.current = false }
+    window.addEventListener('popstate', onPop)
+    document.addEventListener('visibilitychange', onVis)
+    return () => {
+      void sub.then((l) => l.remove()).catch(() => {})
+      window.removeEventListener('popstate', onPop)
+      document.removeEventListener('visibilitychange', onVis)
+    }
+  }, [android, widgets, dueLoaded])
 
   useEffect(() => {
     // Preluarea abia după prima citire de REȚEA a scadențelor, nu pe cadrul din

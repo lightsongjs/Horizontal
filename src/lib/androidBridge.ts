@@ -1,3 +1,4 @@
+import type { AgendaItem } from './agenda'
 import type { DesktopAction, DesktopReminder } from './desktopBridge'
 
 /**
@@ -8,6 +9,11 @@ import type { DesktopAction, DesktopReminder } from './desktopBridge'
  * `mobile/android/.../HorizontalAndroidPlugin.kt` — același contract, scris de două ori.
  */
 export const ANDROID_API_REQUIRED = 1
+/** API 2: widget-urile (`setAgenda`, `leave`, `showKeyboard`, evenimentul `widget`). */
+export const ANDROID_API_WIDGETS = 2
+
+/** Atingere pe widget, reținută de cutie până pune pagina ascultătorul. */
+export type WidgetEvent = { kind: 'open'; id: string } | { kind: 'quick' }
 /** Un telefon nedeschis câteva zile trebuie să aibă tot planul. */
 export const ANDROID_WINDOW = { horizonMs: 7 * 24 * 3_600_000, limit: 100 }
 
@@ -37,8 +43,15 @@ export interface HorizontalAndroidPlugin {
   status(): Promise<AndroidStatus>
   requestNotificationPermission(): Promise<{ notifications: AndroidStatus['notifications'] }>
   openSettings(o: { kind: 'notifications' | 'exact-alarms' | 'battery' }): Promise<void>
+  /** API 2. Rândurile widget-ului de agendă, negrupate (gruparea e a cutiei). */
+  setAgenda(o: { items: AgendaItem[]; readAt: number }): Promise<void>
+  /** API 2. Pagina a închis ce deschisese widget-ul: înapoi pe ecranul de start. */
+  leave(): Promise<void>
+  /** API 2. Ridică tastatura pe WebView (foaia rapidă deschisă din widget). */
+  showKeyboard(): Promise<void>
   addListener(event: 'reminderAction', fn: (a: DesktopAction) => void): Promise<Listener>
   addListener(event: 'changed', fn: () => void): Promise<Listener>
+  addListener(event: 'widget', fn: (e: WidgetEvent) => void): Promise<Listener>
 }
 
 interface CapacitorGlobal {
@@ -79,6 +92,9 @@ function buildBridge(cap: CapacitorGlobal): HorizontalAndroidPlugin {
     status: call('status'),
     requestNotificationPermission: call('requestNotificationPermission'),
     openSettings: call('openSettings'),
+    setAgenda: call('setAgenda'),
+    leave: call('leave'),
+    showKeyboard: call('showKeyboard'),
     async addListener(eventName: string, fn: (d: never) => void) {
       const callbackId = cap.nativeCallback(NAME, 'addListener', { eventName }, fn as (d: unknown) => void)
       return { remove: async () => { await cap.nativePromise(NAME, 'removeListener', { eventName, callbackId }) } }
@@ -117,4 +133,9 @@ export function canTakeActions(sync: DueFreshness | undefined): boolean {
  *  face lista paginii mai proaspătă decât cea nativă, chiar cu același conținut. */
 export function androidListKey(list: DesktopReminder[], heldIds: string[], readAt: number): string {
   return JSON.stringify([list, heldIds, readAt])
+}
+
+/** Cheia de deduplicare a agendei trimise widget-ului; `readAt` intră, ca la `androidListKey`. */
+export function agendaKey(items: AgendaItem[], readAt: number): string {
+  return JSON.stringify([readAt, items])
 }

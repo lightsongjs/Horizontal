@@ -319,14 +319,23 @@ function Shell() {
    * rămâne doar ca plasă) vine după gest, iar foaia ar sta deschisă fără
    * tastatură.
    */
-  const openQuick = () => {
-    const ctx: QuickCtx | null = smartList
+  const openQuick = (forced?: QuickCtx) => {
+    const ctx: QuickCtx | null = forced ?? (smartList
       ? { mode: 'list', defaultDueAt: smartListDueAt(smartList) }
-      : project ? { mode: 'project', projectId: project.id, wave: activeWave } : null
+      : project ? { mode: 'project', projectId: project.id, wave: activeWave } : null)
     if (!ctx) return
     flushSync(() => pushSheet({ kind: 'quick-add', ctx }))
     document.querySelector<HTMLInputElement>('.quick-sheet .qa-input')?.focus()
   }
+  const openQuickRef = useRef(openQuick)
+  openQuickRef.current = openQuick
+  // Widget-ul de pe ecranul de start (NativeBridge): foaia rapidă pe „Azi",
+  // oricare ar fi ecranul de sub ea — ca bara de captură de pe Linux.
+  useEffect(() => {
+    const on = () => openQuickRef.current({ mode: 'list', defaultDueAt: smartListDueAt('today') })
+    window.addEventListener('hz:widget-quick', on)
+    return () => window.removeEventListener('hz:widget-quick', on)
+  }, [])
   const [tab, setTab] = useState<Tab>(() => {
     const saved = localStorage.getItem('horizontal:last-tab')
     return saved === 'ordine' || saved === 'list' || saved === 'graf' || saved === 'teme' ? saved : 'list'
@@ -1164,7 +1173,7 @@ function Shell() {
             aria-label={smartList ? 'Sarcină nouă' : project ? 'Adaugă tichet' : 'Adaugă proiect'}
             // FAB-ul se vede doar sub 900px, deci e mereu captura de telefon:
             // foaia rapidă, și într-o listă, și într-un proiect.
-            onClick={smartList || project ? openQuick : openNewProject}
+            onClick={smartList || project ? () => openQuick() : openNewProject}
           >
             <Icon name="add" size={24} />
           </button>
