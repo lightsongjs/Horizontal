@@ -1100,6 +1100,21 @@ Pro (HyperOS 3, Android 16).
 - **Contractul** `HorizontalAndroidPlugin` e scris de două ori:
   `src/lib/androidBridge.ts` și `HorizontalAndroidPlugin.kt`. Se schimbă împreună.
 
+- **Widget-urile** (spec: `docs/superpowers/specs/2026-10-06-widget-android-design.md`):
+  `AgendaWidget` (restanțe + 7 zile, cu bifă; doar Android 12+, `@bool/widget_agenda_enabled`)
+  și `QuickWidget` (1×1). Gruparea e `buildSmartLists` scrisă a doua oară în
+  `core/Agenda.kt`; fixtures comune `src/lib/agenda.fixtures.json`. Două surse ca la
+  mementouri: pagina (`setAgenda`, API 2) și a doua citire din `SyncWorker` pe
+  `due_at` (fără limită inferioară); câștigă `readAt`. Bifa = `Actions.dispatch`
+  prin `WidgetTapActivity` — o colecție are UN singur șablon de `PendingIntent`, iar
+  un receiver n-ar avea voie să pornească `MainActivity`. Rândul bifat e ascuns cât
+  „Gata" stă în coadă (`visibleAgenda`). `Widgets.refresh` e chemat din
+  `Engine.reschedule`, deci orice listă/acțiune redesenează; plus o alarmă inexactă
+  la miezul nopții (gruparea se schimbă fără date noi). Întoarcerea pe ecranul de
+  start o decide pagina (`NativeBridge`): primul `popstate` care nu e tichet sau
+  foaie după o atingere din widget → `leave()` (`moveTaskToBack`). Fonturile sunt
+  `serif`/`monospace` de sistem: `RemoteViews` se umflă în launcher.
+
 ## Laptopul activ amână telefonul (30 s)
 
 Când omul lucrează la laptop, mementoul telefonului așteaptă 30 s. Dacă în

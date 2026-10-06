@@ -104,3 +104,11 @@ pentru widget (o sarcină de azi fără memento, o restanță veche). Deci:
 APK nou (`versionCode` 4, `API` 2) + push pe `master` pentru partea de pagină
 (`setAgenda`, `EXTRA_QUICK`/`fromWidget`). Ordinea: pagina întâi (verifică `api`,
 deci e inofensivă pe APK-ul vechi), apoi APK-ul.
+
+## Abateri la implementare
+
+- Fonturi: `serif`/`monospace` de sistem, nu Literata din resurse — `RemoteViews`
+  se umflă în procesul launcher-ului, iar HyperOS nu garantează fonturile aplicației.
+- Întoarcerea pe ecranul de start o decide pagina (`leave()` la primul `popstate`
+  care nu mai e tichet/foaie), nu `MainActivity` — pagina știe când s-a închis foaia.
+- Titlu gol: „Sarcină fără titlu", ca în notificări.
