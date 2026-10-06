@@ -86,7 +86,7 @@ class AgendaWidget : AppWidgetProvider() {
                 .putExtra(TicketActivity.EXTRA_DUE, it.dueAt).putExtra(TicketActivity.EXTRA_ALL_DAY, it.allDay)
                 .putExtra(TicketActivity.EXTRA_PROJECT, it.project).putExtra(TicketActivity.EXTRA_REMINDER, it.hasReminder)
                 .putExtra(TicketActivity.EXTRA_RECURRING, it.recurring)
-            r.setOnClickFillInIntent(R.id.r_root, Intent(base).putExtra(WidgetTapActivity.EXTRA_KIND, WidgetTapActivity.KIND_OPEN))
+            r.setOnClickFillInIntent(R.id.r_body, Intent(base).putExtra(WidgetTapActivity.EXTRA_KIND, WidgetTapActivity.KIND_OPEN))
             r.setOnCheckedChangeResponse(R.id.r_check, RemoteViews.RemoteResponse.fromFillInIntent(Intent(base)
                 .putExtra(WidgetTapActivity.EXTRA_KIND, WidgetTapActivity.KIND_DONE)
                 .putExtra(WidgetTapActivity.EXTRA_DUE, it.dueAt).putExtra(WidgetTapActivity.EXTRA_TITLE, it.title)

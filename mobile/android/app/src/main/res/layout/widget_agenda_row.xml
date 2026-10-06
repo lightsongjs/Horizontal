@@ -3,8 +3,14 @@
     android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="52dp"
     android:orientation="horizontal" android:gravity="center_vertical"
     android:paddingStart="8dp" android:paddingEnd="16dp" android:paddingTop="6dp" android:paddingBottom="6dp">
+    <!-- `focusable=false`: o căsuță focusabilă într-un rând de listă blochează atingerea pe restul rândului. -->
     <CheckBox android:id="@+id/r_check" android:layout_width="40dp" android:layout_height="40dp" android:checked="false"
+        android:focusable="false" android:focusableInTouchMode="false"
         android:buttonTint="@color/w_txt_faint" android:contentDescription="Gata" />
+    <!-- Zona atingerii care deschide tichetul: un copil, nu rădăcina rândului — pe rădăcină atingerea trece
+         prin clicul de rând al listei, pe care unele ecrane de start (Nova) nu-l livrează. -->
+    <LinearLayout android:id="@+id/r_body" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:gravity="center_vertical" android:minHeight="44dp">
     <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
         android:orientation="vertical" android:layout_marginStart="4dp">
         <TextView android:id="@+id/r_title" android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -18,4 +24,5 @@
         android:src="@drawable/ic_widget_repeat" android:tint="@color/w_txt_dim" android:visibility="gone" />
     <ImageView android:id="@+id/r_bell" android:layout_width="14dp" android:layout_height="14dp" android:layout_marginStart="4dp"
         android:src="@drawable/ic_widget_bell" android:tint="@color/w_txt_dim" android:visibility="gone" />
+    </LinearLayout>
 </LinearLayout>
