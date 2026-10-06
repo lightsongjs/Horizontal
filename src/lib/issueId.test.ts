@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { displayIssueId, isTempIssueId, makeTempIssueId } from './issueId'
+import { displayIssueId, isTempIssueId, makeTempIssueId, nextIssueId } from './issueId'
+import nextFixtures from './issueId.fixtures.json'
 import { parseTicketPath } from './deepLink'
 
 describe('ID provizoriu', () => {
@@ -19,4 +20,10 @@ describe('ID provizoriu', () => {
   it('două ID-uri generate implicit diferă', () => {
     expect(makeTempIssueId('HZ')).not.toBe(makeTempIssueId('HZ'))
   })
+})
+
+describe('nextIssueId — fixtures comune cu Kotlin', () => {
+  for (const f of nextFixtures) {
+    it(f.name, () => { expect(nextIssueId(f.existing, f.prefix)).toBe(f.want) })
+  }
 })

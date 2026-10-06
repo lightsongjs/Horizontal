@@ -1,0 +1,8 @@
+[
+  { "name": "proiect gol", "prefix": "HZ", "existing": [], "want": "HZ-01" },
+  { "name": "cel mai mare + 1, două cifre", "prefix": "HZ", "existing": ["HZ-01", "HZ-07", "HZ-03"], "want": "HZ-08" },
+  { "name": "trece de 9", "prefix": "HZ", "existing": ["HZ-09"], "want": "HZ-10" },
+  { "name": "trei cifre", "prefix": "FIN", "existing": ["FIN-99", "FIN-100"], "want": "FIN-101" },
+  { "name": "ID-ul provizoriu nu e număr", "prefix": "HZ", "existing": ["HZ-04", "HZ-~ab12cd"], "want": "HZ-05" },
+  { "name": "un ID ciudat se ignoră", "prefix": "HZ", "existing": ["HZ-02", "HZ-abc"], "want": "HZ-03" }
+]

@@ -3,6 +3,7 @@
 
 import { requireSupabase } from '../lib/supabase'
 import type { Assignee, InboxRow, Issue, IssueEvent, Obstacle, ObstacleLink, Project, ProjectMember, Theme, Wave } from '../lib/types'
+import { nextIssueId } from '../lib/issueId'
 import { pathsForIssues, pathsForProject, removeObjects } from './attachments'
 import { themeKey, type DueRange, type NewIssue, type NewObstacle, type NewProject, type NewThreadPost, type Repository } from './repository'
 
@@ -59,14 +60,6 @@ function rowToIssue(row: IssueRow, depsByIssue: Record<string, string[]>): Issue
     remindAt: isoOrNull(row.remind_at),
     rrule: row.rrule ?? null,
   }
-}
-
-function nextIssueId(existing: string[], prefix: string): string {
-  const max = existing
-    .map((id) => Number(id.slice(prefix.length + 1)))
-    .filter((n) => Number.isFinite(n))
-    .reduce((a, b) => Math.max(a, b), 0)
-  return `${prefix}-${String(max + 1).padStart(2, '0')}`
 }
 
 interface ObstacleRow {
@@ -192,6 +185,80 @@ export function createSupabaseRepository(): Repository {
     const { error } = await db.from('issues').delete().in('id', ids)
     if (error) throw error
     await removeObjects(paths)
+  }
+
+  /** Un insert, cu numărul calculat acum. Vezi `createIssue` pentru cursă. */
+  async function createIssueOnce(input: NewIssue): Promise<Issue> {
+    const { data: existing, error: exErr } = await db.from('issues').select('id').eq('project_id', input.projectId)
+    if (exErr) throw exErr
+    const { data: proj, error: pErr } = await db
+      .from('projects')
+      .select('prefix, current_wave')
+      .eq('id', input.projectId)
+      .single()
+    if (pErr) throw pErr
+
+    const id = nextIssueId((existing ?? []).map((r) => r.id), proj.prefix)
+    // `getSession()` citește de obicei sesiunea locală, fără rundă către
+    // rețea — dar nu e GARANTAT: cu un token aproape de expirare, chiar
+    // `getSession()` îl reîmprospătează pe loc, ceea ce E o cerere de
+    // rețea. Oricum, nu e o presupunere despre altcineva, e „cine suntem
+    // noi", exact ce va scrie `default auth.uid()` din migrare. Fără asta,
+    // ecoul optimist de mai jos ar întoarce `createdBy: null`, iar un card
+    // de dependență deschis pe tichetul ăsta ÎNAINTE de următorul fetch
+    // complet ar arăta gol în loc de „creat de <nume>", deși rândul din
+    // bază e deja corect.
+    const { data: sess } = await db.auth.getSession()
+    const issue: Issue = {
+      id,
+      projectId: input.projectId,
+      title: input.title,
+      desc: input.desc ?? '',
+      theme: input.theme ?? '',
+      wave: input.wave ?? proj.current_wave,
+      deps: input.deps ?? [],
+      done: false,
+      selectors: input.selectors ?? [],
+      scenarios: (input.scenarios ?? []).map((s) => ({ text: s.text, kind: s.kind as import('../lib/types').ScenarioKind })),
+      assigneeId: input.assigneeId ?? null,
+      // Nu se trimit la insert: `created_at` are `default now()`, iar
+      // `created_by` are `default auth.uid()` (migrare) — TRIMIS explicit
+      // aici ar bloca acel default (un `null` explicit e o valoare, nu o
+      // absență). Aproximăm doar ecoul întors, ca „creat de X" să apară
+      // instant, fără o rundă suplimentară.
+      createdBy: sess.session?.user.id ?? null,
+      createdAt: new Date().toISOString(),
+      urgent: input.urgent ?? false,
+      dueAt: isoOrNull(input.dueAt),
+      allDay: input.allDay ?? true,
+      remindAt: isoOrNull(input.remindAt),
+      rrule: input.rrule ?? null,
+    }
+    const { error } = await db.from('issues').insert({
+      id: issue.id,
+      project_id: issue.projectId,
+      title: issue.title,
+      details: issue.desc,
+      theme: issue.theme || null,
+      wave: issue.wave,
+      done: issue.done,
+      selectors: issue.selectors,
+      scenarios: issue.scenarios,
+      assignee_id: input.assigneeId ?? null,
+      urgent: issue.urgent,
+      due_at: issue.dueAt,
+      all_day: issue.allDay,
+      remind_at: issue.remindAt,
+      rrule: issue.rrule,
+    })
+    if (error) throw error
+    if (issue.deps.length) {
+      const { error: dErr } = await db
+        .from('dependencies')
+        .insert(issue.deps.map((d) => ({ issue_id: issue.id, depends_on_id: d })))
+      if (dErr) throw dErr
+    }
+    return issue
   }
 
   return {
@@ -374,76 +441,16 @@ export function createSupabaseRepository(): Repository {
     },
 
     async createIssue(input: NewIssue) {
-      const { data: existing, error: exErr } = await db.from('issues').select('id').eq('project_id', input.projectId)
-      if (exErr) throw exErr
-      const { data: proj, error: pErr } = await db
-        .from('projects')
-        .select('prefix, current_wave')
-        .eq('id', input.projectId)
-        .single()
-      if (pErr) throw pErr
-
-      const id = nextIssueId((existing ?? []).map((r) => r.id), proj.prefix)
-      // `getSession()` citește de obicei sesiunea locală, fără rundă către
-      // rețea — dar nu e GARANTAT: cu un token aproape de expirare, chiar
-      // `getSession()` îl reîmprospătează pe loc, ceea ce E o cerere de
-      // rețea. Oricum, nu e o presupunere despre altcineva, e „cine suntem
-      // noi", exact ce va scrie `default auth.uid()` din migrare. Fără asta,
-      // ecoul optimist de mai jos ar întoarce `createdBy: null`, iar un card
-      // de dependență deschis pe tichetul ăsta ÎNAINTE de următorul fetch
-      // complet ar arăta gol în loc de „creat de <nume>", deși rândul din
-      // bază e deja corect.
-      const { data: sess } = await db.auth.getSession()
-      const issue: Issue = {
-        id,
-        projectId: input.projectId,
-        title: input.title,
-        desc: input.desc ?? '',
-        theme: input.theme ?? '',
-        wave: input.wave ?? proj.current_wave,
-        deps: input.deps ?? [],
-        done: false,
-        selectors: input.selectors ?? [],
-        scenarios: (input.scenarios ?? []).map((s) => ({ text: s.text, kind: s.kind as import('../lib/types').ScenarioKind })),
-        assigneeId: input.assigneeId ?? null,
-        // Nu se trimit la insert: `created_at` are `default now()`, iar
-        // `created_by` are `default auth.uid()` (migrare) — TRIMIS explicit
-        // aici ar bloca acel default (un `null` explicit e o valoare, nu o
-        // absență). Aproximăm doar ecoul întors, ca „creat de X" să apară
-        // instant, fără o rundă suplimentară.
-        createdBy: sess.session?.user.id ?? null,
-        createdAt: new Date().toISOString(),
-        urgent: input.urgent ?? false,
-        dueAt: isoOrNull(input.dueAt),
-        allDay: input.allDay ?? true,
-        remindAt: isoOrNull(input.remindAt),
-        rrule: input.rrule ?? null,
+      // Numărul îl alege clientul („cel mai mare + 1"), deci doi clienți pot alege
+      // același — laptopul și fereastra de quick add de pe telefon. 23505 = nimic
+      // nu s-a scris: se recitește și se ia numărul următor.
+      for (let attempt = 1; ; attempt++) {
+        try {
+          return await createIssueOnce(input)
+        } catch (e) {
+          if ((e as { code?: string }).code !== '23505' || attempt >= 3) throw e
+        }
       }
-      const { error } = await db.from('issues').insert({
-        id: issue.id,
-        project_id: issue.projectId,
-        title: issue.title,
-        details: issue.desc,
-        theme: issue.theme || null,
-        wave: issue.wave,
-        done: issue.done,
-        selectors: issue.selectors,
-        scenarios: issue.scenarios,
-        assignee_id: input.assigneeId ?? null,
-        urgent: issue.urgent,
-        due_at: issue.dueAt,
-        all_day: issue.allDay,
-        remind_at: issue.remindAt,
-        rrule: issue.rrule,
-      })
-      if (error) throw error
-      if (issue.deps.length) {
-        const { error: dErr } = await db
-          .from('dependencies')
-          .insert(issue.deps.map((d) => ({ issue_id: issue.id, depends_on_id: d })))
-        if (dErr) throw dErr
-      }
-      return issue
     },
 
     async updateIssue(id: string, patch: Partial<Issue>) {

@@ -25,3 +25,17 @@ export function displayIssueId(id: string): string {
   const i = id.indexOf(MARK)
   return i === -1 ? id : `${id.slice(0, i)}-·`
 }
+
+/**
+ * Numărul următor dintr-un proiect: „cel mai mare + 1", cu cel puțin două
+ * cifre. ID-urile provizorii (`HZ-~abc`) și cele ciudate nu sunt numere și se
+ * ignoră. Scris a doua oară în Kotlin (`core/Create.kt`) pentru fereastra de pe
+ * telefon; fixtures comune în `issueId.fixtures.json`.
+ */
+export function nextIssueId(existing: string[], prefix: string): string {
+  const max = existing
+    .map((id) => Number(id.slice(prefix.length + 1)))
+    .filter((n) => Number.isFinite(n))
+    .reduce((a, b) => Math.max(a, b), 0)
+  return `${prefix}-${String(max + 1).padStart(2, '0')}`
+}

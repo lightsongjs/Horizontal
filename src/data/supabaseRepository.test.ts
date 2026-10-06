@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const { fakeDb } = vi.hoisted(() => {
   type Row = Record<string, unknown>
   class Query {
+    static beforeInsert: ((table: string) => void) | null = null
     op = 'select'
     filters: [string, unknown][] = []
     inFilters: [string, unknown[]][] = []
@@ -58,6 +59,12 @@ const { fakeDb } = vi.hoisted(() => {
       const t = this.tables[this.table]
       if (this.op === 'insert') {
         const rows = Array.isArray(this.payload) ? this.payload : [this.payload!]
+        // Alt client scrie între citire și insert (vezi testul cursei de ID).
+        Query.beforeInsert?.(this.table)
+        // Cheia primară, ca în Postgres: `issues.id` nu se repetă.
+        if (this.table === 'issues' && rows.some((r) => t.some((x) => x.id === r.id))) {
+          return { data: null, error: { code: '23505', message: 'duplicate key value violates unique constraint "issues_pkey"' } }
+        }
         t.push(...rows.map((r) => ({ ...r })))
         return { data: null, error: null }
       }
@@ -138,7 +145,7 @@ const { fakeDb } = vi.hoisted(() => {
       this.userId = 'u1'
     }
   }
-  return { fakeDb: new FakeDB() }
+  return { fakeDb: Object.assign(new FakeDB(), { Query }) }
 })
 
 vi.mock('../lib/supabase', () => ({ supabase: fakeDb, requireSupabase: () => fakeDb }))
@@ -213,6 +220,24 @@ describe('supabaseRepository', () => {
     // apară instant, fără o rundă suplimentară.
     expect(issue.createdBy).toBe('u1')
     expect(fakeDb.tables.dependencies).toContainEqual({ issue_id: 'P-02', depends_on_id: 'P-01' })
+  })
+
+  it('createIssue ia alt număr când altcineva (telefonul) a luat între timp același ID', async () => {
+    fakeDb.tables.projects.push({ id: 'p', prefix: 'P', current_wave: 1, name: 'x', description: '', accent: '#fff' })
+    fakeDb.tables.issues.push({ id: 'P-01', project_id: 'p', title: 'A', details: '', wave: 1, done: false })
+    let raced = false
+    fakeDb.Query.beforeInsert = (table) => {
+      if (table !== 'issues' || raced) return
+      raced = true
+      fakeDb.tables.issues.push({ id: 'P-02', project_id: 'p', title: 'de pe telefon', details: '', wave: 1, done: false })
+    }
+    try {
+      const issue = await createSupabaseRepository().createIssue({ projectId: 'p', title: 'B', deps: [] })
+      expect(issue.id).toBe('P-03')
+      expect(fakeDb.tables.issues.filter((r) => r.title === 'B')).toHaveLength(1)
+    } finally {
+      fakeDb.Query.beforeInsert = null
+    }
   })
 
   it('createIssue leaves createdBy null when there is no session (ex. writes made with the service key)', async () => {
