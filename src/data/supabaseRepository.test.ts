@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const { fakeDb } = vi.hoisted(() => {
   type Row = Record<string, unknown>
   class Query {
-    static beforeInsert: ((table: string) => void) | null = null
+    static beforeInsert: ((table: string) => unknown) | null = null
     op = 'select'
     filters: [string, unknown][] = []
     inFilters: [string, unknown[]][] = []
@@ -59,8 +59,10 @@ const { fakeDb } = vi.hoisted(() => {
       const t = this.tables[this.table]
       if (this.op === 'insert') {
         const rows = Array.isArray(this.payload) ? this.payload : [this.payload!]
-        // Alt client scrie între citire și insert (vezi testul cursei de ID).
-        Query.beforeInsert?.(this.table)
+        // Alt client scrie între citire și insert (vezi testul cursei de ID), sau
+        // un insert e refuzat forțat (`return` = eroarea de întors).
+        const forced = Query.beforeInsert?.(this.table)
+        if (forced) return { data: null, error: forced }
         // Cheia primară, ca în Postgres: `issues.id` nu se repetă.
         if (this.table === 'issues' && rows.some((r) => t.some((x) => x.id === r.id))) {
           return { data: null, error: { code: '23505', message: 'duplicate key value violates unique constraint "issues_pkey"' } }
@@ -234,6 +236,17 @@ describe('supabaseRepository', () => {
     try {
       const issue = await createSupabaseRepository().createIssue({ projectId: 'p', title: 'B', deps: [] })
       expect(issue.id).toBe('P-03')
+      expect(fakeDb.tables.issues.filter((r) => r.title === 'B')).toHaveLength(1)
+    } finally {
+      fakeDb.Query.beforeInsert = null
+    }
+  })
+
+  it('createIssue NU reîncearcă un 23505 venit din dependențe (tichetul există deja)', async () => {
+    fakeDb.tables.projects.push({ id: 'p', prefix: 'P', current_wave: 1, name: 'x', description: '', accent: '#fff' })
+    fakeDb.Query.beforeInsert = (table) => (table === 'dependencies' ? { code: '23505', message: 'duplicate dependency' } : undefined)
+    try {
+      await expect(createSupabaseRepository().createIssue({ projectId: 'p', title: 'B', deps: ['P-01', 'P-01'] })).rejects.toMatchObject({ code: '23505' })
       expect(fakeDb.tables.issues.filter((r) => r.title === 'B')).toHaveLength(1)
     } finally {
       fakeDb.Query.beforeInsert = null

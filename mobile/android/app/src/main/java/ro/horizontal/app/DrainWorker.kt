@@ -26,11 +26,6 @@ class DrainWorker(ctx: Context, p: WorkerParameters) : Worker(ctx, p) {
             else -> {}
         }
         if (isStopped) return Result.success()
-        when (try { drainFiles(ctx) } catch (e: AccountChanged) { Outcome.KEEP_NO_SESSION } catch (e: Exception) { Outcome.RETRY }) {
-            Outcome.RETRY -> { finish(ctx, true); return Result.retry() }
-            Outcome.KEEP_NO_SESSION -> { finish(ctx, true); return Result.success() }
-            else -> {}
-        }
         changed = changed || createdAny
         while (true) {
             // REPLACE (vezi `enqueue`) poate anula un worker în plină buclă. Anularea doar
@@ -78,8 +73,10 @@ class DrainWorker(ctx: Context, p: WorkerParameters) : Worker(ctx, p) {
                 Outcome.KEEP_NO_SESSION -> { finish(ctx, changed); return Result.success() }
             }
         }
-        finish(ctx, changed)
-        return Result.success()
+        // Fișierele la urmă: o poză care tot pică nu ține pe loc „Gata"/„15 min" din notificări.
+        val files = try { drainFiles(ctx) } catch (e: AccountChanged) { Outcome.KEEP_NO_SESSION } catch (e: Exception) { Outcome.RETRY }
+        finish(ctx, changed || createdAny)
+        return if (files == Outcome.RETRY) Result.retry() else Result.success()
     }
 
     private var createdAny = false
@@ -162,8 +159,8 @@ class DrainWorker(ctx: Context, p: WorkerParameters) : Worker(ctx, p) {
                 val ex = SupabaseApi.rest(ctx, "GET", "issues?project_id=eq.${c.projectId}&select=id", asUser = owner) ?: return Outcome.KEEP_NO_SESSION
                 if (ex.status !in 200..299) return outcomeOf(ex.status, false, false)
                 val a = org.json.JSONArray(ex.body)
-                val next = nextIssueId((0 until a.length()).map { a.getJSONObject(it).getString("id") }, p.getString("prefix"))
-                PlanStore.edit(ctx) { s -> s.copy(creates = s.creates.map { if (it.uid == c.uid) it.copy(attemptId = next) else it }) to Unit }
+                val candidate = nextIssueId((0 until a.length()).map { a.getJSONObject(it).getString("id") }, p.getString("prefix"))
+                val next = PlanStore.edit(ctx) { s -> val (cs, id) = claimAttempt(s.creates, c.uid, candidate); s.copy(creates = cs) to id }
                 c = c.copy(attemptId = next)
                 next
             }

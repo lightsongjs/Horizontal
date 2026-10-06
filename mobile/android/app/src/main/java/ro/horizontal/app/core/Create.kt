@@ -75,9 +75,10 @@ fun pruneCreates(creates: List<NativeCreate>, agendaReadAt: Long) =
     creates.filterNot { it.drainedAt != null && it.drainedAt < agendaReadAt && it.files.all { f -> f.uploaded } }
 
 /** Mementoul unei sarcini capturate offline sună și înainte să ajungă pe server. */
-fun createReminders(creates: List<NativeCreate>, zone: ZoneId, latestReadAt: Long = Long.MAX_VALUE): List<Reminder> =
+fun createReminders(creates: List<NativeCreate>, zone: ZoneId, latestReadAt: Long = Long.MAX_VALUE, queue: List<NativeAction> = emptyList()): List<Reminder> =
     // Trimise, dar încă necitite de o listă: altfel mementoul ar lipsi din plan până la sincronizare.
-    creates.filter { it.drainedAt == null || it.drainedAt >= latestReadAt }.mapNotNull { c ->
+    // Bifate din widget înainte să plece: nu mai sună (`mergePlan` nu le vede).
+    creates.filter { c -> (c.drainedAt == null || c.drainedAt >= latestReadAt) && queue.none { it.kind == NativeAction.Kind.DONE && it.id == c.id } }.mapNotNull { c ->
     val at = parseIso(c.remindAt) ?: return@mapNotNull null
     val t = planNotification(c.id, c.title, c.dueAt, c.allDay, c.projectName, zone)
     Reminder(reminderKey(c.id, at), c.id, at, t.title, t.body, c.dueAt, c.allDay)
@@ -102,3 +103,13 @@ fun storageDone(status: Int, body: String): Boolean =
  */
 const val FILES_MAX_MS = 3_600_000L
 fun filesExpired(c: NativeCreate, now: Long) = c.drainedAt != null && now - c.drainedAt > FILES_MAX_MS
+
+/**
+ * Sub lacăt, înainte de POST: dacă alt worker (REPLACE lasă unul vechi să mai
+ * ruleze) a salvat deja un ID pentru creare, îl folosim pe al lui — două ID-uri
+ * diferite pentru aceeași creare ar da două tichete.
+ */
+fun claimAttempt(creates: List<NativeCreate>, uid: String, candidate: String): Pair<List<NativeCreate>, String> {
+    val id = creates.firstOrNull { it.uid == uid }?.attemptId ?: candidate
+    return creates.map { if (it.uid == uid) it.copy(attemptId = id) else it } to id
+}

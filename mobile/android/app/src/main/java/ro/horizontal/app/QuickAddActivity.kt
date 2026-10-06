@@ -103,7 +103,8 @@ class QuickAddActivity : AppCompatActivity() {
             findViewById<View>(R.id.q_send).isEnabled = false
         }
         // Primul cadru, fără să aștepte motorul: jetoanele arată ceva din clipa deschiderii.
-        data?.let { apply(rawDraft(title.text.toString(), manual, it, System.currentTimeMillis(), zone).copy(raw = false)) }
+        // `fromEngine = false`: draftul brut n-are `live`, iar refuzurile restaurate din ciornă trebuie să ajungă la motor.
+        data?.let { apply(rawDraft(title.text.toString(), manual, it, System.currentTimeMillis(), zone).copy(raw = false), fromEngine = false) }
         recompute()
     }
 
@@ -129,9 +130,9 @@ class QuickAddActivity : AppCompatActivity() {
     }
 
     /** Desenează rezultatul: evidențierea datei în titlu, jetoanele, nota. */
-    private fun apply(d: Draft) {
+    private fun apply(d: Draft, fromEngine: Boolean = true) {
         draft = d
-        if (!d.raw) { rejected.clear(); rejected.addAll(d.live) }
+        if (fromEngine && !d.raw) { rejected.clear(); rejected.addAll(d.live) }
         paintMarks(d.spans)
         val chipText = { id: Int, s: String -> findViewById<TextView>(id).text = s }
         chipText(R.id.q_due, d.label ?: "Fără dată")
@@ -175,7 +176,8 @@ class QuickAddActivity : AppCompatActivity() {
      * se consumă, iar cursorul merge la capăt, de unde se scrie mai departe.
      */
     private fun rejectAt(e: MotionEvent): Boolean {
-        val spans = draft?.spans.orEmpty()
+        // Fragmentele sunt ale ultimului răspuns al motorului; textul poate fi deja mai scurt.
+        val spans = draft?.spans.orEmpty().filter { it.last + 1 <= title.text.length }
         val layout = title.layout ?: return false
         if (spans.isEmpty()) return false
         val x = e.x - title.totalPaddingLeft + title.scrollX

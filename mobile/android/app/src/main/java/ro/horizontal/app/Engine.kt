@@ -43,7 +43,7 @@ object Engine {
             val held = holdDone(s.queue, queue, s.agendaHeld, agendaReadAt)
             val plan = mergePlan(s.page, s.native, queue).let { p ->
                 val known = p.map { it.id }.toSet()
-                p + createReminders(s.creates, java.time.ZoneId.systemDefault(), latest).filter { it.id !in known }
+                p + createReminders(s.creates, java.time.ZoneId.systemDefault(), latest, queue).filter { it.id !in known }
             }
             val ap = planAlarms(plan, now, s.fired, s.shown)
             val shown = (s.shown - ap.cancelIds) + ap.fireNow.associate { it.id to it.key }

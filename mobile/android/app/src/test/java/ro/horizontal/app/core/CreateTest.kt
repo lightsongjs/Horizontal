@@ -110,4 +110,18 @@ class CreateTest {
         assertFalse(filesExpired(c, now = 1_000 + 3_599_000))
         assertTrue(filesExpired(c, now = 1_000 + 3_600_001))
     }
+
+    @Test fun doiWorkeri_folosescAcelașiIdSalvat() {
+        // Primul a salvat deja X: al doilea, care calculase X+1, trebuie să folosească X.
+        val saved = listOf(create().copy(attemptId = "HZ-07"))
+        val (after, id) = claimAttempt(saved, "u1", "HZ-08")
+        assertEquals("HZ-07", id); assertEquals("HZ-07", after[0].attemptId)
+        val (after2, id2) = claimAttempt(listOf(create()), "u1", "HZ-08")
+        assertEquals("HZ-08", id2); assertEquals("HZ-08", after2[0].attemptId)
+    }
+
+    @Test fun oSarcinăBifatăÎnainteSăPlece_nuMaiSună() {
+        val done = listOf(NativeAction(uid = "a", kind = NativeAction.Kind.DONE, id = "HZ-~u1", title = "", body = "", createdAt = 1))
+        assertEquals(emptyList<String>(), createReminders(listOf(create()), zone, queue = done).map { it.key })
+    }
 }

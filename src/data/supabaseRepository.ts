@@ -251,7 +251,8 @@ export function createSupabaseRepository(): Repository {
       remind_at: issue.remindAt,
       rrule: issue.rrule,
     })
-    if (error) throw error
+    // Marcat: doar ACEST 23505 înseamnă „numărul era luat" (vezi `createIssue`).
+    if (error) throw Object.assign(error, { atIssueInsert: true })
     if (issue.deps.length) {
       const { error: dErr } = await db
         .from('dependencies')
@@ -448,7 +449,10 @@ export function createSupabaseRepository(): Repository {
         try {
           return await createIssueOnce(input)
         } catch (e) {
-          if ((e as { code?: string }).code !== '23505' || attempt >= 3) throw e
+          // Numai insertul tichetului: un 23505 din dependențe vine DUPĂ ce tichetul
+          // există, iar o reîncercare ar crea încă unul.
+          const err = e as { code?: string; atIssueInsert?: boolean }
+          if (err.code !== '23505' || !err.atIssueInsert || attempt >= 3) throw e
         }
       }
     },
