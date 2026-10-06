@@ -86,7 +86,9 @@ class QuickAddActivity : AppCompatActivity() {
         findViewById<View>(R.id.scrim).setOnClickListener { finish() }
 
         restoreDraft(b)
-        title.addTextChangedListener(watcher { if (!painting) recompute() })
+        title.addTextChangedListener(watcher { if (!painting) { recompute(); suggestAt() } })
+        // Cursorul mutat cu o atingere: lista urmează semnul de sub el.
+        title.setOnClickListener { suggestAt() }
         // Titlul se rupe pe rânduri (textMultiLine în XML), dar tasta Enter e „Trimite", nu un rând nou.
         title.setRawInputType(android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES)
         title.setOnEditorActionListener { _, id, _ -> if (id == EditorInfo.IME_ACTION_SEND) { submit(); true } else false }
@@ -118,6 +120,35 @@ class QuickAddActivity : AppCompatActivity() {
         title.requestFocus()
         title.setSelection(title.text.length)
         WindowInsetsControllerCompat(window, title).show(WindowInsetsCompat.Type.ime())
+    }
+
+    private var suggSeq = 0
+
+    /** Lista de la `#` / `@` de sub cursor, din același cod ca pagina (motorul). */
+    private fun suggestAt() {
+        val d = data ?: return
+        val my = ++suggSeq
+        val input = org.json.JSONObject().put("text", title.text.toString()).put("caret", title.selectionEnd.coerceAtLeast(0))
+            .put("projects", JSONArray().also { a -> d.projects.forEach { a.put(org.json.JSONObject().put("id", it.id).put("name", it.name)) } })
+            .put("assignees", JSONArray().also { a -> d.people.forEach { a.put(org.json.JSONObject().put("id", it.id).put("name", it.name)) } })
+        CaptureEngine.suggest(this, input) { list -> if (my == suggSeq && !isFinishing) paintSuggestions(list.orEmpty()) }
+    }
+
+    private fun paintSuggestions(list: List<CaptureSuggestion>) {
+        val row = findViewById<android.widget.LinearLayout>(R.id.q_sugg)
+        row.removeAllViews()
+        findViewById<View>(R.id.q_sugg_scroll).visibility = if (list.isEmpty()) View.GONE else View.VISIBLE
+        for (s in list) {
+            val chip = TextView(this, null, 0, R.style.Hz_Quick_Chip)
+            chip.layoutParams = android.widget.LinearLayout.LayoutParams(android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, dp(36)).apply { marginEnd = dp(6) }
+            chip.text = "${s.sigil}${s.label}"
+            chip.typeface = android.graphics.Typeface.SERIF
+            chip.setOnClickListener {
+                title.setText(s.text)
+                title.setSelection(s.caret.coerceAtMost(title.text.length))
+            }
+            row.addView(chip)
+        }
     }
 
     private fun recompute() {

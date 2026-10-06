@@ -63,6 +63,10 @@ object CaptureEngine {
     /** `shrinkPlan` din `src/lib/shrinkImage.ts`, ca JSON. */
     fun shrinkPlan(ctx: Context, input: JSONObject, cb: (JSONObject?) -> Unit) = call(ctx, "HzCapture.shrinkPlan(${JSONObject.quote(input.toString())})", { JSONObject(it) }, cb)
 
+    /** Lista de la `#` / `@` sub cursor (`tokenSuggest.ts`). Gol = nicio listă. */
+    fun suggest(ctx: Context, input: JSONObject, cb: (List<ro.horizontal.app.core.CaptureSuggestion>?) -> Unit) =
+        call(ctx, "HzCapture.suggest(${JSONObject.quote(input.toString())})", { ro.horizontal.app.core.parseSuggestions(it) }, cb)
+
     fun attachmentFilename(ctx: Context, name: String, outputType: String?, cb: (String?) -> Unit) =
         call(ctx, "HzCapture.attachmentFilename(${JSONObject.quote(name)}, ${outputType?.let { JSONObject.quote(it) } ?: "null"})", { it }, cb)
 

@@ -66,6 +66,21 @@
             android:textSize="12sp"
             android:visibility="gone" />
 
+        <!-- Sugestiile la #proiect / @om: o bandă de jetoane chiar deasupra tastaturii, unde ajunge degetul. -->
+        <HorizontalScrollView
+            android:id="@+id/q_sugg_scroll"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingBottom="8dp"
+            android:scrollbars="none"
+            android:visibility="gone">
+            <LinearLayout
+                android:id="@+id/q_sugg"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal" />
+        </HorizontalScrollView>
+
         <HorizontalScrollView
             android:id="@+id/q_files_scroll"
             android:layout_width="match_parent"

@@ -128,3 +128,16 @@ object CaptureJson {
         )
     } catch (e: Exception) { null }
 }
+
+/** O alegere din lista de la `#` / `@` (`tokenSuggest.ts`, prin motor): textul și cursorul de după ea. */
+data class CaptureSuggestion(val sigil: String, val label: String, val text: String, val caret: Int)
+
+fun parseSuggestions(json: String): List<CaptureSuggestion> {
+    val o = JSONObject(json)
+    val sigil = o.optJSONObject("token")?.optString("sigil") ?: return emptyList()
+    val a = o.optJSONArray("items") ?: return emptyList()
+    return (0 until a.length()).map { a.getJSONObject(it) }.map { i ->
+        val ap = i.getJSONObject("apply")
+        CaptureSuggestion(sigil, i.getString("label"), ap.getString("text"), ap.getInt("caret"))
+    }
+}

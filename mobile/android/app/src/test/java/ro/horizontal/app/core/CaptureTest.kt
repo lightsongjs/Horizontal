@@ -67,4 +67,11 @@ class CaptureTest {
         assertEquals(listOf(8 until 13), r.spans); assertEquals("Ședință", r.title); assertEquals(true, r.urgent); assertNull(r.error)
         assertEquals(listOf("la 10"), r.live); assertEquals(false, r.raw); assertEquals("Mâine 10:00", r.label)
     }
+
+    @Test fun sugestiile_dinMotor() {
+        val json = """{"token":{"sigil":"#","query":"pe","start":7,"end":10},"items":[
+            {"id":"p-pers","label":"Personal","insert":"#Personal","apply":{"text":"raport #Personal ","caret":17}}]}"""
+        assertEquals(listOf(CaptureSuggestion("#", "Personal", "raport #Personal ", 17)), parseSuggestions(json))
+        assertEquals(emptyList<CaptureSuggestion>(), parseSuggestions("""{"token":null,"items":[]}"""))
+    }
 }
