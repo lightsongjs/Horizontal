@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Bifa din widget = CompoundButton în RemoteViews, API 31. -->
+<resources><bool name="widget_agenda_enabled">true</bool></resources>

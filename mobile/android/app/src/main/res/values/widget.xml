@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Jetoanele aplicației (src/styles.css), tema deschisă. Tema închisă: values-night. -->
+<resources>
+    <color name="w_surface">#FFFFFF</color>
+    <color name="w_surface2">#F0F4F8</color>
+    <color name="w_txt">#29343A</color>
+    <color name="w_txt_dim">#566168</color>
+    <color name="w_txt_faint">#717C84</color>
+    <color name="w_accent">#1A237E</color>
+    <color name="w_on_accent">#F7F9FC</color>
+    <color name="w_blocked">#A0333F</color>
+    <color name="w_sep">#1429343A</color>
+</resources>

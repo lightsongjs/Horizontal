@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="w_surface">#16161A</color>
+    <color name="w_surface2">#1E1E23</color>
+    <color name="w_txt">#FAFAF9</color>
+    <color name="w_txt_dim">#9C9CA2</color>
+    <color name="w_txt_faint">#6B6B70</color>
+    <color name="w_accent">#818CF8</color>
+    <color name="w_on_accent">#0B0B0E</color>
+    <color name="w_blocked">#DF8B84</color>
+    <color name="w_sep">#0FFFFFFF</color>
+</resources>

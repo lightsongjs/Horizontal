@@ -46,6 +46,19 @@
             </intent-filter>
         </receiver>
 
+        <!-- Widget-urile. Agenda doar pe 12+ (bifa din widget = CompoundButton în RemoteViews, API 31). -->
+        <receiver android:name=".AgendaWidget" android:exported="true" android:enabled="@bool/widget_agenda_enabled">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_agenda_info" />
+        </receiver>
+        <receiver android:name=".QuickWidget" android:exported="true">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_quick_info" />
+        </receiver>
+        <!-- Ținta rândurilor din agendă: fără interfață, nu rămâne în Recente, nu se lipește de sarcina aplicației. -->
+        <activity android:name=".WidgetTapActivity" android:exported="false" android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true" android:taskAffinity="" android:noHistory="true" android:launchMode="singleInstance" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

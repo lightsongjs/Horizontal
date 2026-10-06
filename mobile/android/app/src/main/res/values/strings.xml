@@ -4,4 +4,6 @@
     <string name="title_activity_main">Horizontal</string>
     <string name="package_name">ro.horizontal.app</string>
     <string name="custom_url_scheme">ro.horizontal.app</string>
+    <string name="widget_agenda_desc">Restanțele și următoarele 7 zile, cu bifă</string>
+    <string name="widget_quick_desc">Adaugă o sarcină</string>
 </resources>
