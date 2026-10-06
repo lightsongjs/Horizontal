@@ -1,6 +1,7 @@
 import type { NewIssue } from '../data/repository'
-import type { CaptureTokens } from './captureTokens'
-import { dayOffset, defaultReminder, reminderAt, toDisplayDate, toTimeInput } from './schedule'
+import { parseCaptureTokens, type CaptureTokens } from './captureTokens'
+import { liveRejections, maskRejected, parseDue, stripSpans } from './parseDue'
+import { dayOffset, defaultReminder, reminderAt, startOfLocalDay, toDisplayDate, toTimeInput } from './schedule'
 
 /**
  * Adăugarea rapidă, fără React: ce sarcină iese din ce a scris omul și ce a
@@ -178,4 +179,79 @@ export function dueLabelParts(iso: string, allDay: boolean, now: Date): { day: s
         : off === -1 ? 'Ieri'
           : `${DAYS[d.getDay()]} ${date}`
   return { day, time: allDay ? null : toTimeInput(iso) }
+}
+
+export interface CaptureInput {
+  text: string
+  desc: string
+  /** Fragmentele refuzate de om (`useTitleDate`); cele care nu mai sunt în text se uită. */
+  rejected: string[]
+  manual: ManualPick
+  projects: { id: string; name: string; prefix: string; type?: string }[]
+  assignees: { id: string; name: string }[]
+  /** Proiectul cu care pornește captura (Daily, ținut minte, al proiectului deschis). */
+  defaultProjectId: string | null
+  nowMs: number
+  /** Citește `#proiect @om !` (bara, foile, fereastra de pe telefon). */
+  tokens: boolean
+  /** Implicit: lista „Azi" — fără dată, sarcina primește ziua de azi. */
+  ctx?: QuickCtx
+}
+
+export interface CaptureResult {
+  /** Refuzurile încă prezente în text. */
+  live: string[]
+  /** Fragmentele de dată recunoscute, în textul original — ce se evidențiază. */
+  spans: [number, number][]
+  title: string
+  projectId: string | null
+  assigneeId: string | null
+  urgent: boolean
+  unknown: string[]
+  dueAt: string | null
+  allDay: boolean
+  rrule: string | null
+  remindAt: string | null
+  issue: NewIssue | null
+  error: DraftError | null
+}
+
+/**
+ * Captura întreagă, fără React și fără ceas implicit: ce a scris omul, ce a
+ * refuzat și ce a atins → sarcina. Aceeași funcție rulează în pagină (prin
+ * `useQuickDraft`) și în fereastra nativă de pe telefon (pachetul
+ * `src/capture/engine.ts`, în motorul JS) — regulile de dată și semne au o
+ * singură sursă. Fixtures: `capture.fixtures.json`.
+ */
+export function computeDraft(i: CaptureInput): CaptureResult {
+  const now = new Date(i.nowMs)
+  const live = liveRejections(i.text, i.rejected)
+  const parsed = parseDue(maskRejected(i.text, live), now)
+  const active = parsed.dueAt !== null
+  const spans = active ? parsed.spans : []
+  const dateTitle = active ? stripSpans(i.text, spans) : i.text.trim()
+  const tokens = i.tokens ? parseCaptureTokens(dateTitle, i.projects, i.assignees) : null
+  const wanted = i.manual.projectId ?? tokens?.projectId ?? i.defaultProjectId
+  const project = i.projects.find((p) => p.id === wanted)
+    ?? i.projects.find((p) => p.type === 'personal')
+    ?? i.projects[0]
+  const ctx: QuickCtx = i.ctx ?? { mode: 'list', defaultDueAt: startOfLocalDay(now).toISOString() }
+  const date: DraftDate = { active, dueAt: parsed.dueAt, allDay: parsed.allDay, rrule: parsed.rrule ?? null, title: dateTitle }
+  const resolved = resolveDraft({ text: i.text, desc: i.desc, date, tokens, manual: i.manual, projectId: project?.id ?? '', ctx })
+  const schedule = draftSchedule(date, i.manual, ctx)
+  return {
+    live,
+    spans,
+    title: (tokens ? tokens.title : dateTitle).trim(),
+    projectId: project?.id ?? null,
+    assigneeId: i.manual.assigneeId !== undefined ? i.manual.assigneeId : tokens?.assigneeId ?? null,
+    urgent: i.manual.urgent ?? tokens?.urgent ?? false,
+    unknown: tokens?.unknown ?? [],
+    dueAt: schedule.dueAt,
+    allDay: schedule.allDay,
+    rrule: schedule.rrule,
+    remindAt: reminderAt(schedule.dueAt, defaultReminder(schedule.allDay)),
+    issue: 'error' in resolved ? null : resolved,
+    error: 'error' in resolved ? resolved.error : null,
+  }
 }

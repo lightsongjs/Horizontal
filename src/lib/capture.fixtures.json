@@ -1,0 +1,60 @@
+{
+  "nowMs": 1791273600000,
+  "projects": [
+    { "id": "p-daily", "name": "✅Daily", "prefix": "HZ", "type": "team" },
+    { "id": "p-pers", "name": "Personal", "prefix": "FIN", "type": "personal" }
+  ],
+  "assignees": [{ "id": "a-ana", "name": "Ana Pop" }],
+  "cases": [
+    {
+      "name": "text simplu: Daily, azi, toată ziua, fără memento",
+      "input": { "text": "cumpără lapte" },
+      "want": { "title": "cumpără lapte", "projectId": "p-daily", "dueAt": "2026-10-05T21:00:00.000Z", "allDay": true, "rrule": null, "remindAt": null, "error": null, "spans": [] }
+    },
+    {
+      "name": "dată, oră și semne: #daily nu e recurență",
+      "input": { "text": "Ședință mâine la 10 #personal @ana !" },
+      "want": { "title": "Ședință", "projectId": "p-pers", "assigneeId": "a-ana", "urgent": true, "dueAt": "2026-10-07T07:00:00.000Z", "allDay": false, "rrule": null, "remindAt": "2026-10-07T07:00:00.000Z", "error": null, "spans": [[8, 13], [14, 19]] }
+    },
+    {
+      "name": "#daily scris de mână: proiectul, nu recurența",
+      "input": { "text": "raport #daily" },
+      "want": { "title": "raport", "projectId": "p-daily", "rrule": null }
+    },
+    {
+      "name": "fragment refuzat rămâne text",
+      "input": { "text": "sună la 10 la bancă", "rejected": ["la 10"] },
+      "want": { "title": "sună la 10 la bancă", "live": ["la 10"], "dueAt": "2026-10-05T21:00:00.000Z", "allDay": true, "spans": [] }
+    },
+    {
+      "name": "numai dată: refuz vizibil",
+      "input": { "text": "azi la 8" },
+      "want": { "error": "bare", "issue": null }
+    },
+    {
+      "name": "gol",
+      "input": { "text": "   " },
+      "want": { "error": "empty", "issue": null }
+    },
+    {
+      "name": "butonul de dată bate textul",
+      "input": { "text": "raport mâine", "manual": { "due": { "dueAt": "2026-10-09T21:00:00.000Z", "allDay": true } } },
+      "want": { "title": "raport", "dueAt": "2026-10-09T21:00:00.000Z", "allDay": true, "rrule": null }
+    },
+    {
+      "name": "recurență zilnică fără oră pornește azi",
+      "input": { "text": "udă florile zilnic" },
+      "want": { "title": "udă florile", "rrule": "FREQ=DAILY", "dueAt": "2026-10-05T21:00:00.000Z", "allDay": true }
+    },
+    {
+      "name": "proiect necunoscut rămâne în titlu",
+      "input": { "text": "#zzz verifică" },
+      "want": { "title": "#zzz verifică", "unknown": ["#zzz"], "projectId": "p-daily" }
+    },
+    {
+      "name": "butonul de proiect bate semnul",
+      "input": { "text": "plată #daily", "manual": { "projectId": "p-pers" } },
+      "want": { "title": "plată", "projectId": "p-pers" }
+    }
+  ]
+}

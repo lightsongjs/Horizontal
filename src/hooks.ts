@@ -9,7 +9,8 @@ import { buildOrderedLayers, type OrderedLayer } from './lib/ordering'
 import type { Issue, Project } from './lib/types'
 import { parseCaptureTokens, type CaptureTokens } from './lib/captureTokens'
 import { Autosaver, type AutosaveStatus, type Fields, type Normalize } from './lib/autosave'
-import { draftSchedule, keyboardInset, resolveDraft, type DraftError, type DraftSchedule, type ManualPick, type QuickCtx } from './lib/quickDraft'
+import { computeDraft, keyboardInset, type DraftError, type DraftSchedule, type ManualPick, type QuickCtx } from './lib/quickDraft'
+import type { NewIssue } from './data/repository'
 
 const HIDE_DONE_KEY = 'horizontal:hide-done'
 const SIDEBAR_KEY = 'horizontal:sidebar-collapsed'
@@ -485,6 +486,8 @@ export interface TitleDate {
   reset(): void
   /** Cheie stabilă a refuzurilor, pentru listele de dependențe ale efectelor. */
   rejectedKey: string
+  /** Refuzurile încă prezente în text — intrarea lui `computeDraft`. */
+  live: string[]
 }
 
 /**
@@ -624,6 +627,7 @@ export function useTitleDate(
     rejectAll: () => reject(spans.map(([s, e]) => text.slice(s, e))),
     reset: () => { setRejected([]); setOnDate(false) },
     rejectedKey: liveKey,
+    live,
   }
 }
 
@@ -691,15 +695,15 @@ export function useQuickDraft({ ctx, tokens: withTokens = false, rememberProject
   // Recunoașterea datei, cu refuzul legat de fragment — vezi `useTitleDate`.
   const date = useTitleDate(text, { onChange: setText })
   const tokens = withTokens ? parseCaptureTokens(date.title, projects, assignees) : null
-  const effectiveProjectId = manual.projectId ?? tokens?.projectId ?? projectId
-  const project = projects.find((p) => p.id === effectiveProjectId)
-    ?? projects.find((p) => p.type === 'personal')
-    ?? projects[0]
-
-  const draftDate = { active: date.active, dueAt: date.parsed.dueAt, allDay: date.parsed.allDay, rrule: date.parsed.rrule ?? null, title: date.title }
-  const resolved = resolveDraft({ text, desc, date: draftDate, tokens, manual, projectId: project?.id ?? '', ctx })
-  const error = 'error' in resolved ? resolved.error : null
-  const schedule = draftSchedule(draftDate, manual, ctx)
+  // Regulile — aceeași funcție pe care o rulează fereastra nativă de pe telefon.
+  const draft = computeDraft({
+    text, desc, rejected: date.live, manual, projects, assignees,
+    defaultProjectId: projectId || null, nowMs: Date.now(), tokens: withTokens, ctx,
+  })
+  const project = projects.find((p) => p.id === draft.projectId)
+  const resolved: NewIssue | { error: DraftError } = draft.issue ?? { error: draft.error ?? 'empty' }
+  const error = draft.error
+  const schedule = { dueAt: draft.dueAt, allDay: draft.allDay, rrule: draft.rrule }
 
   const reset = () => { setText(''); setDesc(''); date.reset(); setManual({}) }
 
@@ -729,9 +733,9 @@ export function useQuickDraft({ ctx, tokens: withTokens = false, rememberProject
   return {
     text, setText, desc, setDesc, date, tokens, manual, setManual, project, projects, pickProject,
     schedule,
-    title: (tokens ? tokens.title : date.title).trim(),
-    assigneeId: manual.assigneeId !== undefined ? manual.assigneeId : tokens?.assigneeId ?? null,
-    urgent: manual.urgent ?? tokens?.urgent ?? false,
+    title: draft.title,
+    assigneeId: draft.assigneeId,
+    urgent: draft.urgent,
     error, saving, shake, submit, reset,
   }
 }
