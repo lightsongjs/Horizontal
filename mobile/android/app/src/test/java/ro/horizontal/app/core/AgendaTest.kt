@@ -70,4 +70,17 @@ class AgendaTest {
         val l = AgendaList(listOf(AgendaItem("HZ-1", "R", null, "2026-10-06T07:00:00.000Z", false, true, true, false)), 42)
         assertEquals(l, Json.agendaFromJson(Json.agendaToJson(l)))
     }
+
+    @Test fun gataScosDinCoadă_rămâneAscunsPânăLaOAgendăCitităDupăTrimitere() {
+        // Lista de mementouri a prunat „Gata", dar citirea agendei a picat: agenda e de dinainte.
+        val sent = done("A", drainedAt = 50)
+        val held = holdDone(before = listOf(sent), after = emptyList(), held = emptyMap(), agendaReadAt = 20)
+        assertEquals(mapOf("A" to 50L), held)
+        val stale = AgendaList(listOf(item("A", "2026-10-05T21:00:00.000Z"), item("B", "2026-10-05T21:00:00.000Z")), readAt = 20)
+        assertEquals(listOf("B"), visibleAgenda(null, stale, emptyList(), held)!!.map { it.id })
+        // O agendă citită după trimitere îl arată din nou (recurentă: la data nouă) și eliberează reținerea.
+        val fresh = stale.copy(readAt = 60)
+        assertEquals(listOf("A", "B"), visibleAgenda(null, fresh, emptyList(), held)!!.map { it.id })
+        assertEquals(emptyMap<String, Long>(), holdDone(emptyList(), emptyList(), held, agendaReadAt = 60))
+    }
 }

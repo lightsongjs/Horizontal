@@ -13,12 +13,22 @@ object Widgets {
     const val EXTRA_OPEN = "hz-widget-open"
     const val EXTRA_QUICK = "hz-widget-quick"
 
+    /**
+     * Nu aruncă, niciodată: e chemat din `Engine.reschedule`, după ce mementourile
+     * au fost marcate ca sunate — o excepție de aici (binder, o listă prea mare
+     * pentru launcher) le-ar pierde în `DeferGate`. Un widget vechi e confort
+     * pierdut; un memento pierdut nu.
+     */
     fun refresh(ctx: Context) {
-        val ids = AgendaWidget.ids(ctx)
-        if (ids.isEmpty()) return
-        val views = AgendaWidget.render(ctx, PlanStore.read(ctx))
-        AppWidgetManager.getInstance(ctx).updateAppWidget(ids, views)
-        armMidnight(ctx)
+        try {
+            val ids = AgendaWidget.ids(ctx)
+            if (ids.isEmpty()) return
+            val views = AgendaWidget.render(ctx, PlanStore.read(ctx))
+            AppWidgetManager.getInstance(ctx).updateAppWidget(ids, views)
+            armMidnight(ctx)
+        } catch (e: Exception) {
+            android.util.Log.w("hz-widget", "redesenarea a eșuat", e)
+        }
     }
 
     /**

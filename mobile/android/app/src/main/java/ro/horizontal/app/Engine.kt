@@ -39,11 +39,13 @@ object Engine {
         val (fire, cancel, _) = PlanStore.edit(ctx) { s ->
             val latest = maxOf(s.page?.readAt ?: 0, s.native?.readAt ?: 0)
             val queue = NativeQueue.prune(s.queue, latest)
+            val agendaReadAt = maxOf(s.agendaPage?.readAt ?: 0, s.agendaNative?.readAt ?: 0)
+            val held = holdDone(s.queue, queue, s.agendaHeld, agendaReadAt)
             val plan = mergePlan(s.page, s.native, queue)
             val ap = planAlarms(plan, now, s.fired, s.shown)
             val shown = (s.shown - ap.cancelIds) + ap.fireNow.associate { it.id to it.key }
             val exact = AlarmScheduler.arm(ctx, ap.nextAt)
-            s.copy(queue = queue, fired = pruneFired(s.fired + ap.fireNow.map { it.key }, now), shown = shown, nextAlarmAt = ap.nextAt, exactUsed = exact) to
+            s.copy(queue = queue, agendaHeld = held, fired = pruneFired(s.fired + ap.fireNow.map { it.key }, now), shown = shown, nextAlarmAt = ap.nextAt, exactUsed = exact) to
                 Triple(ap.fireNow, ap.cancelIds, ap.nextAt)
         }
         cancel.forEach { Notifier.cancel(ctx, it) }

@@ -44,7 +44,7 @@ class SyncWorker(ctx: Context, p: WorkerParameters) : Worker(ctx, p) {
         // memento, o restanță veche). Orice eșec păstrează agenda veche, nu o golește.
         val agenda = try {
             SupabaseApi.rest(ctx, "GET", agendaQuery(startedAt, ZoneId.systemDefault()), asUser = owner)
-                ?.takeIf { it.status in 200..299 }?.let { parseAgenda(it.body) }
+                ?.let { r -> if (r.status in 200..299) parseAgenda(r.body) else { Log.w("hz-sync", "agendă: HTTP ${r.status}"); null } }
         } catch (e: AccountChanged) { return Result.success() }
           catch (e: IOException) { null }
           catch (e: JSONException) { Log.w("hz-sync", "agendă ilizibilă", e); null }

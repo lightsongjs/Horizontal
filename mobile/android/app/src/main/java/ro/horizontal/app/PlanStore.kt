@@ -25,6 +25,8 @@ object PlanStore {
         /** Agenda widget-ului, din cele două surse; câștigă `readAt` mai mare (`visibleAgenda`). */
         val agendaPage: AgendaList? = null,
         val agendaNative: AgendaList? = null,
+        /** „Gata" prunate din coadă, încă nevăzute de o agendă mai nouă (`holdDone`). */
+        val agendaHeld: Map<String, Long> = emptyMap(),
     )
 
     private const val PREFS = "hz-plan"
@@ -71,9 +73,10 @@ object PlanStore {
         val shown = p.getString("shown", null)?.let { JSONObject(it) }?.let { o -> o.keys().asSequence().associateWith { o.getString(it) } }.orEmpty()
         val agendaPage = p.getString("agendaPage", null)?.let { Json.agendaFromJson(JSONObject(it)) }
         val agendaNative = p.getString("agendaNative", null)?.let { Json.agendaFromJson(JSONObject(it)) }
+        val agendaHeld = p.getString("agendaHeld", null)?.let { JSONObject(it) }?.let { o -> o.keys().asSequence().associateWith { o.getLong(it) } }.orEmpty()
         return State(page, native, queue, p.getStringSet("fired", emptySet())!!.toSet(), shown,
             p.getLong("nextAlarmAt", -1).takeIf { it >= 0 }, p.getBoolean("exactUsed", true), p.getLong("lastSyncAt", -1).takeIf { it >= 0 },
-            reminders(p.getString("deferred", null)?.let { JSONArray(it) }), agendaPage, agendaNative)
+            reminders(p.getString("deferred", null)?.let { JSONArray(it) }), agendaPage, agendaNative, agendaHeld)
     }
 
     private fun save(ctx: Context, s: State) {
@@ -87,6 +90,7 @@ object PlanStore {
             .putString("deferred", arr(s.deferred).toString())
             .putString("agendaPage", s.agendaPage?.let { Json.agendaToJson(it).toString() })
             .putString("agendaNative", s.agendaNative?.let { Json.agendaToJson(it).toString() })
+            .putString("agendaHeld", JSONObject(s.agendaHeld as Map<*, *>).toString())
             .commit()
     }
 }

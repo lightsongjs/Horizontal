@@ -37,7 +37,7 @@ class AgendaWidget : AppWidgetProvider() {
             v.setOnClickPendingIntent(R.id.w_refresh, PendingIntent.getBroadcast(ctx, 1,
                 Intent(ctx, AgendaWidget::class.java).setAction(ACTION_REFRESH), PendingIntent.FLAG_IMMUTABLE))
 
-            val state = agendaState(s.agendaPage, s.agendaNative, s.queue, now, zone)
+            val state = agendaState(s.agendaPage, s.agendaNative, s.queue, now, zone, s.agendaHeld)
             val empty = when {
                 state is AgendaState.NoData -> "Deschide aplicația o dată, ca să apară sarcinile."
                 state is AgendaState.Ready && state.count == 0 -> "Nimic restant, nimic azi."

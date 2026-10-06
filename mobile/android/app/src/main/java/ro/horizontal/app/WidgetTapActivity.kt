@@ -22,8 +22,12 @@ class WidgetTapActivity : Activity() {
                     prevDueAt = intent.getStringExtra(EXTRA_DUE), title = intent.getStringExtra(EXTRA_TITLE) ?: "", body = "",
                     allDay = intent.getBooleanExtra(EXTRA_ALL_DAY, false), createdAt = System.currentTimeMillis(),
                 ))
-            else -> startActivity(Intent(this, MainActivity::class.java).putExtra(Widgets.EXTRA_OPEN, id)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP))
+            else -> {
+                startActivity(Intent(this, MainActivity::class.java).putExtra(Widgets.EXTRA_OPEN, id)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP))
+                // Launcher-ul a bifat căsuța local; fără o redesenare ar rămâne bifată, deși nimic nu s-a făcut.
+                Widgets.refresh(this)
+            }
         }
         finish()
         @Suppress("DEPRECATION") overridePendingTransition(0, 0)

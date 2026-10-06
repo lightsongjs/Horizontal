@@ -63,14 +63,27 @@ fun buildAgenda(items: List<AgendaItem>, now: Long, zone: ZoneId): List<AgendaSe
  * o listă citită după trimitere prunează coada (`NativeQueue.prune`) — o
  * recurentă reapare atunci la data nouă.
  */
-fun visibleAgenda(page: AgendaList?, native: AgendaList?, queue: List<NativeAction>): List<AgendaItem>? {
+fun visibleAgenda(page: AgendaList?, native: AgendaList?, queue: List<NativeAction>, held: Map<String, Long> = emptyMap()): List<AgendaItem>? {
     val src = listOfNotNull(page, native).maxByOrNull { it.readAt } ?: return null
-    val done = queue.filter { it.kind == NativeAction.Kind.DONE }.map { it.id }.toSet()
+    val done = queue.filter { it.kind == NativeAction.Kind.DONE }.map { it.id }.toSet() +
+        held.filterValues { it >= src.readAt }.keys
     return src.items.filter { it.id !in done }
 }
 
-fun agendaState(page: AgendaList?, native: AgendaList?, queue: List<NativeAction>, now: Long, zone: ZoneId): AgendaState {
-    val items = visibleAgenda(page, native, queue) ?: return AgendaState.NoData
+/**
+ * Coada se prunează după listele de MEMENTOURI; agenda e o a doua citire, care
+ * poate pica singură. Un „Gata" scos din coadă rămâne reținut (id → trimis la)
+ * până sosește o agendă citită după trimitere — altfel rândul bifat reapărea la
+ * data veche. `before`/`after` = coada înainte și după prunare.
+ */
+fun holdDone(before: List<NativeAction>, after: List<NativeAction>, held: Map<String, Long>, agendaReadAt: Long): Map<String, Long> {
+    val removed = before.filter { a -> a.kind == NativeAction.Kind.DONE && after.none { it.uid == a.uid } }
+        .associate { it.id to (it.drainedAt ?: it.createdAt) }
+    return (held + removed).filterValues { it >= agendaReadAt }
+}
+
+fun agendaState(page: AgendaList?, native: AgendaList?, queue: List<NativeAction>, now: Long, zone: ZoneId, held: Map<String, Long> = emptyMap()): AgendaState {
+    val items = visibleAgenda(page, native, queue, held) ?: return AgendaState.NoData
     val sections = buildAgenda(items, now, zone)
     return AgendaState.Ready(sections, sections.sumOf { it.items.size })
 }
