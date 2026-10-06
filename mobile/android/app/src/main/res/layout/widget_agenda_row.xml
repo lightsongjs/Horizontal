@@ -15,8 +15,6 @@
         android:orientation="vertical" android:layout_marginStart="4dp">
         <TextView android:id="@+id/r_title" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:fontFamily="serif" android:textSize="15sp" android:textColor="@color/w_txt" android:maxLines="1" android:ellipsize="end" />
-        <TextView android:id="@+id/r_project" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:fontFamily="monospace" android:textSize="11sp" android:textColor="@color/w_txt_faint" android:maxLines="1" android:ellipsize="end" />
     </LinearLayout>
     <TextView android:id="@+id/r_meta" android:layout_width="wrap_content" android:layout_height="wrap_content"
         android:fontFamily="monospace" android:textSize="12sp" android:textColor="@color/w_txt_dim" android:layout_marginStart="8dp" />

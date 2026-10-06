@@ -70,8 +70,6 @@ class AgendaWidget : AppWidgetProvider() {
         private fun row(ctx: Context, it: AgendaItem, overdue: Boolean, now: Long, zone: ZoneId, red: Int): RemoteViews {
             val r = RemoteViews(ctx.packageName, R.layout.widget_agenda_row)
             r.setTextViewText(R.id.r_title, it.title)
-            r.setTextViewText(R.id.r_project, it.project ?: "")
-            r.setViewVisibility(R.id.r_project, if (it.project == null) View.GONE else View.VISIBLE)
             r.setTextViewText(R.id.r_meta, rowMeta(it, overdue, now, zone))
             r.setViewVisibility(R.id.r_repeat, if (it.recurring) View.VISIBLE else View.GONE)
             r.setViewVisibility(R.id.r_bell, if (it.hasReminder) View.VISIBLE else View.GONE)
