@@ -9,12 +9,12 @@
     {
       "name": "text simplu: Daily, azi, toată ziua, fără memento",
       "input": { "text": "cumpără lapte" },
-      "want": { "title": "cumpără lapte", "projectId": "p-daily", "dueAt": "2026-10-05T21:00:00.000Z", "allDay": true, "rrule": null, "remindAt": null, "error": null, "spans": [] }
+      "want": { "title": "cumpără lapte", "label": { "day": "Azi", "time": null }, "projectId": "p-daily", "dueAt": "2026-10-05T21:00:00.000Z", "allDay": true, "rrule": null, "remindAt": null, "error": null, "spans": [] }
     },
     {
       "name": "dată, oră și semne: #daily nu e recurență",
       "input": { "text": "Ședință mâine la 10 #personal @ana !" },
-      "want": { "title": "Ședință", "projectId": "p-pers", "assigneeId": "a-ana", "urgent": true, "dueAt": "2026-10-07T07:00:00.000Z", "allDay": false, "rrule": null, "remindAt": "2026-10-07T07:00:00.000Z", "error": null, "spans": [[8, 13], [14, 19]] }
+      "want": { "title": "Ședință", "projectId": "p-pers", "assigneeId": "a-ana", "urgent": true, "dueAt": "2026-10-07T07:00:00.000Z", "allDay": false, "rrule": null, "remindAt": "2026-10-07T07:00:00.000Z", "error": null, "spans": [[8, 13], [14, 19]], "label": { "day": "Mâine", "time": "10:00" } }
     },
     {
       "name": "#daily scris de mână: proiectul, nu recurența",

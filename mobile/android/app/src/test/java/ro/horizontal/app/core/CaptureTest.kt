@@ -30,6 +30,7 @@ class CaptureTest {
         assertNull(d.remindAt)
         assertNull(d.error)
         assertEquals(true, d.raw)
+        assertEquals("Azi", d.label)
     }
 
     @Test fun modulBrut_jetoaneleBatImplicitul() {
@@ -37,6 +38,7 @@ class CaptureTest {
             dueSet = true, dueAt = "2026-10-07T07:00:00.000Z", allDay = false), data, now, zone)
         assertEquals("p-pers", d.projectId); assertEquals("a-ana", d.assigneeId); assertEquals(true, d.urgent)
         assertEquals("2026-10-07T07:00:00.000Z", d.dueAt); assertEquals("2026-10-07T07:00:00.000Z", d.remindAt)
+        assertEquals("Mâine 10:00", d.label)
     }
 
     @Test fun modulBrut_golȘiFărăDaily() {
@@ -61,8 +63,8 @@ class CaptureTest {
         assertEquals(true, inp.getBoolean("tokens"))
 
         val r = parseEngineResult(JSONObject("""{"live":["la 10"],"spans":[[8,13]],"title":"Ședință","projectId":"p-daily","assigneeId":null,
-            "urgent":true,"unknown":[],"dueAt":"2026-10-07T07:00:00.000Z","allDay":false,"rrule":null,"remindAt":"2026-10-07T07:00:00.000Z","issue":{},"error":null}""").toString())
+            "urgent":true,"unknown":[],"dueAt":"2026-10-07T07:00:00.000Z","allDay":false,"rrule":null,"remindAt":"2026-10-07T07:00:00.000Z","label":{"day":"Mâine","time":"10:00"},"issue":{},"error":null}""").toString())
         assertEquals(listOf(8 until 13), r.spans); assertEquals("Ședință", r.title); assertEquals(true, r.urgent); assertNull(r.error)
-        assertEquals(listOf("la 10"), r.live); assertEquals(false, r.raw)
+        assertEquals(listOf("la 10"), r.live); assertEquals(false, r.raw); assertEquals("Mâine 10:00", r.label)
     }
 }

@@ -212,6 +212,8 @@ export interface CaptureResult {
   allDay: boolean
   rrule: string | null
   remindAt: string | null
+  /** Ce scrie jetonul de dată („Azi", „Mâine 10:00"); `null` = fără dată. */
+  label: { day: string; time: string | null } | null
   issue: NewIssue | null
   error: DraftError | null
 }
@@ -251,6 +253,7 @@ export function computeDraft(i: CaptureInput): CaptureResult {
     allDay: schedule.allDay,
     rrule: schedule.rrule,
     remindAt: reminderAt(schedule.dueAt, defaultReminder(schedule.allDay)),
+    label: schedule.dueAt ? dueLabelParts(schedule.dueAt, schedule.allDay, now) : null,
     issue: 'error' in resolved ? null : resolved,
     error: 'error' in resolved ? resolved.error : null,
   }

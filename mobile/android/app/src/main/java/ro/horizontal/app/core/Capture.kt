@@ -33,6 +33,8 @@ data class Draft(
     val projectId: String?, val assigneeId: String?, val urgent: Boolean, val unknown: List<String>,
     val dueAt: String?, val allDay: Boolean, val rrule: String?, val remindAt: String?,
     val error: String?, val raw: Boolean,
+    /** Jetonul de dată („Azi", „Mâine 10:00"); `null` = fără dată. Din motor, `dueLabelParts`. */
+    val label: String? = null,
 )
 
 private fun normalizeName(s: String) =
@@ -54,6 +56,18 @@ fun manualDue(date: LocalDate?, time: LocalTime?, zone: ZoneId): Pair<String?, B
     return isoJs(at.toInstant().toEpochMilli()) to (time == null)
 }
 
+private val DAYS = listOf("Lun", "Mar", "Mie", "Joi", "Vin", "Sâm", "Dum")
+
+/** `dueLabelParts` din `quickDraft.ts`, pentru modul brut (fără motor). */
+fun rawLabel(dueAt: String?, allDay: Boolean, nowMs: Long, zone: ZoneId): String? {
+    val at = parseIso(dueAt) ?: return null
+    val d = Instant.ofEpochMilli(at).atZone(zone)
+    val off = java.time.temporal.ChronoUnit.DAYS.between(Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate(), d.toLocalDate())
+    val day = when (off) { 0L -> "Azi"; 1L -> "Mâine"; -1L -> "Ieri"
+        else -> "${DAYS[d.dayOfWeek.value - 1]} ${"%02d/%02d".format(d.dayOfMonth, d.monthValue)}" }
+    return if (allDay) day else "$day ${"%02d:%02d".format(d.hour, d.minute)}"
+}
+
 /** Fără motor: nimic nu se citește din text. Proiectul, data, omul și urgența vin doar din jetoane. */
 fun rawDraft(text: String, manual: Manual, data: CaptureData, nowMs: Long, zone: ZoneId): Draft {
     val project = data.projects.firstOrNull { it.id == (manual.projectId ?: dailyProjectId(data.projects)) }
@@ -63,7 +77,7 @@ fun rawDraft(text: String, manual: Manual, data: CaptureData, nowMs: Long, zone:
     return Draft(
         text.trim(), emptyList(), emptyList(), project?.id, if (manual.assigneeSet) manual.assigneeId else null,
         manual.urgent ?: false, emptyList(), dueAt, allDay, null, defaultRemindAt(dueAt, allDay),
-        if (text.isBlank()) "empty" else null, raw = true,
+        if (text.isBlank()) "empty" else null, raw = true, label = rawLabel(dueAt, allDay, nowMs, zone),
     )
 }
 
@@ -91,6 +105,7 @@ fun parseEngineResult(json: String): Draft {
     return Draft(
         o.getString("title"), spans, strings("live"), str("projectId"), str("assigneeId"), o.optBoolean("urgent"),
         strings("unknown"), str("dueAt"), o.optBoolean("allDay", true), str("rrule"), str("remindAt"), str("error"), raw = false,
+        label = o.optJSONObject("label")?.let { l -> l.getString("day") + (if (l.isNull("time")) "" else " " + l.getString("time")) },
     )
 }
 
