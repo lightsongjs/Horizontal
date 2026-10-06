@@ -1115,6 +1115,20 @@ Pro (HyperOS 3, Android 16).
   foaie după o atingere din widget → `leave()` (`moveTaskToBack`). Fonturile sunt
   `serif`/`monospace` de sistem: `RemoteViews` se umflă în launcher.
 
+- **Fereastra de quick add** (spec: `docs/superpowers/specs/2026-10-06-quick-add-nativ-design.md`):
+  butonul widget-ului deschide `QuickAddActivity` — nativă, fără WebView. Regulile
+  de captură au O SINGURĂ sursă: `computeDraft` (`src/lib/quickDraft.ts`), folosit
+  de `useQuickDraft` și împachetat (`scripts/build-capture-engine.mjs` →
+  `assets/capture-engine.js`, gitignorat, făcut de `android:apk`/`android:install`)
+  pentru `CaptureEngine` (`androidx.javascriptengine`, minSdk 26). **O schimbare în
+  parser ajunge în fereastră doar cu un APK nou.** Testul `src/capture/engine.test.ts`
+  rulează pachetul în `node:vm` pe `capture.fixtures.json`. Fără motor → modul brut
+  (`rawDraft`). Creările stau în `PlanStore.creates` (coadă separată de acțiuni —
+  `take` nu le dă paginii); `DrainWorker` le trimite întâi, cu ID-ul (`attemptId`)
+  salvat ÎNAINTE de POST: 409 + rând al nostru = gata, al altcuiva = ID nou (max 5).
+  Pagina reîncearcă și ea la 23505. Fișierele: cale și ID fixe, urcate după creare,
+  abandonate după o oră. Proiectele/oamenii vin de la pagină (`setCaptureData`, API 3).
+
 ## Laptopul activ amână telefonul (30 s)
 
 Când omul lucrează la laptop, mementoul telefonului așteaptă 30 s. Dacă în
