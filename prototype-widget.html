@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Widget Android — mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,500;7..72,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* Jetoanele aplicației (src/styles.css), câte o temă pe fiecare telefon. */
+  .t-dark {
+    --bg:#0B0B0E; --surface:#16161A; --surface-2:#1E1E23; --surface-3:#26262C;
+    --txt:#FAFAF9; --txt-dim:#9C9CA2; --txt-faint:#6B6B70;
+    --accent:#818CF8; --accent-soft:rgba(129,140,248,.13); --blocked:#DF8B84;
+    --sep:rgba(255,255,255,.06);
+    --amb: inset 0 1px 0 rgba(255,255,255,.055), 0 6px 24px rgba(0,0,0,.42);
+    --wall: radial-gradient(120% 80% at 20% 10%, #2b2f4a 0%, #14151c 55%, #0b0b0e 100%);
+  }
+  .t-light {
+    --bg:#F7F9FC; --surface:#FFFFFF; --surface-2:#F0F4F8; --surface-3:#E8EFF4;
+    --txt:#29343A; --txt-dim:#566168; --txt-faint:#717C84;
+    --accent:#1A237E; --accent-soft:rgba(26,35,126,.08); --blocked:#A0333F;
+    --sep:rgba(41,52,58,.08);
+    --amb: 0 6px 24px rgba(41,52,58,.10);
+    --wall: radial-gradient(120% 80% at 20% 10%, #dfe6f5 0%, #c9d3e6 55%, #b6c2d8 100%);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #2a2a30; color: #eee; font-family: 'Literata', Georgia, serif;
+    padding: 24px 16px 48px;
+  }
+  header.page { max-width: 1000px; margin: 0 auto 20px; }
+  header.page h1 { font-weight: 500; font-size: 22px; }
+  header.page p { color: #aaa; font-size: 14px; margin-top: 6px; line-height: 1.5; max-width: 720px; }
+  .controls { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .controls button {
+    font: 500 12px 'IBM Plex Mono', monospace; letter-spacing: .04em; text-transform: uppercase;
+    background: #3a3a42; color: #eee; border: 0; border-radius: 6px; padding: 8px 12px; cursor: pointer;
+  }
+  .phones { display: flex; gap: 32px; justify-content: center; flex-wrap: wrap; }
+  .phone-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .phone-wrap .cap { font: 500 11px 'IBM Plex Mono', monospace; color: #999; text-transform: uppercase; letter-spacing: .08em; }
+
+  /* Telefonul: 390 × 820, ecranul de start cu grila de 4 coloane. */
+  .phone {
+    width: 390px; height: 820px; border-radius: 44px; padding: 12px;
+    background: #050506; box-shadow: 0 30px 60px rgba(0,0,0,.5);
+  }
+  .screen {
+    position: relative; width: 100%; height: 100%; border-radius: 34px; overflow: hidden;
+    background: var(--wall); padding: 44px 14px 0;
+    display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 84px; gap: 10px;
+    align-content: start;
+  }
+  .status {
+    position: absolute; top: 14px; left: 26px; right: 26px; display: flex; justify-content: space-between;
+    font: 500 13px 'IBM Plex Mono', monospace; color: var(--txt);
+  }
+  .app-icon { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; }
+  .app-icon i { width: 52px; height: 52px; border-radius: 16px; background: rgba(255,255,255,.18); display: block; }
+  .t-light .app-icon i { background: rgba(255,255,255,.7); }
+  .app-icon span { font: 11px system-ui, sans-serif; color: var(--txt); opacity: .85; }
+
+  /* ── Widget: listă (4 × 6) ─────────────────────────────── */
+  .w-list {
+    grid-column: span 4; grid-row: span 6;
+    background: var(--surface); border-radius: 16px; box-shadow: var(--amb);
+    display: flex; flex-direction: column; overflow: hidden; color: var(--txt);
+  }
+  .w-head {
+    display: flex; align-items: center; gap: 4px; padding: 12px 8px 8px 16px; flex-shrink: 0;
+  }
+  .w-head .brand { font: 600 16px 'Literata', serif; flex: 1; cursor: pointer; }
+  .w-head .brand small { font: 500 11px 'IBM Plex Mono', monospace; color: var(--txt-faint); margin-left: 6px; letter-spacing: .02em; }
+  .icon-btn {
+    width: 36px; height: 36px; border-radius: 6px; border: 0; background: transparent;
+    color: var(--txt-dim); display: grid; place-items: center; cursor: pointer;
+  }
+  .icon-btn.add { background: var(--accent); color: var(--bg); }
+  .icon-btn svg { width: 18px; height: 18px; }
+  .spin svg { animation: spin .8s linear; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .w-body { flex: 1; overflow-y: auto; padding: 0 0 12px; scrollbar-width: none; }
+  .w-body::-webkit-scrollbar { display: none; }
+  .day {
+    font: 600 11px 'IBM Plex Mono', monospace; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--txt-dim); padding: 14px 16px 6px;
+    display: flex; align-items: baseline; gap: 8px;
+  }
+  .day .n { color: var(--txt-faint); font-weight: 500; }
+  .day.overdue { color: var(--blocked); }
+  .day.overdue .n { color: var(--blocked); opacity: .7; }
+  .day.today { color: var(--accent); }
+
+  .row {
+    display: flex; align-items: center; gap: 12px; padding: 8px 16px 8px 12px; min-height: 52px;
+    cursor: pointer; position: relative;
+  }
+  .row + .row::before {
+    content: ''; position: absolute; top: 0; left: 50px; right: 16px; height: 1px; background: var(--sep);
+  }
+  .row:active { background: var(--surface-2); }
+  .check {
+    width: 26px; height: 26px; flex-shrink: 0; display: grid; place-items: center; cursor: pointer;
+  }
+  .check i {
+    width: 20px; height: 20px; border-radius: 6px; border: 1.8px solid var(--txt-faint); display: block;
+  }
+  .row.late .check i { border-color: var(--blocked); }
+  .row .main { flex: 1; min-width: 0; }
+  .row .title { font: 400 15px/1.3 'Literata', serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .proj { font: 500 11px 'IBM Plex Mono', monospace; color: var(--txt-faint); margin-top: 2px; }
+  .row .meta {
+    display: flex; align-items: center; gap: 4px; flex-shrink: 0;
+    font: 500 12px 'IBM Plex Mono', monospace; color: var(--txt-dim);
+  }
+  .row.late .meta { color: var(--blocked); }
+  .meta svg { width: 13px; height: 13px; }
+
+  .empty {
+    height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+    color: var(--txt-dim); text-align: center; padding: 24px;
+  }
+  .empty b { font: 500 16px 'Literata', serif; color: var(--txt); }
+  .empty span { font: 500 11px 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: .06em; }
+
+  /* ── Widget: quick add (1 × 1) ─────────────────────────── */
+  .w-quick { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; cursor: pointer; }
+  .w-quick i {
+    width: 56px; height: 56px; border-radius: 16px; background: var(--accent); color: var(--bg);
+    display: grid; place-items: center; box-shadow: var(--amb);
+  }
+  .w-quick i svg { width: 26px; height: 26px; }
+  .w-quick span { font: 11px system-ui, sans-serif; color: var(--txt); opacity: .85; }
+
+  .dock { grid-column: span 4; }
+
+  /* Ce s-ar întâmpla la atingere — doar pentru mockup. */
+  .toast {
+    position: absolute; left: 16px; right: 16px; bottom: 24px; padding: 12px 14px; border-radius: 10px;
+    background: var(--surface-3); color: var(--txt); font: 13px/1.4 'Literata', serif; box-shadow: var(--amb);
+    opacity: 0; transform: translateY(8px); transition: .2s; pointer-events: none;
+  }
+  .toast.on { opacity: 1; transform: none; }
+  .toast code { font: 500 12px 'IBM Plex Mono', monospace; color: var(--accent); }
+
+  .notes { max-width: 1000px; margin: 28px auto 0; color: #bbb; font-size: 14px; line-height: 1.6; }
+  .notes h2 { font: 600 12px 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: .08em; color: #888; margin: 18px 0 6px; }
+  .notes li { margin-left: 18px; }
+  @media (max-width: 860px) { .phone { transform: scale(.9); transform-origin: top center; } }
+</style>
+</head>
+<body>
+<header class="page">
+  <h1>Widget-uri Android — mockup</h1>
+  <p>Ecranul de start cu cele două widget-uri: lista (4 coloane lățime, se poate trage mai mare) și butonul de quick add (1×1).
+     Totul e interactiv: bifează o căsuță, atinge un rând, [+], ⟳. Datele sunt relative la ziua de azi.</p>
+  <div class="controls">
+    <button id="reset">Repune sarcinile</button>
+    <button id="emptyBtn">Arată starea goală</button>
+  </div>
+</header>
+
+<div class="phones" id="phones"></div>
+
+<div class="notes">
+  <h2>Ce se vede</h2>
+  <ul>
+    <li><b>Restanțe</b> mereu sus, în roșu; în dreapta ziua scadenței, nu ora — acolo contează cât de veche e.</li>
+    <li><b>Azi</b> în culoarea de accent, apoi Mâine și zilele din următoarea săptămână. Zilele fără sarcini nu apar.</li>
+    <li>Ora apare <b>doar dacă</b> sarcina are una; clopoțelul doar dacă are memento; ↻ dacă e recurentă.</li>
+    <li>Bifa scoate rândul <b>imediat</b>. O recurentă reapare la următoarea dată după sincronizare (aici: pe loc).</li>
+    <li>Atingerea pe rând deschide tichetul în aplicație; Back te întoarce aici.</li>
+  </ul>
+</div>
+
+<template id="phoneTpl">
+  <div class="phone-wrap">
+    <div class="phone"><div class="screen">
+      <div class="status"><span class="clock"></span><span>5G ▮▮▮</span></div>
+      <div class="w-list">
+        <div class="w-head">
+          <div class="brand" data-act="open-app">Horizontal<small class="count"></small></div>
+          <button class="icon-btn refresh" title="Reîmprospătează" data-act="refresh"></button>
+          <button class="icon-btn add" title="Adaugă" data-act="quick"></button>
+        </div>
+        <div class="w-body"></div>
+      </div>
+      <div class="app-icon"><i></i><span>Telefon</span></div>
+      <div class="app-icon"><i></i><span>Mesaje</span></div>
+      <div class="app-icon"><i></i><span>Chrome</span></div>
+      <div class="w-quick" data-act="quick"><i></i><span>Adaugă</span></div>
+      <div class="toast"></div>
+    </div></div>
+    <div class="cap"></div>
+  </div>
+</template>
+
+<script>
+const ICON = {
+  plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  refresh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>',
+  bell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>',
+  repeat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>',
+}
+const ZILE = ['dum', 'lun', 'mar', 'mie', 'joi', 'vin', 'sâm']
+const ZILE_LUNGI = ['Duminică', 'Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă']
+const LUNI = ['ian', 'feb', 'mar', 'apr', 'mai', 'iun', 'iul', 'aug', 'sep', 'oct', 'nov', 'dec']
+
+// d = zile față de azi; time = null înseamnă „toată ziua".
+const SEED = [
+  { id: 'HZ-41', title: 'Factura furnizor — de trimis la contabilitate', proj: 'Daily', d: -4, time: null },
+  { id: 'FIN-7', title: 'Sună la bancă pentru card', proj: 'Personal', d: -1, time: '16:00', bell: true },
+  { id: 'HZ-52', title: 'Ședință echipă', proj: 'Horizontal', d: 0, time: '10:00', bell: true, rec: 'FREQ=WEEKLY' },
+  { id: 'HZ-55', title: 'Raport lunar', proj: 'Daily', d: 0, time: null },
+  { id: 'HZ-58', title: 'Răspuns la email Mihai', proj: 'Daily', d: 0, time: '14:30' },
+  { id: 'HZ-60', title: 'Udă florile', proj: 'Casă', d: 0, time: null, rec: 'FREQ=DAILY;INTERVAL=2' },
+  { id: 'MED-3', title: 'Dentist', proj: 'Personal', d: 1, time: '17:30', bell: true },
+  { id: 'HZ-61', title: 'Review PR widget-uri', proj: 'Horizontal', d: 1, time: null },
+  { id: 'HZ-63', title: 'Plata întreținerii', proj: 'Casă', d: 3, time: null, bell: true },
+  { id: 'HZ-64', title: 'Pregătire prezentare trimestrială', proj: 'Daily', d: 4, time: '09:00' },
+  { id: 'HZ-66', title: 'Cumpărături săptămânale', proj: 'Casă', d: 5, time: null, rec: 'FREQ=WEEKLY' },
+]
+const STEP = { 'FREQ=DAILY;INTERVAL=2': 2, 'FREQ=WEEKLY': 7 }
+
+let tasks, empty = false
+function reset() { tasks = SEED.map(t => ({ ...t })); empty = false }
+reset()
+
+const today = new Date(); today.setHours(0, 0, 0, 0)
+const dayOf = d => { const x = new Date(today); x.setDate(x.getDate() + d); return x }
+
+function groups() {
+  const live = empty ? [] : tasks.slice().sort((a, b) => a.d - b.d || (a.time ?? '99').localeCompare(b.time ?? '99'))
+  const out = []
+  const late = live.filter(t => t.d < 0)
+  if (late.length) out.push({ cls: 'overdue', label: 'Restanțe', n: late.length, rows: late, late: true })
+  for (let d = 0; d <= 7; d++) {
+    const rows = live.filter(t => t.d === d)
+    if (!rows.length) continue
+    const x = dayOf(d)
+    const date = `${ZILE[x.getDay()]} ${x.getDate()} ${LUNI[x.getMonth()]}`
+    const label = d === 0 ? `Azi · ${date}` : d === 1 ? `Mâine · ${date}` : `${ZILE_LUNGI[x.getDay()]} ${x.getDate()} ${LUNI[x.getMonth()]}`
+    out.push({ cls: d === 0 ? 'today' : '', label, rows })
+  }
+  return out
+}
+
+function meta(t, late) {
+  const parts = []
+  if (late) { const x = dayOf(t.d); parts.push(t.d === -1 ? 'ieri' : `${ZILE[x.getDay()]} ${x.getDate()}`) }
+  else if (t.time) parts.push(t.time)
+  if (t.rec) parts.push(ICON.repeat)
+  if (t.bell) parts.push(ICON.bell)
+  return parts.join('')
+}
+
+function render(phone) {
+  const body = phone.querySelector('.w-body')
+  const gs = groups()
+  const total = gs.reduce((s, g) => s + g.rows.length, 0)
+  phone.querySelector('.count').textContent = total ? `· ${total}` : ''
+  if (!gs.length) {
+    body.innerHTML = '<div class="empty"><b>Nimic restant, nimic azi.</b><span>Următoarele 7 zile sunt libere</span></div>'
+    return
+  }
+  body.innerHTML = gs.map(g => `
+    <div class="day ${g.cls}">${g.label}${g.n ? `<span class="n">${g.n}</span>` : ''}</div>
+    ${g.rows.map(t => `
+      <div class="row ${g.late ? 'late' : ''}" data-id="${t.id}">
+        <div class="check" data-act="check"><i></i></div>
+        <div class="main"><div class="title">${t.title}</div><div class="proj">${t.proj}</div></div>
+        <div class="meta">${meta(t, g.late)}</div>
+      </div>`).join('')}`).join('')
+}
+
+function renderAll() { document.querySelectorAll('.phone-wrap').forEach(render) }
+
+function toast(phone, html) {
+  const el = phone.querySelector('.toast')
+  el.innerHTML = html; el.classList.add('on')
+  clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('on'), 2200)
+}
+
+const phones = document.getElementById('phones')
+for (const [cls, cap] of [['t-dark', 'Temă închisă'], ['t-light', 'Temă deschisă']]) {
+  const node = document.getElementById('phoneTpl').content.firstElementChild.cloneNode(true)
+  node.classList.add(cls)
+  node.querySelector('.cap').textContent = cap
+  node.querySelector('.refresh').innerHTML = ICON.refresh
+  node.querySelector('.add').innerHTML = ICON.plus
+  node.querySelector('.w-quick i').innerHTML = ICON.plus
+  node.querySelector('.clock').textContent = new Date().toTimeString().slice(0, 5)
+  node.addEventListener('click', e => {
+    const act = e.target.closest('[data-act]')?.dataset.act
+    const row = e.target.closest('.row')
+    if (act === 'check' && row) {
+      const t = tasks.find(x => x.id === row.dataset.id)
+      if (t.rec) {
+        // Recurenta sare din ziua CURENTĂ, ca triggerul din Postgres.
+        const step = STEP[t.rec]; t.d = Math.max(t.d, 0) + step
+        toast(node, `Recurentă: sare peste ${step} zile`)
+      } else tasks = tasks.filter(x => x !== t)
+      renderAll()
+    } else if (row) {
+      toast(node, `Se deschide <code>/${row.dataset.id}</code> în aplicație — Back te aduce înapoi aici`)
+    } else if (act === 'quick') {
+      toast(node, 'Se deschide foaia rapidă, cu tastatura sus')
+    } else if (act === 'open-app') {
+      toast(node, 'Se deschide aplicația pe „Azi"')
+    } else if (act === 'refresh') {
+      const b = node.querySelector('.refresh'); b.classList.remove('spin'); void b.offsetWidth; b.classList.add('spin')
+    }
+  })
+  phones.appendChild(node)
+}
+document.getElementById('reset').onclick = () => { reset(); renderAll() }
+document.getElementById('emptyBtn').onclick = () => { empty = true; renderAll() }
+renderAll()
+</script>
+</body>
+</html>
