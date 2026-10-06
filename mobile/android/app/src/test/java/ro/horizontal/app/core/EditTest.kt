@@ -63,4 +63,14 @@ class EditTest {
         val e = edit(fields = mapOf("title" to "T", "details" to "D"), drainedAt = 4)
         assertEquals(e, Json.editFromJson(Json.editToJson(e)))
     }
+
+    @Test fun oEditareCuIdProvizoriu_dupăTrimitere_mergePeIdulReal() {
+        val sent = create(attemptId = "HZ-09").copy(realId = "HZ-09", drainedAt = 5)
+        val (_, q) = applyEdit(listOf(sent), emptyList(), edit(id = "HZ-~c1"))
+        assertEquals(listOf("HZ-09"), q.map { it.id })
+    }
+
+    @Test fun ocreareAbandonată_îșiIaEditărileCuEa() {
+        assertEquals(listOf("HZ-04"), dropEditsOf(listOf(edit(id = "HZ-~c1"), edit(uid = "e2", id = "HZ-04")), "HZ-~c1").map { it.id })
+    }
 }

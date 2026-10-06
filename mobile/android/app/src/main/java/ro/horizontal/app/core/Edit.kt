@@ -30,7 +30,10 @@ fun patchOf(draft: Map<String, String>, base: Map<String, String>): Map<String, 
  * provizoriu, și pleacă după remapare. Altfel se contopește cu ultima editare
  * netrimisă a aceluiași tichet (ultima valoare câștigă).
  */
-fun applyEdit(creates: List<NativeCreate>, edits: List<NativeEdit>, e: NativeEdit): Pair<List<NativeCreate>, List<NativeEdit>> {
+fun applyEdit(creates: List<NativeCreate>, edits: List<NativeEdit>, e0: NativeEdit): Pair<List<NativeCreate>, List<NativeEdit>> {
+    // Foaia deschisă pe ID-ul provizoriu, iar crearea a plecat între timp: remaparea a trecut
+    // deja, deci editarea ar rămâne pe veci pe un ID pe care nu-l mai traduce nimeni.
+    val e = creates.firstOrNull { it.tempId == e0.id && it.realId != null }?.let { e0.copy(id = it.realId!!) } ?: e0
     val c = creates.firstOrNull { it.realId == null && it.tempId == e.id }
     if (c != null && c.attemptId == null && !c.inFlight) {
         return creates.map { if (it.uid == c.uid) it.copy(title = e.fields["title"] ?: it.title, desc = e.fields["details"] ?: it.desc) else it } to edits
@@ -55,3 +58,6 @@ fun agendaWithEdits(items: List<AgendaItem>, edits: List<NativeEdit>, readAt: Lo
 }
 
 fun pruneEdits(edits: List<NativeEdit>, agendaReadAt: Long) = edits.filterNot { it.drainedAt != null && it.drainedAt < agendaReadAt }
+
+/** O creare refuzată de server: editările ei n-au unde să mai ajungă. */
+fun dropEditsOf(edits: List<NativeEdit>, tempId: String) = edits.filterNot { it.id == tempId }

@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.text.Editable
+import android.text.InputType
 import android.text.TextWatcher
 import android.view.View
 import android.view.inputmethod.EditorInfo
@@ -70,12 +71,8 @@ class TicketActivity : AppCompatActivity() {
         title.setOnEditorActionListener { v, a, _ -> if (a == EditorInfo.IME_ACTION_DONE) { flush(); v.clearFocus(); true } else false }
         title.addTextChangedListener(watcher { if (!loading) { titleDirty = true; schedule() } })
         desc.addTextChangedListener(watcher { if (!loading) { descDirty = true; schedule() } })
-        // Descrierea lungă derulează în ea, nu împinge foaia peste ecran.
-        val scroll = findViewById<View>(R.id.t_desc_scroll)
-        scroll.post {
-            val max = (resources.displayMetrics.heightPixels * 0.45).toInt()
-            if (scroll.height > max) scroll.layoutParams = scroll.layoutParams.apply { height = max }
-        }
+        // Titlul se rupe pe rânduri, dar Enter îl încheie (textMultiLine din XML ar fi pus un rând nou în titlu).
+        title.setRawInputType(InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES)
         open(intent)
     }
 
@@ -89,6 +86,8 @@ class TicketActivity : AppCompatActivity() {
     private fun open(i: Intent) {
         id = i.getStringExtra(EXTRA_ID) ?: return finish()
         base.clear(); descLoaded = false; titleDirty = false; descDirty = false
+        // `singleTask`: aceeași instanță primește și tichetul următor — fără stări rămase de la cel dinainte.
+        title.isEnabled = true; desc.isEnabled = true
         val project = i.getStringExtra(EXTRA_PROJECT)
         findViewById<TextView>(R.id.t_head).text = listOfNotNull(displayId(id), project).joinToString(" · ")
         val due = findViewById<TextView>(R.id.t_due)
@@ -96,8 +95,8 @@ class TicketActivity : AppCompatActivity() {
         due.setCompoundDrawablesRelativeWithIntrinsicBounds(
             if (i.getBooleanExtra(EXTRA_RECURRING, false)) R.drawable.ic_widget_repeat else 0, 0,
             if (i.getBooleanExtra(EXTRA_REMINDER, false)) R.drawable.ic_widget_bell else 0, 0)
-        due.compoundDrawablesRelative.forEach { it?.setBounds(0, 0, dp(13), dp(13)); it?.setTint(getColor(R.color.hz_muted)) }
-        due.setCompoundDrawablesRelative(due.compoundDrawablesRelative[0], null, due.compoundDrawablesRelative[2], null)
+        val icons = due.compoundDrawablesRelative.map { d -> d?.mutate()?.apply { setBounds(0, 0, dp(13), dp(13)); setTint(getColor(R.color.hz_muted)) } }
+        due.setCompoundDrawablesRelative(icons[0], null, icons[2], null)
         val agendaTitle = i.getStringExtra(EXTRA_TITLE) ?: ""
         setTexts(agendaTitle, null)
         base["title"] = agendaTitle
@@ -105,11 +104,16 @@ class TicketActivity : AppCompatActivity() {
 
         val s = PlanStore.read(this)
         val create = s.creates.firstOrNull { it.tempId == id || it.realId == id }
+        // Un rând vechi din widget poate purta încă ID-ul provizoriu al unei sarcini deja trimise.
+        if (create != null) id = create.id
         when {
-            // Capturată pe telefon și încă nevăzută de server (sau abia trimisă): totul e aici.
+            // Capturată pe telefon și încă nevăzută de server (sau abia trimisă): totul e aici,
+            // cu editările încă netrimise peste ea.
             create != null -> {
-                setTexts(s.edits.lastOrNull { it.id == id }?.fields?.get("title") ?: create.title, create.desc)
-                base["title"] = create.title; base["details"] = create.desc; descLoaded = true
+                val pending = s.edits.filter { it.id == create.id || it.id == create.tempId }.fold(emptyMap<String, String>()) { a, e -> a + e.fields }
+                val t = pending["title"] ?: create.title; val d = pending["details"] ?: create.desc
+                setTexts(t, d)
+                base["title"] = t; base["details"] = d; descLoaded = true
                 paintFiles(create.files.map { Shown(it.filename, it.contentType, File(it.path)) })
                 showNote(null)
             }
@@ -155,7 +159,7 @@ class TicketActivity : AppCompatActivity() {
         val urls = if (rows.isEmpty()) emptyMap() else SupabaseApi.signStorage(this, rows.map { it.getString("path") }, owner).orEmpty()
         val dir = File(cacheDir, "attach").apply { mkdirs() }
         rows.map { o ->
-            val type = o.optString("content_type", "application/octet-stream")
+            val type = if (o.isNull("content_type")) "application/octet-stream" else o.getString("content_type")
             val f = File(dir, "${o.getString("id")}-${o.getString("filename").replace(Regex("[^A-Za-z0-9._-]"), "_").takeLast(60)}")
             val url = urls[o.getString("path")]
             // Obiectele sunt imuabile (ID nou la fiecare urcare): ID-ul e o cheie de cache permanentă.

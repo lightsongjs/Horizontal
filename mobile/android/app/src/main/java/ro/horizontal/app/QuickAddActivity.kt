@@ -87,6 +87,8 @@ class QuickAddActivity : AppCompatActivity() {
 
         restoreDraft(b)
         title.addTextChangedListener(watcher { if (!painting) recompute() })
+        // Titlul se rupe pe rânduri (textMultiLine în XML), dar tasta Enter e „Trimite", nu un rând nou.
+        title.setRawInputType(android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES)
         title.setOnEditorActionListener { _, id, _ -> if (id == EditorInfo.IME_ACTION_SEND) { submit(); true } else false }
         title.setOnTouchListener { _, e -> e.action == MotionEvent.ACTION_DOWN && rejectAt(e) }
         findViewById<View>(R.id.q_send).setOnClickListener { submit() }

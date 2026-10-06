@@ -78,6 +78,16 @@ object Notifier {
     }
     fun cancelStatus(ctx: Context) = NotificationManagerCompat.from(ctx).cancel("stare", STATUS_ID)
 
+    /** Serverul a refuzat o editare din foaia tichetului: foaia e închisă, deci omul află de aici. */
+    fun showEditFailed(ctx: Context, title: String?) {
+        val n = NotificationCompat.Builder(ctx, CH_STATUS).setSmallIcon(R.drawable.ic_stat_hz)
+            .setContentTitle("O modificare n-a putut fi salvată")
+            .setContentText(title?.let { "„$it”" } ?: "Titlul sau descrierea unei sarcini.")
+            .setContentIntent(PendingIntent.getActivity(ctx, 10, Intent(ctx, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE))
+            .setAutoCancel(true)
+        try { NotificationManagerCompat.from(ctx).notify("editare", 1, n.build()) } catch (e: SecurityException) {}
+    }
+
     /** Pozele unei sarcini n-au plecat într-o oră: sarcina e pe server, fișierele nu. */
     fun showFilesFailed(ctx: Context, title: String) {
         val n = NotificationCompat.Builder(ctx, CH_STATUS).setSmallIcon(R.drawable.ic_stat_hz)

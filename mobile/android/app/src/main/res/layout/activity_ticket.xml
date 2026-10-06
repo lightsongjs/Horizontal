@@ -64,7 +64,7 @@
             android:textColorHint="@color/hz_muted"
             android:textSize="20sp" />
 
-        <ScrollView
+        <ro.horizontal.app.MaxHeightScrollView
             android:id="@+id/t_desc_scroll"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -83,7 +83,7 @@
                 android:textColor="@color/hz_text"
                 android:textColorHint="@color/hz_muted"
                 android:textSize="15sp" />
-        </ScrollView>
+        </ro.horizontal.app.MaxHeightScrollView>
 
         <TextView
             android:id="@+id/t_note"

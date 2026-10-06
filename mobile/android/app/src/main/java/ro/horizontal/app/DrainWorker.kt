@@ -107,6 +107,7 @@ class DrainWorker(ctx: Context, p: WorkerParameters) : Worker(ctx, p) {
                 Outcome.DROP -> s.edits.filterNot { it.uid == e.uid }
                 else -> s.edits.map { if (it.uid == e.uid) it.copy(inFlight = false) else it }
             }) to Unit }
+            if (outcome == Outcome.DROP) Notifier.showEditFailed(ctx, e.fields["title"])
             when (outcome) {
                 Outcome.DONE, Outcome.DROP -> createdAny = true
                 else -> return outcome
@@ -129,7 +130,7 @@ class DrainWorker(ctx: Context, p: WorkerParameters) : Worker(ctx, p) {
             when (outcome) {
                 Outcome.DONE -> createdAny = true
                 Outcome.DROP -> {
-                    PlanStore.edit(ctx) { s -> s.copy(creates = s.creates.filterNot { it.uid == c.uid }) to Unit }
+                    PlanStore.edit(ctx) { s -> s.copy(creates = s.creates.filterNot { it.uid == c.uid }, edits = dropEditsOf(s.edits, c.tempId)) to Unit }
                     Notifier.showCreateFailed(ctx, c.title)
                     createdAny = true
                 }

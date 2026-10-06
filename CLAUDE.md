@@ -1129,6 +1129,15 @@ Pro (HyperOS 3, Android 16).
   Pagina reîncearcă și ea la 23505. Fișierele: cale și ID fixe, urcate după creare,
   abandonate după o oră. Proiectele/oamenii vin de la pagină (`setCaptureData`, API 3).
 
+- **Foaia tichetului din widget** (`TicketActivity`): atingerea pe un rând o
+  deschide nativ, peste ecranul de start (fără sesiune nativă → aplicația). Titlul
+  și descrierea se salvează singure prin coada `edits` (`core/Edit.kt`, separată de
+  acțiuni, ca `creates`), doar câmpurile schimbate față de server; descrierea nu se
+  editează până nu e citită de pe server. O editare pe o creare netrimisă schimbă
+  crearea; cu ID deja ales stă la coadă (titlul e garda lui `conflictOf`) și e
+  remapată în `markCreated` / tradusă în `applyEdit`. Atașamentele: URL-uri
+  semnate, cache în `cacheDir/attach/<id>`, deschise prin FileProvider.
+
 ## Laptopul activ amână telefonul (30 s)
 
 Când omul lucrează la laptop, mementoul telefonului așteaptă 30 s. Dacă în
