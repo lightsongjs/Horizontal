@@ -31,6 +31,8 @@ object PlanStore {
         val creates: List<NativeCreate> = emptyList(),
         /** Proiectele și oamenii pentru fereastră, împinși de pagină (`setCaptureData`). */
         val capture: CaptureData? = null,
+        /** Titlu/descriere schimbate din foaia nativă a tichetului (`core/Edit.kt`). */
+        val edits: List<NativeEdit> = emptyList(),
     )
 
     private const val PREFS = "hz-plan"
@@ -79,10 +81,11 @@ object PlanStore {
         val agendaNative = p.getString("agendaNative", null)?.let { Json.agendaFromJson(JSONObject(it)) }
         val creates = p.getString("creates", null)?.let { JSONArray(it) }?.let { a -> (0 until a.length()).mapNotNull { Json.createFromJson(a.getJSONObject(it)) } }.orEmpty()
         val capture = p.getString("capture", null)?.let { CaptureJson.fromJson(JSONObject(it)) }
+        val edits = p.getString("edits", null)?.let { JSONArray(it) }?.let { a -> (0 until a.length()).mapNotNull { Json.editFromJson(a.getJSONObject(it)) } }.orEmpty()
         val agendaHeld = p.getString("agendaHeld", null)?.let { JSONObject(it) }?.let { o -> o.keys().asSequence().associateWith { o.getLong(it) } }.orEmpty()
         return State(page, native, queue, p.getStringSet("fired", emptySet())!!.toSet(), shown,
             p.getLong("nextAlarmAt", -1).takeIf { it >= 0 }, p.getBoolean("exactUsed", true), p.getLong("lastSyncAt", -1).takeIf { it >= 0 },
-            reminders(p.getString("deferred", null)?.let { JSONArray(it) }), agendaPage, agendaNative, agendaHeld, creates, capture)
+            reminders(p.getString("deferred", null)?.let { JSONArray(it) }), agendaPage, agendaNative, agendaHeld, creates, capture, edits)
     }
 
     private fun save(ctx: Context, s: State) {
@@ -99,6 +102,7 @@ object PlanStore {
             .putString("agendaHeld", JSONObject(s.agendaHeld as Map<*, *>).toString())
             .putString("creates", JSONArray().also { a -> s.creates.forEach { a.put(Json.createToJson(it)) } }.toString())
             .putString("capture", s.capture?.let { CaptureJson.toJson(it).toString() })
+            .putString("edits", JSONArray().also { a -> s.edits.forEach { a.put(Json.editToJson(it)) } }.toString())
             .commit()
     }
 }

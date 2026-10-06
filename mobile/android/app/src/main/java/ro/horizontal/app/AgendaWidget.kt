@@ -38,7 +38,7 @@ class AgendaWidget : AppWidgetProvider() {
                 Intent(ctx, AgendaWidget::class.java).setAction(ACTION_REFRESH), PendingIntent.FLAG_IMMUTABLE))
 
             val state = agendaState(s.agendaPage, s.agendaNative, s.queue, now, zone, s.agendaHeld,
-                createsAsAgenda(s.creates, maxOf(s.agendaPage?.readAt ?: 0, s.agendaNative?.readAt ?: 0)))
+                createsAsAgenda(s.creates, maxOf(s.agendaPage?.readAt ?: 0, s.agendaNative?.readAt ?: 0)), s.edits)
             val empty = when {
                 state is AgendaState.NoData -> "Deschide aplicația o dată, ca să apară sarcinile."
                 state is AgendaState.Ready && state.count == 0 -> "Nimic restant, nimic azi."
@@ -81,7 +81,11 @@ class AgendaWidget : AppWidgetProvider() {
             r.setColorStateList(R.id.r_check, "setButtonTintList",
                 android.content.res.ColorStateList.valueOf(if (overdue) red else ContextCompat.getColor(ctx, R.color.w_txt_faint)))
             r.setCompoundButtonChecked(R.id.r_check, false)
-            val base = Intent().putExtra(WidgetTapActivity.EXTRA_ID, it.id)
+            // Tot ce desenează foaia tichetului în primul cadru, fără să aștepte rețeaua.
+            val base = Intent().putExtra(WidgetTapActivity.EXTRA_ID, it.id).putExtra(TicketActivity.EXTRA_TITLE, it.title)
+                .putExtra(TicketActivity.EXTRA_DUE, it.dueAt).putExtra(TicketActivity.EXTRA_ALL_DAY, it.allDay)
+                .putExtra(TicketActivity.EXTRA_PROJECT, it.project).putExtra(TicketActivity.EXTRA_REMINDER, it.hasReminder)
+                .putExtra(TicketActivity.EXTRA_RECURRING, it.recurring)
             r.setOnClickFillInIntent(R.id.r_root, Intent(base).putExtra(WidgetTapActivity.EXTRA_KIND, WidgetTapActivity.KIND_OPEN))
             r.setOnCheckedChangeResponse(R.id.r_check, RemoteViews.RemoteResponse.fromFillInIntent(Intent(base)
                 .putExtra(WidgetTapActivity.EXTRA_KIND, WidgetTapActivity.KIND_DONE)

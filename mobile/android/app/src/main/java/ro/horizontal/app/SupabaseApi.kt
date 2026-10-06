@@ -49,6 +49,34 @@ object SupabaseApi {
     }
 
     /**
+     * URL-uri semnate pentru atașamente (o oră), într-o singură cerere. Întoarce
+     * cale → URL absolut; `null` = fără sesiune. Storage dă URL-ul relativ la `/storage/v1`.
+     */
+    fun signStorage(ctx: Context, paths: List<String>, asUser: String): Map<String, String>? {
+        val (url, anon) = NativeSession.config(ctx) ?: return null
+        val (token, user) = NativeSession.session(ctx) ?: return null
+        if (user != asUser) throw AccountChanged()
+        val body = org.json.JSONObject().put("expiresIn", 3600).put("paths", org.json.JSONArray(paths)).toString()
+        val r = raw("POST", "$url/storage/v1/object/sign/attachments", mapOf("apikey" to anon, "Authorization" to "Bearer $token"), body)
+        if (r.status !in 200..299) return emptyMap()
+        val a = org.json.JSONArray(r.body)
+        return (0 until a.length()).mapNotNull { i -> a.getJSONObject(i).let { o ->
+            val p = o.optString("path"); val u = o.optString("signedURL")
+            if (p.isEmpty() || u.isEmpty() || o.has("error") && !o.isNull("error")) null else p to "$url/storage/v1$u"
+        } }.toMap()
+    }
+
+    /** Descarcă un URL (semnat) într-un fișier. Excepția de rețea urcă. */
+    fun download(url: String, out: java.io.File): Boolean {
+        http.newCall(Request.Builder().url(url).build()).execute().use { r ->
+            if (!r.isSuccessful) return false
+            val tmp = java.io.File(out.path + ".part")
+            r.body!!.byteStream().use { i -> tmp.outputStream().use { o -> i.copyTo(o) } }
+            return tmp.renameTo(out)
+        }
+    }
+
+    /**
      * Urcă un fișier în Storage (`attachments/<cale>`), cu sesiunea nativă. Fără
      * upsert: obiectele sunt imuabile, iar un „Duplicate" la o retrimitere e succes
      * (`storageDone`). Cache de un an, ca în pagină (`uploadAttachment`).

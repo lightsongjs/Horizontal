@@ -73,6 +73,12 @@ class DrainWorker(ctx: Context, p: WorkerParameters) : Worker(ctx, p) {
                 Outcome.KEEP_NO_SESSION -> { finish(ctx, changed); return Result.success() }
             }
         }
+        // Editările de titlu/descriere (foaia tichetului): după acțiuni — coloane diferite.
+        when (drainEdits(ctx)) {
+            Outcome.RETRY -> { finish(ctx, true); return Result.retry() }
+            Outcome.KEEP_NO_SESSION -> { finish(ctx, true); return Result.success() }
+            else -> {}
+        }
         // Fișierele la urmă: o poză care tot pică nu ține pe loc „Gata"/„15 min" din notificări.
         val files = try { drainFiles(ctx) } catch (e: AccountChanged) { Outcome.KEEP_NO_SESSION } catch (e: Exception) { Outcome.RETRY }
         finish(ctx, changed || createdAny)
@@ -80,6 +86,33 @@ class DrainWorker(ctx: Context, p: WorkerParameters) : Worker(ctx, p) {
     }
 
     private var createdAny = false
+
+    private fun drainEdits(ctx: Context): Outcome {
+        PlanStore.edit(ctx) { s -> s.copy(edits = s.edits.map { it.copy(inFlight = false) }) to Unit }
+        while (true) {
+            if (isStopped) return Outcome.DONE
+            val (e, owner) = PlanStore.edit(ctx) { s ->
+                val next = nextEditToDrain(s.edits)
+                (if (next != null) s.copy(edits = s.edits.map { if (it.uid == next.uid) it.copy(inFlight = true) else it }) else s) to (next to NativeSession.lastAccount(ctx))
+            }
+            if (e == null) return Outcome.DONE
+            val req = buildEditPatch(e)
+            val outcome = try {
+                val r = SupabaseApi.rest(ctx, "PATCH", "issues?${req.query}", JSONObject(req.body).toString(), prefer = "return=minimal", asUser = owner)
+                if (r == null) Outcome.KEEP_NO_SESSION else outcomeOf(r.status, false, false)
+            } catch (x: AccountChanged) { Outcome.KEEP_NO_SESSION } catch (x: Exception) { Outcome.RETRY }
+            val now = System.currentTimeMillis()
+            PlanStore.edit(ctx) { s -> s.copy(edits = when (outcome) {
+                Outcome.DONE -> s.edits.map { if (it.uid == e.uid) it.copy(inFlight = false, drainedAt = now) else it }
+                Outcome.DROP -> s.edits.filterNot { it.uid == e.uid }
+                else -> s.edits.map { if (it.uid == e.uid) it.copy(inFlight = false) else it }
+            }) to Unit }
+            when (outcome) {
+                Outcome.DONE, Outcome.DROP -> createdAny = true
+                else -> return outcome
+            }
+        }
+    }
 
     /** `DONE` = coada de creări e goală (sau a rămas doar ce nu se mai poate trimite acum). */
     private fun drainCreates(ctx: Context): Outcome {
@@ -190,6 +223,7 @@ class DrainWorker(ctx: Context, p: WorkerParameters) : Worker(ctx, p) {
             s.copy(
                 creates = s.creates.map { if (it.uid == c.uid) it.copy(realId = id, attemptId = id, drainedAt = now, inFlight = false) else it },
                 queue = remapActions(s.queue, c.tempId, id),
+                edits = remapEdits(s.edits, c.tempId, id),
                 fired = remapFired(s.fired, c.tempId, id),
                 shown = remapShown(s.shown, c.tempId, id),
             ) to Unit

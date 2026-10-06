@@ -61,4 +61,11 @@ object Json {
             (0 until fs.length()).map { val f = fs.getJSONObject(it)
                 NativeFile(f.getString("path"), f.getString("filename"), f.getString("contentType"), f.getLong("size"), f.getString("attachmentId"), f.optBoolean("uploaded")) })
     } catch (e: Exception) { null }
+    fun editToJson(e: NativeEdit) = JSONObject().put("uid", e.uid).put("id", e.id).put("fields", JSONObject(e.fields as Map<*, *>))
+        .put("createdAt", e.createdAt).put("inFlight", e.inFlight).put("drainedAt", e.drainedAt ?: JSONObject.NULL)
+    fun editFromJson(o: JSONObject): NativeEdit? = try {
+        val f = o.getJSONObject("fields")
+        NativeEdit(o.getString("uid"), o.getString("id"), f.keys().asSequence().associateWith { f.getString(it) }, o.getLong("createdAt"),
+            o.optBoolean("inFlight"), if (o.isNull("drainedAt")) null else o.getLong("drainedAt"))
+    } catch (e: Exception) { null }
 }

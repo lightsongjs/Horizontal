@@ -48,7 +48,7 @@ object Engine {
             val ap = planAlarms(plan, now, s.fired, s.shown)
             val shown = (s.shown - ap.cancelIds) + ap.fireNow.associate { it.id to it.key }
             val exact = AlarmScheduler.arm(ctx, ap.nextAt)
-            s.copy(queue = queue, agendaHeld = held, creates = pruneCreates(s.creates, agendaReadAt), fired = pruneFired(s.fired + ap.fireNow.map { it.key }, now), shown = shown, nextAlarmAt = ap.nextAt, exactUsed = exact) to
+            s.copy(queue = queue, agendaHeld = held, creates = pruneCreates(s.creates, agendaReadAt), edits = pruneEdits(s.edits, agendaReadAt), fired = pruneFired(s.fired + ap.fireNow.map { it.key }, now), shown = shown, nextAlarmAt = ap.nextAt, exactUsed = exact) to
                 Triple(ap.fireNow, ap.cancelIds, ap.nextAt)
         }
         cancel.forEach { Notifier.cancel(ctx, it) }
