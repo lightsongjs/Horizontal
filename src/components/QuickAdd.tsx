@@ -40,7 +40,8 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, defaultProjec
   const { assignees } = useHorizontal()
   const q = useQuickDraft({
     ctx: { mode: 'list', defaultDueAt },
-    tokens: rich,
+    // `#proiect @om !` peste tot unde se capturează (cu lista de sugestii), și în rândul din listă.
+    tokens: true,
     // Bara pornește mereu pe „Daily" — ce alegi acolo e al rundei, nu al listei.
     rememberProject: !rich,
     defaultProjectId,
@@ -147,6 +148,7 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, defaultProjec
           onFocus={() => setFocus(true)}
           onBlur={() => setFocus(false)}
           onKeyDown={onKey('title')}
+          suggestions={{ projects, people: assignees, placement: rich ? 'flow' : 'below' }}
         />
       </div>
 

@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useState, type KeyboardEvent, type RefObject } from 'react'
 import type { TitleDate } from '../hooks'
+import { applySuggestion, suggest, tokenAt, type Suggestion } from '../lib/tokenSuggest'
 
 interface TitleProps {
   date: TitleDate
@@ -18,6 +19,16 @@ interface TitleProps {
    * iar suprapus ar acoperi descrierea exact cât timp e de citit.
    */
   tipBelow?: boolean
+  /**
+   * Lista de sugestii la `#proiect` / `@om`. `flow` = în fluxul paginii, sub
+   * titlu (bara de pe Linux își măsoară înălțimea; foaia de pe telefon crește în
+   * sus, lipită de tastatură); `below` = meniu suprapus (rândul de pe desktop).
+   */
+  suggestions?: {
+    projects: { id: string; name: string }[]
+    people: { id: string; name: string }[]
+    placement: 'flow' | 'below'
+  }
 }
 
 /**
@@ -27,7 +38,60 @@ interface TitleProps {
  * trebuie să fie același gest peste tot, iar oglinda e ușor de stricat (orice
  * diferență de font sau spațiere între cele două straturi decalează marcajul).
  */
-export function QuickTitle({ date, text, onText, inputRef, placeholder, enterKeyHint, onKeyDown, onFocus, onBlur, autoFocus, tipBelow = false }: TitleProps) {
+export function QuickTitle({ date, text, onText, inputRef, placeholder, enterKeyHint, onKeyDown, onFocus, onBlur, autoFocus, tipBelow = false, suggestions }: TitleProps) {
+  // Cursorul, ca lista să știe ce semn e „sub" el; `null` = inputul nu are focusul.
+  const [caret, setCaret] = useState<number | null>(null)
+  const [active, setActive] = useState(0)
+  // Esc închide lista pentru semnul ACESTA; un semn nou o redeschide.
+  const [dismissed, setDismissed] = useState<string | null>(null)
+  const tok = suggestions && caret !== null ? tokenAt(text, caret) : null
+  const tokKey = tok ? `${tok.start}${tok.sigil}` : null
+  const items = tok && tokKey !== dismissed ? suggest(tok, suggestions!.projects, suggestions!.people) : []
+  const open = items.length > 0
+  useEffect(() => { setActive(0) }, [tok?.query, tokKey])
+  const syncCaret = () => setCaret(inputRef.current && document.activeElement === inputRef.current ? inputRef.current.selectionStart : null)
+  const pick = (sg: Suggestion) => {
+    if (!tok) return
+    const next = applySuggestion(text, tok, sg)
+    onText(next.text)
+    requestAnimationFrame(() => {
+      const el = inputRef.current
+      if (!el) return
+      el.focus()
+      el.setSelectionRange(next.caret, next.caret)
+      setCaret(next.caret)
+    })
+  }
+  const keyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (open) {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault()
+        setActive((a) => (a + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length)
+        return
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); e.stopPropagation(); pick(items[Math.min(active, items.length - 1)]); return }
+      // Esc închide lista, nu foaia / bara.
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); setDismissed(tokKey); return }
+    }
+    onKeyDown(e)
+  }
+  const list = open && (
+    <ul className={`qa-suggest ${suggestions!.placement}`} role="listbox" aria-label={tok!.sigil === '#' ? 'Proiecte' : 'Oameni'}>
+      {items.map((sg, i) => (
+        <li
+          key={sg.id}
+          role="option"
+          aria-selected={i === active}
+          className={i === active ? 'on' : undefined}
+          // `pointerdown` + `preventDefault`: inputul nu pierde focusul, deci tastatura nu coboară.
+          onPointerDown={(e) => { e.preventDefault(); pick(sg) }}
+        >
+          <span className="qa-suggest-sigil">{tok!.sigil}</span>{sg.label}
+        </li>
+      ))}
+    </ul>
+  )
+
   // Indiciul care spune că evidențierea se poate refuza cu o atingere. Apare la
   // TRECEREA în „am înțeles ceva" și pleacă singur: e o instrucțiune, nu o
   // stare — lipit pe ecran, ar sta exact peste textul pe care îl citești.
@@ -75,9 +139,10 @@ export function QuickTitle({ date, text, onText, inputRef, placeholder, enterKey
         autoFocus={autoFocus}
         placeholder={placeholder}
         aria-label="Titlul sarcinii"
-        onChange={(e) => onText(e.target.value)}
-        onFocus={onFocus}
-        onBlur={onBlur}
+        onChange={(e) => { onText(e.target.value); setCaret(e.target.selectionStart) }}
+        onSelect={syncCaret}
+        onFocus={() => { syncCaret(); onFocus?.() }}
+        onBlur={() => { setCaret(null); onBlur?.() }}
         // O atingere PE fragmentul recunoscut înseamnă „nu e o dată".
         {...date.inputProps}
         // Oglinda nu se derulează singură: fără asta, evidențierea rămâne
@@ -85,9 +150,13 @@ export function QuickTitle({ date, text, onText, inputRef, placeholder, enterKey
         onScroll={(e) => {
           if (date.mirrorRef.current) date.mirrorRef.current.scrollLeft = e.currentTarget.scrollLeft
         }}
-        onKeyDown={onKeyDown}
+        onKeyDown={keyDown}
+        aria-expanded={open}
+        aria-autocomplete="list"
       />
+      {suggestions?.placement === 'below' && list}
     </span>
+    {suggestions?.placement === 'flow' && list}
     {tipBelow && tipEl}
     </>
   )

@@ -32,7 +32,7 @@ const keepFocus = (e: PointerEvent) => e.preventDefault()
  * („și ce ai de făcut?", semne necunoscute). Back o închide fără să salveze.
  */
 export function QuickSheet({ ctx }: { ctx: QuickCtx }) {
-  const { project: openProject, selectProject } = useHorizontal()
+  const { project: openProject, selectProject, assignees } = useHorizontal()
   const { closeSheet, pushSheet, showToast } = useUI()
   const q = useQuickDraft({ ctx, tokens: true, rememberProject: ctx.mode === 'list' })
   const { text, desc, date, tokens, project, projects, schedule, error, saving, assigneeId, urgent } = q
@@ -157,6 +157,7 @@ export function QuickSheet({ ctx }: { ctx: QuickCtx }) {
           autoFocus
           tipBelow
           onKeyDown={onKey('title')}
+          suggestions={{ projects, people: assignees, placement: 'flow' }}
         />
         <QuickDesc value={desc} onChange={q.setDesc} textareaRef={descRef} onKeyDown={onKey('desc')} />
 

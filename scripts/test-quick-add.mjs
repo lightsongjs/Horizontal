@@ -65,6 +65,25 @@ try {
   await input.press('Enter')
   await page.waitForTimeout(800)
 
+  // Lista de sugestii la `#`: se deschide, se filtrează, Enter alege (nu trimite),
+  // iar alegerea e recunoscută ca proiect. Esc o închide fără să închidă bara.
+  await input.fill('')
+  await input.pressSequentially('alegere #ex')
+  await page.waitForTimeout(200)
+  const sugg = page.locator('.qab .qa-suggest li')
+  check('„#ex" deschide lista cu „Exemplu"', (await sugg.count()) >= 1 && /Exemplu/.test(await sugg.first().innerText()), String(await sugg.count()))
+  await input.press('Enter')
+  await page.waitForTimeout(200)
+  check('Enter în listă inserează proiectul, nu trimite', /^alegere #Exemplu $/.test(await input.inputValue()), await input.inputValue())
+  check('lista se închide după alegere', (await sugg.count()) === 0)
+  check('alegerea e recunoscută (rândul arată proiectul)', /Exemplu/i.test(await page.locator('.qab .qa-rich').innerText()))
+  await input.pressSequentially('@')
+  await page.waitForTimeout(150)
+  const people = await sugg.count()
+  await input.press('Escape')
+  await page.waitForTimeout(150)
+  check('Esc închide lista (dacă era deschisă), textul rămâne', (await sugg.count()) === 0 && (await input.inputValue()).endsWith('@'), `oameni: ${people}`)
+
   // Esc cu text: nu salvează (în browser nu există punte, deci bara nu se ascunde).
   await input.fill('nu trebuie salvat')
   await input.press('Escape')

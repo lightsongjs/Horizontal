@@ -6390,3 +6390,47 @@ body:has(.qab) { overflow-y: auto; }
    bară. */
 [data-text-large] .qs-attach-wrap { position: static; }
 [data-text-large] .list-group-head { flex-wrap: wrap; }
+
+/* Lista de sugestii la `#proiect` / `@om` (QuickTitle). Fără chenar: ton de suprafață
+   (+ umbră ambientală doar când plutește); elementul activ = text plin + linie de 2px. */
+.qa-suggest {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 4px 0;
+  background: var(--surface-2);
+  border-radius: var(--r-m);
+  max-height: calc(8 * 34px);
+  overflow-y: auto;
+}
+.qa-suggest.below {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 220px;
+  max-width: 100%;
+  z-index: 20;
+  box-shadow: var(--amb-lg);
+}
+.qa-suggest li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 12px;
+  font-family: var(--display);
+  font-size: calc(14px * var(--text-scale));
+  color: var(--txt-dim);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.qa-suggest li.on {
+  color: var(--txt);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.qa-suggest-sigil {
+  font-family: var(--mono);
+  font-size: calc(12px * var(--text-scale));
+  color: var(--accent);
+}
