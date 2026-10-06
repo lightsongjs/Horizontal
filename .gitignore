@@ -17,3 +17,4 @@ coverage
 supabase/.temp/
 tmp-calibrare/
 # ticket-kit/ is versioned here as master copy
+mobile/android/app/src/main/assets/capture-engine.js

@@ -6,8 +6,8 @@
   "description": "Mobile-first project-planning tool for developers — dependency layers + delivery waves.",
   "scripts": {
     "android:test": "bash -c 'source mobile/scripts/env.sh && npm --prefix mobile test'",
-    "android:apk": "bash -c 'source mobile/scripts/env.sh && npm --prefix mobile run sync && npm --prefix mobile run apk'",
-    "android:install": "bash -c 'source mobile/scripts/env.sh && npm --prefix mobile run install-apk'",
+    "android:apk": "node scripts/build-capture-engine.mjs && bash -c 'source mobile/scripts/env.sh && npm --prefix mobile run sync && npm --prefix mobile run apk'",
+    "android:install": "node scripts/build-capture-engine.mjs && bash -c 'source mobile/scripts/env.sh && npm --prefix mobile run install-apk'",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
