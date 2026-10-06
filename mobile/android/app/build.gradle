@@ -12,7 +12,7 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         // versionCode trebuie să crească la fiecare APK nou instalat; versionName ajunge în getInfo().version.
-        versionCode 4
+        versionCode 5
         versionName "1.0.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
@@ -61,6 +61,8 @@ dependencies {
     implementation project(':capacitor-android')
     testImplementation "junit:junit:$junitVersion"
     implementation 'androidx.work:work-runtime-ktx:2.10.5'
+    // Motorul JS al ferestrei de quick add (codul de captură al paginii, fără WebView). Cere minSdk 26.
+    implementation 'androidx.javascriptengine:javascriptengine:1.0.0'
     // org.json din Android e un ciot pe JVM ("Method ... not mocked"); testele core îl iau real.
     testImplementation 'org.json:json:20250517'
     // OkHttp, nu HttpURLConnection: acela refuză verbul PATCH (coada nativă, Task 9).
