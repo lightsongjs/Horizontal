@@ -78,6 +78,16 @@ object Notifier {
     }
     fun cancelStatus(ctx: Context) = NotificationManagerCompat.from(ctx).cancel("stare", STATUS_ID)
 
+    /** Pozele unei sarcini n-au plecat într-o oră: sarcina e pe server, fișierele nu. */
+    fun showFilesFailed(ctx: Context, title: String) {
+        val n = NotificationCompat.Builder(ctx, CH_STATUS).setSmallIcon(R.drawable.ic_stat_hz)
+            .setContentTitle("Fișierele n-au putut fi urcate")
+            .setContentText("„$title” e salvată, fără atașamente.")
+            .setContentIntent(PendingIntent.getActivity(ctx, 9, Intent(ctx, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE))
+            .setAutoCancel(true)
+        try { NotificationManagerCompat.from(ctx).notify("fisiere", title.hashCode(), n.build()) } catch (e: SecurityException) {}
+    }
+
     /** Serverul a refuzat o sarcină din fereastra de quick add: fereastra nu mai e acolo, deci omul află de aici. */
     fun showCreateFailed(ctx: Context, title: String) {
         val n = NotificationCompat.Builder(ctx, CH_STATUS).setSmallIcon(R.drawable.ic_stat_hz)

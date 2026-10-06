@@ -26,6 +26,11 @@ class DrainWorker(ctx: Context, p: WorkerParameters) : Worker(ctx, p) {
             else -> {}
         }
         if (isStopped) return Result.success()
+        when (try { drainFiles(ctx) } catch (e: AccountChanged) { Outcome.KEEP_NO_SESSION } catch (e: Exception) { Outcome.RETRY }) {
+            Outcome.RETRY -> { finish(ctx, true); return Result.retry() }
+            Outcome.KEEP_NO_SESSION -> { finish(ctx, true); return Result.success() }
+            else -> {}
+        }
         changed = changed || createdAny
         while (true) {
             // REPLACE (vezi `enqueue`) poate anula un worker în plină buclă. Anularea doar
@@ -102,6 +107,40 @@ class DrainWorker(ctx: Context, p: WorkerParameters) : Worker(ctx, p) {
             }
         }
     }
+
+    /**
+     * Fișierele sarcinilor deja create: întâi obiectul (cale fixă), apoi rândul (ID
+     * fix) — o retrimitere dă „Duplicate"/409, nu dubluri. Peste o oră, abandonate.
+     */
+    private fun drainFiles(ctx: Context): Outcome {
+        val owner = NativeSession.lastAccount(ctx) ?: return Outcome.KEEP_NO_SESSION
+        for (c in PlanStore.read(ctx).creates.filter { it.realId != null && it.files.any { f -> !f.uploaded } }) {
+            if (isStopped) return Outcome.DONE
+            val issueId = c.realId!!
+            if (filesExpired(c, System.currentTimeMillis())) {
+                c.files.filter { !it.uploaded }.forEach { java.io.File(it.path).delete() }
+                setFiles(ctx, c.uid) { fs -> fs.map { it.copy(uploaded = true) } }
+                Notifier.showFilesFailed(ctx, c.title)
+                continue
+            }
+            for (f in c.files.filter { !it.uploaded }) {
+                val file = java.io.File(f.path)
+                if (!file.exists()) { setFiles(ctx, c.uid) { fs -> fs.map { if (it.attachmentId == f.attachmentId) it.copy(uploaded = true) else it } }; continue }
+                val up = SupabaseApi.storage(ctx, attachmentPath(c.projectId, issueId, f.attachmentId), file, f.contentType, owner) ?: return Outcome.KEEP_NO_SESSION
+                if (!storageDone(up.status, up.body)) return outcomeOf(up.status, false, false).let { if (it == Outcome.DROP) Outcome.RETRY else it }
+                val row = SupabaseApi.rest(ctx, "POST", "attachments", attachmentRow(f, c.projectId, issueId).toString(), prefer = "return=minimal", asUser = owner)
+                    ?: return Outcome.KEEP_NO_SESSION
+                if (row.status !in 200..299 && row.status != 409) return outcomeOf(row.status, false, false).let { if (it == Outcome.DROP) Outcome.RETRY else it }
+                file.delete()
+                setFiles(ctx, c.uid) { fs -> fs.map { if (it.attachmentId == f.attachmentId) it.copy(uploaded = true) else it } }
+                createdAny = true
+            }
+        }
+        return Outcome.DONE
+    }
+
+    private fun setFiles(ctx: Context, uid: String, f: (List<NativeFile>) -> List<NativeFile>) =
+        PlanStore.edit(ctx) { s -> s.copy(creates = s.creates.map { if (it.uid == uid) it.copy(files = f(it.files)) else it }) to Unit }
 
     private fun release(ctx: Context, c: NativeCreate, o: Outcome): Outcome {
         PlanStore.edit(ctx) { s -> s.copy(creates = s.creates.map { if (it.uid == c.uid) it.copy(inFlight = false) else it }) to Unit }

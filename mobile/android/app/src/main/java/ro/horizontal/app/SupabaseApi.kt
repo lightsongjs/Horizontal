@@ -4,6 +4,7 @@ import android.content.Context
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
 
@@ -45,5 +46,21 @@ object SupabaseApi {
         val h = mutableMapOf("apikey" to anon, "Authorization" to "Bearer $token")
         prefer?.let { h["Prefer"] = it }
         return raw(method, "$url/rest/v1/$pathAndQuery", h, body, fast)
+    }
+
+    /**
+     * Urcă un fișier în Storage (`attachments/<cale>`), cu sesiunea nativă. Fără
+     * upsert: obiectele sunt imuabile, iar un „Duplicate" la o retrimitere e succes
+     * (`storageDone`). Cache de un an, ca în pagină (`uploadAttachment`).
+     */
+    fun storage(ctx: Context, objectPath: String, file: java.io.File, contentType: String, asUser: String): Response? {
+        val (url, anon) = NativeSession.config(ctx) ?: return null
+        val (token, user) = NativeSession.session(ctx) ?: return null
+        if (user != asUser) throw AccountChanged()
+        val req = Request.Builder().url("$url/storage/v1/object/attachments/$objectPath")
+            .header("apikey", anon).header("Authorization", "Bearer $token")
+            .header("cache-control", "max-age=31536000").header("x-upsert", "false")
+            .post(file.asRequestBody(contentType.toMediaType())).build()
+        http.newBuilder().writeTimeout(120, TimeUnit.SECONDS).build().newCall(req).execute().use { r -> return Response(r.code, r.body?.string() ?: "") }
     }
 }

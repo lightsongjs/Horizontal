@@ -87,4 +87,27 @@ class CreateTest {
         val c = create().copy(attemptId = "HZ-08", files = listOf(NativeFile("/p", "a.jpg", "image/jpeg", 3, "f1", uploaded = true)), tries = 2)
         assertEquals(c, Json.createFromJson(Json.createToJson(c)))
     }
+
+    @Test fun urcarea_unDuplicatEraDejaAcolo() {
+        assertTrue(storageDone(200, "{}"))
+        assertTrue(storageDone(409, """{"statusCode":"409","error":"Duplicate","message":"The resource already exists"}"""))
+        assertTrue(storageDone(400, """{"statusCode":"409","error":"Duplicate"}"""))
+        assertFalse(storageDone(400, """{"error":"Invalid key"}"""))
+        assertFalse(storageDone(500, ""))
+    }
+
+    @Test fun rândulAtașamentului_caPagina() {
+        val f = NativeFile("/c/a.jpg", "tabla.jpg", "image/jpeg", 1234, "f-1")
+        val o = attachmentRow(f, "p", "HZ-09")
+        assertEquals("f-1", o.getString("id")); assertEquals("HZ-09", o.getString("issue_id")); assertEquals("p", o.getString("project_id"))
+        assertEquals("p/HZ-09/f-1", o.getString("path")); assertEquals("tabla.jpg", o.getString("filename"))
+        assertEquals(1234, o.getLong("size")); assertEquals("image/jpeg", o.getString("content_type"))
+        assertEquals("p/HZ-09/f-1", attachmentPath("p", "HZ-09", "f-1"))
+    }
+
+    @Test fun fișierele_seAbandoneazăDupăOOră() {
+        val c = create().copy(realId = "HZ-09", drainedAt = 1_000, files = listOf(NativeFile("/p", "a", "x", 1, "f")))
+        assertFalse(filesExpired(c, now = 1_000 + 3_599_000))
+        assertTrue(filesExpired(c, now = 1_000 + 3_600_001))
+    }
 }

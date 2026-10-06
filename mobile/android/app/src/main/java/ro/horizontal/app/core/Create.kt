@@ -82,3 +82,23 @@ fun createReminders(creates: List<NativeCreate>, zone: ZoneId, latestReadAt: Lon
     val t = planNotification(c.id, c.title, c.dueAt, c.allDay, c.projectName, zone)
     Reminder(reminderKey(c.id, at), c.id, at, t.title, t.body, c.dueAt, c.allDay)
 }
+
+/** `buildAttachmentPath` din `src/data/attachments.ts`: doar din id-uri, niciodată din numele fișierului. */
+fun attachmentPath(projectId: String, issueId: String, attachmentId: String) = "$projectId/$issueId/$attachmentId"
+
+/** Rândul din `attachments`, cu ID fix: o retrimitere dă 409, nu un al doilea rând. */
+fun attachmentRow(f: NativeFile, projectId: String, issueId: String): JSONObject = JSONObject()
+    .put("id", f.attachmentId).put("issue_id", issueId).put("project_id", projectId)
+    .put("path", attachmentPath(projectId, issueId, f.attachmentId)).put("filename", f.filename)
+    .put("size", f.size).put("content_type", f.contentType)
+
+/** Storage: obiectul există deja (o retrimitere pe aceeași cale) = urcat. */
+fun storageDone(status: Int, body: String): Boolean =
+    status in 200..299 || (status in setOf(400, 409) && (body.contains("Duplicate") || body.contains("already exists")))
+
+/**
+ * Fișierele unei sarcini trimise, încă neurcate după o oră, se abandonează: o
+ * poză reîncercată ore mai târziu pe date mobile e o surpriză, nu un serviciu.
+ */
+const val FILES_MAX_MS = 3_600_000L
+fun filesExpired(c: NativeCreate, now: Long) = c.drainedAt != null && now - c.drainedAt > FILES_MAX_MS

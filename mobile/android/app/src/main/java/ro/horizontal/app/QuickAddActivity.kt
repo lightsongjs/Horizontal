@@ -3,6 +3,7 @@ package ro.horizontal.app
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.content.Context
+import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.text.Editable
 import android.text.Spannable
@@ -50,6 +51,19 @@ class QuickAddActivity : AppCompatActivity() {
     private var sent = false
     private var keyboardShown = false
     private var painting = false
+    private val files = mutableListOf<NativeFiles.Picked>()
+    private var cameraFile: java.io.File? = null
+
+    // Înregistrate în `onCreate` (înainte de STARTED), cum cere API-ul de rezultate.
+    private val takePhoto = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.TakePicture()) { ok ->
+        val f = cameraFile ?: return@registerForActivityResult
+        cameraFile = null
+        if (ok && f.length() > 0) addFile(NativeFiles.Picked(f.path, f.name, "image/jpeg", f.length())) else f.delete()
+    }
+    private val openDoc = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@registerForActivityResult
+        Thread { NativeFiles.copyIn(this, uri)?.let { p -> runOnUiThread { addFile(p) } } }.start()
+    }
 
     override fun onCreate(b: Bundle?) {
         super.onCreate(b)
@@ -82,7 +96,7 @@ class QuickAddActivity : AppCompatActivity() {
         findViewById<View>(R.id.q_urgent).setOnClickListener {
             manual = manual.copy(urgent = !(draft?.urgent ?: false)); recompute()
         }
-        findViewById<View>(R.id.q_attach).setOnClickListener { NativeFiles.pick(this) }
+        findViewById<View>(R.id.q_attach).setOnClickListener { pickFile() }
 
         if (data == null) {
             showNote("Deschide aplicația o dată, ca fereastra să știe proiectele.")
@@ -208,6 +222,56 @@ class QuickAddActivity : AppCompatActivity() {
         }.show()
     }
 
+    private fun pickFile() {
+        AlertDialog.Builder(this).setItems(arrayOf("Fă o poză", "Alege fișier")) { _, i ->
+            if (i == 0) {
+                val f = NativeFiles.cameraTarget(this)
+                cameraFile = f
+                takePhoto.launch(androidx.core.content.FileProvider.getUriForFile(this, "$packageName.fileprovider", f))
+            } else openDoc.launch(arrayOf("*/*"))
+        }.show()
+    }
+
+    /** Micșorat după regula paginii (motorul dă planul și numele), apoi arătat în rândul de miniaturi. */
+    private fun addFile(p: NativeFiles.Picked) {
+        val done = { out: NativeFiles.Picked -> files += out; paintFiles() }
+        if (!p.contentType.startsWith("image/")) {
+            CaptureEngine.attachmentFilename(this, p.filename, null) { n -> done(p.copy(filename = n ?: p.filename)) }
+            return
+        }
+        val (w, h) = NativeFiles.dimensions(p.path)
+        val input = org.json.JSONObject().put("type", p.contentType).put("size", p.size).put("width", w).put("height", h)
+        CaptureEngine.shrinkPlan(this, input) { plan ->
+            val type = plan?.takeIf { !it.isNull("outputType") }?.getString("outputType")
+            CaptureEngine.attachmentFilename(this, p.filename, type) { name ->
+                Thread { val out = NativeFiles.shrink(p, plan, name); runOnUiThread { done(out) } }.start()
+            }
+        }
+    }
+
+    private fun paintFiles() {
+        val row = findViewById<android.widget.LinearLayout>(R.id.q_files)
+        row.removeAllViews()
+        findViewById<View>(R.id.q_files_scroll).visibility = if (files.isEmpty()) View.GONE else View.VISIBLE
+        for (f in files.toList()) {
+            val iv = android.widget.ImageView(this)
+            iv.layoutParams = android.widget.LinearLayout.LayoutParams(dp(48), dp(48)).apply { marginEnd = dp(6) }
+            iv.scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
+            iv.setBackgroundResource(R.drawable.bg_chip)
+            iv.clipToOutline = true
+            val thumb = if (f.contentType.startsWith("image/"))
+                BitmapFactory.decodeFile(f.path, BitmapFactory.Options().apply { inSampleSize = 16 }) else null
+            if (thumb != null) iv.setImageBitmap(thumb) else { iv.setImageResource(R.drawable.ic_q_attach); iv.setPadding(dp(12), dp(12), dp(12), dp(12)) }
+            iv.contentDescription = f.filename
+            iv.setOnClickListener {
+                AlertDialog.Builder(this).setMessage("Scoți „${f.filename}”?").setPositiveButton("Scoate") { _, _ ->
+                    files.remove(f); java.io.File(f.path).delete(); paintFiles()
+                }.setNegativeButton("Lasă", null).show()
+            }
+            row.addView(iv)
+        }
+    }
+
     private fun submit() {
         val d = data ?: return
         if (sent) return
@@ -222,7 +286,7 @@ class QuickAddActivity : AppCompatActivity() {
                 "empty" -> return@compute
                 "bare" -> { showNote("Ai scris doar data — scrie și ce ai de făcut."); return@compute }
             }
-            if (!NativeFiles.canSend(this)) {
+            if (files.isNotEmpty() && !NativeFiles.online(this)) {
                 showNote("Fără rețea: fișierele nu pot pleca acum. Scoate-le sau încearcă din nou.")
                 return@compute
             }
@@ -233,12 +297,13 @@ class QuickAddActivity : AppCompatActivity() {
                 uid = uid, tempId = "${project.prefix}-~${uid.replace("-", "").take(6)}", projectId = project.id, projectName = project.name,
                 title = f.title, desc = desc.text.toString().trim(), dueAt = f.dueAt, allDay = f.allDay, remindAt = f.remindAt,
                 rrule = f.rrule, urgent = f.urgent, assigneeId = f.assigneeId, createdAt = System.currentTimeMillis(),
-                files = NativeFiles.take(this, project.id),
+                files = files.map(NativeFiles::toNative),
             )
             PlanStore.edit(this) { s -> s.copy(creates = s.creates + create) to Unit }
             Engine.reschedule(this)   // mementoul și widget-ul, imediat
             DrainWorker.enqueue(this)
             getSharedPreferences(DRAFT, 0).edit().clear().apply()
+            files.clear()
             finish()
         }
     }
@@ -248,6 +313,7 @@ class QuickAddActivity : AppCompatActivity() {
     override fun onSaveInstanceState(out: Bundle) {
         super.onSaveInstanceState(out)
         out.putStringArrayList("rejected", ArrayList(rejected))
+        cameraFile?.let { out.putString("camera", it.path) }
     }
 
     override fun onPause() {
@@ -255,7 +321,10 @@ class QuickAddActivity : AppCompatActivity() {
         if (sent) return
         getSharedPreferences(DRAFT, 0).edit()
             .putString("title", title.text.toString()).putString("desc", desc.text.toString())
-            .putString("rejected", JSONArray(rejected).toString()).apply()
+            .putString("rejected", JSONArray(rejected).toString())
+            .putString("files", JSONArray().also { a -> files.forEach { f ->
+                a.put(org.json.JSONObject().put("path", f.path).put("filename", f.filename).put("contentType", f.contentType).put("size", f.size)) } }.toString())
+            .apply()
     }
 
     private fun restoreDraft(b: Bundle?) {
@@ -265,6 +334,12 @@ class QuickAddActivity : AppCompatActivity() {
         val saved = b?.getStringArrayList("rejected")
             ?: p.getString("rejected", null)?.let { j -> JSONArray(j).let { a -> (0 until a.length()).map { a.getString(it) } } }
         saved?.let { rejected.addAll(it) }
+        b?.getString("camera")?.let { cameraFile = java.io.File(it) }
+        p.getString("files", null)?.let { j -> JSONArray(j).let { a -> (0 until a.length()).map { a.getJSONObject(it) } } }?.forEach { o ->
+            if (java.io.File(o.getString("path")).exists())
+                files += NativeFiles.Picked(o.getString("path"), o.getString("filename"), o.getString("contentType"), o.getLong("size"))
+        }
+        if (files.isNotEmpty()) paintFiles()
     }
 
     override fun onDestroy() {
