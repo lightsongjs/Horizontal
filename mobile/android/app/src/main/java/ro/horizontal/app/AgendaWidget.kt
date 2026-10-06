@@ -75,10 +75,11 @@ class AgendaWidget : AppWidgetProvider() {
             r.setTextViewText(R.id.r_meta, rowMeta(it, overdue, now, zone))
             r.setViewVisibility(R.id.r_repeat, if (it.recurring) View.VISIBLE else View.GONE)
             r.setViewVisibility(R.id.r_bell, if (it.hasReminder) View.VISIBLE else View.GONE)
-            if (overdue) {
-                r.setTextColor(R.id.r_meta, red)
-                r.setColorStateList(R.id.r_check, "setButtonTintList", android.content.res.ColorStateList.valueOf(red))
-            }
+            // Mereu explicit, și pe rândurile care NU sunt restanțe: lista refolosește
+            // rândurile la derulare, iar un roșu pus o dată rămânea pe căsuțele de azi/mâine.
+            r.setTextColor(R.id.r_meta, if (overdue) red else ContextCompat.getColor(ctx, R.color.w_txt_dim))
+            r.setColorStateList(R.id.r_check, "setButtonTintList",
+                android.content.res.ColorStateList.valueOf(if (overdue) red else ContextCompat.getColor(ctx, R.color.w_txt_faint)))
             r.setCompoundButtonChecked(R.id.r_check, false)
             val base = Intent().putExtra(WidgetTapActivity.EXTRA_ID, it.id)
             r.setOnClickFillInIntent(R.id.r_root, Intent(base).putExtra(WidgetTapActivity.EXTRA_KIND, WidgetTapActivity.KIND_OPEN))
