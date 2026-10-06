@@ -1,0 +1,61 @@
+[
+  {
+    "name": "restanțe sus, azi fără oră înaintea celor cu oră, ziua a 7-a afară",
+    "now": "2026-10-06T08:00:00.000Z",
+    "items": [
+      { "id": "HZ-1", "dueAt": "2026-10-04T21:00:00.000Z", "allDay": true,  "urgent": false },
+      { "id": "HZ-2", "dueAt": "2026-10-06T07:00:00.000Z", "allDay": false, "urgent": false },
+      { "id": "HZ-3", "dueAt": "2026-10-05T21:00:00.000Z", "allDay": true,  "urgent": false },
+      { "id": "HZ-4", "dueAt": "2026-10-06T11:30:00.000Z", "allDay": false, "urgent": false },
+      { "id": "HZ-5", "dueAt": "2026-10-07T14:30:00.000Z", "allDay": false, "urgent": false },
+      { "id": "HZ-6", "dueAt": "2026-10-12T21:00:00.000Z", "allDay": true,  "urgent": false },
+      { "id": "HZ-7", "dueAt": "2026-10-11T21:00:00.000Z", "allDay": true,  "urgent": false }
+    ],
+    "want": [
+      { "section": "overdue", "ids": ["HZ-1", "HZ-2"] },
+      { "section": "day", "offset": 0, "ids": ["HZ-3", "HZ-4"] },
+      { "section": "day", "offset": 1, "ids": ["HZ-5"] },
+      { "section": "day", "offset": 6, "ids": ["HZ-7"] }
+    ]
+  },
+  {
+    "name": "urgentul întâi între cele fără oră, apoi id",
+    "now": "2026-10-06T08:00:00.000Z",
+    "items": [
+      { "id": "HZ-B", "dueAt": "2026-10-05T21:00:00.000Z", "allDay": true, "urgent": false },
+      { "id": "HZ-Z", "dueAt": "2026-10-05T21:00:00.000Z", "allDay": true, "urgent": true },
+      { "id": "HZ-A", "dueAt": "2026-10-05T21:00:00.000Z", "allDay": true, "urgent": false }
+    ],
+    "want": [{ "section": "day", "offset": 0, "ids": ["HZ-Z", "HZ-A", "HZ-B"] }]
+  },
+  {
+    "name": "trecerea zilei: aceleași sarcini, la 00:30 a doua zi",
+    "now": "2026-10-06T21:30:00.000Z",
+    "items": [
+      { "id": "HZ-3", "dueAt": "2026-10-05T21:00:00.000Z", "allDay": true,  "urgent": false },
+      { "id": "HZ-5", "dueAt": "2026-10-07T14:30:00.000Z", "allDay": false, "urgent": false }
+    ],
+    "want": [
+      { "section": "overdue", "ids": ["HZ-3"] },
+      { "section": "day", "offset": 0, "ids": ["HZ-5"] }
+    ]
+  },
+  {
+    "name": "ora de iarnă (25 oct): zilele locale rămân întregi",
+    "now": "2026-10-24T09:00:00.000Z",
+    "items": [
+      { "id": "HZ-8", "dueAt": "2026-10-25T22:00:00.000Z", "allDay": true, "urgent": false },
+      { "id": "HZ-9", "dueAt": "2026-10-24T21:00:00.000Z", "allDay": true, "urgent": false }
+    ],
+    "want": [
+      { "section": "day", "offset": 1, "ids": ["HZ-9"] },
+      { "section": "day", "offset": 2, "ids": ["HZ-8"] }
+    ]
+  },
+  {
+    "name": "nimic",
+    "now": "2026-10-06T08:00:00.000Z",
+    "items": [],
+    "want": []
+  }
+]
