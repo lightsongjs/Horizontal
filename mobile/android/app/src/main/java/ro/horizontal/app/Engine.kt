@@ -29,7 +29,10 @@ object Engine {
      */
     fun reschedule(ctx: Context, now: Long = System.currentTimeMillis(), hold: Boolean = false): List<Reminder> {
         Notifier.ensureChannels(ctx)
-        return PlanStore.locked { effects(ctx, now, hold) }
+        val out = PlanStore.locked { effects(ctx, now, hold) }
+        // În afara lacătului: desenul citește starea, nu o scrie.
+        Widgets.refresh(ctx)
+        return out
     }
 
     private fun effects(ctx: Context, now: Long, hold: Boolean): List<Reminder> {

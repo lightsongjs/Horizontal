@@ -4,7 +4,10 @@ import android.content.Context
 import android.util.Log
 import androidx.work.*
 import org.json.JSONException
+import ro.horizontal.app.core.AgendaList
 import ro.horizontal.app.core.NativeList
+import ro.horizontal.app.core.agendaQuery
+import ro.horizontal.app.core.parseAgenda
 import ro.horizontal.app.core.parseIssues
 import ro.horizontal.app.core.syncQuery
 import java.io.IOException
@@ -37,6 +40,14 @@ class SyncWorker(ctx: Context, p: WorkerParameters) : Worker(ctx, p) {
             // goală ar retrage toate notificările de pe ecran. Planul vechi rămâne.
             Log.w("hz-sync", "răspuns ilizibil", e); return Result.retry()
         }
+        // A doua citire, pentru widget: pe `due_at`, nu pe `remind_at` (o sarcină de azi fără
+        // memento, o restanță veche). Orice eșec păstrează agenda veche, nu o golește.
+        val agenda = try {
+            SupabaseApi.rest(ctx, "GET", agendaQuery(startedAt, ZoneId.systemDefault()), asUser = owner)
+                ?.takeIf { it.status in 200..299 }?.let { parseAgenda(it.body) }
+        } catch (e: AccountChanged) { return Result.success() }
+          catch (e: IOException) { null }
+          catch (e: JSONException) { Log.w("hz-sync", "agendă ilizibilă", e); null }
         // Verificat SUB lacătul planului, ca un logout sau o schimbare de cont să nu se
         // strecoare între verificare și scriere. `lastAccount`, nu `userId`: vezi acolo.
         // Anulat între timp (lucrarea înlocuită, constrângeri pierdute): rezultatul nu
@@ -44,7 +55,8 @@ class SyncWorker(ctx: Context, p: WorkerParameters) : Worker(ctx, p) {
         if (isStopped) return Result.success()
         val written = PlanStore.edit(ctx) { s ->
             if (!NativeSession.isSignedIn(ctx) || NativeSession.lastAccount(ctx) != owner) return@edit null to false
-            s.copy(native = NativeList(list, startedAt), lastSyncAt = System.currentTimeMillis()) to true
+            s.copy(native = NativeList(list, startedAt), lastSyncAt = System.currentTimeMillis(),
+                agendaNative = agenda?.let { AgendaList(it, startedAt) } ?: s.agendaNative) to true
         }
         if (written) Engine.reschedule(ctx)
         return Result.success()

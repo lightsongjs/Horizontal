@@ -22,6 +22,9 @@ object PlanStore {
         val lastSyncAt: Long? = null,
         /** Sunate cât laptopul era activ: așteaptă reverificarea de la +30 s (`DeferGate`). */
         val deferred: List<Reminder> = emptyList(),
+        /** Agenda widget-ului, din cele două surse; câștigă `readAt` mai mare (`visibleAgenda`). */
+        val agendaPage: AgendaList? = null,
+        val agendaNative: AgendaList? = null,
     )
 
     private const val PREFS = "hz-plan"
@@ -66,9 +69,11 @@ object PlanStore {
         val native = p.getString("native", null)?.let { JSONObject(it) }?.let { o -> NativeList(reminders(o.optJSONArray("list")), o.getLong("readAt")) }
         val queue = p.getString("queue", null)?.let { JSONArray(it) }?.let { a -> (0 until a.length()).mapNotNull { Json.actionFromJson(a.getJSONObject(it)) } }.orEmpty()
         val shown = p.getString("shown", null)?.let { JSONObject(it) }?.let { o -> o.keys().asSequence().associateWith { o.getString(it) } }.orEmpty()
+        val agendaPage = p.getString("agendaPage", null)?.let { Json.agendaFromJson(JSONObject(it)) }
+        val agendaNative = p.getString("agendaNative", null)?.let { Json.agendaFromJson(JSONObject(it)) }
         return State(page, native, queue, p.getStringSet("fired", emptySet())!!.toSet(), shown,
             p.getLong("nextAlarmAt", -1).takeIf { it >= 0 }, p.getBoolean("exactUsed", true), p.getLong("lastSyncAt", -1).takeIf { it >= 0 },
-            reminders(p.getString("deferred", null)?.let { JSONArray(it) }))
+            reminders(p.getString("deferred", null)?.let { JSONArray(it) }), agendaPage, agendaNative)
     }
 
     private fun save(ctx: Context, s: State) {
@@ -80,6 +85,8 @@ object PlanStore {
             .putString("shown", JSONObject(s.shown).toString())
             .putLong("nextAlarmAt", s.nextAlarmAt ?: -1).putBoolean("exactUsed", s.exactUsed).putLong("lastSyncAt", s.lastSyncAt ?: -1)
             .putString("deferred", arr(s.deferred).toString())
+            .putString("agendaPage", s.agendaPage?.let { Json.agendaToJson(it).toString() })
+            .putString("agendaNative", s.agendaNative?.let { Json.agendaToJson(it).toString() })
             .commit()
     }
 }

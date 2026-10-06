@@ -2,11 +2,13 @@ package ro.horizontal.app
 
 import android.Manifest
 import android.content.ActivityNotFoundException
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
+import android.view.inputmethod.InputMethodManager
 import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.Lifecycle
 import com.getcapacitor.JSArray
@@ -43,15 +45,26 @@ class HorizontalAndroidPlugin : Plugin() {
 
     override fun handleOnDestroy() { if (instance === this) instance = null }
 
-    /** Atingere pe notificare. `retain`: la pornire la rece pagina încă n-a pus listenerul. */
+    /** Atingere pe notificare sau pe widget. `retain`: la pornire la rece pagina încă n-a pus listenerul. */
     private fun handleOpen(intent: Intent?) {
         // Relansată din Recente, activitatea primește intentul ORIGINAL al sarcinii —
         // `removeExtra` de mai jos nu supraviețuiește morții procesului, deci după o
         // repornire tichetul atins cândva pe notificare s-ar redeschide singur.
         if (intent == null || (intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) != 0) return
-        val id = intent.getStringExtra(Notifier.EXTRA_OPEN) ?: return
-        intent.removeExtra(Notifier.EXTRA_OPEN)
-        notifyListeners("reminderAction", JSObject().put("action", "open").put("id", id), true)
+        intent.getStringExtra(Notifier.EXTRA_OPEN)?.let { id ->
+            intent.removeExtra(Notifier.EXTRA_OPEN)
+            notifyListeners("reminderAction", JSObject().put("action", "open").put("id", id), true)
+            return
+        }
+        intent.getStringExtra(Widgets.EXTRA_OPEN)?.let { id ->
+            intent.removeExtra(Widgets.EXTRA_OPEN)
+            notifyListeners("widget", JSObject().put("kind", "open").put("id", id), true)
+            return
+        }
+        if (intent.getBooleanExtra(Widgets.EXTRA_QUICK, false)) {
+            intent.removeExtra(Widgets.EXTRA_QUICK)
+            notifyListeners("widget", JSObject().put("kind", "quick"), true)
+        }
     }
 
     @PluginMethod fun getInfo(call: PluginCall) { call.resolve(JSObject().put("version", BuildConfig.VERSION_NAME).put("api", API)) }
@@ -67,6 +80,34 @@ class HorizontalAndroidPlugin : Plugin() {
         val heldIds = (0 until held.length()).map { held.getString(it) }.toSet()
         PlanStore.edit(context) { s -> s.copy(page = PageList(reminders, heldIds, readAt)) to Unit }
         Engine.reschedule(context)
+        call.resolve()
+    }
+
+    @PluginMethod fun setAgenda(call: PluginCall) {
+        val items = call.getArray("items", JSArray())!!
+        val readAt = call.data.optLong("readAt", 0L)   // `optLong`: vezi `setReminders`
+        val list = AgendaList((0 until items.length()).mapNotNull { Json.agendaItemFromJson(items.getJSONObject(it)) }, readAt)
+        PlanStore.edit(context) { s -> s.copy(agendaPage = list) to Unit }
+        Widgets.refresh(context)
+        call.resolve()
+    }
+
+    /** Pagina a închis ce deschisese widget-ul: omul se întoarce pe ecranul de start, nu pe alt ecran al aplicației. */
+    @PluginMethod fun leave(call: PluginCall) {
+        activity?.runOnUiThread { activity?.moveTaskToBack(true) }
+        call.resolve()
+    }
+
+    /**
+     * Tastatura pentru foaia rapidă deschisă din widget: focusul din pagină nu
+     * vine dintr-un gest în pagină, iar WebView-ul poate refuza să o ridice.
+     */
+    @PluginMethod fun showKeyboard(call: PluginCall) {
+        activity?.runOnUiThread {
+            val web = bridge?.webView ?: return@runOnUiThread
+            web.requestFocus()
+            (context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager).showSoftInput(web, InputMethodManager.SHOW_IMPLICIT)
+        }
         call.resolve()
     }
 
@@ -106,7 +147,8 @@ class HorizontalAndroidPlugin : Plugin() {
 
     @PluginMethod fun signOut(call: PluginCall) {
         // `finally`: pagina așteaptă răspunsul la logout; un apel rămas fără răspuns ar atârna deconectarea.
-        Thread { try { NativeSession.signOut(context) } finally { call.resolve() } }.start()
+        // Widget-ul trece pe „Deschide aplicația": agenda contului vechi a plecat odată cu planul.
+        Thread { try { NativeSession.signOut(context) } finally { Widgets.refresh(context); call.resolve() } }.start()
     }
 
     private fun notifState(): String = when {
@@ -138,7 +180,8 @@ class HorizontalAndroidPlugin : Plugin() {
     }
 
     companion object {
-        const val API = 1
+        // 2: setAgenda, leave, showKeyboard, evenimentul „widget" (widget-urile).
+        const val API = 2
         @Volatile private var instance: HorizontalAndroidPlugin? = null
 
         /**
