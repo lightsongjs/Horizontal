@@ -6395,13 +6395,22 @@ body:has(.qab) { overflow-y: auto; }
    (+ umbră ambientală doar când plutește); elementul activ = text plin + linie de 2px. */
 .qa-suggest {
   list-style: none;
-  margin: 4px 0 0;
-  padding: 4px 0;
+  margin: 6px 0 2px;
+  padding: 3px 0;
   background: var(--surface-2);
   border-radius: var(--r-m);
-  max-height: calc(8 * 34px);
+  /* Cinci rânduri vizibile; restul derulează, fără bara groasă a sistemului. */
+  max-height: calc(5 * 30px + 6px);
   overflow-y: auto;
+  scrollbar-width: none;
 }
+.qa-suggest::-webkit-scrollbar { display: none; }
+/* În bară titlul stă într-un rând flex lângă „+": lista trece pe rândul ei,
+   aliniată cu textul (20px „+" + 9px spațiu), nu se așază lângă câmp. */
+.qa-row { flex-wrap: wrap; row-gap: 2px; }
+/* `.qa-break` (lățime 100%, înălțime 0) trimite lista pe rândul de sub titlu; ea rămâne îngustă, ca un meniu. */
+.qa-row > .qa-break { flex-basis: 100%; height: 0; }
+.qa-row > .qa-suggest.flow { flex: 0 1 340px; margin: 2px 0 4px 29px; }
 .qa-suggest.below {
   position: absolute;
   top: calc(100% + 6px);
@@ -6415,10 +6424,10 @@ body:has(.qab) { overflow-y: auto; }
   display: flex;
   align-items: center;
   gap: 6px;
-  min-height: 34px;
+  min-height: 30px;
   padding: 0 12px;
   font-family: var(--display);
-  font-size: calc(14px * var(--text-scale));
+  font-size: calc(13.5px * var(--text-scale));
   color: var(--txt-dim);
   cursor: pointer;
   white-space: nowrap;

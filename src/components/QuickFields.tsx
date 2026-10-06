@@ -156,6 +156,8 @@ export function QuickTitle({ date, text, onText, inputRef, placeholder, enterKey
       />
       {suggestions?.placement === 'below' && list}
     </span>
+    {/* Rândul de dedesubt într-un părinte flex (bara): ruperea, apoi lista, îngustă. */}
+    {suggestions?.placement === 'flow' && open && <span className="qa-break" aria-hidden="true" />}
     {suggestions?.placement === 'flow' && list}
     {tipBelow && tipEl}
     </>
