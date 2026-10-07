@@ -36,6 +36,8 @@ export interface Project {
   /** Hex accent color. */
   accent: string
   type: 'personal' | 'work'
+  /** Rutine: tichetele lui apar în liste și widget doar după ce sună. Vezi `src/lib/routines.ts`. */
+  remindersOnly?: boolean
 }
 
 export interface Wave {

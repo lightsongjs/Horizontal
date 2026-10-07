@@ -5,6 +5,8 @@ import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
+import ro.horizontal.app.core.nextReveal
+import ro.horizontal.app.core.visibleAgenda
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -23,22 +25,26 @@ object Widgets {
         try {
             val ids = AgendaWidget.ids(ctx)
             if (ids.isEmpty()) return
-            val views = AgendaWidget.render(ctx, PlanStore.read(ctx))
+            val plan = PlanStore.read(ctx)
+            val views = AgendaWidget.render(ctx, plan)
             AppWidgetManager.getInstance(ctx).updateAppWidget(ids, views)
-            armMidnight(ctx)
+            val items = visibleAgenda(plan.agendaPage, plan.agendaNative, plan.queue).orEmpty()
+            armNext(ctx, nextReveal(items, System.currentTimeMillis()))
         } catch (e: Exception) {
             android.util.Log.w("hz-widget", "redesenarea a eșuat", e)
         }
     }
 
     /**
-     * La miezul nopții gruparea se schimbă fără date noi („mâine" devine „azi").
+     * La miezul nopții gruparea se schimbă fără date noi („mâine" devine „azi"),
+     * iar o rutină iese din ascunzătoare la ora ei (`reveal`) — ce vine întâi.
      * Inexactă: câteva minute de întârziere în Doze sunt acceptabile, iar alarma
      * exactă e rezervată mementourilor. Același `PendingIntent` → se suprascrie.
      */
-    private fun armMidnight(ctx: Context) {
+    private fun armNext(ctx: Context, reveal: Long?) {
         val zone = ZoneId.systemDefault()
-        val at = LocalDate.now(zone).plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli() + 60_000
+        val midnight = LocalDate.now(zone).plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli() + 60_000
+        val at = if (reveal != null) minOf(midnight, reveal + 1_000) else midnight
         val pi = PendingIntent.getBroadcast(ctx, 3, Intent(ctx, AgendaWidget::class.java).setAction(AgendaWidget.ACTION_MIDNIGHT),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         (ctx.getSystemService(Context.ALARM_SERVICE) as AlarmManager).set(AlarmManager.RTC, at, pi)

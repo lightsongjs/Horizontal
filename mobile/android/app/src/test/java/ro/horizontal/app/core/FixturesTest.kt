@@ -42,7 +42,9 @@ class FixturesTest {
         for (i in 0 until all.length()) {
             val f = all.getJSONObject(i)
             val items = f.getJSONArray("items").let { a -> (0 until a.length()).map { a.getJSONObject(it) }.map { o ->
-                AgendaItem(o.getString("id"), o.getString("id"), null, o.getString("dueAt"), o.getBoolean("allDay"), false, false, o.getBoolean("urgent"))
+                // `routine`: ascunsă până la `remindAt ?: dueAt`, ca `revealAt` din `src/lib/routines.ts`.
+                val hidden = if (o.optBoolean("routine", false)) parseIso(if (o.has("remindAt")) o.getString("remindAt") else o.getString("dueAt")) else null
+                AgendaItem(o.getString("id"), o.getString("id"), null, o.getString("dueAt"), o.getBoolean("allDay"), false, false, o.getBoolean("urgent"), hidden)
             } }
             val got = buildAgenda(items, parseIso(f.getString("now"))!!, zone).map { s ->
                 if (s.overdue) "overdue:${s.items.joinToString(",") { it.id }}" else "day${s.offset}:${s.items.joinToString(",") { it.id }}"

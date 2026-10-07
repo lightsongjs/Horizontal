@@ -25,6 +25,7 @@ import {
   unblocks,
 } from './lib/engine'
 import { buildSmartLists, smartListRange, type SmartLists } from './lib/schedule'
+import { nextReveal, routineProjectIds } from './lib/routines'
 import { didJumpOnComplete, jumpNotice } from './lib/recurrence'
 import { applyIssuePatch } from './lib/issuePatch'
 import { blockedBy, detectObstacleCycle } from './lib/obstacles'
@@ -127,7 +128,7 @@ interface HorizontalState {
   selectProject(id: string | null): void
   setActiveWave(wave: number): void
   createProject(input: NewProject): Promise<Project>
-  updateProject(id: string, patch: Partial<Pick<Project, 'name' | 'description' | 'accent' | 'type'>>): Promise<void>
+  updateProject(id: string, patch: Partial<Pick<Project, 'name' | 'description' | 'accent' | 'type' | 'remindersOnly'>>): Promise<void>
   deleteProject(id: string): Promise<void>
   reorderProjects(ids: string[]): void
   createAssignee(name: string): Promise<Assignee>
@@ -586,7 +587,21 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     return merged.filter((i) => i.dueAt && !hiddenIds.has(i.id))
   }, [dueRaw, allIssues, hiddenIds])
 
-  const smartLists = useMemo(() => buildSmartLists(dueIssues, new Date()), [dueIssues])
+  // O rutină iese din ascunzătoare la ora ei fără date noi, deci listele se
+  // recalculează atunci: `revealTick` e ceasul, armat pe cea mai apropiată.
+  const routines = useMemo(() => routineProjectIds(rawProjects), [rawProjects])
+  const [revealTick, setRevealTick] = useState(0)
+  const smartLists = useMemo(
+    () => buildSmartLists(dueIssues, new Date(), routines),
+    [dueIssues, routines, revealTick],
+  )
+  useEffect(() => {
+    const at = nextReveal(dueIssues, routines, new Date())
+    if (at === null) return
+    // Plafonat: `setTimeout` peste ~24,8 zile se declanșează imediat.
+    const t = setTimeout(() => setRevealTick((n) => n + 1), Math.min(at - Date.now() + 500, 86_400_000))
+    return () => clearTimeout(t)
+  }, [dueIssues, routines, revealTick])
   const dueIssuesRef = useRef<Issue[]>([])
   dueIssuesRef.current = dueIssues
 

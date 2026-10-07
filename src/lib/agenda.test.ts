@@ -8,13 +8,17 @@ import { buildSmartLists, NO_SCHEDULE } from './schedule'
 import { agendaItems, AGENDA_LIMIT } from './agenda'
 import type { Issue } from './types'
 
+type FixtureItem = { id: string; dueAt: string; allDay: boolean; urgent: boolean; remindAt?: string; routine?: boolean }
+
 const issue = (p: Partial<Issue> & { id: string }): Issue =>
   ({ ...NO_SCHEDULE, projectId: 'p1', title: p.id, done: false, urgent: false, ...p }) as Issue
 
 describe('agenda — fixtures comune cu Kotlin', () => {
   for (const f of fixtures) {
     it(f.name, () => {
-      const lists = buildSmartLists(f.items.map((i) => issue(i)), new Date(f.now))
+      // `routine: true` = proiect „doar mementouri" (`src/lib/routines.ts`).
+      const items = f.items.map(({ routine, ...i }: FixtureItem) => issue({ ...i, projectId: routine ? 'rut' : 'p1' }))
+      const lists = buildSmartLists(items, new Date(f.now), new Set(['rut']))
       const got: unknown[] = []
       if (lists.overdue.length) got.push({ section: 'overdue', ids: lists.overdue.map((i) => i.id) })
       lists.week.forEach((d, offset) => { if (d.issues.length) got.push({ section: 'day', offset, ids: d.issues.map((i) => i.id) }) })
@@ -37,9 +41,17 @@ describe('agendaItems', () => {
       issue({ id: 'HZ-5', dueAt: '2026-09-01T21:00:00.000Z', projectId: 'px' }),// restanță veche, proiect necunoscut
     ], projects, now)
     expect(got).toEqual([
-      { id: 'HZ-5', title: 'HZ-5', project: null, dueAt: '2026-09-01T21:00:00.000Z', allDay: true, hasReminder: false, recurring: false, urgent: false },
-      { id: 'HZ-1', title: 'HZ-1', project: 'Daily', dueAt: '2026-10-06T11:30:00.000Z', allDay: false, hasReminder: true, recurring: true, urgent: false },
+      { id: 'HZ-5', title: 'HZ-5', project: null, dueAt: '2026-09-01T21:00:00.000Z', allDay: true, hasReminder: false, recurring: false, urgent: false, hiddenUntil: null },
+      { id: 'HZ-1', title: 'HZ-1', project: 'Daily', dueAt: '2026-10-06T11:30:00.000Z', allDay: false, hasReminder: true, recurring: true, urgent: false, hiddenUntil: null },
     ])
+  })
+
+  it('o rutină poartă momentul de la care se vede (mementoul, altfel scadența) și intră chiar dacă e încă ascunsă', () => {
+    const got = agendaItems([
+      issue({ id: 'R-1', projectId: 'rut', dueAt: '2026-10-06T18:00:00.000Z', allDay: false, remindAt: '2026-10-06T17:50:00.000Z' }),
+      issue({ id: 'R-2', projectId: 'rut', dueAt: '2026-10-06T21:00:00.000Z' }),
+    ], [...projects, { id: 'rut', name: 'Rutine', remindersOnly: true }], now)
+    expect(got.map((i) => [i.id, i.hiddenUntil])).toEqual([['R-1', '2026-10-06T17:50:00.000Z'], ['R-2', '2026-10-06T21:00:00.000Z']])
   })
 
   it(`se oprește la ${AGENDA_LIMIT}`, () => {

@@ -13,6 +13,7 @@ export function ProjectSettings() {
   const [name, setName] = useState(project?.name ?? '')
   const [description, setDescription] = useState(project?.description ?? '')
   const [accent, setAccent] = useState(project?.accent ?? ACCENTS[0])
+  const [remindersOnly, setRemindersOnly] = useState(project?.remindersOnly ?? false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -21,6 +22,7 @@ export function ProjectSettings() {
   if (!project) return null
 
   const dirty = name.trim() !== project.name || description.trim() !== project.description || accent !== project.accent
+    || remindersOnly !== (project.remindersOnly ?? false)
   const valid = name.trim().length > 0
 
   const save = async () => {
@@ -28,7 +30,10 @@ export function ProjectSettings() {
     setSaving(true)
     setError(null)
     try {
-      await updateProject(project.id, { name: name.trim(), description: description.trim(), accent })
+      await updateProject(project.id, {
+        name: name.trim(), description: description.trim(), accent,
+        ...(remindersOnly !== (project.remindersOnly ?? false) ? { remindersOnly } : {}),
+      })
       closeSheet()
     } catch (e) {
       setError(errorMessage(e))
@@ -76,6 +81,15 @@ export function ProjectSettings() {
             </button>
           ))}
         </div>
+
+        <div className="sheet-section-t">În „Azi" și pe widget</div>
+        <div className="chips" style={{ margin: '0 0 4px' }}>
+          <button className={`chip ${!remindersOnly ? 'on' : ''}`} onClick={() => setRemindersOnly(false)}>Ca orice sarcină</button>
+          <button className={`chip ${remindersOnly ? 'on' : ''}`} onClick={() => setRemindersOnly(true)}>Doar după ce sună</button>
+        </div>
+        <p style={{ fontSize: 'calc(11px * var(--text-scale))', color: 'var(--txt-faint)', margin: '6px 0 12px', lineHeight: 1.5 }}>
+          Pentru rutine (vasele, mașina de spălat): tichetele stau ascunse până la memento și apar doar dacă nu le-ai bifat.
+        </p>
 
         {error && <div className="banner">⚠ {error}</div>}
 

@@ -75,7 +75,7 @@ export interface Repository {
   listProjects(): Promise<Project[]>
   /** Creates the project and its first wave ("Val 1"). */
   createProject(input: NewProject): Promise<Project>
-  updateProject(id: string, patch: Partial<Pick<Project, 'name' | 'description' | 'accent' | 'type'>>): Promise<Project>
+  updateProject(id: string, patch: Partial<Pick<Project, 'name' | 'description' | 'accent' | 'type' | 'remindersOnly'>>): Promise<Project>
   /** Deletes the project and all its waves, themes, and issues. */
   deleteProject(id: string): Promise<void>
 

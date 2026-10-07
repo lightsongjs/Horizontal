@@ -600,6 +600,26 @@ nu pornește în paralel cu ea.
 
 Setup: `npm run migrate supabase/migration-recurrence.sql`.
 
+## Rutine — proiect „doar mementouri"
+
+Bifa din setările proiectului (`projects.reminders_only`) face tichetele lui
+invizibile în „Azi", „7 zile" și widget până sună (`remindAt ?? dueAt`), apoi
+apar ca orice sarcină până la bifă — un memento ratat nu se pierde (decizia
+omului, 2026-10-07). În proiect se văd toate, ca listă de rutine. Mementourile
+(push, Linux, Android) nu se schimbă deloc.
+
+- Regula: `src/lib/routines.ts`; filtrul stă în `buildSmartLists`, iar store-ul
+  își armează un ceas pe următoarea ieșire (`nextReveal`) — fără date noi
+  listele nu s-ar recalcula.
+- Widget: pagina trimite rutinele ȘI pe cele încă ascunse, cu `hiddenUntil`;
+  cutia filtrează în `buildAgenda` și armează redesenarea pe min(miezul
+  nopții, următoarea rutină). Citirea nativă calculează `hiddenUntil` din
+  `projects(reminders_only)`. Fixtures comune: `agenda.fixtures.json` (`routine`).
+- O captură din fereastra nativă într-un proiect de rutine se vede pe widget
+  până la următoarea citire (`createsAsAgenda` nu știe de rutine) — asumat.
+- Setup: `npm run migrate supabase/migration-routines.sql` ÎNAINTE de APK-ul
+  nou (`versionCode 7`): citirea nativă cere coloana, altfel agenda rămâne veche.
+
 ## Gesturile de pe telefon — glisare și selecție
 
 Sub 900px, rândurile din listele inteligente se glisează (dreapta: „Mâine";

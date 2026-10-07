@@ -65,7 +65,7 @@ describe('androidListKey', () => {
 })
 
 describe('agendaKey', () => {
-  const item = { id: 'HZ-1', title: 'R', project: null, dueAt: '2026-10-06T07:00:00.000Z', allDay: false, hasReminder: false, recurring: false, urgent: false }
+  const item = { id: 'HZ-1', title: 'R', project: null, dueAt: '2026-10-06T07:00:00.000Z', allDay: false, hasReminder: false, recurring: false, urgent: false, hiddenUntil: null }
   it('se schimbă cu lista și cu vârsta datelor, nu altfel', () => {
     expect(agendaKey([item], 5)).toBe(agendaKey([{ ...item }], 5))
     expect(agendaKey([item], 5)).not.toBe(agendaKey([item], 6))

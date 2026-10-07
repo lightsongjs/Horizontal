@@ -4,6 +4,7 @@
 // Regula e `buildSmartLists`; fixtures comune în `agenda.fixtures.json`.
 
 import { compareDue, dayOffset, isOverdue, SMART_LIST_DAYS } from './schedule'
+import { revealAt } from './routines'
 import type { Issue, Project } from './types'
 
 export interface AgendaItem {
@@ -15,13 +16,16 @@ export interface AgendaItem {
   hasReminder: boolean
   recurring: boolean
   urgent: boolean
+  /** Rutină: cutia o ascunde până la acest moment (`src/lib/routines.ts`); altfel `null`. */
+  hiddenUntil: string | null
 }
 
 /** Același plafon ca citirea nativă (`AGENDA_LIMIT` din `core/Agenda.kt`). */
 export const AGENDA_LIMIT = 200
 
-export function agendaItems(issues: Issue[], projects: Pick<Project, 'id' | 'name'>[], now: Date): AgendaItem[] {
+export function agendaItems(issues: Issue[], projects: Pick<Project, 'id' | 'name' | 'remindersOnly'>[], now: Date): AgendaItem[] {
   const names = new Map(projects.map((p) => [p.id, p.name]))
+  const routines = new Set(projects.filter((p) => p.remindersOnly).map((p) => p.id))
   const byId = new Map<string, Issue>()
   for (const it of issues) {
     if (it.done || !it.dueAt || byId.has(it.id)) continue
@@ -37,5 +41,6 @@ export function agendaItems(issues: Issue[], projects: Pick<Project, 'id' | 'nam
     hasReminder: !!it.remindAt,
     recurring: !!it.rrule,
     urgent: it.urgent,
+    hiddenUntil: routines.has(it.projectId) ? revealAt(it) : null,
   }))
 }

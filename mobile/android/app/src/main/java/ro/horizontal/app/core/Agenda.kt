@@ -19,6 +19,8 @@ import java.util.Locale
 data class AgendaItem(
     val id: String, val title: String, val project: String?, val dueAt: String, val allDay: Boolean,
     val hasReminder: Boolean, val recurring: Boolean, val urgent: Boolean,
+    /** Rutină (proiect „doar mementouri"): ascunsă până atunci = `remind_at ?: due_at`. `src/lib/routines.ts`. */
+    val hiddenUntil: Long? = null,
 )
 /** `readAt` = PORNIREA citirii (ca `NativeList`); al paginii, 0 offline. */
 data class AgendaList(val items: List<AgendaItem>, val readAt: Long)
@@ -45,7 +47,7 @@ private fun order(zone: ZoneId) = compareBy<Pair<AgendaItem, Long>>(
 )
 
 fun buildAgenda(items: List<AgendaItem>, now: Long, zone: ZoneId): List<AgendaSection> {
-    val timed = items.mapNotNull { i -> parseIso(i.dueAt)?.let { i to it } }.sortedWith(order(zone))
+    val timed = items.filter { (it.hiddenUntil ?: 0) <= now }.mapNotNull { i -> parseIso(i.dueAt)?.let { i to it } }.sortedWith(order(zone))
     val late = timed.filter { (i, at) -> overdue(i, at, now, zone) }
     val out = mutableListOf<AgendaSection>()
     if (late.isNotEmpty()) out += AgendaSection(true, 0, null, late.map { it.first })
@@ -91,6 +93,9 @@ fun agendaState(page: AgendaList?, native: AgendaList?, queue: List<NativeAction
     return AgendaState.Ready(sections, sections.sumOf { it.items.size })
 }
 
+/** Când iese din ascunzătoare cea mai apropiată rutină — widget-ul se redesenează atunci. */
+fun nextReveal(items: List<AgendaItem>, now: Long): Long? = items.mapNotNull { it.hiddenUntil }.filter { it > now }.minOrNull()
+
 private val ZILE = listOf("lun", "mar", "mie", "joi", "vin", "sâm", "dum")
 private val ZILE_LUNGI = listOf("luni", "marți", "miercuri", "joi", "vineri", "sâmbătă", "duminică")
 private val LUNI = listOf("ian", "feb", "mar", "apr", "mai", "iun", "iul", "aug", "sep", "oct", "nov", "dec")
@@ -132,7 +137,7 @@ fun rowMeta(item: AgendaItem, overdue: Boolean, now: Long, zone: ZoneId): String
 fun agendaQuery(now: Long, zone: ZoneId): String {
     val e = { s: String -> URLEncoder.encode(s, "UTF-8") }
     val end = localDate(now, zone).plusDays(AGENDA_DAYS.toLong()).atStartOfDay(zone).toInstant().toEpochMilli()
-    return "issues?select=id,title,due_at,all_day,remind_at,rrule,urgent,projects(name)" +
+    return "issues?select=id,title,due_at,all_day,remind_at,rrule,urgent,projects(name,reminders_only)" +
         "&done=is.false&due_at=lt.${e(isoJs(end))}&order=due_at.asc&limit=$AGENDA_LIMIT"
 }
 
@@ -144,10 +149,12 @@ fun parseAgenda(json: String): List<AgendaItem> {
         val o = a.optJSONObject(i) ?: return@mapNotNull null
         val id = o.str("id")?.ifEmpty { null } ?: return@mapNotNull null
         val due = parseIso(o.str("due_at")) ?: return@mapNotNull null
+        val routine = o.optJSONObject("projects")?.optBoolean("reminders_only", false) == true
         AgendaItem(
             id, o.str("title")?.ifBlank { null } ?: "Sarcină fără titlu", o.optJSONObject("projects")?.str("name"),
             isoJs(due), if (o.isNull("all_day")) false else o.optBoolean("all_day", false),
             o.str("remind_at") != null, o.str("rrule") != null, if (o.isNull("urgent")) false else o.optBoolean("urgent", false),
+            if (routine) parseIso(o.str("remind_at")) ?: due else null,
         )
     }
 }

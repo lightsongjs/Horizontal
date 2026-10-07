@@ -67,7 +67,10 @@ class AgendaTest {
     }
 
     @Test fun jsonDusÎntors() {
-        val l = AgendaList(listOf(AgendaItem("HZ-1", "R", null, "2026-10-06T07:00:00.000Z", false, true, true, false)), 42)
+        val l = AgendaList(listOf(
+            AgendaItem("HZ-1", "R", null, "2026-10-06T07:00:00.000Z", false, true, true, false),
+            AgendaItem("R-1", "Vase", "Rutine", "2026-10-06T07:00:00.000Z", false, true, true, false, hiddenUntil = parseIso("2026-10-06T06:50:00.000Z")),
+        ), 42)
         assertEquals(l, Json.agendaFromJson(Json.agendaToJson(l)))
     }
 
@@ -82,5 +85,24 @@ class AgendaTest {
         val fresh = stale.copy(readAt = 60)
         assertEquals(listOf("A", "B"), visibleAgenda(null, fresh, emptyList(), held)!!.map { it.id })
         assertEquals(emptyMap<String, Long>(), holdDone(emptyList(), emptyList(), held, agendaReadAt = 60))
+    }
+
+    @Test fun rutinaDinCitireaNativă_ascunsăPânăLaMemento_altfelPânăLaScadență() {
+        val json = """[
+          {"id":"R-1","title":"Vase","due_at":"2026-10-06T18:00:00+00:00","all_day":false,"remind_at":"2026-10-06T17:50:00+00:00","rrule":"FREQ=DAILY","urgent":false,"projects":{"name":"Rutine","reminders_only":true}},
+          {"id":"R-2","title":"Prânz","due_at":"2026-10-06T21:00:00+00:00","all_day":true,"remind_at":null,"rrule":null,"urgent":false,"projects":{"name":"Rutine","reminders_only":true}},
+          {"id":"HZ-1","title":"Raport","due_at":"2026-10-06T18:00:00+00:00","all_day":false,"remind_at":"2026-10-06T17:50:00+00:00","rrule":null,"urgent":false,"projects":{"name":"Daily","reminders_only":false}}
+        ]"""
+        val got = parseAgenda(json).associate { it.id to it.hiddenUntil }
+        assertEquals(mapOf("R-1" to parseIso("2026-10-06T17:50:00.000Z"), "R-2" to parseIso("2026-10-06T21:00:00.000Z"), "HZ-1" to null), got)
+        assertTrue(agendaQuery(now, zone).contains("projects(name,reminders_only)"))
+    }
+
+    @Test fun următoareaRedesenare_ePrimaRutinăCareIeseDinAscunzătoare() {
+        val a = item("A", "2026-10-06T18:00:00.000Z").copy(hiddenUntil = parseIso("2026-10-06T17:00:00.000Z"))
+        val b = item("B", "2026-10-06T18:00:00.000Z").copy(hiddenUntil = parseIso("2026-10-06T09:00:00.000Z"))
+        val c = item("C", "2026-10-06T18:00:00.000Z").copy(hiddenUntil = parseIso("2026-10-06T07:00:00.000Z"))   // deja vizibilă
+        assertEquals(parseIso("2026-10-06T09:00:00.000Z"), nextReveal(listOf(a, b, c, item("D", "2026-10-06T18:00:00.000Z")), now))
+        assertEquals(null, nextReveal(listOf(c), now))
     }
 }

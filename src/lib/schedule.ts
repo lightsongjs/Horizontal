@@ -7,6 +7,7 @@
 // string-uri ISO între ele — se compară timpi și se bucketizează pe zile locale.
 
 import type { Issue } from './types'
+import { isDormant } from './routines'
 import type { DueRange } from '../data/repository'
 
 /**
@@ -116,8 +117,10 @@ export interface SmartLists {
  * Restanțele apar NUMAI în `overdue`, niciodată în `today` sau în `week`: o
  * restanță e o problemă de azi, dar „Next 7 days" e o listă despre ce urmează.
  * Dublarea ar face ca aceeași sarcină să fie numărată de două ori în badge-uri.
+ *
+ * Rutinele (`routines` = proiecte „doar mementouri") lipsesc până sună.
  */
-export function buildSmartLists(issues: Issue[], now: Date): SmartLists {
+export function buildSmartLists(issues: Issue[], now: Date, routines: Set<string> = new Set()): SmartLists {
   const overdue: Issue[] = []
   const byOffset = new Map<number, Issue[]>()
   const doneToday: Issue[] = []
@@ -129,6 +132,7 @@ export function buildSmartLists(issues: Issue[], now: Date): SmartLists {
       if (off === 0) doneToday.push(it)
       continue
     }
+    if (isDormant(it, routines, now)) continue
     if (isOverdue(it, now)) {
       overdue.push(it)
       continue

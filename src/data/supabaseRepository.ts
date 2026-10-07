@@ -274,6 +274,7 @@ export function createSupabaseRepository(): Repository {
         currentWave: p.current_wave,
         accent: p.accent,
         type: (p.type ?? 'personal') as 'personal' | 'work',
+        remindersOnly: p.reminders_only === true,
       }))
     },
 
@@ -313,9 +314,10 @@ export function createSupabaseRepository(): Repository {
       if (patch.description !== undefined) row.description = patch.description
       if (patch.accent !== undefined) row.accent = patch.accent
       if (patch.type !== undefined) row.type = patch.type
+      if (patch.remindersOnly !== undefined) row.reminders_only = patch.remindersOnly
       const { data, error } = await db.from('projects').update(row).eq('id', id).select('*').single()
       if (error) throw error
-      return { id: data.id, name: data.name, description: data.description, prefix: data.prefix, currentWave: data.current_wave, accent: data.accent, type: (data.type ?? 'personal') as 'personal' | 'work' }
+      return { id: data.id, name: data.name, description: data.description, prefix: data.prefix, currentWave: data.current_wave, accent: data.accent, type: (data.type ?? 'personal') as 'personal' | 'work', remindersOnly: data.reminders_only === true }
     },
 
     async deleteProject(id) {

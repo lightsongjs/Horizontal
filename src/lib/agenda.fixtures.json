@@ -57,5 +57,23 @@
     "now": "2026-10-06T08:00:00.000Z",
     "items": [],
     "want": []
+  },
+  {
+    "name": "rutine: ascunse până sună (mementoul, altfel scadența), apoi ca orice sarcină",
+    "now": "2026-10-06T08:00:00.000Z",
+    "items": [
+      { "id": "R-1",  "dueAt": "2026-10-06T18:00:00.000Z", "allDay": false, "urgent": false, "remindAt": "2026-10-06T17:50:00.000Z", "routine": true },
+      { "id": "R-2",  "dueAt": "2026-10-06T18:00:00.000Z", "allDay": false, "urgent": false, "remindAt": "2026-10-06T07:30:00.000Z", "routine": true },
+      { "id": "R-3",  "dueAt": "2026-10-06T06:00:00.000Z", "allDay": false, "urgent": false, "routine": true },
+      { "id": "R-4",  "dueAt": "2026-10-05T21:00:00.000Z", "allDay": true,  "urgent": false, "routine": true },
+      { "id": "R-5",  "dueAt": "2026-10-06T21:00:00.000Z", "allDay": true,  "urgent": false, "routine": true },
+      { "id": "R-6",  "dueAt": "2026-10-06T10:00:00.000Z", "allDay": false, "urgent": false, "routine": true },
+      { "id": "HZ-1", "dueAt": "2026-10-06T21:00:00.000Z", "allDay": true,  "urgent": false }
+    ],
+    "want": [
+      { "section": "overdue", "ids": ["R-3"] },
+      { "section": "day", "offset": 0, "ids": ["R-4", "R-2"] },
+      { "section": "day", "offset": 1, "ids": ["HZ-1"] }
+    ]
   }
 ]
