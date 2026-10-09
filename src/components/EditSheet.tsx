@@ -12,6 +12,7 @@ import { Icon } from './Icon'
 import { KeyboardSheet } from './KeyboardSheet'
 import { QuickDesc } from './QuickFields'
 import { AttachButton, ThumbRow, attachBlocked, useTicketFiles } from './SheetFiles'
+import { ProjectMark } from './ProjectMark'
 
 /** Ce se editează din foaie — exact câmpurile pe care le poate trimite. */
 type EditFields = {
@@ -251,7 +252,7 @@ function EditBody({ issue }: { issue: Issue }) {
               prefixul, iar valul și dependențele sunt ale proiectului. */}
           {project && (
             <span className="qs-sel qs-proj" title={project.name}>
-              <span className="t-dot" style={{ background: project.accent }} />
+              <ProjectMark project={project} dot="t-dot" />
               <span className="qs-sel-t">{project.name}</span>
             </span>
           )}

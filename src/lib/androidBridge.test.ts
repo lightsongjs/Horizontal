@@ -74,6 +74,11 @@ describe('agendaKey', () => {
 })
 
 describe('captureData', () => {
+  it('Inbox primul — un APK vechi îl caută după „Daily" și cade pe primul personal', () => {
+    const mk = (id: string, name: string) => ({ id, name, prefix: id.toUpperCase(), type: 'personal' as const, accent: '#fff', description: '' })
+    const d = captureData([mk('home', 'Home'), mk('d', 'Inbox'), mk('kata', 'Katalist')], [], 1)
+    expect(d.projects.map((p) => p.id)).toEqual(['d', 'home', 'kata'])
+  })
   it('ia doar câmpurile ferestrei, iar cheia se schimbă doar cu ele', () => {
     const p = { id: 'p', name: '✅Daily', prefix: 'HZ', type: 'work' as const, accent: '#fff', description: 'x' }
     const ana = { id: 'a', name: 'Ana', email: 'x' }

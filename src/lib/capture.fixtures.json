@@ -22,6 +22,11 @@
       "want": { "title": "raport", "projectId": "p-daily", "rrule": null }
     },
     {
+      "name": "#inbox: Inbox după rol, oricum s-ar numi proiectul",
+      "input": { "text": "raport #inbox" },
+      "want": { "title": "raport", "projectId": "p-daily", "rrule": null }
+    },
+    {
       "name": "fragment refuzat rămâne text",
       "input": { "text": "sună la 10 la bancă", "rejected": ["la 10"] },
       "want": { "title": "sună la 10 la bancă", "live": ["la 10"], "dueAt": "2026-10-05T21:00:00.000Z", "allDay": true, "spans": [] }

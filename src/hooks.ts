@@ -9,7 +9,7 @@ import { buildOrderedLayers, type OrderedLayer } from './lib/ordering'
 import type { Issue, Project } from './lib/types'
 import { parseCaptureTokens, type CaptureTokens } from './lib/captureTokens'
 import { Autosaver, type AutosaveStatus, type Fields, type Normalize } from './lib/autosave'
-import { computeDraft, keyboardInset, type DraftError, type DraftSchedule, type ManualPick, type QuickCtx } from './lib/quickDraft'
+import { captureDefaultProjectId, computeDraft, keyboardInset, type DraftError, type DraftSchedule, type ManualPick, type QuickCtx } from './lib/quickDraft'
 import type { NewIssue } from './data/repository'
 
 const HIDE_DONE_KEY = 'horizontal:hide-done'
@@ -631,17 +631,10 @@ export function useTitleDate(
   }
 }
 
-/** Proiectul ultimei sarcini adăugate dintr-o listă — fără Inbox, captura pornește de acolo. */
-export const LAST_PROJECT_KEY = 'horizontal:last-task-project'
-
 export interface QuickDraftOptions {
   ctx: QuickCtx
   /** Citește `#proiect @om !` din text și trimite omul și urgența (bara, foaia). */
   tokens?: boolean
-  /** Ține minte proiectul ales, pentru următoarea captură din listă. */
-  rememberProject?: boolean
-  /** Proiectul cu care pornește, peste cel ținut minte (bara de captură: „Daily"). */
-  defaultProjectId?: string
 }
 
 export interface QuickDraft {
@@ -656,7 +649,7 @@ export interface QuickDraft {
   /** Proiectul în care se va scrie, sau undefined dacă nu există niciunul permis. */
   project: Project | undefined
   projects: Project[]
-  /** Alegerea din selector: bate semnul din text și rămâne peste rafală. */
+  /** Alegerea din selector: bate semnul din text, pentru sarcina asta. */
   pickProject(id: string): void
   schedule: DraftSchedule
   /** Titlul care se va salva (fără dată, fără semne). */
@@ -678,7 +671,7 @@ export interface QuickDraft {
  * rapidă, ca cele trei să nu poată înțelege diferit același text — regulile
  * stau în `lib/quickDraft`, aici doar starea și legătura cu depozitul.
  */
-export function useQuickDraft({ ctx, tokens: withTokens = false, rememberProject = false, defaultProjectId }: QuickDraftOptions): QuickDraft {
+export function useQuickDraft({ ctx, tokens: withTokens = false }: QuickDraftOptions): QuickDraft {
   const { createIssue, assignees } = useHorizontal()
   // Numai proiectele în care se poate scrie: un selector care oferă un proiect
   // read-only ar produce o salvare respinsă de RLS, după ce userul a scris tot.
@@ -688,17 +681,15 @@ export function useQuickDraft({ ctx, tokens: withTokens = false, rememberProject
   const [manual, setManual] = useState<ManualPick>({})
   const [saving, setSaving] = useState(false)
   const [shake, setShake] = useState(false)
-  const [projectId, setProjectId] = useState<string>(() => {
-    if (ctx.mode === 'project') return ctx.projectId
-    return defaultProjectId ?? localStorage.getItem(LAST_PROJECT_KEY) ?? ''
-  })
   // Recunoașterea datei, cu refuzul legat de fragment — vezi `useTitleDate`.
   const date = useTitleDate(text, { onChange: setText })
   const tokens = withTokens ? parseCaptureTokens(date.title, projects, assignees) : null
   // Regulile — aceeași funcție pe care o rulează fereastra nativă de pe telefon.
   const draft = computeDraft({
     text, desc, rejected: date.live, manual, projects, assignees,
-    defaultProjectId: projectId || null, nowMs: Date.now(), tokens: withTokens, ctx,
+    // Calculat la fiecare randare, nu la montare: proiectele sosesc după
+    // primul cadru, iar Inbox trebuie găsit și atunci.
+    defaultProjectId: captureDefaultProjectId(ctx, projects), nowMs: Date.now(), tokens: withTokens, ctx,
   })
   const project = projects.find((p) => p.id === draft.projectId)
   const resolved: NewIssue | { error: DraftError } = draft.issue ?? { error: draft.error ?? 'empty' }
@@ -707,11 +698,9 @@ export function useQuickDraft({ ctx, tokens: withTokens = false, rememberProject
 
   const reset = () => { setText(''); setDesc(''); date.reset(); setManual({}) }
 
-  const pickProject = (id: string) => {
-    setProjectId(id)
-    setManual((m) => ({ ...m, projectId: id }))
-    if (rememberProject) localStorage.setItem(LAST_PROJECT_KEY, id)
-  }
+  // Alegerea trăiește în `manual`, deci `reset` o șterge odată cu restul:
+  // sarcina următoare pornește iar din Inbox, nu din ce ai ales adineauri.
+  const pickProject = (id: string) => setManual((m) => ({ ...m, projectId: id }))
 
   const submit = async (): Promise<Issue | null> => {
     if (saving || !project) return null
@@ -720,9 +709,6 @@ export function useQuickDraft({ ctx, tokens: withTokens = false, rememberProject
     setSaving(true)
     try {
       const created = await createIssue(resolved)
-      if (rememberProject) localStorage.setItem(LAST_PROJECT_KEY, resolved.projectId)
-      // Proiectul ales din selector rămâne peste rafală (e în `projectId`);
-      // restul alegerilor sunt ale sarcinii trimise.
       reset()
       return created
     } finally {

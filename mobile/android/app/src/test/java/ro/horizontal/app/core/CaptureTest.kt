@@ -16,9 +16,11 @@ class CaptureTest {
         listOf(CapturePerson("a-ana", "Ana Pop")), readAt = 1,
     )
 
-    @Test fun dailyDupăNume() {
-        assertEquals("p-daily", dailyProjectId(data.projects))
-        assertNull(dailyProjectId(listOf(CaptureProject("x", "Altceva", "X", null))))
+    @Test fun inboxDupăIdApoiDupăNume() {
+        assertEquals("p-daily", inboxProjectId(data.projects))
+        assertEquals("d", inboxProjectId(listOf(CaptureProject("x", "Daily", "X", null), CaptureProject("d", "Cutia mea", "D", null))))
+        assertEquals("i", inboxProjectId(listOf(CaptureProject("i", "Inbox", "I", null))))
+        assertNull(inboxProjectId(listOf(CaptureProject("x", "Altceva", "X", null))))
     }
 
     @Test fun modulBrut_titlulETextul_DailyȘiAzi() {

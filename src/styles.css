@@ -5062,6 +5062,9 @@ body:has(.kb-sheet) .toast {
 }
 .t-proj-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .t-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+/* Inbox: iconița ține locul bulinei (`ProjectMark`), în culoarea proiectului. */
+.proj-inbox { display: inline-flex; align-items: center; flex-shrink: 0; line-height: 0; }
+.proj h3 .proj-inbox { margin-right: 6px; vertical-align: -1px; }
 
 /* ── ALE MELE (InboxView.tsx) ─────────────────────────────────────────
    Aceeași lățime de citit ca listele inteligente — vezi `.smart-list`. */

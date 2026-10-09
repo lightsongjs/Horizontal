@@ -11,6 +11,7 @@ import type { Issue } from '../lib/types'
 import { Bell, Recur } from './DueChip'
 import { Icon } from './Icon'
 import { urgentActionFor, useTaskActions } from './TaskActions'
+import { ProjectMark } from './ProjectMark'
 
 interface Props {
   issue: Issue
@@ -83,7 +84,7 @@ export function TaskRow({ issue, onOpen, late = false }: Props) {
         <Recur rrule={issue.rrule} />
         {project && (
           <span className="t-proj" title={project.name}>
-            <span className="t-dot" style={{ background: project.accent }} />
+            <ProjectMark project={project} dot="t-dot" />
             <span className="t-proj-name">{project.name}</span>
           </span>
         )}

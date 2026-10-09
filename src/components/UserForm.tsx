@@ -14,6 +14,7 @@ import { errorMessage } from '../lib/errorMessage'
 import type { ProjectRole } from '../lib/access'
 import type { Project } from '../lib/types'
 import { Icon } from './Icon'
+import { ProjectMark } from './ProjectMark'
 
 type Draft = Record<string, ProjectRole | undefined>
 
@@ -64,7 +65,7 @@ function AccessGrid({ projects, draft, onSet }: { projects: Project[]; draft: Dr
     <div className="acc-grid">
       {projects.map((p) => (
         <div className="acc-row" key={p.id}>
-          <span className="acc-dot" style={{ background: p.accent || 'var(--txt-faint)' }} />
+          <ProjectMark project={p} dot="acc-dot" size={13} />
           <span className="acc-name">{p.name}</span>
           <AccessToggle value={draft[p.id]} onChange={(v) => onSet(p.id, v)} />
         </div>

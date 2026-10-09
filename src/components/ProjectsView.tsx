@@ -1,5 +1,6 @@
 import type React from 'react'
 import { useHorizontal } from '../store'
+import { ProjectMark } from './ProjectMark'
 
 export function ProjectsView() {
   const { projects, completion, selectProject } = useHorizontal()
@@ -17,7 +18,7 @@ export function ProjectsView() {
           const pct = Math.round(completion(p.id) * 100)
           return (
             <button key={p.id} className={`proj p${(i % 3) + 1}`} onClick={() => selectProject(p.id)}>
-              <h3>{p.name}</h3>
+              <h3><ProjectMark project={p} size={16} />{p.name}</h3>
               {p.description && <p>{p.description}</p>}
               <div className="proj-meta">
                 {/* Culoarea proiectului trăiește în umplerea barei — singurul loc

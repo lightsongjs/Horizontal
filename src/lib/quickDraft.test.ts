@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import quickAddSrc from '../components/QuickAdd.tsx?raw'
 import quickSheetSrc from '../components/QuickSheet.tsx?raw'
-import { draftSchedule, dueLabel, dueLabelParts, keyboardInset, quickKey, resolveDraft, type DraftDate, type DraftInput, type QuickCtx } from './quickDraft'
+import { captureDefaultProjectId, draftSchedule, dueLabel, dueLabelParts, keyboardInset, quickKey, resolveDraft, type DraftDate, type DraftInput, type QuickCtx } from './quickDraft'
 import type { CaptureTokens } from './captureTokens'
 
 const TODAY = '2026-10-03T00:00:00.000Z'
@@ -145,5 +145,25 @@ describe('dueLabel', () => {
   })
   it('alt an se scrie', () => {
     expect(dueLabel(new Date(2027, 0, 5).toISOString(), true, now)).toBe('Mar 05/01/2027')
+  })
+})
+
+describe('captureDefaultProjectId — unde cade o sarcină fără proiect ales', () => {
+  const projects = [
+    { id: 'home', name: 'Home' },
+    { id: 'd', name: 'Inbox' },
+    { id: 'kata', name: 'Katalist' },
+  ]
+  it('dintr-o listă: Inbox, niciodată ultimul folosit', () => {
+    expect(captureDefaultProjectId(LIST, projects)).toBe('d')
+  })
+  it('dintr-un proiect deschis: acela', () => {
+    expect(captureDefaultProjectId(PROJ, projects)).toBe('p1')
+  })
+  it('Inbox după numele vechi, fără rândul `d`', () => {
+    expect(captureDefaultProjectId(LIST, [{ id: 'h', name: 'Home' }, { id: 'x', name: '✅Daily' }])).toBe('x')
+  })
+  it('fără Inbox (sau fără drept de scriere în el, deci absent din listă): null, iar computeDraft alege', () => {
+    expect(captureDefaultProjectId(LIST, [{ id: 'home', name: 'Home' }])).toBeNull()
   })
 })

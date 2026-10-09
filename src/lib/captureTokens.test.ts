@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dailyProjectId, normalizeName, parseCaptureTokens } from './captureTokens'
+import { inboxProjectId, isInboxProject, normalizeName, parseCaptureTokens } from './captureTokens'
 
 const projects = [
   { id: 'd', name: '✅Daily', prefix: 'D' },
@@ -69,9 +69,31 @@ describe('parseCaptureTokens', () => {
   })
 })
 
-describe('dailyProjectId', () => {
-  it('găsește „✅Daily" după nume', () => {
-    expect(dailyProjectId(projects)).toBe('d')
-    expect(dailyProjectId([{ id: 'x', name: 'Altceva' }])).toBeNull()
+describe('inboxProjectId', () => {
+  it('după id (`d`), oricum s-ar numi', () => {
+    expect(inboxProjectId(projects)).toBe('d')
+    expect(inboxProjectId([{ id: 'x', name: 'Daily' }, { id: 'd', name: 'Cutia mea' }])).toBe('d')
+  })
+  it('fără rândul `d`: după nume, vechi sau nou', () => {
+    expect(inboxProjectId([{ id: 'x', name: 'Altceva' }, { id: 'p-daily', name: '✅Daily' }])).toBe('p-daily')
+    expect(inboxProjectId([{ id: 'i', name: 'Inbox' }])).toBe('i')
+    expect(inboxProjectId([{ id: 'x', name: 'Altceva' }])).toBeNull()
+    expect(isInboxProject({ id: 'kata', name: 'Katalist' })).toBe(false)
+  })
+})
+
+describe('#inbox și #daily după redenumire', () => {
+  const renamed = projects.map((p) => (p.id === 'd' ? { ...p, name: 'Inbox' } : p))
+  const parseR = (t: string) => parseCaptureTokens(t, renamed, assignees)
+  it('numele vechi rămâne alias', () => {
+    expect(parseR('sună #daily')).toMatchObject({ projectId: 'd', title: 'sună', unknown: [] })
+  })
+  it('numele nou și prefixul', () => {
+    expect(parseR('sună #inbox')).toMatchObject({ projectId: 'd', title: 'sună' })
+    expect(parseR('sună #inb')).toMatchObject({ projectId: 'd', title: 'sună' })
+    expect(parseR('sună #d')).toMatchObject({ projectId: 'd' })
+  })
+  it('și înainte de redenumire, #inbox merge', () => {
+    expect(parse('sună #inbox')).toMatchObject({ projectId: 'd', title: 'sună' })
   })
 })

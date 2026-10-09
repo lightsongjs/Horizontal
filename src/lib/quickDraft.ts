@@ -1,5 +1,5 @@
 import type { NewIssue } from '../data/repository'
-import { parseCaptureTokens, type CaptureTokens } from './captureTokens'
+import { inboxProjectId, parseCaptureTokens, type CaptureTokens } from './captureTokens'
 import { liveRejections, maskRejected, parseDue, stripSpans } from './parseDue'
 import { dayOffset, defaultReminder, reminderAt, startOfLocalDay, toDisplayDate, toTimeInput } from './schedule'
 
@@ -189,7 +189,7 @@ export interface CaptureInput {
   manual: ManualPick
   projects: { id: string; name: string; prefix: string; type?: string }[]
   assignees: { id: string; name: string }[]
-  /** Proiectul cu care pornește captura (Daily, ținut minte, al proiectului deschis). */
+  /** Proiectul cu care pornește captura (`captureDefaultProjectId`). */
   defaultProjectId: string | null
   nowMs: number
   /** Citește `#proiect @om !` (bara, foile, fereastra de pe telefon). */
@@ -216,6 +216,19 @@ export interface CaptureResult {
   label: { day: string; time: string | null } | null
   issue: NewIssue | null
   error: DraftError | null
+}
+
+/**
+ * Proiectul cu care pornește o captură, înainte ca omul să aleagă ceva.
+ * Dintr-un proiect deschis, acela — contextul e explicit. Altfel Inbox,
+ * mereu: NU ultimul folosit. O memorie a ultimei alegeri trimitea sarcinile,
+ * nevăzut, într-un proiect „doar mementouri" (ascuns până sună) — omul a
+ * scris „Anais" de trei ori și n-a găsit-o niciodată. `null` = nu există
+ * Inbox (sau nu se poate scrie în el): `computeDraft` cade pe primul personal.
+ */
+export function captureDefaultProjectId(ctx: QuickCtx, projects: { id: string; name: string }[]): string | null {
+  if (ctx.mode === 'project') return ctx.projectId
+  return inboxProjectId(projects)
 }
 
 /**

@@ -50,7 +50,10 @@ export function parseCaptureTokens(
     const key = normalizeName(m[3])
     if (m[2] === '#') {
       if (projectId !== null) continue
-      const p = pick(key, projects, (x) => [normalizeName(x.name), normalizeName(x.prefix)], (x) => [normalizeName(x.name)])
+      // Inbox se cheamă și după rol (`#inbox`, `#daily` — numele lui vechi), nu
+      // doar după numele afișat: degetele țin minte cuvântul, nu redenumirea.
+      const alias = (x: Pick<Project, 'id' | 'name'>) => (isInboxProject(x) ? INBOX_ALIASES : [])
+      const p = pick(key, projects, (x) => [normalizeName(x.name), normalizeName(x.prefix), ...alias(x)], (x) => [normalizeName(x.name), ...alias(x)])
       if (p) { projectId = p.id; cut.push([start, end]) } else unknown.push(raw.slice(start, end))
     } else {
       if (assigneeId !== null) continue
@@ -66,7 +69,20 @@ export function parseCaptureTokens(
   return { title: title.replace(/\s+/g, ' ').trim(), projectId, assigneeId, urgent, unknown }
 }
 
-/** Proiectul implicit al barei, ales de om: „✅Daily". După nume, ca să nu țină de un id. */
-export function dailyProjectId(projects: Pick<Project, 'id' | 'name'>[]): string | null {
-  return projects.find((p) => normalizeName(p.name) === 'daily')?.id ?? null
+/**
+ * Inbox: proiectul în care cade o captură fără proiect ales (fost „✅Daily").
+ * Recunoscut întâi după id — numele e al omului și se schimbă (s-a schimbat o
+ * dată, din „✅Daily" în „Inbox") —, apoi după nume, pentru baze fără rândul
+ * `d` (modul local, fixtures). Aceeași regulă e în `core/Capture.kt`.
+ */
+export const INBOX_PROJECT_ID = 'd'
+/** Cuvintele după care se cheamă Inbox, oricum l-ar numi omul (`#inbox`, `#daily`). */
+export const INBOX_ALIASES = ['inbox', 'daily']
+
+export function isInboxProject(p: Pick<Project, 'id' | 'name'>): boolean {
+  return p.id === INBOX_PROJECT_ID || INBOX_ALIASES.includes(normalizeName(p.name))
+}
+
+export function inboxProjectId(projects: Pick<Project, 'id' | 'name'>[]): string | null {
+  return (projects.find((p) => p.id === INBOX_PROJECT_ID) ?? projects.find(isInboxProject))?.id ?? null
 }

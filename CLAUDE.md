@@ -228,8 +228,18 @@ inteligente **Azi / Mâine / Next 7 days** taie transversal toate proiectele.
 Decizii și de-ce-uri: `docs/superpowers/brainstorm/2026-08-24-mod-todo.md`.
 Mockup vizual: `prototype-todo.html`.
 
-**Nu există Inbox.** Fiecare sarcină are un proiect; quick add poartă un selector
-care ține minte ultima alegere (`horizontal:last-task-project`).
+**Inbox e doar un proiect.** Fiecare sarcină are în continuare un proiect; Inbox
+(fost „✅Daily", id `d`) e cel în care cade o captură fără proiect ales — din
+liste, rândul de pe desktop, bara de pe Linux, fereastra nativă. Regula e
+`captureDefaultProjectId` (`src/lib/quickDraft.ts`): dintr-un proiect deschis,
+acela; altfel Inbox; fără Inbox, primul personal. Selectorul și `#nume` schimbă
+doar sarcina în curs. **Nu se ține minte ultima alegere**, deliberat: memoria
+trimitea capturile nevăzut într-un proiect „doar mementouri" (ascuns până sună)
+— omul a scris aceeași sarcină de trei ori și n-a găsit-o. Inbox se recunoaște
+după id, apoi după nume (`inboxProjectId`/`isInboxProject`, oglindit în
+`core/Capture.kt`), nu după numele afișat: numele e al omului. `#inbox` și
+`#daily` merg amândouă. Iconița lui (`inbox`) ține locul bulinei, prin
+`ProjectMark` — de-aia numele nu mai are nevoie de emoji.
 
 **Închiderea unei foi nu e o navigare înapoi.** La deschidere se împinge o
 intrare de istoric (ca Back să închidă foaia), iar la închidere se desface cu
@@ -992,9 +1002,9 @@ Ctrl+Shift+A și mementouri cu aplicația în fundal. Spec/plan:
   `npm run test:quick-add` după orice atingere.
 - **Capturi.** Semnele (`#proiect`, `@persoană`, `!`) se recunosc doar la început
   de cuvânt; unul necunoscut rămâne în titlu. Butonul are ultimul cuvânt
-  (`manual ?? tokens ?? implicit`). Proiect implicit „✅Daily" **după nume**
-  (`dailyProjectId`), nu ultimul folosit; fără dată → azi. Id-ul lui Daily e în
-  `key`, fiindcă `QuickAdd` citește `defaultProjectId` doar la montare.
+  (`manual ?? tokens ?? implicit`). Proiect implicit Inbox, ca peste tot
+  (`captureDefaultProjectId`), nu ultimul folosit; fără dată → azi. Implicitul se
+  calculează la fiecare randare, nu la montare: proiectele sosesc după bară.
 - **Focusul barei.** Fereastra e creată o dată și refolosită; proba (2026-10-02,
   GNOME Wayland): `show()` + `focus()` pe fereastra existentă primește
   tastatura din prima. „Rundă nouă" (câmp gol, cursor) vine din
@@ -1148,6 +1158,9 @@ Pro (HyperOS 3, Android 16).
   salvat ÎNAINTE de POST: 409 + rând al nostru = gata, al altcuiva = ID nou (max 5).
   Pagina reîncearcă și ea la 23505. Fișierele: cale și ID fixe, urcate după creare,
   abandonate după o oră. Proiectele/oamenii vin de la pagină (`setCaptureData`, API 3).
+  Proiectul implicit e Inbox după id (`inboxProjectId`, din `versionCode 8`); un APK
+  mai vechi îl caută după numele „Daily" și cade pe primul personal — de-aia
+  `captureData` trimite Inbox primul, ca redenumirea să nu strice telefoanele vechi.
 
 - **Foaia tichetului din widget** (`TicketActivity`): atingerea pe un rând o
   deschide nativ, peste ecranul de start (fără sesiune nativă → aplicația). Titlul

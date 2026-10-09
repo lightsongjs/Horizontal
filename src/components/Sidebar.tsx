@@ -8,6 +8,7 @@ import { Icon } from './Icon'
 import { repository } from '../data'
 import { logoutPlan } from '../lib/logoutPlan'
 import { getAndroidBridge } from '../lib/androidBridge'
+import { ProjectMark } from './ProjectMark'
 
 function getBuildAgo(): string {
   const diff = Math.floor((Date.now() - new Date(__BUILD_TIME__).getTime()) / 1000)
@@ -223,7 +224,7 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
             >
               <span className="sidebar-drag-handle" title="Trage pentru a reordona" aria-label="Trage pentru a reordona"><Icon name="drag" size={15} /></span>
               <button className="sidebar-proj-btn" onClick={() => goToProject(p.id)}>
-                <span className="sidebar-proj-dot" style={{ background: p.accent }} />
+                <ProjectMark project={p} dot="sidebar-proj-dot" size={14} />
                 <span className="sidebar-proj-name">{p.name}</span>
                 <span className="sidebar-proj-pct">{pct}%</span>
               </button>

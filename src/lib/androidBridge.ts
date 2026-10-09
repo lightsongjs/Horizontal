@@ -1,5 +1,6 @@
 import type { AgendaItem } from './agenda'
 import type { DesktopAction, DesktopReminder } from './desktopBridge'
+import { isInboxProject } from './captureTokens'
 
 /**
  * Contractul cu cutia de Android (`mobile/`, pluginul Kotlin `HorizontalAndroid`).
@@ -158,7 +159,11 @@ export function captureData(
   readAt: number,
 ): CaptureData {
   return {
-    projects: projects.map(({ id, name, prefix, type }) => ({ id, name, prefix, type })),
+    // Inbox primul: un APK dinainte de `inboxProjectId` îl caută după numele
+    // vechi („Daily"), nu-l găsește și cade pe primul proiect personal — care,
+    // așa, e tot Inbox. Și în selectorul ferestrei e primul, ca în rol.
+    projects: [...projects.filter(isInboxProject), ...projects.filter((p) => !isInboxProject(p))]
+      .map(({ id, name, prefix, type }) => ({ id, name, prefix, type })),
     assignees: assignees.map(({ id, name }) => ({ id, name })),
     readAt,
   }

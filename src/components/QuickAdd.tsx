@@ -6,6 +6,7 @@ import { describeRrule } from '../lib/recurrence'
 import { dueLabel, quickKey } from '../lib/quickDraft'
 import { Icon } from './Icon'
 import { QuickDesc, QuickTitle } from './QuickFields'
+import { ProjectMark } from './ProjectMark'
 
 interface Props {
   /** Scadența implicită când textul nu conține niciuna (ziua listei deschise). */
@@ -13,8 +14,6 @@ interface Props {
   onAdded?(): void
   /** Se schimbă la fiecare cerere de focus din afară (tasta C). */
   focusSignal?: number
-  /** Proiectul cu care pornește, peste cel ținut minte (bara de captură: „Daily"). */
-  defaultProjectId?: string
   /** Bara de captură: semnele `#proiect`, `@persoană`, `!` în text și rândul de butoane, mereu vizibil. */
   rich?: boolean
 }
@@ -33,18 +32,15 @@ interface Props {
  * nou, iar Ctrl+Enter salvează (tabelul e `quickKey`). Pe telefon rândul nu se
  * arată: acolo captura e foaia rapidă (`QuickSheet`), peste aceeași stare.
  *
- * Fără Inbox, fiecare sarcină are un proiect — de asta rândul poartă un
- * selector care ține minte ultima alegere.
+ * Fiecare sarcină are un proiect: fără alegere, Inbox (`captureDefaultProjectId`).
+ * Selectorul schimbă doar sarcina în curs — nu ține minte nimic.
  */
-export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, defaultProjectId, rich = false }: Props) {
+export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, rich = false }: Props) {
   const { assignees } = useHorizontal()
   const q = useQuickDraft({
     ctx: { mode: 'list', defaultDueAt },
     // `#proiect @om !` peste tot unde se capturează (cu lista de sugestii), și în rândul din listă.
     tokens: true,
-    // Bara pornește mereu pe „Daily" — ce alegi acolo e al rundei, nu al listei.
-    rememberProject: !rich,
-    defaultProjectId,
   })
   const { text, desc, date, tokens, project, projects, schedule, error, saving, assigneeId, urgent } = q
   const [focus, setFocus] = useState(false)
@@ -200,7 +196,7 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, defaultProjec
 
           {!rich && (
           <label className="qa-proj" title="Proiectul sarcinii">
-            <span className="t-dot" style={{ background: project.accent }} />
+            <ProjectMark project={project} dot="t-dot" />
             <select
               value={project.id}
               onChange={(e) => q.pickProject(e.target.value)}
@@ -224,7 +220,7 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, defaultProjec
       {rich && (
         <div className="qa-meta qa-rich">
           <label className="qa-proj" title="Proiectul sarcinii (sau #nume în text)">
-            <span className="t-dot" style={{ background: project.accent }} />
+            <ProjectMark project={project} dot="t-dot" />
             <select value={project.id} onChange={(e) => q.pickProject(e.target.value)}>
               {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>

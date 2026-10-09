@@ -29,6 +29,7 @@ import {
   FileText,
   Film,
   Image,
+  Inbox,
   Music,
   Paperclip,
   Pencil,
@@ -112,6 +113,8 @@ const ICONS = {
   help: CircleQuestionMark,
   hide: EyeOff,
   image: Image,
+  // Proiectul Inbox (unde cade o captură fără proiect) — în locul bulinei de culoare.
+  inbox: Inbox,
   logout: LogOut,
   members: Users,
   // „Cine ține tichetul", nu „echipa" — de-aia un singur om, nu `Users` (ăla e

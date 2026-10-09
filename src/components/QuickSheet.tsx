@@ -11,6 +11,7 @@ import { QuickDesc, QuickTitle } from './QuickFields'
 import { uploadPicked } from '../data/attachments'
 import { pickFiles } from '../lib/pickFiles'
 import { AttachButton, attachBlocked, filesNoun } from './SheetFiles'
+import { ProjectMark } from './ProjectMark'
 
 /**
  * Un buton din foaie nu ia focusul: titlul îl păstrează, deci tastatura nu
@@ -34,7 +35,7 @@ const keepFocus = (e: PointerEvent) => e.preventDefault()
 export function QuickSheet({ ctx }: { ctx: QuickCtx }) {
   const { project: openProject, selectProject, assignees } = useHorizontal()
   const { closeSheet, pushSheet, showToast } = useUI()
-  const q = useQuickDraft({ ctx, tokens: true, rememberProject: ctx.mode === 'list' })
+  const q = useQuickDraft({ ctx, tokens: true })
   const { text, desc, date, tokens, project, projects, schedule, error, saving, assigneeId, urgent } = q
   const [whenOpen, setWhenOpen] = useState(false)
   const titleRef = useRef<HTMLInputElement>(null)
@@ -219,7 +220,7 @@ export function QuickSheet({ ctx }: { ctx: QuickCtx }) {
               îl deschide, iar lățimea o hotărăște eticheta, care se taie cu
               „…" — nu cea mai lungă opțiune din listă. */}
           <label className="qs-sel qs-proj" title="Proiectul sarcinii (sau #nume în text)">
-            <span className="t-dot" style={{ background: project.accent }} />
+            <ProjectMark project={project} dot="t-dot" />
             <span className="qs-sel-t">{project.name}</span>
             <select
               aria-label="Proiectul"

@@ -6,7 +6,7 @@
 // Ce se inserează trebuie să fie recunoscut de `parseCaptureTokens` fără
 // ambiguitate — altfel alegerea din listă ar rămâne text în titlu.
 
-import { normalizeName } from './captureTokens'
+import { INBOX_ALIASES, isInboxProject, normalizeName } from './captureTokens'
 
 export interface TokenAt { sigil: '#' | '@'; query: string; start: number; end: number }
 export interface Suggestion { id: string; label: string; insert: string }
@@ -36,16 +36,22 @@ export function suggest(
 ): Suggestion[] {
   const items = t.sigil === '#' ? projects : people
   const q = normalizeName(t.query)
-  const rank = (name: string) => {
+  const rankOf = (name: string) => {
     if (!q) return 0
     const n = normalizeName(name)
     if (n.startsWith(q)) return 0
     if (words(name).some((w) => w.startsWith(q))) return 1
     return n.includes(q) ? 2 : -1
   }
+  // Inbox se găsește și după rol (`#inb`, `#dai` — numele lui vechi), ca în `parseCaptureTokens`.
+  const rank = (it: { id: string; name: string }) => {
+    const names = t.sigil === '#' && isInboxProject(it) ? [it.name, ...INBOX_ALIASES] : [it.name]
+    const rs = names.map(rankOf).filter((r) => r >= 0)
+    return rs.length ? Math.min(...rs) : -1
+  }
   const firsts = people.map((p) => words(p.name)[0])
   return items
-    .map((it, i) => ({ it, i, r: rank(it.name) }))
+    .map((it, i) => ({ it, i, r: rank(it) }))
     .filter((x) => x.r >= 0)
     .sort((a, b) => a.r - b.r || a.i - b.i)
     .slice(0, limit)

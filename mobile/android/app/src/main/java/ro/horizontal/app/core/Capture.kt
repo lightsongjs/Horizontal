@@ -40,8 +40,18 @@ data class Draft(
 private fun normalizeName(s: String) =
     Normalizer.normalize(s, Normalizer.Form.NFD).replace(Regex("\\p{M}"), "").lowercase().replace(Regex("[^a-z0-9]"), "")
 
-/** `dailyProjectId` din `captureTokens.ts`: proiectul implicit al capturii, după nume. */
-fun dailyProjectId(projects: List<CaptureProject>): String? = projects.firstOrNull { normalizeName(it.name) == "daily" }?.id
+/**
+ * `inboxProjectId` din `captureTokens.ts`: unde cade o captură fără proiect ales.
+ * Întâi după id — numele e al omului și s-a schimbat („✅Daily" → „Inbox") —,
+ * apoi după nume, pentru baze fără rândul `d`.
+ */
+const val INBOX_PROJECT_ID = "d"
+private val INBOX_ALIASES = setOf("inbox", "daily")
+
+fun isInboxProject(p: CaptureProject): Boolean = p.id == INBOX_PROJECT_ID || normalizeName(p.name) in INBOX_ALIASES
+
+fun inboxProjectId(projects: List<CaptureProject>): String? =
+    (projects.firstOrNull { it.id == INBOX_PROJECT_ID } ?: projects.firstOrNull(::isInboxProject))?.id
 
 private fun startOfDayIso(nowMs: Long, zone: ZoneId) =
     isoJs(Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate().atStartOfDay(zone).toInstant().toEpochMilli())
@@ -70,7 +80,7 @@ fun rawLabel(dueAt: String?, allDay: Boolean, nowMs: Long, zone: ZoneId): String
 
 /** Fără motor: nimic nu se citește din text. Proiectul, data, omul și urgența vin doar din jetoane. */
 fun rawDraft(text: String, manual: Manual, data: CaptureData, nowMs: Long, zone: ZoneId): Draft {
-    val project = data.projects.firstOrNull { it.id == (manual.projectId ?: dailyProjectId(data.projects)) }
+    val project = data.projects.firstOrNull { it.id == (manual.projectId ?: inboxProjectId(data.projects)) }
         ?: data.projects.firstOrNull { it.type == "personal" } ?: data.projects.firstOrNull()
     val dueAt = if (manual.dueSet) manual.dueAt else startOfDayIso(nowMs, zone)
     val allDay = if (manual.dueSet) manual.allDay else true

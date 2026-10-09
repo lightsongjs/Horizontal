@@ -32,7 +32,7 @@ import java.util.UUID
 /**
  * Fereastra de quick add de pe ecranul de start: nativă, peste ce e pe ecran,
  * cu tastatura sus — fără să pornească aplicația (WebView-ul). Regulile de
- * captură (data din titlu, `#proiect @om !`, proiectul implicit Daily) sunt ale
+ * captură (data din titlu, `#proiect @om !`, proiectul implicit Inbox) sunt ale
  * paginii: `computeDraft`, rulat în `CaptureEngine`. Fără motor → modul brut.
  *
  * Trimite pune sarcina în coada nativă (`PlanStore.creates`); o trimite
@@ -155,7 +155,7 @@ class QuickAddActivity : AppCompatActivity() {
         val d = data ?: return
         val my = ++seq
         val text = title.text.toString()
-        val input = engineInput(text, desc.text.toString(), rejected, manual, d, dailyProjectId(d.projects), System.currentTimeMillis())
+        val input = engineInput(text, desc.text.toString(), rejected, manual, d, inboxProjectId(d.projects), System.currentTimeMillis())
         CaptureEngine.compute(this, input) { r ->
             if (my != seq || isFinishing) return@compute
             apply(r ?: rawDraft(text, manual, d, System.currentTimeMillis(), zone))
@@ -169,7 +169,11 @@ class QuickAddActivity : AppCompatActivity() {
         paintMarks(d.spans)
         val chipText = { id: Int, s: String -> findViewById<TextView>(id).text = s }
         chipText(R.id.q_due, d.label ?: "Fără dată")
-        chipText(R.id.q_project, data?.projects?.firstOrNull { it.id == d.projectId }?.name ?: "Proiect")
+        val proj = data?.projects?.firstOrNull { it.id == d.projectId }
+        chipText(R.id.q_project, proj?.name ?: "Proiect")
+        // Inbox își poartă iconița în locul celei generice, ca în pagină (`ProjectMark`).
+        findViewById<TextView>(R.id.q_project).setCompoundDrawablesRelativeWithIntrinsicBounds(
+            if (proj != null && isInboxProject(proj)) R.drawable.ic_q_inbox else R.drawable.ic_q_project, 0, 0, 0)
         val person = data?.people?.firstOrNull { it.id == d.assigneeId }?.name
         chipText(R.id.q_person, person ?: "")
         findViewById<TextView>(R.id.q_person).compoundDrawablePadding = if (person == null) 0 else dp(6)
@@ -313,7 +317,7 @@ class QuickAddActivity : AppCompatActivity() {
         val text = title.text.toString()
         // Rezultatul final pe textul de ACUM (ultima tastă poate fi încă la motor).
         val my = ++seq
-        CaptureEngine.compute(this, engineInput(text, desc.text.toString(), rejected, manual, d, dailyProjectId(d.projects), System.currentTimeMillis())) { r ->
+        CaptureEngine.compute(this, engineInput(text, desc.text.toString(), rejected, manual, d, inboxProjectId(d.projects), System.currentTimeMillis())) { r ->
             if (my != seq || sent || isFinishing) return@compute
             val f = r ?: rawDraft(text, manual, d, System.currentTimeMillis(), zone)
             apply(f)

@@ -1,5 +1,5 @@
 // Ruta /quick-add pe backendul local, în Chromium: pagina nu e luată drept
-// tichet, Enter creează sarcina cu data din text în proiectul ținut minte,
+// tichet, Enter creează sarcina cu data din text în proiectul implicit (Inbox, sau primul personal),
 // iar sarcina apare în aplicație.
 import { spawn } from 'node:child_process'
 import { chromium } from 'playwright'

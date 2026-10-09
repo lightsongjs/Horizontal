@@ -53,6 +53,17 @@ describe('suggest', () => {
   })
 })
 
+describe('suggest — Inbox și după rol', () => {
+  const ps = [{ id: 'kata', name: 'Katalist', prefix: 'KATA' }, { id: 'd', name: 'Inbox', prefix: 'D' }]
+  it('#dai (numele vechi) și #inb găsesc Inbox, iar ce se inserează e recunoscut', () => {
+    for (const q of ['dai', 'inb']) {
+      const r = suggest({ sigil: '#', query: q, start: 0, end: q.length + 1 }, ps, [])
+      expect(r.map((s) => s.id)).toEqual(['d'])
+      expect(parseCaptureTokens(`x ${r[0].insert}`, ps, []).projectId).toBe('d')
+    }
+  })
+})
+
 describe('applySuggestion', () => {
   it('înlocuiește semnul, pune un spațiu și cursorul după el', () => {
     const t = tokenAt('raport #pe mâine', 10)!
