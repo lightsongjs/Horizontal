@@ -299,15 +299,33 @@ PUSH = ('<div class="push-cta"><span class="push-cta-ico">%s</span>'
         '<button class="push-cta-x" aria-label="Ascunde">%s</button></div>'
         % (ic('bell', 20), ic('x', 15)))
 
+# Evenimentele din Google Calendar (`EventRow.tsx`): bara calendarului în locul
+# bifei, interval mono, titlu stins; banda de toată ziua sub capul zilei.
+def erow(time, title, color, ended=False, day=None):
+    return ('<button class="list-row event-row%s" style="--ev:%s"><span class="ev-bar"></span>'
+            '<span class="t-time ev-time">%s</span><span class="list-title">%s</span>%s</button>'
+            % (' ended' if ended else '', color, time, title,
+               '<span class="ev-day">%s</span>' % day if day else ''))
+
+
+def eband(*items):
+    return '<div class="ev-band">%s</div>' % ''.join(
+        '<button class="ev-band-item" style="--ev:%s"><span class="ev-band-title">%s</span>%s</button>'
+        % (c, t, '<span class="ev-day">%s</span>' % d if d else '') for (t, c, d) in items)
+
+
 AZI = (QA + PUSH
        + group(2, 'Restanțe', None,
                trow('8 sep', 'Webhook Supabase → Mailjet', 'TUR', '#6e7bff', late=True, allday=True, bell=True)
                + trow('7 sep', 'Deploy funcția reminder-action', 'HZ', '#3ecf8e', late=True, allday=True),
                'var(--blocked)')
        + group(3, 'Azi', 'miercuri, 9 septembrie',
-               trow('09:30', 'Cont Supabase (DB + Auth)', 'TUR', '#6e7bff', urgent=True, bell=True)
-               + trow('14:00', 'Split datorii (sora: 40 cor.)', 'TUR', '#6e7bff')
-               + trow('—', 'Atașează bilete / chitanțe', 'TUR', '#6e7bff', allday=True),
+               eband(('Concediu Ana', '#0b8043', 'ziua 2/5'))
+               + trow('—', 'Atașează bilete / chitanțe', 'TUR', '#6e7bff', allday=True)
+               + erow('08:30–09:00', 'Standup', '#4285f4', ended=True)
+               + trow('09:30', 'Cont Supabase (DB + Auth)', 'TUR', '#6e7bff', urgent=True, bell=True)
+               + erow('11:00–12:00', 'Planificare trimestru', '#4285f4')
+               + trow('14:00', 'Split datorii (sora: 40 cor.)', 'TUR', '#6e7bff'),
                'var(--accent)')
        + '<button class="done-toggle">%s Terminate azi (1)</button>' % ic('chevron-right', 15)
        + group(1, 'Mâine', 'joi, 10 septembrie',

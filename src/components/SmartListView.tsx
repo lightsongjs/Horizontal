@@ -9,6 +9,9 @@ import { Icon, type IconName } from './Icon'
 import { SplitView } from './SplitView'
 import { useMediaQuery } from '../hooks'
 import { useTaskActions } from './TaskActions'
+import { useCalendar } from '../calendar'
+import { eventsOn, mergeDay, type DayEvents } from '../lib/calendarEvents'
+import { EventBand, EventRow } from './EventRow'
 
 export type SmartListKind = 'today' | 'tomorrow' | 'week'
 
@@ -45,11 +48,18 @@ interface GroupProps {
   empty?: string
   /** Un buton în capul grupului (restanțele: „Mută pe azi"). */
   action?: { label: string; onClick(): void }
+  /**
+   * Evenimentele din Google Calendar ale zilei: banda de toată ziua sub cap,
+   * cele cu oră amestecate printre sarcini (`mergeDay`). NU intră în număr —
+   * numărul e „ce ai de făcut", iar o ședință nu se bifează.
+   */
+  events?: DayEvents
 }
 
-function Group({ label, date, issues, color, onOpen, late, empty, action }: GroupProps) {
+function Group({ label, date, issues, color, onOpen, late, empty, action, events }: GroupProps) {
   const ta = useTaskActions()
-  if (issues.length === 0 && !empty) return null
+  const hasEvents = !!events && (events.band.length > 0 || events.timed.length > 0)
+  if (issues.length === 0 && !empty && !hasEvents) return null
   // În selecție, capul grupului alege tot grupul (sau îl scoate, dacă era ales tot).
   const selecting = ta.narrow && ta.selectMode && issues.length > 0
   return (
@@ -66,9 +76,12 @@ function Group({ label, date, issues, color, onOpen, late, empty, action }: Grou
           <button type="button" className="group-act" onClick={action.onClick}>{action.label}</button>
         )}
       </div>
-      {issues.length > 0
-        ? issues.map((it) => <TaskRow key={it.id} issue={it} onOpen={onOpen} late={late} />)
-        : <p className="day-empty">{empty}</p>}
+      {events && <EventBand items={events.band} />}
+      {issues.length > 0 || (events && events.timed.length > 0)
+        ? mergeDay(issues, events?.timed ?? []).map((r) => r.kind === 'issue'
+          ? <TaskRow key={r.issue.id} issue={r.issue} onOpen={onOpen} late={late} />
+          : <EventRow key={r.occ.key} occ={r.occ} />)
+        : !hasEvents && <p className="day-empty">{empty}</p>}
     </div>
   )
 }
@@ -89,9 +102,20 @@ interface Props {
  */
 export function SmartListView({ kind, onOpenTask, focusSignal = 0 }: Props) {
   const { smartLists, dueLoaded } = useHorizontal()
+  const cal = useCalendar()
   const [showDone, setShowDone] = useState(false)
+  // Un ceas pe minut, doar cât sunt evenimente: un eveniment terminat se
+  // estompează fără să aștepte o altă randare.
+  const [, setTick] = useState(0)
+  const hasEvents = cal.events.length > 0
+  useEffect(() => {
+    if (!hasEvents) return
+    const t = setInterval(() => setTick((n) => n + 1), 60_000)
+    return () => clearInterval(t)
+  }, [hasEvents])
   const now = new Date()
   const today = startOfLocalDay(now)
+  const eventsFor = (d: Date) => eventsOn(cal.events, cal.calendars, d, now)
 
   const defaultDueAt = smartListDueAt(kind, now)
   // Pe telefon captura e foaia rapidă din FAB. Rândul ar fi un al doilea punct
@@ -139,6 +163,7 @@ export function SmartListView({ kind, onOpenTask, focusSignal = 0 }: Props) {
               color="var(--accent)"
               onOpen={onOpenTask}
               empty="Nimic pe azi. Frumos."
+              events={eventsFor(today)}
             />
             {smartLists.doneToday.length > 0 && (
               <>
@@ -161,6 +186,7 @@ export function SmartListView({ kind, onOpenTask, focusSignal = 0 }: Props) {
             color="var(--active)"
             onOpen={onOpenTask}
             empty="Mâine e liber. Deocamdată."
+            events={eventsFor(addDays(today, 1))}
           />
         )}
 
@@ -173,6 +199,7 @@ export function SmartListView({ kind, onOpenTask, focusSignal = 0 }: Props) {
             color={offset === 0 ? 'var(--accent)' : offset === 1 ? 'var(--active)' : undefined}
             onOpen={onOpenTask}
             empty="—"
+            events={eventsFor(date)}
           />
         ))}
       </div>

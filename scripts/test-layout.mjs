@@ -858,6 +858,68 @@ for (const width of PHONE_WIDTHS) {
   check(`capul grupului ține numărul @${width}px`, m.numInside && m.ghOverflow <= 0, `overflow=${m.ghOverflow}px`)
 }
 
+/**
+ * Google Calendar (`EventRow.tsx`, `CalendarSettings.tsx`): rândul de eveniment
+ * stă între sarcini cu un interval (`10:00–11:00`) mai lat decât ora unei
+ * sarcini și cu „ziua 2/5" la coadă — intervalul nu are voie să se taie, iar
+ * titlul trebuie să mai primească loc. Bara de 3px trebuie să SE VADĂ (are
+ * culoare), banda de toată ziua se rupe pe rânduri, iar în Integrări un email
+ * lung nu împinge „Deconectează" afară din ecran.
+ */
+const calendar = () => `
+<div class="panel smart-list"><div class="list-group">
+  <div class="list-group-head"><span class="list-group-num">2</span><span class="list-group-label">Azi</span><span class="list-group-date">luni, 12 octombrie</span></div>
+  <div class="ev-band" id="band">
+    <button class="ev-band-item" style="--ev:#0b8043"><span class="ev-band-title">Concediu la munte cu toată familia, departe de laptop</span><span class="ev-day">ziua 2/5</span></button>
+    <button class="ev-band-item" style="--ev:#8e24aa"><span class="ev-band-title">Ziua lui Mihai</span></button>
+  </div>
+  <button class="list-row task-row"><span class="list-check"></span><span class="t-time">09:30</span><span class="list-title">Sună la bancă</span></button>
+  <button class="list-row event-row" id="ev" style="--ev:#4285f4"><span class="ev-bar"></span><span class="t-time ev-time">10:00–11:30</span><span class="list-title">Ședință de planificare a trimestrului cu toată echipa extinsă</span><span class="ev-day">ziua 2/5</span></button>
+</div></div>
+<div class="sheet"><div class="sheet-scroll app-settings"><div class="integrations">
+  <div class="int-account" id="acc">
+    <div class="int-account-head"><span class="int-email">ionut.foarte.lung.cu.prenume@exemplu-domeniu-de-serviciu.ro</span><button class="btn-ghost">Deconectează</button></div>
+    <label class="int-cal"><span class="int-cal-dot" style="background:#4285f4"></span><span class="int-cal-name">Calendarul principal cu un nume foarte lung de tot</span><input type="checkbox" class="int-switch" checked></label>
+  </div>
+</div></div></div>`
+
+console.log('\nGoogle Calendar — rândul de eveniment, banda, Integrări:')
+for (const width of PHONE_WIDTHS) {
+  const page = await browser.newPage({ viewport: { width, height: 844 } })
+  await page.setContent(`<style>${CSS}</style>${calendar()}`)
+  const m = await page.evaluate(() => {
+    const r = (el) => el.getBoundingClientRect()
+    const ev = document.querySelector('#ev')
+    const time = ev.querySelector('.ev-time')
+    const title = ev.querySelector('.list-title')
+    const bar = getComputedStyle(ev.querySelector('.ev-bar'), '::before')
+    const band = document.querySelector('#band')
+    const items = [...band.querySelectorAll('.ev-band-item')]
+    const acc = document.querySelector('#acc')
+    const btn = acc.querySelector('.btn-ghost')
+    const sw = acc.querySelector('.int-switch')
+    return {
+      rowOverflow: Math.round(ev.scrollWidth - r(ev).width),
+      timeClipped: time.scrollWidth > time.clientWidth + 1,
+      titleW: Math.round(r(title).width),
+      barW: parseFloat(bar.width),
+      barBg: bar.backgroundColor,
+      bandInside: items.every((i) => r(i).right <= r(band).right + 0.5),
+      bandOverflow: Math.round(band.scrollWidth - r(band).width),
+      btnInside: r(btn).right <= window.innerWidth + 0.5 && btn.scrollWidth <= btn.clientWidth + 1,
+      swInside: r(sw).right <= window.innerWidth + 0.5,
+      accOverflow: Math.round(acc.scrollWidth - r(acc).width),
+    }
+  })
+  await page.close()
+  check(`rândul de eveniment fără overflow @${width}px`, m.rowOverflow <= 0, `${m.rowOverflow}px`)
+  check(`intervalul orar netăiat @${width}px`, !m.timeClipped, m.timeClipped ? 'tăiat' : 'întreg')
+  check(`titlul evenimentului mai are loc @${width}px`, m.titleW >= 80, `${m.titleW}px`)
+  check(`bara calendarului se vede @${width}px`, m.barW === 3 && m.barBg !== 'rgba(0, 0, 0, 0)', `${m.barW}px, ${m.barBg}`)
+  check(`banda de toată ziua în cutie @${width}px`, m.bandInside && m.bandOverflow <= 0, `overflow=${m.bandOverflow}px`)
+  check(`„Deconectează" și comutatorul în ecran @${width}px`, m.btnInside && m.swInside && m.accOverflow <= 0, `buton=${m.btnInside}, comutator=${m.swInside}, overflow=${m.accOverflow}px`)
+}
+
 await browser.close()
 
 if (failures.length) {

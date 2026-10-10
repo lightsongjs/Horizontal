@@ -18,6 +18,13 @@ export interface DesktopReminder {
   /** Scadența, ISO sau null — pentru amânarea calculată în cutie (`snoozeTarget`). Linux o ignoră. */
   dueAt: string | null
   allDay: boolean
+  /**
+   * `'event'` = eveniment din Google Calendar (`id` = `cal:<uuid>`): cutia îl
+   * arată FĂRĂ „Gata" și amânări, doar cu „Deschide". O cutie instalată înainte
+   * de câmp îl ignoră și pune butoanele obișnuite — pagina refuză atunci
+   * acțiunea pe un id `cal:` (`NativeBridge`), deci nu se întâmplă nimic rău.
+   */
+  kind?: 'event'
 }
 
 /**

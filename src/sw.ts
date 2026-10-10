@@ -22,6 +22,7 @@ import { NavigationRoute, registerRoute } from 'workbox-routing'
 import {
   CHIME_READY_CACHE,
   CHIME_READY_KEY,
+  planEventNotification,
   planNotification,
   type ActionRequest,
   type ReminderPayload,
@@ -83,7 +84,9 @@ self.addEventListener('push', (event) => {
     return
   }
 
-  const plan = planNotification(payload)
+  // Un eveniment de calendar n-are butoane (nu se bifează); restul — sunetul,
+  // `tag`-ul, deschiderea la atingere — e același drum.
+  const plan = payload.kind === 'event' ? planEventNotification(payload) : planNotification(payload)
   event.waitUntil(show(plan, payload.id))
 })
 

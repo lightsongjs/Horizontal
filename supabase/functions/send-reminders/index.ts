@@ -17,6 +17,10 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 // (același pachet, alt rezolvator).
 import webpush from 'npm:web-push@3.6.7'
 import { mintToken } from '../_shared/reminderToken.ts'
+import {
+  decideEventReminder, eventNotificationTitle, eventReminderId,
+  EVENT_LATE_MINUTES, EVENT_PRE_MINUTES, type EventReminderRow, type EventStage,
+} from '../_shared/eventReminders.ts'
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -79,7 +83,13 @@ Deno.serve(async (req) => {
     .order('remind_at')
     .limit(BATCH)
   if (error) return json({ error: error.message }, 500)
-  if (!due?.length) return json({ sent: 0, reminders: 0 })
+  // Evenimentele de calendar întâi și independent: o zi fără niciun tichet cu
+  // memento nu înseamnă o zi fără ședințe.
+  const events = await sendEventReminders(db, Date.now()).catch((e) => {
+    console.error(`mementourile de calendar: ${String(e)}`)
+    return { error: String(e) }
+  })
+  if (!due?.length) return json({ sent: 0, reminders: 0, events })
 
   const rows = due as IssueRow[]
   const projectIds = [...new Set(rows.map((r) => r.project_id))]
@@ -192,5 +202,78 @@ Deno.serve(async (req) => {
     await db.from('push_subscriptions').delete().in('endpoint', deadEndpoints)
   }
 
-  return json({ reminders: rows.length, sent, pruned: deadEndpoints.length })
+  return json({ reminders: rows.length, sent, pruned: deadEndpoints.length, events })
 })
+
+/** Aceleași opțiuni ca la tichete — de-ce-urile sunt acolo. */
+const PUSH_OPTS = { urgency: 'high' as const, TTL: 3600 }
+
+/**
+ * Mementourile evenimentelor din Google Calendar: cu 10 minute înainte și la
+ * start (`decideEventReminder`, pur, cu teste). Destinatarul e DOAR omul
+ * căruia îi aparține calendarul — nu există membri sau admini pe un calendar.
+ *
+ * Payload-ul are `kind: 'event'` și FĂRĂ token de acțiune: un eveniment nu se
+ * bifează și nu se amână, deci notificarea n-are butoane. `title` vine deja
+ * compus („Peste 10 min: …"), ca un service worker vechi, care încă nu știe de
+ * `kind`, să arate totuși textul corect.
+ *
+ * Ordinea e aceeași ca la tichete: marcarea DUPĂ trimitere.
+ */
+async function sendEventReminders(db: ReturnType<typeof createClient>, nowMs: number) {
+  const from = new Date(nowMs - (EVENT_LATE_MINUTES + 5) * 60_000).toISOString()
+  const to = new Date(nowMs + EVENT_PRE_MINUTES * 60_000).toISOString()
+  const { data, error } = await db
+    .from('calendar_events')
+    .select('id, user_id, title, all_day, start_at, end_at, location, response, pre_sent_at, start_sent_at')
+    .eq('all_day', false)
+    .gte('start_at', from)
+    .lte('start_at', to)
+    .or('pre_sent_at.is.null,start_sent_at.is.null')
+    .limit(BATCH)
+  // Tabelul lipsește pe o bază fără migration-calendar.sql: nu e o eroare a mementourilor de tichete.
+  if (error) return { error: error.message }
+  const rows = (data ?? []) as (EventReminderRow & { user_id: string; title: string; end_at: string; location: string | null })[]
+  if (!rows.length) return { events: 0, sent: 0 }
+
+  const plans = rows.map((r) => ({ row: r, d: decideEventReminder(r, nowMs) }))
+  const users = [...new Set(plans.filter((p) => p.d.send).map((p) => p.row.user_id))]
+  const { data: subs } = users.length
+    ? await db.from('push_subscriptions').select('user_id, endpoint, p256dh, auth').in('user_id', users)
+    : { data: [] }
+
+  let sent = 0
+  const dead: string[] = []
+  for (const { row, d } of plans) {
+    if (!d.send) continue
+    const stage: EventStage = d.send
+    const payload = JSON.stringify({
+      kind: 'event',
+      id: eventReminderId(row.id),
+      stage,
+      title: eventNotificationTitle(stage, row.title),
+      eventTitle: row.title,
+      startAt: row.start_at,
+      endAt: row.end_at,
+      location: row.location,
+    })
+    for (const s of (subs ?? []).filter((x) => x.user_id === row.user_id)) {
+      try {
+        await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, PUSH_OPTS)
+        sent++
+      } catch (e) {
+        const status = (e as { statusCode?: number }).statusCode
+        if (status === 404 || status === 410) dead.push(s.endpoint)
+        else console.error(`push eșuat pentru eveniment ${row.id}: ${String(e)}`)
+      }
+    }
+  }
+
+  const stamp = new Date(nowMs).toISOString()
+  const pre = plans.filter((p) => p.d.mark.pre).map((p) => p.row.id)
+  const start = plans.filter((p) => p.d.mark.start).map((p) => p.row.id)
+  if (pre.length) await db.from('calendar_events').update({ pre_sent_at: stamp }).in('id', pre)
+  if (start.length) await db.from('calendar_events').update({ start_sent_at: stamp }).in('id', start)
+  if (dead.length) await db.from('push_subscriptions').delete().in('endpoint', dead)
+  return { events: rows.length, sent }
+}

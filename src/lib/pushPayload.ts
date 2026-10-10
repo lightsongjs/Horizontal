@@ -7,6 +7,8 @@
 // comportament definit mai jos, fiindcă un push malformat n-are voie să lase
 // utilizatorul fără notificare (sau, mai rău, cu una goală).
 
+import { eventIdFromReminderId, eventNotificationTitle, type EventStage } from '../../supabase/functions/_shared/eventReminders.ts'
+
 export interface ReminderPayload {
   /** Id-ul tichetului, ex. `EX-03`. Devine adâncimea link-ului și `tag`-ul. */
   id: string
@@ -23,6 +25,18 @@ export interface ReminderPayload {
   actionToken?: string
   /** Adresa absolută a funcției care acceptă tokenul. Serverul o știe, workerul nu. */
   actionUrl?: string
+  /**
+   * `'event'` = un eveniment din Google Calendar, nu un tichet (`id` = `cal:<uuid>`).
+   * Absent = tichet, ca înainte. Câmpurile de mai jos există doar pentru eveniment.
+   * NU intră în fixtures-urile comune cu Kotlin (`pushPayload.fixtures.json`):
+   * cutia Android nu primește încă evenimente — vezi CLAUDE.md, „Google Calendar".
+   */
+  kind?: 'event'
+  stage?: EventStage
+  eventTitle?: string
+  startAt?: string | null
+  endAt?: string | null
+  location?: string | null
 }
 
 export interface NotificationPlan {
@@ -89,6 +103,39 @@ export function planNotification(p: ReminderPayload): NotificationPlan {
     request: p.actionToken && p.actionUrl
       ? { url: p.actionUrl, token: p.actionToken, id: p.id }
       : null,
+  }
+}
+
+/** `10:00–11:00`, în fusul DISPOZITIVULUI. Gol dacă vreun capăt e stricat. */
+export function formatTimeRange(startIso: string, endIso: string): string {
+  const s = new Date(startIso)
+  const e = new Date(endIso)
+  if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) return ''
+  const hm = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`
+  return s.getTime() === e.getTime() ? hm(s) : `${hm(s)}–${hm(e)}`
+}
+
+/**
+ * Notificarea unui eveniment de calendar: „Peste 10 min: …" / „Acum: …",
+ * intervalul și locul în corp, și FĂRĂ butoane — un eveniment nu se bifează și
+ * nu se amână. `tag` e același pentru ambele trepte, deci „Acum" ÎNLOCUIEȘTE
+ * „Peste 10 min" în bara de notificări, nu se adună lângă el. Atingerea
+ * deschide aplicația pe evenimentul respectiv (`?event=`).
+ */
+export function planEventNotification(p: ReminderPayload): NotificationPlan {
+  const title = p.eventTitle !== undefined && p.stage
+    ? eventNotificationTitle(p.stage, p.eventTitle)
+    : (p.title?.trim() || 'Eveniment')
+  const range = p.startAt && p.endAt ? formatTimeRange(p.startAt, p.endAt) : ''
+  const body = [range, p.location?.trim()].filter(Boolean).join(' · ')
+  const eventId = eventIdFromReminderId(p.id) ?? p.id
+  return {
+    title,
+    body: body || 'Google Calendar',
+    url: `/?event=${encodeURIComponent(eventId)}`,
+    tag: p.id,
+    actions: [],
+    request: null,
   }
 }
 

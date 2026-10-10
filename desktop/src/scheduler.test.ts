@@ -50,6 +50,12 @@ describe('parseReminders', () => {
     expect(parseReminders([{ key: 'A@x', id: 'A', at: '2026-10-02T10:00:00.000Z', title: 't', body: 'b' }]))
       .toEqual([{ key: 'A@x', id: 'A', at: now, title: 't', body: 'b' }])
   })
+  it('păstrează `kind: event` (fără butoane), ignoră orice altă valoare', () => {
+    expect(parseReminders([{ key: 'cal:e@x', id: 'cal:e', at: '2026-10-02T10:00:00.000Z', title: 't', body: 'b', kind: 'event' }]))
+      .toEqual([{ key: 'cal:e@x', id: 'cal:e', at: now, title: 't', body: 'b', kind: 'event' }])
+    expect(parseReminders([{ key: 'A@x', id: 'A', at: '2026-10-02T10:00:00.000Z', title: 't', body: 'b', kind: 'altceva' }])[0])
+      .not.toHaveProperty('kind')
+  })
   it('aruncă tot ce nu are forma — IPC-ul e o graniță', () => {
     expect(parseReminders('nu')).toEqual([])
     expect(parseReminders([{ id: 'A' }, null, { key: 'k', id: 'A', at: 'nu e dată', title: '', body: '' }])).toEqual([])

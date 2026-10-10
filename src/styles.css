@@ -6792,3 +6792,76 @@ body:has(.qab) { overflow-y: auto; }
 @media (prefers-reduced-motion: reduce) {
   .drawer, .drawer-bg { animation: none; }
 }
+
+/* ── Google Calendar: evenimentele între sarcini ─────────────────────
+   Un eveniment e MAI PUȚIN decât o sarcină: fără bifă (o bară de 3px în
+   culoarea calendarului ține locul ei, pe aceeași coloană de 18px, ca
+   titlurile să rămână aliniate), fără umbră, titlul stins. Se estompează
+   după ce s-a terminat. Culoarea vine din Google (`--ev`), ca accentele de
+   proiect — e a omului, nu un jeton al temei. */
+.event-row { box-shadow: none; background: var(--surface-2); cursor: pointer; }
+.event-row:hover { background: var(--surface-3, var(--surface-2)); }
+.ev-bar {
+  flex: 0 0 18px; align-self: stretch;
+  display: flex; justify-content: center;
+}
+.ev-bar::before {
+  content: ''; width: 3px; border-radius: var(--r-s);
+  background: var(--ev, var(--accent));
+}
+.ev-time { font-weight: 500; }
+.event-row .list-title { flex: 1; min-width: 0; color: var(--txt-dim); }
+.event-row.ended { opacity: 0.5; }
+.event-row.declined .list-title, .ev-band-item.declined .ev-band-title, .ev-declined-title { text-decoration: line-through; }
+.ev-day {
+  flex: 0 0 auto;
+  font-family: var(--mono);
+  font-size: calc(10.5px * var(--text-scale));
+  color: var(--txt-faint);
+}
+/* Banda din capul zilei: toată ziua + zilele 2+ ale unui multi-zi. Subțire —
+   contextul zilei, nu ceva de făcut. */
+.ev-band { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 0 8px; }
+.ev-band-item {
+  display: inline-flex; align-items: center; gap: 6px; max-width: 100%;
+  padding: 3px 10px 3px 8px; border-radius: var(--r-s);
+  background: color-mix(in srgb, var(--ev, var(--accent)) 14%, var(--surface));
+  box-shadow: inset 3px 0 0 var(--ev, var(--accent));
+  color: var(--txt-dim); cursor: pointer; font: inherit;
+  font-size: calc(12px * var(--text-scale));
+}
+.ev-band-item.ended { opacity: 0.5; }
+.ev-band-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+
+/* Foaia evenimentului — doar de citit. */
+.event-sheet { padding-top: 6px; }
+.ev-when { font-size: calc(15px * var(--text-scale)); color: var(--txt); margin: 0 0 6px; }
+.ev-where { font-size: calc(13.5px * var(--text-scale)); color: var(--txt-dim); margin: 0 0 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ev-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 6px; }
+.ev-actions a { text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+
+/* Integrări (rotița de setări). Conturile sunt blocuri pe --surface-2, fără chenar. */
+.integrations { display: flex; flex-direction: column; gap: 10px; }
+.int-account { background: var(--surface-2); border-radius: var(--r-m); padding: 10px 12px; }
+.int-account-head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.int-email {
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: var(--mono); font-size: calc(12.5px * var(--text-scale)); color: var(--txt);
+}
+.int-sync { margin: 0 0 6px; font-size: calc(11px * var(--text-scale)); color: var(--txt-faint); }
+.int-cal {
+  display: flex; align-items: center; gap: 10px; min-height: 40px; cursor: pointer;
+  font-size: calc(14px * var(--text-scale)); color: var(--txt);
+}
+.int-cal-dot { flex: 0 0 10px; width: 10px; height: 10px; border-radius: 50%; }
+.int-cal-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.int-switch { width: 20px; height: 20px; accent-color: var(--accent); flex: 0 0 auto; cursor: pointer; }
+.int-connect { align-self: flex-start; min-height: 44px; font-size: calc(14px * var(--text-scale)); }
+.int-note { margin: 0; font-size: calc(12.5px * var(--text-scale)); color: var(--txt-faint); line-height: 1.5; }
+.int-err { margin: 0; font-size: calc(12.5px * var(--text-scale)); color: var(--blocked); line-height: 1.5; }
+/* Text mărit: intervalul orar + „ziua 2/5" lasă titlului prea puțin pe un
+   telefon îngust. Titlul coboară pe rândul lui, întreg; bara rămâne pe toată
+   înălțimea (absolută), pe coloana bifei. */
+[data-text-large] .event-row { flex-wrap: wrap; position: relative; padding-left: 38px; row-gap: 2px; }
+[data-text-large] .event-row .ev-bar { position: absolute; left: 10px; top: 8px; bottom: 8px; }
+[data-text-large] .event-row .list-title { order: 1; flex: 1 1 100%; white-space: normal; }

@@ -14,6 +14,7 @@ import { UserForm } from './UserForm'
 import { Icon } from './Icon'
 import { QuickSheet } from './QuickSheet'
 import { FilterForm } from './FilterForm'
+import { EventSheet } from './EventSheet'
 
 export function SheetHost() {
   const { sheet, canGoBack, closeSheet, goBack, dockedIssueId } = useUI()
@@ -77,6 +78,7 @@ export function SheetHost() {
         )}
         {sheet.kind === 'user-form' && <UserForm key={sheet.userId ?? '__new__'} userId={sheet.userId} />}
         {sheet.kind === 'filter-form' && <FilterForm key={sheet.filterId ?? '__new__'} filterId={sheet.filterId} />}
+        {sheet.kind === 'event' && <EventSheet key={sheet.eventId} eventId={sheet.eventId} />}
       </div>
       {sheet.kind === 'quick-add' && <QuickSheet ctx={sheet.ctx} />}
       {compactId && sheet.kind === 'issue-form' && <EditSheet key={sheetKey(sheet)} issueId={compactId} />}

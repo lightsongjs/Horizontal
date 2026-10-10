@@ -4,6 +4,7 @@ import { useAuth } from './auth'
 import { useCanWrite, useMediaQuery, useSidebarCollapsed, useWritableProjects } from './hooks'
 import { HorizontalProvider, useHorizontal } from './store'
 import { UIProvider, useUI } from './ui'
+import { CalendarProvider } from './calendar'
 import { Login } from './components/Login'
 import { ProjectsView } from './components/ProjectsView'
 import { ProjectDetail, type Tab } from './components/ProjectDetail'
@@ -1408,11 +1409,13 @@ export function App() {
   return (
     <HorizontalProvider>
       <UIProvider>
-        <SyncBridge />
-        <NativeBridge />
-        <TaskActionsProvider>
-          <Shell />
-        </TaskActionsProvider>
+        <CalendarProvider>
+          <SyncBridge />
+          <NativeBridge />
+          <TaskActionsProvider>
+            <Shell />
+          </TaskActionsProvider>
+        </CalendarProvider>
       </UIProvider>
     </HorizontalProvider>
   )

@@ -5,7 +5,11 @@
  * ajuns la termen și la trezirea din somn — timerele Node merg pe un ceas care
  * NU numără somnul, deci după o noapte cu capacul închis ar întârzia cu o noapte.
  */
-export interface Reminder { key: string; id: string; at: number; title: string; body: string }
+export interface Reminder {
+  key: string; id: string; at: number; title: string; body: string
+  /** `'event'` = eveniment din Google Calendar: fără „Gata" și amânări (nu se bifează). */
+  kind?: 'event'
+}
 
 /** Aceeași regulă ca `TTL: 3600` la push: un memento răsuflat e zgomot, nu informație. */
 export const MISSED_WINDOW_MS = 3_600_000
@@ -40,7 +44,7 @@ export function parseReminders(raw: unknown): Reminder[] {
     if (!str(o.key) || !str(o.id) || !str(o.at) || !str(o.title) || !str(o.body)) continue
     const at = Date.parse(o.at)
     if (!Number.isFinite(at)) continue
-    out.push({ key: o.key, id: o.id, at, title: o.title, body: o.body })
+    out.push({ key: o.key, id: o.id, at, title: o.title, body: o.body, ...(o.kind === 'event' ? { kind: 'event' as const } : {}) })
   }
   return out
 }

@@ -55,8 +55,12 @@ export async function createNotifier(onAction: (a: NotifyAction) => void): Promi
 
   return {
     async show(r) {
+      // Un eveniment de calendar nu se bifează și nu se amână: doar „Deschide".
+      const actions = r.kind === 'event'
+        ? ['default', 'Deschide']
+        : ['default', 'Deschide', 'done', 'Gata', 'snooze15', '15 min', 'snooze30', '30 min']
       const nid: number = await n.Notify('Horizontal', 0, 'horizontal', r.title, r.body,
-        ['default', 'Deschide', 'done', 'Gata', 'snooze15', '15 min', 'snooze30', '30 min'],
+        actions,
         { urgency: new dbus.Variant('y', 2), resident: new dbus.Variant('b', true), 'desktop-entry': new dbus.Variant('s', 'horizontal') },
         -1)
       byKey.set(r.key, nid)

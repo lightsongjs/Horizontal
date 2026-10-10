@@ -39,6 +39,8 @@ export type SheetState =
   | { kind: 'user-form'; userId?: string } // creare când n-are id
   // Editorul unui filtru salvat; creare când n-are id. Vezi `FilterForm`.
   | { kind: 'filter-form'; filterId?: string }
+  // Un eveniment din Google Calendar — doar de citit. Vezi `EventSheet`.
+  | { kind: 'event'; eventId: string }
 
 interface UI {
   sheet: SheetState
@@ -88,6 +90,8 @@ interface UI {
   openUserForm(userId?: string): void
   /** Editorul unui filtru salvat. Fără id = filtru nou. */
   openFilterForm(filterId?: string): void
+  /** Foaia (doar de citit) a unui eveniment din Google Calendar. */
+  openEvent(eventId: string): void
   /** Închide toată stiva. Întoarce false dacă garda de close a blocat. */
   closeSheet(): boolean
   goBack(): void
@@ -279,6 +283,7 @@ export function UIProvider({ children }: { children: ReactNode }) {
       openAppSettings: () => setSheets([{ kind: 'app-settings' }]),
       openUserForm: (userId) => setSheets([{ kind: 'user-form', userId }]),
       openFilterForm: (filterId) => setSheets([{ kind: 'filter-form', filterId }]),
+      openEvent: (eventId) => setSheets([{ kind: 'event', eventId }]),
       closeSheet: () => {
         if (closeGuard.current && !closeGuard.current()) return false
         setSheets([])

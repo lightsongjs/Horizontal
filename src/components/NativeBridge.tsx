@@ -8,6 +8,9 @@ import { agendaItems } from '../lib/agenda'
 import { parseTicketPath } from '../lib/deepLink'
 import { runNativeAction } from '../lib/nativeAction'
 import { supabase } from '../lib/supabase'
+import { useCalendar } from '../calendar'
+import { upcomingEventReminders } from '../lib/calendarEvents'
+import { eventIdFromReminderId } from '../../supabase/functions/_shared/eventReminders.ts'
 
 /** Cât de des se retrimite lista chiar fără nicio schimbare: fereastra alunecă. */
 const RESEND_MS = 15 * 60_000
@@ -26,6 +29,10 @@ const REFRESH_MS = 5 * 60_000
  */
 export function NativeBridge() {
   const { dueLoaded, dueIssues, issues, projects, assignees, byId, refresh, toggleDone, updateIssue, syncStatus } = useHorizontal()
+  // Evenimentele de calendar sună doar pe Linux (și prin web push). Android le
+  // primește într-o etapă următoare: planul nativ ar pune „Gata"/„Amână" pe ele
+  // și le-ar rescrie cu citirea lui din `issues` — vezi CLAUDE.md, „Google Calendar".
+  const cal = useCalendar()
   // O dată pe montare: obiectele intră în dependențele efectelor de mai jos.
   const desktop = useMemo(() => getDesktopBridge(), [])
   const android = useMemo(() => getAndroidBridge(), [])
@@ -59,7 +66,16 @@ export function NativeBridge() {
 
   // Reatribuit la fiecare randare: listenerii (puși o dată) văd mereu store-ul de acum.
   const run = useRef<(a: DesktopAction) => void>(() => {})
-  run.current = (a) => runNativeAction(a, {
+  run.current = (a) => {
+    // Un eveniment de calendar n-are „Gata" și nici amânare; „Deschide" arată foaia lui.
+    const eventId = eventIdFromReminderId(a.id)
+    if (eventId) {
+      if (a.action === 'open') window.dispatchEvent(new CustomEvent('hz:open-event', { detail: eventId }))
+      return
+    }
+    runIssueAction(a)
+  }
+  const runIssueAction = (a: DesktopAction) => runNativeAction(a, {
     find: (id) => byIdRef.current[id] ?? dueRef.current.find((i) => i.id === id),
     toggleDone, updateIssue,
     // Același drum ca un deep link, prin `popstate`-ul din App.tsx — nu un al doilea mod de a deschide un tichet.
@@ -80,7 +96,8 @@ export function NativeBridge() {
       const now = new Date()
       const all = [...dueIssues, ...issues]
       if (desktop) {
-        const list = upcomingReminders(all, projects, now)
+        const list = [...upcomingReminders(all, projects, now), ...upcomingEventReminders(cal.events, cal.calendars, now)]
+          .sort((a, b) => a.at.localeCompare(b.at))
         const json = JSON.stringify(list)
         if (json !== lastDesktop.current) { lastDesktop.current = json; desktop.setReminders(list) }
       }
@@ -104,7 +121,7 @@ export function NativeBridge() {
     void send().catch(() => {})
     const t = setInterval(() => void send().catch(() => {}), RESEND_MS)
     return () => { cancelled = true; clearInterval(t) }
-  }, [desktop, android, widgets, dueLoaded, dueIssues, issues, projects, syncStatus])
+  }, [desktop, android, widgets, dueLoaded, dueIssues, issues, projects, syncStatus, cal.events, cal.calendars])
 
   // Linux: `refresh` ridică `refreshing`, nu `loading`, deci ecranul nu se
   // golește; calea explicită nu trece prin pragul de 30 s.

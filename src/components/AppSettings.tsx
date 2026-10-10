@@ -1,6 +1,7 @@
 import { useTheme, type Theme } from '../theme'
 import { TEXT_SCALES } from '../lib/textScale'
 import { Icon } from './Icon'
+import { CalendarSettings } from './CalendarSettings'
 
 const THEMES: { key: Theme; label: string }[] = [
   { key: 'light', label: 'Luminos' },
@@ -52,6 +53,9 @@ export function AppSettings() {
           ))}
         </div>
         <p className="app-settings-sample">Așa arată textul unei sarcini.</p>
+
+        {/* Ale contului, nu ale dispozitivului — dar aici le caută omul. */}
+        <CalendarSettings />
       </div>
     </>
   )
