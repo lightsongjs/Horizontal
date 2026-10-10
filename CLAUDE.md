@@ -104,7 +104,7 @@ python3 design/build-preview.py   # regenerează, dacă s-a schimbat markup-ul
 
 ### Rotița de setări: fundal și mărimea textului
 
-Rotița (antet pe telefon, sidebar pe desktop) deschide `AppSettings.tsx`:
+Rotița (sertarul ☰ pe telefon, sidebar pe desktop) deschide `AppSettings.tsx`:
 fundal + mărimea textului (`src/lib/textScale.ts`, patru trepte), ambele pe
 DISPOZITIV (`localStorage`), aplicate în `theme.tsx`. **Orice `font-size` e
 `calc(Npx * var(--text-scale))`**, și în CSS, și inline — un test
@@ -816,18 +816,21 @@ rândurile existente, ca să știi ce id să folosești la o legare ulterioară.
 
 ## Tab-urile de sus și Back
 
-„Azi", „7 zile", „Ale mele" și „Proiecte" sunt tab-uri de sus (bara de jos),
-nu pagini una sub alta — de-aia antetul lor n-are săgeată: ar promite un
-„înapoi" spre un loc care nu e în spatele lor. Săgeata există doar ÎN proiect,
-unde are un părinte („Proiecte"). Pe desktop `.back` e oricum ascunsă.
+„Azi", „7 zile" și „Ale mele" sunt tab-uri de sus (bara de jos), nu pagini
+una sub alta — de-aia antetul n-are săgeată: ar promite un „înapoi" spre un
+loc care nu e în spatele lor. **„Proiecte" nu mai e tab** (2026-10-10): pe
+telefon proiectele stau în sertar (☰), iar colțul antetului e mereu ☰, și în
+proiect — vezi „Sertarul și filtrele". Pe desktop `.back` e oricum ascunsă.
 
 **„Azi" e rădăcina istoricului.** Convenția Android pentru o bară de jos: Back
 de pe orice alt tab duce pe „Azi", Back de pe „Azi" iese. `goTop` din `App.tsx`
 desface tot ce e peste rădăcină (`go(-n)`) și reclădește stiva canonică
-`[Azi]` sau `[Azi, tab]`, toate pe `/`. Fiindcă toate tab-urile au același URL,
-fiecare intrare pe `/` își poartă ecranul în `history.state.hzScreen` — fără el
-`popstate` n-ar ști pe ce tab a aterizat. `go` e asincron, deci cât așteaptă
-(`tabPop`) efectul proiect → URL tace, altfel s-ar înfige un push în mijloc.
+`[Azi]` sau `[Azi, tab]`, toate pe `/`; `goProject` face la fel cu
+`[Azi, /project/<slug>]`, deci Back din orice proiect duce pe „Azi". Fiindcă
+toate tab-urile au același URL, fiecare intrare pe `/` își poartă ecranul în
+`history.state.hzScreen` — fără el `popstate` n-ar ști pe ce tab a aterizat.
+`go` e asincron, deci cât așteaptă (`tabPop`) efectul proiect → URL tace,
+altfel s-ar înfige un push în mijloc.
 Cu o foaie / selecție / foaie rapidă deschisă, `goTop` nu atinge istoricul:
 intrările lor au propria mașinărie și se închid primele. Sidebar-ul de desktop
 nu trece prin `goTop`; acolo doar se rescrie marcajul intrării curente.
@@ -842,6 +845,41 @@ dar trebuie să bată la reîncărcare: `pwa.ts` aplică un build nou la revenir
 ecran, chiar cu o foaie deschisă). `MainActivity.java` urmează acum istoricul
 WebView-ului (`canGoBack` → `goBack`, altfel iese) — cere un APK nou; până
 atunci, în cutie Back iese ca înainte, iar în Chrome/PWA merge deja.
+
+## Sertarul și filtrele
+
+Sub 900px, ☰ (sau o tragere din marginea stângă) deschide `Drawer.tsx`: cine
+ești + rotița de setări (mutată din antet), rândul de pătrate fixate, listele,
+apoi proiectele pe un salt de fundal. Bara de jos ține ce e zilnic; restul,
+inclusiv Inbox-ul, stă în sertar, ca la TickTick.
+
+- **Sertarul n-are URL, dar are intrare în istoric** (`hzSheet: 'drawer'`),
+  tiparul foii rapide: Back îl închide, fundalul îl desface cu un `back()`
+  înghițit (`drawerPop`). Un rând ales NU desface intrarea separat:
+  `goTop`/`goProject` desfac oricum tot ce e peste rădăcină, deci Back după o
+  navigare nu poate redeschide sertarul.
+- **Tragerea din margine pornește doar în `inEdge`** (zona pe care rândurile o
+  lasă în pace) și trece prin `lockAxis` (`drawerSwipe`, `lib/swipe.ts`): o
+  glisare de rând și deschiderea sertarului nu pot porni din același deget,
+  iar o tragere oblică rămâne derulare. Pe Android cu navigare prin gesturi,
+  sistemul poate înghiți marginea — atunci rămâne ☰.
+- **Fixările sunt ale contului, nu ale dispozitivului** (decizia omului):
+  `pinned_items` (`supabase/migration-filters.sql`, RLS `user_id = auth.uid()`),
+  scrise prin `net()` — offline se citesc din bază, nu se pun la coadă (n-are
+  rost o coadă pentru un pătrat). Ordinea = ordinea fixării. O țintă dispărută
+  (proiect șters, acces pierdut) nu se arată (`livePins`), dar nici nu se
+  șterge din bază: o listă de proiecte încă neîncărcată ar fi „șters" tot.
+  „Azi" nu se fixează — e rădăcina.
+- **Apăsarea lungă** (`useLongPress`, `hooks.ts`) folosește atingeri, nu
+  `pointer*`, și înghite click-ul ridicării (`swallowNextClick`) — altfel
+  click-ul cade pe fundalul meniului abia deschis și-l închide pe loc. Pe
+  desktop: click dreapta, sau ⋮ pe rândul de proiect.
+- **Numerele de pe proiecte** vin din `openIssues` (`listOpenIssues`: toate
+  tichetele nebifate, transversal) — `listDueIssues` vede doar cele cu
+  scadență. Derivat ca `dueIssues`: varianta din `allIssues` câștigă.
+- Teste: `npm run test:nav` (☰ + Back, fundal, proiect din sertar → Back pe
+  „Azi", tragerea din margine, fixarea prin apăsare lungă); `npm run
+  test:layout` (sertarul și pătratele la 320–430px).
 
 ## Reîmprospătarea datelor — de ce nu golește ecranul
 

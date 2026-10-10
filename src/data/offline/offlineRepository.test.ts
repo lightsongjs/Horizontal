@@ -32,6 +32,10 @@ export function fakeRemote() {
     listProjectMembers: vi.fn(guard(() => [])),
     listDueIssues: vi.fn(guard(() => server.issues.filter((i) => i.dueAt))),
     listInbox: vi.fn(guard(() => [])),
+    listOpenIssues: vi.fn(guard(() => server.issues.filter((i) => !i.done))),
+    listPins: vi.fn(guard(() => [{ kind: 'list', ref: 'week', position: 0 }])),
+    addPin: vi.fn(async (kind: string, ref: string) => guard(() => ({ kind, ref, position: 1 }))()),
+    removePin: vi.fn(guard(() => undefined)),
     listEvents: vi.fn(guard(() => [])),
     createProject: vi.fn(guard(() => proj)),
     createIssue: vi.fn(async (input: { projectId: string; title: string; deps?: string[] }) => guard(() => {
@@ -99,6 +103,33 @@ describe('citiri', () => {
     const repo = createOfflineRepository(remote, Promise.resolve(null), { channel: null })
     expect((await repo.listIssues('p')).length).toBe(2)
     expect(await repo.cache!.projects()).toBeNull()
+  })
+})
+
+describe('tichetele deschise și fixările', () => {
+  it('listOpenIssues: offline cade pe listele de proiect din bază, cu coada rejucată', async () => {
+    const { remote, net } = fakeRemote()
+    const repo = make(remote)
+    await repo.listProjects()
+    await repo.listIssues('p')
+    net.down = true
+    await repo.updateIssue('HZ-01', { done: true })
+    expect((await repo.listOpenIssues()).map((i) => i.id)).toEqual(['HZ-02'])
+  })
+  it('listOpenIssues: fără nimic în bază, OfflineError', async () => {
+    const { remote, net } = fakeRemote()
+    net.down = true
+    await expect(make(remote).listOpenIssues()).rejects.toBeInstanceOf(OfflineError)
+  })
+  it('fixările: citite din bază offline; fixarea cere rețea', async () => {
+    const { remote, net } = fakeRemote()
+    const repo = make(remote)
+    await repo.listPins()
+    await repo.addPin('project', 'p')
+    expect((await repo.cache!.pins())?.map((p) => p.ref)).toEqual(['week', 'p'])
+    net.down = true
+    expect((await repo.listPins()).map((p) => p.ref)).toEqual(['week', 'p'])
+    await expect(repo.addPin('list', 'inbox')).rejects.toBeInstanceOf(OfflineError)
   })
 })
 

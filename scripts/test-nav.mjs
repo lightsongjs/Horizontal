@@ -489,9 +489,10 @@ try {
   check('…și rămâi pe „Azi"', await onAzi(), 'ecranul nu s-a schimbat')
 
   // Proiect: tichet fără scadență.
-  await phone.locator('.tabbar button', { hasText: 'Proiecte' }).click()
-  await phone.waitForTimeout(600)
-  await phone.locator('.proj').first().click()
+  // Proiectele stau în sertar (☰), nu într-un tab.
+  await phone.locator('.header-drawer-btn').click()
+  await phone.waitForTimeout(400)
+  await phone.locator('.dr-projects .dr-row').first().click()
   await phone.waitForTimeout(900)
   await phone.locator('.fab').click()
   await phone.waitForTimeout(400)
@@ -773,12 +774,12 @@ try {
   await tctx.close()
 
   // ── Tab-urile de sus pe telefon: fără săgeată, Back spre „Azi" ─────────
-  // „Azi", „7 zile", „Ale mele" și „Proiecte" sunt tab-uri de sus, nu pagini
-  // una sub alta: nicio săgeată în antet. Săgeata trăiește doar ÎN proiect și
-  // duce la „Proiecte". Back-ul (gestul Android) urmează convenția barei de
-  // jos: de pe orice tab → „Azi", de pe „Azi" → afară din aplicație. Filă
-  // curată: pornirea trebuie să fie chiar prima, iar `about:blank` din spate
-  // e „afară".
+  // „Azi", „7 zile" și „Ale mele" sunt tab-uri de sus, nu pagini una sub
+  // alta: nicio săgeată în antet, ci ☰ (sertarul). Proiectele s-au mutat în
+  // sertar; un proiect deschis de acolo stă peste „Azi" (`[Azi, proiect]`),
+  // deci Back din el duce pe „Azi". Back-ul (gestul Android) urmează convenția
+  // barei de jos: de pe orice tab → „Azi", de pe „Azi" → afară. Filă curată:
+  // pornirea trebuie să fie chiar prima, iar `about:blank` din spate e „afară".
   {
     const nav = await browser.newPage({ viewport: { width: 390, height: 844 } })
     await nav.goto(BASE, { waitUntil: 'networkidle' })
@@ -788,41 +789,68 @@ try {
     const tab = async (t) => { await nav.click(`[data-tab="${t}"]`); await nav.waitForTimeout(500) }
     const back = async () => { await nav.goBack().catch(() => null); await nav.waitForTimeout(600) }
     const path = () => new URL(nav.url()).pathname
+    const drawerOpen = () => nav.locator('.drawer').count().then((n) => n > 0)
+    const openDrawer = async () => { await nav.locator('.header-drawer-btn').click(); await nav.waitForTimeout(400) }
 
     check('telefon: pornirea aterizează pe „Azi"', /Azi/.test(await active()), `tab activ="${await active()}"`)
-    check('…fără săgeată pe „Azi"', !(await arrow()), 'antet')
-    for (const [t, label] of [['week', '7 zile'], ['inbox', 'Ale mele'], ['projects', 'Proiecte']]) {
+    check('…fără săgeată pe „Azi", cu ☰', !(await arrow()) && (await nav.locator('.header-drawer-btn').isVisible()), 'antet')
+    check('bara de jos are trei tab-uri, fără „Proiecte"', (await nav.locator('.tabbar button').count()) === 3 && (await nav.locator('[data-tab="projects"]').count()) === 0, `${await nav.locator('.tabbar button').count()} butoane`)
+    for (const [t, label] of [['week', '7 zile'], ['inbox', 'Ale mele']]) {
       await tab(t)
       check(`fără săgeată pe „${label}"`, (await active()).includes(label) && !(await arrow()), `tab activ="${await active()}"`)
     }
 
-    // Comutarea nu adună intrări: după trei tab-uri, un singur Back e „Azi".
+    // Comutarea nu adună intrări: după două tab-uri, un singur Back e „Azi".
     await back()
-    check('Back de pe „Proiecte" (după trei tab-uri) → „Azi"', /Azi/.test(await active()) && path() === '/', `tab activ="${await active()}" URL=${path()}`)
+    check('Back de pe „Ale mele" (după două tab-uri) → „Azi"', /Azi/.test(await active()) && path() === '/', `tab activ="${await active()}" URL=${path()}`)
 
     await tab('week')
     await back()
     check('Back de pe „7 zile" → „Azi"', /Azi/.test(await active()), `tab activ="${await active()}"`)
 
-    // Proiect: săgeata duce la „Proiecte", iar Back de acolo la „Azi".
-    await tab('projects')
-    await nav.locator('.proj').first().click()
-    await nav.waitForTimeout(800)
-    check('în proiect există săgeata', await arrow(), path())
-    await nav.locator('header .back').click()
-    await nav.waitForTimeout(600)
-    check('săgeata din proiect → „Proiecte"', (await nav.locator('.proj').count()) > 0 && path() === '/' && !(await arrow()), `URL=${path()}`)
+    // Sertarul: Back îl închide și atât — ecranul rămâne.
+    await openDrawer()
+    check('☰ deschide sertarul', await drawerOpen(), 'deschis')
+    check('sertarul are intrare în istoric', await nav.evaluate(() => history.state?.hzSheet === 'drawer'), JSON.stringify(await nav.evaluate(() => history.state)))
     await back()
-    check('…și Back de acolo → „Azi", nu înapoi în proiect', /Azi/.test(await active()) && path() === '/', `tab activ="${await active()}" URL=${path()}`)
+    check('Back închide sertarul', !(await drawerOpen()), (await drawerOpen()) ? 'a rămas deschis' : 'închis')
+    check('…și rămâi pe „Azi", în aplicație', /Azi/.test(await active()) && nav.url().startsWith(BASE), `tab activ="${await active()}" URL=${nav.url()}`)
 
-    // Back din proiect (gestul) → „Proiecte".
-    await tab('projects')
-    await nav.locator('.proj').first().click()
+    // Fundalul îl închide fără să lase o intrare moartă.
+    await openDrawer()
+    await nav.mouse.click(370, 400)
+    await nav.waitForTimeout(500)
+    const afterBg = await nav.evaluate(() => ({ marked: history.state?.hzSheet ?? null, depth: history.state?.hzDepth ?? 0 }))
+    check('fundalul închide sertarul fără intrare moartă', !(await drawerOpen()) && afterBg.marked === null && afterBg.depth === 0, JSON.stringify(afterBg))
+
+    // Un rând din sertar navighează, iar Back NU redeschide sertarul.
+    await openDrawer()
+    await nav.locator('.dr-row', { hasText: '7 zile' }).click()
+    await nav.waitForTimeout(700)
+    check('rândul „7 zile" din sertar duce pe „7 zile"', (await active()).includes('7 zile') && !(await drawerOpen()), `tab activ="${await active()}"`)
+    await back()
+    check('…Back de acolo → „Azi", fără sertar', /Azi/.test(await active()) && !(await drawerOpen()), `tab activ="${await active()}" sertar=${await drawerOpen()}`)
+
+    // Proiect din sertar: `[Azi, proiect]`. În antet ☰, nu săgeată.
+    await openDrawer()
+    await nav.locator('.dr-projects .dr-row').first().click()
     await nav.waitForTimeout(800)
+    check('proiectul din sertar se deschide', path().startsWith('/project/') && !(await drawerOpen()), `URL=${path()}`)
+    check('…cu ☰ în antet, nu săgeată', !(await arrow()) && (await nav.locator('.header-drawer-btn').isVisible()), 'antet')
     await back()
-    check('Back din proiect → „Proiecte"', (await nav.locator('.proj').count()) > 0 && path() === '/', `URL=${path()}`)
+    check('Back din proiectul deschis din sertar → „Azi"', /Azi/.test(await active()) && path() === '/' && !(await drawerOpen()), `tab activ="${await active()}" URL=${path()}`)
+    const rootDepth = await nav.evaluate(() => history.state?.hzDepth ?? 0)
+    check('…pe rădăcina istoricului', rootDepth === 0, `hzDepth=${rootDepth}`)
+
+    // Din proiect, sertarul → alt ecran: stiva se reclădește, nu se adună.
+    await openDrawer()
+    await nav.locator('.dr-projects .dr-row').first().click()
+    await nav.waitForTimeout(800)
+    await openDrawer()
+    await nav.locator('.dr-row', { hasText: 'Ale mele' }).click()
+    await nav.waitForTimeout(700)
     await back()
-    check('…apoi → „Azi"', /Azi/.test(await active()), `tab activ="${await active()}"`)
+    check('proiect → sertar → „Ale mele" → Back = „Azi"', /Azi/.test(await active()) && path() === '/', `tab activ="${await active()}" URL=${path()}`)
 
     // Reîncărcarea pe „7 zile" (pwa.ts aplică un build nou exact așa) rămâne
     // pe „7 zile", iar Back tot pe „Azi" duce.
@@ -839,6 +867,42 @@ try {
     await back()
     check('Back de pe „Azi" iese din aplicație', !nav.url().startsWith(BASE), `URL=${nav.url()}`)
     await nav.close()
+  }
+
+  // ── Sertarul cu degetul: marginea stângă și fixarea prin apăsare lungă ──
+  // Tragerea din margine trece prin `lockAxis`, ca rândurile; apăsarea lungă
+  // pe un rând deschide meniul (iar click-ul ridicării NU îl închide pe loc),
+  // „Fixează sus" pune pătratul în rândul de sus, iar pătratul duce la proiect.
+  {
+    const dctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
+    const dp = await dctx.newPage()
+    await dp.goto(BASE, { waitUntil: 'networkidle' })
+    await dp.waitForTimeout(800)
+    const t = await touchApi(dp)
+    const open = () => dp.locator('.drawer').count().then((n) => n > 0)
+    await t.drag(200, 420, 200, 300)
+    await dp.waitForTimeout(300)
+    check('o tragere verticală nu deschide sertarul', !(await open()), 'închis')
+    await t.drag(8, 420, 170, 426)
+    await dp.waitForTimeout(400)
+    check('tragerea din marginea stângă deschide sertarul', await open(), (await open()) ? 'deschis' : 'închis')
+    const row = await t.center(dp.locator('.dr-projects .dr-row').first())
+    await t.longPress(row.x, row.y)
+    await dp.waitForTimeout(400)
+    const menuOpen = (await dp.locator('.as-item', { hasText: 'Fixează sus' }).count()) > 0
+    check('apăsarea lungă pe proiect deschide meniul de fixare', menuOpen, menuOpen ? 'meniu' : 'nimic')
+    if (menuOpen) {
+      await dp.locator('.as-item', { hasText: 'Fixează sus' }).click()
+      await dp.waitForTimeout(400)
+      check('fixarea pune pătratul sus, sertarul rămâne deschis', (await dp.locator('.dr-pin').count()) === 1 && (await open()), `${await dp.locator('.dr-pin').count()} pătrate`)
+      await dp.locator('.dr-pin').first().click()
+      await dp.waitForTimeout(800)
+      check('pătratul fixat duce la proiect', new URL(dp.url()).pathname.startsWith('/project/') && !(await open()), new URL(dp.url()).pathname)
+      await dp.goBack()
+      await dp.waitForTimeout(600)
+      check('…iar Back de acolo → „Azi"', new URL(dp.url()).pathname === '/' && /Azi/.test((await dp.locator('.tabbar button.on').textContent()) ?? ''), new URL(dp.url()).pathname)
+    }
+    await dctx.close()
   }
 
   await page.close()

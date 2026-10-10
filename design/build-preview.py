@@ -1007,9 +1007,10 @@ SCREENS = {
 
 def screen(key):
     title, crumb, logo, back, prog, body = SCREENS[key]
-    head = ''
-    if back:
-        head += '<button class="back" aria-label="Înapoi">%s</button>' % ic('arrow-left', 20)
+    # Pe telefon colțul e mereu ☰ (sertarul) — și în proiect: părintele unui
+    # proiect deschis din sertar e „Azi", nu o listă de proiecte. `back` a
+    # rămas în tuplu doar ca istoric al ecranelor.
+    head = '<button class="header-drawer-btn" aria-label="Meniu">%s</button>' % ic('menu', 20)
     head += '<div class="logo">%s</div>' % (logo if logo else ic('calendar-days', 18))
     head += '<div class="htxt"><h1>%s</h1><div class="crumb">%s</div></div>' % (title, crumb)
     if prog:
@@ -1019,16 +1020,48 @@ def screen(key):
             '<main><div class="view">%s</div></main></section>' % (key, head, body))
 
 
-# Patru destinații, nu cinci: „+" a ieșit din bară (e FAB-ul plutitor), iar
-# „Ale mele" e a treia — cu `.tb-badge` pentru necitite (vezi TabBar din
-# App.tsx). Bulina se vede doar sub 900px (`.tabbar { display: none }` mai
-# sus de-atât), la fel ca în aplicație.
+# Trei destinații: „+" a ieșit din bară (e FAB-ul plutitor), iar „Proiecte"
+# a intrat în sertar (☰). „Ale mele" are `.tb-badge` pentru necitite (vezi
+# TabBar din App.tsx). Bara se vede doar sub 900px, la fel ca în aplicație.
 TABBAR = ('<nav class="tabbar">'
           '<button class="on"><span class="tb-ico">%s</span>Azi</button>'
           '<button><span class="tb-ico">%s</span>7 zile</button>'
-          '<button><span class="tb-ico">%s<span class="tb-badge">2</span></span>Ale mele</button>'
-          '<button><span class="tb-ico">%s</span>Proiecte</button></nav>'
-          % (ic('calendar-days', 21), ic('calendar-range', 21), ic('user', 21), ic('layout-grid', 21)))
+          '<button><span class="tb-ico">%s<span class="tb-badge">2</span></span>Ale mele</button></nav>'
+          % (ic('calendar-days', 21), ic('calendar-range', 21), ic('user', 21)))
+
+
+def drow(icon, label, count=None, on=False, extra=''):
+    return ('<button class="dr-row%s"><span class="dr-row-ico">%s</span><span class="dr-row-label">%s</span>%s%s</button>'
+            % (' on' if on else '', icon, label, extra, '<span class="dr-count">%d</span>' % count if count else ''))
+
+
+def dpin(glyph, label, on=False):
+    return ('<button class="dr-pin%s"><span class="dr-pin-ico">%s</span><span class="dr-pin-name">%s</span></button>'
+            % (' on' if on else '', glyph, label))
+
+
+# Sertarul (Drawer.tsx): cine ești + rotița, pătratele fixate, listele, apoi
+# proiectele pe un salt de fundal. Fixed, ca în aplicație — peste ecranul „Azi".
+SERTAR = ('<div class="drawer-bg"></div><nav class="drawer">'
+          '<div class="dr-head"><span class="dr-avatar">IS</span><span class="dr-who"><span class="dr-name">Ionuț</span>'
+          '<span class="dr-email">ionut@exemplu.ro</span></span><button class="dr-gear">%s</button></div>'
+          '<div class="dr-scroll"><div class="dr-pins">%s</div>'
+          '<div class="dr-group">%s</div>'
+          '<div class="dr-projects"><div class="dr-label">Proiecte</div>%s'
+          '<button class="dr-add">%s Proiect</button></div></div></nav>'
+          % (ic('settings', 19),
+             dpin('<span class="pin-prefix" style="color:#0EA5E9">TU</span>', 'Aplicație Turism', on=True)
+             + dpin(ic('inbox', 20), 'Inbox') + dpin(ic('calendar-range', 20), '7 zile') + dpin(ic('user', 20), 'Ale mele'),
+             drow(ic('calendar-days', 19), 'Azi', 4, extra='<span class="sl-late">2</span>')
+             + drow(ic('calendar-range', 19), '7 zile', 11)
+             + drow(ic('user', 19), 'Ale mele', extra='<span class="sl-new">2</span>')
+             + drow('<span class="proj-inbox" style="color:#6B7280">%s</span>' % ic('inbox', 19), 'Inbox', 7),
+             drow('<span class="dr-dot" style="background:#0EA5E9"></span>', 'Aplicație Turism', 23, on=True)
+             + drow('<span class="dr-dot" style="background:#D9A661"></span>', 'Casă', 5)
+             + drow('<span class="dr-dot" style="background:#63B79F"></span>', 'Un proiect cu un nume foarte lung care nu încape', 128),
+             ic('plus', 16)))
+SCREENS['sertar'] = ('Azi', 'sertarul (☰) · telefon', None, False, False,
+                     '<div class="panel smart-list">' + AZI.replace(QA, '') + '</div>' + SERTAR)
 
 SHELL = """<!doctype html>
 <html lang="ro" data-theme="dark">
@@ -1058,6 +1091,8 @@ SHELL = """<!doctype html>
   .bench-bar .sep { width: 1px; height: 18px; background: rgba(255,255,255,.15); margin: 0 6px; }
   #app { margin-top: 44px; height: calc(100dvh - 44px); }
   .bench-screen[hidden] { display: none; }
+  /* Sertarul e fixed de la marginea de sus; pe banc ar sta sub bara bancului. */
+  .drawer, .drawer-bg { top: 44px; }
   .bench-screen { display: contents; }
   /* Galeria: etichetă mono peste fiecare grup, controalele înșirate. */
   .bench-group { margin-bottom: 26px; }
@@ -1098,6 +1133,7 @@ SHELL = """<!doctype html>
   <button data-go="fir">Fir</button>
   <button data-go="foaie">Foaie rapidă</button>
   <button data-go="pe-mine">Ale mele</button>
+  <button data-go="sertar">Sertar</button>
   <button data-go="utilizatori">Utilizatori</button>
   <button data-go="cont">Cont</button>
   <button data-go="controale">Controale</button>
@@ -1134,7 +1170,7 @@ __TABBAR__
 """
 
 html = (SHELL
-        .replace('__SCREENS__', ''.join(screen(k) for k in ('ordine', 'proiecte', 'azi', 'lista', 'lista-gol', 'harta', 'fir', 'foaie', 'pe-mine', 'utilizatori', 'cont', 'controale')))
+        .replace('__SCREENS__', ''.join(screen(k) for k in ('ordine', 'proiecte', 'azi', 'lista', 'lista-gol', 'harta', 'fir', 'foaie', 'pe-mine', 'sertar', 'utilizatori', 'cont', 'controale')))
         .replace('__TABBAR__', TABBAR))
 out = os.path.join(ROOT, 'design/preview.html')
 io.open(out, 'w', encoding='utf-8').write(html)

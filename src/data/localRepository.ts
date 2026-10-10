@@ -2,6 +2,7 @@
 // example on first run. Mirrors the Supabase backend's behavior.
 
 import { applyIssuePatch } from '../lib/issuePatch'
+import { withPin, withoutPin, type Pin } from '../lib/pins'
 import { SEED_ISSUES, SEED_PROJECTS, SEED_THEMES, SEED_WAVES } from '../lib/seed'
 import type { Assignee, Issue, IssueEvent, InboxRow, Obstacle, ObstacleLink, Project, ProjectMember, Theme, Wave } from '../lib/types'
 import {
@@ -36,6 +37,8 @@ interface DB {
   events: IssueEvent[]
   /** issueId -> ultimul moment în care userul local a văzut firul. */
   seen: Record<string, string>
+  /** Fixările din sertar. Local = ale dispozitivului: n-are cont de sincronizat. */
+  pins: Pin[]
 }
 
 function clone<T>(v: T): T {
@@ -72,6 +75,7 @@ function load(): DB {
         // Adăugate după ce cineva avea deja date în localStorage — firul.
         events: db.events ?? [],
         seen: db.seen ?? {},
+        pins: db.pins ?? [],
       }
     }
   } catch {
@@ -87,6 +91,7 @@ function load(): DB {
     obstacleLinks: [],
     events: [],
     seen: {},
+    pins: [],
   }
   save(seeded)
   return seeded
@@ -487,6 +492,27 @@ export function createLocalRepository(): Repository {
       db.seen = { ...(db.seen ?? {}), [input.issueId]: at }
       save(db)
       return clone({ events: out, issue })
+    },
+
+    async listOpenIssues() {
+      return clone(load().issues.filter((i) => !i.done))
+    },
+
+    async listPins() {
+      return clone(load().pins)
+    },
+
+    async addPin(kind, ref) {
+      const db = load()
+      db.pins = withPin(db.pins, kind, ref)
+      save(db)
+      return clone(db.pins.find((p) => p.kind === kind && p.ref === ref)!)
+    },
+
+    async removePin(kind, ref) {
+      const db = load()
+      db.pins = withoutPin(db.pins, kind, ref)
+      save(db)
     },
 
     async markSeen(issueId: string) {

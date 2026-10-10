@@ -6446,3 +6446,246 @@ body:has(.qab) { overflow-y: auto; }
   font-size: calc(12px * var(--text-scale));
   color: var(--accent);
 }
+
+/* ── SERTARUL (telefon, ☰) ────────────────────────────────────────────
+   Din stânga, peste aplicație, ~85% din lățime. Fără chenare: foaia e un salt
+   de fundal (`--surface` peste `--bg`) cu o singură umbră mare, iar secțiunea
+   de proiecte se desparte tot printr-un salt (`--surface-2`), nu printr-o
+   linie. Rândul marcat = text plin + linia de 2px, nu o casetă umplută. */
+.header-drawer-btn {
+  width: 34px;
+  height: 34px;
+  margin-left: -6px;
+  border-radius: var(--r-s);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--txt-dim);
+  flex-shrink: 0;
+}
+.header-drawer-btn:active { background: var(--accent-soft); color: var(--accent); }
+@media (min-width: 900px) {
+  .header-drawer-btn { display: none; }
+}
+.drawer-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 34;
+  background: #00000066;
+  animation: drawer-fade 0.2s ease;
+}
+.drawer {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 35;
+  width: min(85vw, 360px);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  box-shadow: var(--amb-lg);
+  border-radius: 0 var(--r) var(--r) 0;
+  padding-top: env(safe-area-inset-top);
+  animation: drawer-in 0.22s cubic-bezier(0.18, 0.9, 0.24, 1);
+}
+@keyframes drawer-in { from { transform: translateX(-100%); } to { transform: none; } }
+@keyframes drawer-fade { from { opacity: 0; } to { opacity: 1; } }
+.dr-head {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 18px 12px 12px 16px;
+  flex-shrink: 0;
+}
+.dr-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: calc(12px * var(--text-scale));
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.dr-who { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.dr-name {
+  font-size: calc(15px * var(--text-scale));
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dr-email {
+  font-family: var(--mono);
+  font-size: calc(11px * var(--text-scale));
+  color: var(--txt-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dr-gear {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-s);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--txt-dim);
+  flex-shrink: 0;
+}
+.dr-gear:active { background: var(--accent-soft); color: var(--accent); }
+.dr-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 10px calc(16px + env(safe-area-inset-bottom));
+}
+/* Rândul de pătrate fixate: orizontal, derulează singur; foaia nu se lățește. */
+.dr-pins {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 2px 2px 12px;
+  margin: 0 -2px;
+}
+.dr-pins::-webkit-scrollbar { display: none; }
+.dr-pin {
+  flex: 0 0 64px;
+  width: 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 0;
+  color: var(--txt-dim);
+  min-width: 0;
+}
+.dr-pin-ico {
+  width: 46px;
+  height: 46px;
+  border-radius: var(--r-m);
+  background: var(--surface-2);
+  box-shadow: var(--amb);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--txt-dim);
+}
+.dr-pin.on .dr-pin-ico { color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent), var(--amb); }
+.dr-pin.on { color: var(--txt); }
+.pin-prefix {
+  font-family: var(--mono);
+  font-size: calc(14px * var(--text-scale));
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.dr-pin-name {
+  max-width: 100%;
+  font-size: calc(11.5px * var(--text-scale));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dr-group { display: flex; flex-direction: column; gap: 1px; padding-bottom: 10px; }
+.dr-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  padding: 9px 10px;
+  border-radius: var(--r-m);
+  font-size: calc(15px * var(--text-scale));
+  color: var(--txt-dim);
+  text-align: left;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+.dr-row:active { background: var(--surface-2); }
+.dr-row.on { color: var(--txt); font-weight: 600; box-shadow: inset 2px 0 0 var(--accent); border-radius: 0 var(--r-m) var(--r-m) 0; }
+.dr-row.on .dr-row-ico { color: var(--accent); }
+.dr-row-ico { width: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.dr-row-label { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dr-count {
+  font-family: var(--mono);
+  font-size: calc(11px * var(--text-scale));
+  font-weight: 700;
+  color: var(--txt-faint);
+  flex-shrink: 0;
+}
+.dr-row .sl-late, .dr-row .sl-new { margin-left: 0; flex-shrink: 0; }
+.dr-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dr-projects {
+  background: var(--surface-2);
+  border-radius: var(--r);
+  padding: 6px 4px 8px;
+}
+.dr-projects .dr-row:active { background: var(--surface-3); }
+.dr-label {
+  font-family: var(--mono);
+  font-size: calc(10.5px * var(--text-scale));
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--txt-faint);
+  padding: 8px 10px 4px;
+  display: flex;
+  align-items: center;
+}
+.dr-empty { font-size: calc(13px * var(--text-scale)); color: var(--txt-faint); padding: 6px 10px; }
+/* Afordanța „adaugă aici": punctată, singurul fel de linie admis pentru ea. */
+.dr-add {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: calc(100% - 12px);
+  margin: 6px 6px 0;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px dashed var(--line);
+  border-radius: var(--r-m);
+  color: var(--txt-dim);
+  font-size: calc(14px * var(--text-scale));
+}
+.dr-add:active { color: var(--accent); }
+
+/* Meniul de lângă cursor (click dreapta în sidebar). Aceleași `.as-item`
+   ca foaia de acțiuni de pe telefon, într-o cutie mică. */
+.ctx-menu-bg { position: fixed; inset: 0; z-index: 80; }
+.ctx-menu {
+  position: fixed;
+  z-index: 81;
+  min-width: 190px;
+  padding: 4px;
+  background: var(--surface);
+  border-radius: var(--r-m);
+  box-shadow: var(--amb-lg);
+  display: flex;
+  flex-direction: column;
+}
+.ctx-menu .as-item { padding: 8px 10px; font-size: calc(14px * var(--text-scale)); gap: 10px; }
+.ctx-menu .as-item:hover { background: var(--surface-2); }
+.sidebar-row-menu {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-right: 4px;
+  border-radius: var(--r-s);
+  color: var(--txt-faint);
+  opacity: 0;
+  flex-shrink: 0;
+}
+.sidebar-proj-item:hover .sidebar-row-menu,
+.sidebar-row-menu:focus-visible { opacity: 1; }
+.sidebar-row-menu:hover { color: var(--accent); background: var(--accent-soft); }
+.sidebar-pinned-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sidebar-pinned .pin-prefix { font-size: calc(10px * var(--text-scale)); }

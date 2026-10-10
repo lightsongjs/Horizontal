@@ -90,3 +90,15 @@ export function release(offset: number, width: number): Release {
   if (-offset >= REVEAL_RIGHT / 2) return { kind: 'rest', rest: 'right' }
   return { kind: 'rest', rest: 'closed' }
 }
+
+/**
+ * Sertarul se deschide trăgând din marginea STÂNGĂ — exact zona pe care
+ * rândurile o lasă în pace (`inEdge`), deci o glisare de rând și deschiderea
+ * sertarului nu pot porni din același deget. Direcția o decide tot `lockAxis`,
+ * ca la rânduri și la tragerea de refresh: o tragere oblică e derulare.
+ */
+export const DRAWER_OPEN_PX = 48
+
+export function drawerSwipe(startX: number, axis: Axis, dx: number): boolean {
+  return startX < EDGE_PX && axis === 'h' && dx >= DRAWER_OPEN_PX
+}

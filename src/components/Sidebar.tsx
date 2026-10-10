@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import type React from 'react'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { useAuth } from '../auth'
@@ -9,6 +10,8 @@ import { repository } from '../data'
 import { logoutPlan } from '../lib/logoutPlan'
 import { getAndroidBridge } from '../lib/androidBridge'
 import { ProjectMark } from './ProjectMark'
+import { livePins, type PinKind } from '../lib/pins'
+import { PinGlyph, PinMenu, pinLabel, pinTarget, type MenuTarget } from './NavMenu'
 
 function getBuildAgo(): string {
   const diff = Math.floor((Date.now() - new Date(__BUILD_TIME__).getTime()) / 1000)
@@ -35,7 +38,14 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNavigate, smartList = null, onSmartList, inboxActive = false, inboxUnread = 0, inboxTotal = 0, onInbox }: SidebarProps = {}) {
-  const { projects, project, completion, selectProject, reorderProjects, smartLists, reportError } = useHorizontal()
+  const { projects, project, completion, selectProject, reorderProjects, smartLists, reportError, pins } = useHorizontal()
+  // Meniul de fixare: click dreapta pe un rând, sau ⋮ pe rândul de proiect.
+  const [menu, setMenu] = useState<MenuTarget | null>(null)
+  const menuAt = (kind: PinKind, ref: string, label: string) => (e: React.MouseEvent) => {
+    e.preventDefault()
+    setMenu({ kind, ref, label, at: { x: e.clientX, y: e.clientY } })
+  }
+  const pinned = livePins(pins, { projects: projects.map((p) => p.id), filters: [] })
 
   // Navigate away from any overlay (e.g. Users) then select a project.
   const goToProject = (id: string | null) => { onNavigate?.(); selectProject(id) }
@@ -142,6 +152,37 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
         </button>
       )}
 
+      {/* Fixatele: pe telefon sunt pătratele din sertar, aici rânduri
+          obișnuite într-un grup sus — aceeași ordine, aceeași țintă. */}
+      {pinned.length > 0 && (
+        <>
+          <div className="sidebar-section-label">Fixate</div>
+          {pinned.map((p) => {
+            const t = pinTarget(p)
+            if (!t) return null
+            const label = pinLabel(p, projects)
+            const on = t.kind === 'project'
+              ? !inboxActive && !smartList && !showUsers && project?.id === t.id
+              : t.screen === 'inbox' ? inboxActive : smartList === t.screen
+            return (
+              <button
+                key={`${p.kind}:${p.ref}`}
+                className={`sidebar-nav-item sidebar-pinned ${on ? 'on' : ''}`}
+                onClick={() => {
+                  if (t.kind === 'project') goToProject(t.id)
+                  else if (t.screen === 'inbox') onInbox?.()
+                  else onSmartList?.(t.screen as SmartListKind)
+                }}
+                onContextMenu={menuAt(p.kind, p.ref, label)}
+              >
+                <span className="sidebar-nav-icon"><PinGlyph pin={p} projects={projects} size={16} /></span>
+                <span className="sidebar-pinned-name">{label}</span>
+              </button>
+            )
+          })}
+        </>
+      )}
+
       <div className="sidebar-section-label">Sarcini</div>
 
       {SMART_LISTS.map(({ kind, label, icon }) => (
@@ -149,6 +190,7 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
           key={kind}
           className={`sidebar-nav-item ${smartList === kind ? 'on' : ''}`}
           onClick={() => onSmartList?.(kind)}
+          onContextMenu={kind === 'week' ? menuAt('list', 'week', '7 zile') : undefined}
         >
           <span className="sidebar-nav-icon"><Icon name={icon} size={17} /></span>
           <span>{label}</span>
@@ -166,6 +208,7 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
       <button
         className={`sidebar-nav-item ${inboxActive ? 'on' : ''}`}
         onClick={() => onInbox?.()}
+        onContextMenu={menuAt('list', 'inbox', 'Ale mele')}
       >
         <span className="sidebar-nav-icon"><Icon name="people" size={17} /></span>
         <span>Ale mele</span>
@@ -221,12 +264,22 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
                 dragId.current = null
               }}
               onDragEnd={() => { setDragOver(null); dragId.current = null }}
+              onContextMenu={menuAt('project', p.id, p.name)}
             >
               <span className="sidebar-drag-handle" title="Trage pentru a reordona" aria-label="Trage pentru a reordona"><Icon name="drag" size={15} /></span>
               <button className="sidebar-proj-btn" onClick={() => goToProject(p.id)}>
                 <ProjectMark project={p} dot="sidebar-proj-dot" size={14} />
                 <span className="sidebar-proj-name">{p.name}</span>
                 <span className="sidebar-proj-pct">{pct}%</span>
+              </button>
+              <button
+                type="button"
+                className="sidebar-row-menu"
+                aria-label={`Meniu: ${p.name}`}
+                title="Fixează / desprinde"
+                onClick={(e) => setMenu({ kind: 'project', ref: p.id, label: p.name, at: { x: e.clientX, y: e.clientY } })}
+              >
+                <Icon name="menu" size={14} />
               </button>
             </div>
           )
@@ -257,6 +310,7 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
           </button>
         )}
       </div>
+      {menu && <PinMenu target={menu} onClose={() => setMenu(null)} />}
     </aside>
   )
 }

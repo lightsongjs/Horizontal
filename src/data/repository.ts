@@ -2,6 +2,7 @@
 // concrete backend (local or Supabase) is chosen in ./index.ts by env.
 
 import type { Assignee, Issue, IssueEvent, InboxRow, Obstacle, ObstacleLink, Project, ProjectMember, Theme, Wave } from '../lib/types'
+import type { Pin, PinKind } from '../lib/pins'
 
 export interface NewProject {
   name: string
@@ -96,6 +97,12 @@ export interface Repository {
    * care taie transversal proiectele. Vezi `DueRange` pentru regula ferestrei.
    */
   listDueIssues(range: DueRange): Promise<Issue[]>
+  /**
+   * Tichetele NEBIFATE din toate proiectele accesibile. Hrănește numerele din
+   * sertar (tichete deschise pe proiect) și filtrele salvate, care taie
+   * transversal și tichetele FĂRĂ scadență — `listDueIssues` nu le vede.
+   */
+  listOpenIssues(): Promise<Issue[]>
   createIssue(input: NewIssue): Promise<Issue>
   updateIssue(id: string, patch: Partial<Issue>): Promise<Issue>
   /** Deletes the issue and any dependency edges referencing it. */
@@ -151,6 +158,14 @@ export interface Repository {
   markSeen(issueId: string): Promise<void>
   /** Cutia de pase: transversal pe proiecte, ca listDueIssues. */
   listInbox(): Promise<InboxRow[]>
+  /**
+   * Fixările din sertar, ale contului (nu ale dispozitivului): fixezi pe
+   * telefon, vezi fixat pe laptop. Vezi `src/lib/pins.ts`.
+   */
+  listPins(): Promise<Pin[]>
+  /** Idempotent: o fixare existentă rămâne pe locul ei. */
+  addPin(kind: PinKind, ref: string): Promise<Pin>
+  removePin(kind: PinKind, ref: string): Promise<void>
   /** Doar pe învelișul offline — vezi `src/data/offline/types.ts`. */
   cache?: import('./offline/types').CacheReader
   sync?: import('./offline/types').SyncControl

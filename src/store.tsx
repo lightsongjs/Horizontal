@@ -25,11 +25,12 @@ import {
   unblocks,
 } from './lib/engine'
 import { buildSmartLists, smartListRange, type SmartLists } from './lib/schedule'
-import { nextReveal, routineProjectIds } from './lib/routines'
+import { isDormant, nextReveal, routineProjectIds } from './lib/routines'
 import { didJumpOnComplete, jumpNotice } from './lib/recurrence'
 import { applyIssuePatch } from './lib/issuePatch'
 import { blockedBy, detectObstacleCycle } from './lib/obstacles'
 import { groupInbox, reconcileInbox } from './lib/thread'
+import { withPin, withoutPin, type Pin, type PinKind } from './lib/pins'
 import { shortLabels } from './lib/initials'
 import type { Assignee, InboxRow, Issue, IssueState, Layers, Obstacle, ObstacleLink, Project, ProjectMember, Theme, Wave } from './lib/types'
 import { errorMessage } from './lib/errorMessage'
@@ -82,6 +83,22 @@ interface HorizontalState {
   dueIssues: Issue[]
   /** Fereastra de scadențe a fost adusă cel puțin o dată. */
   dueLoaded: boolean
+  /**
+   * Tichetele NEBIFATE din toate proiectele, cu sau fără scadență — ca
+   * `dueIssues`, derivat: varianta din `allIssues` câștigă. Hrănește numerele
+   * din sertar și filtrele salvate.
+   */
+  openIssues: Issue[]
+  /** `openIssues` a fost adus cel puțin o dată (din rețea sau din bază). */
+  openLoaded: boolean
+  /** proiect → câte tichete deschise are. Rutinele adormite nu se numără. */
+  openCountByProject: Record<string, number>
+  /** Contul curent (`auth.users.id`), `null` în modul local. */
+  myUserId: string | null
+  /** Fixările din sertar, în ordinea fixării, sincronizate în cont. Vezi `lib/pins`. */
+  pins: Pin[]
+  pin(kind: PinKind, ref: string): Promise<void>
+  unpin(kind: PinKind, ref: string): Promise<void>
   assignees: Assignee[]
   /**
    * Conturile cu acces la proiectul activ (membri + admin) — pentru
@@ -300,6 +317,11 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
   const undoRef = useRef<UndoEntry | null>(null)
   const undoSeq = useRef(0)
   const [dueLoaded, setDueLoaded] = useState(false)
+  // Tichetele nebifate din toate proiectele. Ca `dueRaw`: NU e sursa de
+  // adevăr, `openIssues` preferă varianta din `allIssues`.
+  const [openRaw, setOpenRaw] = useState<Issue[]>([])
+  const [openLoaded, setOpenLoaded] = useState(false)
+  const [pins, setPins] = useState<Pin[]>([])
   // Cutia de pase. Transversal pe proiecte, ca `dueRaw` — vezi `loadInbox`.
   const [inboxRaw, setInboxRaw] = useState<InboxRow[]>([])
   const [inboxLoaded, setInboxLoaded] = useState(false)
@@ -406,6 +428,29 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
    * proiect deschis, adică fix pe ecranul „Ale mele". Eșecul e tăcut în afară
    * de `error`, ca `loadDue`: un Supabase indisponibil nu blochează pornirea.
    */
+  /** Tichetele deschise, transversal. Ca `loadDue`: un eșec nu blochează pornirea. */
+  const loadOpen = useCallback(async () => {
+    try {
+      setOpenRaw(await repository.listOpenIssues())
+      setOpenLoaded(true)
+    } catch (e) {
+      setError(errorMessage(e))
+    }
+  }, [])
+
+  /**
+   * Fixările. Tăcut la eșec, fără banner: un sertar fără pătrate e o
+   * degradare, nu o eroare — și pe o bază fără migrarea de fixări (mediu
+   * vechi) aplicația trebuie să pornească la fel.
+   */
+  const loadPins = useCallback(async () => {
+    try {
+      setPins(await repository.listPins())
+    } catch (e) {
+      console.warn('fixările nu s-au putut încărca', e)
+    }
+  }, [])
+
   const loadInbox = useCallback(async () => {
     try {
       setInboxRaw(await repository.listInbox())
@@ -427,6 +472,8 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     setIssuesLoadFailedFor(null)
     void loadDue()
     void loadInbox()
+    void loadOpen()
+    void loadPins()
     try {
       // Golirea cozii pornește, dar nu e așteptată: scrierile către server n-au
       // prag de timp, iar golirea așteaptă și lacătul dintre file — pe o legătură
@@ -473,7 +520,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
       lastRefreshAt.current = Date.now()
       setRefreshing(false)
     }
-  }, [projectId, loadDue, loadInbox, applyProjectBundle])
+  }, [projectId, loadDue, loadInbox, loadOpen, loadPins, applyProjectBundle])
 
   useEffect(() => {
     let alive = true
@@ -486,13 +533,15 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
         // O bază locală care nu răspunde e „n-am cache", nu un eșec de pornire:
         // o respingere aici ar fi sărit peste rețea și ar fi lăsat „Se încarcă…"
         // pe ecran pentru totdeauna.
-        const [cp, ca, cd, ci] = await Promise.all([c.projects(), c.assignees(), c.due(smartListRange(new Date())), c.inbox()])
-          .catch(() => [null, null, null, null] as const)
+        const [cp, ca, cd, ci, co, cpins] = await Promise.all([c.projects(), c.assignees(), c.due(smartListRange(new Date())), c.inbox(), c.open(), c.pins()])
+          .catch(() => [null, null, null, null, null, null] as const)
         if (alive && cp) {
           setRawProjects(cp)
           setAssignees(ca ?? [])
           if (cd) { setDueRaw(cd); setDueLoaded(true) }
           if (ci) { setInboxRaw(ci); setInboxLoaded(true) }
+          if (co) { setOpenRaw(co); setOpenLoaded(true) }
+          if (cpins) setPins(cpins)
           setLoading(false)
         }
       }
@@ -503,7 +552,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
         // secțiune din sidebar și trebuie să aibă numere de la primul cadru.
         // La fel cutia de pase — ecranul „Ale mele" trebuie să aibă badge-ul
         // corect de la primul cadru, fără să aștepte deschiderea unui proiect.
-        if (alive) { void loadDue(); void loadInbox() }
+        if (alive) { void loadDue(); void loadInbox(); void loadOpen(); void loadPins() }
         // Restul proiectelor în fundal, ca offline să existe și ce n-ai deschis azi.
         void repository.sync?.prefetchAll()
       } catch (e) {
@@ -516,7 +565,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
       }
     })()
     return () => { alive = false }
-  }, [loadDue, loadInbox])
+  }, [loadDue, loadInbox, loadOpen, loadPins])
 
   useEffect(() => {
     const onVisible = () => {
@@ -604,6 +653,46 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
   }, [dueIssues, routines, revealTick])
   const dueIssuesRef = useRef<Issue[]>([])
   dueIssuesRef.current = dueIssues
+
+  /** Ca `dueIssues`: o singură sursă pe tichet, `allIssues` câștigă. */
+  const openIssues = useMemo(() => {
+    const m = new Map<string, Issue>()
+    for (const i of openRaw) m.set(i.id, i)
+    for (const i of allIssues) m.set(i.id, i)
+    return [...m.values()].filter((i) => !i.done && !hiddenIds.has(i.id))
+  }, [openRaw, allIssues, hiddenIds])
+  const openIssuesRef = useRef<Issue[]>([])
+  openIssuesRef.current = openIssues
+  const openCountByProject = useMemo(() => {
+    const now = new Date()
+    const out: Record<string, number> = {}
+    for (const i of openIssues) {
+      if (isDormant(i, routines, now)) continue
+      out[i.projectId] = (out[i.projectId] ?? 0) + 1
+    }
+    return out
+  }, [openIssues, routines, revealTick])
+
+  const pin = useCallback(async (kind: PinKind, ref: string) => {
+    setPins((prev) => withPin(prev, kind, ref))
+    try {
+      const saved = await repository.addPin(kind, ref)
+      setPins((prev) => [...withoutPin(prev, kind, ref), saved])
+    } catch (e) {
+      setPins((prev) => withoutPin(prev, kind, ref))
+      setError(errorMessage(e))
+    }
+  }, [])
+  const unpin = useCallback(async (kind: PinKind, ref: string) => {
+    let old: Pin | undefined
+    setPins((prev) => { old = prev.find((p) => p.kind === kind && p.ref === ref); return withoutPin(prev, kind, ref) })
+    try {
+      await repository.removePin(kind, ref)
+    } catch (e) {
+      if (old) { const back = old; setPins((prev) => [...withoutPin(prev, kind, ref), back]) }
+      setError(errorMessage(e))
+    }
+  }, [])
 
   /**
    * Cutia de pase, cu aceeași regulă ca `dueIssues`: instantaneul din
@@ -726,6 +815,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
       const strip = (i: Issue) => (i.deps?.some((d) => gone.has(d)) ? { ...i, deps: i.deps.filter((d) => !gone.has(d)) } : i)
       setAllIssues((prev) => prev.filter((i) => !gone.has(i.id)).map(strip))
       setDueRaw((prev) => prev.filter((i) => !gone.has(i.id)))
+      setOpenRaw((prev) => prev.filter((i) => !gone.has(i.id)))
       setInboxRaw((prev) => prev.filter((r) => !gone.has(r.issueId)))
     }
     let prev = s.status()
@@ -741,12 +831,14 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
       else if (e.type === 'issue') {
         upsertIssue(e.issue)
         setDueRaw((prev) => prev.map((i) => (i.id === e.issue.id ? e.issue : i)))
+        setOpenRaw((prev) => prev.map((i) => (i.id === e.issue.id ? e.issue : i)))
       } else if (e.type === 'removed') forget(e.ids)
       else if (e.type === 'remap') {
         const r = (id: string) => (id === e.from ? e.to : id)
         const ren = (i: Issue) => (i.id === e.from || i.deps?.includes(e.from) ? { ...i, id: r(i.id), deps: i.deps.map(r) } : i)
         setAllIssues((prev) => prev.map(ren))
         setDueRaw((prev) => prev.map(ren))
+        setOpenRaw((prev) => prev.map(ren))
       } else if (e.type === 'failed') {
         setError(e.message)
         if (e.revert) upsertIssue(e.revert)
@@ -810,6 +902,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
       return prev.filter((o) => o.projectId !== id)
     })
     setDueRaw((prev) => prev.filter((i) => i.projectId !== id))
+    setOpenRaw((prev) => prev.filter((i) => i.projectId !== id))
     setAllProjectMembers((prev) => prev.filter((m) => m.projectId !== id))
     setLoadedProjects((prev) => { const n = new Set(prev); n.delete(id); return n })
     setProjectId((cur) => (cur === id ? null : cur))
@@ -884,7 +977,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     async (id: string) => {
       // Și în `dueIssues`: o sarcină dintr-o listă inteligentă poate aparține
       // unui proiect care nu a fost deschis niciodată, deci nu e în `allIssues`.
-      const current = allIssues.find((i) => i.id === id) ?? dueIssues.find((i) => i.id === id)
+      const current = allIssues.find((i) => i.id === id) ?? dueIssues.find((i) => i.id === id) ?? openIssuesRef.current.find((i) => i.id === id)
       if (!current) return
       const done = !current.done
       upsertIssue({ ...current, done })
@@ -977,6 +1070,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     // `dueRaw` nu trece prin upsertIssue, deci ștergerea trebuie curățată și
     // aici — altfel sarcina ar rămâne în listele inteligente până la refresh.
     setDueRaw((prev) => prev.filter((i) => i.id !== id))
+    setOpenRaw((prev) => prev.filter((i) => i.id !== id))
     // Idem `inboxRaw`: un tichet șters n-are cum să mai fie reconciliat
     // (`reconcileInbox` păstrează rândurile fără tichet încărcat, ca să nu
     // golească proiectele neîncărcate), deci se scoate explicit.
@@ -999,6 +1093,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     await repository.deleteIssues(ids)
     const gone = new Set(ids)
     setDueRaw((prev) => prev.filter((i) => !gone.has(i.id)))
+    setOpenRaw((prev) => prev.filter((i) => !gone.has(i.id)))
     setInboxRaw((prev) => prev.filter((r) => !gone.has(r.issueId)))
     setAllIssues((prev) =>
       prev
@@ -1017,7 +1112,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
       // nedeschis trăiește doar în `dueIssues`, ca la `toggleDone`.
       const before = new Map<string, Issue>()
       for (const w of writes) {
-        const cur = allIssuesRef.current.find((i) => i.id === w.id) ?? dueIssuesRef.current.find((i) => i.id === w.id)
+        const cur = allIssuesRef.current.find((i) => i.id === w.id) ?? dueIssuesRef.current.find((i) => i.id === w.id) ?? openIssuesRef.current.find((i) => i.id === w.id)
         if (!cur) continue
         before.set(w.id, cur)
         upsertIssue(applyIssuePatch(cur, w.patch, now))
@@ -1220,6 +1315,13 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     smartLists,
     dueIssues,
     dueLoaded,
+    openIssues,
+    openLoaded,
+    openCountByProject,
+    myUserId: session?.user.id ?? null,
+    pins,
+    pin,
+    unpin,
     assignees,
     projectMembers,
     ensureAssigneeForMember,

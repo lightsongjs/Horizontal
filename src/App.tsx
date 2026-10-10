@@ -25,7 +25,9 @@ import { Icon } from './components/Icon'
 import { NativeBridge } from './components/NativeBridge'
 import { repository } from './data'
 import { syncLabel } from './lib/syncLabel'
-import { lockAxis, type Axis } from './lib/swipe'
+import { drawerSwipe, EDGE_PX, lockAxis, type Axis } from './lib/swipe'
+import { Drawer } from './components/Drawer'
+import type { NavTarget } from './components/NavMenu'
 import { TaskActionsProvider, useTaskActions } from './components/TaskActions'
 import { SelectionBar, SelectionHeader } from './components/SelectionChrome'
 
@@ -55,15 +57,6 @@ function SyncBridge() {
  */
 const resolveIssueId = (id: string) => repository.sync?.resolveId(id) ?? id
 
-function SettingsButton({ className }: { className?: string }) {
-  const { openAppSettings } = useUI()
-  return (
-    <button className={`theme-toggle ${className ?? ''}`} onClick={openAppSettings} aria-label="Setări" title="Setări">
-      <Icon name="settingsApp" size={16} />
-    </button>
-  )
-}
-
 function getBuildAgo(): string {
   const diff = Math.floor((Date.now() - new Date(__BUILD_TIME__).getTime()) / 1000)
   if (diff < 60) return 'just now'
@@ -88,7 +81,7 @@ function smartCrumb(kind: SmartListKind, now: Date): string {
   return `${DAYS_FULL[d.getDay()]}, ${d.getDate()} ${MON_FULL[d.getMonth()]}`
 }
 
-function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, canWrite, smartList, onBackToProjects, sidebarCollapsed, onToggleSidebar, inbox = false }: { onNewIssue: () => void; onSearch: () => void; onProjectSettings: () => void; onRefresh: () => void; onInfo: () => void; canWrite: boolean; smartList: SmartListKind | null; onBackToProjects: () => void; sidebarCollapsed: boolean; onToggleSidebar: () => void; /** „Ale mele" — opțional, ca vechile call-site-uri (fără el) să rămână valide. */ inbox?: boolean }) {
+function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, canWrite, smartList, onDrawer, sidebarCollapsed, onToggleSidebar, inbox = false }: { onNewIssue: () => void; onSearch: () => void; onProjectSettings: () => void; onRefresh: () => void; onInfo: () => void; canWrite: boolean; smartList: SmartListKind | null; /** ☰ de pe telefon: sertarul de navigare. */ onDrawer: () => void; sidebarCollapsed: boolean; onToggleSidebar: () => void; /** „Ale mele" — opțional, ca vechile call-site-uri (fără el) să rămână valide. */ inbox?: boolean }) {
   const { project, completion, smartLists, refreshing, syncStatus } = useHorizontal()
   const syncText = syncLabel(syncStatus)
   const list = smartList ? SMART_LISTS.find((s) => s.kind === smartList) : null
@@ -117,14 +110,13 @@ function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, ca
       >
         <Icon name="sidebar" size={15} />
       </button>
-      {/* Săgeata există doar ÎNĂUNTRUL unui proiect, unde are un părinte
-          („Proiecte"). Listele și „Ale mele" sunt tab-uri de sus: o săgeată
-          acolo promitea un „înapoi" spre un loc care nu e în spatele lor. */}
-      {projectChrome && !list && (
-        <button className="back" aria-label="Înapoi la proiecte" onClick={onBackToProjects}>
-          <Icon name="back" size={20} />
-        </button>
-      )}
+      {/* Pe telefon colțul ăsta e mereu ☰, și în proiect: un proiect se
+          deschide din sertar, iar părintele lui în istoric e „Azi" (vezi
+          `goProject`), deci o săgeată „înapoi la proiecte" ar fi promis un loc
+          care nu mai e în spatele lui. Ascuns peste 900px — acolo e sidebar-ul. */}
+      <button className="header-drawer-btn" onClick={onDrawer} aria-label="Meniu" title="Meniu">
+        <Icon name="drawer" size={20} />
+      </button>
       <div className="logo">{inbox ? <Icon name="people" size={18} /> : list ? <Icon name={list.icon} size={18} /> : projectChrome ? projectChrome.prefix.slice(0, 2) : 'H'}</div>
       <div className="htxt">
         <h1>{inbox ? 'Ale mele' : list ? list.label : projectChrome ? projectChrome.name : 'Horizontal'}</h1>
@@ -172,7 +164,6 @@ function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, ca
       >
         <Icon name="refresh" size={15} />
       </button>
-      <SettingsButton className="theme-toggle-mobile" />
     </header>
   )
 }
@@ -181,21 +172,17 @@ function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, ca
  * Bara de jos, numai pe telefon (vezi `.tabbar` în styles.css). Pe mobil
  * sidebar-ul e ascuns, deci fără ea listele inteligente n-ar avea drum.
  *
- * Patru tab-uri, nu cinci: „+" a ieșit din bară. O bară de navigație spune
- * UNDE ești, nu CE faci — un buton de acțiune între două destinații se
- * citește ca a treia destinație. Acțiunea e butonul plutitor de deasupra.
- *
- * Și nu cinci destinații: „Caută" ar fi fost a cincea, dar QuickSearch caută
- * în proiectul deschis, iar de aici nu există unul.
+ * Trei tab-uri: „+" a ieșit din bară (o bară de navigație spune UNDE ești, nu
+ * CE faci — acțiunea e butonul plutitor), iar „Proiecte" a intrat în sertar
+ * (☰). Bara ține ce e zilnic; proiectele, Inbox-ul și filtrele stau în sertar,
+ * cu fixările lor în rândul de sus.
  *
  * „Ale mele" își ia singur numărul de necitite din store — la fel cum Header
  * își ia `smartLists` singur — ca Shell să nu care încă un prop prin bară.
  */
-function TabBar({ screen, onScreen, onProjects, inProjects }: {
+function TabBar({ screen, onScreen }: {
   screen: Screen | null
   onScreen(s: Screen): void
-  onProjects(): void
-  inProjects: boolean
 }) {
   const { inbox } = useHorizontal()
   return (
@@ -211,9 +198,6 @@ function TabBar({ screen, onScreen, onProjects, inProjects }: {
           <Icon name="people" size={21} />
           {inbox.fresh.length > 0 && <span className="tb-badge">{inbox.fresh.length}</span>}
         </span>Ale mele
-      </button>
-      <button className={inProjects ? 'on' : ''} onClick={onProjects} data-tab="projects">
-        <span className="tb-ico"><Icon name="projects" size={21} /></span>Proiecte
       </button>
     </nav>
   )
@@ -268,7 +252,7 @@ function Shell() {
   // Pentru `onPop`, care se atașează rar: stratul de închis e cel de ACUM.
   const taRef = useRef(ta)
   taRef.current = ta
-  const { openNewIssue, openNewProject, openProjectSettings, openIssue, closeSheet, pushSheet, sheet, ticketId, dockedIssueId, toast, clearToast } = useUI()
+  const { openNewIssue, openNewProject, openProjectSettings, openAppSettings, openIssue, closeSheet, pushSheet, sheet, ticketId, dockedIssueId, toast, clearToast } = useUI()
   // Stabil peste randări nelegate de toast: `recurrenceUndo` (din store, un
   // `useState`) nu-și schimbă identitatea decât când SE SCHIMBĂ toast-ul, deci
   // memoizarea aici ține `toastAction` la același obiect exact atunci când
@@ -863,14 +847,15 @@ function Shell() {
   }, [ta.layers])
 
   /**
-   * Tab-urile de sus (bara de jos; săgeata din proiect) și istoricul lor.
+   * Tab-urile de sus (bara de jos; rândurile din sertar) și istoricul lor.
    *
    * „Azi" e ecranul de start, deci rădăcina istoricului (adâncimea 0). Orice
    * alt tab stă într-o SINGURĂ intrare peste ea, pe `/`, marcată `hzScreen`.
-   * De aici iese convenția Android pentru o bară de jos: Back de pe „7 zile",
-   * „Ale mele" sau „Proiecte" duce pe „Azi", iar de pe „Azi" iese din
-   * aplicație (nu mai e nimic al nostru în spate). Un proiect se împinge
-   * peste intrarea „Proiecte", deci Back din proiect duce acolo.
+   * De aici iese convenția Android pentru o bară de jos: Back de pe „7 zile"
+   * sau „Ale mele" duce pe „Azi", iar de pe „Azi" iese din aplicație (nu mai
+   * e nimic al nostru în spate). Un proiect din sertar stă tot peste „Azi"
+   * (`goProject`). `projects` (lista „Toate proiectele") rămâne un ecran de
+   * desktop și al intrărilor vechi din istoric.
    *
    * Comutarea unui tab desface tot ce era deasupra rădăcinii (`go(-n)`) și
    * reclădește stiva canonică `[Azi]` sau `[Azi, tab]`. Altfel fiecare atingere
@@ -882,7 +867,7 @@ function Shell() {
    * intrările lor au propria mașinărie, iar pe telefon bara nici nu se vede
    * atunci. Rămâne doar comutarea de stare, ca înainte.
    */
-  const tabPop = useRef<TopScreen | null>(null)
+  const tabPop = useRef<TopScreen | { project: string } | null>(null)
   const applyTop = (t: TopScreen) => {
     setShowUsers(false)
     if (t === 'projects') {
@@ -920,6 +905,115 @@ function Shell() {
     }
   }
 
+  /**
+   * Un proiect deschis din sertar: stiva canonică `[Azi, proiect]`, ca la
+   * `goTop` — Back din proiect duce pe „Azi", nu pe o listă de proiecte care
+   * pe telefon nu mai e un tab. Același mecanism (`go(-n)` + `tabPop`), deci
+   * și intrarea sertarului se desface odată cu restul.
+   */
+  const settleProject = (id: string) => {
+    const path = projectPath(projectsRef.current.find((p) => p.id === id) ?? null)
+    if (historyDepth.current !== 0) {
+      window.history.replaceState({ hzDepth: historyDepth.current }, '', path)
+      return
+    }
+    window.history.replaceState({ hzDepth: 0, hzScreen: 'today' }, '', '/')
+    historyDepth.current = 1
+    window.history.pushState({ hzDepth: 1 }, '', path)
+  }
+  const goProject = (id: string) => {
+    setShowUsers(false)
+    setScreen(null)
+    localStorage.removeItem(LAST_VIEW_KEY)
+    selectProject(id)
+    if (sheetRef.current.kind !== 'none' || layerEntries.current > 0 || quickEntry.current) return
+    if (historyDepth.current === 0) settleProject(id)
+    else {
+      const t = { project: id }
+      tabPop.current = t
+      window.history.go(-historyDepth.current)
+      // Aceeași plasă ca în `goTop`.
+      window.setTimeout(() => {
+        if (tabPop.current !== t) return
+        tabPop.current = null
+        window.history.replaceState({ hzDepth: historyDepth.current }, '', projectPath(projectsRef.current.find((p) => p.id === id) ?? null))
+      }, 1000)
+    }
+  }
+
+  /**
+   * Sertarul (☰, telefon). Ca foaia rapidă: n-are URL, dar are intrare în
+   * istoric (`hzSheet: 'drawer'`), ca Back să-l închidă în loc să iasă din
+   * aplicație. Închis pe fundal (sau ca să lase loc rotiței), intrarea se
+   * desface cu un `back()` pe care `onPop` îl înghite (`drawerPop`). Alegerea
+   * unui rând nu desface intrarea separat: `goTop`/`goProject` desfac oricum
+   * tot ce e peste rădăcină, deci un Back după navigare nu redeschide sertarul.
+   */
+  const [drawer, setDrawer] = useState(false)
+  const drawerEntry = useRef(false)
+  const drawerPop = useRef(false)
+  const openDrawer = () => {
+    if (drawerEntry.current) return
+    setDrawer(true)
+    drawerEntry.current = true
+    historyDepth.current += 1
+    window.history.pushState({ hzDepth: historyDepth.current, hzSheet: 'drawer' }, '', window.location.pathname)
+  }
+  const closeDrawer = () => {
+    setDrawer(false)
+    if (!drawerEntry.current) return
+    drawerEntry.current = false
+    if ((window.history.state as { hzSheet?: string } | null)?.hzSheet === 'drawer') {
+      drawerPop.current = true
+      window.history.back()
+    }
+  }
+  const pickFromDrawer = (t: NavTarget) => {
+    setDrawer(false)
+    drawerEntry.current = false
+    if (t.kind === 'project') goProject(t.id)
+    else goTop(t.screen)
+  }
+  const openDrawerRef = useRef(openDrawer)
+  openDrawerRef.current = openDrawer
+  const closeDrawerRef = useRef(closeDrawer)
+  closeDrawerRef.current = closeDrawer
+  // Lărgită peste prag, fereastra n-are sertar (are sidebar).
+  useEffect(() => { if (!narrow && drawerEntry.current) closeDrawerRef.current() }, [narrow])
+  const canEdgeOpen = () => sheetRef.current.kind === 'none' && !drawerEntry.current && layerEntries.current === 0 && !quickEntry.current
+  const canEdgeOpenRef = useRef(canEdgeOpen)
+  canEdgeOpenRef.current = canEdgeOpen
+  // Tragerea din marginea stângă. Direcția o decide `lockAxis`, ca la rânduri
+  // și la tragerea de refresh; zona e exact cea pe care rândurile o lasă în
+  // pace (`inEdge`), deci cele două gesturi nu pot porni din același deget.
+  useEffect(() => {
+    if (!narrow) return
+    let s: { x: number; y: number; axis: Axis } | null = null
+    const onStart = (e: TouchEvent) => {
+      const t = e.touches[0]
+      s = t.clientX < EDGE_PX && canEdgeOpenRef.current() ? { x: t.clientX, y: t.clientY, axis: 'pending' } : null
+    }
+    const onMove = (e: TouchEvent) => {
+      if (!s) return
+      const dx = e.touches[0].clientX - s.x
+      const dy = e.touches[0].clientY - s.y
+      if (s.axis === 'pending') s.axis = lockAxis(dx, dy)
+      if (s.axis === 'v') { s = null; return }
+      if (drawerSwipe(s.x, s.axis, dx)) { s = null; openDrawerRef.current() }
+    }
+    const onEnd = () => { s = null }
+    document.addEventListener('touchstart', onStart, { passive: true })
+    document.addEventListener('touchmove', onMove, { passive: true })
+    document.addEventListener('touchend', onEnd, { passive: true })
+    document.addEventListener('touchcancel', onEnd, { passive: true })
+    return () => {
+      document.removeEventListener('touchstart', onStart)
+      document.removeEventListener('touchmove', onMove)
+      document.removeEventListener('touchend', onEnd)
+      document.removeEventListener('touchcancel', onEnd)
+    }
+  }, [narrow])
+
   // Browser back/forward → sync store. Un path de ticket nu schimbă proiectul;
   // doar deschide sau închide sheet-ul.
   useEffect(() => {
@@ -929,9 +1023,14 @@ function Shell() {
       if (tabPop.current) {
         const t = tabPop.current
         tabPop.current = null
-        settleTop(t)
+        if (typeof t === 'string') settleTop(t)
+        else settleProject(t.project)
         return
       }
+      // Desfacerea intrării sertarului, cerută de noi (fundal, rotiță).
+      if (drawerPop.current) { drawerPop.current = false; return }
+      // Back peste sertar îl închide și atât.
+      if (drawerEntry.current) { drawerEntry.current = false; setDrawer(false); return }
       // Desfacerea intrării foii rapide, cerută chiar de noi (vezi efectul de
       // mai jos): foaia e deja închisă, iar URL-ul e același.
       if (quickPop.current) { quickPop.current = false; return }
@@ -1125,6 +1224,11 @@ function Shell() {
     }
   }, [])
 
+  // Rândul marcat în sertar: ecranul de acum.
+  const drawerCurrent: NavTarget | null = screen === 'today' || screen === 'week' || screen === 'inbox'
+    ? { kind: 'screen', screen }
+    : !screen && project && !showUsers ? { kind: 'project', id: project.id } : null
+
   return (
     <div id="app" className={sidebarCollapsed ? 'sidebar-collapsed' : undefined}>
       <Sidebar
@@ -1140,7 +1244,7 @@ function Shell() {
         onInbox={() => openScreen('inbox')}
       />
       <div className="app-body">
-        {ta.selectMode && ta.narrow && smartList ? <SelectionHeader /> : <Header onNewIssue={openNewIssue} onSearch={() => setShowSearch(true)} onProjectSettings={openProjectSettings} onRefresh={refresh} onInfo={() => setShowInfo(true)} canWrite={canWrite} smartList={smartList} onBackToProjects={() => goTop('projects')} sidebarCollapsed={sidebarCollapsed} onToggleSidebar={toggleSidebar} inbox={inInbox} />}
+        {ta.selectMode && ta.narrow && smartList ? <SelectionHeader /> : <Header onNewIssue={openNewIssue} onSearch={() => setShowSearch(true)} onProjectSettings={openProjectSettings} onRefresh={refresh} onInfo={() => setShowInfo(true)} canWrite={canWrite} smartList={smartList} onDrawer={openDrawer} sidebarCollapsed={sidebarCollapsed} onToggleSidebar={toggleSidebar} inbox={inInbox} />}
         <main ref={mainRef}>
           {pullY > 0 && (
             <div style={{ textAlign: 'center', padding: '6px 0', fontSize: 'calc(13px * var(--text-scale))', color: 'var(--txt-dim)', transform: `translateY(${pullY * 0.4}px)`, transition: pullY === 0 ? 'transform 0.3s' : 'none' }}>
@@ -1179,14 +1283,18 @@ function Shell() {
           </button>
         )}
         {ta.selectMode && ta.narrow && smartList ? <SelectionBar /> : (
-          <TabBar
-            screen={screen}
-            onScreen={goTop}
-            onProjects={() => goTop('projects')}
-            inProjects={!screen && !showUsers}
-          />
+          <TabBar screen={screen} onScreen={goTop} />
         )}
       </div>
+      {drawer && narrow && (
+        <Drawer
+          current={drawerCurrent}
+          onPick={pickFromDrawer}
+          onClose={closeDrawer}
+          onSettings={() => { closeDrawer(); openAppSettings() }}
+          onNewProject={() => { closeDrawer(); openNewProject() }}
+        />
+      )}
       {/* Două surse pentru un singur toast. `recurrenceUndo` are prioritate:
           e legat de o atingere chiar acum (bifarea) și e ACȚIONABIL — un
           `notice` pierdut sub el e doar informativ (deep link lipsă/eșuat),

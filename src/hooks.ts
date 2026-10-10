@@ -11,6 +11,7 @@ import { parseCaptureTokens, type CaptureTokens } from './lib/captureTokens'
 import { Autosaver, type AutosaveStatus, type Fields, type Normalize } from './lib/autosave'
 import { captureDefaultProjectId, computeDraft, keyboardInset, type DraftError, type DraftSchedule, type ManualPick, type QuickCtx } from './lib/quickDraft'
 import type { NewIssue } from './data/repository'
+import { LONG_PRESS_MS, movedBeyondTap } from './lib/swipe'
 
 const HIDE_DONE_KEY = 'horizontal:hide-done'
 const SIDEBAR_KEY = 'horizontal:sidebar-collapsed'
@@ -817,5 +818,71 @@ export function useAutosave<T extends Fields>(source: T, opts: {
     type: (patch) => { void s.set(patch, 'debounce') },
     commit: (patch) => s.set(patch, 'now'),
     flush: () => s.flush(),
+  }
+}
+
+/**
+ * Apăsarea lungă pe un rând de navigare (sertar, sidebar) → meniul lui.
+ *
+ * Trei intrări, un singur meniu: degetul ținut `LONG_PRESS_MS` (pragul
+ * selecției din liste, ca omul să învețe un singur timp), click-ul dreapta, și
+ * `contextmenu`-ul pe care Chrome de Android îl trimite singur la o apăsare
+ * lungă — de-aia `fired`: al doilea semnal al aceluiași gest nu redeschide.
+ * Click-ul care urmează unei apăsări lungi e înghițit (`swallowNextClick`):
+ * degetul ridicat după meniu n-are voie nici să navigheze, nici să cadă pe
+ * fundalul meniului și să-l închidă.
+ */
+export function useLongPress(onLong: (at: { x: number; y: number }) => void) {
+  const timer = useRef<number | null>(null)
+  const start = useRef<{ x: number; y: number } | null>(null)
+  const fired = useRef(false)
+  const onLongRef = useRef(onLong)
+  onLongRef.current = onLong
+  const clear = () => {
+    if (timer.current !== null) window.clearTimeout(timer.current)
+    timer.current = null
+    start.current = null
+  }
+  useEffect(() => clear, [])
+  // Atingeri, nu `pointer*`: aceeași sursă ca rândurile din liste (`TaskRow`),
+  // iar un `pointercancel` dat de derularea containerului ar fi oprit ceasul
+  // fără ca degetul să se fi mișcat.
+  return {
+    onTouchStart: (e: React.TouchEvent) => {
+      fired.current = false
+      const t = e.touches[0]
+      const at = { x: t.clientX, y: t.clientY }
+      start.current = at
+      if (timer.current !== null) window.clearTimeout(timer.current)
+      timer.current = window.setTimeout(() => {
+        timer.current = null
+        fired.current = true
+        try { navigator.vibrate?.(12) } catch { /* fără vibrație */ }
+        // Click-ul de la ridicarea degetului ar cădea pe fundalul meniului abia
+        // deschis sub deget — și l-ar închide pe loc.
+        swallowNextClick()
+        onLongRef.current(at)
+      }, LONG_PRESS_MS)
+    },
+    onTouchMove: (e: React.TouchEvent) => {
+      const s = start.current
+      const t = e.touches[0]
+      if (s && movedBeyondTap(t.clientX - s.x, t.clientY - s.y)) clear()
+    },
+    onTouchEnd: clear,
+    onTouchCancel: clear,
+    onContextMenu: (e: React.MouseEvent) => {
+      e.preventDefault()
+      if (fired.current) return
+      clear()
+      fired.current = true
+      onLongRef.current({ x: e.clientX, y: e.clientY })
+    },
+    onClickCapture: (e: React.MouseEvent) => {
+      if (!fired.current) return
+      fired.current = false
+      e.preventDefault()
+      e.stopPropagation()
+    },
   }
 }

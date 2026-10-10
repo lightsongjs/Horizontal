@@ -4,6 +4,7 @@
 import { requireSupabase } from '../lib/supabase'
 import type { Assignee, InboxRow, Issue, IssueEvent, Obstacle, ObstacleLink, Project, ProjectMember, Theme, Wave } from '../lib/types'
 import { nextIssueId } from '../lib/issueId'
+import { nextPinPosition, type Pin, type PinKind } from '../lib/pins'
 import { pathsForIssues, pathsForProject, removeObjects } from './attachments'
 import { themeKey, type DueRange, type NewIssue, type NewObstacle, type NewProject, type NewThreadPost, type Repository } from './repository'
 
@@ -443,6 +444,20 @@ export function createSupabaseRepository(): Repository {
       return rows.map((row) => rowToIssue(row, deps))
     },
 
+    async listOpenIssues() {
+      // Fără ordonare pe server: ecranele își fac singure ordinea (proiect,
+      // scadență). Dependențele pe bucăți: un `in` cu sute de ID-uri ar lungi
+      // URL-ul cererii peste ce acceptă un proxy.
+      const { data, error } = await db.from('issues').select('*').eq('done', false)
+      if (error) throw error
+      const rows = (data ?? []) as IssueRow[]
+      const deps: Record<string, string[]> = {}
+      for (let i = 0; i < rows.length; i += 150) {
+        Object.assign(deps, await loadDeps(rows.slice(i, i + 150).map((r) => r.id)))
+      }
+      return rows.map((row) => rowToIssue(row, deps))
+    },
+
     async createIssue(input: NewIssue) {
       // Numărul îl alege clientul („cel mai mare + 1"), deci doi clienți pot alege
       // același — laptopul și fereastra de quick add de pe telefon. 23505 = nimic
@@ -733,6 +748,32 @@ export function createSupabaseRepository(): Repository {
       const { data, error } = await db.from('inbox_rows').select('*').eq('done', false)
       if (error) throw error
       return (data ?? []).map(rowToInboxRow)
+    },
+
+    async listPins() {
+      const { data, error } = await db.from('pinned_items').select('kind, ref, position').order('position')
+      if (error) throw error
+      return (data ?? []).map((r) => ({ kind: r.kind as PinKind, ref: r.ref as string, position: r.position as number }))
+    },
+
+    async addPin(kind, ref) {
+      // Poziția = după ultima: ordinea fixării. `ignoreDuplicates`: o fixare
+      // existentă (de pe alt dispozitiv) își păstrează locul, nu sare la coadă.
+      const { data: rows, error: rErr } = await db.from('pinned_items').select('kind, ref, position')
+      if (rErr) throw rErr
+      const pins = (rows ?? []) as Pin[]
+      const existing = pins.find((p) => p.kind === kind && p.ref === ref)
+      if (existing) return existing
+      const pin: Pin = { kind, ref, position: nextPinPosition(pins) }
+      // `user_id` nu se trimite: `default auth.uid()` (migrare), ca la `issue_seen`.
+      const { error } = await db.from('pinned_items').upsert(pin, { onConflict: 'user_id,kind,ref', ignoreDuplicates: true })
+      if (error) throw error
+      return pin
+    },
+
+    async removePin(kind, ref) {
+      const { error } = await db.from('pinned_items').delete().eq('kind', kind).eq('ref', ref)
+      if (error) throw error
     },
   }
 }

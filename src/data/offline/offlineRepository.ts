@@ -9,6 +9,7 @@
 
 import type { Repository } from '../repository'
 import type { Assignee, InboxRow, Issue, Project } from '../../lib/types'
+import type { Pin } from '../../lib/pins'
 import type { Kv } from './kv'
 import { errorMessage } from '../../lib/errorMessage'
 import { OfflineError, isAuthError, isNetworkError, withTimeout } from './netError'
@@ -47,6 +48,9 @@ const K = {
   assignees: 'assignees',
   inbox: 'inbox',
   due: 'due',
+  /** Tichetele nebifate din toate proiectele (`listOpenIssues`) — sertarul și filtrele. */
+  open: 'open',
+  pins: 'pins',
   remaps: 'remaps',
   p: (pid: string, what: keyof ProjectBundle) => `p:${pid}:${what}`,
 }
@@ -259,8 +263,14 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
     // Lista completă a unui proiect e autoritară pentru el: un tichet șters pe
     // server dispare din ea, dar `due` nu se curăță niciodată și l-ar readuce
     // ca fantomă. `due` contează doar pentru proiectele fără listă completă.
+    // La fel `open`, cu `due` câștigător la dublură (cele două liste se
+    // suprapun pe tichetele nebifate cu scadență).
+    const partial = new Set<string>()
     for (const i of (await kv.get<Issue[]>(K.due)) ?? []) {
-      if (!full.has(i.projectId)) out.push(i)
+      if (!full.has(i.projectId)) { out.push(i); partial.add(i.id) }
+    }
+    for (const i of (await kv.get<Issue[]>(K.open)) ?? []) {
+      if (!full.has(i.projectId) && !partial.has(i.id)) out.push(i)
     }
     // Iar lista de proiecte e autoritară peste toate: un proiect pe care
     // serverul nu-l mai întoarce (șters, acces pierdut) nu are voie să-și
@@ -309,6 +319,13 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
       if (!all.length && (await kv.get(K.due)) === undefined) return null
       return deriveDue(overlay(all, await pendingOps(), now()), range)
     },
+    async open() {
+      const kv = await kvReady
+      if (!kv) return null
+      if ((await kv.get(K.open)) === undefined && !(await kv.keys('p:')).some((k) => k.endsWith(':issues'))) return null
+      return overlay(await allCachedIssues(kv), await pendingOps(), now()).filter((i) => !i.done)
+    },
+    async pins() { const kv = await kvReady; return (kv && ((await kv.get(K.pins)) as Pin[] | undefined)) ?? null },
   }
 
   async function prefetchAll() {
@@ -354,6 +371,8 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
     // parțială l-ar face să pară cunoscut și gol.
     const due = await kv.get<Issue[]>(K.due)
     if (due) writes.push([K.due, issue.dueAt ? [...due.filter((i) => i.id !== issue.id), issue] : due.filter((i) => i.id !== issue.id)])
+    const open = await kv.get<Issue[]>(K.open) // idem
+    if (open) writes.push([K.open, issue.done ? open.filter((i) => i.id !== issue.id) : [...open.filter((i) => i.id !== issue.id), issue]])
     return writes
   }
 
@@ -367,6 +386,8 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
     }
     const due = await kv.get<Issue[]>(K.due) // ca mai sus: necache-uit rămâne necache-uit
     if (due) writes.push([K.due, strip(due)])
+    const open = await kv.get<Issue[]>(K.open)
+    if (open) writes.push([K.open, strip(open)])
     return writes
   }
 
@@ -613,6 +634,29 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
     listObstacleLinks: (pid) => read(K.p(pid, 'obstacleLinks'), () => remote.listObstacleLinks(pid)),
     listProjectMembers: (pid) => read(K.p(pid, 'members'), () => remote.listProjectMembers(pid)),
     listInbox: () => read(K.inbox, () => remote.listInbox()),
+    listPins: () => read(K.pins, () => remote.listPins()),
+    async listOpenIssues() {
+      // Ca `listDueIssues`: serverul întâi, iar o golire care a apucat să
+      // scrie între timp în bază face răspunsul vechi — atunci baza câștigă.
+      const gen = generation
+      try {
+        const base = await withTimeout(remote.listOpenIssues(), readTimeoutMs)
+        setStatus({ offline: false })
+        if (gen !== generation) {
+          const local = await cache.open().catch(() => null)
+          if (local !== null) return local
+        }
+        const kv = await kvReady
+        await kv?.set(K.open, base).catch(() => {})
+        return overlay(base, await pendingOps(), now()).filter((i) => !i.done)
+      } catch (e) {
+        if (!isNetworkError(e)) throw e
+        setStatus({ offline: true })
+        const local = await cache.open()
+        if (local === null) throw new OfflineError()
+        return local
+      }
+    },
     async listIssues(pid) {
       const base = await read(K.p(pid, 'issues'), () => remote.listIssues(pid), true)
       return overlay(base, await pendingOps(), now()).filter((i) => i.projectId === pid)
@@ -662,6 +706,21 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
     ensureAssigneeForMember: (pid, uid) => net(() => remote.ensureAssigneeForMember(pid, uid)),
     listEvents: (iid) => net(() => remote.listEvents(iid)),
     postToThread: (input) => net(() => remote.postToThread(input)),
+    // Fixările: rețea pentru scriere (ca proiectele), iar baza se ține la zi
+    // doar ca primul cadru de după să le arate — nu e o coadă.
+    async addPin(kind, ref) {
+      const pin = await net(() => remote.addPin(kind, ref))
+      const kv = await kvReady
+      const cur = (await kv?.get<Pin[]>(K.pins).catch(() => undefined)) ?? null
+      if (kv && cur) await kv.set(K.pins, [...cur.filter((p) => !(p.kind === kind && p.ref === ref)), pin]).catch(() => {})
+      return pin
+    },
+    async removePin(kind, ref) {
+      await net(() => remote.removePin(kind, ref))
+      const kv = await kvReady
+      const cur = (await kv?.get<Pin[]>(K.pins).catch(() => undefined)) ?? null
+      if (kv && cur) await kv.set(K.pins, cur.filter((p) => !(p.kind === kind && p.ref === ref))).catch(() => {})
+    },
 
     // ── Merg offline ─────────────────────────────────────────────────────────
     /**

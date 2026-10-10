@@ -59,6 +59,15 @@ import {
   User,
   X,
   Zap,
+  Menu,
+  Pin,
+  PinOff,
+  ListFilter,
+  Star,
+  Flag,
+  Briefcase,
+  House,
+  Tag,
 } from 'lucide-react'
 
 /**
@@ -155,6 +164,18 @@ const ICONS = {
   more: Ellipsis,
   /** Meniul unui rând (⋮): acțiunile care nu încap pe bandă. */
   menu: EllipsisVertical,
+  /** ☰ din antetul de telefon: deschide sertarul de navigare. */
+  drawer: Menu,
+  pin: Pin,
+  unpin: PinOff,
+  /** Un filtru salvat, și iconița lui implicită. */
+  filter: ListFilter,
+  // Restul setului din care se alege iconița unui filtru (`FILTER_ICONS`).
+  star: Star,
+  flag: Flag,
+  work: Briefcase,
+  home: House,
+  tag: Tag,
 } as const
 
 export type IconName = keyof typeof ICONS

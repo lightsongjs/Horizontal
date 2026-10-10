@@ -210,8 +210,8 @@ for (const width of PHONE_WIDTHS) {
 }
 
 /**
- * Bara de jos (`TabBar` din App.tsx, Task 9) — patru butoane cu `flex: 1`.
- * „Proiecte" e eticheta cea mai lungă, la cel mai îngust ecran. Trei lucruri
+ * Bara de jos (`TabBar` din App.tsx) — trei butoane cu `flex: 1` („Proiecte"
+ * s-a mutat în sertar). „Ale mele" e eticheta cea mai lungă. Trei lucruri
  * contează cu adevărat: eticheta nu se rupe pe două rânduri (butoanele sunt
  * `flex-direction: column`, deci o a doua linie crește ÎNĂLȚIMEA, nu
  * lățimea — un check de lățime n-ar prinde-o), butonul rămâne atingibil, iar
@@ -222,10 +222,9 @@ const tabBar = () => `
   <button data-tab="today"><span class="tb-ico"><svg width="21" height="21"></svg></span>Azi</button>
   <button data-tab="week"><span class="tb-ico"><svg width="21" height="21"></svg></span>7 zile</button>
   <button class="on" data-tab="inbox"><span class="tb-ico"><svg width="21" height="21"></svg><span class="tb-badge">12</span></span>Ale mele</button>
-  <button data-tab="projects"><span class="tb-ico"><svg width="21" height="21"></svg></span>Proiecte</button>
 </nav>`
 
-console.log('\nBara de jos (`TabBar`) — patru butoane pe telefon:')
+console.log('\nBara de jos (`TabBar`) — trei butoane pe telefon:')
 for (const width of PHONE_WIDTHS) {
   const page = await browser.newPage({ viewport: { width, height: 800 } })
   await page.setContent(`<style>${CSS}</style>${tabBar()}`)
@@ -741,6 +740,77 @@ for (const width of PHONE_WIDTHS) {
   check(`butoanele benzii rotunde @${width}px`, m.round && m.btnSize >= 40, `${m.btnSize}px, rotunde=${m.round}`)
   check(`butoanele benzii au fundal, fără chenar @${width}px`, m.invisible === 0 && m.noBorder, `fără fundal: ${m.invisible}, fără chenar: ${m.noBorder}`)
   check(`„Mută restanțele pe azi" încape @${width}px`, m.groupOverflow <= 0 && !m.actClipped, `overflow=${m.groupOverflow}px, tăiat=${m.actClipped}`)
+}
+
+/**
+ * Sertarul (`Drawer.tsx`): ~85% din lățime, iar rândul de pătrate fixate
+ * DERULEAZĂ orizontal — opt pătrate nu au voie să lățească foaia, nici să
+ * împingă rotița din antet afară. Numerele rândurilor stau în rând chiar cu
+ * un nume de proiect lung (eticheta se taie, numărul nu).
+ */
+const drawer = () => `
+<div class="drawer-bg"></div>
+<nav class="drawer">
+  <div class="dr-head">
+    <span class="dr-avatar">IS</span>
+    <span class="dr-who"><span class="dr-name">Ionuț Salonariu Popescu-Vlădescu</span><span class="dr-email">ionut.foarte.lung@exemplu-domeniu.ro</span></span>
+    <button class="dr-gear"><svg width="19" height="19"></svg></button>
+  </div>
+  <div class="dr-scroll">
+    <div class="dr-pins">
+      ${Array.from({ length: 8 }, (_, i) => `<button class="dr-pin${i === 0 ? ' on' : ''}"><span class="dr-pin-ico"><span class="pin-prefix">H${i}</span></span><span class="dr-pin-name">Proiectul numărul ${i}</span></button>`).join('')}
+    </div>
+    <div class="dr-group">
+      <button class="dr-row on"><span class="dr-row-ico"><svg width="19" height="19"></svg></span><span class="dr-row-label">Azi</span><span class="sl-late">12</span><span class="dr-count">128</span></button>
+      <button class="dr-row"><span class="dr-row-ico"><svg width="19" height="19"></svg></span><span class="dr-row-label">Ale mele</span><span class="sl-new">3</span></button>
+    </div>
+    <div class="dr-projects">
+      <div class="dr-label">Proiecte</div>
+      <button class="dr-row" id="long"><span class="dr-row-ico"><span class="dr-dot" style="background:#0EA5E9"></span></span><span class="dr-row-label">Un proiect cu un nume foarte, foarte lung care nu încape</span><span class="dr-count">1024</span></button>
+      <button class="dr-add"><svg width="16" height="16"></svg> Proiect</button>
+    </div>
+  </div>
+</nav>`
+
+console.log('\nSertarul (☰) și rândul de pătrate fixate:')
+for (const width of PHONE_WIDTHS) {
+  const page = await browser.newPage({ viewport: { width, height: 844 } })
+  await page.setContent(`<style>${CSS}</style>${drawer()}`)
+  const m = await page.evaluate(() => {
+    const r = (el) => el.getBoundingClientRect()
+    const dr = document.querySelector('.drawer')
+    const pins = document.querySelector('.dr-pins')
+    const gear = document.querySelector('.dr-gear')
+    const long = document.querySelector('#long')
+    const count = long.querySelector('.dr-count')
+    const names = [...document.querySelectorAll('.dr-pin-name')]
+    // Rânduri distincte după `top`: un text tăiat cu „…" dă două dreptunghiuri
+    // pe ACELAȘI rând (textul și elipsa), nu două rânduri.
+    const lines = (el) => { const rg = document.createRange(); rg.selectNodeContents(el); return new Set([...rg.getClientRects()].map((x) => Math.round(x.top))).size }
+    return {
+      share: r(dr).width / window.innerWidth,
+      drOverflow: dr.scrollWidth - Math.ceil(r(dr).width),
+      pinsScroll: pins.scrollWidth > pins.clientWidth && getComputedStyle(pins).overflowX === 'auto',
+      pinsInside: r(pins).right <= r(dr).right + 0.5,
+      tile: Math.round(r(document.querySelector('.dr-pin-ico')).width),
+      gearInside: r(gear).right <= r(dr).right + 0.5 && r(gear).width >= 40,
+      countInside: r(count).right <= r(long).right + 0.5 && count.scrollWidth <= count.clientWidth + 1,
+      rowH: Math.round(r(long).height),
+      nameOneLine: names.every((n) => lines(n) <= 1),
+      bg: getComputedStyle(dr).backgroundColor,
+      border: getComputedStyle(dr).borderRightStyle,
+    }
+  })
+  await page.close()
+  check(`sertarul ia ~85% @${width}px`, m.share > 0.8 && m.share <= 0.86, `${Math.round(m.share * 100)}%`)
+  check(`sertarul nu se lățește @${width}px`, m.drOverflow <= 0, `${m.drOverflow}px peste`)
+  check(`pătratele derulează în sertar @${width}px`, m.pinsScroll && m.pinsInside, `derulează=${m.pinsScroll}`)
+  check(`pătrat atingibil @${width}px`, m.tile >= 44, `${m.tile}px`)
+  check(`rotița în sertar @${width}px`, m.gearInside, m.gearInside ? 'în ecran' : 'împinsă afară')
+  check(`numărul rămâne întreg lângă un nume lung @${width}px`, m.countInside, m.countInside ? 'întreg' : 'tăiat')
+  check(`rând atingibil @${width}px`, m.rowH >= 44, `${m.rowH}px`)
+  check(`numele pătratelor pe un rând @${width}px`, m.nameOneLine, m.nameOneLine ? 'da' : 'rupt')
+  check(`sertarul are fundal, fără chenar @${width}px`, m.bg !== 'rgba(0, 0, 0, 0)' && m.border === 'none', `bg=${m.bg} chenar=${m.border}`)
 }
 
 await browser.close()

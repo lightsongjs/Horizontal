@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  crossedFull, dragOffset, fullThreshold, inEdge, lockAxis, movedBeyondTap, release,
+  crossedFull, dragOffset, drawerSwipe, fullThreshold, inEdge, lockAxis, movedBeyondTap, release,
   REVEAL_LEFT, REVEAL_RIGHT,
 } from './swipe'
 
@@ -60,5 +60,16 @@ describe('release', () => {
   it('altfel se închide', () => {
     expect(release(20, w)).toEqual({ kind: 'rest', rest: 'closed' })
     expect(release(-60, w)).toEqual({ kind: 'rest', rest: 'closed' })
+  })
+})
+
+describe('drawerSwipe', () => {
+  it('se deschide numai din marginea stângă, pe orizontală, spre dreapta', () => {
+    expect(drawerSwipe(10, 'h', 60)).toBe(true)
+    expect(drawerSwipe(10, 'h', 30)).toBe(false)
+    expect(drawerSwipe(10, 'v', 80)).toBe(false)
+    expect(drawerSwipe(10, 'h', -80)).toBe(false)
+    // În afara marginii e glisarea rândului, nu a sertarului.
+    expect(drawerSwipe(40, 'h', 80)).toBe(false)
   })
 })
