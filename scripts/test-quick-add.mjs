@@ -77,16 +77,20 @@ try {
   check('Enter în listă inserează proiectul, nu trimite', /^alegere #Exemplu $/.test(await input.inputValue()), await input.inputValue())
   check('lista se închide după alegere', (await sugg.count()) === 0)
   check('alegerea e recunoscută (rândul arată proiectul)', /Exemplu/i.test(await page.locator('.qab .qa-rich').innerText()))
-  await input.pressSequentially('@')
+  // `#` (proiectele există mereu pe backendul local; oamenii nu): lista e
+  // sigur deschisă, deci Esc trebuie s-o închidă ea, nu bara.
+  await input.pressSequentially('#')
   await page.waitForTimeout(150)
-  const people = await sugg.count()
+  const opened = await sugg.count()
   await input.press('Escape')
   await page.waitForTimeout(150)
-  check('Esc închide lista (dacă era deschisă), textul rămâne', (await sugg.count()) === 0 && (await input.inputValue()).endsWith('@'), `oameni: ${people}`)
+  check('Esc închide lista, textul rămâne', opened > 0 && (await sugg.count()) === 0 && (await input.inputValue()).endsWith('#'), `deschisă: ${opened}`)
 
-  // Esc cu text: nu salvează (în browser nu există punte, deci bara nu se ascunde).
+  // Esc fără listă = renunț: golește și nu salvează (fără punte bara nu se ascunde).
   await input.fill('nu trebuie salvat')
   await input.press('Escape')
+  await page.waitForTimeout(150)
+  check('Esc fără listă golește câmpul', (await page.locator('.qab .qa-input').inputValue()) === '')
   check('fără erori în pagină', errors.length === 0, errors.join(' | '))
 
   await page.setViewportSize({ width: 1400, height: 900 })
@@ -120,9 +124,59 @@ try {
       hideBar() { window.__hidden = (window.__hidden ?? 0) + 1 },
       resizeBar(h) { window.__sizes.push(h) },
     }
+    // Ascunderea/arătarea ferestrei: cutia o face cu hide()/show(), aici o
+    // mimăm prin ce vede pagina — `visibilityState` și evenimentul lui.
+    window.__setVis = (v) => {
+      Object.defineProperty(document, 'visibilityState', { value: v, configurable: true })
+      document.dispatchEvent(new Event('visibilitychange'))
+    }
   })
   await desk.goto(`${BASE}/quick-add`, { waitUntil: 'networkidle' })
   const dIn = desk.locator('.qab .qa-input')
+
+  // ── Ciorna peste ascundere (click în spate → blur → hide; Ctrl+Shift+A → show) ─
+  const hideShow = async () => {
+    await desk.evaluate(() => { document.activeElement?.blur(); window.__setVis('hidden') })
+    await desk.waitForTimeout(100)
+    await desk.evaluate(() => window.__setVis('visible'))
+    await desk.waitForTimeout(200)
+  }
+  const caret = () => desk.evaluate(() => {
+    const el = document.activeElement
+    return { cls: el?.className ?? '', start: el?.selectionStart, end: el?.selectionEnd, len: el?.value?.length }
+  })
+  await dIn.fill('user: ion')
+  await desk.locator('.qab .qa-urgent').click()
+  await hideShow()
+  check('ascunderea păstrează titlul', (await dIn.inputValue()) === 'user: ion', await dIn.inputValue())
+  check('ascunderea păstrează alegerea de mână (urgent)', (await desk.locator('.qab .qa-urgent.on').count()) === 1)
+  let c = await caret()
+  check('la revenire cursorul e în titlu, la sfârșit, fără selecție', c.cls.includes('qa-input') && c.start === c.len && c.end === c.len, JSON.stringify(c))
+  await desk.keyboard.type(' parola')
+  check('se scrie în continuare', (await dIn.inputValue()) === 'user: ion parola', await dIn.inputValue())
+  await dIn.press('Tab')
+  await desk.waitForTimeout(200)
+  await desk.keyboard.type('nota')
+  await hideShow()
+  c = await caret()
+  check('la revenire cursorul e în descriere, la sfârșit', c.cls.includes('qa-desc') && c.start === 4 && c.end === 4, JSON.stringify(c))
+  // Un build nou reîncarcă pagina barei la revenire (`registerPWA`).
+  await desk.reload({ waitUntil: 'networkidle' })
+  await desk.evaluate(() => window.__setVis('visible'))
+  await desk.waitForTimeout(300)
+  check('ciorna supraviețuiește reîncărcării', (await dIn.inputValue()) === 'user: ion parola' && (await desk.locator('.qab .qa-desc').inputValue()) === 'nota')
+  c = await caret()
+  check('după reîncărcare cursorul e tot în descriere', c.cls.includes('qa-desc'), JSON.stringify(c))
+  const hiddenBeforeEsc = await desk.evaluate(() => window.__hidden ?? 0)
+  await desk.keyboard.press('Escape')
+  await desk.waitForTimeout(200)
+  check('Esc ascunde bara', (await desk.evaluate(() => window.__hidden ?? 0)) === hiddenBeforeEsc + 1)
+  await desk.evaluate(() => window.__setVis('visible'))
+  await desk.waitForTimeout(200)
+  check('Esc golește titlul, descrierea și alegerile', (await dIn.inputValue()) === '' && (await desk.locator('.qab .qa-desc').count()) === 0 && (await desk.locator('.qab .qa-urgent.on').count()) === 0)
+  await desk.reload({ waitUntil: 'networkidle' })
+  check('după Esc nu rămâne nimic stocat', (await dIn.inputValue()) === '')
+  await desk.evaluate(() => { window.__hidden = 0; window.__sizes = [] })
   await dIn.fill('test descriere mâine')
   await dIn.press('Tab')
   await desk.waitForTimeout(300)
@@ -142,6 +196,10 @@ try {
   await desk.keyboard.press('Control+Enter')
   await desk.waitForTimeout(800)
   check('Ctrl+Enter salvează (bara se ascunde)', (await desk.evaluate(() => window.__hidden ?? 0)) === 1)
+  await hideShow()
+  check('trimiterea golește (titlu gol, descriere închisă)', (await dIn.inputValue()) === '' && (await desk.locator('.qab .qa-desc').count()) === 0)
+  await desk.reload({ waitUntil: 'networkidle' })
+  check('după trimitere nu rămâne nimic stocat', (await dIn.inputValue()) === '' && (await desk.locator('.qab .qa-desc').count()) === 0)
   await page.setViewportSize({ width: 1400, height: 900 })
   await page.goto(BASE, { waitUntil: 'networkidle' })
   await openList('Mâine')

@@ -1071,11 +1071,22 @@ Ctrl+Shift+A și mementouri cu aplicația în fundal. Spec/plan:
   calculează la fiecare randare, nu la montare: proiectele sosesc după bară.
 - **Focusul barei.** Fereastra e creată o dată și refolosită; proba (2026-10-02,
   GNOME Wayland): `show()` + `focus()` pe fereastra existentă primește
-  tastatura din prima. „Rundă nouă" (câmp gol, cursor) vine din
-  `visibilitychange`, NU din `focus` — popup-ul unui `<select>`/câmp de dată
-  ia focusul și l-ar goli. Excepție: la prima arătare `visibilitychange` nu vine
-  (fereastra e deja `visible`), deci primul `focus` deschide runda 1. `blur`
-  ascunde cu 150 ms întârziere + reverificare, din același motiv. Cutia rulează
+  tastatura din prima. **Ascunderea nu golește** (decizia omului, 2026-10-10):
+  bara se ascunde la orice click în afară, iar omul revine des ca să lipească
+  ceva copiat din pagina din spate („user: ion", apoi parola). Ciorna — titlu,
+  descriere (deschisă + conținut), alegerile de mână, refuzurile de dată și
+  câmpul în care era cursorul — stă în `sessionStorage` (`src/lib/barDraft.ts`),
+  nu doar în memorie: `registerPWA` rulează și pe bară și reîncarcă pagina la
+  revenire când există un build nou. Golesc DOAR Esc (ascultătorul din
+  `QuickAddPage`: șterge ciorna, remontează, ascunde) și o trimitere reușită.
+  Esc-ul e ascultat la urcare, nu în captură, ca lista de sugestii (`#`/`@`) să-l
+  oprească și să se închidă doar ea. La arătare (`visibilitychange`, NU `focus`
+  — popup-ul unui `<select>`/câmp de dată ia focusul și îl dă înapoi) cursorul
+  revine în câmpul unde era, la sfârșit, fără selecție (`focusSignal` +
+  `keepDraft` în `QuickAdd`). Excepție: la prima arătare `visibilitychange` nu
+  vine (fereastra e deja `visible`), deci primul `focus` dă primul semnal. `blur`
+  ascunde cu 150 ms întârziere + reverificare, din același motiv. Rândul din
+  listă și foaia rapidă nu țin ciorna — `keepDraft` e numai al barei. Cutia rulează
   cu `lang=ro-RO` (înainte de `ready`), altfel câmpurile native de dată arată
   ll/zz în loc de zz.ll.
 - **Pagina ȘTIE, cutia SUNĂ.** Timerele sunt în procesul principal (Chromium

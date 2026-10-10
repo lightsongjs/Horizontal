@@ -636,6 +636,8 @@ export interface QuickDraftOptions {
   ctx: QuickCtx
   /** Citește `#proiect @om !` din text și trimite omul și urgența (bara, foaia). */
   tokens?: boolean
+  /** Starea de la montare (bara de captură își reia ciorna după ascundere). */
+  initial?: { text: string; desc: string; manual: ManualPick; rejected: string[] }
 }
 
 export interface QuickDraft {
@@ -672,18 +674,18 @@ export interface QuickDraft {
  * rapidă, ca cele trei să nu poată înțelege diferit același text — regulile
  * stau în `lib/quickDraft`, aici doar starea și legătura cu depozitul.
  */
-export function useQuickDraft({ ctx, tokens: withTokens = false }: QuickDraftOptions): QuickDraft {
+export function useQuickDraft({ ctx, tokens: withTokens = false, initial }: QuickDraftOptions): QuickDraft {
   const { createIssue, assignees } = useHorizontal()
   // Numai proiectele în care se poate scrie: un selector care oferă un proiect
   // read-only ar produce o salvare respinsă de RLS, după ce userul a scris tot.
   const projects = useWritableProjects()
-  const [text, setText] = useState('')
-  const [desc, setDesc] = useState('')
-  const [manual, setManual] = useState<ManualPick>({})
+  const [text, setText] = useState(() => initial?.text ?? '')
+  const [desc, setDesc] = useState(() => initial?.desc ?? '')
+  const [manual, setManual] = useState<ManualPick>(() => initial?.manual ?? {})
   const [saving, setSaving] = useState(false)
   const [shake, setShake] = useState(false)
   // Recunoașterea datei, cu refuzul legat de fragment — vezi `useTitleDate`.
-  const date = useTitleDate(text, { onChange: setText })
+  const date = useTitleDate(text, { onChange: setText, initialRejected: initial ? () => initial.rejected : undefined })
   const tokens = withTokens ? parseCaptureTokens(date.title, projects, assignees) : null
   // Regulile — aceeași funcție pe care o rulează fereastra nativă de pe telefon.
   const draft = computeDraft({

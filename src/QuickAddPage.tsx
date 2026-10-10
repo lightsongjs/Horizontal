@@ -4,30 +4,38 @@ import { HorizontalProvider } from './store'
 import { QuickAdd } from './components/QuickAdd'
 import { startOfLocalDay } from './lib/schedule'
 import { getDesktopBridge } from './lib/desktopBridge'
+import { clearBarDraft } from './lib/barDraft'
 
 /**
  * Bara de captură (aplicația de Linux, Ctrl+Shift+A). O intrare ușoară, nu
  * aplicația întreagă: același `QuickAdd` ca în „Azi" — aceeași recunoaștere a
  * datei, același proiect ținut minte —, scris prin același repository, deci
  * prin coada offline. Fereastra stă ascunsă și se refolosește; fiecare arătare
- * o face din nou vizibilă (`visibilitychange`), iar asta e semnalul de „rundă
- * nouă": câmp gol, cursor în el. NU `focus`: popup-ul unui `<select>` sau al
- * unui câmp de dată ia focusul și îl dă înapoi, iar o rundă nouă la întoarcere
- * ar fi golit tot ce scrisese omul.
+ * o face din nou vizibilă (`visibilitychange`), iar asta e semnalul de
+ * „revino": cursorul înapoi în câmpul unde era, la sfârșit. NU `focus`:
+ * popup-ul unui `<select>` sau al unui câmp de dată ia focusul și îl dă înapoi.
+ *
+ * Ascunderea NU golește: bara se ascunde la orice click în afară, iar omul
+ * revine des ca să lipească ceva copiat din spate. Golesc doar Esc și o
+ * trimitere reușită; ciorna e în `lib/barDraft.ts`.
  */
 export function QuickAddPage() {
   const { enabled, session, loading } = useAuth()
-  // Esc ascunde fără să salveze — și înainte de login, când bara arată doar
-  // mesajul. În captură, ca `QuickAdd` (care la Esc doar golește câmpul) să
-  // nu-l vadă primul.
+  const [fresh, setFresh] = useState(0)
+  // Esc = renunț: golește ciorna și ascunde, fără să salveze — și înainte de
+  // login, când bara arată doar mesajul. La urcare, nu în captură: lista de
+  // sugestii (`#`, `@`) oprește Esc-ul ei, care o închide doar pe ea.
+  // Remontarea (`fresh`) aduce câmpurile goale și descrierea închisă.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
-      e.preventDefault(); e.stopPropagation()
+      e.preventDefault()
+      clearBarDraft()
+      setFresh((n) => n + 1)
       getDesktopBridge()?.hideBar()
     }
-    window.addEventListener('keydown', onKey, true)
-    return () => window.removeEventListener('keydown', onKey, true)
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
   }, [])
   if (loading) return null
   if (enabled && !session) {
@@ -35,7 +43,7 @@ export function QuickAddPage() {
   }
   return (
     <HorizontalProvider>
-      <QuickAddBar />
+      <QuickAddBar key={fresh} />
     </HorizontalProvider>
   )
 }
@@ -59,17 +67,9 @@ function QuickAddBar() {
       window.removeEventListener('focus', onFirstFocus)
     }
   }, [])
-  // `QuickAdd` focusează doar la o SCHIMBARE a semnalului, nu la montare —
-  // iar remontarea (cheia) e cea care golește câmpul. Deci focusul îl cerem noi,
-  // după ce noul câmp există.
-  useEffect(() => {
-    if (round === 0) return
-    const id = requestAnimationFrame(() => document.querySelector<HTMLInputElement>('.qab .qa-input')?.focus())
-    return () => cancelAnimationFrame(id)
-  }, [round])
   // Fereastra crește cu conținutul: Tab deschide descrierea sub titlu, iar o
-  // fereastră fixă de 150px ar tăia-o. Fiecare rundă nouă remontează câmpul
-  // (descrierea închisă), deci observatorul o readuce singur la loc.
+  // fereastră fixă de 150px ar tăia-o. Trimiterea și Esc închid descrierea,
+  // deci observatorul o readuce singur la loc.
   useEffect(() => {
     const el = barRef.current
     const bridge = getDesktopBridge()
@@ -86,8 +86,9 @@ function QuickAddBar() {
       {/* Proiectul implicit e Inbox, ca peste tot (`captureDefaultProjectId`);
           alt proiect se cere explicit (#nume sau butonul). */}
       <QuickAdd
-        key={round}
         rich
+        keepDraft
+        focusSignal={round}
         defaultDueAt={today}
         onAdded={() => getDesktopBridge()?.hideBar()}
       />

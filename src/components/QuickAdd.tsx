@@ -4,6 +4,7 @@ import { useQuickDraft } from '../hooks'
 import { fromInputs, toDateInput, toTimeInput } from '../lib/schedule'
 import { describeRrule } from '../lib/recurrence'
 import { dueLabel, quickKey } from '../lib/quickDraft'
+import { loadBarDraft, saveBarDraft, type BarDraft } from '../lib/barDraft'
 import { Icon } from './Icon'
 import { QuickDesc, QuickTitle } from './QuickFields'
 import { ProjectMark } from './ProjectMark'
@@ -16,6 +17,12 @@ interface Props {
   focusSignal?: number
   /** Bara de captură: semnele `#proiect`, `@persoană`, `!` în text și rândul de butoane, mereu vizibil. */
   rich?: boolean
+  /**
+   * Bara de captură: ciorna (text, descriere, alegeri de mână, refuzuri) se
+   * păstrează peste ascunderi și reîncărcări (`lib/barDraft.ts`), iar
+   * `focusSignal` readuce cursorul în câmpul unde era, la sfârșit.
+   */
+  keepDraft?: boolean
 }
 
 /**
@@ -35,19 +42,31 @@ interface Props {
  * Fiecare sarcină are un proiect: fără alegere, Inbox (`captureDefaultProjectId`).
  * Selectorul schimbă doar sarcina în curs — nu ține minte nimic.
  */
-export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, rich = false }: Props) {
+export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, rich = false, keepDraft = false }: Props) {
   const { assignees } = useHorizontal()
+  // O singură citire, la montare: de aici încolo starea React e adevărul, iar
+  // stocarea doar o oglindește (efectul de mai jos).
+  const [saved] = useState<BarDraft | null>(() => (keepDraft ? loadBarDraft() : null))
   const q = useQuickDraft({
     ctx: { mode: 'list', defaultDueAt },
     // `#proiect @om !` peste tot unde se capturează (cu lista de sugestii), și în rândul din listă.
     tokens: true,
+    initial: saved ?? undefined,
   })
   const { text, desc, date, tokens, project, projects, schedule, error, saving, assigneeId, urgent } = q
   const [focus, setFocus] = useState(false)
-  const [descOpen, setDescOpen] = useState(false)
+  const [descOpen, setDescOpen] = useState(saved?.descOpen ?? false)
   const [descFocus, setDescFocus] = useState(false)
+  const [field, setField] = useState<'title' | 'desc'>(saved?.field ?? 'title')
   const inputRef = useRef<HTMLInputElement>(null)
   const descRef = useRef<HTMLTextAreaElement>(null)
+
+  const liveKey = q.date.live.join('\u0001')
+  useEffect(() => {
+    if (!keepDraft) return
+    saveBarDraft({ text, desc, descOpen, manual: q.manual, rejected: q.date.live, field })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [keepDraft, text, desc, descOpen, q.manual, liveKey, field])
 
   // Focus cerut din afară (tasta C). Reținem valoarea de la montare
   // și focusăm numai când se SCHIMBĂ față de ea — nu la montare.
@@ -55,12 +74,31 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, rich = false 
   // Altfel: contorul din `Shell` rămâne ≥1 după primul „C", deci fiecare
   // revenire pe listă remonta componenta cu un semnal deja pozitiv și ridica
   // tastatura nechemată. Deschiderea unei liste nu e o cerere de a scrie.
+  //
+  // Cererea rămâne în așteptare dacă câmpul încă nu există (proiectele sosesc
+  // după primul cadru, iar până atunci se randează doar notița).
   const signalAtMount = useRef(focusSignal)
+  const focusPending = useRef(false)
+  const hasField = !!q.project
   useEffect(() => {
-    if (focusSignal === signalAtMount.current) return
-    signalAtMount.current = focusSignal
-    inputRef.current?.focus()
-  }, [focusSignal])
+    if (focusSignal !== signalAtMount.current) {
+      signalAtMount.current = focusSignal
+      focusPending.current = true
+    }
+    if (!focusPending.current || !inputRef.current) return
+    focusPending.current = false
+    if (!keepDraft) { inputRef.current.focus(); return }
+    // Bara: înapoi unde era cursorul, la sfârșit, fără selecție — omul revine
+    // ca să lipească în continuare, iar o selecție ar fi înlocuit textul.
+    const id = requestAnimationFrame(() => {
+      const el = (field === 'desc' && descRef.current) || inputRef.current
+      if (!el) return
+      el.focus()
+      el.setSelectionRange(el.value.length, el.value.length)
+    })
+    return () => cancelAnimationFrame(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusSignal, hasField])
 
   const useParsed = date.active
   const { dueAt, allDay } = schedule
@@ -85,6 +123,7 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, rich = false 
     const created = await q.submit()
     if (!created) return
     setDescOpen(false)
+    setField('title')
     onAdded?.()
     inputRef.current?.focus()
   }
@@ -141,7 +180,7 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, rich = false 
           inputRef={inputRef}
           placeholder="Adaugă o sarcină… încearcă „mâine la 9”"
           enterKeyHint="done"
-          onFocus={() => setFocus(true)}
+          onFocus={() => { setFocus(true); setField('title') }}
           onBlur={() => setFocus(false)}
           onKeyDown={onKey('title')}
           suggestions={{ projects, people: assignees, placement: rich ? 'flow' : 'below' }}
@@ -155,7 +194,7 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, rich = false 
             onChange={q.setDesc}
             textareaRef={descRef}
             onKeyDown={onKey('desc')}
-            onFocus={() => { setFocus(true); setDescFocus(true) }}
+            onFocus={() => { setFocus(true); setDescFocus(true); setField('desc') }}
             onBlur={() => { setFocus(false); setDescFocus(false) }}
           />
         </div>
