@@ -10,6 +10,7 @@
 import type { Repository } from '../repository'
 import type { Assignee, InboxRow, Issue, Project } from '../../lib/types'
 import type { Pin } from '../../lib/pins'
+import type { SavedFilter } from '../../lib/savedFilters'
 import type { Kv } from './kv'
 import { errorMessage } from '../../lib/errorMessage'
 import { OfflineError, isAuthError, isNetworkError, withTimeout } from './netError'
@@ -51,6 +52,7 @@ const K = {
   /** Tichetele nebifate din toate proiectele (`listOpenIssues`) — sertarul și filtrele. */
   open: 'open',
   pins: 'pins',
+  filters: 'filters',
   remaps: 'remaps',
   p: (pid: string, what: keyof ProjectBundle) => `p:${pid}:${what}`,
 }
@@ -239,6 +241,13 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
     }
   }
 
+  /** O listă din bază, rescrisă după o scriere reușită. Necache-uită rămâne necache-uită; un eșec e tăcut. */
+  async function patchCached<T>(key: string, f: (xs: T[]) => T[]) {
+    const kv = await kvReady
+    const cur = kv ? await kv.get<T[]>(key).catch(() => undefined) : undefined
+    if (kv && cur) await kv.set(key, f(cur)).catch(() => {})
+  }
+
   /** Pentru ce NU merge offline: eroarea de rețea devine `OfflineError`. */
   async function net<T>(f: () => Promise<T>): Promise<T> {
     try {
@@ -326,6 +335,7 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
       return overlay(await allCachedIssues(kv), await pendingOps(), now()).filter((i) => !i.done)
     },
     async pins() { const kv = await kvReady; return (kv && ((await kv.get(K.pins)) as Pin[] | undefined)) ?? null },
+    async filters() { const kv = await kvReady; return (kv && ((await kv.get(K.filters)) as SavedFilter[] | undefined)) ?? null },
   }
 
   async function prefetchAll() {
@@ -635,6 +645,7 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
     listProjectMembers: (pid) => read(K.p(pid, 'members'), () => remote.listProjectMembers(pid)),
     listInbox: () => read(K.inbox, () => remote.listInbox()),
     listPins: () => read(K.pins, () => remote.listPins()),
+    listSavedFilters: () => read(K.filters, () => remote.listSavedFilters()),
     async listOpenIssues() {
       // Ca `listDueIssues`: serverul întâi, iar o golire care a apucat să
       // scrie între timp în bază face răspunsul vechi — atunci baza câștigă.
@@ -714,6 +725,23 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
       const cur = (await kv?.get<Pin[]>(K.pins).catch(() => undefined)) ?? null
       if (kv && cur) await kv.set(K.pins, [...cur.filter((p) => !(p.kind === kind && p.ref === ref)), pin]).catch(() => {})
       return pin
+    },
+    // Filtrele: ca fixările — rețea pentru scriere, baza ținută la zi pentru
+    // primul cadru și pentru citirea offline.
+    async createSavedFilter(input) {
+      const f = await net(() => remote.createSavedFilter(input))
+      await patchCached<SavedFilter>(K.filters, (xs) => [...xs, f])
+      return f
+    },
+    async updateSavedFilter(id, patch) {
+      const f = await net(() => remote.updateSavedFilter(id, patch))
+      await patchCached<SavedFilter>(K.filters, (xs) => xs.map((x) => (x.id === id ? f : x)))
+      return f
+    },
+    async deleteSavedFilter(id) {
+      await net(() => remote.deleteSavedFilter(id))
+      await patchCached<SavedFilter>(K.filters, (xs) => xs.filter((x) => x.id !== id))
+      await patchCached<Pin>(K.pins, (xs) => xs.filter((p) => !(p.kind === 'filter' && p.ref === id)))
     },
     async removePin(kind, ref) {
       await net(() => remote.removePin(kind, ref))

@@ -3,6 +3,7 @@
 
 import { applyIssuePatch } from '../lib/issuePatch'
 import { withPin, withoutPin, type Pin } from '../lib/pins'
+import { normalizeRules, type SavedFilter } from '../lib/savedFilters'
 import { SEED_ISSUES, SEED_PROJECTS, SEED_THEMES, SEED_WAVES } from '../lib/seed'
 import type { Assignee, Issue, IssueEvent, InboxRow, Obstacle, ObstacleLink, Project, ProjectMember, Theme, Wave } from '../lib/types'
 import {
@@ -39,6 +40,7 @@ interface DB {
   seen: Record<string, string>
   /** Fixările din sertar. Local = ale dispozitivului: n-are cont de sincronizat. */
   pins: Pin[]
+  filters: SavedFilter[]
 }
 
 function clone<T>(v: T): T {
@@ -76,6 +78,7 @@ function load(): DB {
         events: db.events ?? [],
         seen: db.seen ?? {},
         pins: db.pins ?? [],
+        filters: db.filters ?? [],
       }
     }
   } catch {
@@ -92,6 +95,7 @@ function load(): DB {
     events: [],
     seen: {},
     pins: [],
+    filters: [],
   }
   save(seeded)
   return seeded
@@ -512,6 +516,43 @@ export function createLocalRepository(): Repository {
     async removePin(kind, ref) {
       const db = load()
       db.pins = withoutPin(db.pins, kind, ref)
+      save(db)
+    },
+
+    async listSavedFilters() {
+      return clone([...load().filters].sort((a, b) => a.position - b.position))
+    },
+
+    async createSavedFilter(input) {
+      const db = load()
+      const f: SavedFilter = {
+        id: `f-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+        name: input.name,
+        icon: input.icon,
+        rules: normalizeRules(input.rules),
+        position: db.filters.reduce((m, x) => Math.max(m, x.position), -1) + 1,
+      }
+      db.filters.push(f)
+      save(db)
+      return clone(f)
+    },
+
+    async updateSavedFilter(id, patch) {
+      const db = load()
+      const f = db.filters.find((x) => x.id === id)
+      if (!f) throw new Error('Filtrul nu mai există.')
+      if (patch.name !== undefined) f.name = patch.name
+      if (patch.icon !== undefined) f.icon = patch.icon
+      if (patch.rules !== undefined) f.rules = normalizeRules(patch.rules)
+      save(db)
+      return clone(f)
+    },
+
+    async deleteSavedFilter(id) {
+      const db = load()
+      db.filters = db.filters.filter((x) => x.id !== id)
+      // Ca triggerul din bază: fixarea pleacă odată cu filtrul.
+      db.pins = withoutPin(db.pins, 'filter', id)
       save(db)
     },
 

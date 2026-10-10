@@ -36,6 +36,9 @@ export function fakeRemote() {
     listPins: vi.fn(guard(() => [{ kind: 'list', ref: 'week', position: 0 }])),
     addPin: vi.fn(async (kind: string, ref: string) => guard(() => ({ kind, ref, position: 1 }))()),
     removePin: vi.fn(guard(() => undefined)),
+    listSavedFilters: vi.fn(guard(() => [])),
+    createSavedFilter: vi.fn(async (input: { name: string }) => guard(() => ({ id: 'f1', name: input.name, icon: 'filter', rules: { projects: [], people: [], due: [], urgent: false }, position: 0 }))()),
+    deleteSavedFilter: vi.fn(guard(() => undefined)),
     listEvents: vi.fn(guard(() => [])),
     createProject: vi.fn(guard(() => proj)),
     createIssue: vi.fn(async (input: { projectId: string; title: string; deps?: string[] }) => guard(() => {
@@ -130,6 +133,20 @@ describe('tichetele deschise și fixările', () => {
     net.down = true
     expect((await repo.listPins()).map((p) => p.ref)).toEqual(['week', 'p'])
     await expect(repo.addPin('list', 'inbox')).rejects.toBeInstanceOf(OfflineError)
+  })
+  it('filtrele: create/șterge țin baza la zi (și fixarea filtrului șters)', async () => {
+    const { remote, net } = fakeRemote()
+    const repo = make(remote)
+    await repo.listSavedFilters()
+    await repo.listPins()
+    const f = await repo.createSavedFilter({ name: 'Mihai', icon: 'people', rules: { projects: [], people: [], due: [], urgent: false } })
+    await repo.addPin('filter', f.id)
+    expect((await repo.cache!.filters())?.map((x) => x.name)).toEqual(['Mihai'])
+    await repo.deleteSavedFilter(f.id)
+    expect(await repo.cache!.filters()).toEqual([])
+    expect((await repo.cache!.pins())?.map((p) => p.ref)).toEqual(['week'])
+    net.down = true
+    await expect(repo.createSavedFilter({ name: 'X', icon: 'filter', rules: { projects: [], people: [], due: [], urgent: false } })).rejects.toBeInstanceOf(OfflineError)
   })
 })
 

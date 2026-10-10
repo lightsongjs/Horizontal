@@ -775,7 +775,9 @@ const drawer = () => `
 console.log('\nSertarul (☰) și rândul de pătrate fixate:')
 for (const width of PHONE_WIDTHS) {
   const page = await browser.newPage({ viewport: { width, height: 844 } })
-  await page.setContent(`<style>${CSS}</style>${drawer()}`)
+  // Fără animația de intrare: măsurat la jumătatea alunecării, sertarul
+  // ar sta încă parțial în afara ecranului.
+  await page.setContent(`<style>${CSS}</style><style>.drawer,.drawer-bg{animation:none}</style>${drawer()}`)
   const m = await page.evaluate(() => {
     const r = (el) => el.getBoundingClientRect()
     const dr = document.querySelector('.drawer')
@@ -811,6 +813,49 @@ for (const width of PHONE_WIDTHS) {
   check(`rând atingibil @${width}px`, m.rowH >= 44, `${m.rowH}px`)
   check(`numele pătratelor pe un rând @${width}px`, m.nameOneLine, m.nameOneLine ? 'da' : 'rupt')
   check(`sertarul are fundal, fără chenar @${width}px`, m.bg !== 'rgba(0, 0, 0, 0)' && m.border === 'none', `bg=${m.bg} chenar=${m.border}`)
+}
+
+/**
+ * Editorul de filtru (`FilterForm.tsx`): jetoanele SE RUP pe rânduri, nu
+ * derulează — un proiect ascuns după margine nu se mai poate alege. Și capul
+ * unui grup pe proiect din ecranul filtrului: numele lung se taie, numărul nu.
+ */
+const filterForm = () => `
+<div class="sheet on tall"><div class="sheet-scroll filter-form">
+  <div class="sheet-section-t">Proiecte <span class="ff-any">oricare</span></div>
+  <div class="chips" id="pchips">
+    ${['Aplicație Turism', 'Casă', 'Inbox', 'Un proiect cu nume lung', 'Serviciu', 'Mașina', 'Cumpărături'].map((n, i) => `<button class="chip${i === 1 ? ' on' : ''}"><span class="cdot" style="background:#0EA5E9"></span>${n}</button>`).join('')}
+  </div>
+  <p class="ff-preview"><span class="ff-n">128</span> tichete deschise</p>
+</div></div>
+<div class="panel smart-list"><div class="list-group filter-group">
+  <div class="list-group-head" id="gh"><span class="filter-group-dot" style="background:#0EA5E9"></span><span class="list-group-label">Un proiect cu un nume foarte, foarte lung care nu încape deloc</span><span class="list-group-num">1024</span></div>
+</div></div>`
+
+console.log('\nFiltrele salvate — editorul și capul de grup:')
+for (const width of PHONE_WIDTHS) {
+  const page = await browser.newPage({ viewport: { width, height: 844 } })
+  await page.setContent(`<style>${CSS}</style>${filterForm()}`)
+  const m = await page.evaluate(() => {
+    const r = (el) => el.getBoundingClientRect()
+    const chips = document.querySelector('#pchips')
+    const all = [...chips.querySelectorAll('.chip')]
+    const gh = document.querySelector('#gh')
+    const num = gh.querySelector('.list-group-num')
+    return {
+      wraps: new Set(all.map((c) => Math.round(r(c).top))).size > 1,
+      inside: all.every((c) => r(c).right <= r(chips).right + 0.5),
+      tall: Math.round(Math.min(...all.map((c) => r(c).height))),
+      onVisible: getComputedStyle(chips.querySelector('.chip.on')).boxShadow !== 'none',
+      numInside: r(num).right <= r(gh).right + 0.5 && num.scrollWidth <= num.clientWidth + 1,
+      ghOverflow: Math.round(gh.scrollWidth - r(gh).width),
+    }
+  })
+  await page.close()
+  check(`jetoanele se rup pe rânduri @${width}px`, m.wraps && m.inside, `rupte=${m.wraps}, în cutie=${m.inside}`)
+  check(`jeton atingibil @${width}px`, m.tall >= 32, `${m.tall}px`)
+  check(`jetonul ales se vede (linia de 2px) @${width}px`, m.onVisible, m.onVisible ? 'da' : 'nu')
+  check(`capul grupului ține numărul @${width}px`, m.numInside && m.ghOverflow <= 0, `overflow=${m.ghOverflow}px`)
 }
 
 await browser.close()

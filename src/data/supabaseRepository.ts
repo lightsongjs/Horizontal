@@ -5,6 +5,7 @@ import { requireSupabase } from '../lib/supabase'
 import type { Assignee, InboxRow, Issue, IssueEvent, Obstacle, ObstacleLink, Project, ProjectMember, Theme, Wave } from '../lib/types'
 import { nextIssueId } from '../lib/issueId'
 import { nextPinPosition, type Pin, type PinKind } from '../lib/pins'
+import { isFilterIcon, normalizeRules, type SavedFilter } from '../lib/savedFilters'
 import { pathsForIssues, pathsForProject, removeObjects } from './attachments'
 import { themeKey, type DueRange, type NewIssue, type NewObstacle, type NewProject, type NewThreadPost, type Repository } from './repository'
 
@@ -159,6 +160,16 @@ export function rowToInboxRow(row: InboxRowRaw): InboxRow {
     lastForeignAt: isoOrNull(row.last_foreign_at),
     lastForeignAuthor: row.last_foreign_author ?? null,
     seenAt: isoOrNull(row.seen_at),
+  }
+}
+
+export function rowToSavedFilter(row: Record<string, unknown>): SavedFilter {
+  return {
+    id: String(row.id),
+    name: String(row.name ?? ''),
+    icon: isFilterIcon(row.icon) ? row.icon : 'filter',
+    rules: normalizeRules(row.rules),
+    position: Number(row.position ?? 0),
   }
 }
 
@@ -773,6 +784,42 @@ export function createSupabaseRepository(): Repository {
 
     async removePin(kind, ref) {
       const { error } = await db.from('pinned_items').delete().eq('kind', kind).eq('ref', ref)
+      if (error) throw error
+    },
+
+    async listSavedFilters() {
+      const { data, error } = await db.from('saved_filters').select('*').order('position').order('created_at')
+      if (error) throw error
+      return (data ?? []).map(rowToSavedFilter)
+    },
+
+    async createSavedFilter(input) {
+      const { data: rows, error: rErr } = await db.from('saved_filters').select('position')
+      if (rErr) throw rErr
+      const position = (rows ?? []).reduce((m, r) => Math.max(m, r.position as number), -1) + 1
+      // `user_id` nu se trimite: `default auth.uid()`.
+      const { data, error } = await db
+        .from('saved_filters')
+        .insert({ name: input.name, icon: input.icon, rules: input.rules, position })
+        .select('*')
+        .single()
+      if (error) throw error
+      return rowToSavedFilter(data)
+    },
+
+    async updateSavedFilter(id, patch) {
+      const row: Record<string, unknown> = {}
+      if (patch.name !== undefined) row.name = patch.name
+      if (patch.icon !== undefined) row.icon = patch.icon
+      if (patch.rules !== undefined) row.rules = patch.rules
+      const { data, error } = await db.from('saved_filters').update(row).eq('id', id).select('*').single()
+      if (error) throw error
+      return rowToSavedFilter(data)
+    },
+
+    async deleteSavedFilter(id) {
+      // Fixarea pleacă odată cu el: triggerul `saved_filters_unpin`.
+      const { error } = await db.from('saved_filters').delete().eq('id', id)
       if (error) throw error
     },
   }

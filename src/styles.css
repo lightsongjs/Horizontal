@@ -6689,3 +6689,106 @@ body:has(.qab) { overflow-y: auto; }
 .sidebar-row-menu:hover { color: var(--accent); background: var(--accent-soft); }
 .sidebar-pinned-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sidebar-pinned .pin-prefix { font-size: calc(10px * var(--text-scale)); }
+
+/* ── FILTRELE SALVATE ─────────────────────────────────────────────────
+   Editorul: jetoane care se rup pe rânduri (nu derulează — o listă de
+   proiecte ascunsă după margine nu se mai alege). Starea aleasă = text plin
+   + linia de 2px, ca `.ds-opt.on`, nu o casetă umplută. Numele (proiecte,
+   oameni) sunt limbă → serif; numărul din previzualizare e cifră → mono. */
+.filter-form .chips {
+  flex-wrap: wrap;
+  overflow: visible;
+  margin: 0 0 6px;
+  padding: 0;
+}
+.filter-form .chip {
+  font-family: var(--display);
+  font-size: calc(13px * var(--text-scale));
+  font-weight: 500;
+  letter-spacing: 0;
+  min-height: 34px;
+  padding: 6px 11px;
+  background: var(--surface-2);
+  color: var(--txt-dim);
+  border-radius: var(--r-s);
+}
+.filter-form .chip.on {
+  background: var(--surface-2);
+  color: var(--accent);
+  font-weight: 600;
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+.filter-form .chip .cdot { width: 7px; height: 7px; }
+.filter-form .ff-icon { width: 38px; justify-content: center; padding: 0; }
+.ff-any {
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  color: var(--txt-faint);
+  opacity: 0.8;
+}
+.ff-note {
+  font-size: calc(12px * var(--text-scale));
+  color: var(--txt-faint);
+  margin: 2px 0 4px;
+}
+.ff-preview {
+  margin: 20px 0 6px;
+  font-size: calc(14px * var(--text-scale));
+  color: var(--txt-dim);
+}
+.ff-n {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: calc(18px * var(--text-scale));
+  color: var(--accent);
+  margin-right: 4px;
+}
+.ff-delete {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 18px;
+  padding: 9px 12px;
+  border-radius: var(--r-s);
+  background: var(--blocked-soft);
+  color: var(--blocked);
+  font-size: calc(13.5px * var(--text-scale));
+  font-weight: 600;
+}
+.ff-delete.armed { background: var(--blocked); color: var(--on-accent); }
+.ff-delete:disabled { opacity: 0.5; }
+
+/* Ecranul filtrului: un grup pe proiect, cu semnul proiectului în cap. */
+.filter-group .list-group-head { gap: 8px; }
+/* Numele proiectului se taie, numărul rămâne — și la text mărit (unde
+   `.list-group-head` se rupe pe rânduri, eticheta lungă tot se taie). */
+.smart-list .filter-group .list-group-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.filter-group .list-group-num { flex-shrink: 0; width: auto; }
+.filter-group .list-group-num { margin-left: auto; }
+.filter-group-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.dr-filters { padding-top: 2px; }
+.dr-filters .dr-add { width: 100%; margin: 4px 0 0; }
+
+/* „Filtre" în sidebar: „+" stă la titlu, nu ca rând între filtre. */
+.sidebar-section-row { display: flex; align-items: center; justify-content: space-between; }
+.sidebar-section-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--r-s);
+  color: var(--txt-faint);
+}
+.sidebar-section-add:hover { color: var(--accent); background: var(--accent-soft); }
+.filter-form { padding-top: 14px; }
+@media (prefers-reduced-motion: reduce) {
+  .drawer, .drawer-bg { animation: none; }
+}

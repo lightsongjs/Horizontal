@@ -13,6 +13,7 @@ import { ObstacleForm } from './ObstacleForm'
 import { UserForm } from './UserForm'
 import { Icon } from './Icon'
 import { QuickSheet } from './QuickSheet'
+import { FilterForm } from './FilterForm'
 
 export function SheetHost() {
   const { sheet, canGoBack, closeSheet, goBack, dockedIssueId } = useUI()
@@ -34,7 +35,8 @@ export function SheetHost() {
     sheet.kind === 'wave-manage' ||
     sheet.kind === 'theme-manage' ||
     sheet.kind === 'obstacle-form' ||
-    sheet.kind === 'user-form'
+    sheet.kind === 'user-form' ||
+    sheet.kind === 'filter-form'
 
   useEffect(() => {
     if (!open && !quick && !compactId) return
@@ -74,6 +76,7 @@ export function SheetHost() {
           <ObstacleForm key={sheet.obstacleId ?? '__new__'} obstacleId={sheet.obstacleId} />
         )}
         {sheet.kind === 'user-form' && <UserForm key={sheet.userId ?? '__new__'} userId={sheet.userId} />}
+        {sheet.kind === 'filter-form' && <FilterForm key={sheet.filterId ?? '__new__'} filterId={sheet.filterId} />}
       </div>
       {sheet.kind === 'quick-add' && <QuickSheet ctx={sheet.ctx} />}
       {compactId && sheet.kind === 'issue-form' && <EditSheet key={sheetKey(sheet)} issueId={compactId} />}

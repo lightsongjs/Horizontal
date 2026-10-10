@@ -877,9 +877,35 @@ inclusiv Inbox-ul, stă în sertar, ca la TickTick.
 - **Numerele de pe proiecte** vin din `openIssues` (`listOpenIssues`: toate
   tichetele nebifate, transversal) — `listDueIssues` vede doar cele cu
   scadență. Derivat ca `dueIssues`: varianta din `allIssues` câștigă.
+
+**Filtrele salvate** (`src/lib/savedFilters.ts`, pur, cu teste; `saved_filters`
+în aceeași migrare) sunt personale și arată doar tichete DESCHISE.
+
+- **Regula persoanei e regula firului:** „ale lui X" = pasate lui X SAU
+  nepasate și create de contul lui X (`assignee_id` gol = „al creatorului").
+  „Eu" e un jeton separat, legat de cont, nu de rândul din `assignees`: merge
+  și pentru un cont încă nelegat. OR în interiorul unui rând de jetoane, AND
+  între rânduri; un rând gol = „oricare", și editorul o scrie.
+- **Datele sunt `openIssues`, nu `dueIssues`:** un filtru „ale lui Mihai"
+  trebuie să vadă și tichetele fără dată, iar `listDueIssues` nu le aduce.
+  Scadența refolosește gălețile din `schedule.ts` (restanța nu e și „azi"),
+  iar rutinele adormite lipsesc, ca în „Azi".
+- **Ecranul filtrului e `filter:<id>` în `screen`**, un kind separat ca „Ale
+  mele", nu un `SmartListKind`: n-are zi, deci nici FAB, nici rând de captură,
+  nici `dueLoaded`. Pe `/` cu `hzScreen`, ca tab-urile. Grupat pe proiect
+  (cerința omului), cu aceleași `TaskRow` (glisare, selecție) și panoul lateral.
+  `offProject` din `App.tsx` taie cromul de proiect pe el (C, O, 1–4, „+ Tichet")
+  — un tichet docat încarcă proiectul lui în store fără să fie ecranul.
+- **Editorul (`FilterForm`, foaie în `SheetHost`) nu navighează singur:** cere
+  Shell-ului ecranul prin `hz:open-filter` / `hz:filter-deleted`, iar Shell-ul
+  îl deschide DUPĂ randare. Cu foaia încă în `sheetRef`, `goTop` ar fi sărit
+  peste istoric și ar fi rescris rădăcina („Azi") cu filtrul — Back ar fi ieșit
+  din aplicație. Ștergerea unui filtru își ia fixarea (trigger în bază,
+  oglindit în `localRepository` și în store).
 - Teste: `npm run test:nav` (☰ + Back, fundal, proiect din sertar → Back pe
-  „Azi", tragerea din margine, fixarea prin apăsare lungă); `npm run
-  test:layout` (sertarul și pătratele la 320–430px).
+  „Azi", tragerea din margine, fixarea prin apăsare lungă, „+ Filtru" →
+  ecranul filtrului → Back pe „Azi"); `npm run test:layout` (sertarul,
+  pătratele, jetoanele editorului și capul de grup la 320–430px).
 
 ## Reîmprospătarea datelor — de ce nu golește ecranul
 

@@ -15,7 +15,8 @@ import {
 import { repository } from './data'
 import { useAuth } from './auth'
 import { applyOrder, loadOrder, saveOrder } from './lib/projectOrder'
-import type { NewIssue, NewObstacle, NewProject } from './data/repository'
+import type { NewIssue, NewObstacle, NewProject, NewSavedFilter } from './data/repository'
+import { filterIssues, type MatchContext, type SavedFilter } from './lib/savedFilters'
 import {
   DependencyCycleError,
   computeLayers,
@@ -99,6 +100,18 @@ interface HorizontalState {
   pins: Pin[]
   pin(kind: PinKind, ref: string): Promise<void>
   unpin(kind: PinKind, ref: string): Promise<void>
+  /** Filtrele salvate ale contului, după `position`. Vezi `lib/savedFilters`. */
+  savedFilters: SavedFilter[]
+  /** Lista de filtre a fost citită o dată (altfel „filtrul nu mai există" ar minți la pornire). */
+  filtersLoaded: boolean
+  /** Cine sunt și cine sunt ceilalți, acum — contextul regulilor (`matchesFilter`). */
+  filterContext: MatchContext
+  /** filtru → câte tichete deschise trec de el. */
+  filterCounts: Record<string, number>
+  /** Aruncă la eșec: editorul arată eroarea în foaie, nu în bannerul aplicației. */
+  createSavedFilter(input: NewSavedFilter): Promise<SavedFilter>
+  updateSavedFilter(id: string, patch: Partial<NewSavedFilter>): Promise<SavedFilter>
+  deleteSavedFilter(id: string): Promise<void>
   assignees: Assignee[]
   /**
    * Conturile cu acces la proiectul activ (membri + admin) — pentru
@@ -322,6 +335,8 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
   const [openRaw, setOpenRaw] = useState<Issue[]>([])
   const [openLoaded, setOpenLoaded] = useState(false)
   const [pins, setPins] = useState<Pin[]>([])
+  const [savedFilters, setSavedFilters] = useState<SavedFilter[]>([])
+  const [filtersLoaded, setFiltersLoaded] = useState(false)
   // Cutia de pase. Transversal pe proiecte, ca `dueRaw` — vezi `loadInbox`.
   const [inboxRaw, setInboxRaw] = useState<InboxRow[]>([])
   const [inboxLoaded, setInboxLoaded] = useState(false)
@@ -451,6 +466,17 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  /** Filtrele salvate. Tăcut la eșec, ca fixările. */
+  const loadFilters = useCallback(async () => {
+    try {
+      setSavedFilters(await repository.listSavedFilters())
+    } catch (e) {
+      console.warn('filtrele nu s-au putut încărca', e)
+    } finally {
+      setFiltersLoaded(true)
+    }
+  }, [])
+
   const loadInbox = useCallback(async () => {
     try {
       setInboxRaw(await repository.listInbox())
@@ -474,6 +500,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     void loadInbox()
     void loadOpen()
     void loadPins()
+    void loadFilters()
     try {
       // Golirea cozii pornește, dar nu e așteptată: scrierile către server n-au
       // prag de timp, iar golirea așteaptă și lacătul dintre file — pe o legătură
@@ -520,7 +547,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
       lastRefreshAt.current = Date.now()
       setRefreshing(false)
     }
-  }, [projectId, loadDue, loadInbox, loadOpen, loadPins, applyProjectBundle])
+  }, [projectId, loadDue, loadInbox, loadOpen, loadPins, loadFilters, applyProjectBundle])
 
   useEffect(() => {
     let alive = true
@@ -533,8 +560,8 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
         // O bază locală care nu răspunde e „n-am cache", nu un eșec de pornire:
         // o respingere aici ar fi sărit peste rețea și ar fi lăsat „Se încarcă…"
         // pe ecran pentru totdeauna.
-        const [cp, ca, cd, ci, co, cpins] = await Promise.all([c.projects(), c.assignees(), c.due(smartListRange(new Date())), c.inbox(), c.open(), c.pins()])
-          .catch(() => [null, null, null, null, null, null] as const)
+        const [cp, ca, cd, ci, co, cpins, cf] = await Promise.all([c.projects(), c.assignees(), c.due(smartListRange(new Date())), c.inbox(), c.open(), c.pins(), c.filters()])
+          .catch(() => [null, null, null, null, null, null, null] as const)
         if (alive && cp) {
           setRawProjects(cp)
           setAssignees(ca ?? [])
@@ -542,6 +569,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
           if (ci) { setInboxRaw(ci); setInboxLoaded(true) }
           if (co) { setOpenRaw(co); setOpenLoaded(true) }
           if (cpins) setPins(cpins)
+          if (cf) { setSavedFilters(cf); setFiltersLoaded(true) }
           setLoading(false)
         }
       }
@@ -552,7 +580,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
         // secțiune din sidebar și trebuie să aibă numere de la primul cadru.
         // La fel cutia de pase — ecranul „Ale mele" trebuie să aibă badge-ul
         // corect de la primul cadru, fără să aștepte deschiderea unui proiect.
-        if (alive) { void loadDue(); void loadInbox(); void loadOpen(); void loadPins() }
+        if (alive) { void loadDue(); void loadInbox(); void loadOpen(); void loadPins(); void loadFilters() }
         // Restul proiectelor în fundal, ca offline să existe și ce n-ai deschis azi.
         void repository.sync?.prefetchAll()
       } catch (e) {
@@ -565,7 +593,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
       }
     })()
     return () => { alive = false }
-  }, [loadDue, loadInbox, loadOpen, loadPins])
+  }, [loadDue, loadInbox, loadOpen, loadPins, loadFilters])
 
   useEffect(() => {
     const onVisible = () => {
@@ -683,6 +711,35 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
       setError(errorMessage(e))
     }
   }, [])
+  const myUserId = session?.user.id ?? null
+  const filterContext = useMemo<MatchContext>(
+    () => ({ now: new Date(), assignees, me: { assigneeId: myAssigneeId, userId: myUserId }, routines }),
+    // `revealTick`: „acum" se mută odată cu rutinele care ies din ascunzătoare.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [assignees, myAssigneeId, myUserId, routines, revealTick, openIssues],
+  )
+  const filterCounts = useMemo(
+    () => Object.fromEntries(savedFilters.map((f) => [f.id, filterIssues(openIssues, f.rules, filterContext).length])),
+    [savedFilters, openIssues, filterContext],
+  )
+
+  const createSavedFilter = useCallback(async (input: NewSavedFilter) => {
+    const f = await repository.createSavedFilter(input)
+    setSavedFilters((prev) => [...prev, f])
+    return f
+  }, [])
+  const updateSavedFilter = useCallback(async (id: string, patch: Partial<NewSavedFilter>) => {
+    const f = await repository.updateSavedFilter(id, patch)
+    setSavedFilters((prev) => prev.map((x) => (x.id === id ? f : x)))
+    return f
+  }, [])
+  const deleteSavedFilter = useCallback(async (id: string) => {
+    await repository.deleteSavedFilter(id)
+    setSavedFilters((prev) => prev.filter((x) => x.id !== id))
+    // Triggerul din bază a scos și fixarea; aici doar oglindim.
+    setPins((prev) => withoutPin(prev, 'filter', id))
+  }, [])
+
   const unpin = useCallback(async (kind: PinKind, ref: string) => {
     let old: Pin | undefined
     setPins((prev) => { old = prev.find((p) => p.kind === kind && p.ref === ref); return withoutPin(prev, kind, ref) })
@@ -1318,10 +1375,17 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     openIssues,
     openLoaded,
     openCountByProject,
-    myUserId: session?.user.id ?? null,
+    myUserId,
     pins,
     pin,
     unpin,
+    savedFilters,
+    filtersLoaded,
+    filterContext,
+    filterCounts,
+    createSavedFilter,
+    updateSavedFilter,
+    deleteSavedFilter,
     assignees,
     projectMembers,
     ensureAssigneeForMember,

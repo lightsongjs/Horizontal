@@ -27,6 +27,9 @@ import { repository } from './data'
 import { syncLabel } from './lib/syncLabel'
 import { drawerSwipe, EDGE_PX, lockAxis, type Axis } from './lib/swipe'
 import { Drawer } from './components/Drawer'
+import { FilterView } from './components/FilterView'
+import { FILTER_DELETED_EVENT, OPEN_FILTER_EVENT } from './components/FilterForm'
+import { describeRules } from './lib/savedFilters'
 import type { NavTarget } from './components/NavMenu'
 import { TaskActionsProvider, useTaskActions } from './components/TaskActions'
 import { SelectionBar, SelectionHeader } from './components/SelectionChrome'
@@ -81,8 +84,9 @@ function smartCrumb(kind: SmartListKind, now: Date): string {
   return `${DAYS_FULL[d.getDay()]}, ${d.getDate()} ${MON_FULL[d.getMonth()]}`
 }
 
-function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, canWrite, smartList, onDrawer, sidebarCollapsed, onToggleSidebar, inbox = false }: { onNewIssue: () => void; onSearch: () => void; onProjectSettings: () => void; onRefresh: () => void; onInfo: () => void; canWrite: boolean; smartList: SmartListKind | null; /** ☰ de pe telefon: sertarul de navigare. */ onDrawer: () => void; sidebarCollapsed: boolean; onToggleSidebar: () => void; /** „Ale mele" — opțional, ca vechile call-site-uri (fără el) să rămână valide. */ inbox?: boolean }) {
-  const { project, completion, smartLists, refreshing, syncStatus } = useHorizontal()
+function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, canWrite, smartList, onDrawer, sidebarCollapsed, onToggleSidebar, inbox = false, filterId = null }: { onNewIssue: () => void; onSearch: () => void; onProjectSettings: () => void; onRefresh: () => void; onInfo: () => void; canWrite: boolean; smartList: SmartListKind | null; /** ☰ de pe telefon: sertarul de navigare. */ onDrawer: () => void; sidebarCollapsed: boolean; onToggleSidebar: () => void; /** „Ale mele" — opțional, ca vechile call-site-uri (fără el) să rămână valide. */ inbox?: boolean; /** Filtrul salvat de pe ecran. */ filterId?: string | null }) {
+  const { project, completion, smartLists, refreshing, syncStatus, savedFilters, filterCounts, projects, assignees } = useHorizontal()
+  const filter = filterId ? savedFilters.find((f) => f.id === filterId) ?? null : null
   const syncText = syncLabel(syncStatus)
   const list = smartList ? SMART_LISTS.find((s) => s.kind === smartList) : null
   // Cromul de proiect (progres, „+ Tichet", căutare, setări) e legat de
@@ -90,12 +94,21 @@ function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, ca
   // deschisă din „Ale mele" încarcă proiectul ei ca să meargă formularul —
   // fără gardă, antetul arăta „+ Tichet”/căutare/setări ale proiectului STRĂIN
   // peste un ecran care n-are treabă cu el.
-  const projectChrome = inbox ? null : project
+  // La fel pe un filtru: proiectul din store e al tichetului docat.
+  const projectChrome = inbox || filterId ? null : project
   const pct = projectChrome ? Math.round(completion(projectChrome.id) * 100) : 0
   const listCount = smartList === 'today' ? smartLists.today.length
     : smartList === 'tomorrow' ? smartLists.tomorrow.length
     : smartList === 'week' ? smartLists.week.reduce((n, d) => n + d.issues.length, 0)
+    : filter ? filterCounts[filter.id] ?? 0
     : 0
+  const filterCrumb = filter
+    ? describeRules(filter.rules, {
+      project: (id) => projects.find((p) => p.id === id)?.name,
+      person: (id) => assignees.find((a) => a.id === id)?.name,
+    })
+    : ''
+  const named = inbox || list || filterId
   return (
     <header>
       {/* Comutatorul sidebar-ului: primul în header, fiindcă pe desktop `.back`
@@ -117,15 +130,15 @@ function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, ca
       <button className="header-drawer-btn" onClick={onDrawer} aria-label="Meniu" title="Meniu">
         <Icon name="drawer" size={20} />
       </button>
-      <div className="logo">{inbox ? <Icon name="people" size={18} /> : list ? <Icon name={list.icon} size={18} /> : projectChrome ? projectChrome.prefix.slice(0, 2) : 'H'}</div>
+      <div className="logo">{inbox ? <Icon name="people" size={18} /> : list ? <Icon name={list.icon} size={18} /> : filterId ? <Icon name={filter?.icon ?? 'filter'} size={18} /> : projectChrome ? projectChrome.prefix.slice(0, 2) : 'H'}</div>
       <div className="htxt">
-        <h1>{inbox ? 'Ale mele' : list ? list.label : projectChrome ? projectChrome.name : 'Horizontal'}</h1>
+        <h1>{inbox ? 'Ale mele' : list ? list.label : filterId ? filter?.name ?? 'Filtru' : projectChrome ? projectChrome.name : 'Horizontal'}</h1>
         <div className="crumb">
-          {inbox ? 'Ce ți-a pasat cineva.' : list ? smartCrumb(list.kind, new Date()) : projectChrome ? projectChrome.description : 'Toate proiectele tale'}
-          {!projectChrome && !list && !inbox && <span style={{ display: 'block', fontSize: 'calc(10px * var(--text-scale))', opacity: 0.5, marginTop: '1px' }}>Built: {getBuildAgo()}</span>}
+          {inbox ? 'Ce ți-a pasat cineva.' : list ? smartCrumb(list.kind, new Date()) : filterId ? filterCrumb : projectChrome ? projectChrome.description : 'Toate proiectele tale'}
+          {!projectChrome && !named && <span style={{ display: 'block', fontSize: 'calc(10px * var(--text-scale))', opacity: 0.5, marginTop: '1px' }}>Built: {getBuildAgo()}</span>}
         </div>
       </div>
-      {list && listCount > 0 && <div className="hcount">{listCount}</div>}
+      {(list || filter) && listCount > 0 && <div className="hcount">{listCount}</div>}
       {projectChrome && (
         <div className="hprog">
           <span className="dot" />
@@ -225,7 +238,17 @@ const SESSION_KEY = 'horizontal:session-started'
  * unei sarcini n-are sens. `smartList` (mai jos, în `Shell`) se derivă din
  * `screen`, ca `Header`/`Sidebar`/`SmartListView` să rămână neatinse.
  */
-type Screen = SmartListKind | 'inbox'
+type Screen = SmartListKind | 'inbox' | FilterScreen
+/**
+ * Un filtru salvat ca ecran. Tot un `kind` separat, ca „Ale mele", nu un
+ * `SmartListKind`: n-are zi (deci nici `dueLoaded`, nici FAB, nici rând de
+ * captură). Id-ul stă în nume, ca `/` + `hzScreen` să poarte tot ecranul.
+ */
+type FilterScreen = `filter:${string}`
+const filterScreen = (id: string): FilterScreen => `filter:${id}`
+const filterIdOf = (s: string | null | undefined): string | null => (s?.startsWith('filter:') && s.length > 7 ? s.slice(7) : null)
+const isScreen = (v: string | null | undefined): v is Screen =>
+  v === 'inbox' || v === 'today' || v === 'tomorrow' || v === 'week' || filterIdOf(v) !== null
 /**
  * Ce ecran arată o intrare de istoric pe `/` (`history.state.hzScreen`).
  * `/` e URL-ul tuturor tab-urilor de sus, deci fără marcaj un Back n-ar avea
@@ -234,13 +257,13 @@ type Screen = SmartListKind | 'inbox'
 type TopScreen = Screen | 'projects'
 const readTopScreen = (): TopScreen | null => {
   const v = (window.history.state as { hzScreen?: string } | null)?.hzScreen
-  return v === 'projects' || v === 'inbox' || v === 'today' || v === 'tomorrow' || v === 'week' ? v : null
+  return v === 'projects' ? v : isScreen(v) ? v : null
 }
 
-/** `smart:today` → `today`. Orice altceva → null. */
+/** `smart:today` → `today`, `smart:filter:<id>` → `filter:<id>`. Orice altceva → null. */
 function parseLastView(raw: string | null): Screen | null {
   const kind = raw?.startsWith('smart:') ? raw.slice(6) : null
-  return kind === 'today' || kind === 'tomorrow' || kind === 'week' || kind === 'inbox' ? kind : null
+  return isScreen(kind) ? kind : null
 }
 
 const slugify = (name: string) =>
@@ -252,7 +275,7 @@ function Shell() {
   // Pentru `onPop`, care se atașează rar: stratul de închis e cel de ACUM.
   const taRef = useRef(ta)
   taRef.current = ta
-  const { openNewIssue, openNewProject, openProjectSettings, openAppSettings, openIssue, closeSheet, pushSheet, sheet, ticketId, dockedIssueId, toast, clearToast } = useUI()
+  const { openNewIssue, openNewProject, openProjectSettings, openAppSettings, openFilterForm, openIssue, closeSheet, pushSheet, sheet, ticketId, dockedIssueId, toast, clearToast } = useUI()
   // Stabil peste randări nelegate de toast: `recurrenceUndo` (din store, un
   // `useState`) nu-și schimbă identitatea decât când SE SCHIMBĂ toast-ul, deci
   // memoizarea aici ține `toastAction` la același obiect exact atunci când
@@ -284,13 +307,18 @@ function Shell() {
    * rămână neatinse: pentru ele, „Ale mele" pur și simplu nu există.
    */
   const [screen, setScreen] = useState<Screen | null>(null)
-  const smartList = screen === 'inbox' ? null : screen
+  const filterId = filterIdOf(screen)
+  const smartList: SmartListKind | null = screen === 'today' || screen === 'tomorrow' || screen === 'week' ? screen : null
   // Derivat o singură dată, folosit de orice loc care presupunea „dacă
   // `project` e încărcat, sunt pe ecranul proiectului" — o presupunere
   // adevărată înainte de „Ale mele", unde o pasă docată încarcă proiectul EI
   // ca să meargă formularul, fără să schimbe ecranul. Un singur nume, ca FAB-ul
   // și scurtăturile de tastatură să nu poată diverge (au divergat o dată).
   const inInbox = screen === 'inbox'
+  // „Ale mele" și un filtru: ecrane-listă transversale, fără proiect al lor.
+  const offProject = inInbox || filterId !== null
+  // Ecranele cu rânduri de sarcină (glisare, selecție de telefon).
+  const taskList = smartList !== null || filterId !== null
   // Contor, nu boolean: fiecare apăsare pe „+" trebuie să refocuseze inputul,
   // chiar dacă lista era deja deschisă. Un boolean ar fi „true" a doua oară.
   const [focusQuickAdd, setFocusQuickAdd] = useState(0)
@@ -972,6 +1000,7 @@ function Shell() {
     setDrawer(false)
     drawerEntry.current = false
     if (t.kind === 'project') goProject(t.id)
+    else if (t.kind === 'filter') goTop(filterScreen(t.id))
     else goTop(t.screen)
   }
   const openDrawerRef = useRef(openDrawer)
@@ -1013,6 +1042,38 @@ function Shell() {
       document.removeEventListener('touchcancel', onEnd)
     }
   }, [narrow])
+
+  // Editorul de filtru (în `SheetHost`) nu știe de navigare: după salvare cere
+  // Shell-ului ecranul filtrului, iar după ștergere pleacă de pe el, pe „Azi".
+  const goTopRef = useRef(goTop)
+  goTopRef.current = goTop
+  useEffect(() => {
+    // După randare, nu acum: editorul tocmai a cerut `closeSheet()`, iar cu
+    // foaia încă în `sheetRef` `goTop` ar sări peste istoric și ar rescrie
+    // rădăcina („Azi") cu filtrul — Back ar fi ieșit din aplicație.
+    const later = (f: () => void) => window.setTimeout(f, 0)
+    const onOpen = (e: Event) => {
+      const id = (e as CustomEvent<string>).detail
+      if (!id) return
+      later(() => {
+        if (narrow) goTopRef.current(filterScreen(id))
+        else { setShowUsers(false); setScreen(filterScreen(id)); selectProject(null) }
+      })
+    }
+    const onDeleted = (e: Event) => {
+      if (screenRef.current !== filterScreen((e as CustomEvent<string>).detail)) return
+      later(() => {
+        if (narrow) goTopRef.current('today')
+        else setScreen('today')
+      })
+    }
+    window.addEventListener(OPEN_FILTER_EVENT, onOpen)
+    window.addEventListener(FILTER_DELETED_EVENT, onDeleted)
+    return () => {
+      window.removeEventListener(OPEN_FILTER_EVENT, onOpen)
+      window.removeEventListener(FILTER_DELETED_EVENT, onDeleted)
+    }
+  }, [narrow, selectProject])
 
   // Browser back/forward → sync store. Un path de ticket nu schimbă proiectul;
   // doar deschide sau închide sheet-ul.
@@ -1129,7 +1190,7 @@ function Shell() {
       // nu se vede — exact scurgerea reparată la FAB, acum în ambele locuri.
       if (e.key === 'c' || e.key === 'C') {
         e.preventDefault()
-        if (inInbox) return
+        if (offProject) return
         if (smartList) {
           if (!writableProjects.length) return
           // Pe telefon rândul de captură nu există — foaia ține locul lui.
@@ -1141,18 +1202,18 @@ function Shell() {
         if (!leaveDocked()) return
         project && openNewIssue()
       }
-      else if (e.key === 'o' || e.key === 'O') { e.preventDefault(); if (inInbox) return; if (!leaveDocked()) return; project && setShowSearch(true) }
+      else if (e.key === 'o' || e.key === 'O') { e.preventDefault(); if (offProject) return; if (!leaveDocked()) return; project && setShowSearch(true) }
       else if (e.key === 'p' || e.key === 'P') { e.preventDefault(); if (!isAdmin) return; if (!leaveDocked()) return; openNewProject() }
       else if (e.key === '?') { e.preventDefault(); setShowInfo(v => !v) }
       else if (e.key === '[') { e.preventDefault(); toggleSidebar() }
-      else if (!inInbox && e.key === '1' && project) { e.preventDefault(); changeTab('list') }
-      else if (!inInbox && e.key === '2' && project) { e.preventDefault(); changeTab('ordine') }
-      else if (!inInbox && e.key === '3' && project) { e.preventDefault(); changeTab('graf') }
-      else if (!inInbox && e.key === '4' && project) { e.preventDefault(); changeTab('teme') }
+      else if (!offProject && e.key === '1' && project) { e.preventDefault(); changeTab('list') }
+      else if (!offProject && e.key === '2' && project) { e.preventDefault(); changeTab('ordine') }
+      else if (!offProject && e.key === '3' && project) { e.preventDefault(); changeTab('graf') }
+      else if (!offProject && e.key === '4' && project) { e.preventDefault(); changeTab('teme') }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [project, openNewIssue, openNewProject, modalOpen, showInfo, showSearch, showUsers, canWrite, isAdmin, toggleSidebar, changeTab, leaveDocked, smartList, writableProjects, inInbox, narrow, activeWave]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [project, openNewIssue, openNewProject, modalOpen, showInfo, showSearch, showUsers, canWrite, isAdmin, toggleSidebar, changeTab, leaveDocked, smartList, writableProjects, offProject, narrow, activeWave]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
    * Butoanele notificării („Gata", „Amână"). Cu o filă deschisă, PAGINA e
@@ -1227,6 +1288,7 @@ function Shell() {
   // Rândul marcat în sertar: ecranul de acum.
   const drawerCurrent: NavTarget | null = screen === 'today' || screen === 'week' || screen === 'inbox'
     ? { kind: 'screen', screen }
+    : filterId ? { kind: 'filter', id: filterId }
     : !screen && project && !showUsers ? { kind: 'project', id: project.id } : null
 
   return (
@@ -1242,9 +1304,12 @@ function Shell() {
         inboxUnread={inbox.fresh.length}
         inboxTotal={inbox.fresh.length + inbox.rest.length}
         onInbox={() => openScreen('inbox')}
+        filterId={filterId}
+        onFilter={(id) => openScreen(filterScreen(id))}
+        onFilterForm={(id) => { if (leaveDocked()) openFilterForm(id) }}
       />
       <div className="app-body">
-        {ta.selectMode && ta.narrow && smartList ? <SelectionHeader /> : <Header onNewIssue={openNewIssue} onSearch={() => setShowSearch(true)} onProjectSettings={openProjectSettings} onRefresh={refresh} onInfo={() => setShowInfo(true)} canWrite={canWrite} smartList={smartList} onDrawer={openDrawer} sidebarCollapsed={sidebarCollapsed} onToggleSidebar={toggleSidebar} inbox={inInbox} />}
+        {ta.selectMode && ta.narrow && taskList ? <SelectionHeader /> : <Header onNewIssue={openNewIssue} onSearch={() => setShowSearch(true)} onProjectSettings={openProjectSettings} onRefresh={refresh} onInfo={() => setShowInfo(true)} canWrite={canWrite} smartList={smartList} onDrawer={openDrawer} sidebarCollapsed={sidebarCollapsed} onToggleSidebar={toggleSidebar} inbox={inInbox} filterId={filterId} />}
         <main ref={mainRef}>
           {pullY > 0 && (
             <div style={{ textAlign: 'center', padding: '6px 0', fontSize: 'calc(13px * var(--text-scale))', color: 'var(--txt-dim)', transform: `translateY(${pullY * 0.4}px)`, transition: pullY === 0 ? 'transform 0.3s' : 'none' }}>
@@ -1258,6 +1323,8 @@ function Shell() {
             </div>
           ) : inInbox ? (
             <InboxView onOpen={openTaskAnywhere} />
+          ) : filterId ? (
+            <FilterView filterId={filterId} onOpenTask={openTaskAnywhere} />
           ) : smartList ? (
             <SmartListView kind={smartList} onOpenTask={openTaskAnywhere} focusSignal={focusQuickAdd} />
           ) : showUsers && isAdmin ? (
@@ -1271,7 +1338,7 @@ function Shell() {
         {/* „Ale mele" n-are FAB: nu există „sarcină nouă" fără o zi și, cu
             proiectul curent gol pe acest ecran, condiția de mai jos ar fi
             arătat „Adaugă proiect" unui admin — un buton fără sens aici. */}
-        {!inInbox && !(ta.selectMode && ta.narrow) && (smartList || (project ? canWrite : isAdmin)) && (
+        {!offProject && !(ta.selectMode && ta.narrow) && (smartList || (project ? canWrite : isAdmin)) && (
           <button
             className="fab"
             aria-label={smartList ? 'Sarcină nouă' : project ? 'Adaugă tichet' : 'Adaugă proiect'}
@@ -1282,7 +1349,7 @@ function Shell() {
             <Icon name="add" size={24} />
           </button>
         )}
-        {ta.selectMode && ta.narrow && smartList ? <SelectionBar /> : (
+        {ta.selectMode && ta.narrow && taskList ? <SelectionBar /> : (
           <TabBar screen={screen} onScreen={goTop} />
         )}
       </div>
@@ -1293,6 +1360,7 @@ function Shell() {
           onClose={closeDrawer}
           onSettings={() => { closeDrawer(); openAppSettings() }}
           onNewProject={() => { closeDrawer(); openNewProject() }}
+          onFilterForm={(id) => { closeDrawer(); openFilterForm(id) }}
         />
       )}
       {/* Două surse pentru un singur toast. `recurrenceUndo` are prioritate:

@@ -1047,6 +1047,8 @@ SERTAR = ('<div class="drawer-bg"></div><nav class="drawer">'
           '<span class="dr-email">ionut@exemplu.ro</span></span><button class="dr-gear">%s</button></div>'
           '<div class="dr-scroll"><div class="dr-pins">%s</div>'
           '<div class="dr-group">%s</div>'
+          '<div class="dr-group dr-filters"><div class="dr-label">Filtre</div>%s'
+          '<button class="dr-add">%s Filtru</button></div>'
           '<div class="dr-projects"><div class="dr-label">Proiecte</div>%s'
           '<button class="dr-add">%s Proiect</button></div></div></nav>'
           % (ic('settings', 19),
@@ -1056,6 +1058,8 @@ SERTAR = ('<div class="drawer-bg"></div><nav class="drawer">'
              + drow(ic('calendar-range', 19), '7 zile', 11)
              + drow(ic('user', 19), 'Ale mele', extra='<span class="sl-new">2</span>')
              + drow('<span class="proj-inbox" style="color:#6B7280">%s</span>' % ic('inbox', 19), 'Inbox', 7),
+             drow(ic('list-filter', 19), 'Ale lui Mihai', 9) + drow(ic('zap', 19), 'Urgente, serviciu', 3),
+             ic('plus', 16),
              drow('<span class="dr-dot" style="background:#0EA5E9"></span>', 'Aplicație Turism', 23, on=True)
              + drow('<span class="dr-dot" style="background:#D9A661"></span>', 'Casă', 5)
              + drow('<span class="dr-dot" style="background:#63B79F"></span>', 'Un proiect cu un nume foarte lung care nu încape', 128),

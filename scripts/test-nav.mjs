@@ -905,6 +905,43 @@ try {
     await dctx.close()
   }
 
+  // ── Filtrele salvate: „+ Filtru" din sertar → ecranul filtrului → Back ──
+  // Salvarea deschide filtrul ca tab de sus (`[Azi, filtru]`), deci Back duce
+  // pe „Azi", nu afară din aplicație — editorul cere navigarea după ce s-a
+  // închis, altfel rescria rădăcina. Rândurile sunt grupate pe proiect.
+  {
+    const fp = await browser.newPage({ viewport: { width: 390, height: 844 } })
+    await fp.goto(BASE, { waitUntil: 'networkidle' })
+    await fp.waitForTimeout(800)
+    await fp.locator('.header-drawer-btn').click()
+    await fp.waitForTimeout(400)
+    await fp.locator('.dr-filters .dr-add').click()
+    await fp.waitForTimeout(500)
+    check('„+ Filtru" deschide editorul', (await fp.locator('.filter-form').count()) === 1 && (await fp.locator('.drawer').count()) === 0, 'editor deschis, sertar închis')
+    await fp.keyboard.type('Fără dată')
+    await fp.locator('.filter-form .chip', { hasText: 'Fără dată' }).click()
+    const preview = ((await fp.locator('.ff-preview').textContent()) ?? '').trim()
+    check('editorul numără live', /^\d+ tichet/.test(preview), preview)
+    await fp.locator('.sh-save').click()
+    await fp.waitForTimeout(900)
+    const h1 = ((await fp.locator('header h1').textContent()) ?? '').trim()
+    const groups = await fp.locator('.filter-group').count()
+    check('salvarea deschide ecranul filtrului', h1 === 'Fără dată' && (await fp.locator('.filter-form').count()) === 0, `antet="${h1}"`)
+    check('…cu rândurile grupate pe proiect', groups >= 1 && (await fp.locator('.filter-group .task-row').count()) >= 1, `${groups} grupe`)
+    check('…fără FAB', (await fp.locator('.fab').count()) === 0, 'fără buton de adăugare')
+    const st = await fp.evaluate(() => history.state)
+    check('filtrul stă peste „Azi" în istoric', st?.hzDepth === 1 && String(st?.hzScreen).startsWith('filter:'), JSON.stringify(st))
+    await fp.goBack()
+    await fp.waitForTimeout(600)
+    check('Back de pe filtru → „Azi"', /Azi/.test((await fp.locator('.tabbar button.on').textContent()) ?? '') && fp.url().startsWith(BASE), fp.url())
+    await fp.reload({ waitUntil: 'networkidle' })
+    await fp.waitForTimeout(800)
+    await fp.locator('.header-drawer-btn').click()
+    await fp.waitForTimeout(400)
+    check('filtrul rămâne în sertar după reîncărcare', (await fp.locator('.dr-filters .dr-row', { hasText: 'Fără dată' }).count()) === 1, 'listat')
+    await fp.close()
+  }
+
   await page.close()
 } finally {
   if (browser) await browser.close()

@@ -4,6 +4,7 @@
 import type { Assignee, InboxRow, Issue, Obstacle, ObstacleLink, Project, ProjectMember, Theme, Wave } from '../../lib/types'
 import type { DueRange } from '../repository'
 import type { Pin } from '../../lib/pins'
+import type { SavedFilter } from '../../lib/savedFilters'
 
 /** `syncing`: o golire chiar trimite acum — altfel o coadă oprită s-ar fi
  *  anunțat „se trimite" la nesfârșit. */
@@ -38,6 +39,7 @@ export interface CacheReader {
   /** Tichetele nebifate din tot ce e în bază, cu coada rejucată. */
   open(): Promise<Issue[] | null>
   pins(): Promise<Pin[] | null>
+  filters(): Promise<SavedFilter[] | null>
 }
 
 export interface SyncControl {

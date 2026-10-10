@@ -3,6 +3,7 @@
 
 import type { Assignee, Issue, IssueEvent, InboxRow, Obstacle, ObstacleLink, Project, ProjectMember, Theme, Wave } from '../lib/types'
 import type { Pin, PinKind } from '../lib/pins'
+import type { FilterIcon, FilterRules, SavedFilter } from '../lib/savedFilters'
 
 export interface NewProject {
   name: string
@@ -43,6 +44,12 @@ export interface NewThreadPost {
   to?: string | null
   /** Atașamente deja urcate, care se leagă de comentariul nou-creat. */
   attachmentIds?: string[]
+}
+
+export interface NewSavedFilter {
+  name: string
+  icon: FilterIcon
+  rules: FilterRules
 }
 
 export interface NewObstacle {
@@ -166,6 +173,12 @@ export interface Repository {
   /** Idempotent: o fixare existentă rămâne pe locul ei. */
   addPin(kind: PinKind, ref: string): Promise<Pin>
   removePin(kind: PinKind, ref: string): Promise<void>
+  /** Filtrele salvate ale contului, după `position`. Vezi `src/lib/savedFilters.ts`. */
+  listSavedFilters(): Promise<SavedFilter[]>
+  createSavedFilter(input: NewSavedFilter): Promise<SavedFilter>
+  updateSavedFilter(id: string, patch: Partial<NewSavedFilter>): Promise<SavedFilter>
+  /** Și fixarea lui, dacă era fixat (trigger în bază, oglindit local). */
+  deleteSavedFilter(id: string): Promise<void>
   /** Doar pe învelișul offline — vezi `src/data/offline/types.ts`. */
   cache?: import('./offline/types').CacheReader
   sync?: import('./offline/types').SyncControl

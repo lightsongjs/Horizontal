@@ -415,3 +415,32 @@ describe('localRepository — recurență', () => {
     expect(secondCall.dueAt).toBe(withRecurrence.dueAt)
   })
 })
+
+describe('localRepository — fixări și filtre', () => {
+  it('fixările păstrează ordinea fixării și nu se dublează', async () => {
+    const repo = createLocalRepository()
+    await repo.addPin('project', 'demo')
+    await repo.addPin('list', 'week')
+    await repo.addPin('project', 'demo')
+    expect((await repo.listPins()).map((p) => p.ref)).toEqual(['demo', 'week'])
+    await repo.removePin('project', 'demo')
+    expect((await repo.listPins()).map((p) => p.ref)).toEqual(['week'])
+  })
+
+  it('listOpenIssues întoarce doar nebifatele, din toate proiectele', async () => {
+    const repo = createLocalRepository()
+    const open = await repo.listOpenIssues()
+    expect(open.length).toBeGreaterThan(0)
+    expect(open.every((i) => !i.done)).toBe(true)
+  })
+
+  it('un filtru șters își ia fixarea cu el', async () => {
+    const repo = createLocalRepository()
+    const f = await repo.createSavedFilter({ name: 'Urgente', icon: 'urgent', rules: { projects: [], people: [], due: [], urgent: true } })
+    await repo.addPin('filter', f.id)
+    expect((await repo.updateSavedFilter(f.id, { name: 'Doar urgente' })).name).toBe('Doar urgente')
+    await repo.deleteSavedFilter(f.id)
+    expect(await repo.listSavedFilters()).toEqual([])
+    expect(await repo.listPins()).toEqual([])
+  })
+})

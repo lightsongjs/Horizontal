@@ -35,17 +35,25 @@ interface SidebarProps {
   /** Câte tichete stau acolo cu totul — ca `sl-count` de pe listele de sarcini. */
   inboxTotal?: number
   onInbox?: () => void
+  /** Filtrul salvat deschis acum (ecranul `filter:<id>`), sau null. */
+  filterId?: string | null
+  onFilter?: (id: string) => void
+  /** „+" de la titlul „Filtre" (fără id) și „Editează" din meniul unui filtru. */
+  onFilterForm?: (id?: string) => void
 }
 
-export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNavigate, smartList = null, onSmartList, inboxActive = false, inboxUnread = 0, inboxTotal = 0, onInbox }: SidebarProps = {}) {
-  const { projects, project, completion, selectProject, reorderProjects, smartLists, reportError, pins } = useHorizontal()
+export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNavigate, smartList = null, onSmartList, inboxActive = false, inboxUnread = 0, inboxTotal = 0, onInbox, filterId = null, onFilter, onFilterForm }: SidebarProps = {}) {
+  const { projects, project, completion, selectProject, reorderProjects, smartLists, reportError, pins, savedFilters, filterCounts } = useHorizontal()
   // Meniul de fixare: click dreapta pe un rând, sau ⋮ pe rândul de proiect.
   const [menu, setMenu] = useState<MenuTarget | null>(null)
   const menuAt = (kind: PinKind, ref: string, label: string) => (e: React.MouseEvent) => {
     e.preventDefault()
     setMenu({ kind, ref, label, at: { x: e.clientX, y: e.clientY } })
   }
-  const pinned = livePins(pins, { projects: projects.map((p) => p.id), filters: [] })
+  const pinned = livePins(pins, { projects: projects.map((p) => p.id), filters: savedFilters.map((f) => f.id) })
+  // Pe un ecran-listă (Ale mele, un filtru) proiectul din store e doar al
+  // tichetului deschis, nu ecranul — aceeași gardă ca `projectChrome`.
+  const offProject = inboxActive || filterId !== null
 
   // Navigate away from any overlay (e.g. Users) then select a project.
   const goToProject = (id: string | null) => { onNavigate?.(); selectProject(id) }
@@ -93,7 +101,7 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
   // „Ale mele" încarcă proiectul ei ca formularul să funcționeze, fără să te
   // mute pe boardul lui. Fără gardă, un click pe „Tichet nou" ar fi creat un
   // tichet ÎN PROIECTUL STRĂIN, exact scurgerea reparată la FAB și la taste.
-  const projectChrome = inboxActive ? null : project
+  const projectChrome = offProject ? null : project
   // "Tichet nou" needs write access to the open project; "Proiect nou" is admin-only.
   const showNewBtn = projectChrome ? canWrite : isAdmin
   const dragId = useRef<string | null>(null)
@@ -126,7 +134,7 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
       </div>
 
       <button
-        className={`sidebar-nav-item ${!project && !showUsers && !smartList && !inboxActive ? 'on' : ''}`}
+        className={`sidebar-nav-item ${!project && !showUsers && !smartList && !offProject ? 'on' : ''}`}
         onClick={() => goToProject(null)}
       >
         <span className="sidebar-nav-icon">
@@ -160,9 +168,10 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
           {pinned.map((p) => {
             const t = pinTarget(p)
             if (!t) return null
-            const label = pinLabel(p, projects)
+            const label = pinLabel(p, projects, savedFilters)
             const on = t.kind === 'project'
-              ? !inboxActive && !smartList && !showUsers && project?.id === t.id
+              ? !offProject && !smartList && !showUsers && project?.id === t.id
+              : t.kind === 'filter' ? filterId === t.id
               : t.screen === 'inbox' ? inboxActive : smartList === t.screen
             return (
               <button
@@ -170,12 +179,13 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
                 className={`sidebar-nav-item sidebar-pinned ${on ? 'on' : ''}`}
                 onClick={() => {
                   if (t.kind === 'project') goToProject(t.id)
+                  else if (t.kind === 'filter') onFilter?.(t.id)
                   else if (t.screen === 'inbox') onInbox?.()
                   else onSmartList?.(t.screen as SmartListKind)
                 }}
                 onContextMenu={menuAt(p.kind, p.ref, label)}
               >
-                <span className="sidebar-nav-icon"><PinGlyph pin={p} projects={projects} size={16} /></span>
+                <span className="sidebar-nav-icon"><PinGlyph pin={p} projects={projects} filters={savedFilters} size={16} /></span>
                 <span className="sidebar-pinned-name">{label}</span>
               </button>
             )
@@ -218,6 +228,27 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
         {inboxUnread > 0 && <span className="sl-new" title={`${inboxUnread} necitite`}>{inboxUnread}</span>}
         {inboxTotal > 0 && <span className="sl-count">{inboxTotal}</span>}
       </button>
+
+      {/* Filtrele salvate: „+" la titlu, ca un rând de adăugare să nu stea
+          între ele. Personale — fiecare cont își vede doar filtrele lui. */}
+      <div className="sidebar-section-label sidebar-section-row">
+        <span>Filtre</span>
+        <button type="button" className="sidebar-section-add" onClick={() => onFilterForm?.()} aria-label="Filtru nou" title="Filtru nou">
+          <Icon name="add" size={14} />
+        </button>
+      </div>
+      {savedFilters.map((f) => (
+        <button
+          key={f.id}
+          className={`sidebar-nav-item ${filterId === f.id ? 'on' : ''}`}
+          onClick={() => onFilter?.(f.id)}
+          onContextMenu={menuAt('filter', f.id, f.name)}
+        >
+          <span className="sidebar-nav-icon"><Icon name={f.icon} size={17} /></span>
+          <span className="sidebar-pinned-name">{f.name}</span>
+          {filterCounts[f.id] > 0 && <span className="sl-count">{filterCounts[f.id]}</span>}
+        </button>
+      ))}
 
       <div className="sidebar-section-label">Proiecte</div>
 
@@ -310,7 +341,13 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
           </button>
         )}
       </div>
-      {menu && <PinMenu target={menu} onClose={() => setMenu(null)} />}
+      {menu && (
+        <PinMenu
+          target={menu}
+          onClose={() => setMenu(null)}
+          onEdit={menu.kind === 'filter' ? () => onFilterForm?.(menu.ref) : undefined}
+        />
+      )}
     </aside>
   )
 }

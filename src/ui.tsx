@@ -37,6 +37,8 @@ export type SheetState =
   | { kind: 'app-settings' }
   | { kind: 'obstacle-form'; obstacleId?: string } // creare când n-are id
   | { kind: 'user-form'; userId?: string } // creare când n-are id
+  // Editorul unui filtru salvat; creare când n-are id. Vezi `FilterForm`.
+  | { kind: 'filter-form'; filterId?: string }
 
 interface UI {
   sheet: SheetState
@@ -84,6 +86,8 @@ interface UI {
   openAppSettings(): void
   /** Foaia de utilizator din ecranul de administrare. Fără id = cont nou. */
   openUserForm(userId?: string): void
+  /** Editorul unui filtru salvat. Fără id = filtru nou. */
+  openFilterForm(filterId?: string): void
   /** Închide toată stiva. Întoarce false dacă garda de close a blocat. */
   closeSheet(): boolean
   goBack(): void
@@ -274,6 +278,7 @@ export function UIProvider({ children }: { children: ReactNode }) {
       openThemeManage: () => setSheets([{ kind: 'theme-manage' }]),
       openAppSettings: () => setSheets([{ kind: 'app-settings' }]),
       openUserForm: (userId) => setSheets([{ kind: 'user-form', userId }]),
+      openFilterForm: (filterId) => setSheets([{ kind: 'filter-form', filterId }]),
       closeSheet: () => {
         if (closeGuard.current && !closeGuard.current()) return false
         setSheets([])

@@ -1,6 +1,7 @@
 import { useHorizontal } from '../store'
 import { isPinned, type Pin, type PinKind } from '../lib/pins'
 import type { Project } from '../lib/types'
+import type { SavedFilter } from '../lib/savedFilters'
 import { isInboxProject } from '../lib/captureTokens'
 import { Icon, type IconName } from './Icon'
 import { KeyboardSheet } from './KeyboardSheet'
@@ -13,19 +14,26 @@ import { KeyboardSheet } from './KeyboardSheet'
 export type NavTarget =
   | { kind: 'screen'; screen: 'today' | 'week' | 'inbox' }
   | { kind: 'project'; id: string }
+  | { kind: 'filter'; id: string }
 
-/** Ținta unei fixări. Pentru `filter` vine în etapa filtrelor salvate. */
+export function sameTarget(a: NavTarget | null, b: NavTarget): boolean {
+  if (!a || a.kind !== b.kind) return false
+  return a.kind === 'screen' ? a.screen === (b as typeof a).screen : a.id === (b as { id: string }).id
+}
+
+/** Ținta unei fixări. */
 export function pinTarget(p: Pin): NavTarget | null {
   if (p.kind === 'project') return { kind: 'project', id: p.ref }
+  if (p.kind === 'filter') return { kind: 'filter', id: p.ref }
   if (p.kind === 'list' && (p.ref === 'week' || p.ref === 'inbox')) return { kind: 'screen', screen: p.ref }
   return null
 }
 
 /** Eticheta și semnul unei fixări — aceleași în pătrat și în rândul de sidebar. */
-export function pinLabel(p: Pin, projects: readonly Project[]): string {
+export function pinLabel(p: Pin, projects: readonly Project[], filters: readonly SavedFilter[]): string {
   if (p.kind === 'project') return projects.find((x) => x.id === p.ref)?.name ?? p.ref
   if (p.kind === 'list') return p.ref === 'week' ? '7 zile' : 'Ale mele'
-  return p.ref
+  return filters.find((f) => f.id === p.ref)?.name ?? 'Filtru'
 }
 
 /**
@@ -33,14 +41,15 @@ export function pinLabel(p: Pin, projects: readonly Project[]): string {
  * (ca logo-ul din antetul proiectului) — o bulină singură într-un pătrat de
  * 44px nu se citește; Inbox își păstrează iconița.
  */
-export function PinGlyph({ pin, projects, size = 20 }: { pin: Pin; projects: readonly Project[]; size?: number }) {
+export function PinGlyph({ pin, projects, filters, size = 20 }: { pin: Pin; projects: readonly Project[]; filters: readonly SavedFilter[]; size?: number }) {
   if (pin.kind === 'project') {
     const p = projects.find((x) => x.id === pin.ref)
     if (!p) return null
     if (isInboxProject(p)) return <span style={{ color: p.accent || undefined, display: 'inline-flex' }}><Icon name="inbox" size={size} /></span>
     return <span className="pin-prefix" style={{ color: p.accent || 'var(--txt-dim)' }}>{p.prefix.slice(0, 2)}</span>
   }
-  const icon: IconName = pin.kind === 'list' ? (pin.ref === 'week' ? 'list' : 'people') : 'filter'
+  const icon: IconName = pin.kind === 'list' ? (pin.ref === 'week' ? 'list' : 'people')
+    : filters.find((f) => f.id === pin.ref)?.icon ?? 'filter'
   return <Icon name={icon} size={size} />
 }
 
