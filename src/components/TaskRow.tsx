@@ -11,6 +11,7 @@ import type { Issue } from '../lib/types'
 import { Bell, Recur } from './DueChip'
 import { Icon } from './Icon'
 import { useTaskActions } from './TaskActions'
+import { NativePick } from './NativePick'
 import { ProjectMark } from './ProjectMark'
 
 interface Props {
@@ -35,8 +36,8 @@ const vibrate = (ms: number) => {
  * intenționat, ca cele două liste ale aplicației să arate ca una.
  *
  * Pe telefon rândul se și glisează (dreapta: „Mâine"; stânga: Dată, Oră, ⋮
- * — Urgent e în ⋮) și intră în selecție la apăsare lungă. Dată și Oră deschid
- * direct calendarul / ceasul sistemului (`lib/nativePicker`). Pragurile sunt în `lib/swipe`;
+ * — Urgent e în ⋮) și intră în selecție la apăsare lungă. Dată și Oră sunt
+ * inputuri native sub deget: calendarul / ceasul sistemului (`NativePick`). Pragurile sunt în `lib/swipe`;
  * aici doar se citește degetul. Pe desktop nu se schimbă nimic.
  */
 export function TaskRow({ issue, onOpen, late = false }: Props) {
@@ -222,10 +223,10 @@ function SwipeRow({ issue, cls, onOpen, canWrite, selecting, selected, children 
       } else if (r.kind === 'full-left') {
         setRest('closed')
         a.setOpenRow(null)
-        // `touchend` e un gest (activare tranzitorie), deci calendarul nativ se
-        // poate deschide de aici; dacă browserul tot refuză, `pickDate` cade
-        // pe foaia de dată.
-        a.pickDate([i.id])
+        // Foaia de dată, nu calendarul direct: la ridicare nu e niciun input
+        // sub deget, iar selectorul nativ se deschide sigur doar dintr-o
+        // atingere pe input (vezi `lib/nativePicker`). „Alege data…" e în foaie.
+        a.openSheet('date', [i.id])
       } else {
         setRest(r.rest)
         a.setOpenRow(r.rest === 'closed' ? null : i.id)
@@ -284,24 +285,26 @@ function SwipeRow({ issue, cls, onOpen, canWrite, selecting, selected, children 
             </button>
           </div>
           <div className="swipe-strip swipe-right" aria-hidden={rest !== 'right'}>
-            <button
-              type="button"
-              className="swipe-btn primary"
-              aria-label="Dată"
+            <NativePick
+              type="date"
+              label="Dată"
+              className="swipe-btn lead"
               tabIndex={rest === 'right' ? 0 : -1}
-              onClick={() => ta.pickDate([issue.id])}
+              initial={() => ta.dateInitial([issue.id])}
+              onPick={(v) => { close(); ta.applyDate([issue.id], v) }}
             >
               <Icon name="due" size={18} />
-            </button>
-            <button
-              type="button"
+            </NativePick>
+            <NativePick
+              type="time"
+              label="Oră"
               className="swipe-btn"
-              aria-label="Oră"
               tabIndex={rest === 'right' ? 0 : -1}
-              onClick={() => ta.pickTime([issue.id])}
+              initial={() => ta.timeInitial([issue.id])}
+              onPick={(v) => { close(); ta.applyTime([issue.id], v) }}
             >
               <Icon name="dueTime" size={18} />
-            </button>
+            </NativePick>
             <button
               type="button"
               className="swipe-btn"

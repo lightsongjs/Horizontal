@@ -651,24 +651,36 @@ schimbă nimic: `TaskRow` randează același buton ca înainte.
 
 **Glisarea completă spre dreapta execută, cea spre stânga nu.** „Mâine" e o
 mutare mică și reversibilă; spre stânga sunt trei acțiuni, iar o glisare n-are
-cum să aleagă între ele — deschide direct calendarul nativ (ca butonul Dată).
+cum să aleagă între ele — deschide foaia de dată (presetări + „Alege data…"
+nativ). Nu calendarul direct: la ridicarea degetului nu e niciun input sub el
+(vezi mai jos de ce asta contează).
 „Dreapta = gata" a fost refuzat: bifa face deja asta, la un deget distanță.
 
 **Dată și Oră = selectorul SISTEMULUI, nu unul desenat de noi** (decizia
-omului, 2026-10-11). `pickNative(type, value)` din `src/lib/nativePicker.ts`
-creează un `<input type="date|time">` ascuns și cheamă `showPicker()` —
-**sincron din handlerul atingerii** (cere gest; `touchend`-ul glisării
-complete contează ca gest, verificat în Chromium). Refuzat → `PickerBlocked`,
-iar `pickDate` cade pe foaia de dată. Anularea se recunoaște după `cancel`,
-revenirea focusului fără `change` sau următoarea atingere, și nu scrie nimic.
-Dată păstrează ora; Oră (`preset: 'time'` în `datePatch`) pune ora pe ziua
-proprie a sarcinii, sau azi dacă n-are dată ori ziua a trecut; pe o recurentă
-ora mută seria (`rrule` neatins). Mementoul își păstrează decalajul
-(`moveDue`), ca la orice mutare din listă. Prima zi a săptămânii și formatul
-calendarului le dă locale-ul SISTEMULUI (Android: limba/regiunea), nu
-`lang="ro"` al paginii — din web nu se pot forța. Foaia de dată a selecției
-păstrează presetările, iar „Alege data…" / „Oră…" deschid direct selectorul;
-jetonul de dată din foile de tichet/rapidă avea deja inputuri native.
+omului, 2026-10-11). Butonul ESTE un `<input type="date|time">` real,
+transparent, întins peste tot cercul (`NativePick.tsx`, 16px ca iOS să nu
+mărească): atingerea cade direct pe input și browserul deschide calendarul /
+ceasul pe drumul lui obișnuit. **Nu `showPicker()`.** Prima variantă (be8d574)
+crea un input ascuns și chema `showPicker()` din click: în Chromium mergea,
+dar pe telefon (APK, HyperOS / Android 16) atingerea pe Dată și pe Oră nu
+deschidea nimic. `test:nav` înlocuia `showPicker` cu o dublură, deci drumul
+real nu rulase niciodată pe Android; câmpurile de dată VIZIBILE din foile de
+tichet (atinse direct) mergeau pe același telefon. În plus `showPicker`
+consumă activarea tranzitorie (al doilea apel din același gest aruncă
+`NotAllowedError`, măsurat în Chromium) și cerea ghicirea anulării
+(`cancel`/focus/timer). Cu inputul sub deget anularea pur și simplu nu trimite
+`change`. Inputul rămâne montat cât trăiește rândul, iar
+`.swipe-right:focus-within` ține banda randată cât selectorul e deschis: un
+input trecut pe `display: none` își închide selectorul și `change` s-ar pierde.
+`change` nativ, nu `onChange` din React (acela vine și pe `input`, la fiecare
+segment tastat pe desktop). Dată păstrează ora; Oră (`preset: 'time'` în
+`datePatch`) pune ora pe ziua proprie a sarcinii, sau azi dacă n-are dată ori
+ziua a trecut; pe o recurentă ora mută seria (`rrule` neatins). Mementoul își
+păstrează decalajul (`moveDue`), ca la orice mutare din listă. Prima zi a
+săptămânii și formatul calendarului le dă locale-ul SISTEMULUI (Android:
+limba/regiunea), nu `lang="ro"` al paginii — din web nu se pot forța. Foaia
+de dată a selecției păstrează presetările, iar „Alege data…" / „Oră…" sunt tot
+`NativePick`. Dată și Oră au aceeași greutate, neutre; doar „Mâine" e pe accent.
 
 **Urgent a ieșit din bandă în ⋮** când a intrat Oră: patru butoane la 320px
 lăsau din rând ~60px. Tot de-atunci `fullThreshold` nu coboară sub banda

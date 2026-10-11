@@ -8,10 +8,11 @@ import {
 } from '../lib/bulkActions'
 import { didJumpOnComplete } from '../lib/recurrence'
 import { addDays, dayOffset, hasTime, startOfLocalDay, toDateInput, toShortDate, toTimeInput } from '../lib/schedule'
-import { dateFromInput, pickNative, PickerBlocked } from '../lib/nativePicker'
+import { dateFromInput } from '../lib/nativePicker'
 import type { Issue } from '../lib/types'
 import { Icon } from './Icon'
 import { KeyboardSheet } from './KeyboardSheet'
+import { NativePick } from './NativePick'
 
 /** Foaia de acțiuni deschisă peste listă: pe ce sarcini, și ce fel. */
 // `bulk-more`: ⋮ din bara de selecție — fără „Șterge", care e deja în bară.
@@ -31,13 +32,14 @@ interface TaskActions extends Selection {
   remove(ids: string[]): void
   openSheet(kind: ActionSheet['kind'], ids: string[]): void
   /**
-   * Calendarul nativ, direct (ora fiecărei sarcini rămâne). SINCRON din
-   * handlerul atingerii: `showPicker` cere gestul. Dacă browserul refuză,
-   * cade pe foaia de dată.
+   * Calendarul / ceasul nativ (`NativePick`): valoarea cu care se deschid și
+   * scrierea alegerii. Data păstrează ora fiecărei sarcini; ora se pune pe
+   * ziua fiecărei sarcini (sau azi).
    */
-  pickDate(ids: string[]): void
-  /** Ceasul nativ, direct: ora pe ziua fiecărei sarcini (sau azi). */
-  pickTime(ids: string[]): void
+  dateInitial(ids: string[]): string
+  timeInitial(ids: string[]): string
+  applyDate(ids: string[], value: string): void
+  applyTime(ids: string[], value: string): void
   /** Straturile peste listă care au intrare în istoric: selecția, foaia. */
   layers: number
   /** Back: închide stratul de sus. */
@@ -158,26 +160,26 @@ export function TaskActionsProvider({ children }: { children: ReactNode }) {
     setSheet({ kind, ids })
   }, [])
 
-  const pickDate = useCallback((ids: string[]) => {
+  const dateInitial = useCallback((ids: string[]) => {
     const issues = issuesOf(ids)
     const one = issues.length === 1 ? issues[0] : null
-    const initial = toDateInput(one?.dueAt ?? new Date().toISOString())
-    pickNative('date', initial).then(
-      (v) => { if (v) void run({ kind: 'date', preset: { kind: 'pick', date: dateFromInput(v), time: null } }, ids) },
-      (e) => { if (e instanceof PickerBlocked) openSheet('date', ids) },
-    )
-  }, [issuesOf, run, openSheet])
+    return toDateInput(one?.dueAt ?? new Date().toISOString())
+  }, [issuesOf])
 
-  const pickTime = useCallback((ids: string[]) => {
+  const timeInitial = useCallback((ids: string[]) => {
     const issues = issuesOf(ids)
     const one = issues.length === 1 ? issues[0] : null
     // Ora de acum a sarcinii; fără oră, ceasul pornește de la ora curentă.
-    const initial = one && hasTime(one) && dayOffset(one.dueAt!, new Date()) >= 0 ? toTimeInput(one.dueAt!) : ''
-    pickNative('time', initial).then(
-      (v) => { if (v) void run({ kind: 'date', preset: { kind: 'time', time: v } }, ids) },
-      () => { /* fără gest: nimic de deschis în loc, ceasul n-are foaie */ },
-    )
-  }, [issuesOf, run])
+    return one && hasTime(one) && dayOffset(one.dueAt!, new Date()) >= 0 ? toTimeInput(one.dueAt!) : ''
+  }, [issuesOf])
+
+  const applyDate = useCallback((ids: string[], v: string) => {
+    void run({ kind: 'date', preset: { kind: 'pick', date: dateFromInput(v), time: null } }, ids)
+  }, [run])
+
+  const applyTime = useCallback((ids: string[], v: string) => {
+    void run({ kind: 'date', preset: { kind: 'time', time: v } }, ids)
+  }, [run])
 
   const selectAllVisible = useCallback(() => setSelected(visible.current), [setSelected])
   const setVisible = useCallback((ids: string[]) => { visible.current = ids }, [])
@@ -189,8 +191,8 @@ export function TaskActionsProvider({ children }: { children: ReactNode }) {
   }, [sheet, exitSelectMode])
 
   const value = useMemo<TaskActions>(() => ({
-    ...sel, narrow, openRow, setOpenRow, setVisible, issuesOf, selectAllVisible, run, remove, openSheet, pickDate, pickTime, layers, popLayer,
-  }), [sel, narrow, openRow, setVisible, issuesOf, selectAllVisible, run, remove, openSheet, pickDate, pickTime, layers, popLayer])
+    ...sel, narrow, openRow, setOpenRow, setVisible, issuesOf, selectAllVisible, run, remove, openSheet, dateInitial, timeInitial, applyDate, applyTime, layers, popLayer,
+  }), [sel, narrow, openRow, setVisible, issuesOf, selectAllVisible, run, remove, openSheet, dateInitial, timeInitial, applyDate, applyTime, layers, popLayer])
 
   const targets = sheet ? issuesOf(sheet.ids) : []
 
@@ -201,8 +203,10 @@ export function TaskActionsProvider({ children }: { children: ReactNode }) {
         <DateSheet
           issues={targets}
           onPick={(preset) => void run({ kind: 'date', preset }, sheet.ids)}
-          onPickDate={() => pickDate(sheet.ids)}
-          onPickTime={() => pickTime(sheet.ids)}
+          dateInitial={() => dateInitial(sheet.ids)}
+          timeInitial={() => timeInitial(sheet.ids)}
+          onPickDate={(v) => applyDate(sheet.ids, v)}
+          onPickTime={(v) => applyTime(sheet.ids, v)}
           onClose={() => setSheet(null)}
         />
       )}
@@ -234,12 +238,13 @@ const subject = (issues: Issue[]) =>
   issues.length === 1 ? issues[0].title : `${issues.length} sarcini`
 
 /**
- * Foaia de dată a barei de selecție (și rezerva glisării, dacă browserul
- * refuză selectorul nativ). Presetările păstrează ora fiecărei sarcini;
- * „Alege data" și „Oră" deschid DIRECT calendarul / ceasul sistemului.
+ * Foaia de dată a barei de selecție și a glisării complete spre stânga.
+ * Presetările păstrează ora fiecărei sarcini; „Alege data" și „Oră" sunt
+ * inputuri native sub deget (`NativePick`): calendarul / ceasul sistemului.
  */
-function DateSheet({ issues, onPick, onPickDate, onPickTime, onClose }: {
-  issues: Issue[]; onPick(p: DatePreset): void; onPickDate(): void; onPickTime(): void; onClose(): void
+function DateSheet({ issues, onPick, dateInitial, timeInitial, onPickDate, onPickTime, onClose }: {
+  issues: Issue[]; onPick(p: DatePreset): void
+  dateInitial(): string; timeInitial(): string; onPickDate(v: string): void; onPickTime(v: string): void; onClose(): void
 }) {
   const now = new Date()
   const today = startOfLocalDay(now)
@@ -268,14 +273,14 @@ function DateSheet({ issues, onPick, onPickDate, onPickTime, onClose }: {
             {hint && <span className="ds-hint">{hint}</span>}
           </button>
         ))}
-        <button type="button" className="ds-opt" data-pick="date" onClick={onPickDate}>
-          <span className="ds-label">Alege data…</span>
-          <span className="ds-hint">calendar</span>
-        </button>
-        <button type="button" className="ds-opt" data-pick="time" onClick={onPickTime}>
-          <span className="ds-label">Oră…</span>
-          <span className="ds-hint">ziua rămâne</span>
-        </button>
+        <NativePick type="date" label="Alege data…" className="ds-opt" initial={dateInitial} onPick={onPickDate}>
+          <span className="ds-label" aria-hidden>Alege data…</span>
+          <span className="ds-hint" aria-hidden>calendar</span>
+        </NativePick>
+        <NativePick type="time" label="Oră…" className="ds-opt" initial={timeInitial} onPick={onPickTime}>
+          <span className="ds-label" aria-hidden>Oră…</span>
+          <span className="ds-hint" aria-hidden>ziua rămâne</span>
+        </NativePick>
         <button
           type="button"
           className="ds-opt ds-wide"

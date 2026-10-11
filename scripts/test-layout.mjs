@@ -668,8 +668,8 @@ const selection = () => `
     </div>
     <div class="swipe show-right" id="sr">
       <div class="swipe-strip swipe-right">
-        <button class="swipe-btn primary" aria-label="Dată"><svg width="18" height="18"></svg></button>
-        <button class="swipe-btn" aria-label="Oră"><svg width="18" height="18"></svg></button>
+        <span class="native-pick swipe-btn lead" data-pick="date"><svg width="18" height="18"></svg><input type="date" class="native-pick-input" aria-label="Dată"></span>
+        <span class="native-pick swipe-btn" data-pick="time"><svg width="18" height="18"></svg><input type="time" class="native-pick-input" aria-label="Oră"></span>
         <button class="swipe-btn" aria-label="Mai multe"><svg width="18" height="18"></svg></button>
       </div>
       <button class="list-row task-row" style="transform: translateX(-${REVEAL_RIGHT}px)">
@@ -695,7 +695,8 @@ const selection = () => `
 </nav>
 <div class="action-sheet date-sheet" id="ds">
   <div class="ds-grid">
-    ${['Azi', 'Mâine', '+1 zi', 'Luni viitoare', 'Alege data…', 'Oră…'].map((l) => `<button class="ds-opt"><span class="ds-label">${l}</span><span class="ds-hint">lun 12/10</span></button>`).join('')}
+    ${['Azi', 'Mâine', '+1 zi', 'Luni viitoare'].map((l) => `<button class="ds-opt"><span class="ds-label">${l}</span><span class="ds-hint">lun 12/10</span></button>`).join('')}
+    ${[['date', 'Alege data…'], ['time', 'Oră…']].map(([t, l]) => `<span class="native-pick ds-opt"><span class="ds-label">${l}</span><span class="ds-hint">calendar</span><input type="${t}" class="native-pick-input" aria-label="${l}"></span>`).join('')}
     <button class="ds-opt ds-wide"><span class="ds-label">Fără dată</span></button>
   </div>
 </div>`
@@ -733,7 +734,13 @@ for (const width of PHONE_WIDTHS) {
       invisible: [...srBtns, slBtn].filter((b) => bgOf(b) === 'rgba(0, 0, 0, 0)').length,
       noBorder: [...srBtns, slBtn].every((b) => getComputedStyle(b).borderStyle === 'none' || getComputedStyle(b).borderWidth === '0px'),
       // Ordinea benzii: Dată, Oră, ⋮ (Urgent e în ⋮).
-      order: srBtns.map((b) => b.getAttribute('aria-label')).join(','),
+      order: srBtns.map((b) => b.getAttribute('aria-label') ?? b.querySelector('input')?.getAttribute('aria-label')).join(','),
+      // Dată și Oră: aceeași greutate (fundal identic, fără accent umplut).
+      equalPick: bgOf(srBtns[0]) === bgOf(srBtns[1]),
+      // Inputul nativ acoperă tot butonul: degetul cade pe el oriunde.
+      pickCovers: [...document.querySelectorAll('.native-pick')].every((w) => {
+        const i = w.querySelector('input'); return Math.abs(r(i).width - r(w).width) < 1 && Math.abs(r(i).height - r(w).height) < 1
+      }),
       // Banda deschisă trebuie să lase rândul lizibil (pragul complet stă
       // peste bandă prin `fullThreshold` din `swipe.ts`, testat acolo).
       rowLeft: Math.round(r(sr).width - revR),
@@ -750,6 +757,8 @@ for (const width of PHONE_WIDTHS) {
   check(`antetul selecției încape @${width}px`, m.headOverflow <= 0 && m.allInside && !m.countClipped, `overflow=${m.headOverflow}px, Toate în ecran=${m.allInside}, număr tăiat=${m.countClipped}`)
   check(`banda din dreapta încape în ${REVEAL_RIGHT}px @${width}px`, m.stripFits, m.stripFits ? 'toate trei în zona dezvăluită' : 'un buton rămâne sub rând')
   check(`banda din dreapta: Dată, Oră, ⋮ @${width}px`, m.order === 'Dată,Oră,Mai multe', m.order)
+  check(`Dată și Oră egale, neutre @${width}px`, m.equalPick, m.equalPick ? 'același fundal' : 'fundaluri diferite')
+  check(`inputul nativ acoperă tot butonul @${width}px`, m.pickCovers, m.pickCovers ? 'da' : 'nu')
   check(`banda deschisă lasă rândul lizibil @${width}px`, m.rowLeft >= 110, `rămân ${m.rowLeft}px din rând`)
   check(`foaia de dată (7 opțiuni) încape @${width}px`, m.dsOverflow <= 0 && !m.dsClipped, `overflow=${m.dsOverflow}px, tăiat=${m.dsClipped}`)
   check(`banda din stânga încape în ${REVEAL_LEFT}px @${width}px`, m.leftFits, m.leftFits ? 'Mâine în zona dezvăluită' : 'sub rând')

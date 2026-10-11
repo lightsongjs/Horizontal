@@ -6201,10 +6201,11 @@ body:has(.qab) { overflow-y: auto; }
 
 /* ── TELEFON: glisarea unui rând de sarcină ──────────────────────────
    Banda stă în spatele rândului și se vede doar pe partea spre care s-a
-   tras. Butoanele sunt rotunde, pe `--surface-2`, fără chenar; numai acțiunea
-   principală a fiecărei părți e pe accent (Mâine la stânga, Dată la dreapta).
-   Peste pragul glisării complete toată banda devine accent: semnul că la
-   ridicarea degetului se întâmplă ceva. Pragurile sunt în `src/lib/swipe.ts`. */
+   tras. Butoanele sunt rotunde, pe `--surface-2`, fără chenar. Pe stânga
+   „Mâine" e singur, pe accent; pe dreapta Dată și Oră au aceeași greutate,
+   neutre — niciuna nu e „acțiunea principală". Peste pragul glisării complete
+   toată banda devine accent: semnul că la ridicarea degetului se întâmplă
+   ceva; rămâne vizibilă doar glifa a ce se întâmplă (`.primary`/`.lead`). Pragurile sunt în `src/lib/swipe.ts`. */
 .swipe {
   position: relative;
   margin-bottom: 6px;
@@ -6235,6 +6236,11 @@ body:has(.qab) { overflow-y: auto; }
 }
 .swipe.show-left .swipe-left { display: flex; justify-content: flex-start; }
 .swipe.show-right .swipe-right { display: flex; justify-content: flex-end; }
+/* Cât selectorul nativ e deschis inputul lui are focusul: banda rămâne
+   randată chiar dacă rândul s-a închis între timp (o derulare, o atingere).
+   Un input ascuns cu `display: none` își închide selectorul, iar alegerea
+   (`change`) s-ar pierde. Rândul, deasupra, o acoperă. */
+.swipe .swipe-right:focus-within { display: flex; justify-content: flex-end; }
 .swipe-btn {
   width: 40px;
   height: 40px;
@@ -6254,7 +6260,43 @@ body:has(.qab) { overflow-y: auto; }
 [data-theme='light'] .swipe-btn:not(.primary) { background: var(--surface); box-shadow: var(--amb-lg); }
 .swipe.crossed .swipe-strip { background: var(--accent); }
 .swipe.crossed .swipe-btn { background: transparent; color: var(--on-accent); box-shadow: none; }
-.swipe.crossed .swipe-btn:not(.primary) { visibility: hidden; }
+.swipe.crossed .swipe-btn:not(.primary):not(.lead) { visibility: hidden; }
+
+/* ── Selectorul nativ sub deget (`NativePick`) ───────────────────────
+   Un `<input type="date|time">` real, transparent, peste toată cutia: atingerea
+   cade pe input și browserul deschide calendarul / ceasul sistemului, fără
+   `showPicker()` (vezi `src/lib/nativePicker.ts`). 16px ca iOS să nu
+   mărească pagina la focus. */
+.native-pick { position: relative; cursor: pointer; }
+.native-pick-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+  font-size: calc(16px * var(--text-scale));
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  color: transparent;
+  z-index: 1;
+}
+/* Pe desktop Chromium deschide selectorul doar iconița; întinsă peste tot. */
+.native-pick-input::-webkit-calendar-picker-indicator {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.native-pick:has(.native-pick-input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* ── TELEFON: modul de selecție ──────────────────────────────────── */
 .swipe > .task-row.selected {
