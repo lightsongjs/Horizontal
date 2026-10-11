@@ -158,6 +158,8 @@ const ICONS = {
   today: CalendarDays,
   tomorrow: CalendarClock,
   due: CalendarCheck,
+  /** Ora unei scadențe (glisarea „Oră”): ceasul sistemului. */
+  dueTime: Clock,
   urgent: Zap,
   // Foaia rapidă: trimite (rotund, accent) și „…” = formularul complet.
   send: ArrowUp,

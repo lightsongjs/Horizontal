@@ -261,6 +261,17 @@ pe boardul proiectului și ștergerea ducea mai departe, pe ultimul proiect
 folosit. Repornirea nu e ipotetică: `pwa.ts` aplică un build nou la revenirea în
 tab, adică reîncarcă pagina exact peste cardul deschis.
 
+**Ordinea în „Azi” și „7 zile”** (fiecare grup de zi, și Restanțe):
+urgentele întâi (între ele cele cu oră cronologic, apoi cele fără), apoi cele
+cu oră cronologic, la coadă cele fără oră (decizia omului, 2026-10-11 — înainte
+era invers). De ce: lista e ordinea în care se fac lucrurile — urgentul primul,
+apoi ce are oră fixă, iar „cândva azi” umple golurile. În Restanțe (mai multe
+zile) ziua rămâne criteriu în interiorul fiecărui nivel de urgență: cea mai
+veche întâi. O singură regulă, `compareDue` (`schedule.ts`), folosită și de
+filtrele salvate și de `mergeDay` (evenimentele de calendar intră printre cele
+cu oră, nu între urgente). Widget-ul o oglindește în `core/Agenda.kt`
+(`order`, fixtures `agenda.fixtures.json`) — ajunge pe telefon doar cu APK nou.
+
 Scadența se vede și în **modul proiecte**, pe card („Ordine") și pe rând
 („Listă"): `src/components/DueChip.tsx` — ziua, ora **doar dacă** are una,
 clopoțelul **doar dacă** are memento, roșu dacă e restanță. Un tichet fără
@@ -633,15 +644,36 @@ omului, 2026-10-07). În proiect se văd toate, ca listă de rutine. Mementouril
 ## Gesturile de pe telefon — glisare și selecție
 
 Sub 900px, rândurile din listele inteligente se glisează (dreapta: „Mâine";
-stânga: Dată, Urgent, ⋮) și intră în selecție la apăsare lungă. Pragurile și
+stânga: Dată, Oră, ⋮ — Urgent e în ⋮) și intră în selecție la apăsare lungă. Pragurile și
 blocarea direcției sunt în `src/lib/swipe.ts`, calculul scrierilor în
 `src/lib/bulkActions.ts` — amândouă pure, cu fixtures. Pe desktop nu se
 schimbă nimic: `TaskRow` randează același buton ca înainte.
 
 **Glisarea completă spre dreapta execută, cea spre stânga nu.** „Mâine" e o
 mutare mică și reversibilă; spre stânga sunt trei acțiuni, iar o glisare n-are
-cum să aleagă între ele — deschide foaia de dată. „Dreapta = gata" a fost
-refuzat: bifa face deja asta, la un deget distanță.
+cum să aleagă între ele — deschide direct calendarul nativ (ca butonul Dată).
+„Dreapta = gata" a fost refuzat: bifa face deja asta, la un deget distanță.
+
+**Dată și Oră = selectorul SISTEMULUI, nu unul desenat de noi** (decizia
+omului, 2026-10-11). `pickNative(type, value)` din `src/lib/nativePicker.ts`
+creează un `<input type="date|time">` ascuns și cheamă `showPicker()` —
+**sincron din handlerul atingerii** (cere gest; `touchend`-ul glisării
+complete contează ca gest, verificat în Chromium). Refuzat → `PickerBlocked`,
+iar `pickDate` cade pe foaia de dată. Anularea se recunoaște după `cancel`,
+revenirea focusului fără `change` sau următoarea atingere, și nu scrie nimic.
+Dată păstrează ora; Oră (`preset: 'time'` în `datePatch`) pune ora pe ziua
+proprie a sarcinii, sau azi dacă n-are dată ori ziua a trecut; pe o recurentă
+ora mută seria (`rrule` neatins). Mementoul își păstrează decalajul
+(`moveDue`), ca la orice mutare din listă. Prima zi a săptămânii și formatul
+calendarului le dă locale-ul SISTEMULUI (Android: limba/regiunea), nu
+`lang="ro"` al paginii — din web nu se pot forța. Foaia de dată a selecției
+păstrează presetările, iar „Alege data…" / „Oră…" deschid direct selectorul;
+jetonul de dată din foile de tichet/rapidă avea deja inputuri native.
+
+**Urgent a ieșit din bandă în ⋮** când a intrat Oră: patru butoane la 320px
+lăsau din rând ~60px. Tot de-atunci `fullThreshold` nu coboară sub banda
+deschisă + 24px — la 320px, 55% din rând (160px) cădea sub banda de 172px și
+un rând deschis, tras încă puțin, executa.
 
 **O singură regulă de direcție pentru rând și pentru tragerea de refresh.**
 `lockAxis` decide o dată, după 10px; trage-pentru-refresh din `App.tsx`

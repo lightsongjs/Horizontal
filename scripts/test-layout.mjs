@@ -668,9 +668,9 @@ const selection = () => `
     </div>
     <div class="swipe show-right" id="sr">
       <div class="swipe-strip swipe-right">
-        <button class="swipe-btn primary"><svg width="18" height="18"></svg></button>
-        <button class="swipe-btn"><svg width="18" height="18"></svg></button>
-        <button class="swipe-btn"><svg width="18" height="18"></svg></button>
+        <button class="swipe-btn primary" aria-label="Dată"><svg width="18" height="18"></svg></button>
+        <button class="swipe-btn" aria-label="Oră"><svg width="18" height="18"></svg></button>
+        <button class="swipe-btn" aria-label="Mai multe"><svg width="18" height="18"></svg></button>
       </div>
       <button class="list-row task-row" style="transform: translateX(-${REVEAL_RIGHT}px)">
         <span class="list-check"></span><span class="t-time">09:30</span><span class="list-title">Sună la bancă pentru extras</span>
@@ -692,7 +692,13 @@ const selection = () => `
   <button><span class="tb-ico"><svg width="21" height="21"></svg></span>Gata</button>
   <button class="danger"><span class="tb-ico"><svg width="21" height="21"></svg></span>Șterge</button>
   <button><span class="tb-ico"><svg width="21" height="21"></svg></span>Mai mult</button>
-</nav>`
+</nav>
+<div class="action-sheet date-sheet" id="ds">
+  <div class="ds-grid">
+    ${['Azi', 'Mâine', '+1 zi', 'Luni viitoare', 'Alege data…', 'Oră…'].map((l) => `<button class="ds-opt"><span class="ds-label">${l}</span><span class="ds-hint">lun 12/10</span></button>`).join('')}
+    <button class="ds-opt ds-wide"><span class="ds-label">Fără dată</span></button>
+  </div>
+</div>`
 
 console.log('\nModul de selecție și banda glisării (telefon):')
 for (const width of PHONE_WIDTHS) {
@@ -726,6 +732,13 @@ for (const width of PHONE_WIDTHS) {
       btnSize: Math.round(Math.min(...srBtns.map((b) => r(b).width))),
       invisible: [...srBtns, slBtn].filter((b) => bgOf(b) === 'rgba(0, 0, 0, 0)').length,
       noBorder: [...srBtns, slBtn].every((b) => getComputedStyle(b).borderStyle === 'none' || getComputedStyle(b).borderWidth === '0px'),
+      // Ordinea benzii: Dată, Oră, ⋮ (Urgent e în ⋮).
+      order: srBtns.map((b) => b.getAttribute('aria-label')).join(','),
+      // Banda deschisă trebuie să lase rândul lizibil (pragul complet stă
+      // peste bandă prin `fullThreshold` din `swipe.ts`, testat acolo).
+      rowLeft: Math.round(r(sr).width - revR),
+      dsOverflow: Math.round(document.querySelector('.ds-grid').scrollWidth - r(document.querySelector('.ds-grid')).width),
+      dsClipped: [...document.querySelectorAll('.ds-label')].some((b) => b.scrollWidth > b.clientWidth + 1),
       groupOverflow: Math.round(gh.scrollWidth - r(gh).width),
       actClipped: act.scrollWidth > act.clientWidth + 1,
     }
@@ -736,6 +749,9 @@ for (const width of PHONE_WIDTHS) {
   check(`etichetele barei netăiate @${width}px`, !m.clippedLabel, m.clippedLabel ? 'o etichetă e tăiată' : 'întregi')
   check(`antetul selecției încape @${width}px`, m.headOverflow <= 0 && m.allInside && !m.countClipped, `overflow=${m.headOverflow}px, Toate în ecran=${m.allInside}, număr tăiat=${m.countClipped}`)
   check(`banda din dreapta încape în ${REVEAL_RIGHT}px @${width}px`, m.stripFits, m.stripFits ? 'toate trei în zona dezvăluită' : 'un buton rămâne sub rând')
+  check(`banda din dreapta: Dată, Oră, ⋮ @${width}px`, m.order === 'Dată,Oră,Mai multe', m.order)
+  check(`banda deschisă lasă rândul lizibil @${width}px`, m.rowLeft >= 110, `rămân ${m.rowLeft}px din rând`)
+  check(`foaia de dată (7 opțiuni) încape @${width}px`, m.dsOverflow <= 0 && !m.dsClipped, `overflow=${m.dsOverflow}px, tăiat=${m.dsClipped}`)
   check(`banda din stânga încape în ${REVEAL_LEFT}px @${width}px`, m.leftFits, m.leftFits ? 'Mâine în zona dezvăluită' : 'sub rând')
   check(`butoanele benzii rotunde @${width}px`, m.round && m.btnSize >= 40, `${m.btnSize}px, rotunde=${m.round}`)
   check(`butoanele benzii au fundal, fără chenar @${width}px`, m.invisible === 0 && m.noBorder, `fără fundal: ${m.invisible}, fără chenar: ${m.noBorder}`)

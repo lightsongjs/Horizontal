@@ -79,8 +79,8 @@ describe('buildSmartLists', () => {
     expect(L.week.flatMap((d) => d.issues.map((i) => i.id))).not.toContain('late-1')
   })
 
-  it('ziua fără oră urcă deasupra celor cu oră', () => {
-    expect(L.today.map((i) => i.id)).toEqual(['today-allday', 'today-14', 'today-16'])
+  it('cele cu oră, cronologic, înaintea celor fără oră', () => {
+    expect(L.today.map((i) => i.id)).toEqual(['today-14', 'today-16', 'today-allday'])
   })
 
   it('mâine e ziua 1, iar fereastra se închide la a șaptea zi', () => {
@@ -112,6 +112,37 @@ describe('compareDue', () => {
     const a = task('a', at(0, 14))
     const b = task('b', { ...at(0, 14), urgent: true })
     expect([a, b].sort(compareDue).map((i) => i.id)).toEqual(['b', 'a'])
+  })
+
+  it('o zi: urgentele (cu oră cronologic, apoi fără oră), apoi cele cu oră, apoi cele fără oră', () => {
+    const day = [
+      task('zi-a', at(0)),
+      task('t16', at(0, 16)),
+      task('u-zi', { ...at(0), urgent: true }),
+      task('t09', at(0, 9)),
+      task('u14', { ...at(0, 14), urgent: true }),
+      task('zi-b', at(0)),
+      task('u08', { ...at(0, 8), urgent: true }),
+    ]
+    expect(day.sort(compareDue).map((i) => i.id))
+      .toEqual(['u08', 'u14', 'u-zi', 't09', 't16', 'zi-a', 'zi-b'])
+  })
+
+  it('restanțe pe mai multe zile: urgentele sus, apoi cea mai veche întâi în fiecare nivel', () => {
+    const late = [
+      task('ieri-zi', at(-1)),
+      task('ieri-u', { ...at(-1, 10), urgent: true }),
+      task('acum3-t', at(-3, 12)),
+      task('acum2-u', { ...at(-2), urgent: true }),
+    ]
+    expect(late.sort(compareDue).map((i) => i.id)).toEqual(['acum2-u', 'ieri-u', 'acum3-t', 'ieri-zi'])
+  })
+
+  it('buildSmartLists aplică ordinea în fiecare zi din „7 zile"', () => {
+    const L = buildSmartLists([
+      task('m-zi', at(1)), task('m10', at(1, 10)), task('m-u', { ...at(1), urgent: true }),
+    ], NOW)
+    expect(L.tomorrow.map((i) => i.id)).toEqual(['m-u', 'm10', 'm-zi'])
   })
 })
 

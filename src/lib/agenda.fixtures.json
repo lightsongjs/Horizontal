@@ -1,6 +1,6 @@
 [
   {
-    "name": "restanțe sus, azi fără oră înaintea celor cu oră, ziua a 7-a afară",
+    "name": "restanțe sus, azi cele cu oră înaintea celor fără oră, ziua a 7-a afară",
     "now": "2026-10-06T08:00:00.000Z",
     "items": [
       { "id": "HZ-1", "dueAt": "2026-10-04T21:00:00.000Z", "allDay": true,  "urgent": false },
@@ -13,7 +13,7 @@
     ],
     "want": [
       { "section": "overdue", "ids": ["HZ-1", "HZ-2"] },
-      { "section": "day", "offset": 0, "ids": ["HZ-3", "HZ-4"] },
+      { "section": "day", "offset": 0, "ids": ["HZ-4", "HZ-3"] },
       { "section": "day", "offset": 1, "ids": ["HZ-5"] },
       { "section": "day", "offset": 6, "ids": ["HZ-7"] }
     ]
@@ -27,6 +27,29 @@
       { "id": "HZ-A", "dueAt": "2026-10-05T21:00:00.000Z", "allDay": true, "urgent": false }
     ],
     "want": [{ "section": "day", "offset": 0, "ids": ["HZ-Z", "HZ-A", "HZ-B"] }]
+  },
+  {
+    "name": "urgentele sus (cu oră cronologic, apoi fără oră), apoi cele cu oră, apoi fără oră",
+    "now": "2026-10-06T05:00:00.000Z",
+    "items": [
+      { "id": "HZ-Z1", "dueAt": "2026-10-05T21:00:00.000Z", "allDay": true,  "urgent": false },
+      { "id": "HZ-T16", "dueAt": "2026-10-06T13:00:00.000Z", "allDay": false, "urgent": false },
+      { "id": "HZ-UZ", "dueAt": "2026-10-05T21:00:00.000Z", "allDay": true,  "urgent": true },
+      { "id": "HZ-T09", "dueAt": "2026-10-06T06:00:00.000Z", "allDay": false, "urgent": false },
+      { "id": "HZ-U14", "dueAt": "2026-10-06T11:00:00.000Z", "allDay": false, "urgent": true },
+      { "id": "HZ-U10", "dueAt": "2026-10-06T07:00:00.000Z", "allDay": false, "urgent": true }
+    ],
+    "want": [{ "section": "day", "offset": 0, "ids": ["HZ-U10", "HZ-U14", "HZ-UZ", "HZ-T09", "HZ-T16", "HZ-Z1"] }]
+  },
+  {
+    "name": "restanțe: urgentele sus, apoi cea mai veche întâi",
+    "now": "2026-10-06T08:00:00.000Z",
+    "items": [
+      { "id": "HZ-L1", "dueAt": "2026-10-03T21:00:00.000Z", "allDay": true,  "urgent": false },
+      { "id": "HZ-L2", "dueAt": "2026-10-05T07:00:00.000Z", "allDay": false, "urgent": true },
+      { "id": "HZ-L3", "dueAt": "2026-10-04T21:00:00.000Z", "allDay": true,  "urgent": false }
+    ],
+    "want": [{ "section": "overdue", "ids": ["HZ-L2", "HZ-L1", "HZ-L3"] }]
   },
   {
     "name": "trecerea zilei: aceleași sarcini, la 00:30 a doua zi",
@@ -72,7 +95,7 @@
     ],
     "want": [
       { "section": "overdue", "ids": ["R-3"] },
-      { "section": "day", "offset": 0, "ids": ["R-4", "R-2"] },
+      { "section": "day", "offset": 0, "ids": ["R-2", "R-4"] },
       { "section": "day", "offset": 1, "ids": ["HZ-1"] }
     ]
   }

@@ -80,23 +80,25 @@ describe('eventsOn', () => {
 })
 
 describe('mergeDay', () => {
-  it('fără oră sus, apoi pe oră; la egalitate evenimentul întâi', () => {
+  it('urgentele sus, apoi pe oră, fără oră la coadă; la egalitate evenimentul întâi', () => {
     const d = eventsOn([
       timed('e10', '2026-10-12T07:00:00Z', '2026-10-12T08:00:00Z'),
       timed('e14', '2026-10-12T11:00:00Z', '2026-10-12T12:00:00Z'),
     ], cals, MON, NOW)
     const rows = mergeDay([
-      issue('fara-ora', '2026-10-11T21:00:00Z', true),
+      { ...issue('u15', '2026-10-12T12:00:00Z', false), urgent: true },
+      { ...issue('u-zi', '2026-10-11T21:00:00Z', true), urgent: true },
       issue('s09', '2026-10-12T06:00:00Z', false),
       issue('s10', '2026-10-12T07:00:00Z', false),
       issue('s16', '2026-10-12T13:00:00Z', false),
+      issue('fara-ora', '2026-10-11T21:00:00Z', true),
     ], d.timed)
     expect(rows.map((r) => (r.kind === 'issue' ? r.issue.id : r.occ.event.id)))
-      .toEqual(['fara-ora', 's09', 'e10', 's10', 'e14', 's16'])
+      .toEqual(['u15', 'u-zi', 's09', 'e10', 's10', 'e14', 's16', 'fara-ora'])
   })
   it('fără evenimente, sarcinile rămân neatinse', () => {
-    const list = [issue('a', null, true), issue('b', '2026-10-12T06:00:00Z', false)]
-    expect(mergeDay(list, []).map((r) => r.kind === 'issue' && r.issue.id)).toEqual(['a', 'b'])
+    const list = [issue('b', '2026-10-12T06:00:00Z', false), issue('a', null, true)]
+    expect(mergeDay(list, []).map((r) => r.kind === 'issue' && r.issue.id)).toEqual(['b', 'a'])
   })
 })
 

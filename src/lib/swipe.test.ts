@@ -32,6 +32,10 @@ describe('praguri', () => {
     expect(crossedFull(197, 360)).toBe(false)
     expect(crossedFull(-198, 360)).toBe(true)
   })
+  it('pe rândurile înguste (320px) pragul stă peste banda deschisă', () => {
+    for (const w of [288, 292, 328, 358, 398]) expect(fullThreshold(w)).toBeGreaterThan(REVEAL_RIGHT)
+    expect(release(-REVEAL_RIGHT - 10, 292)).toEqual({ kind: 'rest', rest: 'right' })
+  })
 })
 
 describe('dragOffset', () => {

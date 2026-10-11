@@ -41,9 +41,9 @@ private fun offset(ms: Long, now: Long, zone: ZoneId) = ChronoUnit.DAYS.between(
 private fun overdue(it: AgendaItem, due: Long, now: Long, zone: ZoneId) =
     if (it.allDay) offset(due, now, zone) < 0 else due < now
 
-/** `compareDue`: ziua, apoi fără oră înaintea celor cu oră, ora, urgentul, id. */
+/** `compareDue`: urgentul, ziua, cu oră înaintea celor fără oră, ora, id. */
 private fun order(zone: ZoneId) = compareBy<Pair<AgendaItem, Long>>(
-    { localDate(it.second, zone) }, { !it.first.allDay }, { it.second }, { !it.first.urgent }, { it.first.id },
+    { !it.first.urgent }, { localDate(it.second, zone) }, { it.first.allDay }, { it.second }, { it.first.id },
 )
 
 fun buildAgenda(items: List<AgendaItem>, now: Long, zone: ZoneId): List<AgendaSection> {

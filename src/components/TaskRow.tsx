@@ -10,7 +10,7 @@ import {
 import type { Issue } from '../lib/types'
 import { Bell, Recur } from './DueChip'
 import { Icon } from './Icon'
-import { urgentActionFor, useTaskActions } from './TaskActions'
+import { useTaskActions } from './TaskActions'
 import { ProjectMark } from './ProjectMark'
 
 interface Props {
@@ -34,8 +34,9 @@ const vibrate = (ms: number) => {
  * Aceeași gramatică de clase ca `.list-row` din ListView — ținută în sincron
  * intenționat, ca cele două liste ale aplicației să arate ca una.
  *
- * Pe telefon rândul se și glisează (dreapta: „Mâine"; stânga: Dată, Urgent,
- * ⋮) și intră în selecție la apăsare lungă. Pragurile sunt în `lib/swipe`;
+ * Pe telefon rândul se și glisează (dreapta: „Mâine"; stânga: Dată, Oră, ⋮
+ * — Urgent e în ⋮) și intră în selecție la apăsare lungă. Dată și Oră deschid
+ * direct calendarul / ceasul sistemului (`lib/nativePicker`). Pragurile sunt în `lib/swipe`;
  * aici doar se citește degetul. Pe desktop nu se schimbă nimic.
  */
 export function TaskRow({ issue, onOpen, late = false }: Props) {
@@ -220,7 +221,11 @@ function SwipeRow({ issue, cls, onOpen, canWrite, selecting, selected, children 
         void a.run({ kind: 'date', preset: { kind: 'tomorrow' } }, [i.id])
       } else if (r.kind === 'full-left') {
         setRest('closed')
-        a.openSheet('date', [i.id])
+        a.setOpenRow(null)
+        // `touchend` e un gest (activare tranzitorie), deci calendarul nativ se
+        // poate deschide de aici; dacă browserul tot refuză, `pickDate` cade
+        // pe foaia de dată.
+        a.pickDate([i.id])
       } else {
         setRest(r.rest)
         a.setOpenRow(r.rest === 'closed' ? null : i.id)
@@ -284,18 +289,18 @@ function SwipeRow({ issue, cls, onOpen, canWrite, selecting, selected, children 
               className="swipe-btn primary"
               aria-label="Dată"
               tabIndex={rest === 'right' ? 0 : -1}
-              onClick={() => ta.openSheet('date', [issue.id])}
+              onClick={() => ta.pickDate([issue.id])}
             >
               <Icon name="due" size={18} />
             </button>
             <button
               type="button"
               className="swipe-btn"
-              aria-label={issue.urgent ? 'Scoate urgent' : 'Urgent'}
+              aria-label="Oră"
               tabIndex={rest === 'right' ? 0 : -1}
-              onClick={() => { close(); void ta.run(urgentActionFor([issue]), [issue.id]) }}
+              onClick={() => ta.pickTime([issue.id])}
             >
-              <Icon name="urgent" size={18} />
+              <Icon name="dueTime" size={18} />
             </button>
             <button
               type="button"

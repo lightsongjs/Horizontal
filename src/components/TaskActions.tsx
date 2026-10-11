@@ -7,7 +7,8 @@ import {
   type BulkAction, type DatePreset,
 } from '../lib/bulkActions'
 import { didJumpOnComplete } from '../lib/recurrence'
-import { addDays, startOfLocalDay, toShortDate } from '../lib/schedule'
+import { addDays, dayOffset, hasTime, startOfLocalDay, toDateInput, toShortDate, toTimeInput } from '../lib/schedule'
+import { dateFromInput, pickNative, PickerBlocked } from '../lib/nativePicker'
 import type { Issue } from '../lib/types'
 import { Icon } from './Icon'
 import { KeyboardSheet } from './KeyboardSheet'
@@ -29,6 +30,14 @@ interface TaskActions extends Selection {
   run(action: BulkAction, ids: string[]): Promise<void>
   remove(ids: string[]): void
   openSheet(kind: ActionSheet['kind'], ids: string[]): void
+  /**
+   * Calendarul nativ, direct (ora fiecărei sarcini rămâne). SINCRON din
+   * handlerul atingerii: `showPicker` cere gestul. Dacă browserul refuză,
+   * cade pe foaia de dată.
+   */
+  pickDate(ids: string[]): void
+  /** Ceasul nativ, direct: ora pe ziua fiecărei sarcini (sau azi). */
+  pickTime(ids: string[]): void
   /** Straturile peste listă care au intrare în istoric: selecția, foaia. */
   layers: number
   /** Back: închide stratul de sus. */
@@ -149,6 +158,27 @@ export function TaskActionsProvider({ children }: { children: ReactNode }) {
     setSheet({ kind, ids })
   }, [])
 
+  const pickDate = useCallback((ids: string[]) => {
+    const issues = issuesOf(ids)
+    const one = issues.length === 1 ? issues[0] : null
+    const initial = toDateInput(one?.dueAt ?? new Date().toISOString())
+    pickNative('date', initial).then(
+      (v) => { if (v) void run({ kind: 'date', preset: { kind: 'pick', date: dateFromInput(v), time: null } }, ids) },
+      (e) => { if (e instanceof PickerBlocked) openSheet('date', ids) },
+    )
+  }, [issuesOf, run, openSheet])
+
+  const pickTime = useCallback((ids: string[]) => {
+    const issues = issuesOf(ids)
+    const one = issues.length === 1 ? issues[0] : null
+    // Ora de acum a sarcinii; fără oră, ceasul pornește de la ora curentă.
+    const initial = one && hasTime(one) && dayOffset(one.dueAt!, new Date()) >= 0 ? toTimeInput(one.dueAt!) : ''
+    pickNative('time', initial).then(
+      (v) => { if (v) void run({ kind: 'date', preset: { kind: 'time', time: v } }, ids) },
+      () => { /* fără gest: nimic de deschis în loc, ceasul n-are foaie */ },
+    )
+  }, [issuesOf, run])
+
   const selectAllVisible = useCallback(() => setSelected(visible.current), [setSelected])
   const setVisible = useCallback((ids: string[]) => { visible.current = ids }, [])
 
@@ -159,8 +189,8 @@ export function TaskActionsProvider({ children }: { children: ReactNode }) {
   }, [sheet, exitSelectMode])
 
   const value = useMemo<TaskActions>(() => ({
-    ...sel, narrow, openRow, setOpenRow, setVisible, issuesOf, selectAllVisible, run, remove, openSheet, layers, popLayer,
-  }), [sel, narrow, openRow, setVisible, issuesOf, selectAllVisible, run, remove, openSheet, layers, popLayer])
+    ...sel, narrow, openRow, setOpenRow, setVisible, issuesOf, selectAllVisible, run, remove, openSheet, pickDate, pickTime, layers, popLayer,
+  }), [sel, narrow, openRow, setVisible, issuesOf, selectAllVisible, run, remove, openSheet, pickDate, pickTime, layers, popLayer])
 
   const targets = sheet ? issuesOf(sheet.ids) : []
 
@@ -171,6 +201,8 @@ export function TaskActionsProvider({ children }: { children: ReactNode }) {
         <DateSheet
           issues={targets}
           onPick={(preset) => void run({ kind: 'date', preset }, sheet.ids)}
+          onPickDate={() => pickDate(sheet.ids)}
+          onPickTime={() => pickTime(sheet.ids)}
           onClose={() => setSheet(null)}
         />
       )}
@@ -178,6 +210,8 @@ export function TaskActionsProvider({ children }: { children: ReactNode }) {
         <MoreSheet
           count={targets.length}
           canDelete={sheet.kind === 'more'}
+          urgent={sheet.kind === 'more' ? targets.every((i) => i.urgent) && targets.length > 0 : null}
+          onUrgent={() => void run(urgentActionFor(targets), sheet.ids)}
           onAssign={() => setSheet({ kind: 'assign', ids: sheet.ids })}
           onDelete={() => remove(sheet.ids)}
           onClose={() => setSheet(null)}
@@ -200,31 +234,23 @@ const subject = (issues: Issue[]) =>
   issues.length === 1 ? issues[0].title : `${issues.length} sarcini`
 
 /**
- * Foaia de dată: a glisării spre stânga și a barei de selecție. Presetările
- * păstrează ora fiecărei sarcini; „Alege…" deschide aceleași câmpuri de zi și
- * oră ca foaia de tichet.
+ * Foaia de dată a barei de selecție (și rezerva glisării, dacă browserul
+ * refuză selectorul nativ). Presetările păstrează ora fiecărei sarcini;
+ * „Alege data" și „Oră" deschid DIRECT calendarul / ceasul sistemului.
  */
-function DateSheet({ issues, onPick, onClose }: { issues: Issue[]; onPick(p: DatePreset): void; onClose(): void }) {
+function DateSheet({ issues, onPick, onPickDate, onPickTime, onClose }: {
+  issues: Issue[]; onPick(p: DatePreset): void; onPickDate(): void; onPickTime(): void; onClose(): void
+}) {
   const now = new Date()
   const today = startOfLocalDay(now)
   const recurring = countRecurring(issues)
-  const [picking, setPicking] = useState(false)
-  const [date, setDate] = useState('')
-  const [time, setTime] = useState('')
 
   const presets: { preset: DatePreset; label: string; hint?: string; disabled?: boolean }[] = [
     { preset: { kind: 'today' }, label: 'Azi', hint: dayLabel(today) },
     { preset: { kind: 'tomorrow' }, label: 'Mâine', hint: dayLabel(addDays(today, 1)) },
     { preset: { kind: 'plus1' }, label: '+1 zi', hint: 'față de scadență' },
     { preset: { kind: 'nextMonday' }, label: 'Luni viitoare', hint: dayLabel(nextMonday(now)) },
-    { preset: { kind: 'none' }, label: 'Fără dată', disabled: !canClearDate(issues) },
   ]
-
-  const apply = () => {
-    if (!date) return
-    const [y, m, d] = date.split('-').map(Number)
-    onPick({ kind: 'pick', date: new Date(y, m - 1, d), time: time || null })
-  }
 
   return (
     <KeyboardSheet onClose={onClose} label="Mută data" className="action-sheet date-sheet">
@@ -242,38 +268,49 @@ function DateSheet({ issues, onPick, onClose }: { issues: Issue[]; onPick(p: Dat
             {hint && <span className="ds-hint">{hint}</span>}
           </button>
         ))}
+        <button type="button" className="ds-opt" data-pick="date" onClick={onPickDate}>
+          <span className="ds-label">Alege data…</span>
+          <span className="ds-hint">calendar</span>
+        </button>
+        <button type="button" className="ds-opt" data-pick="time" onClick={onPickTime}>
+          <span className="ds-label">Oră…</span>
+          <span className="ds-hint">ziua rămâne</span>
+        </button>
         <button
           type="button"
-          className={`ds-opt ${picking ? 'on' : ''}`}
-          aria-expanded={picking}
-          onClick={() => setPicking((v) => !v)}
+          className="ds-opt ds-wide"
+          disabled={!canClearDate(issues)}
+          onClick={() => onPick({ kind: 'none' })}
         >
-          <span className="ds-label">Alege…</span>
-          <span className="ds-hint">zi și oră</span>
+          <span className="ds-label">Fără dată</span>
         </button>
       </div>
       {recurring > 0 && (
         <p className="ds-note">
-          <Icon name="recurring" size={12} /> {recurring} {recurring === 1 ? 'recurentă' : 'recurente'} — se mută doar apariția curentă
+          <Icon name="recurring" size={12} /> {recurring} {recurring === 1 ? 'recurentă' : 'recurente'} — data mută doar apariția curentă, ora mută seria
         </p>
-      )}
-      {picking && (
-        <div className="qs-when ds-pick">
-          <Icon name="due" size={14} />
-          <input type="date" aria-label="Ziua" value={date} onChange={(e) => setDate(e.target.value)} />
-          <input type="time" aria-label="Ora" value={time} onChange={(e) => setTime(e.target.value)} />
-          <button type="button" className="ds-apply" disabled={!date} onClick={apply}>Aplică</button>
-        </div>
       )}
     </KeyboardSheet>
   )
 }
 
-/** ⋮ de pe banda unui rând: ce nu încape pe bandă. */
-function MoreSheet({ count, canDelete, onAssign, onDelete, onClose }: { count: number; canDelete: boolean; onAssign(): void; onDelete(): void; onClose(): void }) {
+/**
+ * ⋮ de pe banda unui rând: ce nu încape pe bandă. Urgent stă aici de când
+ * banda a primit „Oră": patru butoane la 320px lăsau din rând o fâșie de
+ * ~60px și împingeau banda peste pragul glisării complete. `urgent` e `null`
+ * în ⋮ al selecției, unde bara are deja Urgent.
+ */
+function MoreSheet({ count, canDelete, urgent, onUrgent, onAssign, onDelete, onClose }: {
+  count: number; canDelete: boolean; urgent: boolean | null; onUrgent(): void; onAssign(): void; onDelete(): void; onClose(): void
+}) {
   return (
     <KeyboardSheet onClose={onClose} label="Mai multe" className="action-sheet">
       <div className="as-list">
+        {urgent !== null && (
+          <button type="button" className="as-item" onClick={onUrgent}>
+            <Icon name="urgent" size={18} /> {urgent ? 'Scoate urgent' : 'Urgent'}
+          </button>
+        )}
         <button type="button" className="as-item" onClick={onAssign}>
           <Icon name="people" size={18} /> Pasează
         </button>

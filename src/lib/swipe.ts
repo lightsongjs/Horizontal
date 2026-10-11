@@ -51,9 +51,17 @@ export function restOffset(rest: Rest): number {
   return rest === 'left' ? REVEAL_LEFT : rest === 'right' ? -REVEAL_RIGHT : 0
 }
 
-/** Pragul glisării complete, în px, pentru un rând de `width`. */
+/** Cât trebuie trecut DE banda deschisă ca glisarea să devină completă. */
+export const FULL_MARGIN = 24
+
+/**
+ * Pragul glisării complete, în px, pentru un rând de `width`: 55% din rând,
+ * dar niciodată sub banda din dreapta plus o margine. La 320px rândul are
+ * ~292px, iar 55% (160px) cădea SUB banda de 172px: un rând deschis, tras
+ * încă puțin, executa în loc să rămână deschis.
+ */
 export function fullThreshold(width: number): number {
-  return Math.round(width * FULL_RATIO)
+  return Math.max(Math.round(width * FULL_RATIO), REVEAL_RIGHT + FULL_MARGIN)
 }
 
 /**

@@ -711,6 +711,77 @@ try {
     check('„Anulează" o aduce înapoi', (await titles()).includes('Gest trei'), JSON.stringify(await titles()))
   }
 
+  // Banda: Dată, Oră, ⋮. „Oră" și „Dată" deschid DIRECT selectorul nativ
+  // (`lib/nativePicker`). Chromium headless n-are dialogul sistemului, deci
+  // `showPicker` e înlocuit cu unul care „alege" valoarea din `__pickValue`
+  // (sau nimic = Anulează) și numără apelurile.
+  {
+    await touch.evaluate(() => {
+      window.__pickers = []
+      window.__pickValue = {}
+      HTMLInputElement.prototype.showPicker = function () {
+        window.__pickers.push(this.type)
+        const v = window.__pickValue[this.type]
+        if (v == null) return
+        this.value = v
+        this.dispatchEvent(new Event('change', { bubbles: true }))
+      }
+    })
+    const timeOf = (name) => rowOf(name).locator('.t-time').innerText()
+    const c = await T.center(rowOf('Gest unu'))
+    await T.drag(c.x + 40, c.y, c.x - 90, c.y)
+    await touch.waitForTimeout(350)
+    const labels = await rowOf('Gest unu').locator('.swipe-right .swipe-btn').evaluateAll((bs) => bs.map((b) => b.getAttribute('aria-label')))
+    check('banda: Dată, Oră, ⋮ — „Oră" e al doilea', JSON.stringify(labels) === JSON.stringify(['Dată', 'Oră', 'Mai multe']), JSON.stringify(labels))
+
+    // Anulat: nimic nu se schimbă.
+    const before = await timeOf('Gest unu')
+    let b = await T.center(rowOf('Gest unu').locator('.swipe-btn[aria-label="Oră"]'))
+    await T.tap(b.x, b.y)
+    await touch.waitForTimeout(500)
+    const calls = await touch.evaluate(() => window.__pickers.slice())
+    check('„Oră" deschide ceasul nativ (input time + showPicker)', JSON.stringify(calls) === '["time"]', JSON.stringify(calls))
+    check('…anularea nu schimbă nimic', (await timeOf('Gest unu')) === before && (await touch.locator('.date-sheet').count()) === 0, `ora="${await timeOf('Gest unu')}"`)
+
+    // Ales 21:45: ora se scrie, cu toast și anulare.
+    await touch.evaluate(() => { window.__pickValue = { time: '21:45' } })
+    if (!/show-right/.test((await rowOf('Gest unu').getAttribute('class')) ?? '')) {
+      const c1 = await T.center(rowOf('Gest unu'))
+      await T.drag(c1.x + 40, c1.y, c1.x - 90, c1.y)
+      await touch.waitForTimeout(350)
+    }
+    b = await T.center(rowOf('Gest unu').locator('.swipe-btn[aria-label="Oră"]'))
+    await T.tap(b.x, b.y)
+    await touch.waitForTimeout(800)
+    const toastT = ((await touch.locator('.toast').textContent()) ?? '').trim()
+    check('ora aleasă se scrie pe rând', (await timeOf('Gest unu')) === '21:45', `ora="${await timeOf('Gest unu')}"`)
+    check('toastul spune „Mutat la 21:45"', /Mutat la 21:45/.test(toastT), `toast="${toastT}"`)
+    await touch.locator('.toast-act').click()
+    await touch.waitForTimeout(800)
+    check('„Anulează" întoarce ora de dinainte', (await timeOf('Gest unu')) === before, `ora="${await timeOf('Gest unu')}"`)
+
+    // Glisarea completă spre stânga: calendarul nativ direct, fără foaia de dată.
+    const target = await touch.evaluate(() => {
+      const d = new Date(); d.setDate(d.getDate() + 3)
+      const p = (n) => String(n).padStart(2, '0')
+      window.__pickValue = { date: `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}` }
+      window.__pickers = []
+      return `${p(d.getDate())}/${p(d.getMonth() + 1)}`
+    })
+    const c2 = await T.center(rowOf('Gest doi'))
+    const startX = c2.box.x + c2.box.width - 40
+    await T.drag(startX, c2.y, startX - c2.box.width * 0.75, c2.y)
+    await touch.waitForTimeout(800)
+    const calls2 = await touch.evaluate(() => window.__pickers.slice())
+    const toast2 = ((await touch.locator('.toast').textContent()) ?? '').trim()
+    check('glisarea completă spre stânga deschide calendarul nativ', JSON.stringify(calls2) === '["date"]' && (await touch.locator('.date-sheet').count()) === 0, JSON.stringify(calls2))
+    check('…și data aleasă mută sarcina din „Azi"', !(await titles()).includes('Gest doi') && toast2.includes(`Mutat pe ${target}`), `toast="${toast2}"`)
+    await touch.locator('.toast-act').click()
+    await touch.waitForTimeout(800)
+    check('…„Anulează" o aduce înapoi', (await titles()).includes('Gest doi'), JSON.stringify(await titles()))
+    await touch.evaluate(() => { window.__pickValue = {} })
+  }
+
   // O atingere scurtă deschide foaia și atât: temporizatorul apăsării lungi
   // se anulează la ridicare. Altfel, după 450 ms, vibra și intra în selecție
   // sub foaie — iar selecția își punea propria intrare, deci Back cerea două.

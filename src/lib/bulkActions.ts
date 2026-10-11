@@ -8,10 +8,15 @@
 // peste schimbarea orei de vară n-are voie să deplaseze ora.
 
 import { moveDue } from './issuePatch'
-import { addDays, startOfLocalDay, toShortDate } from './schedule'
+import { addDays, dayOffset, startOfLocalDay, toShortDate } from './schedule'
 import type { Issue } from './types'
 
-/** Presetările foii de dată. `pick` e „Alege…": o zi, opțional o oră. */
+/**
+ * Presetările foii de dată. `pick` e „Alege data": o zi, opțional o oră.
+ * `time` e „Oră" (ceasul nativ): pune ora, pe ziua PROPRIE a fiecărei sarcini
+ * — sau azi, dacă n-are scadență ori dacă ziua ei a trecut (o oră pusă pe o
+ * restanță de acum trei zile ar lăsa-o restantă, exact unde era).
+ */
 export type DatePreset =
   | { kind: 'today' }
   | { kind: 'tomorrow' }
@@ -19,6 +24,7 @@ export type DatePreset =
   | { kind: 'nextMonday' }
   | { kind: 'none' }
   | { kind: 'pick'; date: Date; time: string | null }
+  | { kind: 'time'; time: string }
 
 export type BulkAction =
   | { kind: 'date'; preset: DatePreset }
@@ -79,15 +85,19 @@ export function datePatch(issue: Issue, preset: DatePreset, now: Date): Fields {
     case 'nextMonday': target = nextMonday(now); break
     case 'none': target = null; break
     case 'pick':
-      target = preset.date
+    case 'time': {
+      target = preset.kind === 'pick'
+        ? preset.date
+        : issue.dueAt && dayOffset(issue.dueAt, now) >= 0 ? new Date(issue.dueAt) : today
       if (preset.time) {
         const [h, m] = preset.time.split(':').map(Number)
-        const t = startOfLocalDay(preset.date)
+        const t = startOfLocalDay(target)
         t.setHours(h, m, 0, 0)
         time = t.toISOString()
         allDay = false
       }
       break
+    }
   }
 
   if (!target) {
@@ -100,7 +110,7 @@ export function datePatch(issue: Issue, preset: DatePreset, now: Date): Fields {
 
   // Fără scadență nu există oră de păstrat: zi întreagă.
   if (!issue.dueAt) {
-    if (preset.kind !== 'pick' || !preset.time) { allDay = true; time = null }
+    if ((preset.kind !== 'pick' && preset.kind !== 'time') || !preset.time) { allDay = true; time = null }
   }
   // „Azi" cu o oră deja trecută ar lăsa sarcina restantă — exact unde era.
   // Devine zi întreagă azi, iar mementoul pleacă: unul în trecut e zgomot.
@@ -201,6 +211,7 @@ function dateWords(preset: DatePreset): string {
     case 'nextMonday': return 'pe luni'
     case 'none': return 'fără dată'
     case 'pick': return `pe ${toShortDate(preset.date)}`
+    case 'time': return `la ${preset.time}`
   }
 }
 

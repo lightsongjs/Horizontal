@@ -78,23 +78,33 @@ export function smartListRange(now: Date): DueRange {
 export const SMART_LIST_DAYS = 7
 
 /**
- * Ordinea: ziua întâi, apoi în interiorul zilei cele fără oră deasupra, apoi
- * cronologic, apoi urgentele (aceeași regulă ca `orderIdsByUrgency`).
+ * Ordinea unui grup din „Azi" / „7 zile" (și din Restanțe):
+ *  1. URGENTELE, oricum ar fi — între ele, cele cu oră cronologic, apoi cele
+ *     fără oră;
+ *  2. sarcinile CU ORĂ, cronologic;
+ *  3. la final cele FĂRĂ ORĂ (toată ziua).
  *
- * Ziua e primul criteriu, nu „fără oră întâi": lista de restanțe se întinde pe
- * mai multe zile, iar o sarcină de zi întreagă de ieri nu are voie să sară
- * peste una cu oră de acum trei zile. În interiorul unei zile, „fără oră"
- * înseamnă „cândva azi", deci stă sus ca plan, nu îngropată între ore.
+ * De ce așa (decizia omului, 2026-10-11): lista e ordinea în care se fac
+ * lucrurile. Urgentul se face primul, fiindcă de-aia e urgent; apoi ce are o
+ * oră fixă, în ordinea orelor; „cândva azi" umple golurile, deci stă la coadă,
+ * nu deasupra unei ședințe de la 9.
+ *
+ * Ziua rămâne criteriu, dar ÎN INTERIORUL fiecărui nivel de urgență: lista de
+ * restanțe se întinde pe mai multe zile, iar acolo o restanță veche rămâne
+ * deasupra uneia de ieri (cea mai veche primul). Într-un grup de o singură zi
+ * ziua e aceeași pentru toate și ordinea e exact cea de mai sus.
+ *
+ * Oglindit în `core/Agenda.kt` (`order`), cu fixtures comune.
  */
 export function compareDue(a: Issue, b: Issue): number {
+  if (a.urgent !== b.urgent) return a.urgent ? -1 : 1
   const at = a.dueAt ? new Date(a.dueAt).getTime() : 0
   const bt = b.dueAt ? new Date(b.dueAt).getTime() : 0
   const ad = a.dueAt ? startOfLocalDay(new Date(a.dueAt)).getTime() : 0
   const bd = b.dueAt ? startOfLocalDay(new Date(b.dueAt)).getTime() : 0
   if (ad !== bd) return ad - bd
-  if (hasTime(a) !== hasTime(b)) return hasTime(a) ? 1 : -1
+  if (hasTime(a) !== hasTime(b)) return hasTime(a) ? -1 : 1
   if (at !== bt) return at - bt
-  if (a.urgent !== b.urgent) return a.urgent ? -1 : 1
   return a.id.localeCompare(b.id)
 }
 

@@ -3,7 +3,7 @@
 // cutia (`core/Agenda.kt`), fiindcă la miezul nopții se schimbă fără date noi.
 // Regula e `buildSmartLists`; fixtures comune în `agenda.fixtures.json`.
 
-import { compareDue, dayOffset, isOverdue, SMART_LIST_DAYS } from './schedule'
+import { dayOffset, isOverdue, SMART_LIST_DAYS } from './schedule'
 import { revealAt } from './routines'
 import type { Issue, Project } from './types'
 
@@ -32,7 +32,11 @@ export function agendaItems(issues: Issue[], projects: Pick<Project, 'id' | 'nam
     if (!isOverdue(it, now) && dayOffset(it.dueAt, now) >= SMART_LIST_DAYS) continue
     byId.set(it.id, it)
   }
-  return [...byId.values()].sort(compareDue).slice(0, AGENDA_LIMIT).map((it) => ({
+  // Cronologic, nu `compareDue`: plafonul taie din viitor, nu din restanțe —
+  // cu urgentele primele, o urgentă de peste o săptămână ar fi împins afară o
+  // sarcină de azi. Ordinea de afișare o face cutia (`core/Agenda.kt`).
+  const chrono = (a: Issue, b: Issue) => Date.parse(a.dueAt!) - Date.parse(b.dueAt!) || a.id.localeCompare(b.id)
+  return [...byId.values()].sort(chrono).slice(0, AGENDA_LIMIT).map((it) => ({
     id: it.id,
     title: it.title,
     project: names.get(it.projectId) ?? null,

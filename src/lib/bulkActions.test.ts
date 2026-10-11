@@ -77,6 +77,31 @@ describe('datePatch', () => {
       dueAt: iso(2026, 10, 9, 14, 15), allDay: false,
     })
   })
+  it('Oră pe o sarcină de viitor: ziua ei, ora nouă, mementoul cu aceeași distanță', () => {
+    const later = { ...timed, dueAt: iso(2026, 10, 6, 9, 30), remindAt: iso(2026, 10, 6, 9, 0) }
+    expect(datePatch(later, { kind: 'time', time: '16:45' }, NOW)).toEqual({
+      dueAt: iso(2026, 10, 6, 16, 45), remindAt: iso(2026, 10, 6, 16, 15),
+    })
+  })
+  it('Oră pe o zi întreagă de mâine: devine cu oră, în aceeași zi, fără memento inventat', () => {
+    const tomorrow = { ...allDay, dueAt: iso(2026, 10, 4) }
+    expect(datePatch(tomorrow, { kind: 'time', time: '08:00' }, NOW)).toEqual({ dueAt: iso(2026, 10, 4, 8, 0), allDay: false })
+  })
+  it('Oră pe o sarcină fără dată sau restantă: azi, la ora aleasă', () => {
+    expect(datePatch(base, { kind: 'time', time: '18:00' }, NOW)).toEqual({ dueAt: iso(2026, 10, 3, 18, 0), allDay: false })
+    expect(datePatch(allDay, { kind: 'time', time: '18:00' }, NOW)).toEqual({ dueAt: iso(2026, 10, 3, 18, 0), allDay: false })
+    expect(datePatch(timed, { kind: 'time', time: '18:00' }, NOW)).toEqual({ dueAt: iso(2026, 10, 3, 18, 0), remindAt: iso(2026, 10, 3, 17, 30) })
+  })
+  it('Oră pe o recurentă mută seria: scadența ia ora, `rrule` rămâne', () => {
+    const rec = { ...recurring, dueAt: iso(2026, 10, 3, 9, 30), remindAt: null }
+    const p = datePatch(rec, { kind: 'time', time: '20:00' }, NOW)
+    expect(p).toEqual({ dueAt: iso(2026, 10, 3, 20, 0) })
+    expect('rrule' in p).toBe(false)
+  })
+  it('Oră pe aceeași oră nu scrie nimic', () => {
+    const later = { ...timed, dueAt: iso(2026, 10, 6, 9, 30) }
+    expect(datePatch(later, { kind: 'time', time: '09:30' }, NOW)).toEqual({})
+  })
   it('nu atinge recurența — se mută doar apariția curentă', () => {
     expect('rrule' in datePatch(recurring, { kind: 'tomorrow' }, NOW)).toBe(false)
   })
@@ -127,6 +152,13 @@ describe('recurente în selecție', () => {
     expect(countRecurring([timed, recurring])).toBe(1)
     expect(canClearDate([timed, recurring])).toBe(false)
     expect(canClearDate([timed])).toBe(true)
+  })
+})
+
+describe('toast la Oră', () => {
+  it('spune ora', () => {
+    expect(bulkNotice({ kind: 'date', preset: { kind: 'time', time: '15:30' } }, 1, 0)).toBe('Mutat la 15:30')
+    expect(bulkNotice({ kind: 'date', preset: { kind: 'time', time: '15:30' } }, 3, 0)).toBe('3 mutate la 15:30')
   })
 })
 

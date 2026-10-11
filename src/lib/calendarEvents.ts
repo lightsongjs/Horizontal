@@ -157,16 +157,20 @@ export type DayRow =
 
 /**
  * Sarcinile zilei (deja în ordinea `compareDue`) cu evenimentele cu oră,
- * amestecate pe oră. Sarcinile FĂRĂ oră rămân sus — „cândva azi" e planul
- * zilei, nu ceva ce se întâmplă la 00:00. La aceeași oră evenimentul vine
- * întâi: o ședință la 10 nu se mută, o sarcină de la 10 da.
+ * amestecate pe oră. Ordinea zilei rămâne a lui `compareDue`: urgentele sus
+ * (evenimentele nu intră între ele — urgentul e „primul lucru", nu o oră),
+ * apoi sarcinile cu oră împreună cu evenimentele, cronologic, iar la coadă
+ * cele FĂRĂ oră. La aceeași oră evenimentul vine întâi: o ședință la 10 nu se
+ * mută, o sarcină de la 10 da.
  */
 export function mergeDay(issues: Issue[], timed: EventOccurrence[]): DayRow[] {
   const out: DayRow[] = []
   const timedIssues: Issue[] = []
+  const untimed: DayRow[] = []
   for (const it of issues) {
-    if (hasTime(it)) timedIssues.push(it)
-    else out.push({ kind: 'issue', issue: it })
+    if (it.urgent) out.push({ kind: 'issue', issue: it })
+    else if (hasTime(it)) timedIssues.push(it)
+    else untimed.push({ kind: 'issue', issue: it })
   }
   let i = 0
   let j = 0
@@ -176,7 +180,7 @@ export function mergeDay(issues: Issue[], timed: EventOccurrence[]): DayRow[] {
     if (ev && (!it || ev.startMs <= Date.parse(it.dueAt!))) { out.push({ kind: 'event', occ: ev }); j++ }
     else { out.push({ kind: 'issue', issue: it }); i++ }
   }
-  return out
+  return out.concat(untimed)
 }
 
 /** Ora din rând: `10:00–11:00`; pe a doua zi a unui multi-zi, nimic (stă în bandă). */
