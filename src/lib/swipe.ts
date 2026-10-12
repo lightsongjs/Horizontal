@@ -17,9 +17,9 @@ export const EDGE_PX = 24
 /** Glisarea completă: peste 55% din lățimea rândului. */
 export const FULL_RATIO = 0.55
 
-/** Lățimea benzii dezvăluite: un buton rotund pe stânga, trei pe dreapta. */
+/** Lățimea benzii dezvăluite: un buton rotund pe stânga, patru pe dreapta. */
 export const REVEAL_LEFT = 72
-export const REVEAL_RIGHT = 172
+export const REVEAL_RIGHT = 222
 
 export type Axis = 'pending' | 'h' | 'v'
 
@@ -55,13 +55,16 @@ export function restOffset(rest: Rest): number {
 export const FULL_MARGIN = 24
 
 /**
- * Pragul glisării complete, în px, pentru un rând de `width`: 55% din rând,
- * dar niciodată sub banda din dreapta plus o margine. La 320px rândul are
- * ~292px, iar 55% (160px) cădea SUB banda de 172px: un rând deschis, tras
- * încă puțin, executa în loc să rămână deschis.
+ * Pragul glisării complete, în px, pentru un rând de `width`, pe direcția
+ * gestului (`offset` < 0 = spre stânga): 55% din rând, dar niciodată sub
+ * banda dezvăluită pe partea aceea plus o margine. La 320px rândul are ~292px,
+ * iar 55% (160px) cade SUB banda din dreapta: un rând deschis, tras încă
+ * puțin, ar executa în loc să rămână deschis. Pe direcții separate, ca banda
+ * lată din dreapta să nu ridice și pragul lui „Mâine".
  */
-export function fullThreshold(width: number): number {
-  return Math.max(Math.round(width * FULL_RATIO), REVEAL_RIGHT + FULL_MARGIN)
+export function fullThreshold(width: number, offset: number): number {
+  const band = offset < 0 ? REVEAL_RIGHT : REVEAL_LEFT
+  return Math.max(Math.round(width * FULL_RATIO), band + FULL_MARGIN)
 }
 
 /**
@@ -79,7 +82,7 @@ export function dragOffset(rest: Rest, dx: number, width: number): number {
 
 /** Dincolo de prag: banda se colorează și telefonul vibrează o dată. */
 export function crossedFull(offset: number, width: number): boolean {
-  return Math.abs(offset) >= fullThreshold(width)
+  return Math.abs(offset) >= fullThreshold(width, offset)
 }
 
 export type Release =
@@ -92,8 +95,8 @@ export type Release =
  * benzii, banda rămâne deschisă (butoanele se apasă); altfel rândul se închide.
  */
 export function release(offset: number, width: number): Release {
-  if (offset >= fullThreshold(width)) return { kind: 'commit-right' }
-  if (-offset >= fullThreshold(width)) return { kind: 'full-left' }
+  if (offset >= fullThreshold(width, offset)) return { kind: 'commit-right' }
+  if (-offset >= fullThreshold(width, offset)) return { kind: 'full-left' }
   if (offset >= REVEAL_LEFT / 2) return { kind: 'rest', rest: 'left' }
   if (-offset >= REVEAL_RIGHT / 2) return { kind: 'rest', rest: 'right' }
   return { kind: 'rest', rest: 'closed' }

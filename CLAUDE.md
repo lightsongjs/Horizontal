@@ -644,7 +644,7 @@ omului, 2026-10-07). În proiect se văd toate, ca listă de rutine. Mementouril
 ## Gesturile de pe telefon — glisare și selecție
 
 Sub 900px, rândurile din listele inteligente se glisează (dreapta: „Mâine";
-stânga: Dată, Oră, ⋮ — Urgent e în ⋮) și intră în selecție la apăsare lungă. Pragurile și
+stânga: Dată, Oră, Șterge, ⋮ — Urgent e în ⋮) și intră în selecție la apăsare lungă. Pragurile și
 blocarea direcției sunt în `src/lib/swipe.ts`, calculul scrierilor în
 `src/lib/bulkActions.ts` — amândouă pure, cu fixtures. Pe desktop nu se
 schimbă nimic: `TaskRow` randează același buton ca înainte.

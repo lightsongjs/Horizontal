@@ -28,13 +28,18 @@ describe('praguri', () => {
     expect(inEdge(200, 390)).toBe(false)
   })
   it('glisarea completă e la 55% din rând', () => {
-    expect(fullThreshold(360)).toBe(198)
+    expect(fullThreshold(360, 1)).toBe(198)
     expect(crossedFull(197, 360)).toBe(false)
-    expect(crossedFull(-198, 360)).toBe(true)
+    expect(crossedFull(198, 360)).toBe(true)
+    expect(fullThreshold(480, -1)).toBe(264)
   })
-  it('pe rândurile înguste (320px) pragul stă peste banda deschisă', () => {
-    for (const w of [288, 292, 328, 358, 398]) expect(fullThreshold(w)).toBeGreaterThan(REVEAL_RIGHT)
+  it('spre stânga pragul stă peste banda deschisă (patru butoane)', () => {
+    for (const w of [288, 292, 328, 358, 398]) expect(fullThreshold(w, -1)).toBeGreaterThan(REVEAL_RIGHT)
     expect(release(-REVEAL_RIGHT - 10, 292)).toEqual({ kind: 'rest', rest: 'right' })
+    expect(crossedFull(-REVEAL_RIGHT - 10, 360)).toBe(false)
+  })
+  it('banda lată din dreapta nu ridică pragul lui „Mâine"', () => {
+    expect(fullThreshold(360, 1)).toBeLessThan(fullThreshold(360, -1))
   })
 })
 
@@ -59,11 +64,11 @@ describe('release', () => {
   it('stânga peste prag → foaia de dată, nu o acțiune', () => expect(release(-250, w)).toEqual({ kind: 'full-left' }))
   it('peste jumătatea benzii rămâne deschis', () => {
     expect(release(40, w)).toEqual({ kind: 'rest', rest: 'left' })
-    expect(release(-90, w)).toEqual({ kind: 'rest', rest: 'right' })
+    expect(release(-REVEAL_RIGHT / 2, w)).toEqual({ kind: 'rest', rest: 'right' })
   })
   it('altfel se închide', () => {
     expect(release(20, w)).toEqual({ kind: 'rest', rest: 'closed' })
-    expect(release(-60, w)).toEqual({ kind: 'rest', rest: 'closed' })
+    expect(release(-REVEAL_RIGHT / 2 + 1, w)).toEqual({ kind: 'rest', rest: 'closed' })
   })
 })
 

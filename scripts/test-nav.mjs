@@ -687,7 +687,7 @@ try {
     await touch.waitForTimeout(350)
     const open = /show-right/.test((await rowOf('Gest unu').getAttribute('class')) ?? '')
     const btns = await rowOf('Gest unu').locator('.swipe-right .swipe-btn').count()
-    check('glisarea scurtă spre stânga deschide banda', open && btns === 3, `deschisă=${open}, butoane=${btns}`)
+    check('glisarea scurtă spre stânga deschide banda', open && btns === 4, `deschisă=${open}, butoane=${btns}`)
     check('banda nu deschide foaia', (await touch.locator('.edit-sheet').count()) === 0, 'fără foaie')
     // Un alt rând glisat închide primul: unul singur deschis.
     const c2 = await T.center(rowOf('Gest doi'))
@@ -733,7 +733,7 @@ try {
     await openStrip('Gest unu')
     const labels = await rowOf('Gest unu').locator('.swipe-right .swipe-btn').evaluateAll((bs) =>
       bs.map((b) => b.getAttribute('aria-label') ?? b.querySelector('input')?.getAttribute('aria-label')))
-    check('banda: Dată, Oră, ⋮ — „Oră" e al doilea', JSON.stringify(labels) === JSON.stringify(['Dată', 'Oră', 'Mai multe']), JSON.stringify(labels))
+    check('banda: Dată, Oră, Șterge, ⋮ — „Oră" e al doilea', JSON.stringify(labels) === JSON.stringify(['Dată', 'Oră', 'Șterge', 'Mai multe']), JSON.stringify(labels))
 
     const under = (label) => rowOf('Gest unu').locator(`.swipe-btn:has(input[aria-label="${label}"])`).evaluate((btn) => {
       const r = btn.getBoundingClientRect()

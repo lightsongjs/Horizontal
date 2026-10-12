@@ -35,7 +35,7 @@ const vibrate = (ms: number) => {
  * Aceeași gramatică de clase ca `.list-row` din ListView — ținută în sincron
  * intenționat, ca cele două liste ale aplicației să arate ca una.
  *
- * Pe telefon rândul se și glisează (dreapta: „Mâine"; stânga: Dată, Oră, ⋮
+ * Pe telefon rândul se și glisează (dreapta: „Mâine"; stânga: Dată, Oră, Șterge, ⋮
  * — Urgent e în ⋮) și intră în selecție la apăsare lungă. Dată și Oră sunt
  * inputuri native sub deget: calendarul / ceasul sistemului (`NativePick`). Pragurile sunt în `lib/swipe`;
  * aici doar se citește degetul. Pe desktop nu se schimbă nimic.
@@ -305,6 +305,15 @@ function SwipeRow({ issue, cls, onOpen, canWrite, selecting, selected, children 
             >
               <Icon name="dueTime" size={18} />
             </NativePick>
+            <button
+              type="button"
+              className="swipe-btn danger"
+              aria-label="Șterge"
+              tabIndex={rest === 'right' ? 0 : -1}
+              onClick={() => { close(); ta.remove([issue.id]) }}
+            >
+              <Icon name="delete" size={18} />
+            </button>
             <button
               type="button"
               className="swipe-btn"

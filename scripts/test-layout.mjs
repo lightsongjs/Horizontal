@@ -650,9 +650,9 @@ for (const width of PHONE_WIDTHS) {
  * (`TaskRow.tsx`). Bara de jos are cinci butoane, nu patru ca bara de tab-uri,
  * deci la 320px fiecare primește mai puțin; banda din dreapta trebuie să
  * încapă în lățimea pe care o dezvăluie glisarea (`REVEAL_RIGHT` din
- * `src/lib/swipe.ts` — 172px), altfel ultimul buton rămâne sub rând.
+ * `src/lib/swipe.ts` — 222px), altfel ultimul buton rămâne sub rând.
  */
-const REVEAL_RIGHT = 172
+const REVEAL_RIGHT = 222
 const REVEAL_LEFT = 72
 const selection = () => `
 <header class="sel-head">
@@ -670,6 +670,7 @@ const selection = () => `
       <div class="swipe-strip swipe-right">
         <span class="native-pick swipe-btn lead" data-pick="date"><svg width="18" height="18"></svg><input type="date" class="native-pick-input" aria-label="Dată"></span>
         <span class="native-pick swipe-btn" data-pick="time"><svg width="18" height="18"></svg><input type="time" class="native-pick-input" aria-label="Oră"></span>
+        <button class="swipe-btn danger" aria-label="Șterge"><svg width="18" height="18"></svg></button>
         <button class="swipe-btn" aria-label="Mai multe"><svg width="18" height="18"></svg></button>
       </div>
       <button class="list-row task-row" style="transform: translateX(-${REVEAL_RIGHT}px)">
@@ -733,7 +734,7 @@ for (const width of PHONE_WIDTHS) {
       btnSize: Math.round(Math.min(...srBtns.map((b) => r(b).width))),
       invisible: [...srBtns, slBtn].filter((b) => bgOf(b) === 'rgba(0, 0, 0, 0)').length,
       noBorder: [...srBtns, slBtn].every((b) => getComputedStyle(b).borderStyle === 'none' || getComputedStyle(b).borderWidth === '0px'),
-      // Ordinea benzii: Dată, Oră, ⋮ (Urgent e în ⋮).
+      // Ordinea benzii: Dată, Oră, Șterge, ⋮ (Urgent e în ⋮).
       order: srBtns.map((b) => b.getAttribute('aria-label') ?? b.querySelector('input')?.getAttribute('aria-label')).join(','),
       // Dată și Oră: aceeași greutate (fundal identic, fără accent umplut).
       equalPick: bgOf(srBtns[0]) === bgOf(srBtns[1]),
@@ -755,11 +756,13 @@ for (const width of PHONE_WIDTHS) {
   check(`butoanele barei nestrivite @${width}px`, m.narrowestBtn >= 48, `cel mai îngust ${m.narrowestBtn}px`)
   check(`etichetele barei netăiate @${width}px`, !m.clippedLabel, m.clippedLabel ? 'o etichetă e tăiată' : 'întregi')
   check(`antetul selecției încape @${width}px`, m.headOverflow <= 0 && m.allInside && !m.countClipped, `overflow=${m.headOverflow}px, Toate în ecran=${m.allInside}, număr tăiat=${m.countClipped}`)
-  check(`banda din dreapta încape în ${REVEAL_RIGHT}px @${width}px`, m.stripFits, m.stripFits ? 'toate trei în zona dezvăluită' : 'un buton rămâne sub rând')
-  check(`banda din dreapta: Dată, Oră, ⋮ @${width}px`, m.order === 'Dată,Oră,Mai multe', m.order)
+  check(`banda din dreapta încape în ${REVEAL_RIGHT}px @${width}px`, m.stripFits, m.stripFits ? 'toate patru în zona dezvăluită' : 'un buton rămâne sub rând')
+  check(`banda din dreapta: Dată, Oră, Șterge, ⋮ @${width}px`, m.order === 'Dată,Oră,Șterge,Mai multe', m.order)
   check(`Dată și Oră egale, neutre @${width}px`, m.equalPick, m.equalPick ? 'același fundal' : 'fundaluri diferite')
   check(`inputul nativ acoperă tot butonul @${width}px`, m.pickCovers, m.pickCovers ? 'da' : 'nu')
-  check(`banda deschisă lasă rândul lizibil @${width}px`, m.rowLeft >= 110, `rămân ${m.rowLeft}px din rând`)
+  // Cu Șterge pe bandă (cererea omului, 2026-10-12) rândul cedează mai mult:
+  // la 320px rămân ~70px — bifa și începutul titlului, destul cât să știi pe ce rând ești.
+  check(`banda deschisă lasă rândul lizibil @${width}px`, m.rowLeft >= 64, `rămân ${m.rowLeft}px din rând`)
   check(`foaia de dată (7 opțiuni) încape @${width}px`, m.dsOverflow <= 0 && !m.dsClipped, `overflow=${m.dsOverflow}px, tăiat=${m.dsClipped}`)
   check(`banda din stânga încape în ${REVEAL_LEFT}px @${width}px`, m.leftFits, m.leftFits ? 'Mâine în zona dezvăluită' : 'sub rând')
   check(`butoanele benzii rotunde @${width}px`, m.round && m.btnSize >= 40, `${m.btnSize}px, rotunde=${m.round}`)
