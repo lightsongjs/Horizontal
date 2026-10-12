@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="ro" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Descrierea în Markdown</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;0,7..72,700;1,7..72,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" />
+<style>
+/* Jetoanele copiate din :root / [data-theme='light'] din src/styles.css */
+:root {
+  --bg: #0B0B0E; --surface: #16161A; --surface-2: #1E1E23; --surface-3: #26262C;
+  --line: #2A2A2E; --line-soft: #1B1B1F;
+  --txt: #FAFAF9; --txt-dim: #9C9CA2; --txt-faint: #6B6B70;
+  --accent: #818CF8; --accent-2: #6366F1; --accent-soft: rgba(129,140,248,0.13);
+  --done: #63B79F; --done-soft: rgba(99,183,159,0.13);
+  --blocked: #DF8B84; --active: #D9A661;
+  --r: 16px; --r-m: 10px; --r-s: 6px;
+  --amb: inset 0 1px 0 rgba(255,255,255,0.055), 0 6px 24px rgba(0,0,0,0.42);
+  --amb-lg: inset 0 1px 0 rgba(255,255,255,0.07), 0 18px 48px rgba(0,0,0,0.55);
+  --layer-0: #8B93F7; --layer-1: #7FA0DE; --layer-2: #77ADC4;
+  --on-accent: var(--bg);
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --display: 'Literata', 'Iowan Old Style', Georgia, serif;
+  --kbd: #2B2B31; --kbd-key: #3A3A42;
+  color-scheme: dark;
+}
+[data-theme='light'] {
+  --bg: #F7F9FC; --surface: #FFFFFF; --surface-2: #F0F4F8; --surface-3: #E8EFF4;
+  --line: rgba(168,179,187,0.38); --line-soft: rgba(168,179,187,0.18);
+  --txt: #29343A; --txt-dim: #566168; --txt-faint: #717C84;
+  --accent: #1A237E; --accent-2: #151B60; --accent-soft: rgba(26,35,126,0.08);
+  --done: #2F6B4F; --done-soft: rgba(47,107,79,0.10);
+  --blocked: #A0333F; --active: #8A5A18;
+  --amb: 0 6px 24px rgba(41,52,58,0.06);
+  --amb-lg: 0 18px 48px rgba(41,52,58,0.10);
+  --layer-0: #3A43A8; --layer-1: #2F5C93; --layer-2: #2A6E7E;
+  --kbd: #D5DBE1; --kbd-key: #FFFFFF;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--txt);
+  font-family: var(--display); font-size: 15px; line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.ico { width: 18px; height: 18px; flex-shrink: 0; stroke: currentColor; fill: none;
+  stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ——— Cadrul paginii de mockup ——— */
+.top {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; gap: 16px; justify-content: space-between;
+  padding: 14px 24px; background: var(--surface); box-shadow: var(--amb);
+}
+.top h1 { margin: 0; font-size: 18px; font-weight: 600; }
+.top .sub { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--txt-dim); }
+.seg { display: flex; gap: 4px; background: var(--surface-2); padding: 3px; border-radius: var(--r-s); }
+.seg button {
+  font-family: var(--mono); font-size: 12px; border: 0; cursor: pointer;
+  padding: 6px 12px; border-radius: var(--r-s); background: transparent; color: var(--txt-dim);
+  display: flex; align-items: center; gap: 6px;
+}
+.seg button.on { background: var(--surface); color: var(--txt); box-shadow: var(--amb); }
+.seg .ico { width: 14px; height: 14px; }
+
+main { max-width: 1320px; margin: 0 auto; padding: 32px 24px 80px; }
+.sec { margin-bottom: 64px; }
+.sec-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; }
+.sec-num { font-family: var(--mono); font-size: 12px; color: var(--accent); }
+.sec-head h2 { margin: 0; font-size: 20px; font-weight: 600; }
+.sec-note { color: var(--txt-dim); margin: 0 0 24px; max-width: 72ch; }
+.row { display: flex; flex-wrap: wrap; gap: 40px; align-items: flex-start; }
+.cap { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--txt-faint); margin: 0 0 10px; }
+
+/* ——— Telefonul ——— */
+.phone {
+  width: 390px; max-width: 100%; height: 820px; position: relative; overflow: hidden;
+  background: var(--bg); border-radius: 28px; box-shadow: var(--amb-lg);
+  display: flex; flex-direction: column;
+}
+.phone .behind { flex: 1; padding: 56px 20px 0; opacity: .35; }
+.behind .bh { height: 14px; border-radius: var(--r-s); background: var(--surface-2); margin-bottom: 14px; }
+.sheet {
+  position: absolute; left: 0; right: 0; bottom: 0; top: 64px;
+  background: var(--surface); border-radius: var(--r) var(--r) 0 0; box-shadow: var(--amb-lg);
+  display: flex; flex-direction: column;
+}
+.grab { width: 36px; height: 4px; border-radius: 2px; background: var(--surface-3); margin: 8px auto 4px; }
+.sh-head { display: flex; align-items: center; gap: 10px; padding: 6px 16px 0; }
+.sh-id { font-family: var(--mono); font-size: 12px; color: var(--txt-dim); }
+.sh-head .sp { flex: 1; }
+.icon-btn { width: 34px; height: 34px; display: grid; place-items: center; border: 0; background: transparent;
+  color: var(--txt-dim); border-radius: var(--r-s); cursor: pointer; }
+.sh-titlerow { display: flex; gap: 12px; align-items: flex-start; padding: 10px 16px 4px; }
+.done-tick { width: 24px; height: 24px; margin-top: 3px; border-radius: 50%; flex-shrink: 0;
+  box-shadow: inset 0 0 0 1.5px var(--txt-faint); }
+.sh-title { font-size: 21px; font-weight: 600; line-height: 1.3; margin: 0; }
+.chips { display: flex; gap: 6px; padding: 8px 16px 6px 52px; flex-wrap: wrap; }
+.chip { font-family: var(--mono); font-size: 12px; padding: 4px 9px; border-radius: var(--r-s);
+  background: var(--surface-2); color: var(--txt-dim); display: inline-flex; align-items: center; gap: 5px; }
+.chip .ico { width: 13px; height: 13px; }
+.chip.acc { color: var(--accent); }
+.sh-body { flex: 1; overflow-y: auto; padding: 6px 16px 24px; }
+
+/* ——— Descrierea randată ——— */
+.md {
+  font-family: var(--display); font-size: 16px; line-height: 1.6; color: var(--txt);
+  border-radius: var(--r-m); padding: 6px 4px;
+}
+.md.editing { box-shadow: 0 0 0 2px var(--accent-soft); padding: 6px 10px; }
+.md > :first-child { margin-top: 0; }
+.md p { margin: 0 0 .65em; }
+.md h1, .md h2, .md h3 { margin: 1.3em 0 .35em; line-height: 1.3; }
+.md h1 { font-size: 20px; font-weight: 600; }
+.md h2 { font-size: 17px; font-weight: 600; }
+.md h3 { font-family: var(--mono); font-size: 12px; font-weight: 500; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--txt-dim); }
+.md strong { font-weight: 600; }
+.md code { font-family: var(--mono); font-size: .86em; background: var(--surface-3);
+  padding: 1px 5px; border-radius: var(--r-s); }
+.md pre { font-family: var(--mono); font-size: 13px; line-height: 1.55; margin: 0 0 .65em;
+  background: var(--surface-3); border-radius: var(--r-m); padding: 12px 14px; overflow-x: auto; }
+.md pre code { background: none; padding: 0; font-size: inherit; }
+.md a { color: var(--accent); text-decoration: underline; text-decoration-thickness: 1px;
+  text-underline-offset: 3px; text-decoration-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+.md a.ref { font-family: var(--mono); font-size: .9em; }
+.md blockquote { margin: 0 0 .65em; padding-left: 14px; font-style: italic; color: var(--txt-dim); }
+.md hr { border: 0; margin: 1em 0; text-align: center; height: auto; }
+.md hr::after { content: "⁂"; font-family: var(--mono); color: var(--txt-faint); font-size: 14px; letter-spacing: .3em; }
+
+.md ul, .md ol { list-style: none; margin: 0 0 .65em; padding: 0; }
+.md li { margin: .15em 0; position: relative; padding-left: 1.4em; }
+.md ul.bul > li::before { content: ""; position: absolute; left: .45em; top: .72em;
+  width: 5px; height: 5px; border-radius: 50%; background: var(--txt-faint); }
+.md ol { counter-reset: n; }
+.md ol > li { counter-increment: n; padding-left: 1.8em; }
+.md ol > li::before { content: counter(n) "."; position: absolute; left: 0; top: .1em;
+  font-family: var(--mono); font-size: .82em; color: var(--txt-dim); font-variant-numeric: tabular-nums; }
+
+/* Căsuțele */
+.md ul.task > li { padding-left: 1.75em; transition: color 120ms; }
+.md ul.task ul.task { margin: .15em 0 0; }
+.md ul.task li.sub { margin-left: 1.4em; }
+.cb { position: absolute; left: 0; top: .2em; width: 18px; height: 18px; border-radius: var(--r-s);
+  box-shadow: inset 0 0 0 1.5px var(--txt-faint); background: transparent; border: 0; padding: 0;
+  cursor: pointer; display: grid; place-items: center; transition: background 120ms, box-shadow 120ms; }
+.cb svg { width: 13px; height: 13px; stroke: var(--bg); stroke-width: 3; fill: none;
+  stroke-linecap: round; stroke-linejoin: round; opacity: 0; transition: opacity 120ms; }
+li.checked > .cb { background: var(--accent); box-shadow: none; }
+li.checked > .cb svg { opacity: 1; }
+li.checked > .t { color: var(--txt-faint); text-decoration: line-through; text-decoration-thickness: 1px; transition: color 120ms; }
+.t { transition: color 120ms; }
+
+/* Modul editare: rândul activ își arată sintaxa inline */
+.syn { color: var(--txt-faint); font-family: var(--mono); font-size: .86em; font-weight: 400; }
+.caret { display: inline-block; width: 2px; height: 1.15em; vertical-align: -.2em;
+  background: var(--accent); margin: 0 -1px; animation: blink 1.05s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+li.active-line { background: var(--accent-soft); border-radius: var(--r-s); margin-left: -6px;
+  padding-left: calc(1.75em + 6px); padding-right: 6px; }
+li.active-line > .cb { left: 6px; }
+
+.fmtbar { display: flex; gap: 4px; padding: 6px 10px; background: var(--surface-2); }
+.fmtbar button { flex: 1; height: 40px; border: 0; background: transparent; color: var(--txt-dim);
+  border-radius: var(--r-s); display: grid; place-items: center; cursor: pointer; }
+.fmtbar button.on { color: var(--accent); background: var(--accent-soft); }
+.fmtbar .ico { width: 20px; height: 20px; }
+.fmtbar .b { font-family: var(--display); font-weight: 700; font-size: 18px; }
+.keyboard { height: 268px; background: var(--kbd); padding: 10px 4px; display: grid; gap: 9px;
+  grid-template-rows: repeat(4, 1fr); }
+.krow { display: flex; gap: 5px; justify-content: center; }
+.krow span { flex: 1; max-width: 33px; border-radius: var(--r-s); background: var(--kbd-key); }
+.krow span.w { max-width: none; flex: 5; }
+.krow span.m { max-width: 46px; flex: 1.4; opacity: .7; }
+
+/* ——— Desktop ——— */
+.desk { flex: 1; min-width: 0; max-width: 1180px; border-radius: var(--r); background: var(--bg);
+  box-shadow: var(--amb-lg); overflow: hidden; display: grid; grid-template-columns: 380px 1fr; min-height: 720px; }
+.d-list { padding: 18px 0; background: var(--bg); }
+.d-list .lh { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--txt-faint); padding: 0 18px 10px; }
+.lrow { display: flex; align-items: center; gap: 10px; padding: 10px 18px; position: relative; }
+.lrow + .lrow::before { content: ""; position: absolute; top: 0; left: 46px; right: 18px; height: 1px; background: var(--line-soft); }
+.lrow .ring { width: 18px; height: 18px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--txt-faint); flex-shrink: 0; }
+.lrow .lid { font-family: var(--mono); font-size: 11px; color: var(--txt-faint); width: 44px; flex-shrink: 0; }
+.lrow .ltitle { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lrow.sel { background: var(--surface); box-shadow: var(--amb); border-radius: var(--r-m); margin: 0 8px; padding: 10px 10px; }
+.lrow.sel::before, .lrow.sel + .lrow::before { display: none; }
+.lrow.sel .ltitle { font-weight: 600; }
+.prog { font-family: var(--mono); font-size: 11.5px; color: var(--txt-dim); font-variant-numeric: tabular-nums;
+  display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.prog .ico { width: 12px; height: 12px; }
+.prog.full { color: var(--done); }
+.due { font-family: var(--mono); font-size: 11.5px; color: var(--txt-dim); flex-shrink: 0; }
+
+.card-demo { margin: 22px 18px 0; padding: 14px 14px 12px; border-radius: var(--r-m);
+  background: var(--surface); box-shadow: var(--amb); }
+.card-demo .ct { display: flex; gap: 8px; align-items: baseline; }
+.card-demo .ct b { font-weight: 600; flex: 1; }
+.card-demo .meta { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
+.card-demo .lnum { font-family: var(--mono); font-size: 11px; color: var(--layer-1); }
+.d-form { background: var(--surface); padding: 24px 40px 40px; overflow: auto; }
+.d-form .fhead { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.d-form .ftitle { font-size: 26px; font-weight: 600; line-height: 1.25; margin: 0 0 12px; }
+.fgrid { display: grid; grid-template-columns: minmax(0, 68ch) 220px; gap: 40px; }
+.fcol .md { max-width: 68ch; }
+.side .k { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--txt-faint); margin: 0 0 4px; }
+.side .v { margin: 0 0 18px; color: var(--txt); font-size: 14px; }
+.side .v.mono { font-family: var(--mono); font-size: 13px; }
+
+/* ——— Înainte / după ——— */
+.ba { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+.ba-col { background: var(--surface); border-radius: var(--r); box-shadow: var(--amb); padding: 20px; }
+.old-desc { font-family: var(--mono); font-size: 13px; line-height: 1.5; white-space: pre-wrap;
+  background: rgba(0,0,0,.15); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; color: var(--txt); margin: 0; }
+.tag { display: inline-block; font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
+  margin-bottom: 12px; color: var(--txt-dim); }
+.tag.new { color: var(--accent); }
+
+@media (max-width: 1100px) {
+  .desk { grid-template-columns: 1fr; }
+  .fgrid { grid-template-columns: 1fr; }
+  .ba { grid-template-columns: 1fr; }
+}
+@media (max-width: 480px) {
+  main { padding: 20px 16px 60px; }
+  .top { padding: 12px 16px; flex-wrap: wrap; }
+  .d-form { padding: 20px 16px; }
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+  <symbol id="i-clip" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></symbol>
+  <symbol id="i-task" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="m8 12 3 3 5-6"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h12M9 12h12M9 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></symbol>
+  <symbol id="i-indent" viewBox="0 0 24 24"><path d="M21 6H11M21 12H11M21 18H3M3 6v8l4-4z"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></symbol>
+  <symbol id="i-boxes" viewBox="0 0 24 24"><rect x="3" y="5" width="6" height="6" rx="1"/><path d="m3 17 2 2 4-4M13 6h8M13 12h8M13 18h8"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
+</svg>
+
+<header class="top">
+  <div>
+    <h1>Descrierea în Markdown</h1>
+    <div class="sub">Mockup · Scholarly Editorial · 2026-10-12</div>
+  </div>
+  <div class="seg" role="group" aria-label="Temă">
+    <button data-t="dark" class="on"><svg class="ico"><use href="#i-moon"/></svg>Închis</button>
+    <button data-t="light"><svg class="ico"><use href="#i-sun"/></svg>Deschis</button>
+  </div>
+</header>
+
+<main>
+
+<!-- ============ 1 + 2: TELEFON ============ -->
+<section class="sec">
+  <div class="sec-head"><span class="sec-num">01 · 02</span><h2>Foaia de tichet pe telefon</h2></div>
+  <p class="sec-note">Stânga: citire — câmpul n-are fundal, nici chenar; căsuțele se bifează direct, fără să intri în editare (încearcă). Dreapta: editare — doar un inel de 2px <code style="font-family:var(--mono);font-size:.86em">--accent-soft</code>; rândul cu cursorul își arată sintaxa inline estompată, restul rămâne randat. Bara de formatare stă lipită de tastatură.</p>
+
+  <div class="row">
+    <div>
+      <p class="cap">Citire</p>
+      <div class="phone">
+        <div class="behind"><div class="bh" style="width:40%"></div><div class="bh"></div><div class="bh" style="width:80%"></div></div>
+        <div class="sheet">
+          <div class="grab"></div>
+          <div class="sh-head">
+            <span class="sh-id">HZ-47</span><span class="sp"></span>
+            <button class="icon-btn" aria-label="Mai mult"><svg class="ico"><use href="#i-more"/></svg></button>
+            <button class="icon-btn" aria-label="Închide"><svg class="ico"><use href="#i-close"/></svg></button>
+          </div>
+          <div class="sh-titlerow">
+            <span class="done-tick"></span>
+            <h3 class="sh-title">Migrarea scadențelor pe producție</h3>
+          </div>
+          <div class="chips">
+            <span class="chip acc"><svg class="ico"><use href="#i-cal"/></svg>Mâine 10:00</span>
+            <span class="chip"><svg class="ico"><use href="#i-boxes"/></svg>2/5</span>
+            <span class="chip"><svg class="ico"><use href="#i-clip"/></svg></span>
+          </div>
+          <div class="sh-body">
+            <div class="md" data-md="phone"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <p class="cap">Editare · cursor pe un rând de căsuță</p>
+      <div class="phone">
+        <div class="behind"><div class="bh" style="width:40%"></div></div>
+        <div class="sheet" style="top:36px">
+          <div class="grab"></div>
+          <div class="sh-head">
+            <span class="sh-id">HZ-47</span><span class="sp"></span>
+            <button class="icon-btn" aria-label="Mai mult"><svg class="ico"><use href="#i-more"/></svg></button>
+          </div>
+          <div class="sh-titlerow">
+            <span class="done-tick"></span>
+            <h3 class="sh-title">Migrarea scadențelor pe producție</h3>
+          </div>
+          <div class="sh-body" style="padding-top:10px">
+            <div class="md editing">
+              <h2>Pași</h2>
+              <ul class="task">
+                <li class="checked"><button class="cb"><svg><use href="#i-check"/></svg></button><span class="t">Backup la baza de producție</span></li>
+                <li class="checked"><button class="cb"><svg><use href="#i-check"/></svg></button><span class="t">Rulat <code>migration-todo.sql</code> pe staging</span></li>
+                <li class="active-line"><button class="cb"><svg><use href="#i-check"/></svg></button><span class="t">Verifică <span class="syn">**</span><strong>trigger-ul</strong><span class="syn">**</span> de reset<span class="caret"></span></span></li>
+                <li><button class="cb"><svg><use href="#i-check"/></svg></button><span class="t">Anunță echipa în canal</span>
+                  <ul class="task"><li><button class="cb"><svg><use href="#i-check"/></svg></button><span class="t">cu ora ferestrei</span></li></ul>
+                </li>
+              </ul>
+              <p>Dacă ceva pică, revenim la backup — vezi HZ-12.</p>
+            </div>
+          </div>
+          <div class="fmtbar" role="toolbar" aria-label="Formatare">
+            <button class="on" aria-label="Căsuță"><svg class="ico"><use href="#i-task"/></svg></button>
+            <button aria-label="Listă"><svg class="ico"><use href="#i-list"/></svg></button>
+            <button aria-label="Îngroșat"><span class="b">B</span></button>
+            <button aria-label="Indentare"><svg class="ico"><use href="#i-indent"/></svg></button>
+          </div>
+          <div class="keyboard" aria-hidden="true">
+            <div class="krow"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+            <div class="krow"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+            <div class="krow"><span class="m"></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span class="m"></span></div>
+            <div class="krow"><span class="m"></span><span></span><span class="w"></span><span></span><span class="m"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 3: DESKTOP ============ -->
+<section class="sec">
+  <div class="sec-head"><span class="sec-num">03</span><h2>Desktop — formularul complet și rândul de listă</h2></div>
+  <p class="sec-note">Coloana descrierii e limitată la 68ch, ca rândul să rămână de citit. În listă și pe card, progresul căsuțelor e un jeton mono lângă titlu; când toate sunt bifate trece pe <code style="font-family:var(--mono);font-size:.86em">--done</code>.</p>
+
+  <div class="desk">
+    <div class="d-list">
+      <div class="lh">Infrastructură · Val 3</div>
+      <div class="lrow"><span class="ring"></span><span class="lid">HZ-44</span><span class="ltitle">Rotația cheilor VAPID</span><span class="due">vin.</span></div>
+      <div class="lrow sel"><span class="ring"></span><span class="lid">HZ-47</span><span class="ltitle">Migrarea scadențelor pe producție</span><span class="prog"><svg class="ico"><use href="#i-boxes"/></svg>2/5</span></div>
+      <div class="lrow"><span class="ring"></span><span class="lid">HZ-48</span><span class="ltitle">Cronul de mementouri</span><span class="prog full"><svg class="ico"><use href="#i-boxes"/></svg>4/4</span></div>
+      <div class="lrow"><span class="ring"></span><span class="lid">HZ-51</span><span class="ltitle">Politicile RLS pe atașamente</span></div>
+      <div class="lrow"><span class="ring"></span><span class="lid">HZ-53</span><span class="ltitle">Pagina de stare pentru Android</span><span class="prog"><svg class="ico"><use href="#i-boxes"/></svg>0/3</span></div>
+
+      <p class="cap" style="padding:26px 18px 0;margin:0">Card · Ordine</p>
+      <div class="card-demo">
+        <div class="ct"><b>Migrarea scadențelor pe producție</b><span class="prog"><svg class="ico"><use href="#i-boxes"/></svg>2/5</span></div>
+        <div class="meta"><span class="lnum">L1</span><span class="sh-id">HZ-47</span><span class="due">mâine 10:00</span></div>
+      </div>
+    </div>
+
+    <div class="d-form">
+      <div class="fhead"><span class="sh-id">HZ-47 · Infrastructură</span><span style="flex:1"></span>
+        <button class="icon-btn"><svg class="ico"><use href="#i-more"/></svg></button>
+        <button class="icon-btn"><svg class="ico"><use href="#i-close"/></svg></button></div>
+      <h3 class="ftitle">Migrarea scadențelor pe producție</h3>
+      <div class="fgrid">
+        <div class="fcol"><div class="md" data-md="desk"></div></div>
+        <aside class="side">
+          <p class="k">Scadență</p><p class="v mono">Mâine · 10:00</p>
+          <p class="k">Val</p><p class="v">Val 3 — Notificări</p>
+          <p class="k">Layer</p><p class="v mono" style="color:var(--layer-1)">L1</p>
+          <p class="k">Depinde de</p><p class="v"><a class="ref" style="color:var(--accent);font-family:var(--mono);font-size:13px">HZ-12</a> Backup automat</p>
+          <p class="k">Pasat lui</p><p class="v">Bogdan</p>
+        </aside>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 4: ÎNAINTE / DUPĂ ============ -->
+<section class="sec">
+  <div class="sec-head"><span class="sec-num">04</span><h2>Înainte și după</h2></div>
+  <p class="sec-note">Înainte: textul brut, în mono, într-o cutie cu chenar — exact „linia care nu delimitează nimic". După: aceeași sursă, randată în serif, fără cutie.</p>
+  <div class="ba">
+    <div class="ba-col">
+      <span class="tag">Înainte</span>
+<pre class="old-desc" id="old"></pre>
+    </div>
+    <div class="ba-col">
+      <span class="tag new">După</span>
+      <div class="md" data-md="short"></div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<template id="tpl-full">
+  <h2>Context</h2>
+  <p>Coloanele <code>due_at</code> și <code>remind_at</code> există deja pe staging. Pe producție rulăm migrarea <strong>în afara orelor de vârf</strong>, ca triggerul să nu blocheze scrierile din coadă.</p>
+  <h3>Pași</h3>
+  <ul class="task">
+    <li class="checked"><button class="cb" aria-label="Bifează"><svg><use href="#i-check"/></svg></button><span class="t">Backup la baza de producție</span></li>
+    <li class="checked"><button class="cb" aria-label="Bifează"><svg><use href="#i-check"/></svg></button><span class="t">Rulat <code>migration-todo.sql</code> pe staging</span></li>
+    <li><button class="cb" aria-label="Bifează"><svg><use href="#i-check"/></svg></button><span class="t">Verifică <strong>trigger-ul</strong> de reset</span></li>
+    <li><button class="cb" aria-label="Bifează"><svg><use href="#i-check"/></svg></button><span class="t">Anunță echipa în canal</span>
+      <ul class="task"><li><button class="cb" aria-label="Bifează"><svg><use href="#i-check"/></svg></button><span class="t">cu ora ferestrei de mentenanță</span></li></ul>
+    </li>
+  </ul>
+  <h3>De urmărit</h3>
+  <ul class="bul">
+    <li>răspunsurile din <code>net._http_response</code></li>
+    <li>cozile offline care încă au <code>HZ-~</code></li>
+    <li>dimensiunea indexului nou</li>
+  </ul>
+  <pre><code>select count(*) from issues
+where due_at is not null;</code></pre>
+  <blockquote>Un memento răsuflat nu mai e informație, e zgomot.</blockquote>
+  <hr />
+  <p>Procedura completă e în <a href="#">ghidul de migrare</a>. Dacă ceva pică, revenim la backup — vezi <a href="#" class="ref">HZ-12</a>.</p>
+</template>
+
+<template id="tpl-short">
+  <h2>Pași</h2>
+  <p>Rulăm migrarea <strong>în afara orelor de vârf</strong>, cu <code>migration-todo.sql</code>.</p>
+  <ul class="task">
+    <li class="checked"><button class="cb"><svg><use href="#i-check"/></svg></button><span class="t">Backup la baza de producție</span></li>
+    <li class="checked"><button class="cb"><svg><use href="#i-check"/></svg></button><span class="t">Rulat pe staging</span></li>
+    <li><button class="cb"><svg><use href="#i-check"/></svg></button><span class="t">Verifică trigger-ul de reset</span></li>
+  </ul>
+  <blockquote>Un memento răsuflat nu mai e informație, e zgomot.</blockquote>
+  <p>Vezi <a href="#" class="ref">HZ-12</a>.</p>
+</template>
+
+<script>
+  // Conținutul randat, pus în toate locurile care îl cer
+  const fill = (sel, id) => document.querySelectorAll(sel).forEach(el => el.append(document.getElementById(id).content.cloneNode(true)));
+  fill('[data-md="phone"], [data-md="desk"]', 'tpl-full');
+  fill('[data-md="short"]', 'tpl-short');
+
+  document.getElementById('old').textContent =
+`## Pași
+Rulăm migrarea **în afara orelor de vârf**, cu \`migration-todo.sql\`.
+
+- [x] Backup la baza de producție
+- [x] Rulat pe staging
+- [ ] Verifică trigger-ul de reset
+
+> Un memento răsuflat nu mai e informație, e zgomot.
+
+Vezi HZ-12.`;
+
+  // Căsuțele chiar se bifează
+  document.addEventListener('click', e => {
+    const cb = e.target.closest('.cb');
+    if (!cb) return;
+    cb.parentElement.classList.toggle('checked');
+  });
+
+  // Tema
+  document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => {
+    document.documentElement.dataset.theme = b.dataset.t;
+    document.querySelectorAll('.seg button').forEach(x => x.classList.toggle('on', x === b));
+  }));
+</script>
+</body>
+</html>
