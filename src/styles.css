@@ -6245,6 +6245,13 @@ body:has(.qab) { overflow-y: auto; }
 }
 .swipe-btn.primary { background: var(--accent); color: var(--on-accent); }
 .swipe-btn.danger { color: var(--blocked); }
+/* Coșul armat: prima apăsare, aceeași față ca `.sh-delete.confirming` din foaia de tichet. */
+.swipe-btn.danger.armed,
+[data-theme='light'] .swipe-btn.danger.armed {
+  background: color-mix(in srgb, var(--blocked) 12%, var(--surface));
+  color: var(--blocked);
+  animation: sh-del-pulse 0.9s ease-in-out infinite alternate;
+}
 /* Pe tema deschisă `--surface-2` (#F0F4F8) peste `--bg` (#F7F9FC) nu se
    vede ca cerc: butonul urcă pe `--surface` (alb) cu umbra mai mare, fără
    chenar. Pe tema închisă `--surface-2` se citește deja. */

@@ -138,6 +138,16 @@ function SwipeRow({ issue, cls, onOpen, canWrite, selecting, selected, children 
   act.current = { ta, issue }
   /** Atingerea care tocmai s-a terminat a fost o glisare sau o apăsare lungă: fără click. */
   const swallowClick = useRef(false)
+  // Coșul de pe bandă cere două apăsări, ca în foaia de tichet (`sh-delete`): prima
+  // schimbă iconița, a doua șterge. Se dezarmează când banda se închide sau după 3s,
+  // ca un coș rămas armat să nu devină capcana pe care o închide confirmarea.
+  const [delArmed, setDelArmed] = useState(false)
+  useEffect(() => { if (rest !== 'right') setDelArmed(false) }, [rest])
+  useEffect(() => {
+    if (!delArmed) return
+    const t = setTimeout(() => setDelArmed(false), 3000)
+    return () => clearTimeout(t)
+  }, [delArmed])
 
   // Alt rând s-a deschis, s-a derulat sau s-a atins în altă parte: se închide.
   useEffect(() => {
@@ -309,12 +319,15 @@ function SwipeRow({ issue, cls, onOpen, canWrite, selecting, selected, children 
             </NativePick>
             <button
               type="button"
-              className="swipe-btn danger"
-              aria-label="Șterge"
+              className={`swipe-btn danger${delArmed ? ' armed' : ''}`}
+              aria-label={delArmed ? 'Apasă din nou ca să ștergi' : 'Șterge'}
               tabIndex={rest === 'right' ? 0 : -1}
-              onClick={() => { close(); ta.remove([issue.id]) }}
+              onClick={() => {
+                if (!delArmed) { setDelArmed(true); return }
+                close(); ta.remove([issue.id])
+              }}
             >
-              <Icon name="delete" size={18} />
+              <Icon name={delArmed ? 'danger' : 'delete'} size={18} />
             </button>
             <button
               type="button"
