@@ -205,7 +205,8 @@ try {
   await openList('Mâine')
   await page.locator('.task-row', { hasText: 'test descriere' }).first().click()
   await page.waitForTimeout(1000)
-  const savedDesc = await page.locator('.desc-fixed').first().inputValue().catch(() => null)
+  await page.locator('.desc-fixed .md-editor').first().waitFor({ timeout: 5000 })
+  const savedDesc = await page.locator('.desc-fixed .md-editor').first().evaluate((el) => el.hzValue()).catch(() => null)
   check('tichetul are descrierea', savedDesc === 'rândul unu\nrândul doi\nrândul trei', JSON.stringify(savedDesc))
 } finally {
   await browser.close()

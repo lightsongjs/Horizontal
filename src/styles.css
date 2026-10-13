@@ -3964,25 +3964,15 @@ main {
   min-height: 100%;
 }
 
-/* Description textarea — fixed height */
+/* Descrierea — containerul derulează, editorul (CodeMirror) crește în el.
+   Fără fundal și chenar: câmpul se vede prin inelul de focus al editorului. */
 .desc-fixed {
   width: 100%;
   height: 560px;
-  background: rgba(0, 0, 0, 0.15);
-  border: 1px solid var(--line);
-  border-radius: var(--r-m);
-  color: var(--txt);
-  font-family: var(--mono);
-  font-size: calc(13px * var(--text-scale));
-  line-height: 1.7;
-  padding: 12px 14px;
-  resize: none;
-  outline: none;
   overflow-y: auto;
-  transition: border-color 0.14s;
+  padding: 4px 2px;
 }
-.desc-fixed:focus { border-color: color-mix(in srgb, var(--accent) 30%, transparent); background: color-mix(in srgb, var(--accent) 2%, transparent); }
-.desc-fixed::placeholder { color: var(--txt-faint); font-style: italic; }
+.desc-fixed .md-editor { max-width: 68ch; }
 
 /* ── DEPS ZONE ─────────────────────────────────── */
 .deps-zone {
@@ -4407,13 +4397,11 @@ main {
 .thread-send-btn:disabled { background: var(--surface-3); color: var(--txt-faint); cursor: not-allowed; }
 
 /* ── LIGHT THEME OVERRIDES — issue form fields ─── */
-[data-theme='light'] .desc-fixed,
 [data-theme='light'] .thread-textarea,
 [data-theme='light'] .dep-search-field {
   background: var(--field-bg);
   border-color: var(--accent-soft);
 }
-[data-theme='light'] .desc-fixed:focus,
 [data-theme='light'] .thread-textarea:focus {
   background: var(--accent-soft);
   border-color: var(--accent);

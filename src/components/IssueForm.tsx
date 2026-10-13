@@ -16,6 +16,8 @@ import {
 } from '../lib/schedule'
 import { Attachments } from './Attachments'
 import { Thread } from './Thread'
+import { DescField } from './DescField'
+import type { EditorHandle } from './MarkdownEditor'
 import { describeRrule } from '../lib/recurrence'
 import { PRESETS, RecurrencePicker, presetOf } from './RecurrencePicker'
 import type { Issue, ScenarioKind, TestScenario } from '../lib/types'
@@ -276,8 +278,8 @@ function AssigneeSearch({ assigneeId, assignees, members, myAssigneeId, myUserId
  *   către `ui.tsx`, care oprește prima comutare pe alt tichet.
  */
 export function IssueForm({ issueId, docked = false, draft }: { issueId?: string; docked?: boolean; draft?: IssueDraft }) {
-  const { project, waves, themes, issues, byId, activeWave, createIssue, updateIssue, deleteIssue, createTheme, assignees, myAssigneeId, createAssignee, assigneeShort, projectMembers, ensureAssigneeForMember, obstacles, obstaclesOf, createObstacle, setIssueObstacles, reportError } = useHorizontal()
-  const { closeSheet, setCloseGuard, pushSheet, openEditIssue, setDockedDirty, saveNudge } = useUI()
+  const { project, projects, waves, themes, issues, byId, activeWave, createIssue, updateIssue, deleteIssue, createTheme, assignees, myAssigneeId, createAssignee, assigneeShort, projectMembers, ensureAssigneeForMember, obstacles, obstaclesOf, createObstacle, setIssueObstacles, reportError } = useHorizontal()
+  const { closeSheet, setCloseGuard, pushSheet, openEditIssue, setDockedDirty, saveNudge, showToast } = useUI()
   const { session } = useAuth()
   const myUserId = session?.user.id ?? null
   const canWrite = useCanWrite()
@@ -471,7 +473,10 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
   const [qaOpen, setQaOpen] = useState(initialQaCount > 0)
 
   const titleInputRef = useRef<HTMLTextAreaElement>(null)
-  const descRef = useRef<HTMLTextAreaElement>(null)
+  const descRef = useRef<EditorHandle>(null)
+  const prefixes = projects.map((p) => p.prefix)
+  // `#HZ-12` din descriere: cardul tichetului, dacă e încărcat (ca în EditSheet).
+  const openRef = (id: string) => (byId[id] ? pushSheet({ kind: 'issue', issueId: id }) : showToast(`${id} nu e încărcat — deschide-i proiectul.`))
   /** Coloana de descriere, ca zonă de drop pentru fișiere. Bara de atașamente
    *  e prea subțire ca să fie o țintă nimerită cu mouse-ul. */
   const descColRef = useRef<HTMLDivElement>(null)
@@ -1502,13 +1507,19 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
                 onDropActive={setDropActive}
               />
             )}
-            <textarea
+            {/* Formularul are butonul Salvează: bifa schimbă doar `desc` local
+                (formularul devine „murdar"), salvarea rămâne explicită. */}
+            <DescField
               ref={descRef}
               className="desc-fixed"
               value={desc}
-              onChange={(e) => setDesc(e.target.value)}
               readOnly={!canWrite}
               placeholder="Cerințe, notițe, context…"
+              ariaLabel="Descrierea tichetului"
+              prefixes={prefixes}
+              onRef={openRef}
+              onChange={setDesc}
+              onCommit={setDesc}
             />
           </div>
 

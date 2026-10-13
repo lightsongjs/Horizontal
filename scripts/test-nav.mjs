@@ -126,6 +126,23 @@ try {
   await page.waitForTimeout(800)
   check('tichet docat, pregătit pentru C', !(await modalOpen()), 'fără modal')
 
+  // ── Editorul de descriere din panoul docat: Ctrl+B și Ctrl+Enter ────────
+  await page.locator('.split-pane .md-editor').first().waitFor({ timeout: 5000 })
+  await page.locator('.split-pane .md-editor .cm-content').click()
+  await page.keyboard.press('Control+A')
+  await page.keyboard.type('a')
+  await page.keyboard.press('Control+b')
+  await page.keyboard.type('b')
+  check('Ctrl+B pune marcajul de aldin în panou', (await descOf(page, '.split-pane')) === 'a**b**', JSON.stringify(await descOf(page, '.split-pane')))
+  await page.keyboard.press('Control+Enter')
+  await page.waitForTimeout(1200)
+  await page.reload({ waitUntil: 'networkidle' })
+  await page.waitForTimeout(800)
+  await page.locator('.list-row').first().click()
+  await page.waitForTimeout(1000)
+  const savedViaPanel = await descOf(page, '.split-pane').catch(() => null)
+  check('Ctrl+Enter salvează descrierea din panou', savedViaPanel === 'a**b**', JSON.stringify(savedViaPanel))
+
   await page.locator('.tabs').click()
   await page.waitForTimeout(150)
   await page.keyboard.press('c')
