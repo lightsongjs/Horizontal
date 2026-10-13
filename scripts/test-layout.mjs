@@ -948,6 +948,33 @@ for (const width of PHONE_WIDTHS) {
   check(`„Deconectează" și comutatorul în ecran @${width}px`, m.btnInside && m.swInside && m.accOverflow <= 0, `buton=${m.btnInside}, comutator=${m.swInside}, overflow=${m.accOverflow}px`)
 }
 
+/**
+ * Jetonul „12/15" (`TaskProgress.tsx`) stă în `.t-tail`, `flex-shrink: 0`: nu
+ * are voie să se taie, iar titlul trebuie să mai primească loc.
+ */
+const progressRow = () => `
+<div class="panel smart-list"><div class="list-group">
+  <button class="list-row task-row" id="pr"><span class="list-check"></span><span class="t-time">09:30</span><span class="list-title">Pregătește lansarea versiunii noi pentru toți clienții</span><span class="t-tail"><span class="md-progress">12/15</span></span></button>
+</div></div>`
+
+console.log('\nProgresul căsuțelor — jetonul din rând:')
+for (const width of PHONE_WIDTHS) {
+  const page = await browser.newPage({ viewport: { width, height: 844 } })
+  await page.setContent(`<style>${CSS}</style>${progressRow()}`)
+  const m = await page.evaluate(() => {
+    const row = document.querySelector('#pr')
+    const chip = row.querySelector('.md-progress')
+    return {
+      titleW: Math.round(row.querySelector('.list-title').getBoundingClientRect().width),
+      clipped: chip.scrollWidth > chip.clientWidth + 1,
+      overflow: Math.round(row.scrollWidth - row.getBoundingClientRect().width),
+    }
+  })
+  await page.close()
+  check(`titlul mai are loc cu jetonul @${width}px`, m.titleW > 80, `${m.titleW}px`)
+  check(`jetonul netăiat @${width}px`, !m.clipped && m.overflow <= 0, `tăiat=${m.clipped}, overflow=${m.overflow}px`)
+}
+
 await browser.close()
 
 if (failures.length) {

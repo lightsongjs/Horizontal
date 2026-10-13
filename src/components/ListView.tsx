@@ -7,6 +7,7 @@ import { BulkBar } from './BulkBar'
 import { useHideDone, useOrderedLayers, useWaveActions, useVimNav, useCanWrite } from '../hooks'
 import { layerVar } from '../lib/layerColors'
 import { DueChip } from './DueChip'
+import { TaskProgress } from './TaskProgress'
 import { ObstacleChip } from './ObstacleChip'
 import { Icon } from './Icon'
 import { SplitView } from './SplitView'
@@ -224,6 +225,7 @@ export function ListView() {
                           </>
                         )
                       })()}
+                      <TaskProgress desc={it.desc} />
                       {it.urgent && <span className="tk-urgent" title="Urgent"><Icon name="urgent" size={13} /></span>}
                       <DueChip issue={it} />
                       <ObstacleChip issueId={id} />

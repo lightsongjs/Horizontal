@@ -1669,6 +1669,12 @@ main {
   margin-bottom: 12px;
 }
 
+.md-progress {
+  font-family: var(--mono); font-size: calc(11px * var(--text-scale));
+  color: var(--txt-dim); font-variant-numeric: tabular-nums; white-space: nowrap; flex-shrink: 0;
+}
+.md-progress.all { color: var(--txt-faint); }
+
 /* ── ISSUE FORM — redesign ───────────────────────────────────────── */
 
 /* Theme chips row with + button */

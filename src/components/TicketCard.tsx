@@ -2,6 +2,7 @@ import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { useCanWrite } from '../hooks'
 import { DueChip } from './DueChip'
+import { TaskProgress, hasTasks } from './TaskProgress'
 import { ObstacleChip } from './ObstacleChip'
 import { Icon } from './Icon'
 import { displayIssueId } from '../lib/issueId'
@@ -86,8 +87,9 @@ export function TicketCard({ id, contextWave, selectMode, isSelected, onToggleSe
         )}
       </div>
       <h5>{it.title}</h5>
-      {(sameWave.length > 0 || crossWave.length > 0 || it.dueAt || obstructed) && (
+      {(sameWave.length > 0 || crossWave.length > 0 || it.dueAt || obstructed || hasTasks(it.desc)) && (
         <span className="tk-sub">
+          <TaskProgress desc={it.desc} />
           {sameWave.length > 0 && <span className="dep"><Icon name="dep" size={13} /> {sameWave.join(', ')}</span>}
           {crossWave.length > 0 && <span className="tk-children">+{crossWave.length} din alt val</span>}
           <DueChip issue={it} />

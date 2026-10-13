@@ -9,6 +9,7 @@ import {
 } from '../lib/swipe'
 import type { Issue } from '../lib/types'
 import { Bell, Recur } from './DueChip'
+import { TaskProgress } from './TaskProgress'
 import { Icon } from './Icon'
 import { useTaskActions } from './TaskActions'
 import { NativePick } from './NativePick'
@@ -81,6 +82,7 @@ export function TaskRow({ issue, onOpen, late = false }: Props) {
       <span className="list-title">{issue.title}</span>
 
       <span className="t-tail">
+        <TaskProgress desc={issue.desc} />
         {issue.urgent && <span className="t-urgent" title="Urgent"><Icon name="urgent" size={13} /></span>}
         {issue.remindAt && <Bell />}
         <Recur rrule={issue.rrule} />
