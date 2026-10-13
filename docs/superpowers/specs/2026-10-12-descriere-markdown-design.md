@@ -200,8 +200,9 @@ Componente:
 - **Rebaza din store:** `Autosaver` deja nu calcă un câmp murdar. Dacă
   `d.desc` diferă de document, aplicăm `minimalChange` printr-un `dispatch`.
   Rebaza se **amână cât `view.composing`** și se reia la `compositionend`.
-- **IssueForm:** același contract peste `setDesc`. `desc.trim()` la salvare
-  rămâne.
+- **IssueForm:** același contract peste `setDesc`. Descrierea se salvează
+  exact cum e scrisă (fără `trim()`); numai una făcută doar din spații devine
+  `''`.
 - **Remontarea la pragul de 1200px / cheia cu `dueAt`:** pierde starea
   editorului exact cum o pierde azi textarea-ul. Nicio regulă nouă.
 - **Offline:** bifa e o scriere obișnuită de tichet (`enqueueWrite` + coada

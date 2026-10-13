@@ -547,9 +547,10 @@ Subsetul îl dă specul (`docs/superpowers/specs/2026-10-12-descriere-markdown-d
 `ticket-kit/README.md` îl spune și uneltelor care scriu descrieri.
 
 - **Documentul ESTE stringul.** Decorările ascund sintaxa doar pe ecran; nimic
-  nu „curăță” textul la salvare, iar `IssueForm` nu mai face `trim()` pe
-  descriere (un `trim` ar fi mâncat un rând gol de la capăt, adică o schimbare
-  pe care omul n-a făcut-o). Bifa schimbă exact un caracter (`toggleTask`), iar
+  nu „curăță” textul la salvare: `IssueForm` salvează descrierea exact cum e
+  scrisă, iar singura excepție e o descriere numai din spații, care devine `''`
+  (un `trim` pe tot textul ar fi mâncat un rând gol de la capăt, adică o
+  schimbare pe care omul n-a făcut-o). Bifa schimbă exact un caracter (`toggleTask`), iar
   deschiderea și închiderea fără editare nu scriu nimic. CRLF se păstrează octet
   cu octet: `EditorState.lineSeparator.of('\n')` lasă `\r` un caracter la capăt
   de rând (ascuns de plugin). Implicit CodeMirror rupe rândul și pe `\r\n`, iar

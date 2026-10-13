@@ -5,6 +5,7 @@ import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import {
   continueList, indentLines, minimalChange, removeMarker, toggleLinePrefix, toggleWrap, type Edit,
 } from '../lib/markdown/tasks'
+import { Echoes } from '../lib/markdown/rebase'
 import { External, Toggle, livePreview } from './markdown/livePreview'
 
 export type FormatCmd = 'task' | 'bullet' | 'bold' | 'indent' | 'outdent'
@@ -81,9 +82,15 @@ const MarkdownEditor = forwardRef<EditorHandle, MarkdownEditorProps>(function Ma
   props.current = p
   const editable = useRef(new Compartment())
   const pending = useRef<string | null>(null)
+  // Ce a trimis editorul însuși: o valoare care se întoarce prin ciorna
+  // autosave-ului e ecou, nu rebază (`Echoes`).
+  const echoes = useRef(new Echoes())
 
   const apply = (v: EditorView, value: string) => {
-    const c = minimalChange(v.state.doc.toString(), value)
+    const doc = v.state.doc.toString()
+    if (!echoes.current.shouldApply(value, doc)) return
+    echoes.current.applied()
+    const c = minimalChange(doc, value)
     // Rebaza nu intră în istoric: un Ctrl+Z ar fi desfăcut-o și ar fi trimis
     // înapoi, ca scriere a omului, textul de dinainte de ea.
     if (c) v.dispatch({ changes: c, annotations: [External.of(true), Transaction.addToHistory.of(false)] })
@@ -113,6 +120,7 @@ const MarkdownEditor = forwardRef<EditorHandle, MarkdownEditorProps>(function Ma
             if (u.focusChanged) (u.view.hasFocus ? props.current.onFocus : props.current.onBlur)?.()
             if (!u.docChanged || u.transactions.some((t) => t.annotation(External))) return
             const next = u.state.doc.toString()
+            echoes.current.emitted(next)
             if (u.transactions.some((t) => t.annotation(Toggle))) props.current.onCommit(next)
             else props.current.onChange(next)
           }),
