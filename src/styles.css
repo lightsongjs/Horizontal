@@ -1264,9 +1264,10 @@ main {
   text-decoration-color: var(--txt-faint);
   transition: color 120ms;
 }
-/* Editorul: tema de bază a CodeMirror se injectează la runtime, DUPĂ foaia
-   noastră, și pune `monospace` pe `.cm-scroller` — de-aia `.md-editor .cm-editor
-   .cm-scroller` (specificitate mai mare), nu doar `.md-editor`. */
+/* Editorul: tema de bază a CodeMirror (style-mod) se injectează la runtime ca
+   PRIMUL `<style>` din `<head>`, cu aceeași specificitate ca regulile de aici
+   (`.ͼ2 .cm-content`) — câștigăm prin ORDINE, fiindcă foaia noastră vine după.
+   Nu muta foaia asta înaintea lui și nu „repara" cu `!important`. */
 .md-field { position: relative; }
 .md-editor .cm-editor, .md-editor .cm-editor.cm-focused { outline: none; background: transparent; }
 .md-editor .cm-editor .cm-scroller { font-family: var(--display); line-height: 1.6; overflow: visible; }

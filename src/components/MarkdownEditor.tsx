@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
-import { Compartment, EditorState } from '@codemirror/state'
+import { Compartment, EditorState, Transaction } from '@codemirror/state'
 import { EditorView, keymap, placeholder as cmPlaceholder } from '@codemirror/view'
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import {
@@ -20,6 +20,11 @@ export type MarkdownEditorProps = {
   ariaLabel: string
   prefixes: readonly string[]
   onRef?(id: string): void
+  /**
+   * Chemat o dată, la montare: unde era cursorul în textarea-ul de rezervă,
+   * dacă avea focusul când a sosit editorul (`DescField`). `null` = n-avea.
+   */
+  takeFocus?(): number | null
 }
 
 type Op = (text: string, from: number, to: number) => Edit | null
@@ -79,7 +84,9 @@ const MarkdownEditor = forwardRef<EditorHandle, MarkdownEditorProps>(function Ma
 
   const apply = (v: EditorView, value: string) => {
     const c = minimalChange(v.state.doc.toString(), value)
-    if (c) v.dispatch({ changes: c, annotations: External.of(true) })
+    // Rebaza nu intră în istoric: un Ctrl+Z ar fi desfăcut-o și ar fi trimis
+    // înapoi, ca scriere a omului, textul de dinainte de ea.
+    if (c) v.dispatch({ changes: c, annotations: [External.of(true), Transaction.addToHistory.of(false)] })
   }
 
   useEffect(() => {
@@ -88,6 +95,12 @@ const MarkdownEditor = forwardRef<EditorHandle, MarkdownEditorProps>(function Ma
       state: EditorState.create({
         doc: p.value,
         extensions: [
+          // Documentul ESTE descrierea, octet cu octet. Implicit CodeMirror
+          // desparte rândurile și pe `\r\n`, iar `toString()` întoarce `\n`:
+          // un text venit de pe Windows s-ar fi rescris la prima bifă (și,
+          // prin rebaza cu `\r`, cu un rând gol în plus la fiecare rând).
+          // Așa `\r` rămâne un caracter la capăt de rând, ascuns de plugin.
+          EditorState.lineSeparator.of('\n'),
           history(),
           keymap.of(markdownKeys),
           keymap.of([...defaultKeymap.filter((b) => b.key !== 'Mod-Enter'), ...historyKeymap]),
@@ -129,6 +142,11 @@ const MarkdownEditor = forwardRef<EditorHandle, MarkdownEditorProps>(function Ma
       }),
     })
     view.current = v
+    const at = p.takeFocus?.() ?? null
+    if (at !== null && !p.readOnly) {
+      v.focus()
+      v.dispatch({ selection: { anchor: Math.min(at, v.state.doc.length) } })
+    }
     // Pentru testele de browser (Playwright): textul real, cu sintaxa ascunsă inclusă.
     ;(host.current as HTMLDivElement & { hzValue?: () => string }).hzValue = () => v.state.doc.toString()
     return () => { v.destroy(); view.current = null }

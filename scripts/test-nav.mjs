@@ -604,6 +604,33 @@ try {
   await tel.waitForTimeout(600)
   check('Esc închide foaia și rămâi pe „Azi"', !(await editOpen()) && (await telOnAzi()), `URL=${new URL(tel.url()).pathname}`)
 
+  // ── CRLF: documentul editorului ESTE descrierea, octet cu octet ──
+  // Un text venit de pe Windows (API, ticket-kit) are `\r\n`. Deschis fără
+  // editare nu se scrie nimic; o bifă schimbă exact un caracter.
+  const CRLF = '- [ ] a\r\n- [ ] b'
+  const storedDesc = () => tel.evaluate((t) => JSON.parse(localStorage.getItem('horizontal:v2')).issues.find((i) => i.title === t)?.desc, 'Sarcină pentru foaia de tichet')
+  await tel.evaluate(([t, d]) => {
+    const db = JSON.parse(localStorage.getItem('horizontal:v2'))
+    db.issues.find((i) => i.title === t).desc = d
+    localStorage.setItem('horizontal:v2', JSON.stringify(db))
+  }, ['Sarcină pentru foaia de tichet', CRLF])
+  await tel.reload({ waitUntil: 'networkidle' })
+  await tel.waitForTimeout(1600)
+  await openTask()
+  check('CRLF: editorul ține textul neatins', (await descOf(tel, '.edit-sheet')) === CRLF, JSON.stringify(await descOf(tel, '.edit-sheet')))
+  check('…fără rânduri goale în plus', (await tel.locator('.edit-sheet .cm-line').count()) === 2, `${await tel.locator('.edit-sheet .cm-line').count()} rânduri`)
+  await tel.waitForTimeout(1300) // peste pauza de 800ms
+  check('…și deschiderea nu scrie nimic', (await storedDesc()) === CRLF, JSON.stringify(await storedDesc()))
+  {
+    const { tap, center } = await touchApi(tel)
+    const tb = await center(tel.locator('.edit-sheet .md-task').first())
+    await tap(tb.x, tb.y)
+    await tel.waitForTimeout(600)
+  }
+  check('CRLF: bifa schimbă exact un caracter', (await storedDesc()) === '- [x] a\r\n- [ ] b', JSON.stringify(await storedDesc()))
+  await tel.keyboard.press('Escape')
+  await tel.waitForTimeout(600)
+
   await openTask()
   const titleBefore = await tel.locator('.edit-sheet .es-title').inputValue()
   await tel.locator('.edit-sheet .qs-more').click()

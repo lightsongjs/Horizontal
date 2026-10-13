@@ -77,6 +77,13 @@ function build(view: EditorView, prefixes: readonly string[]): DecorationSet {
       case 'task': out.push(Decoration.replace({ widget: new TaskWidget(s.checked, disabled) }).range(s.from, s.to)); break
     }
   }
+  // `\r` dintr-un text CRLF rămâne în document (`lineSeparator`), dar nu se
+  // desenează — numai unde nu-l acoperă deja o ascundere.
+  const text = doc.toString()
+  const hidden = out.filter((r) => r.value.point && r.from < r.to)
+  for (let i = text.indexOf('\r'); i >= 0; i = text.indexOf('\r', i + 1)) {
+    if (!hidden.some((r) => r.from <= i && i < r.to)) out.push(Decoration.replace({}).range(i, i + 1))
+  }
   // `decorationSpecs` nu le dă sortate; `true` = sortează aici.
   return Decoration.set(out, true)
 }
