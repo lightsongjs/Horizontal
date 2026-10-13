@@ -1502,6 +1502,7 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
               <Attachments
                 issueId={existing?.id}
                 projectId={project.id}
+                title={existing?.title ?? title}
                 readOnly={!canWrite}
                 dropZone={descColRef}
                 onDropActive={setDropActive}

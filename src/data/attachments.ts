@@ -8,6 +8,7 @@
 
 import { requireSupabase } from '../lib/supabase'
 import { attachmentFilename, shrinkImage } from '../lib/shrinkImage'
+import { uniqueNames, zipFolderName } from '../lib/zipName'
 
 export interface Attachment {
   id: string
@@ -316,4 +317,43 @@ export async function pathsForProject(projectId: string): Promise<string[]> {
   const { data, error } = await db.from('attachments').select('path').eq('project_id', projectId)
   if (error) throw error
   return ((data ?? []) as { path: string }[]).map((r) => r.path)
+}
+
+/**
+ * Toate fișierele tichetului într-o singură descărcare: `HZ-12 Titlu.zip`, care
+ * se dezarhivează în folderul `HZ-12 Titlu/`. Un browser nu poate crea singur un
+ * folder în Descărcări, deci folderul călătorește în arhivă (`zipName.ts`).
+ *
+ * Fără compresie (`level: 0`): pozele și PDF-urile sunt deja comprimate, iar
+ * deflate pe ele ar costa timp pe telefon pentru câțiva octeți. `fflate` e
+ * încărcat la cerere — butonul ăsta e rar, bundle-ul de pornire nu-l plătește.
+ */
+export async function downloadAllAttachments(items: readonly Attachment[], issueId: string, title: string): Promise<void> {
+  if (items.length === 0) return
+  const urls = await signedUrls(items.map((a) => a.path))
+  const [{ zipSync }, blobs] = await Promise.all([
+    import('fflate'),
+    Promise.all(items.map(async (a) => {
+      const url = urls[a.path]
+      if (!url) throw new Error(`Nu s-a putut descărca ${a.filename}.`)
+      const res = await fetch(url)
+      if (!res.ok) throw new Error(`Nu s-a putut descărca ${a.filename}.`)
+      return new Uint8Array(await res.arrayBuffer())
+    })),
+  ])
+  const folder = zipFolderName(issueId, title)
+  const names = uniqueNames(items.map((a) => a.filename))
+  const files: Record<string, [Uint8Array, { level: 0 }]> = {}
+  names.forEach((name, i) => { files[`${folder}/${name}`] = [blobs[i], { level: 0 }] })
+  const zip = zipSync(files)
+
+  const href = URL.createObjectURL(new Blob([zip as BlobPart], { type: 'application/zip' }))
+  const link = document.createElement('a')
+  link.href = href
+  link.download = `${folder}.zip`
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  // Revocat mai târziu, nu imediat: unele browsere încep citirea după click.
+  setTimeout(() => URL.revokeObjectURL(href), 60_000)
 }

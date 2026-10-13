@@ -534,6 +534,13 @@ un toast (`attachBlocked`). O coadă de poze ar fi pus octeți în IndexedDB lâ
 tichete și ar fi reluat urcări pe date mobile ore mai târziu — v1 spune pe
 față ce n-a plecat.
 
+**„Descarcă tot"** (`DownloadAll` din `Attachments.tsx`, de la 2 fișiere, în
+bară și în rândul de miniaturi): un browser nu poate crea un folder în
+Descărcări, deci folderul e ÎN arhivă — `HZ-12 Titlu.zip` → `HZ-12 Titlu/…`
+(`src/lib/zipName.ts`, pur). `fflate` se încarcă la cerere, fără compresie.
+Ascuns în APK: WebView-ul n-are `DownloadListener`, iar un `blob:` n-ar face
+nimic acolo — ar cere un APK nou.
+
 ## Descrierea în markdown
 
 Descrierea unui tichet e text markdown, citit și scris cu **aceeași gramatică**:

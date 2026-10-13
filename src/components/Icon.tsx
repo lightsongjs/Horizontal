@@ -71,6 +71,7 @@ import {
   Briefcase,
   House,
   Tag,
+  FolderDown,
 } from 'lucide-react'
 
 /**
@@ -96,6 +97,7 @@ const ICONS = {
   add: Plus,
   arrowUp: ArrowUp,
   attachment: Paperclip,
+  downloadAll: FolderDown,
   back: ArrowLeft,
   bell: Bell,
   close: X,

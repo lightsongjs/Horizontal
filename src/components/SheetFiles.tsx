@@ -13,7 +13,7 @@ import {
 import { afterDelete } from '../lib/gallery'
 import { isTempIssueId } from '../lib/issueId'
 import { pickFiles, rejectMessage } from '../lib/pickFiles'
-import { iconFor } from './Attachments'
+import { DownloadAll, iconFor } from './Attachments'
 import { Icon } from './Icon'
 import { Lightbox } from './Lightbox'
 
@@ -247,7 +247,7 @@ export function useTicketFiles(issueId: string, projectId: string, onError: (m: 
  * Ștergerea stă în galerie (`Lightbox`), nu pe miniatură: X-ul de 18px de pe
  * o miniatură de 44px, sub degetul mare, ar fi fost o ștergere din greșeală.
  */
-export function ThumbRow({ files, canDelete, onError }: { files: TicketFiles; canDelete: boolean; onError(m: string): void }) {
+export function ThumbRow({ files, canDelete, onError, issueId, title }: { files: TicketFiles; canDelete: boolean; onError(m: string): void; issueId: string; title: string }) {
   const { items, urls, pending } = files
   const [viewing, setViewing] = useState<string | null>(null)
   const [broken, setBroken] = useState<Set<string>>(new Set())
@@ -306,6 +306,7 @@ export function ThumbRow({ files, canDelete, onError }: { files: TicketFiles; ca
           <span className="es-file-veil"><Icon name="loading" size={16} /></span>
         </span>
       ))}
+      <DownloadAll items={items} issueId={issueId} title={title} onError={onError} />
       {/* În `document.body`: foaia e `position: fixed` cu propriul z-index,
           deci galeria ar fi rămas prinsă în stratul ei. */}
       {viewIndex >= 0 && createPortal(

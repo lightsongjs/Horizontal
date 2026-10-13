@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import {
   deleteAttachment,
+  downloadAllAttachments,
   isRenderableImage,
   listAttachments,
   signedDownloadUrl,
@@ -8,6 +9,7 @@ import {
   uploadPicked,
   type Attachment,
 } from '../data/attachments'
+import { getAndroidBridge } from '../lib/androidBridge'
 import { afterDelete } from '../lib/gallery'
 import { carriesFiles, pickFiles, rejectMessage } from '../lib/pickFiles'
 import { Lightbox } from './Lightbox'
@@ -39,6 +41,55 @@ export function iconFor(contentType: string, filename: string): IconName {
 }
 
 /**
+ * „Descarcă tot": un ZIP `HZ-12 Titlu.zip` care se dezarhivează în folderul
+ * cu numele tichetului. Apare de la două fișiere — pentru unul, miniatura îl
+ * descarcă deja.
+ *
+ * Nu în cutia de Android: WebView-ul Capacitor n-are `DownloadListener`, deci
+ * o descărcare `blob:` n-ar face nimic. Fișierele simple merg acolo fiindcă
+ * URL-ul semnat e pe altă origine și pleacă în browserul sistemului.
+ */
+export function DownloadAll({
+  items,
+  issueId,
+  title,
+  onError,
+  className = 'att-act',
+}: {
+  items: readonly Attachment[]
+  issueId: string
+  title: string
+  onError(message: string): void
+  className?: string
+}) {
+  const [busy, setBusy] = useState(false)
+  if (items.length < 2 || getAndroidBridge()) return null
+  const run = async () => {
+    setBusy(true)
+    try {
+      await downloadAllAttachments(items, issueId, title)
+    } catch (e) {
+      onError(e instanceof Error ? e.message : 'Fișierele nu s-au putut descărca.')
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <button
+      type="button"
+      className={className}
+      disabled={busy}
+      aria-label={`Descarcă toate cele ${items.length} fișiere`}
+      title={`Descarcă tot (${items.length}) — un folder cu numele tichetului, arhivat`}
+      onPointerDown={(e) => e.preventDefault()}
+      onClick={() => void run()}
+    >
+      <Icon name={busy ? 'loading' : 'downloadAll'} size={18} />
+    </button>
+  )
+}
+
+/**
  * Fișierele tichetului, ca o bară de o linie deasupra descrierii.
  *
  * Înainte era un bloc sub notițe, adică sub o descriere care poate fi lungă: se
@@ -51,12 +102,15 @@ export function iconFor(contentType: string, filename: string): IconName {
 export function Attachments({
   issueId,
   projectId,
+  title = '',
   readOnly = false,
   dropZone,
   onDropActive,
 }: {
   issueId?: string
   projectId: string
+  /** Titlul tichetului: numele folderului din „Descarcă tot". */
+  title?: string
   readOnly?: boolean
   /** Unde se poate LĂSA un fișier tras cu mouse-ul. O bară de o linie e o țintă
    *  proastă de drop, deci zona rămâne mare: formularul dă aici coloana de
@@ -337,6 +391,8 @@ export function Attachments({
           })}
           {busy > 0 && <span className="att-chip busy" role="status">{busy}</span>}
         </div>
+
+        {issueId && <DownloadAll items={items} issueId={issueId} title={title} onError={setMessage} />}
 
         {!readOnly && (
           <AttachmentPicker

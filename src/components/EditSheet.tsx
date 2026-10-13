@@ -193,7 +193,7 @@ function EditBody({ issue }: { issue: Issue }) {
             }}
           />
         </div>
-        <ThumbRow files={files} canDelete={canWrite} onError={showToast} />
+        <ThumbRow files={files} canDelete={canWrite} onError={showToast} issueId={issue.id} title={d.title} />
         <DescField
           ref={descRef}
           className="es-desc"
