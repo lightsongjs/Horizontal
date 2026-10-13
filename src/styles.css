@@ -1264,6 +1264,30 @@ main {
   text-decoration-color: var(--txt-faint);
   transition: color 120ms;
 }
+/* Editorul: tema de bază a CodeMirror se injectează la runtime, DUPĂ foaia
+   noastră, și pune `monospace` pe `.cm-scroller` — de-aia `.md-editor .cm-editor
+   .cm-scroller` (specificitate mai mare), nu doar `.md-editor`. */
+.md-field { position: relative; }
+.md-editor .cm-editor, .md-editor .cm-editor.cm-focused { outline: none; background: transparent; }
+.md-editor .cm-editor .cm-scroller { font-family: var(--display); line-height: 1.6; overflow: visible; }
+.md-editor .cm-content { padding: 4px 0; caret-color: var(--accent); }
+.md-editor .cm-line { padding: 0; }
+.md-editor .cm-editor.cm-focused { box-shadow: 0 0 0 2px var(--accent-soft); border-radius: var(--r-m); }
+.md-editor .cm-placeholder { color: var(--txt-faint); font-style: italic; }
+.md-editor .cm-line.md-h1, .md-editor .cm-line.md-h2 { padding-top: 0.5em; }
+.md-editor .cm-line.md-quote { padding-left: 14px; font-style: italic; color: var(--txt-dim); }
+.md-editor .cm-line.md-pre {
+  font-family: var(--mono); font-size: calc(13px * var(--text-scale));
+  background: var(--surface-2); padding: 0 14px;
+}
+.md-editor .md-bullet { margin: 0 0.55em 0 0.25em; }
+.md-editor .md-task { margin: 0 0.45em 0 0; }
+.md-editor .md-hr { display: inline-block; width: 100%; }
+.md-fallback {
+  width: 100%; min-height: 6em; resize: none; border: 0; outline: none; background: transparent;
+  color: var(--txt); font-family: var(--display); font-size: calc(16px * var(--text-scale)); line-height: 1.6;
+}
+.md-format { display: flex; gap: 4px; padding: 4px 0; }
 .sheet-scroll {
   overflow-y: auto;
   padding: 0 18px 28px;
@@ -5649,15 +5673,19 @@ body:has(.kb-sheet) .toast {
   padding-bottom: calc(16px + env(safe-area-inset-bottom));
 }
 .edit-sheet .qs-form { flex: 1 0 auto; display: flex; flex-direction: column; }
-.edit-sheet .qa-desc {
+/* Descrierea (`DescField`): spațiile vechiului `.qa-desc`, fontul din blocul
+   „Markdown". Editorul umple tot câmpul, ca o atingere sub text să scrie. */
+.edit-sheet .es-desc {
   flex: 1 0 auto;
   min-height: 88px;
   cursor: text;
   margin: 4px 0 0 31px;
   width: calc(100% - 31px);
-  font-size: calc(15px * var(--text-scale));
-  max-height: none;
+  display: flex;
+  flex-direction: column;
 }
+.edit-sheet .es-desc > .md-editor, .edit-sheet .es-desc .cm-editor { flex: 1 0 auto; display: flex; flex-direction: column; }
+.edit-sheet .es-desc .cm-scroller { flex: 1 0 auto; }
 .edit-sheet .qs-bar {
   position: sticky;
   bottom: calc(-16px - env(safe-area-inset-bottom));

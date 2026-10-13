@@ -28,6 +28,7 @@ import { repository } from './data'
 import { syncLabel } from './lib/syncLabel'
 import { drawerSwipe, EDGE_PX, lockAxis, type Axis } from './lib/swipe'
 import { Drawer } from './components/Drawer'
+import { preloadEditor } from './components/DescField'
 import { FilterView } from './components/FilterView'
 import { FILTER_DELETED_EVENT, OPEN_FILTER_EVENT } from './components/FilterForm'
 import { describeRules } from './lib/savedFilters'
@@ -342,6 +343,12 @@ function Shell() {
   }
   const openQuickRef = useRef(openQuick)
   openQuickRef.current = openQuick
+  // Editorul descrierii e un chunk separat (CodeMirror): se aduce după primul
+  // cadru, ca să fie gata până deschizi primul tichet.
+  useEffect(() => {
+    const id = window.setTimeout(preloadEditor, 1500)
+    return () => window.clearTimeout(id)
+  }, [])
   // Widget-ul de pe ecranul de start (NativeBridge): foaia rapidă pe „Azi",
   // oricare ar fi ecranul de sub ea — ca bara de captură de pe Linux.
   useEffect(() => {

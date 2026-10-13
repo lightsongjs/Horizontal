@@ -21,6 +21,9 @@ import {
   Share2,
   Square,
   SquareCheck,
+  List,
+  Bold,
+  ListIndentIncrease,
   Sun,
   Users,
   CalendarDays,
@@ -178,6 +181,11 @@ const ICONS = {
   work: Briefcase,
   home: House,
   tag: Tag,
+  // Bara de formatare a descrierii (telefon) — roluri, nu desene.
+  mdTask: SquareCheck,
+  mdList: List,
+  mdBold: Bold,
+  mdIndent: ListIndentIncrease,
 } as const
 
 export type IconName = keyof typeof ICONS

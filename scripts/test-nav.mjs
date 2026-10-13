@@ -21,6 +21,21 @@ const PORT = 5211
 const BASE = `http://localhost:${PORT}`
 const failures = []
 
+// Descrierea e un editor CodeMirror (contenteditable), nu un textarea:
+// textul real (cu sintaxa ascunsă) se citește prin `hzValue`.
+async function descOf(page, scope) {
+  const ed = page.locator(`${scope} .md-editor`)
+  await ed.waitFor({ timeout: 5000 })
+  return ed.evaluate((el) => el.hzValue())
+}
+async function typeDesc(page, scope, text) {
+  const c = page.locator(`${scope} .md-editor .cm-content`)
+  await c.waitFor({ timeout: 5000 })
+  await c.click()
+  await page.keyboard.press('Control+A')
+  await page.keyboard.type(text)
+}
+
 function check(name, ok, detail) {
   console.log(`  ${ok ? 'ok  ' : 'FAIL'} ${name} — ${detail}`)
   if (!ok) failures.push(`${name}: ${detail}`)
@@ -548,14 +563,42 @@ try {
   check('Back lasă ecranul pe „Azi"', (await telOnAzi()) && new URL(tel.url()).pathname === '/', `URL=${new URL(tel.url()).pathname}`)
 
   await openTask()
-  await tel.locator('.edit-sheet .qa-desc').fill('Descriere salvată singură')
+  await typeDesc(tel, '.edit-sheet', 'Descriere salvată singură')
   await tel.waitForTimeout(1300) // peste pauza de 800ms
   await tel.reload({ waitUntil: 'networkidle' })
   await tel.waitForTimeout(1600)
   // Reîncărcată peste foaie, aplicația o redeschide din URL (deep link) — tot
   // foaia de tichet, nu formularul.
-  const reDesc = await tel.locator('.edit-sheet .qa-desc').inputValue().catch(() => null)
+  const reDesc = await descOf(tel, '.edit-sheet').catch(() => null)
   check('descrierea s-a salvat după pauză (verificat prin reîncărcare)', reDesc === 'Descriere salvată singură', JSON.stringify(reDesc))
+
+  // ── Căsuțele din descriere: o atingere bifează, fără focus și fără tastatură ──
+  await typeDesc(tel, '.edit-sheet', '- [ ] unu')
+  await tel.keyboard.press('Enter')
+  await tel.keyboard.type('doi')
+  check('Enter continuă lista cu o căsuță nouă', (await descOf(tel, '.edit-sheet')) === '- [ ] unu\n- [ ] doi', JSON.stringify(await descOf(tel, '.edit-sheet')))
+  await tel.locator('.edit-sheet .md-editor .cm-content').evaluate((el) => el.blur())
+  await tel.waitForTimeout(300)
+  const vvBefore = await tel.evaluate(() => visualViewport.height)
+  const { tap, center } = await touchApi(tel)
+  const tb = await center(tel.locator('.edit-sheet .md-task').first())
+  await tap(tb.x, tb.y)
+  await tel.waitForTimeout(300)
+  check('atingerea bifează căsuța', (await descOf(tel, '.edit-sheet')) === '- [x] unu\n- [ ] doi', JSON.stringify(await descOf(tel, '.edit-sheet')))
+  check('…fără să ia focusul', !(await tel.evaluate(() => !!document.activeElement?.closest('.md-editor'))), 'focusul în afara editorului')
+  check('…și fără să micșoreze ecranul', (await tel.evaluate(() => visualViewport.height)) === vvBefore, 'visualViewport neschimbat')
+  check('rândul bifat e tăiat', (await tel.locator('.edit-sheet .md-done').count()) === 1, 'un `.md-done`')
+
+  // ── Compunerea (IME): decorările nu stau în calea unui cuvânt în compunere ──
+  const cdp = await tel.context().newCDPSession(tel)
+  await tel.locator('.edit-sheet .md-editor .cm-content').click()
+  await tel.keyboard.press('Control+End')
+  await tel.keyboard.press('Enter')
+  await cdp.send('Input.imeSetComposition', { text: 'ș', selectionStart: 1, selectionEnd: 1 })
+  await cdp.send('Input.imeSetComposition', { text: 'ști', selectionStart: 3, selectionEnd: 3 })
+  await cdp.send('Input.insertText', { text: 'știu **tot**' })
+  await tel.waitForTimeout(200)
+  check('compunerea nu dublează și nu pierde litere', (await descOf(tel, '.edit-sheet')).endsWith('- [ ] știu **tot**'), JSON.stringify(await descOf(tel, '.edit-sheet')))
   check('deep link pe telefon → foaia de tichet', await editOpen(), (await editOpen()) ? 'foaie' : 'altceva')
   await tel.keyboard.press('Escape')
   await tel.waitForTimeout(600)
@@ -597,7 +640,7 @@ try {
   check('jetonul arată dinainte 17:00', pend === 1 && /17:00/.test((await dueText()) ?? ''), `jeton="${await dueText()}"`)
   await tel.waitForTimeout(1300) // peste pauza de 800ms: titlul NU pleacă cât e evidențiată data
   check('…și pauza nu aplică data', (await tel.locator('.edit-sheet .es-title').inputValue()).endsWith('la 17'), 'titlul încă are „la 17"')
-  await tel.locator('.edit-sheet .qa-desc').focus() // blur pe titlu
+  await tel.locator('.edit-sheet .md-editor .cm-content').focus() // blur pe titlu
   await tel.waitForTimeout(600)
   const tAfter = await tel.locator('.edit-sheet .es-title').inputValue()
   check('după blur titlul e fără fragment', tAfter === TITLE, JSON.stringify(tAfter))
@@ -616,7 +659,7 @@ try {
     await tel.waitForTimeout(300)
   }
   check('atingerea pe „la 18" îl refuză', !!box && (await tel.locator('.edit-sheet .es-title-mirror mark').count()) === 0, box ? 'fără marcaj' : 'n-a apărut marcajul')
-  await tel.locator('.edit-sheet .qa-desc').focus()
+  await tel.locator('.edit-sheet .md-editor .cm-content').focus()
   await tel.waitForTimeout(600)
   const tRej = await tel.locator('.edit-sheet .es-title').inputValue()
   check('…textul rămâne în titlu', tRej.trim() === `${TITLE} la 18`, JSON.stringify(tRej))

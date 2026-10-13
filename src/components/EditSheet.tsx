@@ -10,7 +10,9 @@ import { mergeTitleDue } from '../lib/titleDue'
 import type { Issue } from '../lib/types'
 import { Icon } from './Icon'
 import { KeyboardSheet } from './KeyboardSheet'
-import { QuickDesc } from './QuickFields'
+import { DescField } from './DescField'
+import type { EditorHandle } from './MarkdownEditor'
+import { FormatBar } from './FormatBar'
 import { AttachButton, ThumbRow, attachBlocked, useTicketFiles } from './SheetFiles'
 import { ProjectMark } from './ProjectMark'
 
@@ -83,8 +85,8 @@ export function EditSheet({ issueId }: { issueId: string }) {
 }
 
 function EditBody({ issue }: { issue: Issue }) {
-  const { projects, assignees, assigneeShort, updateIssue, toggleDone } = useHorizontal()
-  const { closeSheet, expandIssue, showToast } = useUI()
+  const { projects, assignees, assigneeShort, updateIssue, toggleDone, byId } = useHorizontal()
+  const { closeSheet, expandIssue, showToast, pushSheet } = useUI()
   const canWrite = useCanWriteIn(issue.projectId)
   // ID-ul de acum, nu cel de la montare: un tichet creat offline primește
   // numărul real cu foaia deschisă (`renameIssueId`), iar cheia nu se schimbă.
@@ -129,9 +131,13 @@ function EditBody({ issue }: { issue: Issue }) {
   useEffect(() => () => applyRef.current(), [])
   const files = useTicketFiles(issue.id, issue.projectId, showToast)
   const [whenOpen, setWhenOpen] = useState(false)
-  const descRef = useRef<HTMLTextAreaElement>(null)
+  const descRef = useRef<EditorHandle>(null)
+  const [descFocus, setDescFocus] = useState(false)
   const titleRef = useRef<HTMLTextAreaElement>(null)
   const project = projects.find((p) => p.id === issue.projectId)
+  const prefixes = projects.map((p) => p.prefix)
+  // `#HZ-12` din descriere: cardul tichetului, dacă e încărcat.
+  const openRef = (id: string) => (byId[id] ? pushSheet({ kind: 'issue', issueId: id }) : showToast(`${id} nu e încărcat — deschide-i proiectul.`))
 
   const setDue = (date: string, time: string) => {
     void a.commit(reschedule(d, fromInputs(date, time)))
@@ -188,14 +194,19 @@ function EditBody({ issue }: { issue: Issue }) {
           />
         </div>
         <ThumbRow files={files} canDelete={canWrite} onError={showToast} />
-        <QuickDesc
+        <DescField
+          ref={descRef}
+          className="es-desc"
           value={d.desc}
-          textareaRef={descRef}
           readOnly={!canWrite}
           placeholder={canWrite ? 'Descriere' : ''}
+          ariaLabel="Descrierea sarcinii"
+          prefixes={prefixes}
+          onRef={openRef}
           onChange={(desc) => a.type({ desc })}
-          onBlur={() => void a.flush()}
-          onKeyDown={() => {}}
+          onCommit={(desc) => void a.commit({ desc })}
+          onFocus={() => setDescFocus(true)}
+          onBlur={() => { setDescFocus(false); void a.flush() }}
         />
 
         <p className={`qs-status ${status ? 'warn' : ''}`} role="status">{status}</p>
@@ -223,6 +234,7 @@ function EditBody({ issue }: { issue: Issue }) {
           </div>
         )}
 
+        {descFocus && canWrite && <FormatBar onFormat={(c) => descRef.current?.format(c)} />}
         <div className="qs-bar">
           <button
             type="button"
