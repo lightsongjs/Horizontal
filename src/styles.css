@@ -991,8 +991,8 @@ main {
   max-width: 480px;
   margin: 0 auto;
   background: var(--surface);
-  border-radius: 22px 22px 0 0;
-  border-top: 1px solid var(--line);
+  border-radius: var(--r) var(--r) 0 0;
+  box-shadow: var(--amb-lg);
   transform: translateY(100%);
   opacity: 0;
   transition: transform 0.32s cubic-bezier(0.18, 0.9, 0.24, 1), opacity 0.28s ease;
@@ -1192,8 +1192,10 @@ main {
 .md, .md-editor .cm-content {
   font-family: var(--display);
   font-optical-sizing: auto;
-  font-size: calc(16px * var(--text-scale));
-  line-height: 1.6;
+  /* 15px, nu 16: Literata are x-height mare și la 16 se citea ca 17. Egal
+     cu `.thread-textarea`, ca descrierea și comentariul să aibă același corp. */
+  font-size: calc(15px * var(--text-scale));
+  line-height: 1.55;
   color: var(--txt);
   overflow-wrap: break-word;
 }
@@ -1201,8 +1203,8 @@ main {
 .md > :last-child { margin-bottom: 0; }
 .md p { margin: 0 0 0.65em; }
 .md h3, .md h4, .md h5 { margin: 1.3em 0 0.35em; }
-.md-h1, .md-editor .md-h1 { font-size: calc(20px * var(--text-scale)); font-weight: 600; }
-.md-h2, .md-editor .md-h2 { font-size: calc(17px * var(--text-scale)); font-weight: 600; }
+.md-h1, .md-editor .md-h1 { font-size: calc(18px * var(--text-scale)); font-weight: 600; }
+.md-h2, .md-editor .md-h2 { font-size: calc(16px * var(--text-scale)); font-weight: 600; }
 .md-h3, .md-editor .md-h3 {
   font-family: var(--mono); font-size: calc(12px * var(--text-scale)); font-weight: 500;
   text-transform: uppercase; letter-spacing: .06em; color: var(--txt-dim);
@@ -2231,12 +2233,13 @@ main {
 }
 
 .if-field-label {
-  font-size: calc(12px * var(--text-scale));
+  font-family: var(--mono);
+  font-size: calc(10.5px * var(--text-scale));
   font-weight: 600;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--txt-faint);
-  margin-bottom: 7px;
+  margin-bottom: 6px;
   display: block;
 }
 .if-field-label.req { color: var(--accent); }
@@ -2294,56 +2297,6 @@ main {
 .if-btn-primary:hover { box-shadow: 0 5px 18px color-mix(in srgb, var(--accent) 48%, transparent); filter: brightness(1.06); transform: translateY(-1px); }
 .if-btn-primary:active { transform: translateY(0); box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 30%, transparent); }
 .if-btn-primary:disabled { opacity: 0.5; pointer-events: none; }
-
-/* SC items — selectors + scenarios */
-.if-sc-list { display: flex; flex-direction: column; gap: 5px; margin-bottom: 8px; }
-.if-sc-item {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  background: var(--surface-3);
-  border-radius: var(--r-m);
-  padding: 7px 11px;
-  font-size: calc(15px * var(--text-scale));
-  color: var(--txt-dim);
-}
-.if-sc-item input {
-  background: transparent;
-  border: none;
-  outline: none;
-  font-family: var(--display);
-  font-size: calc(15px * var(--text-scale));
-  color: var(--txt);
-  flex: 1;
-  min-width: 0;
-}
-.if-sc-item input::placeholder { color: var(--txt-faint); }
-.if-sc-del {
-  background: none; border: none;
-  color: var(--line);
-  cursor: pointer;
-  font-size: calc(17px * var(--text-scale)); padding: 0 2px;
-  line-height: 1;
-  transition: color 0.12s;
-  flex-shrink: 0;
-}
-.if-sc-del:hover { color: var(--blocked); }
-.if-badge {
-  width: 22px; height: 22px;
-  border-radius: var(--r-s);
-  display: flex; align-items: center; justify-content: center;
-  font-size: calc(12px * var(--text-scale)); font-weight: 700;
-  flex-shrink: 0;
-  cursor: pointer;
-  user-select: none;
-  transition: transform 0.1s;
-}
-.if-badge:hover { transform: scale(1.15); }
-.if-badge:active { transform: scale(0.9); }
-.if-badge.pass    { background: color-mix(in srgb, var(--done) 15%, transparent);  color: var(--done); }
-.if-badge.fail    { background: color-mix(in srgb, var(--blocked) 12%, transparent);  color: var(--blocked); }
-.if-badge.neutral { background: var(--accent-soft);  color: var(--accent); }
-.if-badge.selector { background: var(--accent-soft); color: var(--accent); font-size: calc(10px * var(--text-scale)); }
 
 .if-add-btn {
   display: flex; align-items: center; gap: 8px;
@@ -3118,7 +3071,9 @@ main {
     transform: translate(-50%, calc(-50% + 28px)) scale(0.96);
     opacity: 0;
     transition: transform 0.28s cubic-bezier(0.18, 0.9, 0.24, 1), opacity 0.22s ease;
-    box-shadow: 0 32px 80px -8px rgba(0, 0, 0, 0.6);
+    /* Fără el, antetul (fundal plin, fără rază) acoperea colțurile de sus:
+       modalul era drept sus și rotunjit jos. Meniurile stau în `.sheet-scroll`. */
+    overflow: hidden;
   }
   .sheet.on {
     transform: translate(-50%, -50%) scale(1);
@@ -3335,6 +3290,9 @@ main {
   }
   /* Înălțime dată, nu `flex: 1`: aici nu mai există o coloană care să împartă
      restul înălțimii — panoul se derulează. */
+  /* O singură coloană: spațiul dintre coloane (20px) n-are ce despărți. */
+  .split-pane .form-col-desc { padding-right: 0; }
+  .split-pane .deps-zone, .split-pane .thread { padding-left: 0; }
   .split-pane .form-col-desc .desc-fixed {
     flex: 0 0 auto;
     height: 420px;
@@ -3399,9 +3357,8 @@ main {
      rotunde trebuie să rămână la primul rând. Decalajul de 4px de pe
      `.sh-title-wrap` păstrează cazul cu un singur rând exact cum arăta. */
   align-items: flex-start;
-  gap: 10px;
+  gap: 6px;
   padding: 6px 14px;
-  border-bottom: 1px solid var(--line-soft);
   background: var(--card);
   position: relative;
 }
@@ -3465,7 +3422,7 @@ main {
   justify-content: center;
   width: 30px;
   height: 30px;
-  border-radius: var(--r-s);
+  border-radius: 50%;
   background: var(--surface-3);
   color: var(--txt-faint);
   cursor: pointer;
@@ -3538,8 +3495,12 @@ main {
 
 /* ── META SECTION (theme/val/assignee) ──────────── */
 .sh-meta-section {
-  border-bottom: 1px solid var(--line-soft);
   margin: 0 -18px 14px;
+}
+/* Pe desktop bara e un bloc rotunjit în gutter, nu o bandă până la marginea
+   foii — acolo colțurile ei cădeau pe muchie și se citeau drepte. */
+@media (min-width: 900px) {
+  .sh-meta-section { margin: 12px 0 0; }
 }
 /* Rezumatul colapsat — ascuns implicit; pe mobil (regulile din secțiunea
    responsive) e singurul lucru vizibil cât timp .meta-collapsed e activ, ca
@@ -3950,10 +3911,9 @@ main {
    ISSUE FORM v4 — redesign layout
    ═══════════════════════════════════════════════════ */
 
-/* Left col — descriere cu border separator */
+/* Left col — se desparte de dreapta prin spațiu, nu printr-o linie. */
 .form-col-desc {
-  padding: 16px 18px 20px;
-  border-right: 1px solid var(--line-soft);
+  padding: 14px 20px 16px 0;
   min-height: 100%;
 }
 
@@ -3965,13 +3925,22 @@ main {
 }
 
 /* Descrierea — containerul derulează, editorul (CodeMirror) crește în el.
-   Fără fundal și chenar: câmpul se vede prin inelul de focus al editorului. */
+   Un câmp își păstrează chenarul (regula 1): fără el, 500px de nimic nu se
+   citeau ca un loc în care scrii. Același tratament ca `.thread-textarea` și
+   `.dep-search-field`, ca cele trei câmpuri ale formularului să arate la fel. */
 .desc-fixed {
   width: 100%;
   height: 560px;
   overflow-y: auto;
-  padding: 4px 2px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-m);
+  background: rgba(0, 0, 0, 0.15);
+  transition: border-color 0.12s;
 }
+.desc-fixed:focus-within { border-color: color-mix(in srgb, var(--accent) 30%, transparent); }
+/* Inelul editorului ar fi un al doilea contur în chenar. */
+.desc-fixed .md-editor .cm-editor.cm-focused { box-shadow: none; }
 .desc-fixed .md-editor { max-width: 68ch; }
 /* Editorul umple tot câmpul, ca o atingere sub text să scrie (ca `.es-desc`);
    fallback-ul la fel, ca încărcarea chunk-ului să nu sară caseta. */
@@ -3983,8 +3952,7 @@ main {
 /* ── DEPS ZONE ─────────────────────────────────── */
 .deps-zone {
   position: relative;
-  padding: 12px 16px 14px;
-  border-bottom: 1px solid var(--line-soft);
+  padding: 14px 0 14px 20px;
 }
 
 .deps-bar {
@@ -4200,96 +4168,9 @@ main {
 .dep-dd-plus { font-size: calc(15px * var(--text-scale)); font-weight: 700; line-height: 1; }
 .dep-dd-create strong { font-weight: 700; }
 
-/* ── QA ACCORDION ──────────────────────────────── */
-.acc-section {
-  border-bottom: 1px solid var(--line-soft);
-}
-
-.acc-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  cursor: pointer;
-  background: transparent;
-  border: none;
-  width: 100%;
-  text-align: left;
-  font-family: var(--font);
-  user-select: none;
-  transition: background 0.12s;
-}
-.acc-header:hover { background: rgba(255, 255, 255, 0.02); }
-
-.acc-icon { color: var(--txt-faint); flex-shrink: 0; display: flex; align-items: center; }
-
-.acc-title {
-  font-size: calc(11px * var(--text-scale));
-  font-weight: 600;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: var(--txt-dim);
-  flex: 1;
-}
-
-.acc-count {
-  font-size: calc(10px * var(--text-scale));
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-  color: var(--accent);
-  border-radius: var(--r-s);
-  padding: 1px 6px;
-}
-
-.acc-chevron {
-  flex-shrink: 0;
-  color: var(--txt-faint);
-  transition: transform 0.2s ease;
-}
-.acc-chevron.open { transform: rotate(180deg); }
-
-.acc-body {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 4px 16px 14px;
-}
-
-.qa-sub-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-top: 2px;
-}
-
-.qa-sub-label {
-  font-size: calc(10px * var(--text-scale));
-  font-weight: 600;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: var(--txt-faint);
-}
-
-.qa-sub-add {
-  background: transparent;
-  border: none;
-  color: var(--txt-faint);
-  font-size: calc(16px * var(--text-scale));
-  font-weight: 300;
-  line-height: 1;
-  cursor: pointer;
-  padding: 0 2px;
-  transition: color 0.12s;
-}
-.qa-sub-add:hover { color: var(--accent); }
-
-.qa-divider {
-  height: 1px;
-  background: var(--line-soft);
-  margin: 2px 0;
-}
-
 /* ── FIR (Thread.tsx) ──────────────────────────── */
-.thread { padding: 0 16px 16px; flex: 1; }
+.thread { padding: 0 0 16px 20px; flex: 1; }
+@media (max-width: 899px) { .thread { padding: 0 0 16px; } }
 
 .thread-events { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
 .thread-loading, .thread-empty { color: var(--txt-faint); font-size: calc(13px * var(--text-scale)); font-style: italic; padding: 2px 0; }
@@ -4404,7 +4285,8 @@ main {
 
 /* ── LIGHT THEME OVERRIDES — issue form fields ─── */
 [data-theme='light'] .thread-textarea,
-[data-theme='light'] .dep-search-field {
+[data-theme='light'] .dep-search-field,
+[data-theme='light'] .desc-fixed {
   background: var(--field-bg);
   border-color: var(--accent-soft);
 }
@@ -4416,6 +4298,8 @@ main {
   background: var(--accent-soft);
   border-color: var(--accent);
 }
+/* Descrierea: doar chenarul. 500px nuanțați cu accent ar fi prea mult. */
+[data-theme='light'] .desc-fixed:focus-within { border-color: var(--accent); }
 
 /* ═══════════════════════════════════════════════════════════════════════
    MOBILE REFINEMENTS (< 900px)
@@ -4531,9 +4415,13 @@ main {
   /* ── Issue form body: single column, shorter description box ───────
      The 2-column grid already collapses below 900px, but the fixed 560px
      description height and its column separator are desktop-oriented. */
+  /* Foaia are deja gutter de 18px; încă 16px pe coloană mâncau 34px pe
+     fiecare parte la 390px. */
   .form-col-desc {
-    border-right: none;
-    padding: 14px 16px 16px;
+    padding: 14px 0 16px;
+  }
+  .deps-zone {
+    padding: 12px 0 14px;
   }
   .desc-fixed {
     height: 300px;
@@ -7001,3 +6889,21 @@ body:has(.qab) { overflow-y: auto; }
 [data-text-large] .event-row { flex-wrap: wrap; position: relative; padding-left: 38px; row-gap: 2px; }
 [data-text-large] .event-row .ev-bar { position: absolute; left: 10px; top: 8px; bottom: 8px; }
 [data-text-large] .event-row .list-title { order: 1; flex: 1 1 100%; white-space: normal; }
+
+/* ── Densitate cu mouse ───────────────────────────────────────────────────
+   44px e ținta unui deget. Cu un cursor, aceleași dimensiuni făceau
+   formularul să pară mărit; pe ecran tactil totul rămâne cum era. */
+@media (pointer: fine) and (min-width: 900px) {
+  .att-bar { min-height: 40px; padding: 3px 4px 3px 8px; }
+  .att-chip.img { width: 32px; height: 32px; }
+  .att-chip.busy { min-width: 32px; height: 32px; }
+  .att-open { height: 32px; }
+  .att-chip.file .att-open { padding: 0 9px; }
+  .att-act { width: 30px; height: 30px; }
+  .sh-close, .sh-save, .sh-delete { width: 30px; height: 30px; }
+  .if-bar { padding: 5px 6px; }
+  .if-ctl { height: 28px; font-size: calc(13px * var(--text-scale)); }
+  .if-ctl.icon { width: 28px; }
+  .if-seg { height: 28px; }
+  .if-seg button { height: 22px; }
+}

@@ -300,7 +300,7 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff }: {
 
   return (
     <div className="thread">
-      <span className="if-field-label" style={{ display: 'block', marginBottom: 8 }}>Fir</span>
+      <span className="if-field-label" style={{ display: 'block' }}>Fir</span>
 
       {loading && <p className="thread-loading">Se încarcă…</p>}
       {loadError && <div className="banner">{loadError}</div>}

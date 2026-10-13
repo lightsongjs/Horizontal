@@ -368,10 +368,10 @@ export function Attachments({
                       onError={() => setBroken((prev) => new Set(prev).add(a.path))}
                     />
                   ) : isImg ? (
-                    <span className="att-ic off"><Icon name="fileImage" size={20} /></span>
+                    <span className="att-ic off"><Icon name="fileImage" size={16} /></span>
                   ) : (
                     <>
-                      <span className="att-ic"><Icon name={iconFor(a.contentType, a.filename)} size={20} /></span>
+                      <span className="att-ic"><Icon name={iconFor(a.contentType, a.filename)} size={16} /></span>
                       <span className="att-name">{a.filename}</span>
                     </>
                   )}

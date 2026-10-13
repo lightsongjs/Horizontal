@@ -20,20 +20,14 @@ import { DescField } from './DescField'
 import type { EditorHandle } from './MarkdownEditor'
 import { describeRrule } from '../lib/recurrence'
 import { PRESETS, RecurrencePicker, presetOf } from './RecurrencePicker'
-import type { Issue, ScenarioKind, TestScenario } from '../lib/types'
-import { Icon, type IconName } from './Icon'
+import type { Issue, TestScenario } from '../lib/types'
+import { Icon } from './Icon'
 import { displayIssueId, isTempIssueId } from '../lib/issueId'
 import { repository } from '../data'
 import { errorMessage } from '../lib/errorMessage'
 import { OfflineError } from '../data/offline/netError'
 
 const PALETTE = ['#0284C7', '#059669', '#D97706', '#EA580C', '#E11D48', '#7C3AED', '#06B6D4']
-
-const BADGE_CYCLE: { kind: ScenarioKind; icon: IconName }[] = [
-  { kind: 'pass',    icon: 'check' },
-  { kind: 'fail',    icon: 'close' },
-  { kind: 'neutral', icon: 'notDone' },
-]
 
 export interface MetaRecapInput {
   themeName: string | null
@@ -366,8 +360,11 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
   /** Obstacole scrise în selector dar încă necreate. Același tipar ca DraftIssue. */
   const [draftObstacles, setDraftObstacles] = useState<DraftIssue[]>([])
 
-  const [selectors, setSelectors] = useState<string[]>(existing?.selectors ?? [])
-  const [scenarios, setScenarios] = useState<TestScenario[]>(existing?.scenarios ?? [])
+  // QA (selectori, scenarii) nu se mai editează din interfață: testele le face
+  // agentul, iar un scenariu de care e nevoie se scrie în descriere. Valorile
+  // vechi trec neatinse la salvare, ca un tichet salvat să nu le șteargă.
+  const [selectors] = useState<string[]>(existing?.selectors ?? [])
+  const [scenarios] = useState<TestScenario[]>(existing?.scenarios ?? [])
   /**
    * Nu ținem textul firului aici — ăla trăiește în `Thread.tsx`, care își
    * gestionează singur trimiterea. Aici contează doar SEMNALUL de murdărie,
@@ -468,9 +465,6 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
   const [depSearchHl, setDepSearchHl] = useState(0)
   const [depDropdownOpen, setDepDropdownOpen] = useState(false)
 
-  // QA accordion — open if has content, closed if empty
-  const initialQaCount = (existing?.selectors?.filter(Boolean).length ?? 0) + (existing?.scenarios?.length ?? 0)
-  const [qaOpen, setQaOpen] = useState(initialQaCount > 0)
 
   const titleInputRef = useRef<HTMLTextAreaElement>(null)
   const descRef = useRef<EditorHandle>(null)
@@ -732,8 +726,6 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
     else if (e.key === 'Escape') { setDepSearchQ(''); setDepDropdownOpen(false); setDepSearchHl(0) }
   }
 
-  const qaCount = selectors.filter(Boolean).length + scenarios.length
-
   // Tema aleasă și numele celui care ține tichetul, o dată: le folosesc și
   // bara, și rezumatul de pe mobil.
   const themeObj = theme ? themes.find((t) => t.key === theme) : undefined
@@ -757,19 +749,6 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
     if (created) setTheme(created.key)
     setNewThemeName(''); setShowNewTheme(false)
   }
-
-  const addSelector = () => setSelectors((p) => [...p, ''])
-  const updateSelector = (i: number, val: string) => setSelectors((p) => p.map((s, idx) => idx === i ? val : s))
-  const removeSelector = (i: number) => setSelectors((p) => p.filter((_, idx) => idx !== i))
-
-  const addScenario = () => setScenarios((p) => [...p, { text: '', kind: 'neutral' }])
-  const updateScenarioText = (i: number, text: string) => setScenarios((p) => p.map((s, idx) => idx === i ? { ...s, text } : s))
-  const cycleScenarioBadge = (i: number) => setScenarios((p) => p.map((s, idx) => {
-    if (idx !== i) return s
-    const cur = BADGE_CYCLE.findIndex((b) => b.kind === s.kind)
-    return { ...s, kind: BADGE_CYCLE[(cur + 1) % BADGE_CYCLE.length].kind }
-  }))
-  const removeScenario = (i: number) => setScenarios((p) => p.filter((_, idx) => idx !== i))
 
   const cycleAfterSave = (): string | null => {
     const targetId = existing?.id ?? '__new__'
@@ -971,7 +950,6 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
     finally { setSaving(false) }
   }
 
-  const badgeIcon = (kind: ScenarioKind): IconName => BADGE_CYCLE.find((b) => b.kind === kind)?.icon ?? 'notDone'
 
 
   /* Cele cinci controale ale barei, scoase din JSX ca VALORI: pe telefon ele
@@ -1497,7 +1475,7 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
               de o linie: sub o descriere lungă nu se mai vedeau fără scroll.
               Coloana întreagă e zona de drop — vezi `dropZone` în Attachments. */}
           <div className={`form-col form-col-desc ${dropActive ? 'att-dropping' : ''}`} ref={descColRef}>
-            <label className="if-field-label" style={{ display: 'block', marginBottom: 8 }}>Descriere</label>
+            <label className="if-field-label" style={{ display: 'block' }}>Descriere</label>
             {project && (
               <Attachments
                 issueId={existing?.id}
@@ -1524,7 +1502,7 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
             />
           </div>
 
-          {/* RIGHT — deps + QA + note */}
+          {/* RIGHT — deps + fir */}
           <div className="form-col form-col-right">
 
             {/* DEPS ZONE */}
@@ -1659,60 +1637,6 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
               />
             )}
 
-            {/* QA, la coada coloanei: selectorii și scenariile se scriu o
-                dată, la final, și se recitesc rar — iar până acum stăteau
-                între dependențe și fir, adică exact peste ce se deschide des.
-                Acordeonul rămâne închis când e gol. */}
-            <div className="acc-section">
-              <button className="acc-header" onClick={() => setQaOpen((v) => !v)}>
-                <span className="acc-icon">
-                  <Icon name="fileDoc" size={13} />
-                </span>
-                <span className="acc-title">QA</span>
-                {qaCount > 0 && <span className="acc-count">{qaCount}</span>}
-                <Icon name="collapse" size={13} className={`acc-chevron${qaOpen ? ' open' : ''}`} />
-              </button>
-              {qaOpen && (
-                <div className="acc-body">
-                  <div className="qa-sub-row">
-                    <span className="qa-sub-label">Playwright Selectors</span>
-                    <button className="qa-sub-add" onClick={addSelector}>+</button>
-                  </div>
-                  <div className="if-sc-list">
-                    {selectors.map((s, i) => (
-                      <div key={i} className="if-sc-item">
-                        <span className="if-badge selector"><Icon name="selector" size={12} /></span>
-                        <input value={s} onChange={(e) => updateSelector(i, e.target.value)}
-                          placeholder="getByRole('button', { name: 'Login' })"
-                          style={{ fontFamily: 'var(--mono)', fontSize: 'calc(11px * var(--text-scale))' }}
-                          autoComplete="off" autoCorrect="off" inputMode="text" />
-                        <button className="if-sc-del" onClick={() => removeSelector(i)} aria-label="Șterge selectorul"><Icon name="close" size={13} /></button>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="qa-divider" />
-
-                  <div className="qa-sub-row">
-                    <span className="qa-sub-label">Test Scenarios</span>
-                    <button className="qa-sub-add" onClick={addScenario}>+</button>
-                  </div>
-                  <div className="if-sc-list">
-                    {scenarios.map((s, i) => (
-                      <div key={i} className="if-sc-item">
-                        <span className={`if-badge ${s.kind}`} onClick={() => cycleScenarioBadge(i)} title="Click schimbă tipul">
-                          <Icon name={badgeIcon(s.kind)} size={13} />
-                        </span>
-                        <input value={s.text} onChange={(e) => updateScenarioText(i, e.target.value)}
-                          placeholder="Ex: Login reușit cu date valide"
-                          autoComplete="off" autoCorrect="off" inputMode="text" />
-                        <button className="if-sc-del" onClick={() => removeScenario(i)} aria-label="Șterge scenariul"><Icon name="close" size={13} /></button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
 
           </div>
         </div>
