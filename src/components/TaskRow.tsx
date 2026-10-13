@@ -1,13 +1,12 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useHorizontal } from '../store'
 import { useCanWriteIn } from '../hooks'
-import { useUI } from '../ui'
 import { hasTime, toShortDate, toTimeInput } from '../lib/schedule'
 import {
   LONG_PRESS_MS, crossedFull, dragOffset, inEdge, lockAxis, movedBeyondTap, release, restOffset,
   type Axis, type Rest,
 } from '../lib/swipe'
-import type { Issue } from '../lib/types'
+import type { Issue, Project } from '../lib/types'
 import { Bell, Recur } from './DueChip'
 import { TaskProgress } from './TaskProgress'
 import { Icon } from './Icon'
@@ -20,6 +19,10 @@ interface Props {
   onOpen(id: string): void
   /** Restanță: ora și bifa devin roșii, iar ziua ratată se arată în locul orei. */
   late?: boolean
+  /** Tichetul e deschis în panoul lateral. Prop, nu `useUI()`: contextul UI se
+   *  schimbă la ORICE deschidere de foaie, iar citit aici randa din nou fiecare
+   *  rând — cu 300 de sarcini, o atingere pe telefon costa o secundă. */
+  docked?: boolean
 }
 
 const vibrate = (ms: number) => {
@@ -41,12 +44,54 @@ const vibrate = (ms: number) => {
  * inputuri native sub deget: calendarul / ceasul sistemului (`NativePick`). Pragurile sunt în `lib/swipe`;
  * aici doar se citește degetul. Pe desktop nu se schimbă nimic.
  */
-export function TaskRow({ issue, onOpen, late = false }: Props) {
+/**
+ * Stratul subțire: citește store-ul și dă mai departe doar ce folosește rândul.
+ *
+ * De ce în două: deschiderea unei sarcini dintr-o listă îi încarcă proiectul în
+ * store (`resolveTicketUrl`), adică două actualizări de store, iar la fiecare
+ * listele se reconstruiesc cu obiecte NOI pentru aceleași sarcini. Cu store-ul
+ * citit în rândul propriu-zis, fiecare atingere randa din nou toată lista, de
+ * trei ori — cu 300 de sarcini, ~1s pe telefon. Acum se rerandează doar
+ * stratul ăsta (un hook și un `find`); rândul (`TaskRowView`) doar dacă s-a
+ * schimbat ceva din ce arată (`sameRow`).
+ */
+export function TaskRow(props: Props) {
   const { toggleDone, projects } = useHorizontal()
-  const { dockedIssueId } = useUI()
+  const toggle = useRef(toggleDone)
+  toggle.current = toggleDone
+  const onToggle = useCallback((id: string) => void toggle.current(id), [])
+  const project = projects.find((p) => p.id === props.issue.projectId)
+  return <TaskRowView {...props} project={project} onToggle={onToggle} />
+}
+
+interface ViewProps extends Props {
+  project: Project | undefined
+  /** Stabil (prin ref): `toggleDone` din store se schimbă cu fiecare listă. */
+  onToggle(id: string): void
+}
+
+/** Câmpurile sarcinii la fel ca valoare. Listele (`deps`, `scenarios`) se
+ *  reconstruiesc la fiecare citire, deci se compară după conținut. */
+function sameIssue(a: Issue, b: Issue): boolean {
+  if (a === b) return true
+  const keys = Object.keys(a) as (keyof Issue)[]
+  if (keys.length !== Object.keys(b).length) return false
+  return keys.every((k) => {
+    const x = a[k], y = b[k]
+    if (x === y) return true
+    return typeof x === 'object' && x !== null && typeof y === 'object' && y !== null && JSON.stringify(x) === JSON.stringify(y)
+  })
+}
+
+function sameRow(a: ViewProps, b: ViewProps): boolean {
+  return a.onOpen === b.onOpen && a.onToggle === b.onToggle && a.late === b.late && a.docked === b.docked
+    && a.project === b.project && sameIssue(a.issue, b.issue)
+}
+
+/** Cere ca `onOpen` să fie stabil (`openTaskAnywhere` din App). */
+const TaskRowView = memo(function TaskRowView({ issue, onOpen, late = false, docked = false, project, onToggle }: ViewProps) {
   const ta = useTaskActions()
   const canWrite = useCanWriteIn(issue.projectId)
-  const project = projects.find((p) => p.id === issue.projectId)
   const timed = hasTime(issue)
   const selecting = ta.narrow && ta.selectMode
   const selected = selecting && ta.selectedIds.has(issue.id)
@@ -61,7 +106,7 @@ export function TaskRow({ issue, onOpen, late = false }: Props) {
         onClick={(e) => {
           e.stopPropagation()
           if (selecting) ta.toggleSelected(issue.id)
-          else if (canWrite) void toggleDone(issue.id)
+          else if (canWrite) onToggle(issue.id)
         }}
       >
         {selecting
@@ -96,7 +141,7 @@ export function TaskRow({ issue, onOpen, late = false }: Props) {
     </>
   )
 
-  const cls = `list-row task-row ${issue.done ? 'done' : ''} ${late ? 'late' : ''}${dockedIssueId === issue.id ? ' docked' : ''}`
+  const cls = `list-row task-row ${issue.done ? 'done' : ''} ${late ? 'late' : ''}${docked ? ' docked' : ''}`
 
   if (!ta.narrow) {
     return (
@@ -110,7 +155,7 @@ export function TaskRow({ issue, onOpen, late = false }: Props) {
       {body}
     </SwipeRow>
   )
-}
+}, sameRow)
 
 interface SwipeProps {
   issue: Issue

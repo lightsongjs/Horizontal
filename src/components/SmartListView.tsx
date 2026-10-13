@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useHorizontal } from '../store'
+import { useUI } from '../ui'
 import { PushToggle } from './PushToggle'
 import { QuickAdd } from './QuickAdd'
 import { TaskRow } from './TaskRow'
@@ -58,6 +59,7 @@ interface GroupProps {
 
 function Group({ label, date, issues, color, onOpen, late, empty, action, events }: GroupProps) {
   const ta = useTaskActions()
+  const { dockedIssueId } = useUI()
   const hasEvents = !!events && (events.band.length > 0 || events.timed.length > 0)
   if (issues.length === 0 && !empty && !hasEvents) return null
   // În selecție, capul grupului alege tot grupul (sau îl scoate, dacă era ales tot).
@@ -79,7 +81,7 @@ function Group({ label, date, issues, color, onOpen, late, empty, action, events
       {events && <EventBand items={events.band} />}
       {issues.length > 0 || (events && events.timed.length > 0)
         ? mergeDay(issues, events?.timed ?? []).map((r) => r.kind === 'issue'
-          ? <TaskRow key={r.issue.id} issue={r.issue} onOpen={onOpen} late={late} />
+          ? <TaskRow key={r.issue.id} issue={r.issue} onOpen={onOpen} late={late} docked={r.issue.id === dockedIssueId} />
           : <EventRow key={r.occ.key} occ={r.occ} />)
         : !hasEvents && <p className="day-empty">{empty}</p>}
     </div>
@@ -102,6 +104,7 @@ interface Props {
  */
 export function SmartListView({ kind, onOpenTask, focusSignal = 0 }: Props) {
   const { smartLists, dueLoaded } = useHorizontal()
+  const { dockedIssueId } = useUI()
   const cal = useCalendar()
   const [showDone, setShowDone] = useState(false)
   // Un ceas pe minut, doar cât sunt evenimente: un eveniment terminat se
@@ -171,7 +174,7 @@ export function SmartListView({ kind, onOpenTask, focusSignal = 0 }: Props) {
                   <Icon name={showDone ? 'collapse' : 'expand'} size={15} /> Terminate azi ({smartLists.doneToday.length})
                 </button>
                 {showDone && smartLists.doneToday.map((it) => (
-                  <TaskRow key={it.id} issue={it} onOpen={onOpenTask} />
+                  <TaskRow key={it.id} issue={it} onOpen={onOpenTask} docked={it.id === dockedIssueId} />
                 ))}
               </>
             )}

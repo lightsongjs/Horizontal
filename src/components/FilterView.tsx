@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react'
 import { useHorizontal } from '../store'
+import { useUI } from '../ui'
 import { filterIssues, groupByProject } from '../lib/savedFilters'
 import { isOverdue } from '../lib/schedule'
 import type { Issue } from '../lib/types'
@@ -11,6 +12,7 @@ import { useTaskActions } from './TaskActions'
 function ProjectGroup({ projectId, issues, onOpen, now }: { projectId: string; issues: Issue[]; onOpen(id: string): void; now: Date }) {
   const { projects } = useHorizontal()
   const ta = useTaskActions()
+  const { dockedIssueId } = useUI()
   const project = projects.find((p) => p.id === projectId)
   const selecting = ta.narrow && ta.selectMode
   return (
@@ -24,7 +26,7 @@ function ProjectGroup({ projectId, issues, onOpen, now }: { projectId: string; i
         <span className="list-group-label">{project?.name ?? projectId}</span>
         <span className="list-group-num">{issues.length}</span>
       </div>
-      {issues.map((it) => <TaskRow key={it.id} issue={it} onOpen={onOpen} late={isOverdue(it, now)} />)}
+      {issues.map((it) => <TaskRow key={it.id} issue={it} onOpen={onOpen} late={isOverdue(it, now)} docked={it.id === dockedIssueId} />)}
     </div>
   )
 }

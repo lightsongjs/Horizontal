@@ -1036,6 +1036,18 @@ Realtime (`postgres_changes`) ar da „instant" cu ambele dispozitive deschise,
 dar nu înlocuiește nimic de mai sus: canalul cade cu tabul în fundal și cu
 telefonul adormit, deci resyncul la revenire rămâne oricum necesar.
 
+## Listele lungi nu se randează la o atingere
+
+`TaskRow` și `TicketCard` sunt `memo` și **nu citesc `useUI()`**: contextul UI
+se schimbă la orice deschidere de foaie, iar citit în rând randa din nou toată
+lista (cu ~300 de sarcini, ~1s pe telefon până apărea foaia, 2026-10-13). Ce
+le trebuie vine ca props stabile (`docked`, `onOpen` prin ref în `App` /
+`OrdineView`). Deschiderea din „Azi" încarcă proiectul în store, iar listele se
+reconstruiesc cu obiecte noi pentru aceleași sarcini — de-aia `TaskRow` citește
+store-ul într-un strat subțire și compară sarcina după valoare (`sameRow`).
+Un câmp nou citit dintr-un context în rând trebuie să treacă pe aici, altfel
+regresia revine fără să pice vreun test.
+
 ## Offline — baza locală și coada
 
 Omul folosește aplicația ca listă zilnică de sarcini, iar regula de care

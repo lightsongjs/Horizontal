@@ -1,5 +1,5 @@
+import { memo } from 'react'
 import { useHorizontal } from '../store'
-import { useUI } from '../ui'
 import { useCanWrite } from '../hooks'
 import { DueChip } from './DueChip'
 import { TaskProgress, hasTasks } from './TaskProgress'
@@ -17,11 +17,14 @@ interface Props {
   highlighted?: boolean
   onTreeSelect?: (id: string) => void
   focused?: boolean
+  /** Deschiderea tichetului. Prop stabil, nu `useUI()`: contextul UI se
+   *  schimbă la orice deschidere de foaie și ar fi randat din nou fiecare card. */
+  onOpen(id: string): void
 }
 
-export function TicketCard({ id, contextWave, selectMode, isSelected, onToggleSelect, treeMode, highlighted, onTreeSelect, focused }: Props) {
+/** `memo`: deschiderea unei foi nu mai randează din nou tot valul. */
+export const TicketCard = memo(function TicketCard({ id, contextWave, selectMode, isSelected, onToggleSelect, treeMode, highlighted, onTreeSelect, focused, onOpen }: Props) {
   const { byId, stateOf, toggleDone, themeOf, blockedByObstacle, assignees, assigneeShort } = useHorizontal()
-  const { openEditIssue } = useUI()
   const canWrite = useCanWrite()
   const it = byId[id]
   if (!it) return null
@@ -40,7 +43,7 @@ export function TicketCard({ id, contextWave, selectMode, isSelected, onToggleSe
     } else if (selectMode) {
       onToggleSelect?.(id)
     } else {
-      openEditIssue(id)
+      onOpen(id)
     }
   }
 
@@ -98,4 +101,4 @@ export function TicketCard({ id, contextWave, selectMode, isSelected, onToggleSe
       )}
     </button>
   )
-}
+})

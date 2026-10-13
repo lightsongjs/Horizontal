@@ -655,9 +655,11 @@ function Shell() {
    * `smartList` are prioritate față de `project` în randare; proiectul se
    * încarcă doar în store, ca formularul să funcționeze complet.
    */
-  const openTaskAnywhere = (id: string) => {
-    resolveTicketUrl(id)
-  }
+  // Stabil: e `onOpen` pe fiecare rând memorat (`TaskRow`). O funcție nouă la
+  // fiecare randare a lui App ar fi randat din nou toată lista la orice atingere.
+  const resolveRef = useRef(resolveTicketUrl)
+  resolveRef.current = resolveTicketUrl
+  const openTaskAnywhere = useCallback((id: string) => resolveRef.current(id), [])
 
   // Step 1 — on load: read path, select project, then unlock URL sync.
   // Un path de ticket (/MS-03) nu conține proiectul, așa că îl deducem din

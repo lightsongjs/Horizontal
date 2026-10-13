@@ -1,5 +1,6 @@
-import { useMemo } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 import { useHorizontal } from '../store'
+import { useUI } from '../ui'
 import { TicketCard } from './TicketCard'
 import { WaveGate } from './WaveGate'
 import { WaveTabs } from './WaveTabs'
@@ -17,6 +18,11 @@ export function OrdineView() {
   const wa = useWaveActions()
   const canWrite = useCanWrite()
   const { focusedId } = useVimNav(flatLayers)
+  // Stabil, ca `TicketCard` (memo) să nu se randeze din nou la fiecare foaie.
+  const { openEditIssue } = useUI()
+  const openRef = useRef(openEditIssue)
+  openRef.current = openEditIssue
+  const openCard = useCallback((id: string) => openRef.current(id), [])
 
   const otherWaves = waves.filter((w) => w.number !== activeWave)
   const selCount = wa.selectedIds.size
@@ -81,6 +87,7 @@ export function OrdineView() {
                   highlighted={wa.highlightedIds ? wa.highlightedIds.has(id) : undefined}
                   onTreeSelect={wa.handleTreeSelect}
                   focused={focusedId === id}
+                  onOpen={openCard}
                 />
               ))}
             </div>

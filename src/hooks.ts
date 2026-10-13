@@ -212,7 +212,12 @@ export function useSelection(): Selection {
   }, [])
   const setSelected = useCallback((ids: string[]) => setSelectedIds(new Set(ids)), [])
 
-  return { selectMode, selectedIds, enterSelectMode, exitSelectMode, toggleSelected, toggleMany, setSelected }
+  // Memorat: e în dependențele contextului `TaskActions`; un obiect nou la
+  // fiecare randare l-ar fi schimbat și ar fi randat din nou fiecare rând.
+  return useMemo(
+    () => ({ selectMode, selectedIds, enterSelectMode, exitSelectMode, toggleSelected, toggleMany, setSelected }),
+    [selectMode, selectedIds, enterSelectMode, exitSelectMode, toggleSelected, toggleMany, setSelected],
+  )
 }
 
 export function useWaveActions(): WaveActions {
