@@ -1,14 +1,19 @@
 import { toShortDate } from '../lib/schedule'
 import { useHorizontal } from '../store'
+import { useCanWriteIn } from '../hooks'
 import { useUI } from '../ui'
 import { Attachments } from './Attachments'
 import { Icon } from './Icon'
+import { MarkdownView } from './MarkdownView'
 
 export function IssueSheet({ issueId }: { issueId: string }) {
-  const { byId, waves, unblockedBy, themeOf, assignees, myAssigneeId } = useHorizontal()
-  const { openEditIssue, pushSheet } = useUI()
+  const { byId, waves, unblockedBy, themeOf, assignees, myAssigneeId, projects, updateIssue } = useHorizontal()
+  const { openEditIssue, pushSheet, showToast } = useUI()
   const it = byId[issueId]
+  // Înainte de `return null`: un hook condiționat ar strica ordinea.
+  const canWrite = useCanWriteIn(it?.projectId ?? null)
   if (!it) return null
+  const prefixes = projects.map((p) => p.prefix)
 
   const waveName = (n: number) => waves.find((w) => w.number === n)?.name ?? `Val ${n}`
   const theme = it.theme ? themeOf(it.theme) : undefined
@@ -22,6 +27,7 @@ export function IssueSheet({ issueId }: { issueId: string }) {
   const creatorName = creator?.name
 
   const navigateTo = (id: string) => pushSheet({ kind: 'issue', issueId: id })
+  const openRef = (id: string) => (byId[id] ? navigateTo(id) : showToast(`${id} nu e încărcat — deschide-i proiectul.`))
 
   return (
     <>
@@ -68,7 +74,15 @@ export function IssueSheet({ issueId }: { issueId: string }) {
             până când dependențele și atașamentele de mai jos rămâneau o fâșie
             de câțiva pixeli. Aici crește cât are nevoie și folosește toată
             înălțimea modalului. */}
-        {it.desc && <p className="issue-desc">{it.desc}</p>}
+        {it.desc && (
+          <MarkdownView
+            className="issue-desc"
+            text={it.desc}
+            prefixes={prefixes}
+            onToggle={canWrite ? (desc) => void updateIssue(it.id, { desc }) : undefined}
+            onRef={openRef}
+          />
+        )}
         <button
           className="add-dep"
           style={{ borderStyle: 'solid', width: '100%', marginBottom: 12 }}

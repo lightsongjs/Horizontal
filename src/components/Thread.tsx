@@ -17,6 +17,8 @@ import { dayOffset, toShortDate, toTimeInput } from '../lib/schedule'
 import { useAuth } from '../auth'
 import { useHorizontal } from '../store'
 import { useCanWrite } from '../hooks'
+import { useUI } from '../ui'
+import { MarkdownView } from './MarkdownView'
 import { AttachmentPicker } from './AttachmentPicker'
 import { humanSize, iconFor } from './Attachments'
 import { Lightbox } from './Lightbox'
@@ -89,7 +91,10 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff }: {
    */
   onHandoff(to: string | null): void
 }) {
-  const { assignees, projectMembers, ensureAssigneeForMember, byId, upsertIssue, refreshInbox } = useHorizontal()
+  const { assignees, projectMembers, ensureAssigneeForMember, byId, upsertIssue, refreshInbox, projects } = useHorizontal()
+  const { pushSheet, showToast } = useUI()
+  const prefixes = projects.map((p) => p.prefix)
+  const openRef = (id: string) => (byId[id] ? pushSheet({ kind: 'issue', issueId: id }) : showToast(`${id} nu e încărcat — deschide-i proiectul.`))
   const { session } = useAuth()
   const canWrite = useCanWrite()
   // `localRepository` semnează firul cu 'local' (vezi `postToThread` de-acolo)
@@ -325,7 +330,7 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff }: {
                       <span className="thread-comment-name">{author.name}</span>
                       <span className="thread-comment-time">{eventTime(e.createdAt, now)}</span>
                     </div>
-                    {e.body && <div className="thread-comment-text">{e.body}</div>}
+                    {e.body && <MarkdownView className="thread-comment-text" text={e.body} prefixes={prefixes} onRef={openRef} />}
                     {group.length > 0 && (
                       <div className="att-strip thread-comment-atts">
                         {group.map((a) => {

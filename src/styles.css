@@ -1185,12 +1185,86 @@ main {
    lipeau într-un singur paragraf, iar o listă tastată pe rânduri devenea
    ilizibilă exact în locul unde e citită. */
 .issue-desc {
-  font-size: calc(14.5px * var(--text-scale));
-  color: var(--txt-dim);
-  line-height: 1.6;
-  white-space: pre-wrap;
-  overflow-wrap: break-word;
   margin: 12px 0 14px;
+}
+/* ── Markdown: descrierea citită (MarkdownView) și scrisă (MarkdownEditor) ──
+   Serif pentru limbă, mono pentru cod și cifre. Fără chenare: blocurile se
+   despart prin spațiu și suprafață, citatul n-are bară. Aceleași clase în
+   cititor și în editor, ca cele două să nu se poată despărți vizual. */
+.md, .md-editor .cm-content {
+  font-family: var(--display);
+  font-optical-sizing: auto;
+  font-size: calc(16px * var(--text-scale));
+  line-height: 1.6;
+  color: var(--txt);
+  overflow-wrap: break-word;
+}
+.md > :first-child { margin-top: 0; }
+.md > :last-child { margin-bottom: 0; }
+.md p { margin: 0 0 0.65em; }
+.md h3, .md h4, .md h5 { margin: 1.3em 0 0.35em; }
+.md-h1, .md-editor .md-h1 { font-size: calc(20px * var(--text-scale)); font-weight: 600; }
+.md-h2, .md-editor .md-h2 { font-size: calc(17px * var(--text-scale)); font-weight: 600; }
+.md-h3, .md-editor .md-h3 {
+  font-family: var(--mono); font-size: calc(12px * var(--text-scale)); font-weight: 500;
+  text-transform: uppercase; letter-spacing: .06em; color: var(--txt-dim);
+}
+.md strong, .md-editor .md-strong { font-weight: 600; }
+.md em, .md-editor .md-em { font-style: italic; }
+.md del, .md-editor .md-del { text-decoration: line-through; color: var(--txt-dim); }
+.md-code, .md-editor .md-code {
+  font-family: var(--mono); font-size: 0.86em;
+  background: var(--surface-2); padding: 1px 5px; border-radius: var(--r-s);
+}
+.md-pre {
+  margin: 0.8em 0; padding: 12px 14px; border-radius: var(--r-m);
+  background: var(--surface-2); overflow-x: auto;
+  font-family: var(--mono); font-size: calc(13px * var(--text-scale)); line-height: 1.55;
+}
+.md-pre code { font: inherit; }
+.md blockquote { margin: 0 0 0.65em; padding-left: 14px; font-style: italic; color: var(--txt-dim); }
+.md-link, .md-editor .md-link {
+  color: var(--accent);
+  text-decoration: underline 1px;
+  text-underline-offset: 3px;
+  text-decoration-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  cursor: pointer;
+}
+.md-ref {
+  font-family: var(--mono); font-size: 0.86em; color: var(--accent);
+  background: none; border: 0; padding: 0; cursor: pointer;
+}
+.md-hr { text-align: center; margin: 1.2em 0; font-family: var(--mono); color: var(--txt-faint); }
+.md ul, .md ol { margin: 0 0 0.65em; padding-left: 1.4em; }
+.md li { margin: 0.15em 0; }
+.md li > p { margin: 0; }
+.md ul > li.md-li:not(.md-li-task) { list-style: none; position: relative; }
+.md ul > li.md-li:not(.md-li-task)::before, .md-editor .md-bullet {
+  content: ''; display: inline-block; width: 5px; height: 5px; border-radius: 50%;
+  background: var(--txt-faint); vertical-align: middle;
+}
+.md ul > li.md-li:not(.md-li-task)::before { position: absolute; left: -0.95em; top: 0.72em; }
+.md ol { font-variant-numeric: tabular-nums; }
+.md ol > li::marker, .md-editor .md-num { font-family: var(--mono); color: var(--txt-dim); }
+.md-li-task { list-style: none; display: flex; gap: 10px; align-items: flex-start; margin-left: -1.4em; }
+.md-li-body { flex: 1; min-width: 0; }
+/* Căsuța: 18px desenați, 44px de atins (pseudo-elementul). */
+.md-task {
+  position: relative; flex: none; width: 18px; height: 18px; margin-top: 0.22em;
+  border: 0; padding: 0; border-radius: var(--r-s); cursor: pointer;
+  background: transparent; box-shadow: inset 0 0 0 1.5px var(--txt-faint);
+  color: var(--bg); display: inline-grid; place-items: center;
+  transition: background 120ms, box-shadow 120ms;
+  vertical-align: -0.2em;
+}
+.md-task::after { content: ''; position: absolute; inset: -13px; }
+.md-task.on { background: var(--accent); box-shadow: none; }
+.md-task:disabled { cursor: default; }
+.md-li-task.done > .md-li-body, .md-editor .md-done {
+  color: var(--txt-faint);
+  text-decoration: line-through 1px;
+  text-decoration-color: var(--txt-faint);
+  transition: color 120ms;
 }
 .sheet-scroll {
   overflow-y: auto;
@@ -4218,7 +4292,8 @@ main {
 .thread-comment-head { display: flex; align-items: baseline; gap: 7px; margin-bottom: 3px; }
 .thread-comment-name { font-size: calc(13px * var(--text-scale)); font-weight: 600; color: var(--txt); }
 .thread-comment-time { font-family: var(--mono); font-size: calc(11px * var(--text-scale)); color: var(--txt-faint); }
-.thread-comment-text { font-size: calc(13px * var(--text-scale)); line-height: 1.55; color: var(--txt); white-space: pre-wrap; overflow-wrap: break-word; }
+.thread-comment-text { font-size: calc(13px * var(--text-scale)); line-height: 1.55; color: var(--txt); overflow-wrap: break-word; }
+.thread-comment-text.md { font-size: calc(15px * var(--text-scale)); line-height: 1.55; }
 /* Refolosește `.att-strip`/`.att-chip` din Attachments.tsx — aceleași
    miniaturi și același lightbox ca bara tichetului, doar grupate sub
    comentariul care le-a adus. Fără `.att-del`: firul e istoric, nu se editează. */
@@ -4261,8 +4336,8 @@ main {
   border: 1px solid var(--line);
   border-radius: var(--r-m);
   color: var(--txt);
-  font-family: var(--font);
-  font-size: calc(13px * var(--text-scale));
+  font-family: var(--display);
+  font-size: calc(15px * var(--text-scale));
   line-height: 1.6;
   padding: 10px 12px;
   outline: none;
