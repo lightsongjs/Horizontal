@@ -130,6 +130,13 @@ try {
   await page.locator('.split-pane .md-editor').first().waitFor({ timeout: 5000 })
   await page.locator('.split-pane .md-editor .cm-content').click()
   await page.keyboard.press('Control+A')
+  await page.keyboard.press('Backspace')
+  // Caseta goală e țintă de click pe toată înălțimea, nu doar pe rândul de text.
+  await page.locator('.tabs').click()
+  const descBox = await page.locator(".split-pane .desc-fixed").boundingBox()
+  await page.mouse.click(descBox.x + 40, descBox.y + descBox.height - 20)
+  await page.waitForTimeout(200)
+  check('click jos într-o descriere goală focusează editorul', await page.evaluate(() => !!document.activeElement?.closest('.split-pane .md-editor')), 'focus în editor')
   await page.keyboard.type('a')
   await page.keyboard.press('Control+b')
   await page.keyboard.type('b')

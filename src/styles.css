@@ -3973,6 +3973,12 @@ main {
   padding: 4px 2px;
 }
 .desc-fixed .md-editor { max-width: 68ch; }
+/* Editorul umple tot câmpul, ca o atingere sub text să scrie (ca `.es-desc`);
+   fallback-ul la fel, ca încărcarea chunk-ului să nu sară caseta. */
+.desc-fixed { display: flex; flex-direction: column; cursor: text; }
+.desc-fixed > .md-editor, .desc-fixed .cm-editor { flex: 1 0 auto; display: flex; flex-direction: column; }
+.desc-fixed .cm-scroller { flex: 1 0 auto; }
+.desc-fixed > .md-fallback { flex: 1 0 auto; max-width: 68ch; }
 
 /* ── DEPS ZONE ─────────────────────────────────── */
 .deps-zone {

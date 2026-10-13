@@ -831,7 +831,7 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
         selectors: selectors.filter(Boolean), scenarios, assigneeId, urgent,
         dueAt: schedule.dueAt, allDay: schedule.allDay, remindAt: schedule.remindAt, rrule: rruleOut,
       }
-      const ticketFields = { title: saveTitle, desc: desc.trim(), theme, wave, deps: realDeps, ...qaPayload }
+      const ticketFields = { title: saveTitle, desc: desc.trim() === '' ? '' : desc, theme, wave, deps: realDeps, ...qaPayload }
       const prior = saveTargetId(existing?.id, createdIdRef.current, resolveId)
       let targetId: string
       if (prior !== null) {
@@ -904,7 +904,7 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
         return i
       })
       if (!snap.find((i) => i.id === targetId)) {
-        snap = [...snap, { id: targetId, projectId: project.id, title: saveTitle, desc: desc.trim(), theme, wave, deps: realDeps, done: false, selectors: selectors.filter(Boolean), scenarios, assigneeId, createdBy: null, createdAt: new Date().toISOString(), urgent, dueAt: schedule.dueAt, allDay: schedule.allDay, remindAt: schedule.remindAt, rrule: rruleOut }]
+        snap = [...snap, { id: targetId, projectId: project.id, title: saveTitle, desc: desc.trim() === '' ? '' : desc, theme, wave, deps: realDeps, done: false, selectors: selectors.filter(Boolean), scenarios, assigneeId, createdBy: null, createdAt: new Date().toISOString(), urgent, dueAt: schedule.dueAt, allDay: schedule.allDay, remindAt: schedule.remindAt, rrule: rruleOut }]
       }
       const cascadeQueue = [...realDeps]
       const cascadeSeen = new Set<string>()
