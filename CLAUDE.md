@@ -534,6 +534,61 @@ un toast (`attachBlocked`). O coadă de poze ar fi pus octeți în IndexedDB lâ
 tichete și ar fi reluat urcări pe date mobile ore mai târziu — v1 spune pe
 față ce n-a plecat.
 
+## Descrierea în markdown
+
+Descrierea unui tichet e text markdown, citit și scris cu **aceeași gramatică**:
+`mdParser` (`src/lib/markdown/parse.ts`, Lezer). Două straturi deasupra ei —
+`MarkdownView` (citit: elemente React din `toBlocks`, nu `innerHTML`, deci un
+HTML scris de o unealtă rămâne text și n-avem ce sanitiza) și `MarkdownEditor`
+(scris: CodeMirror 6 cu live preview, lazy prin `DescField`, chunk separat de
+~82 KB gzip). O singură gramatică, ca citit și scris să nu poată diverge:
+ce vezi în cititor e exact ce desenează editorul pe un rând fără cursor.
+Subsetul îl dă specul (`docs/superpowers/specs/2026-10-12-descriere-markdown-design.md`);
+`ticket-kit/README.md` îl spune și uneltelor care scriu descrieri.
+
+- **Documentul ESTE stringul.** Decorările ascund sintaxa doar pe ecran; nimic
+  nu „curăță” textul la salvare, iar `IssueForm` nu mai face `trim()` pe
+  descriere (un `trim` ar fi mâncat un rând gol de la capăt, adică o schimbare
+  pe care omul n-a făcut-o). Bifa schimbă exact un caracter (`toggleTask`), iar
+  deschiderea și închiderea fără editare nu scriu nimic. CRLF se păstrează octet
+  cu octet: `EditorState.lineSeparator.of('\n')` lasă `\r` un caracter la capăt
+  de rând (ascuns de plugin). Implicit CodeMirror rupe rândul și pe `\r\n`, iar
+  `toString()` întoarce `\n` — un text venit de pe Windows s-ar fi rescris la
+  prima bifă.
+- **Marcajele de bloc sunt mereu desenate** (căsuță, buline, `⁂`, citat, cod),
+  **sintaxa inline doar pe linia cu cursorul** (`**`, `` ` ``, `[]()`): blocul
+  e structură pe care o atingi, inline-ul e text pe care îl corectezi. Rândul cu
+  focus își arată sintaxa ca să știi ce ștergi.
+- **Bifa nu ia focusul și pleacă prin `commit`.** `preventDefault` pe
+  `pointerdown` și `mousedown` — altfel o atingere ar ridica tastatura exact
+  peste lista pe care o bifezi. Pe editor bifa e o tranzacție cu adnotarea
+  `Toggle`, deci `onCommit` pleacă imediat, nu după pauza de 800ms a textului.
+  În formularul complet `commit` doar murdărește starea locală (salvarea rămâne
+  explicită). În foaia de tichet de pe card de dependență (`IssueSheet`) bifa e
+  **optimistă**: valoarea locală se arată pe loc, iar la eșec se revine pe cea
+  din store și apare un toast („Bifa nu s-a salvat”) — două bife rapide nu se
+  pierd, fiindcă a doua se construiește pe prima, nu pe răspunsul serverului.
+- **Rebaza din store e amânată cât `view.composing`.** O schimbare venită de
+  pe alt dispozitiv, aplicată în mijlocul unei compuneri (diacritice, corectură
+  Gboard), ar dubla sau pierde litere; se ține în `pending` și se aplică la
+  `compositionend`. Rebaza e anotată `External` și nu intră în istoric: un
+  Ctrl+Z ar fi desfăcut-o și ar fi trimis înapoi textul vechi ca scriere a omului.
+- **`.md-editor .cm-editor`, nu `.cm-editor` gol.** Tema de bază CodeMirror
+  (style-mod) se injectează la runtime ca PRIMUL `<style>` din `<head>`, cu
+  aceeași specificitate ca regulile noastre — câștigăm prin ordine și prin
+  prefixul `.md-editor`. Nu „repara” cu `!important` și nu muta foaia înaintea ei.
+- **`hzValue` pentru teste.** Nodul `.md-editor` expune `hzValue()` (textul real,
+  cu sintaxa ascunsă inclusă): un test de browser nu poate citi documentul din
+  `textContent`, fiindcă decorările l-au tăiat.
+- Comentariile din fir au căsuțe statice (`MarkdownView` fără `onToggle`). Un
+  `HZ-12` în text devine legătură doar pentru prefixele proiectelor cunoscute;
+  linkurile merg doar pe `http:`/`https:`/`mailto:` (`www.` → `https://`).
+- **Ce NU e încă:** foaia rapidă, bara de captură de pe Linux, `TicketActivity`
+  și widget-ul de pe Android (descrierea lor rămâne text simplu; cer APK nou) și
+  **tabelele** — nu sunt activate în parser, rămân text.
+- Banc: ecranul „Descriere” din `design/preview.html` (căsuța nebifată, textul
+  bifat, codul cu fundal, rândul cu `.md-progress`), în ambele teme.
+
 ## Recurențe — un tichet care sare
 
 O sarcină cu `rrule` bifată **nu se închide**: `due_at` avansează la următoarea

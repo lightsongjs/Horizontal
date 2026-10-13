@@ -53,6 +53,86 @@ def ic(name, size=18, cls=None):
             'stroke-linejoin="round"%s>%s</svg>'
             % (size, size, ' class="%s"' % cls if cls else '', _CACHE[name]))
 
+# ── Descrierea în markdown ───────────────────────────────────────────────────
+# Markup static, cu clasele pe care le scot MarkdownView (citit) și
+# MarkdownEditor (scris, fără focus: sintaxa inline ascunsă). Nu rula
+# CodeMirror pe banc: ce se verifică e CSS-ul, nu comportamentul.
+def md_task(on):
+    return '<button type="button" class="md-task%s" role="checkbox" aria-checked="%s">%s</button>' % (
+        ' on' if on else '', str(on).lower(), ic('check', 13) if on else '')
+
+
+def md_li(on, text):
+    return ('<li class="md-li md-li-task%s">%s<div class="md-li-body"><p>%s</p></div></li>'
+            % (' done' if on else '', md_task(on), text))
+
+
+MD_VIEW = (
+    '<div class="md issue-desc">'
+    '<h3 class="md-h1">Webhook plăți</h3>'
+    '<p>Primim evenimentul de la procesator și îl <strong>validăm semnat</strong>; '
+    'câmpul <code class="md-code">stripe-signature</code> e obligatoriu. Vezi '
+    '<button type="button" class="md-ref">TUR-04</button> și '
+    '<a class="md-link" href="https://exemplu.ro">documentația</a>.</p>'
+    '<ul>' + md_li(True, 'Endpoint de test pe staging') + md_li(False, 'Verificare semnătură')
+    + md_li(False, 'Reîncercări cu backoff') +
+    '<li class="md-li"><div class="md-li-body"><p>Notă simplă, fără căsuță</p></div></li></ul>'
+    '<blockquote><p>Nu loga niciodată corpul cererii.</p></blockquote>'
+    '<pre class="md-pre"><code>curl -X POST /hooks/pay \\\n  -H "stripe-signature: t=1,v1=abc"</code></pre>'
+    '<div class="md-hr" role="separator">⁂</div>'
+    '<p>Rămâne de decis ce facem cu plățile parțiale.</p>'
+    '</div>')
+
+
+def md_line(html, cls=''):
+    return '<div class="cm-line%s">%s</div>' % (' ' + cls if cls else '', html or '<br>')
+
+
+def md_editor():
+    """Ce randează MarkdownEditor: `.md-editor` > `.cm-editor` (creat de CodeMirror)."""
+    lines = (
+        md_line('Webhook plăți', 'md-h2')
+        + md_line('Validăm <span class="md-strong">semnătura</span> cu <span class="md-code">stripe-signature</span>.')
+        + md_line(md_task(True) + '<span class="md-done">Endpoint de test pe staging</span>')
+        + md_line(md_task(False) + 'Verificare semnătură')
+        + md_line('<span class="md-bullet" aria-hidden="true"></span>Notă simplă')
+        + md_line('Nu loga corpul cererii.', 'md-quote')
+        + md_line('')
+    )
+    return ('<div class="md-editor"><div class="cm-editor"><div class="cm-scroller">'
+            '<div class="cm-content" contenteditable="true" role="textbox">%s</div></div></div></div>' % lines)
+
+
+def md_field(cls='desc-fixed', style=''):
+    """`DescField`: `.md-field` + clasa primită, editorul înăuntru."""
+    return '<div class="md-field %s"%s>%s</div>' % (cls, ' style="%s"' % style if style else '', md_editor())
+
+
+MD_FORMAT = ('<div class="md-format" role="toolbar" aria-label="Formatare">%s</div>'
+             % ''.join('<button type="button" class="qs-ico" aria-label="%s">%s</button>' % (l, ic(i, 17))
+                       for i, l in (('square-check', 'Căsuță'), ('list', 'Listă'),
+                                    ('bold', 'Îngroșat'), ('list-indent-increase', 'Indentează'))))
+
+DESCRIERE = (
+    '<div class="panel">'
+    '<div class="bench-sheet"><div class="bench-label">Citit (MarkdownView)</div>' + MD_VIEW + '</div>'
+    '<div class="bench-sheet" style="margin-top:14px"><div class="bench-label">Scris (MarkdownEditor)</div>'
+    + md_field('es-desc', 'margin:0;width:100%') + MD_FORMAT + '</div>'
+    '<div class="bench-sheet" style="margin-top:14px"><div class="bench-label">Rând cu progres</div>'
+    '<button class="list-row task-row"><span class="list-check" role="checkbox" aria-checked="false">'
+    + ic('circle', 17) + '</span><span class="t-time">10:00</span><span class="list-title">Webhook plăți</span>'
+    '<span class="md-progress">1/3</span><span class="t-tail"><span class="t-proj"><span class="t-dot" '
+    'style="background:#6e7bff"></span><span class="t-proj-name">Aplicație Turism</span></span></span></button>'
+    '<button class="list-row task-row"><span class="list-check" role="checkbox" aria-checked="false">'
+    + ic('circle', 17) + '</span><span class="t-time">11:00</span><span class="list-title">Lansare</span>'
+    '<span class="md-progress all">4/4</span><span class="t-tail"><span class="t-proj"><span class="t-dot" '
+    'style="background:#6e7bff"></span><span class="t-proj-name">Aplicație Turism</span></span></span></button>'
+    '</div></div>')
+
+
+MD_DESC_FORM = md_field('desc-fixed')
+
+
 
 # ── Bucăți de DOM, cu aceleași clase ca în componente ────────────────────────
 def tk(tid, theme, theme_color, title, done=False, urgent=False, deps=None,
@@ -410,8 +490,7 @@ LISTA_PANOU = (
       '<div class="form-cols">'
       '<div class="form-col form-col-desc">'
       '<label class="if-field-label" style="display:block;margin-bottom:8px">Descriere</label>'
-      '<textarea class="desc-fixed">Proiect nou pe Supabase: baza de date plus Auth cu magic link. '
-      'Fără RLS deocamdată — vine în TUR-04, odată cu pagina de înregistrare.</textarea></div>'
+      + MD_DESC_FORM + '</div>'
       '<div class="form-col form-col-right">'
       '<div class="deps-zone"><div class="deps-bar">'
       '<button class="dep-tab-btn on">%s Necesită<span class="dep-tab-count">1</span></button>'
@@ -912,8 +991,8 @@ CONTROALE = ''.join([
       '<div class="form-col-desc att-dropping" style="width:100%;min-height:auto;border-right:0">'
       '<label class="if-field-label" style="display:block;margin-bottom:8px">Descriere</label>'
       + att_bar(att_img(), n=1)
-      + '<textarea class="desc-fixed" style="height:70px" placeholder="Cerințe, notițe, context…"></textarea>'
-      '</div>'),
+      + md_field('desc-fixed', 'height:70px')
+      + '</div>'),
 
     # `.who-chip`/`.who-chip.on` — filtrul de om din „Listă". Normal e doar
     # `--surface-3`, fără chenar; activ e text plin + linia de 2px, ca peste
@@ -994,6 +1073,7 @@ SCREENS = {
                     '<div class="panel">' + UTILIZATORI + '</div>'),
     'cont': ('Utilizatori', 'foaia unui cont', ic('users', 18), False, False,
              '<div class="panel">' + CONT + '</div>'),
+    'descriere': ('Aplicație Turism', 'Descriere · citită și scrisă', 'TU', True, True, DESCRIERE),
     'controale': ('Controale', 'fiecare clasă, normal și activ', None, False, False,
                   '<div class="panel bench-gallery">' + CONTROALE + '</div>'),
     # Firul (Thread.tsx) trăiește în formularul docat, la fel ca „Listă" —
@@ -1158,6 +1238,7 @@ SHELL = """<!doctype html>
   <button data-go="sertar">Sertar</button>
   <button data-go="utilizatori">Utilizatori</button>
   <button data-go="cont">Cont</button>
+  <button data-go="descriere">Descriere</button>
   <button data-go="controale">Controale</button>
   <span class="sep"></span>
   <button id="bench-theme">Temă</button>
@@ -1192,7 +1273,7 @@ __TABBAR__
 """
 
 html = (SHELL
-        .replace('__SCREENS__', ''.join(screen(k) for k in ('ordine', 'proiecte', 'azi', 'lista', 'lista-gol', 'harta', 'fir', 'foaie', 'pe-mine', 'sertar', 'utilizatori', 'cont', 'controale')))
+        .replace('__SCREENS__', ''.join(screen(k) for k in ('ordine', 'proiecte', 'azi', 'lista', 'lista-gol', 'harta', 'fir', 'foaie', 'pe-mine', 'sertar', 'utilizatori', 'cont', 'descriere', 'controale')))
         .replace('__TABBAR__', TABBAR))
 out = os.path.join(ROOT, 'design/preview.html')
 io.open(out, 'w', encoding='utf-8').write(html)
