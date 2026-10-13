@@ -1,3 +1,5 @@
+import { useRef, useState } from 'react'
+import { errorMessage } from '../lib/errorMessage'
 import { toShortDate } from '../lib/schedule'
 import { useHorizontal } from '../store'
 import { useCanWriteIn } from '../hooks'
@@ -12,7 +14,21 @@ export function IssueSheet({ issueId }: { issueId: string }) {
   const it = byId[issueId]
   // Înainte de `return null`: un hook condiționat ar strica ordinea.
   const canWrite = useCanWriteIn(it?.projectId ?? null)
+  // Copia optimistă a descrierii: bifa se vede pe loc, iar următoarea bifă se
+  // construiește pe ea, nu pe ce a întors serverul (altfel două atingeri
+  // rapide pierd una). Cât scrierile sunt în zbor, magazinul nu o calcă; la
+  // ultima (reușită sau nu) revenim pe valoarea din magazin.
+  const [local, setLocal] = useState<string | null>(null)
+  const inflight = useRef(0)
   if (!it) return null
+  const desc = local ?? it.desc
+  const toggle = (next: string) => {
+    setLocal(next)
+    inflight.current++
+    updateIssue(it.id, { desc: next })
+      .catch((e) => showToast(`Bifa nu s-a salvat: ${errorMessage(e)}`))
+      .finally(() => { if (--inflight.current === 0) setLocal(null) })
+  }
   const prefixes = projects.map((p) => p.prefix)
 
   const waveName = (n: number) => waves.find((w) => w.number === n)?.name ?? `Val ${n}`
@@ -74,12 +90,12 @@ export function IssueSheet({ issueId }: { issueId: string }) {
             până când dependențele și atașamentele de mai jos rămâneau o fâșie
             de câțiva pixeli. Aici crește cât are nevoie și folosește toată
             înălțimea modalului. */}
-        {it.desc && (
+        {desc && (
           <MarkdownView
             className="issue-desc"
-            text={it.desc}
+            text={desc}
             prefixes={prefixes}
-            onToggle={canWrite ? (desc) => void updateIssue(it.id, { desc }) : undefined}
+            onToggle={canWrite ? toggle : undefined}
             onRef={openRef}
           />
         )}

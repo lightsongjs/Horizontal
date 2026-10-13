@@ -1180,10 +1180,8 @@ main {
   color: var(--txt-faint);
   font-style: italic;
 }
-/* Descrierea tichetului, în zona derulabilă (vezi IssueSheet).
-   `pre-wrap` fiindcă vine din `<textarea>`: fără el rândurile scrise de om se
-   lipeau într-un singur paragraf, iar o listă tastată pe rânduri devenea
-   ilizibilă exact în locul unde e citită. */
+/* Descrierea tichetului, în zona derulabilă (vezi IssueSheet). Aspectul de
+   text vine din `.md` (cititorul îi păstrează rândurile prin `br`). */
 .issue-desc {
   margin: 12px 0 14px;
 }
