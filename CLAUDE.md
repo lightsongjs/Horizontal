@@ -943,10 +943,13 @@ aplică o dată, pe intrarea lui `buildSmartLists` din `store.tsx`, deci și
 numerele (sertar, sidebar, bara de jos, antetul) și căutarea din context.
 Proiectele și filtrele salvate văd tot (au regula lor). Fără identitate
 completă (mod local, fără sesiune, cont nelegat de `assignees`) nu taie nimic.
-Mementourile de pe Linux urmează regula; cele de pe Android și widget-ul NU
-încă — citirea nativă din Kotlin aduce tot și câștigă când e mai nouă, iar o
-tăietură doar în pagină ar clipi între „ale mele" și „toate" (cere APK nou).
-Web push-ul (`send-reminders`) e și el neatins.
+Mementourile de pe Linux urmează regula, și cele de pe Android + widget-ul de
+agendă din `versionCode 9` (API 4): regula e scrisă a doua oară în
+`core/Ownership.kt`, cu fixtures comune `src/lib/ownership.fixtures.json`, iar
+pagina taie lista trimisă cutiei doar dacă `getInfo().api >= 4`
+(`ANDROID_API_MINE`) — o cutie mai veche primește tot, altfel ar clipi între
+„ale mele" (pagina) și „toate" (citirea ei nativă). Detalii în „Aplicația de
+Android". Web push-ul (`send-reminders`) e încă neatins.
 
 **Comentariile proprii se editează** (creionul din capul comentariului,
 `updateComment` în `Repository`, prin `net()` offline). `edited_at` îl pune
@@ -1374,6 +1377,16 @@ Pro (HyperOS 3, Android 16).
   (`SyncControl.dueFetchedAt`, `pageReadAt`), 0 offline sau cât n-a fost niciuna —
   nu „acum": lista din cache ar fi bătut una nativă mai nouă. Intră în cheia de
   retrimitere. Regula: `core/Plan.kt` (`mergePlan`).
+- **Doar ce e al meu** (`isMine`, din `versionCode 9`, API 4): `SyncWorker` își
+  află întâi rândul din `assignees` (`meQuery`: `user_id = <contul sesiunii
+  native>`, la fiecare rulare — o legare nouă se vede la următoarea), apoi cere
+  `assignee_id,created_by` și taie la parsare (`parseIssues`/`parseAgenda` cu
+  `Me`). Aceeași regulă intră și ca filtru `or=` în cerere (`mineFilter`), ca
+  plafonul de 100/200 să numere doar ce e al meu. Un eșec al citirii din
+  `assignees` reîncearcă, nu cade pe „toate". Cont nelegat → nu taie nimic, ca
+  pagina. Pagina taie lista ei (`NativeBridge`) doar de la API 4 și nu trimite
+  nimic cutiei până nu-i știe versiunea; `heldIds` și `hiddenUntil` rămân
+  neatinse. Fără migrare: `assignees` e citibil de orice cont autentificat.
 - **Tot ce decide e în `core/`** (Kotlin pur, JUnit pe JVM: `npm run android:test`).
   Textul notificării și amânarea sunt scrise în DOUĂ limbi, cu fixtures comune:
   `src/lib/pushPayload.fixtures.json`, `src/lib/reminderAction.fixtures.json`.

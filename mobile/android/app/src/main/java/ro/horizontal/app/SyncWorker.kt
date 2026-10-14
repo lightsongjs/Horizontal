@@ -5,7 +5,10 @@ import android.util.Log
 import androidx.work.*
 import org.json.JSONException
 import ro.horizontal.app.core.AgendaList
+import ro.horizontal.app.core.Me
 import ro.horizontal.app.core.NativeList
+import ro.horizontal.app.core.meQuery
+import ro.horizontal.app.core.parseMe
 import ro.horizontal.app.core.agendaQuery
 import ro.horizontal.app.core.parseAgenda
 import ro.horizontal.app.core.parseIssues
@@ -30,12 +33,23 @@ class SyncWorker(ctx: Context, p: WorkerParameters) : Worker(ctx, p) {
         // altui cont: un login pe alt cont în timpul cererii golește planul (`signIn`),
         // iar o scriere întârziată l-ar umple la loc cu mementourile celui vechi.
         val owner = NativeSession.userId(ctx) ?: return Result.success()
-        val r = try { SupabaseApi.rest(ctx, "GET", syncQuery(startedAt), asUser = owner) }
+        // Cine sunt (`isMine`): mementourile și agenda arată doar ce e al meu, ca „Azi"
+        // din pagină. Citit la fiecare rulare, nu ținut minte: legarea unui cont de un
+        // nume (`link-assignees`) se vede la următoarea sincronizare. Un eșec NU cade pe
+        // „toate": lista ar clipi între „ale mele" (pagina) și „toate" — se reîncearcă.
+        val me = try {
+            val r = SupabaseApi.rest(ctx, "GET", meQuery(owner), asUser = owner) ?: return Result.success()
+            if (r.status !in 200..299) return if (r.status >= 500) Result.retry() else Result.success()
+            Me(parseMe(r.body), owner)
+        } catch (e: AccountChanged) { return Result.success() }
+          catch (e: IOException) { return Result.retry() }
+          catch (e: JSONException) { Log.w("hz-sync", "assignees ilizibil", e); return Result.retry() }
+        val r = try { SupabaseApi.rest(ctx, "GET", syncQuery(startedAt, me), asUser = owner) }
             catch (e: AccountChanged) { return Result.success() }
             catch (e: IOException) { return Result.retry() }
             ?: return Result.success()   // fără sesiune: nimic de citit; pagina rămâne sursa
         if (r.status !in 200..299) return if (r.status >= 500) Result.retry() else Result.success()
-        val list = try { parseIssues(r.body, ZoneId.systemDefault()) } catch (e: JSONException) {
+        val list = try { parseIssues(r.body, ZoneId.systemDefault(), me) } catch (e: JSONException) {
             // Un 200 cu corp ilizibil (proxy, portal captiv) nu e o listă goală: o listă
             // goală ar retrage toate notificările de pe ecran. Planul vechi rămâne.
             Log.w("hz-sync", "răspuns ilizibil", e); return Result.retry()
@@ -43,8 +57,8 @@ class SyncWorker(ctx: Context, p: WorkerParameters) : Worker(ctx, p) {
         // A doua citire, pentru widget: pe `due_at`, nu pe `remind_at` (o sarcină de azi fără
         // memento, o restanță veche). Orice eșec păstrează agenda veche, nu o golește.
         val agenda = try {
-            SupabaseApi.rest(ctx, "GET", agendaQuery(startedAt, ZoneId.systemDefault()), asUser = owner)
-                ?.let { r -> if (r.status in 200..299) parseAgenda(r.body) else { Log.w("hz-sync", "agendă: HTTP ${r.status}"); null } }
+            SupabaseApi.rest(ctx, "GET", agendaQuery(startedAt, ZoneId.systemDefault(), me), asUser = owner)
+                ?.let { r -> if (r.status in 200..299) parseAgenda(r.body, me) else { Log.w("hz-sync", "agendă: HTTP ${r.status}"); null } }
         } catch (e: AccountChanged) { return Result.success() }
           catch (e: IOException) { null }
           catch (e: JSONException) { Log.w("hz-sync", "agendă ilizibilă", e); null }

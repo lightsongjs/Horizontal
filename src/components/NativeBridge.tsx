@@ -3,7 +3,7 @@ import { useHorizontal } from '../store'
 import { useWritableProjects } from '../hooks'
 import { repository } from '../data'
 import { getDesktopBridge, upcomingReminders, type DesktopAction } from '../lib/desktopBridge'
-import { ANDROID_API_CAPTURE, ANDROID_API_WIDGETS, ANDROID_WINDOW, agendaKey, captureData, captureKey, androidListKey, canTakeActions, getAndroidBridge, pageReadAt } from '../lib/androidBridge'
+import { ANDROID_API_CAPTURE, ANDROID_API_MINE, ANDROID_API_WIDGETS, ANDROID_WINDOW, agendaKey, captureData, captureKey, androidListKey, canTakeActions, getAndroidBridge, pageReadAt } from '../lib/androidBridge'
 import { agendaItems } from '../lib/agenda'
 import { parseTicketPath } from '../lib/deepLink'
 import { runNativeAction } from '../lib/nativeAction'
@@ -48,22 +48,29 @@ export function NativeBridge() {
   const refreshRef = useRef(refresh); refreshRef.current = refresh
   // Versiunea cutiei: metodele widget-urilor există doar de la API 2 (un apel către
   // o metodă lipsă nu e respins de Capacitor — atârnă).
-  const [androidApi, setAndroidApi] = useState(0)
-  useEffect(() => { if (android) void android.getInfo().then((i) => setAndroidApi(i.api), () => {}) }, [android])
-  const widgets = !!android && androidApi >= ANDROID_API_WIDGETS
+  // `null` = încă nu știm: până atunci nu se trimite nimic cutiei — o listă întreagă
+  // trimisă unei cutii care taie (API 4), urmată de cea tăiată, ar putea suna un
+  // memento al altcuiva în minutul dintre ele. Un `getInfo` refuzat = cutie veche (0).
+  const [androidApi, setAndroidApi] = useState<number | null>(null)
+  useEffect(() => { if (android) void android.getInfo().then((i) => setAndroidApi(i.api), () => setAndroidApi(0)) }, [android])
+  const api = androidApi ?? 0
+  const widgets = !!android && api >= ANDROID_API_WIDGETS
+  // Android taie pe `isMine` doar cât o face și citirea nativă (API 4); altfel lista
+  // ar clipi între „ale mele" (pagina) și „toate" (`SyncWorker`, care câștigă când e mai nouă).
+  const androidMine = api >= ANDROID_API_MINE
   const lastAgenda = useRef('')
   // Fereastra de quick add (API 3): proiectele în care se poate scrie, ca selectorul
   // din pagină — un proiect read-only ar da o creare respinsă de RLS.
   const writable = useWritableProjects()
   const lastCapture = useRef('')
   useEffect(() => {
-    if (!android || androidApi < ANDROID_API_CAPTURE || !writable.length) return
+    if (!android || api < ANDROID_API_CAPTURE || !writable.length) return
     const d = captureData(writable, assignees, Date.now())
     const key = captureKey(d)
     if (key === lastCapture.current) return
     lastCapture.current = key
     void android.setCaptureData(d).catch(() => { lastCapture.current = '' })
-  }, [android, androidApi, writable, assignees])
+  }, [android, api, writable, assignees])
 
   // Reatribuit la fiecare randare: listenerii (puși o dată) văd mereu store-ul de acum.
   const run = useRef<(a: DesktopAction) => void>(() => {})
@@ -90,26 +97,29 @@ export function NativeBridge() {
     // orice notificare a cărei cheie lipsește. Un `[]` timpuriu ar închide
     // notificările de pe ecran, iar ele ar rămâne în `fired` și n-ar mai reveni.
     if ((!desktop && !android) || !dueLoaded) return
+    // Cutia Android încă nu și-a spus versiunea: vezi `androidApi`.
+    const androidReady = !!android && androidApi !== null
     // Rulări suprapuse (heldIds e asincron): una mai veche nu are voie să
     // trimită după una mai nouă o listă depășită.
     let cancelled = false
     const send = async () => {
       const now = new Date()
       const all = [...dueIssues, ...issues]
+      // Mementourile și agenda sună / arată doar ce e AL MEU, ca „Azi" (`isMine`).
+      const mine = onlyMine(all, { assigneeId: myAssigneeId, userId: myUserId })
       if (desktop) {
-        // Linux sună doar ce e AL MEU, ca „Azi" (`isMine`). Pagina e singura
-        // sursă a cutiei, deci tăietura e întreagă. Android NU se taie aici:
-        // citirea nativă (`SyncWorker`, Kotlin) aduce tot și câștigă când e mai
-        // nouă — o listă tăiată doar de pagină ar clipi între „ale mele" și
-        // „toate". Paritatea cere filtrul și în Kotlin (APK nou).
-        const mine = onlyMine(all, { assigneeId: myAssigneeId, userId: myUserId })
+        // Linux: pagina e singura sursă a cutiei, deci tăietura e întreagă.
         const list = [...upcomingReminders(mine, projects, now), ...upcomingEventReminders(cal.events, cal.calendars, now)]
           .sort((a, b) => a.at.localeCompare(b.at))
         const json = JSON.stringify(list)
         if (json !== lastDesktop.current) { lastDesktop.current = json; desktop.setReminders(list) }
       }
-      if (android) {
-        const list = upcomingReminders(all, projects, now, ANDROID_WINDOW)
+      // Android: cu aceeași regulă și în citirea nativă (`core/Ownership.kt`, API 4);
+      // o cutie mai veche primește tot, ca să nu clipească între cele două surse.
+      // `heldIds` rămân toate: sunt id-uri din coada offline, nu rânduri afișate.
+      const forAndroid = androidMine ? mine : all
+      if (android && androidReady) {
+        const list = upcomingReminders(forAndroid, projects, now, ANDROID_WINDOW)
         const heldIds = (await repository.sync?.heldIds()) ?? []
         if (cancelled) return
         const readAt = pageReadAt(syncStatus, repository.sync, now)
@@ -118,8 +128,8 @@ export function NativeBridge() {
         const json = androidListKey(list, heldIds, readAt)
         if (json !== lastAndroid.current) { lastAndroid.current = json; await android.setReminders({ list, heldIds, readAt }).catch(() => { lastAndroid.current = '' }) }
       }
-      if (android && widgets) {
-        const items = agendaItems(all, projects, now)
+      if (android && androidReady && widgets) {
+        const items = agendaItems(forAndroid, projects, now)
         const readAt = pageReadAt(syncStatus, repository.sync, now)
         const key = agendaKey(items, readAt)
         if (key !== lastAgenda.current) { lastAgenda.current = key; await android.setAgenda({ items, readAt }).catch(() => { lastAgenda.current = '' }) }
@@ -128,7 +138,7 @@ export function NativeBridge() {
     void send().catch(() => {})
     const t = setInterval(() => void send().catch(() => {}), RESEND_MS)
     return () => { cancelled = true; clearInterval(t) }
-  }, [desktop, android, widgets, dueLoaded, dueIssues, issues, projects, syncStatus, cal.events, cal.calendars, myAssigneeId, myUserId])
+  }, [desktop, android, androidApi, androidMine, widgets, dueLoaded, dueIssues, issues, projects, syncStatus, cal.events, cal.calendars, myAssigneeId, myUserId])
 
   // Linux: `refresh` ridică `refreshing`, nu `loading`, deci ecranul nu se
   // golește; calea explicită nu trece prin pragul de 30 s.

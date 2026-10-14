@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { isMine, onlyMine, type Me } from './ownership'
 import { NO_SCHEDULE, buildSmartLists } from './schedule'
 import type { Issue } from './types'
+import fixtures from './ownership.fixtures.json'
 
 const ME: Me = { assigneeId: 'a-me', userId: 'u-me' }
 
@@ -14,29 +15,10 @@ function task(id: string, patch: Partial<Issue> = {}): Issue {
 }
 
 describe('isMine', () => {
-  const cases: [string, Partial<Issue>, boolean][] = [
-    ['pasată mie', { assigneeId: 'a-me', createdBy: 'u-other' }, true],
-    ['pasată mie, creată de mine', { assigneeId: 'a-me', createdBy: 'u-me' }, true],
-    ['pasată altcuiva, deși creată de mine', { assigneeId: 'a-other', createdBy: 'u-me' }, false],
-    ['nepasată, creată de mine', { assigneeId: null, createdBy: 'u-me' }, true],
-    ['nepasată, creată de altcineva', { assigneeId: null, createdBy: 'u-other' }, false],
-    ['nepasată, fără autor (unealtă / cheia de serviciu)', { assigneeId: null, createdBy: null }, true],
-  ]
-  for (const [name, patch, want] of cases) {
-    it(name, () => expect(isMine(task('x', patch), ME)).toBe(want))
+  // Aceleași cazuri le citește și JUnit (`core/OwnershipTest`, prin `FixturesTest`). Un caz nou se adaugă în JSON.
+  for (const f of fixtures as { name: string; me: Me; issue: { assigneeId?: string | null; createdBy?: string | null }; want: boolean }[]) {
+    it(f.name, () => expect(isMine(f.issue as Issue, f.me)).toBe(f.want))
   }
-
-  it('un rând din cache fără câmpul createdBy contează ca fără autor', () => {
-    const old = { assigneeId: null } as unknown as Issue
-    expect(isMine(old, ME)).toBe(true)
-  })
-
-  it('fără identitate completă (local, fără sesiune, cont nelegat) totul e al meu', () => {
-    const other = task('x', { assigneeId: 'a-other', createdBy: 'u-other' })
-    expect(isMine(other, { assigneeId: null, userId: 'u-me' })).toBe(true)
-    expect(isMine(other, { assigneeId: 'a-me', userId: null })).toBe(true)
-    expect(isMine(other, { assigneeId: null, userId: null })).toBe(true)
-  })
 })
 
 describe('onlyMine + buildSmartLists', () => {

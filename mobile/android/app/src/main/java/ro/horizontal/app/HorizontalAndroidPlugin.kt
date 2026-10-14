@@ -189,7 +189,9 @@ class HorizontalAndroidPlugin : Plugin() {
     companion object {
         // 2: setAgenda, leave, showKeyboard, evenimentul „widget" (widget-urile).
         // 3: setCaptureData (fereastra nativă de quick add).
-        const val API = 3
+        // 4: nicio metodă nouă — citirea nativă taie pe `isMine` (`core/Ownership.kt`),
+        //    deci pagina poate trimite și ea doar ce e al meu (`ANDROID_API_MINE`).
+        const val API = 4
         @Volatile private var instance: HorizontalAndroidPlugin? = null
 
         /**

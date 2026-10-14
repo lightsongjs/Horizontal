@@ -56,4 +56,13 @@ class FixturesTest {
             assertEquals(f.getString("name"), want, got)
         }
     }
+
+    @Test fun ownership() {
+        val all = load("ownership.fixtures.json")
+        for (i in 0 until all.length()) {
+            val f = all.getJSONObject(i); val me = f.getJSONObject("me"); val issue = f.getJSONObject("issue")
+            val got = isMine(issue.str("assigneeId"), issue.str("createdBy"), Me(me.str("assigneeId"), me.str("userId")))
+            assertEquals(f.getString("name"), f.getBoolean("want"), got)
+        }
+    }
 }
