@@ -557,14 +557,14 @@ LISTA_PANOU = (
       % (ic('arrow-left', 13), ic('arrow-right', 13), ic('x', 12))
 )
 
-LISTA = ('<div class="split">'
+LISTA = ('<div class="split has-pane">'
          '<div class="split-list"><div class="panel" style="--pc:#0E9F8E">' + LISTA_STANGA + '</div></div>'
          '<aside class="split-pane">' + LISTA_PANOU + '</aside></div>')
 
+# Fără tichet deschis panoul nu există: lista ține toată lățimea (2026-10-14).
 LISTA_GOL = ('<div class="split">'
              '<div class="split-list"><div class="panel" style="--pc:#0E9F8E">' + LISTA_STANGA.replace(' docked', '') + '</div></div>'
-             '<aside class="split-pane"><div class="split-empty">' + ic('pencil', 22)
-             + '<p>Alege un tichet din listă ca să-l editezi aici.</p></div></aside></div>')
+             '<aside class="split-pane" hidden></aside></div>')
 
 # ═══ ECRANUL „CONTROALE" ═════════════════════════════════════════════════════
 # Fiecare clasă care și-a pierdut chenarul, în starea normală și în cea activă.
@@ -1114,7 +1114,7 @@ SCREENS = {
     # ca fundal pentru panoul din dreapta, doar că panoul arată firul, nu
     # meta+dependențe.
     'fir': ('Aplicație Turism', 'Fir · TUR-07', 'TU', True, True,
-            '<div class="split">'
+            '<div class="split has-pane">'
             '<div class="split-list"><div class="panel" style="--pc:#0E9F8E">' + LISTA_STANGA + '</div></div>'
             '<aside class="split-pane">'
             '<div class="sh-header">'

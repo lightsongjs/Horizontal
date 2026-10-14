@@ -1,0 +1,537 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panoul din dreapta</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..800&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ---------- jetoanele „Senin" (din src/styles.css, ca în design/wave-bar) ---------- */
+:root{
+  --bg:#FFFFFF;--surface:#FFFFFF;--surface-2:#F6F7F9;--surface-3:#EEF0F3;
+  --line:#E6E8EC;--line-soft:#EEF0F3;--txt:#1A1C20;--txt-dim:#565C66;--txt-faint:#868C96;
+  --accent:#2F6BFF;--accent-soft:#EBF1FF;--done:#1F9D60;--blocked:#E5484D;--blocked-soft:#FDEEEE;--star:#F5B000;
+  --border-strong:#D5D9DF;
+  --amb:0 1px 2px rgba(16,24,40,.05),0 6px 20px rgba(16,24,40,.07);
+  --amb-lg:0 2px 6px rgba(16,24,40,.06),0 18px 44px rgba(16,24,40,.12);
+  --layer-0:#2F6BFF;--layer-1:#1F7FD6;
+  --r:20px;--r-m:12px;--r-s:8px;
+  --mono:'Geist Mono',ui-monospace,monospace;--display:'Inter',system-ui,sans-serif;
+  --p-inbox:#2F6BFF;--p-api:#0E9F8E;--p-hz:#F2600C;--p-casa:#E5397B;--p-tur:#8B55D6;
+  --page:#ECEEF1;--page-card:#FFFFFF;--page-ink:#1A1C20;--page-dim:#646A74;--frame:#16171A;--scrim:rgba(10,12,16,.32);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141517;--surface:#1B1C1F;--surface-2:#232428;--surface-3:#2B2D32;--line:#2A2C31;--line-soft:#1F2024;
+  --txt:#EEEFF1;--txt-dim:#A6ABB3;--txt-faint:#757A83;--accent:#5B8DFF;--accent-soft:rgba(91,141,255,.15);
+  --done:#3DBF85;--blocked:#FF6369;--blocked-soft:rgba(255,99,105,.13);--border-strong:#3A3D44;
+  --amb:inset 0 1px 0 rgba(255,255,255,.04),0 6px 22px rgba(0,0,0,.4);--amb-lg:inset 0 1px 0 rgba(255,255,255,.05),0 16px 44px rgba(0,0,0,.5);
+  --layer-0:#5B8DFF;--layer-1:#4FA3F0;--p-api:#2EC4B0;
+  --page:#0C0D0F;--page-card:#17181B;--page-ink:#EEEFF1;--page-dim:#9097A1;--frame:#000;--scrim:rgba(0,0,0,.5);
+}}
+:root[data-theme="dark"]{
+  --bg:#141517;--surface:#1B1C1F;--surface-2:#232428;--surface-3:#2B2D32;--line:#2A2C31;--line-soft:#1F2024;
+  --txt:#EEEFF1;--txt-dim:#A6ABB3;--txt-faint:#757A83;--accent:#5B8DFF;--accent-soft:rgba(91,141,255,.15);
+  --done:#3DBF85;--blocked:#FF6369;--blocked-soft:rgba(255,99,105,.13);--border-strong:#3A3D44;
+  --amb:inset 0 1px 0 rgba(255,255,255,.04),0 6px 22px rgba(0,0,0,.4);--amb-lg:inset 0 1px 0 rgba(255,255,255,.05),0 16px 44px rgba(0,0,0,.5);
+  --layer-0:#5B8DFF;--layer-1:#4FA3F0;--p-api:#2EC4B0;
+  --page:#0C0D0F;--page-card:#17181B;--page-ink:#EEEFF1;--page-dim:#9097A1;--frame:#000;--scrim:rgba(0,0,0,.5);
+}
+
+/* ---------- pagina-gazdă ---------- */
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--page)}
+body{font-family:var(--display);color:var(--page-ink);-webkit-font-smoothing:antialiased;font-feature-settings:"tnum" 1,"cv11" 1}
+svg{display:block;flex-shrink:0}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+.wrap{max-width:1400px;margin:0 auto;padding:40px 16px 96px}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;flex-wrap:wrap}
+.eyebrow{font-size:12px;font-weight:650;color:var(--page-dim)}
+h1{font-size:40px;letter-spacing:-.03em;font-weight:750;margin:6px 0 12px}
+.lead{font-size:16px;line-height:1.6;color:var(--page-dim);max-width:76ch}
+.lead b{color:var(--page-ink)}
+.lead+.lead{margin-top:10px}
+.tg{display:flex;background:var(--page-card);border-radius:12px;padding:3px;box-shadow:var(--amb)}
+.tg button{font-size:13px;font-weight:600;padding:7px 12px;border-radius:9px;color:var(--page-dim)}
+.tg button[aria-pressed=true]{background:var(--accent);color:#fff}
+.q{margin-top:22px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.q div{background:var(--page-card);border-radius:16px;padding:16px 18px;box-shadow:var(--amb);font-size:14px;line-height:1.5;color:var(--page-dim)}
+.q b{display:block;color:var(--page-ink);font-size:15px;margin-bottom:4px}
+.q .k{font-family:var(--mono);font-size:12px;color:var(--accent);font-weight:600}
+section{margin-top:64px}
+section>h2{font-size:28px;letter-spacing:-.02em;font-weight:750;display:flex;align-items:center;gap:12px}
+section>h2 .b{width:34px;height:34px;border-radius:10px;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:16px;font-weight:800}
+section>h2 .b.gray{background:var(--txt-faint)}
+section>p.sub{font-size:15.5px;color:var(--page-dim);margin:8px 0 22px;max-width:92ch;line-height:1.55}
+section>p.sub b{color:var(--page-ink)}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:30px 28px}
+.cap{font-size:13px;font-weight:650;color:var(--page-ink);margin:0 0 8px 4px;display:flex;gap:8px;align-items:center}
+.cap .px{font-family:var(--mono);font-size:12px;color:var(--page-dim);font-weight:500}
+.note{font-size:13.5px;line-height:1.55;color:var(--page-dim);margin:10px 4px 0;max-width:640px}
+.note b{color:var(--page-ink)}
+.pc{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:22px}
+.pc div{background:var(--page-card);border-radius:16px;padding:16px 20px;box-shadow:var(--amb)}
+.pc h4{font-size:14px;font-weight:700;margin-bottom:6px}
+.pc ul{margin-left:18px;font-size:14px;line-height:1.6;color:var(--page-dim)}
+.pc ul b{color:var(--page-ink)}
+.pc .plus h4{color:var(--done)}.pc .minus h4{color:var(--blocked)}
+.verdict{margin-top:64px;background:var(--page-card);border-radius:20px;padding:26px 30px;box-shadow:var(--amb);display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:start}
+.verdict .b{width:44px;height:44px;border-radius:12px;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:800;font-size:20px}
+.verdict h2{font-size:24px;letter-spacing:-.02em;font-weight:750;margin-bottom:8px}
+.verdict p{font-size:15.5px;line-height:1.6;color:var(--page-dim)}
+.verdict p b{color:var(--page-ink)}
+.verdict ul{margin:10px 0 0 18px;font-size:15px;line-height:1.65;color:var(--page-dim)}
+.verdict ul b{color:var(--page-ink)}
+.demo-bar{display:flex;gap:10px;align-items:center;margin:0 0 10px 4px;font-size:13.5px;color:var(--page-dim)}
+.demo-bar button{height:32px;padding:0 12px;border-radius:8px;background:var(--page-card);box-shadow:var(--amb);font-size:13px;font-weight:600;color:var(--page-ink)}
+
+/* ---------- cadrul unui ecran, micșorat ca să încapă ---------- */
+.shot{position:relative;border-radius:12px;background:var(--frame);padding:6px;box-shadow:0 26px 50px -30px rgba(0,0,0,.5)}
+.shot .clip{overflow:hidden;border-radius:7px;position:relative}
+.shot .win{position:absolute;left:0;top:0;transform-origin:0 0}
+
+/* ---------- aplicația ---------- */
+.win{background:var(--bg);color:var(--txt);display:flex;font-size:15px;line-height:1.3;overflow:hidden}
+.side{width:248px;flex-shrink:0;background:var(--surface-2);padding:18px 10px 16px;display:flex;flex-direction:column;gap:2px}
+.side .me{display:flex;align-items:center;gap:10px;padding:2px 10px 14px;font-weight:650;font-size:15px}
+.av{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:11.5px;font-weight:700;flex-shrink:0}
+.side .me .g{margin-left:auto;color:var(--txt-faint)}
+.side .search{display:flex;align-items:center;gap:8px;height:34px;padding:0 10px;margin:0 0 10px;border-radius:var(--r-s);background:var(--bg);color:var(--txt-faint);font-size:13.5px;box-shadow:var(--amb)}
+.side .search kbd{margin-left:auto;font-family:var(--mono);font-size:11px}
+.nav{display:flex;align-items:center;gap:10px;height:34px;padding:0 10px;font-size:14px;border-radius:var(--r-s);color:var(--txt-dim);font-weight:550}
+.nav.on{background:var(--surface-3);color:var(--txt)}
+.nav .n{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--txt-faint);font-weight:500}
+.side .lbl{font-size:12px;font-weight:650;color:var(--txt-faint);margin:18px 10px 6px}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--pc);margin:0 3px;flex-shrink:0}
+
+.main{flex:1;min-width:0;display:flex;position:relative}
+.lcol{flex:0 1 760px;min-width:0;display:flex;flex-direction:column;padding-left:24px;overflow:hidden}
+.main.even .lcol{flex:1 1 0}
+.main.even .pane{flex:1.05 1 0}
+.pane{flex:1 0 520px;min-width:0;margin-left:22px;box-shadow:-1px 0 0 var(--line-soft);background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
+
+/* antet proiect */
+.ph{display:flex;align-items:center;gap:12px;padding:22px 8px 4px 0}
+.ph h3{font-size:28px;font-weight:750;letter-spacing:-.025em}
+.ph .dot{width:14px;height:14px;margin:0}
+.ph .cnt{font-family:var(--mono);font-size:14px;color:var(--txt-faint)}
+.ph .sp{flex:1}
+.ph .btn{height:34px;padding:0 12px;border-radius:var(--r-s);background:var(--accent);color:#fff;font-weight:650;font-size:13.5px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.ph .btn kbd{font-family:var(--mono);font-size:11px;opacity:.8}
+.sub-d{font-size:14px;color:var(--txt-faint);padding:0 0 4px 38px}
+.tabs{display:flex;gap:22px;padding:8px 0 0;font-size:15px;font-weight:600;color:var(--txt-faint);box-shadow:inset 0 -1px 0 var(--line-soft);margin-right:8px}
+.tabs span{padding:8px 0 10px;position:relative}
+.tabs span.on{color:var(--txt)}
+.tabs span.on::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;border-radius:2px;background:var(--accent)}
+.qa{margin:12px 8px 2px 0;display:flex;align-items:center;gap:12px;height:40px;padding:0 12px;border-radius:var(--r-m);color:var(--txt-faint);background:var(--surface-2);font-size:14px;white-space:nowrap;overflow:hidden}
+.qa kbd{margin-left:auto;font-family:var(--mono);font-size:12px}
+
+/* banda de valuri */
+.ws{display:flex;align-items:center;gap:6px;padding:12px 8px 6px 0;min-width:0}
+.ws-row{display:flex;gap:6px;flex:1;min-width:0;overflow:hidden;align-items:center}
+.pill{height:34px;padding:0 12px;border-radius:var(--r-s);background:var(--surface-2);color:var(--txt-dim);font-size:14px;font-weight:550;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;flex-shrink:0}
+.pill .n{font-family:var(--mono);font-size:12px;color:var(--txt-faint);font-weight:500}
+.pill.on{background:var(--accent-soft);color:var(--accent);font-weight:650}
+.pill.on .n{color:var(--accent)}
+.pill.more{gap:5px;color:var(--txt-dim)}
+.pill.add{width:34px;padding:0;justify-content:center;background:transparent;outline:1.5px dashed var(--border-strong);outline-offset:-1.5px;color:var(--txt-faint)}
+.pill[hidden]{display:none}
+.vsep{width:1px;height:20px;background:var(--line);flex-shrink:0;margin:0 2px}
+.mbtn{width:34px;height:34px;border-radius:var(--r-s);display:grid;place-items:center;color:var(--txt-dim);flex-shrink:0;background:var(--surface-2)}
+
+/* rânduri */
+.body{flex:1;overflow:hidden;padding:2px 8px 0 0}
+.lh{display:flex;align-items:center;gap:8px;padding:14px 10px 6px;font-size:14px;font-weight:650;color:var(--layer-0)}
+.lh .num{width:20px;height:20px;border-radius:50%;background:color-mix(in srgb,var(--layer-0) 14%,transparent);display:grid;place-items:center;font-family:var(--mono);font-size:11px}
+.lh .sp{flex:1}.lh .c{font-family:var(--mono);font-size:12px;color:var(--txt-faint);font-weight:500}
+.lh.l2{color:var(--layer-1)}.lh.l2 .num{background:color-mix(in srgb,var(--layer-1) 14%,transparent)}
+.lh.over{color:var(--blocked)}
+.lh.day{color:var(--txt)}
+.r{display:flex;align-items:center;gap:12px;min-height:44px;padding:8px 10px;border-radius:var(--r-m);position:relative;cursor:default}
+.r::after{content:"";position:absolute;left:42px;right:0;bottom:0;height:1px;background:var(--line-soft)}
+.r.sel{background:var(--accent-soft)}.r.sel::after{opacity:0}
+.r .t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.r .tail{display:flex;gap:10px;align-items:center;font-family:var(--mono);font-size:12px;color:var(--txt-faint);flex-shrink:0}
+.r .pj{display:inline-flex;align-items:center;gap:6px;font-family:var(--display);font-size:13px;color:var(--txt-faint);font-weight:500}
+.r .pj i{width:8px;height:8px;border-radius:50%;background:var(--pc)}
+.r .late{color:var(--blocked)}
+.ck{width:20px;height:20px;border-radius:50%;flex-shrink:0;box-shadow:inset 0 0 0 1.75px color-mix(in srgb,var(--pc) 80%,var(--bg))}
+.ck.urg{box-shadow:inset 0 0 0 2px var(--blocked);background:var(--blocked-soft)}
+.dchip{font-family:var(--mono);font-size:12px;padding:3px 7px;border-radius:6px;background:var(--surface-2);color:var(--txt-dim);display:inline-flex;gap:5px;align-items:center}
+
+/* panoul */
+.dh{display:flex;align-items:center;gap:4px;padding:16px 20px 4px 28px}
+.dh .id{font-family:var(--mono);font-size:13px;color:var(--txt-faint)}
+.dh .sp{flex:1}
+.ibtn{width:34px;height:34px;display:grid;place-items:center;border-radius:var(--r-s);color:var(--txt-dim);flex-shrink:0}
+.db{padding:6px 28px 0}
+.tt{display:flex;gap:12px;align-items:flex-start;margin:8px 0 14px}
+.tt .ck{width:24px;height:24px;margin-top:3px}
+.tt h2{font-size:22px;font-weight:700;letter-spacing:-.015em;line-height:1.25}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{display:inline-flex;gap:6px;align-items:center;height:32px;padding:0 10px;border-radius:var(--r-s);background:var(--surface-2);font-size:13.5px;font-weight:550;color:var(--txt-dim);white-space:nowrap}
+.chip.acc{background:var(--accent-soft);color:var(--accent)}
+.chip .m{font-family:var(--mono);font-size:12.5px}
+.chip .wv{width:8px;height:8px;border-radius:2px;background:var(--layer-0)}
+.md{margin-top:20px;font-size:15px;line-height:1.55;color:var(--txt)}
+.md p{margin-bottom:10px}
+.md h4{font-size:13px;font-weight:700;color:var(--txt-dim);margin:16px 0 6px}
+.md .task{display:flex;gap:10px;align-items:center;padding:3px 0}
+.md .bx{width:18px;height:18px;border-radius:50%;box-shadow:inset 0 0 0 1.75px var(--txt-faint);display:grid;place-items:center;flex-shrink:0}
+.md .task.done .bx{background:var(--accent);box-shadow:none;color:#fff}
+.md .task.done span:last-child{color:var(--txt-faint);text-decoration:line-through}
+.md code{font-family:var(--mono);font-size:13px;background:var(--surface-2);padding:1px 5px;border-radius:5px}
+.thread{margin-top:22px;padding-top:16px;box-shadow:inset 0 1px 0 var(--line-soft)}
+.thread .th{font-size:13px;font-weight:700;color:var(--txt-dim);margin-bottom:10px}
+.ev{display:flex;gap:10px;font-size:14px;line-height:1.5}
+.ev .who{font-weight:650}.ev .when{font-family:var(--mono);font-size:12px;color:var(--txt-faint);margin-left:8px}
+.compose{margin-top:14px;height:42px;border-radius:var(--r-m);box-shadow:inset 0 0 0 1px var(--line);display:flex;align-items:center;padding:0 12px;color:var(--txt-faint);font-size:14px}
+.empty-pane{flex:1;display:grid;place-items:center;text-align:center;color:var(--txt-faint);font-size:15px;line-height:1.5;padding:40px}
+.empty-pane .ic{width:52px;height:52px;border-radius:16px;background:var(--surface-2);display:grid;place-items:center;margin:0 auto 14px;color:var(--txt-faint)}
+
+/* modalul mare */
+.scrim{position:absolute;inset:0;background:var(--scrim);z-index:4}
+.modal{position:absolute;z-index:5;left:50%;top:3%;height:94%;width:min(1040px,94%);transform:translateX(-50%);background:var(--surface);border-radius:var(--r);box-shadow:var(--amb-lg);display:flex;flex-direction:column;overflow:hidden}
+.modal .db{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:34px}
+.modal .side-props{padding-top:6px;font-size:13.5px;color:var(--txt-dim);display:flex;flex-direction:column;gap:14px}
+.modal .side-props dt{font-size:12px;font-weight:650;color:var(--txt-faint);margin-bottom:4px}
+
+/* adnotări pe ecran */
+.mark{position:absolute;z-index:6;border-radius:14px;outline:2.5px dashed var(--blocked);outline-offset:-2px;pointer-events:none}
+.mark.ok{outline-color:var(--done)}
+.mark span{position:absolute;top:10px;left:12px;background:var(--blocked);color:#fff;font-size:15px;font-weight:700;padding:5px 10px;border-radius:8px;white-space:nowrap}
+.mark.ok span{background:var(--done)}
+.mark.rb span{left:auto;right:12px}
+
+/* demo animat (opțiunea 1) */
+.demo .lcol{transition:flex-basis .2s cubic-bezier(.2,.7,.2,1)}
+.demo .pane{transition:transform .2s cubic-bezier(.2,.7,.2,1),opacity .16s ease}
+.demo .main:not(.open) .pane{position:absolute;right:0;top:0;bottom:0;width:520px;transform:translateX(100%);opacity:0}
+.demo .main.open .lcol{flex-basis:458px}
+.demo .r{cursor:pointer}
+.demo .r:hover:not(.sel){background:var(--surface-2)}
+@media (prefers-reduced-motion:reduce){.demo .lcol,.demo .pane{transition:none}}
+
+@media (max-width:900px){.grid,.pc,.q{grid-template-columns:1fr}h1{font-size:30px}.verdict{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div>
+      <div class="eyebrow">Horizontal · laptop · de decis</div>
+      <h1>Panoul din dreapta: mereu deschis sau doar când ai ales un tichet?</h1>
+    </div>
+    <div class="tg" role="group" aria-label="Temă">
+      <button data-t="light" aria-pressed="true">Luminos</button><button data-t="dark" aria-pressed="false">Întunecat</button>
+    </div>
+  </div>
+  <p class="lead">Pe laptop, când apeși pe un tichet din „Azi”, „7 zile” sau „Listă”, tichetul se deschide <b>în dreapta listei</b>, ca să poți trece de la unul la altul fără să închizi nimic. Problema de azi: panoul acela stă deschis <b>și când e gol</b>. Ocupă jumătate din ecran ca să spună „Alege un tichet din listă”, iar lista rămâne îngustă — în proiectul APIs, pe un laptop de 1280 de pixeli, banda de valuri de sus încape cu <b>un singur val</b>, restul se ascunde în „Încă 8”.</p>
+  <p class="lead">Mai jos sunt două variante (plus ce e acum), fiecare pe un laptop obișnuit (<b>1280×800</b>) și pe un monitor mai lat (<b>1600×900</b>), cu tichetul închis și cu tichetul deschis. Ecranele sunt micșorate ca să încapă; proporțiile sunt cele reale.</p>
+  <div class="q">
+    <div><span class="k">ACUM</span><b>Panoul stă mereu deschis</b>De la 1200 px în sus, și gol. Lista are cam 470 px.</div>
+    <div><span class="k">VARIANTA 1</span><b>Panoul apare doar când alegi un tichet</b>Până atunci lista e pe toată lățimea. Recomandarea mea.</div>
+    <div><span class="k">VARIANTA 2</span><b>Panoul mereu deschis, dar doar pe ecrane late</b>De la 1440 px. Sub, tichetul se deschide mare, peste listă.</div>
+  </div>
+
+  <section id="now">
+    <h2><span class="b gray">0</span>Acum</h2>
+    <p class="sub">Așa arată azi pe un laptop de 1280 px, fără niciun tichet ales. Jumătatea din dreapta e ocupată de un mesaj; lista și banda de valuri se strâng în stânga.</p>
+    <div class="grid">
+      <div><div class="cap">Proiectul APIs, „Listă” <span class="px">1280×800 · nimic ales</span></div><div class="slot" data-k="now-proj"></div>
+        <p class="note">Banda de valuri arată doar <b>Notițe</b> și <b>Emitere NIR</b>; celelalte 8 valuri sunt în „Încă 8 ▾”.</p></div>
+      <div><div class="cap">„Azi” <span class="px">1280×800 · nimic ales</span></div><div class="slot" data-k="now-azi"></div>
+        <p class="note">Titlurile se taie cu „…” deși jumătate de ecran e goală.</p></div>
+    </div>
+  </section>
+
+  <section id="o1">
+    <h2><span class="b">1</span>Panoul apare doar când alegi un tichet</h2>
+    <p class="sub">Fără tichet ales, lista ocupă tot locul (până la o lățime comodă de citit, <b>760 px</b> — mai lat de atât rândurile devin greu de urmărit cu ochii). Apeși pe un tichet: lista se strânge spre stânga și tichetul <b>alunecă din dreapta</b> (o mișcare scurtă, cam o cincime de secundă). Închizi cu X sau Esc: lista revine pe toată lățimea. Pe ecranul lat de 1600 px e loc pentru amândouă, deci <b>lista nici nu se mișcă</b> — panoul doar umple golul din dreapta.</p>
+    <div class="grid">
+      <div><div class="cap">Laptop <span class="px">1280×800 · nimic ales</span></div><div class="slot" data-k="o1-1280-empty"></div>
+        <p class="note">Banda de valuri arată <b>Emitere NIR, Strategie, Avize</b> (plus Notițe) în loc de un singur val. Restul în „Încă 5”.</p></div>
+      <div><div class="cap">Laptop <span class="px">1280×800 · tichet deschis</span></div><div class="slot" data-k="o1-1280-open"></div>
+        <p class="note">Lista se strânge cât e nevoie ca tichetul să aibă 520 px. Banda revine la mai puține valuri — dar doar cât lucrezi pe tichet.</p></div>
+      <div><div class="cap">Monitor lat <span class="px">1600×900 · nimic ales</span></div><div class="slot" data-k="o1-1600-empty"></div>
+        <p class="note">Lista stă la 760 px, aliniată la stânga. Dreapta rămâne liberă, liniștită — nu un mesaj.</p></div>
+      <div><div class="cap">Monitor lat <span class="px">1600×900 · tichet deschis</span></div><div class="slot" data-k="o1-1600-open"></div>
+        <p class="note">Lista e <b>exact unde era</b>, la aceeași lățime. Tichetul ocupă golul. Nimic nu sare sub ochi.</p></div>
+    </div>
+    <div style="margin-top:34px">
+      <div class="demo-bar"><b style="color:var(--page-ink)">Încearcă:</b> apasă pe un rând din ecranul de mai jos, apoi pe X (sau Esc) ca să închizi. <button id="demo-toggle">Deschide / închide</button></div>
+      <div class="slot" data-k="o1-demo"></div>
+    </div>
+    <div class="pc">
+      <div class="plus"><h4>Pentru</h4><ul>
+        <li><b>Lista are loc când doar o citești</b> — care e, de departe, cel mai des caz pe „Azi”.</li>
+        <li>Banda de valuri arată 3 valuri în loc de unul; mai puține drumuri prin „Încă N”.</li>
+        <li><b>O singură regulă</b> pe orice laptop: „apeși → se deschide în dreapta”. Nu depinde de lățimea ferestrei.</li>
+      </ul></div>
+      <div class="minus"><h4>Contra</h4><ul>
+        <li>Pe 1280 px lista își schimbă lățimea la deschidere și la închidere (atenuat de alunecare; pe 1600 nu se întâmplă).</li>
+        <li>Nu mai există un loc „de așteptare” care să-ți amintească că poți deschide tichete în dreapta — dar oricum se descoperă la primul click.</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <section id="o2">
+    <h2><span class="b">2</span>Panoul mereu deschis, dar doar de la 1440 px</h2>
+    <p class="sub">Pe ecranele late rămâne ca acum (panoul stă deschis, și gol). Sub 1440 px — adică pe majoritatea laptopurilor — panoul dispare cu totul, iar tichetul se deschide <b>mare, peste listă</b>, cu fundalul întunecat, ca pe telefon. Îl închizi ca să revii la listă.</p>
+    <div class="grid">
+      <div><div class="cap">Laptop <span class="px">1280×800 · nimic ales</span></div><div class="slot" data-k="o2-1280-empty"></div>
+        <p class="note">Identic cu varianta 1 când nu e nimic ales: lista pe toată lățimea, banda cu multe valuri.</p></div>
+      <div><div class="cap">Laptop <span class="px">1280×800 · tichet deschis</span></div><div class="slot" data-k="o2-1280-open"></div>
+        <p class="note">Tichetul acoperă lista. Ca să treci la următorul: închizi, apeși pe alt rând, se deschide iar.</p></div>
+      <div><div class="cap">Monitor lat <span class="px">1600×900 · nimic ales</span></div><div class="slot" data-k="o2-1600-empty"></div>
+        <p class="note">Panoul gol rămâne. Pe 1600 px lista are totuși ~660 px, deci încap 3 valuri — dar pe laptop, unde stai cel mai des, nu ajungi aici.</p></div>
+      <div><div class="cap">Monitor lat <span class="px">1600×900 · tichet deschis</span></div><div class="slot" data-k="o2-1600-open"></div>
+        <p class="note">Ca azi, doar pe ecran mai lat.</p></div>
+    </div>
+    <div class="pc">
+      <div class="plus"><h4>Pentru</h4><ul>
+        <li>Pe ecrane late, panoul e mereu „acolo” — nimic nu se mișcă niciodată.</li>
+        <li>Pe laptop, tichetul deschis are tot ecranul — bun pentru descrieri lungi.</li>
+      </ul></div>
+      <div class="minus"><h4>Contra</h4><ul>
+        <li><b>Două comportări diferite</b> după cât de lată e fereastra: pe laptop modal, pe monitor panou. Muți fereastra pe alt ecran și aplicația se poartă altfel.</li>
+        <li>Pe laptop pierzi trecerea rapidă de la un tichet la altul (cel mai mare câștig al panoului): fiecare tichet = deschide, închide.</li>
+        <li>Pe monitor, panoul gol rămâne — aceeași problemă, doar mai mică.</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <div class="verdict">
+    <div class="b">✓</div>
+    <div>
+      <h2>Recomandarea mea: varianta 1</h2>
+      <p>Panoul din dreapta apare <b>doar când ai ales un tichet</b> și dispare când îl închizi. Lista e lată când o citești și îngustă doar cât lucrezi pe un tichet. Pe orice laptop se poartă la fel, iar pe un monitor lat lista nici nu se mișcă.</p>
+      <ul>
+        <li><b>Trecerea de la un tichet la altul rămâne</b>: cu tichetul deschis, un click pe alt rând îl schimbă pe loc, ca acum.</li>
+        <li><b>Mișcarea</b>: alunecare scurtă (0,2 s) la deschidere și închidere; fără ea, schimbarea de lățime pe 1280 ar părea un salt.</li>
+        <li>Am cântărit și un <b>panou pliabil</b> (o bară subțire în dreapta pe care o deschizi) și un panou gol umplut cu „ce urmează azi”. Nu le recomand: primul adaugă un buton de ținut minte, al doilea ține lista îngustă tot timpul ca să arate ce e deja în listă.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------- iconițe (trasee lucide) ---------- */
+const P={
+  bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+  clip:'<path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>',
+  cal:'<rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  week:'<rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/>',
+  sunrise:'<path d="M12 2v6M4.93 10.93l1.41 1.41M2 18h2M20 18h2M17.66 12.34l1.41-1.41M22 22H2M16 18a4 4 0 0 0-8 0"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  star:'<path d="M12 2.5l2.9 5.9 6.5.95-4.7 4.58 1.1 6.47L12 17.35 6.2 20.4l1.1-6.47L2.6 9.35l6.5-.95z"/>',
+  user:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+  inbox:'<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+  more:'<circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/>',
+  check:'<path d="M20 6 9 17l-5-5"/>',
+  down:'<path d="m6 9 6 6 6-6"/>',
+  max:'<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>',
+  x:'<path d="M18 6 6 18M6 6l12 12"/>',
+  gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+  note:'<path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/><path d="M9 13h6M9 17h4"/>',
+  layers:'<path d="m12 2 9 5-9 5-9-5z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/>',
+  pointer:'<path d="M9 9l11 4-5 2-2 5z"/><path d="M4 4l3 3"/>',
+};
+const ic=(n,s=16,w=1.9,fill=false)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="${fill?'currentColor':'none'}" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n]}</svg>`;
+
+/* ---------- date ---------- */
+const WAVES=[['Emitere NIR',15],['Strategie',5],['Avize',2],['Campuri aditionale',2],['Chitante',1],['Webhooks',1],['Cheltuieli',1],['Cost Unitar',1]];
+const ACTIVE='Emitere NIR';
+const trunc=s=>s.length>16?s.slice(0,16)+'…':s;
+const L1=[
+  ['APIS-45','APi v3 Update echipa 2026-07-15',{due:'azi 17:00',bell:1}],
+  ['APIS-46','Credentiale'],
+  ['APIS-47','Linkuri documentatie pentru erori v3',{due:'azi 17:00',bell:1}],
+  ['APIS-48','Script discutii cu clientul'],
+  ['APIS-49','Emitere NIR din comanda furnizor',{urg:1}],
+  ['APIS-50','Validare gestiune la emitere NIR'],
+  ['APIS-51','Câmpul „Serie NIR” în răspunsul de emitere'],
+];
+const L2=[
+  ['APIS-52','Exemplu Postman pentru emitere NIR',{due:'vin 16 oct'}],
+  ['APIS-53','Erori 422 pe articole fără cod de produs'],
+  ['APIS-54','Test cu 300 de linii pe un singur NIR'],
+  ['APIS-55','Documentație: stornare NIR'],
+  ['APIS-56','Exemple de răspuns în ambele formate'],
+];
+const AZI_OVER=[
+  ['Trimite oferta pentru Turism Delta','11 oct','tur','Turism'],
+  ['Plătește factura de internet','12 oct','inbox','Inbox'],
+];
+const AZI=[
+  ['Sună la contabilitate pentru balanța pe septembrie','09:30','inbox','Inbox',1],
+  ['APi v3 Update echipa 2026-07-15','17:00','api','APIs'],
+  ['Linkuri documentatie pentru erori v3','17:00','api','APIs'],
+  ['Programare service mașină','18:30','inbox','Inbox'],
+  ['Citește propunerea de contract de la Mihai','','inbox','Inbox'],
+  ['Script discutii cu clientul','','api','APIs'],
+  ['Cumpără baterii pentru telecomandă','','casa','Casă'],
+  ['Revizie demo pentru prezentarea de vineri','','hz','Horizontal'],
+];
+const SEL_ID='APIS-47';
+
+/* ---------- bucăți de interfață ---------- */
+function sidebar(view){
+  const nav=(i,l,n,on,col,fill)=>`<div class="nav${on?' on':''}"><span style="color:${on||col?col||'var(--txt)':'currentColor'}">${ic(i,16,on?2.2:1.9,fill)}</span><span>${l}</span><span class="n">${n}</span></div>`;
+  const prj=(p,l,n,on)=>`<div class="nav${on?' on':''}"><span class="dot" style="--pc:var(--p-${p})"></span><span>${l}</span><span class="n">${n}</span></div>`;
+  return `<aside class="side"><div class="me"><span class="av" style="background:var(--p-tur)">IS</span>Ionut<span class="g">${ic('gear',16)}</span></div>
+   <div class="search">${ic('search',15)}Caută<kbd>Ctrl K</kbd></div>
+   ${nav('star','Azi',10,view==='azi','var(--star)',true)}${nav('sunrise','Mâine',3,0)}${nav('week','7 zile',17,0)}${nav('user','Ale mele',2,0)}
+   <div class="lbl">Proiecte</div>${prj('inbox','Inbox',6)}${prj('api','APIs',29,view==='proj')}${prj('hz','Horizontal',23)}${prj('tur','Turism',9)}${prj('casa','Casă',4)}</aside>`;
+}
+function band(){
+  const pills=WAVES.map(([l,n])=>`<span class="pill wave${l===ACTIVE?' on':''}" data-w="${l}">${l===ACTIVE?l:trunc(l)}<span class="n">${n}</span></span>`).join('');
+  return `<div class="ws"><div class="ws-row"><span class="pill keep">${ic('note',15)}Notițe<span class="n">8</span></span>${pills}<span class="pill more keep" hidden>Încă <span class="cnt">0</span>${ic('down',14,2)}</span><span class="pill add keep">${ic('plus',16,2)}</span></div><span class="mbtn">${ic('more',18,2.4)}</span></div>`;
+}
+function prow(r,sel){
+  const [id,t,o={}]=r;
+  const tail=[];
+  if(o.due) tail.push(`<span class="dchip">${o.due}${o.bell?ic('bell',12,2):''}</span>`);
+  tail.push(`<span>${id}</span>`);
+  return `<div class="r${sel&&id===SEL_ID?' sel':''}" data-id="${id}"><span class="ck${o.urg?' urg':''}"></span><span class="t">${t}</span><span class="tail">${tail.join('')}</span></div>`;
+}
+function projList(sel){
+  return `<div class="ph"><span class="dot" style="--pc:var(--p-api)"></span><h3>APIs</h3><span class="cnt">29</span><span class="sp"></span><span class="btn">${ic('plus',14,2.4)}Tichet<kbd>C</kbd></span></div>
+   <div class="tabs"><span>Ordine</span><span class="on">Listă</span><span>Cards</span><span>Hartă</span></div>${band()}
+   <div class="body" style="--pc:var(--p-api)"><div class="lh"><span class="num">1</span>Se pot începe acum<span class="sp"></span><span class="c">${L1.length}</span></div>${L1.map(r=>prow(r,sel)).join('')}
+   <div class="lh l2"><span class="num">2</span>După cele de sus<span class="sp"></span><span class="c">${L2.length}</span></div>${L2.map(r=>prow(r,sel)).join('')}</div>`;
+}
+function aziList(sel){
+  const row=(r,late)=>{const [t,time,p,pn,urg]=r;const isSel=sel&&t.startsWith('Linkuri');
+    return `<div class="r${isSel?' sel':''}" style="--pc:var(--p-${p})"><span class="ck${urg?' urg':''}"></span><span class="t">${t}</span><span class="tail">${time?`<span class="${late?'late':''}">${time}</span>`:''}<span class="pj"><i></i>${pn}</span></span></div>`};
+  return `<div class="ph"><span style="color:var(--star)">${ic('star',26,0,true)}</span><h3>Azi</h3><span class="cnt">10</span></div><div class="sub-d">miercuri, 14 octombrie</div>
+   <div class="qa">${ic('plus',18,2.2)}Adaugă o sarcină — „mâine la 10 #apis”<kbd>C</kbd></div>
+   <div class="body"><div class="lh over">Restanțe<span class="sp"></span><span class="c">2</span></div>${AZI_OVER.map(r=>row(r,1)).join('')}
+   <div class="lh day"><span style="color:var(--star)">${ic('star',15,0,true)}</span>Azi<span class="sp"></span><span class="c">${AZI.length}</span></div>${AZI.map(r=>row(r)).join('')}</div>`;
+}
+function ticketHead(closable=true){
+  return `<div class="dh"><span class="id">${SEL_ID}</span><span class="sp"></span><span class="ibtn" title="Deschide mare">${ic('max',16)}</span><span class="ibtn">${ic('more',18,2.4)}</span>${closable?`<span class="ibtn x" title="Închide (Esc)">${ic('x',18)}</span>`:''}</div>`;
+}
+function ticketTitle(){
+  return `<div class="tt"><span class="ck" style="--pc:var(--p-api)"></span><h2>Linkuri documentatie pentru erori v3</h2></div>
+   <div class="chips"><span class="chip acc">${ic('cal',15)}Azi <span class="m">17:00</span></span><span class="chip">${ic('bell',15)}la oră</span><span class="chip"><span class="wv"></span>Emitere NIR</span><span class="chip">${ic('clip',15)}<span class="m">2</span></span></div>`;
+}
+function ticketMd(){
+  return `<div class="md"><p>Pentru fiecare cod de eroare din v3 vrem un link direct în documentație, ca suportul să-l poată trimite clientului fără să-l caute. Lista codurilor e în foaia de la Credentiale.</p>
+   <h4>De făcut</h4>
+   <div class="task done"><span class="bx">${ic('check',11,3.2)}</span><span>Lista codurilor <code>4xx</code> din v3</span></div>
+   <div class="task"><span class="bx"></span><span>Ancore pe pagina de erori pentru fiecare cod</span></div>
+   <div class="task"><span class="bx"></span><span>Câmpul <code>docUrl</code> în răspunsul de eroare</span></div>
+   <h4>Note</h4><p>Erorile de la emitere NIR au nevoie de exemple separate (vezi APIS-53).</p></div>`;
+}
+function thread(){
+  return `<div class="thread"><div class="th">Fir</div><div class="ev"><span class="av" style="background:#D99A00">AL</span><div><span class="who">Alex</span><span class="when">azi, 10:12</span><div>Am adăugat și codurile de la avize, sunt în aceeași foaie.</div></div></div><div class="compose">Scrie un comentariu…</div></div>`;
+}
+function pane(open){
+  if(!open) return `<aside class="pane"><div class="empty-pane"><div><div class="ic">${ic('pointer',24,1.8)}</div>Alege un tichet din listă<br>ca să-l editezi aici.</div></div></aside>`;
+  return `<aside class="pane">${ticketHead()}<div class="db">${ticketTitle()}${ticketMd()}${thread()}</div></aside>`;
+}
+function modal(){
+  return `<div class="scrim"></div><div class="modal">${ticketHead()}<div class="db"><div>${ticketTitle()}${ticketMd()}${thread()}</div>
+   <dl class="side-props"><div><dt>Proiect</dt><dd style="display:flex;gap:8px;align-items:center"><span class="dot" style="--pc:var(--p-api);margin:0"></span>APIs</dd></div><div><dt>Val</dt><dd>Emitere NIR</dd></div><div><dt>Depinde de</dt><dd>APIS-46 Credentiale</dd></div><div><dt>Creat de</dt><dd>Ionut</dd></div></dl></div></div>`;
+}
+/* layout: 'now' (panou mereu, împărțit egal), 'full', 'open' (varianta 1), 'modal' */
+function screen({w,h,view='proj',layout,open=false,marks=''}){
+  const list=view==='proj'?projList(open):aziList(open);
+  let main;
+  if(layout==='now') main=`<div class="main even"><div class="lcol">${list}</div>${pane(open)}</div>`;
+  else if(layout==='full') main=`<div class="main"><div class="lcol">${list}</div></div>`;
+  else if(layout==='open') main=`<div class="main open"><div class="lcol">${list}</div>${pane(true)}</div>`;
+  else if(layout==='modal') main=`<div class="main"><div class="lcol">${projList(true)}</div>${modal()}</div>`;
+  else if(layout==='demo') main=`<div class="main"><div class="lcol">${list}</div>${pane(true)}</div>`;
+  return `<div class="win" style="width:${w}px;height:${h}px">${sidebar(view)}${main}${marks}</div>`;
+}
+
+/* ---------- ecranele ---------- */
+const S={
+  'now-proj':{w:1280,h:800,layout:'now',marks:`<div class="mark" style="left:770px;top:14px;width:496px;height:772px"><span>~500 px pentru un mesaj</span></div>`},
+  'now-azi':{w:1280,h:800,view:'azi',layout:'now'},
+  'o1-1280-empty':{w:1280,h:800,layout:'full'},
+  'o1-1280-open':{w:1280,h:800,layout:'open',open:true},
+  'o1-1600-empty':{w:1600,h:900,layout:'full'},
+  'o1-1600-open':{w:1600,h:900,layout:'open',open:true,marks:`<div class="mark ok" style="left:252px;top:14px;width:756px;height:872px"><span>lista nu se mișcă</span></div>`},
+  'o1-demo':{w:1280,h:800,layout:'demo',demo:1},
+  'o2-1280-empty':{w:1280,h:800,layout:'full'},
+  'o2-1280-open':{w:1280,h:800,layout:'modal'},
+  'o2-1600-empty':{w:1600,h:900,layout:'now'},
+  'o2-1600-open':{w:1600,h:900,layout:'now',open:true},
+};
+document.querySelectorAll('.slot').forEach(slot=>{
+  const cfg=S[slot.dataset.k];
+  slot.innerHTML=`<div class="shot${cfg.demo?' demo':''}"><div class="clip">${screen(cfg)}</div></div>`;
+  slot._cfg=cfg;
+});
+
+/* încadrare: fiecare ecran se micșorează la lățimea coloanei lui */
+function fit(){
+  document.querySelectorAll('.slot').forEach(slot=>{
+    const {w,h}=slot._cfg, clip=slot.querySelector('.clip'), win=slot.querySelector('.win');
+    const avail=Math.min(slot.clientWidth-12, slot._cfg.demo?900:9999);
+    const s=avail/w;
+    win.style.transform=`scale(${s})`;
+    clip.style.width=w*s+'px';clip.style.height=h*s+'px';
+    slot.querySelector('.shot').style.width=(w*s+12)+'px';
+  });
+}
+
+/* banda de valuri: regula din waveBar.ts (fitPills) — în ordine, activul mereu pe rând */
+function fitBand(win){
+  win.querySelectorAll('.ws').forEach(ws=>{
+    const row=ws.querySelector('.ws-row');
+    const waves=[...row.querySelectorAll('.pill.wave')], more=row.querySelector('.pill.more');
+    waves.forEach(p=>p.hidden=false);more.hidden=false;
+    const gap=6, widths=waves.map(p=>p.offsetWidth);
+    const fixed=[...row.querySelectorAll('.pill.keep')].reduce((a,p)=>a+p.offsetWidth+gap,0);
+    let room=row.clientWidth-fixed;
+    const shown=[];let used=0;
+    for(let i=0;i<waves.length;i++){
+      if(used+widths[i]+gap<=room) {shown.push(i);used+=widths[i]+gap;} else break;
+    }
+    const act=waves.findIndex(p=>p.classList.contains('on'));
+    if(act>=0&&!shown.includes(act)){
+      while(shown.length&&used+widths[act]+gap>room){used-=widths[shown.pop()]+gap}
+      shown.push(act);
+    }
+    waves.forEach((p,i)=>p.hidden=!shown.includes(i));
+    const n=waves.length-shown.length;
+    more.hidden=n===0;more.querySelector('.cnt').textContent=n;
+  });
+}
+function layout(){fit();document.querySelectorAll('.win').forEach(fitBand)}
+
+/* demo: deschide / închide cu alunecare */
+const demo=document.querySelector('.demo');
+const dmain=demo.querySelector('.main');
+function setOpen(open,row){
+  demo.querySelectorAll('.r.sel').forEach(r=>r.classList.remove('sel'));
+  if(open&&row) row.classList.add('sel');
+  dmain.classList.toggle('open',open);
+}
+demo.addEventListener('click',e=>{
+  const r=e.target.closest('.r');
+  if(r){setOpen(true,r);const t=r.querySelector('.t').textContent;demo.querySelector('.tt h2').textContent=t;demo.querySelector('.dh .id').textContent=r.dataset.id||'';return}
+  if(e.target.closest('.x')) setOpen(false);
+});
+demo.querySelector('.lcol').addEventListener('transitionend',e=>{if(e.propertyName==='flex-basis')fitBand(demo.querySelector('.win'))});
+document.getElementById('demo-toggle').onclick=()=>{const o=!dmain.classList.contains('open');setOpen(o,o?demo.querySelector(`.r[data-id="${SEL_ID}"]`):null)};
+addEventListener('keydown',e=>{if(e.key==='Escape')setOpen(false)});
+
+/* temă */
+document.querySelectorAll('.tg button').forEach(b=>b.onclick=()=>{
+  document.documentElement.dataset.theme=b.dataset.t;
+  document.querySelectorAll('.tg button').forEach(x=>x.setAttribute('aria-pressed',x===b));
+});
+
+addEventListener('resize',layout);
+(document.fonts?document.fonts.ready:Promise.resolve()).then(layout);
+layout();
+</script>
+</body>
+</html>

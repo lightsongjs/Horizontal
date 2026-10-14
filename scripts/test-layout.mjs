@@ -455,7 +455,7 @@ console.log('\nRândul de jetoane în panoul lateral (~500px):')
 {
   // 1280px fereastră, din care sidebar-ul ia ~240px: lista + panoul au ~1000px.
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } })
-  await page.setContent(`<style>${CSS}</style><div class="split" style="height:900px;width:1000px"><div class="split-list"></div><aside class="split-pane">${formHead(datePop(false))}</aside></div>`)
+  await page.setContent(`<style>${CSS}</style><div class="split has-pane" style="height:900px;width:1000px"><div class="split-list"></div><aside class="split-pane">${formHead(datePop(false))}</aside></div>`)
   const m = await page.evaluate(() => {
     const pane = document.querySelector('.split-pane')
     const pop = document.querySelector('.fc-pop')

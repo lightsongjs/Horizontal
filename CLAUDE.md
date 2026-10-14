@@ -112,6 +112,9 @@ care altfel ar tăia cu „…" (`.qs-bar`, `.list-group-head`). Verificare:
 
 Peste 1200px, „Listă" și listele inteligente se împart în două: lista în
 stânga, formularul tichetului ales în dreapta (`src/components/SplitView.tsx`).
+**Panoul apare doar cu un tichet deschis** (decizia omului, 2026-10-14): fără
+tichet lista ține toată lățimea (cu plafonul ei de citit), iar `<aside>` rămâne
+în DOM ascuns (`hidden`), ca lista să nu se remonteze la deschidere.
 
 **Nimeni nu cheamă „deschide în panou".** Decizia se ia la RANDARE, într-un
 singur loc: `dockedIssueIdFrom` din `src/ui.tsx`. O vizualizare care poate

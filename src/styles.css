@@ -3435,9 +3435,21 @@ button.we-del:hover { color: var(--blocked); background: var(--blocked-soft); }
 
   .split {
     display: grid;
-    grid-template-columns: minmax(340px, 1fr) minmax(460px, 1.05fr);
+    grid-template-columns: minmax(0, 1fr);
     gap: 22px;
     align-items: stretch;
+  }
+  .split.has-pane {
+    grid-template-columns: minmax(340px, 1fr) minmax(460px, 1.05fr);
+  }
+  .split-pane[hidden] { display: none; }
+  /* Fără panou lista unui proiect păstrează o lățime de citit, ca listele inteligente. */
+  .split:not(.has-pane) > .split-list > .panel { max-width: 900px; }
+  /* Tichetul intră din dreapta, scurt; lista se reașază odată cu el. */
+  .split.has-pane > .split-pane { animation: split-pane-in 0.2s cubic-bezier(0.2, 0.8, 0.2, 1); }
+  @keyframes split-pane-in {
+    from { transform: translateX(24px); opacity: 0; }
+    to { transform: none; opacity: 1; }
   }
   .split-list {
     min-width: 0;
@@ -3449,9 +3461,9 @@ button.we-del:hover { color: var(--blocked); background: var(--blocked-soft); }
      întreg. În panoul lateral, coloana ÎNSĂȘI e măsura — cu plafon peste ea,
      rândurile se opreau înainte de panou și rămânea o bandă goală între
      listă și tichetul deschis. */
-  .split-list > .smart-list,
-  .split-list > .inbox-pad,
-  .split-list > .panel.inbox-pad { max-width: none; }
+  .split.has-pane > .split-list > .smart-list,
+  .split.has-pane > .split-list > .inbox-pad,
+  .split.has-pane > .split-list > .panel.inbox-pad { max-width: none; }
   .split-pane {
     min-width: 0;
     display: flex;

@@ -50,10 +50,13 @@ export function SplitView({ children }: { children: ReactNode }) {
 
   if (!wide) return <>{children}</>
 
+  // Panoul apare doar cu un tichet deschis (decizia omului, 2026-10-14): gol,
+  // ocupa jumătate din ecran și strângea lista (și banda de valuri) degeaba.
+  // `<aside>` rămâne în DOM, doar ascuns — lista nu se remontează la deschidere.
   return (
-    <div className="split">
+    <div className={`split${dockedIssueId ? ' has-pane' : ''}`}>
       <div className="split-list">{children}</div>
-      <aside className="split-pane" ref={paneRef} aria-label="Tichetul deschis">
+      <aside className="split-pane" ref={paneRef} aria-label="Tichetul deschis" hidden={!dockedIssueId}>
         {dockedIssueId ? (
           /* Cheia poartă și scadența, nu doar id-ul. Formularul își citește
              câmpurile o singură dată, la montare; o scadență care se schimbă
