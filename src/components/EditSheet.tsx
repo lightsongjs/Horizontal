@@ -198,48 +198,9 @@ function EditBody({ issue }: { issue: Issue }) {
             }}
           />
         </div>
-        <ThumbRow files={files} canDelete={canWrite} onError={showToast} issueId={issue.id} title={d.title} />
-        <DescField
-          ref={descRef}
-          className="es-desc"
-          value={d.desc}
-          readOnly={!canWrite}
-          placeholder={canWrite ? 'Descriere' : ''}
-          ariaLabel="Descrierea sarcinii"
-          prefixes={prefixes}
-          onRef={openRef}
-          onChange={(desc) => a.type({ desc })}
-          onCommit={(desc) => void a.commit({ desc })}
-          onFocus={() => setDescFocus(true)}
-          onBlur={() => { setDescFocus(false); void a.flush() }}
-        />
-
-        <p className={`qs-status ${status ? 'warn' : ''}`} role="status">{status}</p>
-
-        {whenOpen && canWrite && (
-          <div className="qs-when">
-            <Icon name="due" size={14} />
-            <input
-              type="date"
-              aria-label="Ziua"
-              value={d.dueAt ? toDateInput(d.dueAt) : ''}
-              onChange={(e) => setDue(e.target.value, d.dueAt && !d.allDay ? toTimeInput(d.dueAt) : '')}
-            />
-            <input
-              type="time"
-              aria-label="Ora"
-              value={d.dueAt && !d.allDay ? toTimeInput(d.dueAt) : ''}
-              onChange={(e) => setDue(d.dueAt ? toDateInput(d.dueAt) : toDateInput(new Date().toISOString()), e.target.value)}
-            />
-            {d.dueAt && (
-              <button type="button" className="qs-clear" onPointerDown={keepFocus} onClick={() => setDue('', '')}>
-                fără dată
-              </button>
-            )}
-          </div>
-        )}
-
-        {descFocus && canWrite && <FormatBar onFormat={(c) => descRef.current?.format(c)} />}
+        {/* Sub titlu, nu jos: foaia asta se deschide ca să citești, deci ziua și
+            proiectul se văd odată cu titlul, chiar și peste o descriere lungă.
+            Jos, cât scrii, e locul barei de formatare („Senin", 2026-10-14). */}
         <div className="qs-bar">
           <button
             type="button"
@@ -306,6 +267,48 @@ function EditBody({ issue }: { issue: Issue }) {
             <Icon name="more" size={16} />
           </button>
         </div>
+        <p className={`qs-status ${status ? 'warn' : ''}`} role="status">{status}</p>
+
+        {whenOpen && canWrite && (
+          <div className="qs-when">
+            <Icon name="due" size={14} />
+            <input
+              type="date"
+              aria-label="Ziua"
+              value={d.dueAt ? toDateInput(d.dueAt) : ''}
+              onChange={(e) => setDue(e.target.value, d.dueAt && !d.allDay ? toTimeInput(d.dueAt) : '')}
+            />
+            <input
+              type="time"
+              aria-label="Ora"
+              value={d.dueAt && !d.allDay ? toTimeInput(d.dueAt) : ''}
+              onChange={(e) => setDue(d.dueAt ? toDateInput(d.dueAt) : toDateInput(new Date().toISOString()), e.target.value)}
+            />
+            {d.dueAt && (
+              <button type="button" className="qs-clear" onPointerDown={keepFocus} onClick={() => setDue('', '')}>
+                fără dată
+              </button>
+            )}
+          </div>
+        )}
+
+        <ThumbRow files={files} canDelete={canWrite} onError={showToast} issueId={issue.id} title={d.title} />
+        <DescField
+          ref={descRef}
+          className="es-desc"
+          value={d.desc}
+          readOnly={!canWrite}
+          placeholder={canWrite ? 'Descriere' : ''}
+          ariaLabel="Descrierea sarcinii"
+          prefixes={prefixes}
+          onRef={openRef}
+          onChange={(desc) => a.type({ desc })}
+          onCommit={(desc) => void a.commit({ desc })}
+          onFocus={() => setDescFocus(true)}
+          onBlur={() => { setDescFocus(false); void a.flush() }}
+        />
+
+        {descFocus && canWrite && <FormatBar onFormat={(c) => descRef.current?.format(c)} />}
       </div>
     </KeyboardSheet>
   )

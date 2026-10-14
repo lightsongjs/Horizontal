@@ -5507,6 +5507,8 @@ body:has(.kb-sheet) .toast {
    dată și numele proiectului da, tăiate cu „…" — la 320px rândul încape
    întreg (verificat de `npm run test:layout`). */
 .qs-bar { display: flex; align-items: center; gap: 5px; margin-top: 12px; }
+/* În foaia de tichet rândul stă sub titlu, înaintea descrierii. */
+.edit-sheet .qs-bar { margin: 12px 0 14px; }
 .qs-due,
 .qs-ico,
 .qs-sel {

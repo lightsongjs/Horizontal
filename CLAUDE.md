@@ -468,6 +468,8 @@ aceeași intrare (fără istoric nou), deci Back închide formularul și te las�
 pe lista din care ai pornit. Un tichet creat din formularul complet
 (`openEditIssue(id, { full: true })`) rămâne în formular.
 
+**Rândul de jetoane (zi, urgent, proiect, agrafă, „…") stă sub titlu** în foaia de tichet (redesignul „Senin", 2026-10-14): foaia se deschide ca să citești, deci ziua se vede odată cu titlul, chiar peste o descriere lungă. În foaia rapidă rămâne jos, lângă tastatură — acolo întâi scrii. Mânerul de sus închide foaia trăgând-o în jos (`sheetDismiss`, `lib/swipe.ts`).
+
 **Nu ia focusul la deschidere:** deschizi ca să citești, iar tastatura ar
 acoperi exact descrierea. Proiectul e afișat, nu ales — ID-ul îi poartă
 prefixul, iar formularul complet nu-l schimbă nici el.
