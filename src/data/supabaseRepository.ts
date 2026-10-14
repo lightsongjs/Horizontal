@@ -349,7 +349,8 @@ export function createSupabaseRepository(): Repository {
         projectId: w.project_id,
         number: w.number,
         name: w.name,
-        label: w.label,
+        // Coloana e nulabilă (valuri create direct în bază); `Wave.label` e text.
+        label: w.label ?? '',
         position: w.position,
       }))
     },
