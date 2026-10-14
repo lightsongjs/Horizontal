@@ -276,8 +276,9 @@ Scadența se vede și în **modul proiecte**, pe card („Ordine") și pe rând
 („Listă"): `src/components/DueChip.tsx` — ziua, ora **doar dacă** are una,
 clopoțelul **doar dacă** are memento, roșu dacă e restanță. Un tichet fără
 scadență nu arată nimic: acolo absența e informația, iar în modul proiecte
-scadența e excepția. (În listele inteligente e invers, de asta `TaskRow` arată
-un „—" în coloana de oră.) Clopoțelul e exportat din `DueChip` și folosit de
+scadența e excepția. (În listele inteligente coloana de oră e goală fără oră, iar un grup
+fără nicio oră n-o mai ține deloc — „—" ocupa ~50px pe rând și nu spunea nimic,
+2026-10-14.) Clopoțelul e exportat din `DueChip` și folosit de
 ambele, ca „are memento" să arate identic în cele două moduri.
 
 Recunoașterea datei din text e legată de interfață printr-un singur hook,

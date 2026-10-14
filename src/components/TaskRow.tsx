@@ -118,9 +118,11 @@ const TaskRowView = memo(function TaskRowView({ issue, onOpen, late = false, doc
         <span className="t-time">{toTimeInput(issue.dueAt!)}</span>
       ) : (
         // O restanță de zi întreagă nu are oră de arătat, dar are o zi ratată —
-        // e informația care lipsește cel mai tare din rând.
+        // e informația care lipsește cel mai tare din rând. Altfel coloana e
+        // goală (fără „—", care nu spunea nimic), iar un grup fără nicio oră o
+        // pierde de tot (`.t-time:empty` în CSS).
         <span className="t-time allday">
-          {late && issue.dueAt ? toShortDate(issue.dueAt) : '—'}
+          {late && issue.dueAt ? toShortDate(issue.dueAt) : null}
         </span>
       )}
 

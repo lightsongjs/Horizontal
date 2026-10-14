@@ -5031,6 +5031,10 @@ body:has(.kb-sheet) .toast {
 }
 .task-row.late .t-time { color: var(--blocked); }
 .t-time.allday { color: var(--txt-faint); font-weight: 500; }
+/* Fără oră nu se scrie nimic. Un grup în care niciun rând n-are oră (sau zi
+   ratată) nu ține coloana deloc: titlul pornește imediat după bifă. Într-un
+   grup mixt coloana rămâne, ca titlurile să se alinieze sub ore. */
+.list-group:not(:has(.t-time:not(:empty))) .t-time { display: none; }
 .task-row .list-title { flex: 1; min-width: 0; }
 .t-tail { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
 .t-urgent { display: inline-flex; color: var(--active); }
