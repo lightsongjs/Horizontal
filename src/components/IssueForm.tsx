@@ -428,7 +428,13 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
   const [showRecur, setShowRecur] = useState(false)
   const schedule = (() => {
     const { dueAt, allDay } = fromInputs(dueDate, dueTime)
-    const kind = reminderTouched ? reminder : defaultReminder(allDay)
+    // Un tichet existent își păstrează mementoul salvat cât scadența are aceeași
+    // formă (cu / fără oră): implicitul „la oră" pus peste un tichet cu oră și
+    // fără memento îl făcea „nesalvat" la simpla deschidere, iar orice salvare
+    // îi adăuga în tăcere un memento.
+    const kind = reminderTouched ? reminder
+      : existing?.dueAt && dueAt && existing.allDay === allDay ? reminder
+      : defaultReminder(allDay)
     return { dueAt, allDay, remindAt: reminderAt(dueAt, kind), kind }
   })()
   /**
