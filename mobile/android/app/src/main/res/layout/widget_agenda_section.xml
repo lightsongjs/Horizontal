@@ -1,6 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<TextView xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/s_label"
+<!-- Capul de grup: „Restanțe 2" (roșu, cu ceas), „Azi 3", „Mâine joi 15 oct", „Vineri 16 oct". Culorile se pun la fiecare legare. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/s_root"
     android:layout_width="match_parent" android:layout_height="wrap_content"
-    android:paddingStart="16dp" android:paddingEnd="16dp" android:paddingTop="14dp" android:paddingBottom="6dp"
-    android:fontFamily="monospace" android:textStyle="bold" android:textSize="11sp" android:letterSpacing="0.08"
-    android:textColor="@color/w_txt_dim" />
+    android:orientation="horizontal" android:gravity="center_vertical"
+    android:paddingStart="16dp" android:paddingEnd="16dp" android:paddingTop="14dp" android:paddingBottom="4dp">
+    <ImageView android:id="@+id/s_icon" android:layout_width="15dp" android:layout_height="15dp" android:layout_marginEnd="6dp"
+        android:src="@drawable/ic_widget_clock" android:tint="@color/w_danger" android:visibility="gone"
+        android:importantForAccessibility="no" />
+    <TextView android:id="@+id/s_label" android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:fontFamily="sans-serif-medium" android:textStyle="bold" android:textSize="13.5sp" android:textColor="@color/w_ink" />
+    <TextView android:id="@+id/s_count" android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_marginStart="6dp" android:fontFamily="sans-serif-medium" android:fontFeatureSettings="tnum"
+        android:textSize="13.5sp" android:textColor="@color/w_ink3" />
+    <TextView android:id="@+id/s_date" android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_marginStart="8dp" android:fontFamily="sans-serif-medium" android:fontFeatureSettings="tnum"
+        android:textSize="12sp" android:textColor="@color/w_ink3" />
+</LinearLayout>

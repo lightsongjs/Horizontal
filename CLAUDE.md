@@ -1465,8 +1465,20 @@ Pro (HyperOS 3, Android 16).
   `Engine.reschedule`, deci orice listă/acțiune redesenează; plus o alarmă inexactă
   la miezul nopții (gruparea se schimbă fără date noi). Întoarcerea pe ecranul de
   start o decide pagina (`NativeBridge`): primul `popstate` care nu e tichet sau
-  foaie după o atingere din widget → `leave()` (`moveTaskToBack`). Fonturile sunt
-  `serif`/`monospace` de sistem: `RemoteViews` se umflă în launcher.
+  foaie după o atingere din widget → `leave()` (`moveTaskToBack`).
+  **Desenul e „Senin"** (din `versionCode 10`, macheta `design/android-widget/index.html`):
+  antet cu steaua, „Azi" și numărul de azi (restanțele incluse, `todayCount`), rânduri
+  cu inelul în culoarea proiectului (urgent = inelul roșu, a doua `CheckBox` comutată
+  prin vizibilitate), capete în litere obișnuite (`sectionHead`; „Azi" primul n-are cap,
+  `showsHead`), rândul „Nimic pe azi" (`freeToday`). Două forme alese de launcher după
+  mărime (`RemoteViews(Map<SizeF,…>)`, API 31): 4×4 și compactul 4×2 (plafon de 60 de
+  elemente — fiecare formă își poartă lista prin binder). Rândurile se REFOLOSESC la
+  derulare: culoarea, inelul urgent și linia de păr se pun explicit la fiecare legare.
+  Culoarea vine ca `accent` în `AgendaItem` (pagina: `agendaItems`; citirea nativă:
+  `projects(name,accent,…)`; o creare nativă o ia de la un rând al aceluiași proiect);
+  un APK vechi ignoră câmpul, deci `API` nu crește. Fontul e `sans-serif`/`-medium` de
+  sistem (pe HyperOS: MiSans), cu cifre tabelare (`tnum`): Inter ca `@font/` nu e
+  garantat într-un `RemoteViews` umflat de launcher.
 
 - **Fereastra de quick add** (spec: `docs/superpowers/specs/2026-10-06-quick-add-nativ-design.md`):
   butonul widget-ului deschide `QuickAddActivity` — nativă, fără WebView. Regulile

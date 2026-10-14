@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Raza widget-ului: pe 12+ o dă launcher-ul (values-v31), ca să se potrivească cu vecinii. -->
+<resources><dimen name="w_radius">20dp</dimen></resources>

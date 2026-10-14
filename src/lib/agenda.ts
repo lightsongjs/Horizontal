@@ -18,13 +18,16 @@ export interface AgendaItem {
   urgent: boolean
   /** Rutină: cutia o ascunde până la acest moment (`src/lib/routines.ts`); altfel `null`. */
   hiddenUntil: string | null
+  /** Culoarea proiectului (hex, a omului): inelul bifei din widget. Un APK vechi ignoră câmpul. */
+  accent: string | null
 }
 
 /** Același plafon ca citirea nativă (`AGENDA_LIMIT` din `core/Agenda.kt`). */
 export const AGENDA_LIMIT = 200
 
-export function agendaItems(issues: Issue[], projects: Pick<Project, 'id' | 'name' | 'remindersOnly'>[], now: Date): AgendaItem[] {
+export function agendaItems(issues: Issue[], projects: (Pick<Project, 'id' | 'name' | 'remindersOnly'> & { accent?: string | null })[], now: Date): AgendaItem[] {
   const names = new Map(projects.map((p) => [p.id, p.name]))
+  const accents = new Map(projects.map((p) => [p.id, p.accent || null]))
   const routines = new Set(projects.filter((p) => p.remindersOnly).map((p) => p.id))
   const byId = new Map<string, Issue>()
   for (const it of issues) {
@@ -46,5 +49,6 @@ export function agendaItems(issues: Issue[], projects: Pick<Project, 'id' | 'nam
     recurring: !!it.rrule,
     urgent: it.urgent,
     hiddenUntil: routines.has(it.projectId) ? revealAt(it) : null,
+    accent: accents.get(it.projectId) ?? null,
   }))
 }

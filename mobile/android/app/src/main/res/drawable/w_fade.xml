@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Dégradéul de sub listă: din suprafață spre transparent, în sus. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient android:angle="90" android:startColor="@color/w_surface" android:endColor="@color/w_surface_clear" />
+</shape>

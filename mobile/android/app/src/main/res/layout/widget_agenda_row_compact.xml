@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Rândul 4×2: pe o linie — inel, titlu, ora, punctul proiectului. Aceleași id-uri ca widget_agenda_row. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/r_root"
+    android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="42dp"
+    android:orientation="horizontal" android:gravity="center_vertical"
+    android:paddingStart="3dp" android:paddingEnd="14dp">
+    <CheckBox android:id="@+id/r_check" android:layout_width="40dp" android:layout_height="40dp" android:checked="false"
+        android:button="@drawable/w_ck" android:background="@null" android:minWidth="0dp" android:minHeight="0dp" android:padding="0dp"
+        android:focusable="false" android:focusableInTouchMode="false"
+        android:buttonTint="@color/w_ring_default" android:contentDescription="Gata" />
+    <CheckBox android:id="@+id/r_check_urg" android:layout_width="40dp" android:layout_height="40dp" android:checked="false"
+        android:button="@drawable/w_ck_urgent" android:background="@null" android:minWidth="0dp" android:minHeight="0dp" android:padding="0dp"
+        android:focusable="false" android:focusableInTouchMode="false" android:visibility="gone"
+        android:buttonTint="@color/w_danger" android:contentDescription="Gata (urgent)" />
+    <LinearLayout android:id="@+id/r_body" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:gravity="center_vertical" android:minHeight="40dp"
+        android:layout_marginStart="2dp" android:background="@drawable/w_ripple">
+        <TextView android:id="@+id/r_title" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
+            android:fontFamily="sans-serif" android:textSize="14.5sp" android:textColor="@color/w_ink"
+            android:maxLines="1" android:ellipsize="end" />
+        <TextView android:id="@+id/r_meta" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_marginStart="8dp" android:fontFamily="sans-serif-medium" android:fontFeatureSettings="tnum"
+            android:textSize="13sp" android:textColor="@color/w_ink2" android:maxLines="1" />
+        <ImageView android:id="@+id/r_dot" android:layout_width="7dp" android:layout_height="7dp" android:layout_marginStart="7dp"
+            android:src="@drawable/w_dot" android:importantForAccessibility="no" />
+    </LinearLayout>
+</LinearLayout>

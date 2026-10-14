@@ -27,13 +27,46 @@ class AgendaTest {
         assertEquals(AgendaState.Ready(emptyList(), 0), empty)
     }
 
-    @Test fun etichete() {
+    @Test fun capeteleDeGrup_fărăMajuscule_cuDataSauNumărul() {
         val today = LocalDate.of(2026, 10, 6)
-        assertEquals("RESTANȚE", sectionLabel(AgendaSection(true, 0, null, emptyList())))
-        assertEquals("AZI · MAR 6 OCT", sectionLabel(AgendaSection(false, 0, today, emptyList())))
-        assertEquals("MÂINE · MIE 7 OCT", sectionLabel(AgendaSection(false, 1, today.plusDays(1), emptyList())))
-        assertEquals("JOI 8 OCT", sectionLabel(AgendaSection(false, 2, today.plusDays(2), emptyList())))
-        assertEquals("SÂMBĂTĂ 10 OCT", sectionLabel(AgendaSection(false, 4, today.plusDays(4), emptyList())))
+        assertEquals(SectionHead("Restanțe", null), sectionHead(AgendaSection(true, 0, null, emptyList())))
+        assertEquals(SectionHead("Azi", null), sectionHead(AgendaSection(false, 0, today, emptyList())))
+        assertEquals(SectionHead("Mâine", "mie 7 oct"), sectionHead(AgendaSection(false, 1, today.plusDays(1), emptyList())))
+        assertEquals(SectionHead("Joi", "8 oct"), sectionHead(AgendaSection(false, 2, today.plusDays(2), emptyList())))
+        assertEquals(SectionHead("Sâmbătă", "10 oct"), sectionHead(AgendaSection(false, 4, today.plusDays(4), emptyList())))
+        assertEquals("marți, 6 octombrie", todayLine(now, zone))
+    }
+
+    @Test fun antetul_numărăAziCuRestanțe_iarAziPrimulNuAreCap() {
+        val today = LocalDate.of(2026, 10, 6)
+        val late = AgendaSection(true, 0, null, listOf(item("A", "x"), item("B", "x")))
+        val azi = AgendaSection(false, 0, today, listOf(item("C", "x")))
+        val maine = AgendaSection(false, 1, today.plusDays(1), listOf(item("D", "x")))
+        assertEquals(3, todayCount(listOf(late, azi, maine)))
+        assertEquals(false, showsHead(0, azi))
+        assertEquals(true, showsHead(1, azi))
+        assertEquals(true, showsHead(0, late))
+        assertEquals(true, showsHead(0, maine))
+        assertEquals(true, freeToday(listOf(maine)))
+        assertEquals(false, freeToday(listOf(late, maine)))
+        assertEquals(false, freeToday(emptyList()))
+    }
+
+    @Test fun culoareaProiectului_hexScrisDeOm() {
+        assertEquals(0xFFF2600C.toInt(), accentArgb("#F2600C"))
+        assertEquals(0xFF00AAFF.toInt(), accentArgb("#0af"))
+        assertEquals(0x80112233.toInt(), accentArgb("#80112233"))
+        assertEquals(null, accentArgb("albastru"))
+        assertEquals(null, accentArgb("#12345"))
+        assertEquals(null, accentArgb(null))
+    }
+
+    @Test fun creareaÎșiIaCuloareaDeLaUnRândAlAceluiașiProiect() {
+        val src = AgendaList(listOf(item("A", "2026-10-05T21:00:00.000Z").copy(project = "Casă", projectAccent = "#E5397B")), readAt = 10)
+        val c = item("HZ-~1", "2026-10-05T21:00:00.000Z").copy(project = "Casă")
+        val alt = item("HZ-~2", "2026-10-05T21:00:00.000Z").copy(project = "Altul")
+        val got = visibleAgenda(src, null, emptyList(), creates = listOf(c, alt))!!.associate { it.id to it.projectAccent }
+        assertEquals(mapOf("A" to "#E5397B", "HZ-~1" to "#E5397B", "HZ-~2" to null), got)
     }
 
     @Test fun metadateleRândului() {
@@ -55,13 +88,13 @@ class AgendaTest {
 
     @Test fun parsareaSareRândurileStricate() {
         val json = """[
-          {"id":"HZ-1","title":"Raport","due_at":"2026-10-06T07:00:00+00:00","all_day":false,"remind_at":"2026-10-06T06:50:00+00:00","rrule":null,"urgent":true,"projects":{"name":"Daily"}},
+          {"id":"HZ-1","title":"Raport","due_at":"2026-10-06T07:00:00+00:00","all_day":false,"remind_at":"2026-10-06T06:50:00+00:00","rrule":null,"urgent":true,"projects":{"name":"Daily","accent":"#2F6BFF"}},
           {"id":null,"title":"x","due_at":"2026-10-06T07:00:00+00:00"},
           {"id":"HZ-2","title":null,"due_at":null},
           {"id":"HZ-3","title":null,"due_at":"2026-10-06T07:00:00+00:00","all_day":true,"remind_at":null,"rrule":"FREQ=DAILY","urgent":null,"projects":null}
         ]"""
         assertEquals(listOf(
-            AgendaItem("HZ-1", "Raport", "Daily", "2026-10-06T07:00:00.000Z", false, true, false, true),
+            AgendaItem("HZ-1", "Raport", "Daily", "2026-10-06T07:00:00.000Z", false, true, false, true, projectAccent = "#2F6BFF"),
             AgendaItem("HZ-3", "Sarcină fără titlu", null, "2026-10-06T07:00:00.000Z", true, false, true, false),
         ), parseAgenda(json))
     }
@@ -69,7 +102,7 @@ class AgendaTest {
     @Test fun jsonDusÎntors() {
         val l = AgendaList(listOf(
             AgendaItem("HZ-1", "R", null, "2026-10-06T07:00:00.000Z", false, true, true, false),
-            AgendaItem("R-1", "Vase", "Rutine", "2026-10-06T07:00:00.000Z", false, true, true, false, hiddenUntil = parseIso("2026-10-06T06:50:00.000Z")),
+            AgendaItem("R-1", "Vase", "Rutine", "2026-10-06T07:00:00.000Z", false, true, true, false, hiddenUntil = parseIso("2026-10-06T06:50:00.000Z"), projectAccent = "#0E9F8E"),
         ), 42)
         assertEquals(l, Json.agendaFromJson(Json.agendaToJson(l)))
     }
@@ -95,7 +128,7 @@ class AgendaTest {
         ]"""
         val got = parseAgenda(json).associate { it.id to it.hiddenUntil }
         assertEquals(mapOf("R-1" to parseIso("2026-10-06T17:50:00.000Z"), "R-2" to parseIso("2026-10-06T21:00:00.000Z"), "HZ-1" to null), got)
-        assertTrue(agendaQuery(now, zone).contains("projects(name,reminders_only)"))
+        assertTrue(agendaQuery(now, zone).contains("projects(name,accent,reminders_only)"))
     }
 
     @Test fun următoareaRedesenare_ePrimaRutinăCareIeseDinAscunzătoare() {

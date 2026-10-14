@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Bifa rândului: inel în culoarea proiectului; „gata" = disc plin cu bifa decupată. Tinta vine pe rând. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_checked="true" android:drawable="@drawable/w_ck_done" />
+    <item android:drawable="@drawable/w_ck_ring" />
+</selector>
