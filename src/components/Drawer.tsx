@@ -1,7 +1,8 @@
-import { useState, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode, type TouchEvent } from 'react'
 import { useHorizontal } from '../store'
 import { useAuth } from '../auth'
-import { useLongPress } from '../hooks'
+import { swallowNextClick, useLongPress } from '../hooks'
+import { drawerDismiss, lockAxis, type Axis } from '../lib/swipe'
 import { inboxProjectId } from '../lib/captureTokens'
 import { livePins, type PinKind } from '../lib/pins'
 import { Icon } from './Icon'
@@ -88,10 +89,45 @@ export function Drawer({ current, onPick, onClose, onSettings, onNewProject, onF
   // Meniul ține de sertar: Back îl închide odată cu el.
   const openMenu = (t: MenuTarget) => setMenu({ kind: t.kind, ref: t.ref, label: t.label })
 
+  // Tras spre stânga, sertarul se închide — oriunde pe el, nu doar pe fundalul
+  // din dreapta. Aceeași regulă de direcție ca la rânduri (`lockAxis`): o
+  // tragere verticală rămâne derulare.
+  const drag = useRef<{ x: number; y: number; t: number; axis: Axis } | null>(null)
+  const [dx, setDx] = useState(0)
+  const onTouchStart = (e: TouchEvent) => {
+    const t = e.touches[0]
+    drag.current = { x: t.clientX, y: t.clientY, t: e.timeStamp, axis: 'pending' }
+  }
+  const onTouchMove = (e: TouchEvent) => {
+    const g = drag.current
+    if (!g) return
+    const t = e.touches[0]
+    const mx = t.clientX - g.x
+    if (g.axis === 'pending') g.axis = lockAxis(mx, t.clientY - g.y)
+    if (g.axis === 'h') setDx(Math.min(0, mx))
+  }
+  const onTouchEnd = (e: TouchEvent) => {
+    const g = drag.current
+    drag.current = null
+    if (g?.axis === 'h') {
+      swallowNextClick()
+      if (drawerDismiss(dx, e.timeStamp - g.t)) { onClose(); return }
+    }
+    setDx(0)
+  }
+
   return (
     <>
-      <div className="drawer-bg" onClick={onClose} />
-      <nav className="drawer" aria-label="Navigare">
+      <div className="drawer-bg" onClick={onClose} style={dx ? { opacity: Math.max(0, 1 + dx / 300) } : undefined} />
+      <nav
+        className={`drawer${dx ? ' dragging' : ''}`}
+        aria-label="Navigare"
+        style={dx ? { transform: `translateX(${dx}px)` } : undefined}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        onTouchCancel={onTouchEnd}
+      >
         <div className="dr-head">
           <span className="dr-avatar" aria-hidden="true">{initialsOf(who)}</span>
           <span className="dr-who">

@@ -2922,7 +2922,7 @@ button.we-del:hover { color: var(--blocked); background: var(--blocked-soft); }
     display: flex;
     flex-direction: column;
     height: 100dvh;
-    overflow-y: auto;
+    overflow: hidden;
     background: var(--surface-2);
     padding: 18px 10px 16px;
     gap: 2px;
@@ -2930,6 +2930,16 @@ button.we-del:hover { color: var(--blocked); background: var(--blocked-soft); }
     grid-row: 1;
   }
 
+  .sidebar-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0 -10px;
+    padding: 0 10px 8px;
+  }
   .sidebar-me {
     display: flex;
     align-items: center;
@@ -6796,6 +6806,8 @@ body:has(.qab) { overflow-y: auto; }
   animation: drawer-in 0.22s cubic-bezier(0.18, 0.9, 0.24, 1);
 }
 [data-theme='light'] .drawer { background: var(--surface-2); }
+.drawer { transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.drawer.dragging { transition: none; }
 @keyframes drawer-in { from { transform: translateX(-100%); } to { transform: none; } }
 @keyframes drawer-fade { from { opacity: 0; } to { opacity: 1; } }
 .dr-head {

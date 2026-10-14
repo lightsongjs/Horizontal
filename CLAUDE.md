@@ -1059,6 +1059,7 @@ inclusiv Inbox-ul, stă în sertar, ca la TickTick.
   înghițit (`drawerPop`). Un rând ales NU desface intrarea separat:
   `goTop`/`goProject` desfac oricum tot ce e peste rădăcină, deci Back după o
   navigare nu poate redeschide sertarul.
+- **Se închide și trăgând spre stânga** oriunde pe el (`drawerDismiss`, `lib/swipe.ts`, aceeași blocare de direcție `lockAxis`). Pe desktop, în bara laterală derulează doar filtrele și proiectele (`.sidebar-scroll`); cine ești, căutarea și listele zilei stau pe loc.
 - **Tragerea din margine pornește doar în `inEdge`** (zona pe care rândurile o
   lasă în pace) și trece prin `lockAxis` (`drawerSwipe`, `lib/swipe.ts`): o
   glisare de rând și deschiderea sertarului nu pot porni din același deget,

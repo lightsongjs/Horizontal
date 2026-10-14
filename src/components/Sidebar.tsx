@@ -244,6 +244,9 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
         {inboxTotal > 0 && <span className="sl-count">{inboxTotal}</span>}
       </button>
 
+      {/* Doar filtrele și proiectele derulează; cine ești, căutarea și listele
+          zilei rămân pe loc (pe telefon sertarul derulează tot). */}
+      <div className="sidebar-scroll">
       {/* Filtrele salvate: „+" la titlu, ca un rând de adăugare să nu stea
           între ele. Personale — fiecare cont își vede doar filtrele lui. */}
       <div className="sidebar-section-label sidebar-section-row">
@@ -332,7 +335,7 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
         )}
       </div>
 
-      <div className="sidebar-spacer" />
+      </div>
 
       <div className="sidebar-footer-row">
         {showNewBtn && (

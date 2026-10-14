@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   crossedFull, dragOffset, drawerSwipe, fullThreshold, inEdge, lockAxis, movedBeyondTap, release,
-  REVEAL_LEFT, REVEAL_RIGHT, sheetDismiss,
+  REVEAL_LEFT, REVEAL_RIGHT, sheetDismiss, drawerDismiss,
 } from './swipe'
 
 describe('lockAxis', () => {
@@ -90,5 +90,14 @@ describe('sheetDismiss', () => {
     expect(sheetDismiss(40, 400)).toBe(false)
     expect(sheetDismiss(10, 5)).toBe(false)
     expect(sheetDismiss(-50, 50)).toBe(false)
+  })
+})
+
+describe('drawerDismiss', () => {
+  it('închide spre stânga peste prag sau repezit; spre dreapta nu', () => {
+    expect(drawerDismiss(-90, 400)).toBe(true)
+    expect(drawerDismiss(-40, 50)).toBe(true)
+    expect(drawerDismiss(-40, 400)).toBe(false)
+    expect(drawerDismiss(80, 50)).toBe(false)
   })
 })

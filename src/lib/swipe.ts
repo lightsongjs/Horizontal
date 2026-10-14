@@ -128,3 +128,13 @@ export function sheetDismiss(dy: number, ms: number): boolean {
   if (dy >= SHEET_DISMISS_PX) return true
   return dy >= 24 && ms > 0 && dy / ms >= SHEET_FLICK
 }
+
+/** Sertarul deschis, tras spre stânga: peste atâția px se închide la ridicare. */
+export const DRAWER_CLOSE_PX = 70
+
+/** Se închide sertarul? Distanța sau un gest repezit spre stânga (dx negativ). */
+export function drawerDismiss(dx: number, ms: number): boolean {
+  if (dx >= 0) return false
+  if (-dx >= DRAWER_CLOSE_PX) return true
+  return -dx >= 24 && ms > 0 && -dx / ms >= SHEET_FLICK
+}

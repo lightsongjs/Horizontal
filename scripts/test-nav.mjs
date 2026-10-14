@@ -1088,6 +1088,12 @@ try {
     await t.drag(8, 420, 170, 426)
     await dp.waitForTimeout(400)
     check('tragerea din marginea stângă deschide sertarul', await open(), (await open()) ? 'deschis' : 'închis')
+    // Închiderea prin tragere spre stânga, pe sertarul însuși (nu pe fundal).
+    await t.drag(250, 500, 60, 504)
+    await dp.waitForTimeout(500)
+    check('tragerea spre stânga pe sertar îl închide', !(await open()), (await open()) ? 'a rămas deschis' : 'închis')
+    await t.drag(8, 420, 170, 426)
+    await dp.waitForTimeout(400)
     const row = await t.center(dp.locator('.dr-projects .dr-row').first())
     await t.longPress(row.x, row.y)
     await dp.waitForTimeout(400)
