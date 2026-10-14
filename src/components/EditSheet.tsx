@@ -16,6 +16,7 @@ import { FormatBar } from './FormatBar'
 import { AttachButton, ThumbRow, attachBlocked, useTicketFiles } from './SheetFiles'
 import { ProjectMark } from './ProjectMark'
 import { displayIssueId } from '../lib/issueId'
+import { SheetThreadRow } from './SheetThreadRow'
 
 /** Ce se editează din foaie — exact câmpurile pe care le poate trimite. */
 type EditFields = {
@@ -134,6 +135,9 @@ function EditBody({ issue }: { issue: Issue }) {
   const [whenOpen, setWhenOpen] = useState(false)
   const descRef = useRef<EditorHandle>(null)
   const [descFocus, setDescFocus] = useState(false)
+  // Cu tastatura sus (titlu sau descriere în focus) rândul de fir se ascunde:
+  // scrii, nu citești, iar spațiul e al textului.
+  const [titleFocus, setTitleFocus] = useState(false)
   const titleRef = useRef<HTMLTextAreaElement>(null)
   const project = projects.find((p) => p.id === issue.projectId)
   const prefixes = projects.map((p) => p.prefix)
@@ -143,12 +147,12 @@ function EditBody({ issue }: { issue: Issue }) {
   const setDue = (date: string, time: string) => {
     void a.commit(reschedule(d, fromInputs(date, time)))
   }
-  const toFull = async () => {
+  const toFull = async (at?: 'thread') => {
     // Formularul complet își citește câmpurile din store la montare: ce
     // așteaptă încă pauza trebuie să fi ajuns acolo înainte — inclusiv o
     // dată evidențiată în titlu.
     applyDate()
-    if (await a.flush()) expandIssue()
+    if (await a.flush()) expandIssue(at ? { at } : undefined)
   }
   const toggle = () => {
     void a.flush()
@@ -191,7 +195,8 @@ function EditBody({ issue }: { issue: Issue }) {
             textareaRef={titleRef}
             readOnly={!canWrite}
             onChange={(title) => a.type({ title })}
-            onBlur={() => { applyDate(); void a.flush() }}
+            onFocus={() => setTitleFocus(true)}
+            onBlur={() => { setTitleFocus(false); applyDate(); void a.flush() }}
             onKeyDown={(e) => {
               // Titlul n-are rânduri: Enter aplică data și trece în descriere.
               if (e.key === 'Enter') { e.preventDefault(); applyDate(); descRef.current?.focus() }
@@ -292,6 +297,9 @@ function EditBody({ issue }: { issue: Issue }) {
           </div>
         )}
 
+        {/* Firul, sub jetoane: numai dacă are ceva, și nu cât scrii. */}
+        {!descFocus && !titleFocus && <SheetThreadRow issueId={issue.id} onOpen={() => void toFull('thread')} />}
+
         <ThumbRow files={files} canDelete={canWrite} onError={showToast} issueId={issue.id} title={d.title} />
         <DescField
           ref={descRef}
@@ -321,12 +329,13 @@ function EditBody({ issue }: { issue: Issue }) {
  * se rupe pe rânduri. Ambele straturi au `pre-wrap` și aceeași mărime de
  * literă (`.es-title-wrap` în CSS); orice diferență decalează marcajul.
  */
-function EditTitle({ date, value, textareaRef, readOnly, onChange, onBlur, onKeyDown }: {
+function EditTitle({ date, value, textareaRef, readOnly, onChange, onFocus, onBlur, onKeyDown }: {
   date: TitleDate
   value: string
   textareaRef: RefObject<HTMLTextAreaElement>
   readOnly: boolean
   onChange(next: string): void
+  onFocus(): void
   onBlur(): void
   onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>): void
 }) {
@@ -357,6 +366,7 @@ function EditTitle({ date, value, textareaRef, readOnly, onChange, onBlur, onKey
         spellCheck={false}
         enterKeyHint="next"
         onChange={(e) => onChange(e.target.value)}
+        onFocus={onFocus}
         onBlur={onBlur}
         onKeyDown={onKeyDown}
         // O atingere PE fragmentul evidențiat înseamnă „nu e o dată".

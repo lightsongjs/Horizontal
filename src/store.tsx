@@ -13,6 +13,7 @@ import {
   type ReactNode,
 } from 'react'
 import { repository } from './data'
+import { invalidateThreadSummary, noteThreadSeen } from './data/threadSummary'
 import { useAuth } from './auth'
 import { applyOrder, loadOrder, saveOrder } from './lib/projectOrder'
 import type { NewIssue, NewObstacle, NewProject, NewSavedFilter } from './data/repository'
@@ -144,8 +145,11 @@ interface HorizontalState {
    * Marchează firul unui tichet ca văzut — stinge bulina de necitit. Scrie și
    * pe server (`repository.markSeen`) și local, ca lista să nu aștepte un
    * refresh întreg ca să reflecte atingerea.
+   *
+   * `quiet`: un eșec nu se arată (firul l-a marcat singur, la încărcare — nu
+   * e un gest al omului, deci nici eroarea nu e a lui).
    */
-  markInboxSeen(issueId: string): Promise<void>
+  markInboxSeen(issueId: string, opts?: { quiet?: boolean }): Promise<void>
   /**
    * Reîncarcă doar cutia de pase — tiparul lui `refreshing`, nu al lui
    * `loading`: o scriere în fir (`Thread.send`) schimbă `inboxRaw` pe server,
@@ -499,6 +503,9 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     // ștergere.
     setRecurrenceUndo(null)
     setIssuesLoadFailedFor(null)
+    // Rezumatele firului (foaia de telefon) se cer din nou la următoarea
+    // deschidere: un comentariu venit de pe alt dispozitiv trebuie să se vadă.
+    invalidateThreadSummary()
     void loadDue()
     void loadInbox()
     void loadOpen()
@@ -779,14 +786,16 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
    * Vezi contractul din interfață: scrie și pe server, și local — local ca
    * bulina să se stingă fără să aștepte un `refresh()` întreg.
    */
-  const markInboxSeen = useCallback(async (issueId: string) => {
+  const markInboxSeen = useCallback(async (issueId: string, opts?: { quiet?: boolean }) => {
     try {
       await repository.markSeen(issueId)
+      const at = new Date().toISOString()
+      noteThreadSeen(issueId, at)
       setInboxRaw((prev) =>
-        prev.map((r) => (r.issueId === issueId ? { ...r, seenAt: new Date().toISOString() } : r)),
+        prev.map((r) => (r.issueId === issueId ? { ...r, seenAt: at } : r)),
       )
     } catch (e) {
-      setError(errorMessage(e))
+      if (!opts?.quiet) setError(errorMessage(e))
     }
   }, [])
 

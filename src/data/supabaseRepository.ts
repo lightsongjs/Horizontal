@@ -778,6 +778,25 @@ export function createSupabaseRepository(): Repository {
       if (error) throw error
     },
 
+    async threadSummary(issueId: string) {
+      // Două cereri mici, în paralel: ultimele două evenimente cu numărul
+      // exact, și vizita mea. `issue_seen` are RLS pe `user_id = auth.uid()`,
+      // deci filtrul pe tichet ajunge — rândul altcuiva nu e vizibil.
+      const [ev, seen] = await Promise.all([
+        db.from('issue_events').select('*', { count: 'exact' }).eq('issue_id', issueId)
+          .order('created_at', { ascending: false }).limit(2),
+        db.from('issue_seen').select('seen_at').eq('issue_id', issueId).maybeSingle(),
+      ])
+      if (ev.error) throw ev.error
+      if (seen.error) throw seen.error
+      const recent = ((ev.data ?? []) as EventRow[]).map(rowToEvent)
+      return {
+        count: ev.count ?? recent.length,
+        recent,
+        seenAt: isoOrNull((seen.data as { seen_at: string } | null)?.seen_at ?? null),
+      }
+    },
+
     async listInbox(): Promise<InboxRow[]> {
       const { data, error } = await db.from('inbox_rows').select('*').eq('done', false)
       if (error) throw error

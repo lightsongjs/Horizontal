@@ -1,5 +1,6 @@
 import {
   Maximize2,
+  MessageCircle,
   ArrowLeft,
   ArrowRight,
   Crosshair,
@@ -102,6 +103,8 @@ const ICONS = {
   back: ArrowLeft,
   bell: Bell,
   close: X,
+  /** Firul unui tichet (comentarii + pase) — rândul din foaia de telefon. */
+  comment: MessageCircle,
   copy: Copy,
   collapse: ChevronDown,
   // Pastila „Încă N" din banda de valuri: deschide o listă.

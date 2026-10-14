@@ -67,7 +67,7 @@ export function SheetHost() {
           </button>
         )}
         {sheet.kind === 'issue' && <IssueSheet key={sheetKey(sheet)} issueId={sheet.issueId} />}
-        {sheet.kind === 'issue-form' && !dockedIssueId && !compactId && <IssueForm key={sheetKey(sheet) ?? '__new__'} issueId={sheet.issueId} draft={sheet.draft} />}
+        {sheet.kind === 'issue-form' && !dockedIssueId && !compactId && <IssueForm key={sheetKey(sheet) ?? '__new__'} issueId={sheet.issueId} draft={sheet.draft} revealThread={sheet.at === 'thread'} />}
         {sheet.kind === 'project-form' && <ProjectForm />}
         {sheet.kind === 'project-settings' && <ProjectSettings />}
         {sheet.kind === 'wave-manage' && <WaveManager focus={sheet.focus} />}

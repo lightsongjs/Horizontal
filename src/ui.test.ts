@@ -90,6 +90,11 @@ describe('expandSheets / editSheet cu full', () => {
       { kind: 'issue-form', issueId: 'HZ-13', keyId: 'HZ-~a', full: true },
     ])
   })
+  it('rândul de fir: aceeași intrare, plus `at: thread`; o redeschidere îl uită', () => {
+    const [full] = expandSheets([form('HZ-13')], 'thread')
+    expect(full).toEqual({ kind: 'issue-form', issueId: 'HZ-13', full: true, at: 'thread' })
+    expect(editSheet([full], 'HZ-13')).toEqual({ kind: 'issue-form', issueId: 'HZ-13', full: true })
+  })
   it('fără un singur tichet existent, stiva rămâne aceeași', () => {
     const stack: SheetState[] = [form('HZ-1'), { kind: 'issue', issueId: 'HZ-2' }]
     expect(expandSheets(stack)).toBe(stack)

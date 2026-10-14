@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Firul în foaie</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;650;700;750&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Jetoanele „Senin" (src/styles.css) — copiate, nu importate: macheta trebuie să se deschidă singură. */
+:root,[data-theme=light]{
+  --bg:#FFFFFF;--surface:#FFFFFF;--surface-2:#F6F7F9;--surface-3:#EEF0F3;--line:#E6E8EC;
+  --txt:#1A1C20;--txt-dim:#565C66;--txt-faint:#868C96;
+  --accent:#2F6BFF;--accent-soft:#EBF1FF;--blocked:#E5484D;--blocked-soft:#FDEEEE;--done:#1F9D60;
+  --pc:#0E9F8E;
+  --amb:0 1px 2px rgba(16,24,40,.05),0 6px 20px rgba(16,24,40,.07);
+  --amb-lg:0 2px 6px rgba(16,24,40,.06),0 18px 44px rgba(16,24,40,.12);
+  --scrim:rgba(16,24,40,.32);
+  --page:#EDEBE7;--page-ink:#1D1C1A;--page-dim:#6F6B64;--page-card:#FFFFFF;
+}
+[data-theme=dark]{
+  --bg:#141517;--surface:#1B1C1F;--surface-2:#232428;--surface-3:#2B2D32;--line:#2A2C31;
+  --txt:#EEEFF1;--txt-dim:#A6ABB3;--txt-faint:#757A83;
+  --accent:#5B8DFF;--accent-soft:rgba(91,141,255,.15);--blocked:#FF6369;--blocked-soft:rgba(255,99,105,.13);--done:#3DBF85;
+  --pc:#2EC4B0;
+  --amb:inset 0 1px 0 rgba(255,255,255,.04),0 6px 22px rgba(0,0,0,.4);
+  --amb-lg:inset 0 1px 0 rgba(255,255,255,.05),0 16px 44px rgba(0,0,0,.5);
+  --scrim:rgba(0,0,0,.55);
+  --page:#0F1012;--page-ink:#EEEFF1;--page-dim:#8C9199;--page-card:#1B1C1F;
+}
+:root{--r:20px;--r-m:12px;--r-s:8px;--mono:"Geist Mono",ui-monospace,monospace}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--page);color:var(--page-ink)}
+body{font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+svg{display:block;flex-shrink:0}
+.mono{font-family:var(--mono)}
+
+.wrap{max-width:2600px;margin:0 auto;padding:40px 24px 80px}
+.eyebrow{font-size:12px;font-weight:650;letter-spacing:.07em;text-transform:uppercase;color:var(--page-dim)}
+h1{font-size:34px;line-height:1.1;letter-spacing:-.03em;font-weight:750;margin:8px 0 10px}
+.intro p{font-size:15px;line-height:1.55;color:var(--page-dim);max-width:86ch}
+.intro b{color:var(--page-ink);font-weight:600}
+.band{margin-top:34px;padding:28px 0 8px;background:var(--page)}
+.band h2{font-size:13px;font-weight:650;letter-spacing:.07em;text-transform:uppercase;color:var(--page-dim);margin:0 0 16px 4px}
+.row{display:flex;gap:28px;flex-wrap:wrap}
+@media (min-width:2500px){.row{flex-wrap:nowrap}}
+.cell{width:390px}
+.cap{margin:0 0 10px 4px;min-height:40px}
+.cap b{display:block;font-size:14px;font-weight:650;color:var(--page-ink)}
+.cap span{font-size:13px;color:var(--page-dim);line-height:1.4}
+.tag{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border-radius:6px;margin-right:6px;vertical-align:1px}
+.tag.old{background:#E7E3DC;color:#6F6B64}
+.tag.new{background:#DCE7FF;color:#1F55E0}
+[data-theme=dark] .tag.old{background:#2A2C31;color:#A6ABB3}
+[data-theme=dark] .tag.new{background:rgba(91,141,255,.2);color:#8AAEFF}
+
+/* ── telefonul ─────────────────────────────── */
+.phone{position:relative;width:390px;height:760px;border-radius:34px;overflow:hidden;background:var(--bg);color:var(--txt);box-shadow:0 20px 50px rgba(0,0,0,.18)}
+.status{height:40px;display:flex;align-items:center;justify-content:space-between;padding:0 26px;font-size:13px;font-weight:600}
+.appbar{height:52px;display:flex;align-items:center;gap:12px;padding:0 16px;font-size:20px;font-weight:700;letter-spacing:-.02em}
+.list .it{display:flex;gap:12px;align-items:center;padding:13px 16px;font-size:15px;position:relative}
+.list .it::after{content:"";position:absolute;left:48px;right:0;bottom:0;height:1px;background:var(--line)}
+.list .it .ck{flex:none}
+.list .it small{margin-left:auto;font-size:12px;color:var(--txt-faint)}
+.scrim{position:absolute;inset:0;background:var(--scrim)}
+
+.ck{width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;box-shadow:inset 0 0 0 1.75px color-mix(in srgb,var(--pc) 80%,var(--bg))}
+
+.sheet{position:absolute;left:0;right:0;bottom:0;min-height:56%;background:var(--surface);border-radius:var(--r) var(--r) 0 0;box-shadow:var(--amb-lg);padding:8px 16px 28px}
+.grab{width:36px;height:4px;border-radius:2px;background:var(--surface-3);margin:0 auto 14px}
+.es-meta{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--txt-faint);margin-bottom:8px}
+.es-head{display:flex;gap:8px;align-items:flex-start}
+.es-head .ck{width:22px;height:22px;margin-top:2px}
+.es-title{font-size:19px;line-height:1.3;font-weight:650;letter-spacing:-.015em}
+.qs-bar{display:flex;align-items:center;gap:5px;margin:12px 0 14px}
+.chip{height:34px;border-radius:var(--r-s);background:var(--surface-2);color:var(--txt-dim);display:inline-flex;align-items:center;justify-content:center;gap:5px;font-size:12px;font-weight:600;flex:none}
+.chip.ico{width:34px}
+.chip.due{padding:0 9px;background:var(--accent-soft);color:var(--accent)}
+.chip.proj{padding:0 10px;font-size:13px;background:color-mix(in srgb,var(--pc) 13%,transparent);color:color-mix(in srgb,var(--pc) 80%,var(--txt))}
+.chip.proj i{width:8px;height:8px;border-radius:50%;background:var(--pc)}
+.chip.who{color:var(--accent);font-size:11px}
+.desc{font-size:15px;line-height:1.55;color:var(--txt)}
+.desc p+p{margin-top:8px}
+.desc .task{display:flex;gap:8px;align-items:center;margin-top:6px}
+.desc .box{width:16px;height:16px;border-radius:4px;box-shadow:inset 0 0 0 1.5px var(--txt-faint)}
+
+/* ── NOU: rândul firului (`es-thread`) ───────────────────────────
+   Sub jetoane, deasupra descrierii. Nu există deloc la 0 evenimente. */
+.es-thread{width:100%;display:flex;align-items:flex-start;gap:10px;text-align:left;border:0;font:inherit;color:inherit;cursor:pointer;
+  margin:-4px 0 14px;padding:9px 10px 9px 8px;border-radius:var(--r-m);background:var(--surface-2)}
+.es-thread .av{position:relative;width:26px;height:26px;border-radius:50%;flex:none;display:grid;place-items:center;
+  background:var(--surface-3);color:var(--txt-dim);font-size:10.5px;font-weight:650;letter-spacing:.02em}
+.es-thread .tx{flex:1;min-width:0}
+.es-thread .who{display:flex;align-items:baseline;gap:6px;font-size:13px;font-weight:600;color:var(--txt-dim);white-space:nowrap}
+.es-thread .who .t{font-family:var(--mono);font-size:11.5px;font-weight:500;color:var(--txt-faint)}
+.es-thread .body{font-size:14px;line-height:1.4;color:var(--txt-dim);overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:1}
+.es-thread .n{flex:none;align-self:center;display:inline-flex;align-items:center;gap:3px;font-family:var(--mono);font-size:12px;font-weight:500;color:var(--txt-faint)}
+/* citit: o singură linie, autorul și textul pe același rând */
+.es-thread.read{align-items:center;padding:7px 10px 7px 8px}
+.es-thread.read .tx{display:flex;gap:6px;align-items:baseline;min-width:0}
+.es-thread.read .who{font-size:13px}
+.es-thread.read .body{font-size:13.5px}
+/* necitit: accent-soft, bulina pe avatar, textul pe două rânduri */
+.es-thread.unread{background:var(--accent-soft)}
+.es-thread.unread .av{background:var(--accent);color:#fff}
+.es-thread.unread .av::after{content:"";position:absolute;top:-2px;right:-2px;width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 2px var(--surface)}
+.es-thread.unread .who{color:var(--txt)}
+.es-thread.unread .who .new{font-size:11.5px;font-weight:650;color:var(--accent)}
+.es-thread.unread .body{color:var(--txt);-webkit-line-clamp:2}
+.es-thread.unread .n{color:var(--accent)}
+.es-thread .hand{display:inline-flex;align-items:center;gap:4px}
+.es-thread .q::before{content:"„"}.es-thread .q::after{content:"”"}
+
+/* tastatura */
+.kb{position:absolute;left:0;right:0;bottom:0;height:300px;background:var(--surface-3);display:grid;place-items:center;color:var(--txt-faint);font-size:12px;font-family:var(--mono)}
+.sheet.kbopen{bottom:300px;min-height:0;border-radius:var(--r) var(--r) 0 0;padding-bottom:10px}
+.fmt{display:flex;gap:4px;margin-top:10px}
+.fmt span{width:34px;height:30px;border-radius:var(--r-s);background:var(--surface-2);display:grid;place-items:center;color:var(--txt-dim);font-size:13px;font-weight:700}
+.caret{display:inline-block;width:2px;height:18px;background:var(--accent);vertical-align:-3px;margin-left:1px}
+
+/* ── formularul complet, derulat la Fir ── */
+.form{position:absolute;inset:40px 0 0 0;background:var(--bg)}
+.fhead{height:52px;display:flex;align-items:center;gap:10px;padding:0 12px;}
+.fhead .id{font-family:var(--mono);font-size:13px;color:var(--txt-faint)}
+.fhead .sp{flex:1}
+.fbody{padding:0 16px}
+.fold{font-size:13px;color:var(--txt-faint);padding:6px 0 14px;position:relative}
+.fold::after{content:"";position:absolute;left:0;right:0;bottom:0;height:1px;background:var(--line)}
+.sec{display:flex;align-items:baseline;gap:8px;margin:16px 0 10px;font-size:12px;font-weight:650;color:var(--txt-dim)}
+.sec .mono{font-weight:500;color:var(--txt-faint)}
+.ev{display:flex;gap:10px;padding:10px 0;position:relative}
+.ev .av{width:28px;height:28px;border-radius:50%;flex:none;display:grid;place-items:center;background:var(--surface-3);color:var(--txt-dim);font-size:10.5px;font-weight:650}
+.ev .h{font-size:13px;font-weight:600}
+.ev .h .t{font-family:var(--mono);font-size:11.5px;font-weight:500;color:var(--txt-faint);margin-left:6px}
+.ev .b{font-size:14.5px;line-height:1.5;margin-top:2px}
+.ev.hand .b{font-size:13px;color:var(--txt-dim);display:flex;gap:6px;align-items:center}
+.ev.fresh{margin:0 -10px;padding:10px;border-radius:var(--r-m);background:var(--accent-soft)}
+.ev.fresh .av{background:var(--accent);color:#fff}
+.newline{display:flex;align-items:center;gap:8px;margin:6px 0 2px;font-size:11.5px;font-weight:650;color:var(--accent)}
+.newline::before,.newline::after{content:"";height:1px;flex:1;background:color-mix(in srgb,var(--accent) 35%,transparent)}
+.composer{position:absolute;left:0;right:0;bottom:0;padding:10px 12px 26px;background:var(--surface);box-shadow:var(--amb-lg);display:flex;gap:8px;align-items:center}
+.composer .in{flex:1;height:42px;border-radius:var(--r-m);background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--line);display:flex;align-items:center;padding:0 12px;color:var(--txt-faint);font-size:14.5px}
+.composer .to{height:42px;padding:0 10px;border-radius:var(--r-s);background:var(--surface-2);display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;color:var(--txt-dim)}
+.send{width:42px;height:42px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;flex:none}
+.tap{position:absolute;width:44px;height:44px;border-radius:50%;background:color-mix(in srgb,var(--accent) 22%,transparent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 50%,transparent);pointer-events:none}
+
+/* ── spec ── */
+.spec{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:16px;margin-top:36px}
+.card{background:var(--page-card);border-radius:16px;padding:18px 20px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.card h3{font-size:14px;font-weight:700;margin-bottom:8px}
+.card ul{padding-left:18px}
+.card li{font-size:13.5px;line-height:1.55;color:var(--page-dim);margin:3px 0}
+.card li b,.card li code{color:var(--page-ink)}
+.card code{font-family:var(--mono);font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="intro">
+    <div class="eyebrow">Foaia de tichet · telefon · 2026-10-14</div>
+    <h1>Firul se vede în foaie, doar când există</h1>
+    <p>Mihai deschide <b>MS-256</b>, pasat lui de Ionuț cu un comentariu, și nu află că există comentariul: firul trăiește doar în formularul complet, după „…”.
+    Propunerea: <b>un singur rând de fir</b>, sub jetoane și deasupra descrierii, care apare numai dacă tichetul are cel puțin un eveniment. Necitit, e pe accent, cu textul pe două rânduri, deci un comentariu scurt se citește direct acolo. Citit, se strânge la o linie gri. Atingerea deschide formularul complet derulat la Fir. Fără jeton nou pe rândul de controale: la 390px rândul e deja plin.</p>
+  </div>
+
+  <!-- rândurile se generează din același șablon, o dată pe temă -->
+  <div id="bands"></div>
+
+  <div class="spec">
+    <div class="card"><h3>Când apare</h3><ul>
+      <li><b>0 evenimente → nimic.</b> Nici loc rezervat, nici „Fără comentarii”.</li>
+      <li>≥1 eveniment (comentariu sau pasă): rândul, cu <b>ultimul</b> eveniment și numărul total la dreapta.</li>
+      <li><b>Pasă cu mesaj</b> ca ultim eveniment, către mine: „Ți l-a pasat Ionuț” + mesajul. Pasă fără mesaj: tot rândul, cu textul „Ți l-a pasat Ionuț”. Pasa către altcineva: „Ionuț → Ana”.</li>
+      <li>Multe evenimente: tot <b>un singur</b> rând (ultimul + „7”). Nu există listă în foaie.</li>
+    </ul></div>
+    <div class="card"><h3>Necitit / citit</h3><ul>
+      <li>Necitit = ultimul eveniment e al <b>altcuiva</b> și e mai nou decât <code>issue_seen.seen_at</code> (aceeași regulă ca <code>isUnread</code>).</li>
+      <li>Necitit: fond <code>--accent-soft</code>, avatar plin pe accent + bulină, „nou” pe accent, corpul pe 2 rânduri.</li>
+      <li>Citit: <code>--surface-2</code>, o linie: „Ionuț · 2h · text…”, gri.</li>
+      <li>Se face citit când <b>firul se încarcă efectiv</b> (Thread, după <code>listEvents</code>), pe telefon și pe desktop. Azi doar „Ale mele” marchează, deci un tichet deschis din „Azi” rămânea necitit la nesfârșit.</li>
+    </ul></div>
+    <div class="card"><h3>Atingerea</h3><ul>
+      <li>Deschide formularul complet (<code>toFull()</code>, aceeași intrare de istoric ca „…”), <b>derulat la Fir</b>; primul eveniment necitit e marcat cu „nou”.</li>
+      <li>Fără focus în caseta de răspuns: deschizi ca să citești, tastatura ar acoperi exact comentariul.</li>
+      <li>Back închide formularul și te lasă pe listă, ca acum.</li>
+      <li>Fir inline în foaie: respins. Ar dubla <code>Thread</code> (citire, editare, pasă, atașamente) într-o foaie care trebuie să rămână mică.</li>
+    </ul></div>
+    <div class="card"><h3>Tastatura și desktopul</h3><ul>
+      <li><b>Cu tastatura sus</b> (titlu sau descriere în focus) rândul se ascunde: scrii, nu citești, iar spațiul e al textului. Revine la blur.</li>
+      <li>Rândul nu ia focusul la atingere (<code>onPointerDown</code> cu <code>preventDefault</code>), ca jetoanele.</li>
+      <li><b>Panoul docat de pe desktop: nimic nou.</b> Arată deja <code>Thread</code>, iar marcarea „citit” la încărcare se aplică și acolo.</li>
+      <li>Mărimea textului: rândul crește cu <code>--text-scale</code>; necititul rămâne pe 2 rânduri, cititul pe 1.</li>
+    </ul></div>
+    <div class="card"><h3>Datele: cea mai ieftină cale</h3><ul>
+      <li>Nu se încarcă firul întreg. La deschiderea foii, <b>leneș, în paralel</b>: <code>issue_events</code> <code>select(kind, author_id, body, handoff_from, handoff_to, created_at, {count:'exact'})</code> <code>.order(created_at desc).limit(1)</code> + <code>issue_seen</code> pentru tichet. O rundă, două cereri mici.</li>
+      <li>Necitit fără „ultimul străin”: dacă ultimul eveniment e al meu, am răspuns, deci am citit. Fără migrare.</li>
+      <li>Cache în memorie, pe <code>issueId</code>; invalidat de <code>postToThread</code>/<code>updateComment</code> și la <code>refresh()</code>.</li>
+      <li>Primul cadru: dacă tichetul e în <code>inbox</code> (<code>lastForeignAt</code>, <code>lastForeignAuthor</code>, <code>seenAt</code>), rândul apare imediat în starea necitită, iar textul sosește după. Offline sau eroare: rândul lipsește, nu minte.</li>
+      <li>Variantă cu migrare (dacă vreți și numărul pe rândurile listei): o vedere <code>thread_summary</code> cu aceleași lateraluri ca <code>inbox_rows</code>. Nu e necesară pentru foaie.</li>
+    </ul></div>
+  </div>
+</div>
+
+<template id="tpl">
+  <div class="row">
+    <!-- 1. ÎNAINTE -->
+    <div class="cell">
+      <div class="cap"><b><span class="tag old">Înainte</span>Azi</b><span>Comentariul lui Ionuț există, dar nimic din foaie nu o spune.</span></div>
+      <div class="phone">
+        <div class="status"><span class="mono">9:41</span><span class="mono">5G</span></div>
+        <div class="appbar">Azi</div>
+        <div class="list">
+          <div class="it"><span class="ck"></span>Răspuns la oferta de hosting<small class="mono">10:00</small></div>
+          <div class="it"><span class="ck"></span>Export SAF-T pentru TVA la încasare<small>Mobil</small></div>
+          <div class="it"><span class="ck"></span>Plata facturii de curent<small class="mono">14:00</small></div>
+        </div>
+        <div class="scrim"></div>
+        <div class="sheet">
+          <div class="grab"></div>
+          <div class="es-meta">MS-256</div>
+          <div class="es-head"><span class="ck"></span><div class="es-title">Export SAF-T pentru TVA la încasare</div></div>
+          <div class="qs-bar">
+            <span class="chip due">{{cal}}Azi</span>
+            <span class="chip ico">{{zap}}</span>
+            <span class="chip proj"><i></i>Mobil</span>
+            <span class="chip ico who">MS</span>
+            <span class="chip ico">{{clip}}</span>
+            <span class="chip ico">{{more}}</span>
+          </div>
+          <div class="desc">
+            <p>Fișierul D406 trebuie să includă facturile cu TVA la încasare separat.</p>
+            <div class="task"><span class="box"></span>Câmpul TaxPointDate</div>
+            <div class="task"><span class="box"></span>Test pe un client real</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. NECITIT -->
+    <div class="cell">
+      <div class="cap"><b><span class="tag new">După</span>1 comentariu necitit</b><span>Pe accent, textul pe 2 rânduri. Un comentariu scurt se citește direct aici.</span></div>
+      <div class="phone">
+        <div class="status"><span class="mono">9:41</span><span class="mono">5G</span></div>
+        <div class="appbar">Azi</div>
+        <div class="list">
+          <div class="it"><span class="ck"></span>Răspuns la oferta de hosting<small class="mono">10:00</small></div>
+          <div class="it"><span class="ck"></span>Export SAF-T pentru TVA la încasare<small>Mobil</small></div>
+        </div>
+        <div class="scrim"></div>
+        <div class="sheet">
+          <div class="grab"></div>
+          <div class="es-meta">MS-256</div>
+          <div class="es-head"><span class="ck"></span><div class="es-title">Export SAF-T pentru TVA la încasare</div></div>
+          <div class="qs-bar">
+            <span class="chip due">{{cal}}Azi</span>
+            <span class="chip ico">{{zap}}</span>
+            <span class="chip proj"><i></i>Mobil</span>
+            <span class="chip ico who">MS</span>
+            <span class="chip ico">{{clip}}</span>
+            <span class="chip ico">{{more}}</span>
+          </div>
+          <button class="es-thread unread">
+            <span class="av">IS</span>
+            <span class="tx">
+              <span class="who">Ionuț <span class="t">2h</span><span class="new">nou</span></span>
+              <span class="body">Poți verifica pe staging cu clientul de test? Eu am văzut că TaxPointDate lipsește la facturile parțial încasate.</span>
+            </span>
+            <span class="n">{{msg}}1{{chev}}</span>
+          </button>
+          <div class="desc">
+            <p>Fișierul D406 trebuie să includă facturile cu TVA la încasare separat.</p>
+            <div class="task"><span class="box"></span>Câmpul TaxPointDate</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. PASĂ CU MESAJ -->
+    <div class="cell">
+      <div class="cap"><b><span class="tag new">După</span>Pasă cu mesaj</b><span>Ultimul eveniment e o pasă către mine: verbul spune de ce tichetul e acum al meu.</span></div>
+      <div class="phone">
+        <div class="status"><span class="mono">9:41</span><span class="mono">5G</span></div>
+        <div class="appbar">Ale mele</div>
+        <div class="list">
+          <div class="it"><span class="ck"></span>Export SAF-T pentru TVA la încasare<small>Mobil</small></div>
+          <div class="it"><span class="ck"></span>Iconița de pe widget<small>Mobil</small></div>
+        </div>
+        <div class="scrim"></div>
+        <div class="sheet">
+          <div class="grab"></div>
+          <div class="es-meta">MS-256</div>
+          <div class="es-head"><span class="ck"></span><div class="es-title">Export SAF-T pentru TVA la încasare</div></div>
+          <div class="qs-bar">
+            <span class="chip due">{{cal}}Azi</span>
+            <span class="chip ico">{{zap}}</span>
+            <span class="chip proj"><i></i>Mobil</span>
+            <span class="chip ico who">MS</span>
+            <span class="chip ico">{{clip}}</span>
+            <span class="chip ico">{{more}}</span>
+          </div>
+          <button class="es-thread unread">
+            <span class="av">IS</span>
+            <span class="tx">
+              <span class="who"><span class="hand">Ți l-a pasat Ionuț</span> <span class="t">2h</span></span>
+              <span class="body q">Eu am terminat partea de server, rămâne exportul. Testează pe clientul 4412.</span>
+            </span>
+            <span class="n">{{msg}}3{{chev}}</span>
+          </button>
+          <div class="desc">
+            <p>Fișierul D406 trebuie să includă facturile cu TVA la încasare separat.</p>
+            <div class="task"><span class="box"></span>Câmpul TaxPointDate</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. CITIT -->
+    <div class="cell">
+      <div class="cap"><b><span class="tag new">După</span>Comentarii citite</b><span>O singură linie, gri. Se știe că există firul, fără să ceară atenție.</span></div>
+      <div class="phone">
+        <div class="status"><span class="mono">9:41</span><span class="mono">5G</span></div>
+        <div class="appbar">Azi</div>
+        <div class="list">
+          <div class="it"><span class="ck"></span>Răspuns la oferta de hosting<small class="mono">10:00</small></div>
+          <div class="it"><span class="ck"></span>Export SAF-T pentru TVA la încasare<small>Mobil</small></div>
+        </div>
+        <div class="scrim"></div>
+        <div class="sheet">
+          <div class="grab"></div>
+          <div class="es-meta">MS-256</div>
+          <div class="es-head"><span class="ck"></span><div class="es-title">Export SAF-T pentru TVA la încasare</div></div>
+          <div class="qs-bar">
+            <span class="chip due">{{cal}}Azi</span>
+            <span class="chip ico">{{zap}}</span>
+            <span class="chip proj"><i></i>Mobil</span>
+            <span class="chip ico who">MS</span>
+            <span class="chip ico">{{clip}}</span>
+            <span class="chip ico">{{more}}</span>
+          </div>
+          <button class="es-thread read">
+            <span class="av">MS</span>
+            <span class="tx">
+              <span class="who">Eu <span class="t">ieri</span></span>
+              <span class="body">Merge, am trimis fișierul de test.</span>
+            </span>
+            <span class="n">{{msg}}7{{chev}}</span>
+          </button>
+          <div class="desc">
+            <p>Fișierul D406 trebuie să includă facturile cu TVA la încasare separat.</p>
+            <div class="task"><span class="box"></span>Câmpul TaxPointDate</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. TASTATURA -->
+    <div class="cell">
+      <div class="cap"><b><span class="tag new">După</span>Cu tastatura sus</b><span>Cât scrii, rândul firului se ascunde. Revine la blur.</span></div>
+      <div class="phone">
+        <div class="status"><span class="mono">9:41</span><span class="mono">5G</span></div>
+        <div class="appbar">Azi</div>
+        <div class="scrim"></div>
+        <div class="sheet kbopen">
+          <div class="grab"></div>
+          <div class="es-meta">MS-256</div>
+          <div class="es-head"><span class="ck"></span><div class="es-title">Export SAF-T pentru TVA la încasare</div></div>
+          <div class="qs-bar">
+            <span class="chip due">{{cal}}Azi</span>
+            <span class="chip ico">{{zap}}</span>
+            <span class="chip proj"><i></i>Mobil</span>
+            <span class="chip ico who">MS</span>
+            <span class="chip ico">{{clip}}</span>
+            <span class="chip ico">{{more}}</span>
+          </div>
+          <div class="desc">
+            <p>Fișierul D406 trebuie să includă facturile cu TVA la încasare separat. Verificat pe 4412<span class="caret"></span></p>
+          </div>
+          <div class="fmt"><span>B</span><span>I</span><span>☐</span><span>•</span><span>&lt;/&gt;</span></div>
+        </div>
+        <div class="kb">tastatura sistemului</div>
+      </div>
+    </div>
+
+    <!-- 6. REZULTATUL ATINGERII -->
+    <div class="cell">
+      <div class="cap"><b><span class="tag new">După</span>Atingerea pe rând</b><span>Formularul complet, derulat la Fir, cu „nou” pe primul necitit. Fără focus în casetă.</span></div>
+      <div class="phone">
+        <div class="status"><span class="mono">9:41</span><span class="mono">5G</span></div>
+        <div class="form">
+          <div class="fhead">{{back}}<span class="id">MS-256</span><span class="sp"></span>{{more}}</div>
+          <div class="fbody">
+            <div class="fold">Titlu, scadență, val, dependențe… (derulat mai sus)</div>
+            <div class="sec">Fir <span class="mono">3</span></div>
+            <div class="ev"><span class="av">MS</span><div><div class="h">Eu<span class="t">12 oct</span></div><div class="b">Am pus câmpul în schemă, rămâne testul.</div></div></div>
+            <div class="newline">nou</div>
+            <div class="ev hand"><span class="av">IS</span><div><div class="h">Ionuț<span class="t">2h</span></div><div class="b">{{swap}}Ți l-a pasat</div></div></div>
+            <div class="ev fresh"><span class="av">IS</span><div><div class="h">Ionuț<span class="t">2h</span></div><div class="b">Eu am terminat partea de server, rămâne exportul. Testează pe clientul 4412.</div></div></div>
+          </div>
+          <div class="composer"><div class="in">Răspunde…</div><span class="to">{{swap}}Pasează</span><span class="send">{{send}}</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+const I = {
+  cal:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
+  zap:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>',
+  clip:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>',
+  more:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg>',
+  msg:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z"/></svg>',
+  chev:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>',
+  back:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>',
+  swap:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
+  send:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>',
+}
+const html = document.getElementById('tpl').innerHTML.replace(/\{\{(\w+)\}\}/g, (_, k) => I[k] || '')
+document.getElementById('bands').innerHTML =
+  ['light','dark'].map(t => `<section class="band" data-theme="${t}"><h2>${t === 'light' ? 'Tema deschisă' : 'Tema închisă'}</h2>${html}</section>`).join('')
+</script>
+</body>
+</html>

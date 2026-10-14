@@ -1114,6 +1114,58 @@ for (const width of PHONE_WIDTHS) {
   check(`jetonul netăiat @${width}px`, !m.clipped && m.overflow <= 0, `tăiat=${m.clipped}, overflow=${m.overflow}px`)
 }
 
+/**
+ * Rândul de fir din foaia de tichet (`SheetThreadRow`): sub 430px nu iese din
+ * foaie, necititul ține corpul pe EXACT 2 rânduri (un comentariu lung nu
+ * împinge descrierea în jos), cititul pe unul singur, iar numărul + › rămân
+ * întregi lângă un autor lung.
+ */
+const LONG_BODY = 'Poți verifica pe staging cu clientul de test? Eu am văzut că TaxPointDate lipsește la facturile parțial încasate, iar exportul pică.'
+const threadRow = (kind, who) => `
+<button type="button" class="es-thread ${kind}" id="tr-${kind}">
+  <span class="es-thread-av">IS</span>
+  <span class="es-thread-tx">
+    <span class="es-thread-who"><span class="es-thread-name">${who}</span><span class="es-thread-t">2 h</span>${kind === 'unread' ? '<span class="es-thread-new">nou</span>' : ''}</span>
+    <span class="es-thread-body">${LONG_BODY}</span>
+  </span>
+  <span class="es-thread-n"><svg width="14" height="14"></svg>17<svg width="15" height="15"></svg></span>
+</button>`
+const threadSheet = () => `
+<div class="kb-sheet edit-sheet" style="animation:none"><div class="qs-form">
+  ${threadRow('unread', 'Ți l-a pasat Ionuț-Alexandru Constantinescu')}
+  ${threadRow('read', 'Ionuț-Alexandru Constantinescu → Ana-Maria')}
+</div></div>`
+console.log('\nRândul de fir din foaia de tichet:')
+for (const width of PHONE_WIDTHS) {
+  const page = await browser.newPage({ viewport: { width, height: 844 } })
+  await page.setContent(`<style>${CSS}</style>${threadSheet()}`)
+  const m = await page.evaluate(() => {
+    const sheet = document.querySelector('.kb-sheet')
+    const one = (kind) => {
+      const row = document.getElementById(`tr-${kind}`)
+      const r = row.getBoundingClientRect()
+      const body = row.querySelector('.es-thread-body')
+      const lh = parseFloat(getComputedStyle(body).lineHeight)
+      const n = row.querySelector('.es-thread-n')
+      const nr = n.getBoundingClientRect()
+      return {
+        overflow: Math.round(row.scrollWidth - row.clientWidth),
+        right: Math.round(r.right),
+        lines: Math.round(body.getBoundingClientRect().height / lh),
+        nInside: nr.right <= r.right + 0.5 && nr.width > 0,
+        nClipped: n.scrollWidth > n.clientWidth + 1,
+        h: Math.round(r.height),
+      }
+    }
+    return { sheetOverflow: sheet.scrollWidth - sheet.clientWidth, vw: innerWidth, unread: one('unread'), read: one('read') }
+  })
+  await page.close()
+  check(`foaia nu se lățește @${width}px`, m.sheetOverflow <= 0 && m.unread.right <= m.vw && m.read.right <= m.vw, `+${m.sheetOverflow}px`)
+  check(`necitit: corpul pe 2 rânduri @${width}px`, m.unread.lines === 2 && m.unread.overflow <= 0, `${m.unread.lines} rânduri, overflow=${m.unread.overflow}px`)
+  check(`citit: un singur rând @${width}px`, m.read.lines === 1 && m.read.overflow <= 0 && m.read.h < m.unread.h, `${m.read.lines} rând, ${m.read.h}px vs ${m.unread.h}px`)
+  check(`numărul + › întregi @${width}px`, m.unread.nInside && !m.unread.nClipped && m.read.nInside && !m.read.nClipped, 'da')
+}
+
 await browser.close()
 
 if (failures.length) {
