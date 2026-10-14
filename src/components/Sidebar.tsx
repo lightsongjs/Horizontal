@@ -46,7 +46,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNavigate, smartList = null, onSmartList, inboxActive = false, inboxUnread = 0, inboxTotal = 0, onInbox, filterId = null, onFilter, onFilterForm, onSearch }: SidebarProps = {}) {
-  const { projects, project, completion, selectProject, reorderProjects, smartLists, reportError, pins, savedFilters, filterCounts, assignees, myAssigneeId } = useHorizontal()
+  const { projects, project, openCountByProject, selectProject, reorderProjects, smartLists, reportError, pins, savedFilters, filterCounts, assignees, myAssigneeId } = useHorizontal()
   // Meniul de fixare: click dreapta pe un rând, sau ⋮ pe rândul de proiect.
   const [menu, setMenu] = useState<MenuTarget | null>(null)
   const menuAt = (kind: PinKind, ref: string, label: string) => (e: React.MouseEvent) => {
@@ -273,7 +273,7 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
 
       <div className="sidebar-proj-list">
         {visibleProjects.map((p) => {
-          const pct = Math.round(completion(p.id) * 100)
+          const open = openCountByProject[p.id] ?? 0
           const isActive = project?.id === p.id
           return (
             <div
@@ -309,7 +309,8 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
               <button className="sidebar-proj-btn" onClick={() => goToProject(p.id)}>
                 <ProjectMark project={p} dot="sidebar-proj-dot" size={14} />
                 <span className="sidebar-proj-name">{p.name}</span>
-                <span className="sidebar-proj-pct">{pct}%</span>
+                {/* Câte sarcini deschise are — procentul de gata nu ajuta la nimic aici. */}
+                {open > 0 && <span className="sidebar-proj-pct">{open}</span>}
               </button>
               <button
                 type="button"

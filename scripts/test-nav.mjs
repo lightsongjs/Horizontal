@@ -578,6 +578,19 @@ try {
   check('…nu formularul complet', (await tel.locator('.sheet.on').count()) === 0, 'fără `.sheet.on`')
   const editFocus = await tel.evaluate(() => !!document.activeElement?.closest('.edit-sheet'))
   check('foaia de tichet nu ia focusul (fără tastatură)', !editFocus, editFocus ? `activ=${await tel.evaluate(() => document.activeElement?.className)}` : 'focusul e în afara foii')
+  // Mânerul de sus: o tragere scurtă și lentă lasă foaia; una lungă o închide.
+  {
+    const { drag, center } = await touchApi(tel)
+    const g = await center(tel.locator('.edit-sheet .kb-grab'))
+    await drag(g.x, g.y, g.x, g.y + 40, { steps: 20, stepMs: 30 })
+    await tel.waitForTimeout(400)
+    check('mânerul: tragere scurtă și lentă nu închide foaia', await editOpen(), (await editOpen()) ? 'încă deschisă' : 's-a închis')
+    await drag(g.x, g.y, g.x, g.y + 200, { steps: 12, stepMs: 16 })
+    await tel.waitForTimeout(600)
+    check('mânerul: tragerea în jos închide foaia', !(await editOpen()), (await editOpen()) ? 'a rămas deschisă' : 'închisă')
+    check('…și te lasă pe „Azi"', await telOnAzi(), 'tabul Azi')
+    await openTask()
+  }
   const editUrl = new URL(tel.url()).pathname
   check('foaia de tichet ține URL de tichet', /^\/[A-Z]+-\d+$/.test(editUrl), `URL=${editUrl}`)
 
@@ -817,7 +830,8 @@ try {
       window.__showPicker = 0
       HTMLInputElement.prototype.showPicker = function () { window.__showPicker++ }
     })
-    const timeOf = (name) => rowOf(name).locator('.t-time').innerText()
+    // Fără oră rândul nu mai are `.t-time` deloc (redesignul „Senin”) — atunci ''.
+    const timeOf = (name) => rowOf(name).locator('.t-time').allInnerTexts().then((t) => t.join(''))
     const openStrip = async (name) => {
       if (/show-right/.test((await rowOf(name).getAttribute('class')) ?? '')) return
       const c = await T.center(rowOf(name))
@@ -1112,7 +1126,8 @@ try {
     check('editorul numără live', /^\d+ tichet/.test(preview), preview)
     await fp.locator('.sh-save').click()
     await fp.waitForTimeout(900)
-    const h1 = ((await fp.locator('header h1').textContent()) ?? '').trim()
+    // Numărul din antet (`.hcount`) stă în același <h1> — numai numele.
+    const h1 = ((await fp.locator('header h1').evaluate((el) => [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join(''))) ?? '').trim()
     const groups = await fp.locator('.filter-group').count()
     check('salvarea deschide ecranul filtrului', h1 === 'Fără dată' && (await fp.locator('.filter-form').count()) === 0, `antet="${h1}"`)
     check('…cu rândurile grupate pe proiect', groups >= 1 && (await fp.locator('.filter-group .task-row').count()) >= 1, `${groups} grupe`)

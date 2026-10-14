@@ -5430,6 +5430,30 @@ body:has(.kb-sheet) .toast {
   to { transform: none; opacity: 1; }
 }
 .kb-sheet.shake { animation: qa-shake 0.3s; }
+.kb-sheet { transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.kb-sheet.dragging { transition: none; }
+/* Mânerul: lipit sus cât derulezi, cu o zonă de atins mai mare decât desenul. */
+.kb-grab {
+  position: sticky;
+  top: -14px;
+  z-index: 2;
+  height: 24px;
+  margin: -14px -16px -4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  touch-action: none;
+  cursor: grab;
+}
+.kb-grab::before {
+  content: "";
+  width: 38px;
+  height: 5px;
+  border-radius: 50%/100%;
+  background: var(--surface-3);
+}
+[data-theme='light'] .kb-grab::before { background: #D9DCE1; }
 .qs-form { display: block; container-type: inline-size; }
 /* Titlul e același `QuickTitle` ca în rândul din listă, mai mare: aici e
    singurul lucru de pe ecran. Oglinda și inputul primesc ACEEAȘI mărime. */

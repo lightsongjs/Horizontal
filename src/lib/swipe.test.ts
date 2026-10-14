@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   crossedFull, dragOffset, drawerSwipe, fullThreshold, inEdge, lockAxis, movedBeyondTap, release,
-  REVEAL_LEFT, REVEAL_RIGHT,
+  REVEAL_LEFT, REVEAL_RIGHT, sheetDismiss,
 } from './swipe'
 
 describe('lockAxis', () => {
@@ -80,5 +80,15 @@ describe('drawerSwipe', () => {
     expect(drawerSwipe(10, 'h', -80)).toBe(false)
     // În afara marginii e glisarea rândului, nu a sertarului.
     expect(drawerSwipe(40, 'h', 80)).toBe(false)
+  })
+})
+
+describe('sheetDismiss', () => {
+  it('închide peste prag sau la un gest repezit, nu în sus', () => {
+    expect(sheetDismiss(120, 400)).toBe(true)
+    expect(sheetDismiss(40, 60)).toBe(true)
+    expect(sheetDismiss(40, 400)).toBe(false)
+    expect(sheetDismiss(10, 5)).toBe(false)
+    expect(sheetDismiss(-50, 50)).toBe(false)
   })
 })

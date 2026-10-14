@@ -113,3 +113,18 @@ export const DRAWER_OPEN_PX = 48
 export function drawerSwipe(startX: number, axis: Axis, dx: number): boolean {
   return startX < EDGE_PX && axis === 'h' && dx >= DRAWER_OPEN_PX
 }
+
+/** Tragerea în jos a unei foi de jos: peste atâția px se închide la ridicare. */
+export const SHEET_DISMISS_PX = 90
+/** …sau mai puțin, dacă degetul a fost repezit (px/ms). */
+export const SHEET_FLICK = 0.5
+
+/**
+ * Se închide foaia la ridicarea degetului? Distanța sau viteza — un gest scurt
+ * și rapid e la fel de clar ca unul lung și lent. Un gest în sus nu închide.
+ */
+export function sheetDismiss(dy: number, ms: number): boolean {
+  if (dy <= 0) return false
+  if (dy >= SHEET_DISMISS_PX) return true
+  return dy >= 24 && ms > 0 && dy / ms >= SHEET_FLICK
+}

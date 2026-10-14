@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useHorizontal } from '../store'
-import { useCanWriteIn } from '../hooks'
+import { swallowNextClick, useCanWriteIn } from '../hooks'
 import { hasTime, toDayMonth, toTimeInput } from '../lib/schedule'
 import {
   LONG_PRESS_MS, crossedFull, dragOffset, inEdge, lockAxis, movedBeyondTap, release, restOffset,
@@ -231,6 +231,10 @@ function SwipeRow({ issue, cls, onOpen, canWrite, selecting, selected, children 
           if (gg.moved) return
           gg.longFired = true
           vibrate(15)
+          // Intrarea în selecție schimbă antetul (alt înalt), deci lista sare
+          // sub deget: click-ul ridicării ar cădea pe ALT rând și l-ar alege
+          // și pe el. `swallowClick` de mai jos păzește doar rândul ăsta.
+          swallowNextClick()
           const { ta: a, issue: i } = act.current
           a.setOpenRow(null)
           a.enterSelectMode([i.id])
