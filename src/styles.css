@@ -3363,7 +3363,10 @@ main {
   .split-pane .form-col-desc .desc-fixed,
   [data-theme='light'] .split-pane .form-col-desc .desc-fixed {
     flex: 0 0 auto;
-    height: auto;
+    /* Înălțime DATĂ, nu `auto`: CodeMirror întinde conținutul cu
+       `min-height: 100%`, care cere un părinte cu înălțime definită — altfel o
+       atingere sub text cade pe scroller și nu scrie nimic. */
+    height: 420px;
     min-height: 420px;
     border: 0;
     background: none;
