@@ -134,13 +134,15 @@ function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, ca
       </button>
       <div className="logo">{inbox ? <Icon name="people" size={18} /> : list ? <Icon name={list.icon} size={18} /> : filterId ? <Icon name={filter?.icon ?? 'filter'} size={18} /> : projectChrome ? projectChrome.prefix.slice(0, 2) : 'H'}</div>
       <div className="htxt">
-        <h1>{inbox ? 'Ale mele' : list ? list.label : filterId ? filter?.name ?? 'Filtru' : projectChrome ? projectChrome.name : 'Horizontal'}</h1>
+        <h1>
+          {inbox ? 'Ale mele' : list ? list.label : filterId ? filter?.name ?? 'Filtru' : projectChrome ? projectChrome.name : 'Horizontal'}
+          {(list || filter) && listCount > 0 && <span className="hcount">{listCount}</span>}
+        </h1>
         <div className="crumb">
           {inbox ? 'Ce ți-a pasat cineva.' : list ? smartCrumb(list.kind, new Date()) : filterId ? filterCrumb : projectChrome ? projectChrome.description : 'Toate proiectele tale'}
           {!projectChrome && !named && <span style={{ display: 'block', fontSize: 'calc(10px * var(--text-scale))', opacity: 0.5, marginTop: '1px' }}>Built: {getBuildAgo()}</span>}
         </div>
       </div>
-      {(list || filter) && listCount > 0 && <div className="hcount">{listCount}</div>}
       {projectChrome && (
         <div className="hprog">
           <span className="dot" />

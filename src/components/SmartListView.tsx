@@ -55,9 +55,11 @@ interface GroupProps {
    * numărul e „ce ai de făcut", iar o ședință nu se bifează.
    */
   events?: DayEvents
+  /** Iconița din fața etichetei (restanțe: ceas, azi: stea). */
+  icon?: IconName
 }
 
-function Group({ label, date, issues, color, onOpen, late, empty, action, events }: GroupProps) {
+function Group({ label, date, issues, color, onOpen, late, empty, action, events, icon }: GroupProps) {
   const ta = useTaskActions()
   const { dockedIssueId } = useUI()
   const hasEvents = !!events && (events.band.length > 0 || events.timed.length > 0)
@@ -71,8 +73,9 @@ function Group({ label, date, issues, color, onOpen, late, empty, action, events
         role={selecting ? 'button' : undefined}
         onClick={selecting ? () => ta.toggleMany(issues.map((i) => i.id)) : undefined}
       >
-        <span className="list-group-num">{issues.length}</span>
+        {icon && <span className={`list-group-ico ${icon}`}><Icon name={icon} size={15} /></span>}
         <span className="list-group-label">{label}</span>
+        <span className="list-group-num">{issues.length}</span>
         {date && <span className="list-group-date">{date}</span>}
         {action && !ta.selectMode && issues.length > 0 && (
           <button type="button" className="group-act" onClick={action.onClick}>{action.label}</button>
@@ -152,6 +155,7 @@ export function SmartListView({ kind, onOpenTask, focusSignal = 0 }: Props) {
               label="Restanțe"
               issues={smartLists.overdue}
               color="var(--blocked)"
+              icon="overdue"
               onOpen={onOpenTask}
               late
               action={{
@@ -161,9 +165,9 @@ export function SmartListView({ kind, onOpenTask, focusSignal = 0 }: Props) {
             />
             <Group
               label="Azi"
-              date={longDate(today)}
               issues={smartLists.today}
-              color="var(--accent)"
+              color="var(--txt)"
+              icon="today"
               onOpen={onOpenTask}
               empty="Nimic pe azi. Frumos."
               events={eventsFor(today)}

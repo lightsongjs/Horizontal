@@ -1,67 +1,56 @@
 ﻿/* Horizontal — dark theme. Tokens from REQUIREMENTS.md §4; layout/interactions
    adapted from prototype.html. */
-@import url('https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;0,7..72,600;0,7..72,700;1,7..72,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+/* Fonturile (Inter + Geist Mono) vin din <link> în index.html. */
 
 :root {
-  /* Suprafete — ierarhia se face prin SALT TONAL, nu prin linii de 1px.
-     Vezi design/index.html: „regula fara linii", preluata din Apologetica. */
-  --bg: #0B0B0E;
-  --surface: #16161A;
-  --surface-2: #1E1E23;
-  /* Al treilea ton: jetoane, piste, fundal de camp — pus PE un card, nu pe
-     pagina. Pe tema inchisa URCA (sub --surface nu mai e loc pana la fundalul
-     paginii, deci un ton „adancit" da 1,05:1 si jetonul e invizibil), pe cea
-     deschisa coboara. In ambele, „mai departe de pagina" = „mai mult contrast
-     cu cardul". */
-  --surface-3: #26262C;
-  /* --line a ramas doar unde o linie e obligatorie: tabbar, tabele, separatoare.
-     --line-soft e cvasi-invizibila — pentru regulile care n-au fost traduse. */
-  --line: #2A2A2E;
-  --line-soft: #1B1B1F;
-  --txt: #FAFAF9;
-  --txt-dim: #9C9CA2;
-  --txt-faint: #6B6B70;
-  --accent: #818CF8;
-  --accent-2: #6366F1;
-  --accent-soft: rgba(129,140,248,0.13);
-  --done: #63B79F;
-  --done-soft: rgba(99,183,159,0.13);
-  --blocked: #DF8B84;
-  --blocked-soft: rgba(223,139,132,0.13);
-  --active: #D9A661;
-  --active-soft: rgba(217,166,97,0.13);
-  /* Trei raze dupa rol, nu una peste tot: card / tichet-buton / jeton. */
-  --r: 16px;
-  --r-m: 10px;
-  --r-s: 6px;
-  /* Umbra ambientala — 24px de blur, o singura data. Inlocuieste chenarele. */
-  /* Muchia de sus primeste LUMINA, nu un inel. O umbra neagra pe un fundal
-     aproape negru nu poate ridica nimic: cel mult intuneca in jurul
-     cardului, si atunci citeste ca murdarie. Fara insetul de sus,
-     delimitarea venea exclusiv din #16161A peste #0B0B0E — 1,09:1, sub
-     pragul practic, iar pe OLED dispare in black-crush. */
-  --amb: inset 0 1px 0 rgba(255,255,255,0.055), 0 6px 24px rgba(0,0,0,0.42);
-  --amb-lg: inset 0 1px 0 rgba(255,255,255,0.07), 0 18px 48px rgba(0,0,0,0.55);
+  /* „Senin" (design/redesign/index.html, direcția A, 2026-10-14): alb curat,
+     un albastru, culoarea proiectului pe bifă. Ierarhia rămâne prin salt
+     tonal și umbră, nu prin chenare. Tema închisă aici, cea deschisă mai jos. */
+  --bg: #141517;
+  --surface: #1B1C1F;
+  --surface-2: #232428;
+  /* Al treilea ton: jetoane, piste, fundal de câmp — pus PE un card. */
+  --surface-3: #2B2D32;
+  --line: #2A2C31;
+  --line-soft: #1F2024;
+  --txt: #EEEFF1;
+  --txt-dim: #A6ABB3;
+  --txt-faint: #757A83;
+  --accent: #5B8DFF;
+  --accent-2: #4A7BF0;
+  --accent-soft: rgba(91,141,255,0.15);
+  --done: #3DBF85;
+  --done-soft: rgba(61,191,133,0.14);
+  --blocked: #FF6369;
+  --blocked-soft: rgba(255,99,105,0.13);
+  --active: #FFC53D;
+  --active-soft: rgba(255,197,61,0.13);
+  /* Trei raze după rol: card / tichet-rând-câmp / buton-jeton. */
+  --r: 20px;
+  --r-m: 12px;
+  --r-s: 8px;
+  --amb: inset 0 1px 0 rgba(255,255,255,0.04), 0 6px 22px rgba(0,0,0,0.4);
+  --amb-lg: inset 0 1px 0 rgba(255,255,255,0.05), 0 16px 44px rgba(0,0,0,0.5);
   /* Rampa de layere: o singura familie de nuante care se raceste, fiindca
      adancimea dependentelor E o secventa. Indexata din JSX prin var(--layer-N),
      ca fiecare tema sa aiba valorile ei (vezi src/lib/layerColors.ts). */
-  --layer-0: #8B93F7;
-  --layer-1: #7FA0DE;
-  --layer-2: #77ADC4;
-  --layer-3: #74B4AC;
-  --layer-4: #7BB79A;
+  --layer-0: #5B8DFF;
+  --layer-1: #4FA3F0;
+  --layer-2: #3FB5D6;
+  --layer-3: #2EC4B0;
+  --layer-4: #4CC98A;
   /* Textul care stă PE accent (sau pe o culoare semantică). Fundalul paginii,
      nu alb: #FAFAF9 pe #818CF8 dă 2,98:1, iar #0B0B0E pe #818CF8 dă ~8:1.
      Pe tema deschisă --bg e oricum cvasi-alb, deci merge în ambele. */
-  --on-accent: var(--bg);
+  --on-accent: #FFFFFF;
   /* Aliasuri pentru jetoane pe care CSS-ul le cerea fără ca ele să existe. */
   --card: var(--surface);
   --card-hi: var(--surface-2);
   --surface-raised: var(--surface-2);
   --sans: var(--display);
   --font: var(--display);
-  --mono: 'IBM Plex Mono', ui-monospace, monospace;
-  --display: 'Literata', 'Iowan Old Style', Georgia, serif;
+  --mono: 'Geist Mono', ui-monospace, 'SF Mono', monospace;
+  --display: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   /* Mărimea textului, aleasă din rotița de setări (`src/theme.tsx`). Fiecare
      `font-size` din foaie e `calc(Npx * var(--text-scale))` — un test cere asta.
      Numai textul crește, nu pagina: un `zoom` ar fi stricat foile lipite de
@@ -120,38 +109,37 @@ svg {
 
 /* LIGHT THEME */
 [data-theme='light'] {
-  --bg: #F7F9FC;
-  --field-bg: #F0F4F8;
+  --bg: #FFFFFF;
+  --field-bg: #F6F7F9;
   --surface: #FFFFFF;
-  --surface-2: #F0F4F8;
-  --surface-3: #E8EFF4;
-  --line: rgba(168,179,187,0.38);
-  --line-soft: rgba(168,179,187,0.18);
-  /* Niciodata negru pur: #29343A e textul „savant" din Apologetica. */
-  --txt: #29343A;
-  --txt-dim: #566168;
-  --txt-faint: #717C84;
-  --accent: #1A237E;
-  --accent-2: #151B60;
-  --accent-soft: rgba(26,35,126,0.08);
-  --done: #2F6B4F;
-  --done-soft: rgba(47,107,79,0.10);
-  --blocked: #A0333F;
-  --blocked-soft: rgba(160,51,63,0.09);
-  --active: #8A5A18;
-  --active-soft: rgba(138,90,24,0.10);
-  --border-strong: rgba(113,124,132,0.45);
-  --placeholder: #8B98A5;
-  --amb: 0 6px 24px rgba(41,52,58,0.06);
-  --amb-lg: 0 18px 48px rgba(41,52,58,0.10);
-  --shadow-sm: 0 1px 3px rgba(41,52,58,0.05);
+  --surface-2: #F6F7F9;
+  --surface-3: #EEF0F3;
+  --line: #E6E8EC;
+  --line-soft: #EEF0F3;
+  --txt: #1A1C20;
+  --txt-dim: #565C66;
+  --txt-faint: #868C96;
+  --accent: #2F6BFF;
+  --accent-2: #1F55E0;
+  --accent-soft: #EBF1FF;
+  --done: #1F9D60;
+  --done-soft: rgba(31,157,96,0.10);
+  --blocked: #E5484D;
+  --blocked-soft: #FDEEEE;
+  --active: #C98A00;
+  --active-soft: rgba(245,176,0,0.12);
+  --border-strong: #D5D9DF;
+  --placeholder: #A0A6AF;
+  --amb: 0 1px 2px rgba(16,24,40,0.05), 0 6px 20px rgba(16,24,40,0.07);
+  --amb-lg: 0 2px 6px rgba(16,24,40,0.06), 0 18px 44px rgba(16,24,40,0.12);
+  --shadow-sm: 0 1px 2px rgba(16,24,40,0.05);
   --shadow-md: var(--amb);
   --shadow-lg: var(--amb-lg);
-  --layer-0: #3A43A8;
-  --layer-1: #2F5C93;
-  --layer-2: #2A6E7E;
-  --layer-3: #2A756A;
-  --layer-4: #33795C;
+  --layer-0: #2F6BFF;
+  --layer-1: #1F7FD6;
+  --layer-2: #0E8FB0;
+  --layer-3: #0E9F8E;
+  --layer-4: #1F9D60;
   color-scheme: light;
 }
 
@@ -177,8 +165,7 @@ svg {
 
 /* HEADER */
 header {
-  padding: 13px 16px 11px;
-  border-bottom: 1px solid var(--line-soft);
+  padding: 12px 16px 8px;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -205,14 +192,21 @@ header {
   min-width: 0;
 }
 .htxt h1 {
-  font-size: calc(17px * var(--text-scale));
-  font-weight: 700;
+  font-size: calc(22px * var(--text-scale));
+  font-weight: 750;
   letter-spacing: -0.025em;
   line-height: 1.2;
   font-family: var(--display);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.hcount {
+  margin-left: 8px;
+  font-size: 0.68em;
+  font-weight: 600;
+  color: var(--txt-faint);
+  letter-spacing: 0;
 }
 .htxt .crumb {
   font-size: calc(12px * var(--text-scale));
@@ -508,11 +502,10 @@ main {
 .badge-now {
   margin-left: auto;
   flex-shrink: 0;
-  font-family: var(--mono);
+  font-family: var(--display);
   font-size: calc(9.5px * var(--text-scale));
   font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  letter-spacing: 0;
   color: var(--active);
   background: var(--active-soft);
   padding: 4px 8px;
@@ -609,7 +602,7 @@ main {
 .list-group { margin-bottom: 14px; }
 .list-group-head {
   display: flex; align-items: center; gap: 8px;
-  padding: 6px 4px; font-size: calc(12px * var(--text-scale)); color: var(--txt-dim);
+  padding: 10px 8px 6px; font-size: calc(14px * var(--text-scale)); color: var(--txt-dim);
 }
 .list-group-num {
   display: inline-flex; align-items: center; justify-content: center;
@@ -621,20 +614,45 @@ main {
 .list-group-label { flex: 1; color: var(--layer-color, var(--txt-dim)); font-weight: 600; }
 .list-group-count { margin-left: auto; opacity: 0.7; }
 .list-row {
-  display: flex; align-items: center; gap: 10px;
-  min-height: 40px; padding: 8px 10px;
+  display: flex; align-items: center; gap: 12px;
+  min-height: 44px; padding: 8px 10px;
   border-radius: var(--r-m);
-  margin-bottom: 6px; cursor: pointer; background: var(--surface);
+  margin-bottom: 0; cursor: pointer; background: var(--bg);
   width: 100%; text-align: left; font: inherit; color: inherit;
-  box-shadow: var(--amb);
+  position: relative;
 }
+/* „Senin": rânduri plate, despărțite de o linie de păr care pornește de sub
+   titlu (nu de sub bifă), ca în Things / Reminders. Separatorul de rând e
+   singura linie permisă de regula „fără chenare". */
+.list-row::after {
+  content: "";
+  position: absolute;
+  left: 40px; right: 0; bottom: 0;
+  height: 1px;
+  background: var(--line-soft);
+  pointer-events: none;
+}
+.list-group > .list-row:last-child::after,
+.list-group > .swipe:last-child > .list-row::after { display: none; }
 .list-row:hover { background: var(--surface-2); }
+.list-row:hover::after { opacity: 0; }
 .list-row.done { opacity: 0.55; }
 .list-row.blocked { opacity: 0.8; }
 .list-check {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 18px; height: 18px; color: var(--txt-faint); flex: 0 0 auto;
+  width: 20px; height: 20px; color: var(--txt-faint); flex: 0 0 auto;
 }
+/* Bifa rotundă în culoarea proiectului (`--pc`, pusă de rând). Plină = gata. */
+.ck {
+  width: 20px; height: 20px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  box-shadow: inset 0 0 0 1.75px color-mix(in srgb, var(--pc, var(--txt-faint)) 80%, var(--bg));
+  color: #fff;
+  transition: background 120ms, box-shadow 120ms;
+}
+.list-check:hover .ck:not(.on) { background: color-mix(in srgb, var(--pc, var(--txt-faint)) 12%, transparent); }
+.ck.on { background: var(--pc, var(--done)); box-shadow: none; }
+.ck.urg { box-shadow: inset 0 0 0 2px var(--blocked); background: var(--blocked-soft); }
 .list-row.done .list-check { color: var(--done); }
 .tk > .check {
   position: absolute;
@@ -655,7 +673,7 @@ main {
   margin-bottom: 3px;
 }
 .list-id { font-size: calc(11px * var(--text-scale)); color: var(--txt-dim); flex: 0 0 auto; }
-.list-title { font-size: calc(13px * var(--text-scale)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.list-title { font-size: calc(15px * var(--text-scale)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .list-row .tk-urgent { margin-left: auto; }
 /* List-row parity with .tk states (tree / select / vim) */
 .list-row.vim-focused {
@@ -800,7 +818,7 @@ main {
   align-items: center;
   gap: 5px;
   flex: 0 0 auto;
-  font-family: var(--mono);
+  font-family: var(--display);
   font-size: calc(11px * var(--text-scale));
   font-weight: 500;
   line-height: 1.5;
@@ -870,10 +888,9 @@ main {
   letter-spacing: -0.02em;
 }
 .wbtn .wsub {
-  font-family: var(--mono);
+  font-family: var(--display);
   font-size: calc(9.5px * var(--text-scale));
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
+  letter-spacing: 0;
   color: inherit;
 }
 /* All delivery-wave tabs share one standard width; long labels truncate. */
@@ -1042,14 +1059,13 @@ main {
 .sheet-head .eyebrow {
   font-size: calc(11px * var(--text-scale));
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0;
   color: var(--accent);
   margin-bottom: 6px;
   display: flex;
   align-items: center;
   gap: 6px;
-  font-family: var(--mono);
+  font-family: var(--display);
 }
 .sheet-head h2 {
   font-size: calc(22px * var(--text-scale));
@@ -1206,8 +1222,7 @@ main {
 .md-h1, .md-editor .md-h1 { font-size: calc(18px * var(--text-scale)); font-weight: 600; }
 .md-h2, .md-editor .md-h2 { font-size: calc(16px * var(--text-scale)); font-weight: 600; }
 .md-h3, .md-editor .md-h3 {
-  font-family: var(--mono); font-size: calc(12px * var(--text-scale)); font-weight: 500;
-  text-transform: uppercase; letter-spacing: .06em; color: var(--txt-dim);
+  font-family: var(--display); font-size: calc(12px * var(--text-scale)); font-weight: 500; letter-spacing: 0; color: var(--txt-dim);
 }
 .md strong, .md-editor .md-strong { font-weight: 600; }
 .md em, .md-editor .md-em { font-style: italic; }
@@ -1300,14 +1315,13 @@ main {
 .sheet-section-t {
   font-size: calc(11px * var(--text-scale));
   font-weight: 700;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
+  letter-spacing: 0;
   color: var(--txt-faint);
   margin: 16px 0 9px;
   display: flex;
   align-items: center;
   gap: 8px;
-  font-family: var(--mono);
+  font-family: var(--display);
 }
 .sheet-section-t:first-child {
   margin-top: 0;
@@ -1357,14 +1371,13 @@ main {
   margin-left: auto;
   font-size: calc(10px * var(--text-scale));
   font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  letter-spacing: 0;
   padding: 2px 7px;
   border-radius: var(--r-s);
   background: var(--done-soft);
   color: var(--done);
   white-space: nowrap;
-  font-family: var(--mono);
+  font-family: var(--display);
 }
 .dep-row .wtag.pending {
   background: var(--surface-3);
@@ -1399,11 +1412,10 @@ main {
   display: block;
   font-size: calc(11px * var(--text-scale));
   font-weight: 700;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
+  letter-spacing: 0;
   color: var(--txt-faint);
   margin-bottom: 7px;
-  font-family: var(--mono);
+  font-family: var(--display);
 }
 .fld input,
 .fld textarea {
@@ -1697,7 +1709,7 @@ main {
 }
 
 .md-progress {
-  font-family: var(--mono); font-size: calc(11px * var(--text-scale));
+  font-family: var(--display); font-size: calc(11px * var(--text-scale));
   color: var(--txt-dim); font-variant-numeric: tabular-nums; white-space: nowrap; flex-shrink: 0;
 }
 .md-progress.all { color: var(--txt-faint); }
@@ -1988,7 +2000,7 @@ main {
   to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 .bulk-count {
-  font-family: var(--mono);
+  font-family: var(--display);
   font-size: calc(14px * var(--text-scale));
   color: var(--accent);
   padding-right: 10px;
@@ -2002,7 +2014,7 @@ main {
 .bulk-label {
   font-size: calc(14px * var(--text-scale));
   color: var(--txt-faint);
-  font-family: var(--mono);
+  font-family: var(--display);
 }
 .bulk-wave-select {
   padding: 6px 10px;
@@ -2233,11 +2245,10 @@ main {
 }
 
 .if-field-label {
-  font-family: var(--mono);
+  font-family: var(--display);
   font-size: calc(10.5px * var(--text-scale));
   font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  letter-spacing: 0;
   color: var(--txt-faint);
   margin-bottom: 6px;
   display: block;
@@ -2568,11 +2579,10 @@ main {
   align-items: start;
 }
 .info-sec h3 {
-  font-family: var(--mono);
+  font-family: var(--display);
   font-size: calc(11px * var(--text-scale));
   font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  letter-spacing: 0;
   color: var(--accent);
   margin-bottom: 12px;
 }
@@ -2796,11 +2806,10 @@ main {
   .sidebar-section-label {
     font-size: calc(11px * var(--text-scale));
     font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
+    letter-spacing: 0;
     color: var(--txt-faint);
     padding: 10px 10px 5px;
-    font-family: var(--mono);
+    font-family: var(--display);
   }
 
   .sidebar-nav-item {
@@ -2997,8 +3006,7 @@ main {
 
   /* ── HEADER on desktop ──────────────────────── */
   header {
-    padding: 16px 28px 14px;
-    border-bottom: 1px solid var(--line-soft);
+    padding: 18px 28px 10px;
   }
   /* Hide back button and logo — sidebar handles navigation */
   .back,
@@ -3006,7 +3014,7 @@ main {
     display: none;
   }
   .htxt h1 {
-    font-size: calc(17px * var(--text-scale));
+    font-size: calc(26px * var(--text-scale));
   }
 
   /* ── MAIN CONTENT ───────────────────────────── */
@@ -3621,7 +3629,7 @@ main {
   border-radius: 4px;
   background: transparent;
   color: var(--txt-faint);
-  font-family: var(--mono);
+  font-family: var(--display);
   font-size: calc(11px * var(--text-scale));
   font-weight: 600;
   letter-spacing: 0.06em;
@@ -3656,11 +3664,10 @@ main {
   padding: 7px 2px 0;
 }
 .if-sub-label {
-  font-family: var(--mono);
+  font-family: var(--display);
   font-size: calc(10px * var(--text-scale));
   font-weight: 600;
-  letter-spacing: 0.11em;
-  text-transform: uppercase;
+  letter-spacing: 0;
   color: var(--txt-faint);
 }
 
@@ -3857,7 +3864,7 @@ main {
   align-items: center;
   gap: 8px;
   padding: 8px 18px;
-  font-family: var(--mono);
+  font-family: var(--display);
   font-size: calc(11px * var(--text-scale));
   color: var(--txt-dim);
   cursor: pointer;
@@ -4506,21 +4513,20 @@ main {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .user-unnamed {
-  flex: none; font-family: var(--mono); font-size: calc(10px * var(--text-scale));
-  text-transform: uppercase; letter-spacing: 0.06em; color: var(--txt-faint);
+  flex: none; font-family: var(--display); font-size: calc(10px * var(--text-scale)); letter-spacing: 0; color: var(--txt-faint);
 }
 .user-email {
-  font-family: var(--mono); font-size: calc(12px * var(--text-scale)); color: var(--txt-dim);
+  font-family: var(--display); font-size: calc(12px * var(--text-scale)); color: var(--txt-dim);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .user-access {
-  flex: none; font-family: var(--mono); font-size: calc(11.5px * var(--text-scale)); color: var(--txt-faint);
+  flex: none; font-family: var(--display); font-size: calc(11.5px * var(--text-scale)); color: var(--txt-faint);
 }
 .user-chev { flex: none; color: var(--txt-faint); }
 
 /* ── Accesul, în foaie ────────────────────────────────────────────── */
 .grant-badge {
-  font-family: var(--mono); font-size: calc(10px * var(--text-scale)); text-transform: none; letter-spacing: 0;
+  font-family: var(--display); font-size: calc(10px * var(--text-scale)); text-transform: none; letter-spacing: 0;
   color: var(--accent); background: var(--accent-soft); border-radius: var(--r-s); padding: 2px 7px;
 }
 .acc-grid {
@@ -4556,7 +4562,7 @@ main {
 .fld-hint { margin: 6px 0 0; font-size: calc(12px * var(--text-scale)); color: var(--txt-faint); line-height: 1.5; }
 .fld-hint.ok { color: var(--accent); }
 .fld-static {
-  font-family: var(--mono); font-size: calc(13.5px * var(--text-scale)); color: var(--txt-dim);
+  font-family: var(--display); font-size: calc(13.5px * var(--text-scale)); color: var(--txt-dim);
   padding: 10px 12px; background: var(--surface-2); border-radius: var(--r-m);
 }
 .pw-row { display: flex; gap: 8px; align-items: center; }
@@ -4646,7 +4652,7 @@ body:has(.kb-sheet) .toast {
   bottom: auto;
 }
 .toast-act {
-  font-family: var(--mono);
+  font-family: var(--display);
   font-size: calc(11px * var(--text-scale));
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -4967,7 +4973,7 @@ body:has(.kb-sheet) .toast {
    puțin; cu rază și umbră, un card lipit de margine își pierde colțurile. */
 .smart-list {
   max-width: 760px;
-  padding: 14px 14px 0;
+  padding: 6px 8px 0;
 }
 
 /* ── numere pe rândurile din sidebar ─────────────────────────────── */
@@ -5014,9 +5020,17 @@ body:has(.kb-sheet) .toast {
 /* Data stă LÂNGĂ eticheta zilei, nu împinsă în marginea dreaptă. `.list-group-label`
    are `flex: 1` din modul proiecte (unde numărătoarea trebuie să stea la capăt);
    într-o listă de zile, ziua și data sunt un singur lucru. */
-.smart-list .list-group-label { flex: 0 0 auto; }
+.smart-list .list-group-label { flex: 0 0 auto; color: var(--gc, var(--txt)); font-weight: 650; }
+.smart-list .list-group-num {
+  background: none; width: auto; min-width: 0; padding: 0;
+  font-family: var(--display); font-size: calc(14px * var(--text-scale));
+  font-weight: 550; color: var(--txt-faint);
+}
+.list-group-ico { display: inline-flex; color: var(--gc, var(--txt-dim)); }
+/* Steaua lui „Azi" e plină și galbenă, peste tot unde apare (`today` din Icon). */
+.list-group-ico.today { color: #F5B000; }
+.list-group-ico.today svg { fill: currentColor; }
 .list-group-date { color: var(--txt-faint); font-weight: 500; margin-left: 2px; }
-.list-group-num { min-width: 18px; padding: 0 4px; }
 .day-empty {
   font-size: calc(12.5px * var(--text-scale));
   color: var(--txt-faint);
@@ -5036,29 +5050,22 @@ body:has(.kb-sheet) .toast {
   color: var(--txt-faint);
   padding: 8px 4px;
   font-weight: 600;
-  font-family: var(--mono);
+  font-family: var(--display);
 }
 .done-toggle:hover { color: var(--txt-dim); }
 
 /* ── rândul de sarcină ───────────────────────────────────────────── */
 .task-row.done .list-title { text-decoration: line-through; }
-.task-row.late .list-check { color: var(--blocked); }
-/* Ora e ancora vizuală a unei sarcini, așa cum id-ul e ancora unui tichet:
-   lățime fixă, ca titlurile să se alinieze pe coloană. */
+/* Ora și ziua ratată stau în coada rândului: titlurile pornesc toate din
+   același loc, iar absența orei nu mai ține o coloană goală. */
 .t-time {
   font-family: var(--mono);
-  font-size: calc(11.5px * var(--text-scale));
-  font-weight: 700;
+  font-size: calc(12.5px * var(--text-scale));
+  font-weight: 600;
   color: var(--txt-dim);
-  flex: 0 0 auto;
-  min-width: 38px;
+  font-variant-numeric: tabular-nums;
 }
-.task-row.late .t-time { color: var(--blocked); }
-.t-time.allday { color: var(--txt-faint); font-weight: 500; }
-/* Fără oră nu se scrie nimic. Un grup în care niciun rând n-are oră (sau zi
-   ratată) nu ține coloana deloc: titlul pornește imediat după bifă. Într-un
-   grup mixt coloana rămâne, ca titlurile să se alinieze sub ore. */
-.list-group:not(:has(.t-time:not(:empty))) .t-time { display: none; }
+.t-time.missed { color: var(--blocked); }
 .task-row .list-title { flex: 1; min-width: 0; }
 .t-tail { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
 .t-urgent { display: inline-flex; color: var(--active); }
@@ -5070,12 +5077,13 @@ body:has(.kb-sheet) .toast {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: calc(11px * var(--text-scale));
+  font-size: calc(12.5px * var(--text-scale));
+  font-weight: 500;
   color: var(--txt-faint);
   max-width: 130px;
 }
 .t-proj-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.t-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.t-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 /* Inbox: iconița ține locul bulinei (`ProjectMark`), în culoarea proiectului. */
 .proj-inbox { display: inline-flex; align-items: center; flex-shrink: 0; line-height: 0; }
 .proj h3 .proj-inbox { margin-right: 6px; vertical-align: -1px; }
@@ -5387,7 +5395,7 @@ body:has(.kb-sheet) .toast {
   min-width: 34px;
   overflow: hidden;
   white-space: nowrap;
-  font-family: var(--mono);
+  font-family: var(--display);
   font-size: calc(12px * var(--text-scale));
   font-weight: 600;
   color: var(--txt-faint);
@@ -5439,7 +5447,7 @@ body:has(.kb-sheet) .toast {
   min-width: 16px; height: 16px; padding: 0 4px; border-radius: 50%;
   display: grid; place-items: center;
   background: var(--accent); color: var(--on-accent);
-  font-family: var(--mono); font-size: calc(10px * var(--text-scale)); font-weight: 600; line-height: 1;
+  font-family: var(--display); font-size: calc(10px * var(--text-scale)); font-weight: 600; line-height: 1;
 }
 /* Meniul mic deasupra agrafei: două rânduri, fără chenar — se desprinde prin
    fundal și umbra ambientală, ca orice panou. */
@@ -5459,7 +5467,7 @@ body:has(.kb-sheet) .toast {
 /* Persoana, numai citită (foaia de tichet): inițialele, mono — sunt cod, nu
    nume. Atingerea duce la formularul complet, unde pasarea trece prin fir. */
 .qs-who-badge {
-  font-family: var(--mono); font-size: calc(11px * var(--text-scale)); font-weight: 600; letter-spacing: 0.02em;
+  font-family: var(--display); font-size: calc(11px * var(--text-scale)); font-weight: 600; letter-spacing: 0.02em;
   color: var(--accent);
 }
 .qs-due-h { flex-shrink: 0; }
@@ -5617,7 +5625,7 @@ body:has(.kb-sheet) .toast {
   border-radius: var(--r-s);
   background: var(--surface-2);
   color: var(--txt-dim);
-  font-family: var(--mono);
+  font-family: var(--display);
   letter-spacing: -0.01em;
   white-space: nowrap;
 }
@@ -5828,10 +5836,9 @@ body:has(.kb-sheet) .toast {
   color: var(--txt);
 }
 .wave-gate-c {
-  font-family: var(--mono);
+  font-family: var(--display);
   font-size: calc(9.5px * var(--text-scale));
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
+  letter-spacing: 0;
   color: var(--txt-faint);
 }
 .obst-list {
@@ -5934,10 +5941,9 @@ body:has(.kb-sheet) .toast {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-family: var(--mono);
+  font-family: var(--display);
   font-size: calc(9.5px * var(--text-scale));
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+  letter-spacing: 0;
   padding: 3px 7px;
   border-radius: var(--r-s);
   background: var(--surface-3);
@@ -5965,10 +5971,9 @@ body:has(.kb-sheet) .toast {
   letter-spacing: normal;
 }
 .obst-chip-t .obst-chip-id {
-  font-family: var(--mono);
+  font-family: var(--display);
   font-size: calc(9.5px * var(--text-scale));
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
+  letter-spacing: 0;
 }
 .obst-chip-x {
   display: inline-flex;
@@ -6087,10 +6092,9 @@ body:has(.kb-sheet) .toast {
 }
 .map-band { fill: var(--surface-2); }
 .map-bandtxt {
-  font-family: var(--mono);
+  font-family: var(--display);
   font-size: calc(10px * var(--text-scale));
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  letter-spacing: 0;
   fill: var(--txt-faint);
 }
 .map-id {
@@ -6101,10 +6105,9 @@ body:has(.kb-sheet) .toast {
   fill: var(--txt-faint);
 }
 .map-own {
-  font-family: var(--mono);
+  font-family: var(--display);
   font-size: calc(9px * var(--text-scale));
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+  letter-spacing: 0;
   fill: var(--txt-faint);
   text-anchor: end;
 }
@@ -6226,7 +6229,7 @@ body:has(.qab) { overflow-y: auto; }
    ceva; rămâne vizibilă doar glifa a ce se întâmplă (`.primary`/`.lead`). Pragurile sunt în `src/lib/swipe.ts`. */
 .swipe {
   position: relative;
-  margin-bottom: 6px;
+  margin-bottom: 0;
   border-radius: var(--r-m);
   /* Derularea verticală rămâne a browserului; orizontala e a noastră. */
   touch-action: pan-y;
@@ -6344,7 +6347,7 @@ body:has(.qab) { overflow-y: auto; }
 .group-act {
   cursor: pointer;
   margin-left: auto;
-  font-family: var(--mono);
+  font-family: var(--display);
   font-size: calc(11px * var(--text-scale));
   font-weight: 600;
   color: var(--accent);
@@ -6408,7 +6411,7 @@ body:has(.qab) { overflow-y: auto; }
 .ds-opt:disabled { opacity: 0.4; }
 .ds-label { font-size: calc(15px * var(--text-scale)); font-weight: 600; }
 .ds-hint {
-  font-family: var(--mono);
+  font-family: var(--display);
   font-size: calc(11px * var(--text-scale));
   color: var(--txt-faint);
   white-space: nowrap;
@@ -6422,7 +6425,7 @@ body:has(.qab) { overflow-y: auto; }
   align-items: center;
   gap: 6px;
   margin: 10px 2px 0;
-  font-family: var(--mono);
+  font-family: var(--display);
   font-size: calc(11px * var(--text-scale));
   color: var(--txt-dim);
 }
@@ -6581,7 +6584,7 @@ body:has(.qab) { overflow-y: auto; }
   text-overflow: ellipsis;
 }
 .dr-email {
-  font-family: var(--mono);
+  font-family: var(--display);
   font-size: calc(11px * var(--text-scale));
   color: var(--txt-faint);
   white-space: nowrap;
@@ -6689,11 +6692,10 @@ body:has(.qab) { overflow-y: auto; }
 }
 .dr-projects .dr-row:active { background: var(--surface-3); }
 .dr-label {
-  font-family: var(--mono);
+  font-family: var(--display);
   font-size: calc(10.5px * var(--text-scale));
   font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0;
   color: var(--txt-faint);
   padding: 8px 10px 4px;
   display: flex;
@@ -6906,7 +6908,7 @@ body:has(.qab) { overflow-y: auto; }
 .int-account-head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
 .int-email {
   flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  font-family: var(--mono); font-size: calc(12.5px * var(--text-scale)); color: var(--txt);
+  font-family: var(--display); font-size: calc(12.5px * var(--text-scale)); color: var(--txt);
 }
 .int-sync { margin: 0 0 6px; font-size: calc(11px * var(--text-scale)); color: var(--txt-faint); }
 .int-cal {

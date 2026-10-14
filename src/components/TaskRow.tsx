@@ -103,6 +103,9 @@ const TaskRowView = memo(function TaskRowView({ issue, onOpen, late = false, doc
         role="checkbox"
         aria-checked={selecting ? selected : issue.done}
         aria-label={selecting ? (selected ? 'Deselectează' : 'Selectează') : issue.done ? 'Marchează nefăcut' : 'Marchează gata'}
+        // Culoarea proiectului e pe bifă („Senin"): se vede al cui e rândul
+        // fără să citești coada. Urgentul e inelul roșu, nu o iconiță în plus.
+        style={project?.accent ? ({ ['--pc' as string]: project.accent }) : undefined}
         onClick={(e) => {
           e.stopPropagation()
           if (selecting) ta.toggleSelected(issue.id)
@@ -110,27 +113,23 @@ const TaskRowView = memo(function TaskRowView({ issue, onOpen, late = false, doc
         }}
       >
         {selecting
-          ? (selected ? <span className="sel-mark"><Icon name="check" size={12} /></span> : <Icon name="notDone" size={17} />)
-          : <Icon name={issue.done ? 'done' : 'notDone'} size={17} />}
+          ? (selected ? <span className="sel-mark"><Icon name="check" size={12} /></span> : <span className="ck" />)
+          : (
+            <span className={`ck${issue.done ? ' on' : ''}${issue.urgent && !issue.done ? ' urg' : ''}`}>
+              {issue.done && <Icon name="check" size={12} />}
+            </span>
+          )}
       </span>
-
-      {timed ? (
-        <span className="t-time">{toTimeInput(issue.dueAt!)}</span>
-      ) : (
-        // O restanță de zi întreagă nu are oră de arătat, dar are o zi ratată —
-        // e informația care lipsește cel mai tare din rând. Altfel coloana e
-        // goală (fără „—", care nu spunea nimic), iar un grup fără nicio oră o
-        // pierde de tot (`.t-time:empty` în CSS).
-        <span className="t-time allday">
-          {late && issue.dueAt ? toShortDate(issue.dueAt) : null}
-        </span>
-      )}
 
       <span className="list-title">{issue.title}</span>
 
       <span className="t-tail">
         <TaskProgress desc={issue.desc} />
-        {issue.urgent && <span className="t-urgent" title="Urgent"><Icon name="urgent" size={13} /></span>}
+        {/* O restanță își spune ziua ratată; altfel ora, dacă are una. Fără
+            oră nu se scrie nimic — absența e cazul obișnuit. */}
+        {late && issue.dueAt
+          ? <span className="t-time missed">{toShortDate(issue.dueAt)}</span>
+          : timed && <span className="t-time">{toTimeInput(issue.dueAt!)}</span>}
         {issue.remindAt && <Bell />}
         <Recur rrule={issue.rrule} />
         {project && (
