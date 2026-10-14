@@ -11,6 +11,8 @@
 // aplicației, fără server și fără login.
 import { chromium } from 'playwright'
 import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import * as esbuild from 'esbuild'
 
 // `.replace(/^﻿/, '')`: `styles.css` are BOM (salvat de un editor Windows).
 // Injectat inline într-un `<style>` (nu ca foaie externă), BOM-ul rămâne text
@@ -147,8 +149,7 @@ for (const width of PHONE_WIDTHS) {
  * Banda de valuri (`WaveTabs.tsx`): [Notițe] [valuri] [+] [moduri ✕] … [⋯].
  * Pe telefon derulează orizontal în interiorul ei; pagina nu are voie să
  * crească, iar „⋯" stă în afara derulării, deci trebuie să fie întreg pe
- * ecran la orice lățime. Pe desktop, într-o coloană docată (~760px), banda se
- * rupe pe rânduri: toate pastilele în interiorul ei, niciuna tăiată. Cu un
+ * ecran la orice lățime. Pe desktop banda e un singur rând (mai jos). Cu un
  * singur val, Notițele și „⋯" urcă în rândul de taburi (`.tabs-tools`) —
  * la 320px rândul acela nu are voie să iasă din ecran.
  * Datele sunt MateCuSens (etichete lungi) plus două jetoane de mod.
@@ -227,24 +228,82 @@ for (const width of PHONE_WIDTHS) {
     `dreapta=${m.toolsR}px, suprapus=${m.overlap}, un rând=${m.oneLine}`)
 }
 
-{
-  // Desktop, coloana listei lângă panoul lateral (~760px): banda se rupe.
+// Desktop: banda e UN rând fix. Ce nu încape intră în „Încă N" după regula
+// reală (`fitPills`, împachetată din `src/lib/waveBar.ts`), cu lățimile măsurate
+// în stratul ascuns ca în `WaveTabs.tsx`. Coloana docată (~465px lângă panou)
+// și o listă largă (1100px); plus valul activ dincolo de tăietură.
+const { outputFiles: [fitBundle] } = await esbuild.build({
+  entryPoints: [fileURLToPath(new URL('../src/lib/waveBar.ts', import.meta.url))],
+  bundle: true, write: false, format: 'iife', globalName: 'waveBar',
+})
+const deskBand = (activeIdx) => {
+  const pill = ([l, n], i) => `<button class="wb-pill${i === activeIdx ? ' on' : ''}" role="tab" data-wave="${i}"><span class="lb">${l}</span><span class="n">${n}</span></button>`
+  return `
+<div class="wave-band">
+  <div class="wb-pills" role="tablist">
+    <button class="wb-pill wb-scratch" role="tab"><svg width="16" height="16"></svg><span class="lb">Notițe</span><span class="n">3</span></button>
+    <span class="wb-sep"></span>
+    ${PILLS.map(pill).join('')}
+    <button class="wb-pill wb-add"><svg width="16" height="16"></svg></button>
+    <button class="wb-mode"><span>Nepasate</span><span class="x"><svg width="12" height="12"></svg></span></button>
+  </div>
+  <span class="wb-more-wrap"><button class="wb-more"><svg width="18" height="18"></svg></button></span>
+  <div class="wb-measure"><div class="wb-measure-row">
+    <span class="wb-measure-fixed">
+      <button class="wb-pill wb-scratch" role="tab"><svg width="16" height="16"></svg><span class="lb">Notițe</span><span class="n">3</span></button>
+      <span class="wb-sep"></span>
+      <button class="wb-pill wb-add"><svg width="16" height="16"></svg></button>
+      <button class="wb-mode"><span>Nepasate</span><span class="x"><svg width="12" height="12"></svg></span></button>
+    </span>
+    ${PILLS.map((p, i) => pill(p, i).replace('data-wave', 'data-mwave')).join('')}
+    <button class="wb-pill wb-over"><span class="lb">Încă ${PILLS.length}</span><svg width="14" height="14"></svg></button>
+  </div></div>
+</div>`
+}
+for (const [width, activeIdx] of [[465, 1], [1100, 1], [465, PILLS.length - 1]]) {
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } })
-  await page.setContent(`<style>${CSS}</style><div style="width:760px"><div class="panel">${waveBand()}</div></div>`)
-  const m = await page.evaluate(() => {
-    const band = document.querySelector('.wave-band').getBoundingClientRect()
-    const items = [...document.querySelectorAll('.wb-pills > *')].map((e) => e.getBoundingClientRect())
-    const more = document.querySelector('.wb-more').getBoundingClientRect()
-    return {
-      rows: new Set(items.map((r) => Math.round(r.top))).size,
-      inside: items.every((r) => r.left >= band.left - 0.5 && r.right <= band.right + 0.5),
-      overflow: Math.round(document.querySelector('.wb-pills').scrollWidth - document.querySelector('.wb-pills').clientWidth),
-      moreIn: more.right <= band.right + 0.5,
+  await page.setContent(`<style>${CSS}</style><div style="width:${width}px"><div class="panel">${deskBand(activeIdx)}</div></div>`)
+  await page.addScriptTag({ content: fitBundle.text })
+  const m = await page.evaluate((activeIdx) => {
+    // Același calcul ca `fitRef` din `WaveTabs.tsx`.
+    const row = document.querySelector('.wb-pills')
+    const cs = getComputedStyle(row)
+    const gap = parseFloat(cs.columnGap) || 0
+    const inner = row.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)
+    const outer = (el) => { const c = getComputedStyle(el); return el.getBoundingClientRect().width + parseFloat(c.marginLeft) + parseFloat(c.marginRight) }
+    let fixed = 0
+    for (const el of document.querySelectorAll('.wb-measure-fixed > *')) fixed += outer(el) + gap
+    const widths = [...document.querySelectorAll('[data-mwave]')].map((e) => outer(e) + gap)
+    const overW = outer(document.querySelector('.wb-measure .wb-over')) + gap
+    const fit = window.waveBar.fitPills(widths, inner + gap - fixed + 0.5, activeIdx, overW)
+    const pills = [...row.querySelectorAll('[data-wave]')]
+    pills.forEach((p, i) => { if (!fit.shown.includes(i)) p.remove() })
+    if (fit.overflow.length) {
+      const last = row.querySelectorAll('[data-wave]')
+      last[last.length - 1].insertAdjacentHTML('afterend',
+        `<span class="wb-over-wrap"><button class="wb-pill wb-over"><span class="lb">Încă ${fit.overflow.length}</span><svg width="14" height="14"></svg></button></span>`)
     }
-  })
+    const band = document.querySelector('.wave-band').getBoundingClientRect()
+    const items = [...row.children].map((e) => e.getBoundingClientRect())
+    const rb = row.getBoundingClientRect()
+    return {
+      shown: fit.shown.length, over: fit.overflow.length,
+      activeShown: fit.shown.includes(activeIdx),
+      // Cât a cedat activul față de lățimea lui firească (0 = întreg).
+      squeezed: Math.round(document.querySelector(`[data-mwave="${activeIdx}"]`).getBoundingClientRect().width - row.querySelector('.wb-pill.on[data-wave]').getBoundingClientRect().width),
+      rows: new Set(items.map((r) => Math.round(r.top + r.height / 2))).size,
+      bandH: Math.round(band.height),
+      inside: items.every((r) => r.left >= rb.left - 0.5 && r.right <= rb.right + 0.5),
+      overflow: Math.round(row.scrollWidth - row.clientWidth),
+      doc: document.documentElement.scrollWidth,
+    }
+  }, activeIdx)
   await page.close()
-  check('coloana docată (760px): banda se rupe pe rânduri', m.rows >= 2, `${m.rows} rânduri`)
-  check('coloana docată (760px): nicio pastilă în afara benzii', m.inside && m.overflow <= 0 && m.moreIn, `overflow=${m.overflow}px`)
+  const tag = `${width}px, activ #${activeIdx}`
+  check(`desktop (${tag}): banda pe un singur rând`, m.rows === 1 && m.bandH <= 52, `${m.rows} rând(uri), ${m.bandH}px, ${m.shown} pe rând + ${m.over} în „Încă"`)
+  check(`desktop (${tag}): nimic tăiat sau în afara benzii`, m.inside && m.overflow <= 0 && m.doc <= 1280, `overflow=${m.overflow}px`)
+  check(`desktop (${tag}): valul activ pe rând`, m.activeShown, m.activeShown ? `vizibil, cedat ${m.squeezed}px` : 'ÎN MENIU')
+  if (m.shown > 1) check(`desktop (${tag}): activul întreg când încape`, m.squeezed <= 0, `cedat ${m.squeezed}px`)
 }
 
 /**

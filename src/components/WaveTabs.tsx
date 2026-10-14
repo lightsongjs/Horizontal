@@ -1,10 +1,10 @@
-import { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { useCanWrite, useLongPress, useMediaQuery, shouldIgnoreKey } from '../hooks'
 import {
-  deliveryWaves, openCounts, pillText, showWaveBand, stepWave, totalCounts, waveTitle, SCRATCH,
+  deliveryWaves, fitPills, openCounts, pillText, showWaveBand, stepWave, totalCounts, waveLabel, waveTitle, SCRATCH,
 } from '../lib/waveBar'
 import type { Wave } from '../lib/types'
 import { ChipPop } from './ChipPop'
@@ -39,7 +39,8 @@ export interface ViewModes {
  * Pastila arată ETICHETA valului și numărul de tichete DESCHISE; cifra romană
  * (numele) e în tooltip și în foaia „Valuri". Sub 900px banda derulează
  * orizontal (estompare la capătul spre care mai sunt valuri, valul activ adus
- * în cadru); peste, se rupe pe rânduri, ca toate valurile să fie la un click.
+ * în cadru); peste, e UN rând fix: ce nu încape intră în „Încă N ▾"
+ * (`fitPills`), iar valul activ rămâne mereu pe rând.
  *
  * Cu un singur val de livrare (sau niciunul) n-ai între ce comuta: banda nu
  * se randează, iar Notițele și „⋯" urcă în rândul de taburi (`TabsSlot`).
@@ -142,8 +143,15 @@ function Band({
   chips: ReactNode
   more: ReactNode
 }) {
+  const bandRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const measureRef = useRef<HTMLDivElement>(null)
   const [fade, setFade] = useState({ l: false, r: false })
+  // Laptop: ce pastile încap pe rând (indici în `delivery`). `null` = încă
+  // nemăsurat — primul cadru le pune pe toate, dar efectul de layout de mai
+  // jos rulează înainte de desenare, deci nu se vede.
+  const [fit, setFit] = useState<Fit | null>(null)
+  const activeIdx = delivery.findIndex((w) => w.number === activeWave)
 
   // Estomparea arată în ce parte mai sunt valuri — doar unde banda derulează.
   const measure = () => {
@@ -153,6 +161,49 @@ function Band({
     const r = el.scrollLeft + el.clientWidth < el.scrollWidth - 2
     setFade((f) => (f.l === l && f.r === r ? f : { l, r }))
   }
+
+  // Laptop: cât loc rămâne valurilor în rândul fix, din lățimile măsurate în
+  // stratul ascuns (fiecare pastilă exact cum s-ar randa: activul cu eticheta
+  // întreagă). Rândul are lățimea benzii, nu a conținutului (`flex: 1`,
+  // `overflow: hidden`), deci ce randăm după calcul nu-l schimbă — fără buclă.
+  const fitRef = useRef<() => void>(() => {})
+  fitRef.current = () => {
+    const row = scrollRef.current
+    const layer = measureRef.current
+    if (narrow || !row || !layer) return
+    const cs = getComputedStyle(row)
+    const gap = parseFloat(cs.columnGap) || 0
+    const inner = row.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0)
+    // Notițele, separatorul, „+" și jetoanele de mod stau mereu pe rând. Și ele
+    // se măsoară în strat, nu pe rând: acolo, strâmtorate, cedează (CSS), iar o
+    // lățime cedată ar fi lăsat loc unei pastile în plus — care le-ar fi strâns
+    // și mai tare.
+    let fixed = 0
+    for (const el of Array.from(layer.querySelectorAll<HTMLElement>('.wb-measure-fixed > *'))) {
+      fixed += outerWidth(el) + gap
+    }
+    const widths = (Array.from(layer.querySelectorAll<HTMLElement>('[data-mwave]')))
+      .map((el) => outerWidth(el) + gap)
+    const over = layer.querySelector<HTMLElement>('.wb-over')
+    const overW = (over ? outerWidth(over) : 0) + gap
+    // + gap: ultimul element n-are spațiu după el; + 0.5: rotunjiri subpixel.
+    const next = fitPills(widths, inner + gap - fixed + 0.5, activeIdx, overW)
+    setFit((f) => (f && sameFit(f, next) ? f : next))
+  }
+
+  // La fiecare randare (valuri, etichete, cifre, jetoane de mod): câteva
+  // măsurători, iar starea se schimbă doar dacă s-a schimbat împărțirea.
+  useLayoutEffect(() => fitRef.current())
+
+  // Lățimea coloanei (panoul lateral, fereastra) și a pastilelor însele
+  // (mărimea textului, fontul care sosește târziu).
+  useEffect(() => {
+    if (narrow || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => fitRef.current())
+    if (scrollRef.current) ro.observe(scrollRef.current)
+    if (measureRef.current) ro.observe(measureRef.current)
+    return () => ro.disconnect()
+  }, [narrow])
 
   // Valul activ adus în cadru, la deschidere și după fiecare schimbare. Prin
   // `scrollLeft`, nu `scrollIntoView`: acela ar fi derulat și pagina pe
@@ -193,8 +244,22 @@ function Band({
     tabs[j].click()
   }
 
+  const pill = (w: Wave) => (
+    <WavePill
+      key={w.number}
+      wave={w}
+      on={w.number === activeWave}
+      count={open.get(w.number) ?? 0}
+      total={total.get(w.number) ?? 0}
+      onClick={() => onChoose(w.number)}
+      onManage={canWrite ? () => onManage(w.number) : undefined}
+    />
+  )
+  const split = !narrow && fit && fit.shown.length + fit.overflow.length === delivery.length ? fit : null
+  const hidden = split ? split.overflow.map((i) => delivery[i]) : []
+
   return (
-    <div className="wave-band">
+    <div className="wave-band" ref={bandRef}>
       <div
         ref={scrollRef}
         className={`wb-pills${fade.l ? ' fade-l' : ''}${fade.r ? ' fade-r' : ''}`}
@@ -215,17 +280,22 @@ function Band({
             <span className="wb-sep" aria-hidden="true" />
           </>
         )}
-        {delivery.map((w) => (
-          <WavePill
-            key={w.number}
-            wave={w}
-            on={w.number === activeWave}
-            count={open.get(w.number) ?? 0}
-            total={total.get(w.number) ?? 0}
-            onClick={() => onChoose(w.number)}
-            onManage={canWrite ? () => onManage(w.number) : undefined}
+        {split ? split.shown.map((i) => pill(delivery[i])) : delivery.map(pill)}
+        {hidden.length > 0 && (
+          <OverflowPill
+            waves={hidden}
+            activeWave={activeWave}
+            open={open}
+            total={total}
+            frameRef={bandRef}
+            onChoose={(n) => {
+              onChoose(n)
+              // Valul ales urcă pe rând; focusul îl urmează acolo.
+              requestAnimationFrame(() =>
+                scrollRef.current?.querySelector<HTMLElement>(`[data-wave="${n}"]`)?.focus())
+            }}
           />
-        ))}
+        )}
         {canWrite && (
           <button
             type="button"
@@ -240,7 +310,118 @@ function Band({
         {chips}
       </div>
       {more}
+      {!narrow && (
+        // Stratul de măsură: fiecare pastilă de val cum s-ar randa, plus „Încă N"
+        // cu cel mai mare N. Invizibil, fără lățime (nu lățește pagina).
+        <div className="wb-measure" aria-hidden="true">
+          <div ref={measureRef} className="wb-measure-row">
+            <span className="wb-measure-fixed">
+              {scratch && (
+                <>
+                  <ScratchPill wave={scratch} count={open.get(SCRATCH) ?? 0} total={0} on={activeWave === SCRATCH} onClick={() => {}} />
+                  <span className="wb-sep" />
+                </>
+              )}
+              {canWrite && <button type="button" tabIndex={-1} className="wb-pill wb-add"><Icon name="add" size={16} /></button>}
+              {chips}
+            </span>
+            {delivery.map((w) => (
+              <button type="button" tabIndex={-1} key={w.number} data-mwave={w.number} className={`wb-pill${w.number === activeWave ? ' on' : ''}`}>
+                <span className="lb">{pillText(w, w.number === activeWave)}</span>
+                <span className="n">{open.get(w.number) ?? 0}</span>
+              </button>
+            ))}
+            <button type="button" tabIndex={-1} className="wb-pill wb-over">
+              <span className="lb">{overText(delivery.length)}</span>
+              <Icon name="dropdown" size={14} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
+  )
+}
+
+type Fit = { shown: number[]; overflow: number[] }
+
+/** Lățimea cu tot cu margini (separatorul are `margin: 0 2px`). */
+function outerWidth(el: HTMLElement): number {
+  const cs = getComputedStyle(el)
+  return el.getBoundingClientRect().width + (parseFloat(cs.marginLeft) || 0) + (parseFloat(cs.marginRight) || 0)
+}
+
+function sameFit(a: Fit, b: Fit): boolean {
+  return a.shown.join() === b.shown.join() && a.overflow.join() === b.overflow.join()
+}
+
+const overText = (n: number) => `Încă ${n}`
+
+/**
+ * „Încă N ▾": valurile care nu încap pe rândul de laptop. Un buton (nu un
+ * tab) cu meniu: ←/→ sau ↑/↓ mută, Enter alege, Esc întoarce focusul aici.
+ */
+function OverflowPill({ waves, activeWave, open, total, frameRef, onChoose }: {
+  waves: Wave[]
+  activeWave: number
+  open: Map<number, number>
+  total: Map<number, number>
+  frameRef: RefObject<HTMLElement | null>
+  onChoose(n: number): void
+}) {
+  const [shown, setShown] = useState(false)
+  const wrapRef = useRef<HTMLSpanElement>(null)
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const close = (returnFocus: boolean) => {
+    setShown(false)
+    if (returnFocus) btnRef.current?.focus()
+  }
+  return (
+    <span className="wb-over-wrap" ref={wrapRef}>
+      <button
+        ref={btnRef}
+        type="button"
+        className={`wb-pill wb-over${shown ? ' open' : ''}`}
+        aria-haspopup="menu"
+        aria-expanded={shown}
+        title={waves.map((w) => waveLabel(w)).join(' · ')}
+        onClick={() => setShown((o) => !o)}
+      >
+        <span className="lb">{overText(waves.length)}</span>
+        <Icon name="dropdown" size={14} />
+      </button>
+      {shown && (
+        <ChipPop
+          anchor={btnRef.current}
+          rowRef={wrapRef}
+          frameRef={frameRef}
+          sheet={false}
+          role="menu"
+          label="Alte valuri"
+          arrows="both"
+          className="wb-over-menu"
+          onClose={close}
+        >
+          {waves.map((w) => {
+            const on = w.number === activeWave
+            return (
+              <button
+                key={w.number}
+                type="button"
+                role="menuitemradio"
+                aria-checked={on}
+                className={`fc-mi${on ? ' on' : ''}`}
+                title={waveTitle(w, open.get(w.number) ?? 0, total.get(w.number) ?? 0)}
+                onClick={() => { close(false); onChoose(w.number) }}
+              >
+                <span className="fc-mi-t">{waveLabel(w)}</span>
+                <span className="fc-mi-r">{open.get(w.number) ?? 0}</span>
+                <span className="wb-over-ck">{on && <Icon name="check" size={14} />}</span>
+              </button>
+            )
+          })}
+        </ChipPop>
+      )}
+    </span>
   )
 }
 

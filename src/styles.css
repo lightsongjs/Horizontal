@@ -889,24 +889,52 @@ main {
 .tk-sub .due-chip { margin-left: auto; }
 
 /* BANDA DE VALURI („Listă" și „Cards", `WaveTabs.tsx`).
-   [Notițe N] [valurile: eticheta + nr. deschise] [+] [moduri ✕] … [⋯].
-   Laptop: se rupe pe rânduri, ca toate valurile să fie la un click. Sub 900px
+   [Notițe N] [valurile: eticheta + nr. deschise] [Încă N ▾] [+] [moduri ✕] … [⋯].
+   Laptop: UN rând fix; ce nu încape intră în „Încă N" (`fitPills`). Sub 900px
    derulează orizontal (mai jos), cu „⋯" fix la capăt. */
 .wave-band {
   display: flex;
   align-items: flex-start;
   gap: 8px;
   margin: -2px 0 14px;
+  /* Meniul „Încă N" se agață de bandă: rândul pastilelor taie ce iese din el. */
+  position: relative;
 }
 .wave-band.solo { justify-content: flex-end; }
 .wb-pills {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 6px;
   flex: 1;
   min-width: 0;
+  overflow: hidden;
+  /* Loc pentru inelul de focus (2px + 1px), pe care `overflow` l-ar tăia. */
+  padding: 4px;
+  margin: -4px;
 }
+/* Valul activ e pe rând chiar și când nu încape întreg (coloană foarte
+   îngustă): atunci el cedează, cu „…", nu rândul. Pe telefon derulează. */
+@media (min-width: 900px) {
+  /* Cedează întâi activul (pondere mare), abia apoi Notițele și modurile. */
+  .wb-pills > .wb-pill.on { flex-shrink: 1000; min-width: 56px; }
+  .wb-pills > .wb-pill.on .lb { min-width: 0; }
+  /* Cu text mărit nici Notițele și jetoanele de mod nu mai încap întregi. */
+  .wb-pills > .wb-scratch, .wb-pills > .wb-mode { flex-shrink: 1; min-width: 0; }
+  .wb-pills > .wb-scratch .lb, .wb-pills > .wb-mode > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .wb-pills > .wb-scratch > svg, .wb-pills > .wb-mode > .x { flex-shrink: 0; }
+}
+/* Pastila de preaplin: ca o pastilă, cu săgeată. */
+.wb-over-wrap { display: inline-flex; flex-shrink: 0; }
+.wb-over { gap: 4px; padding: 0 10px 0 12px; }
+.wb-over svg { color: var(--txt-faint); }
+.wb-over.open { background: var(--surface-3); color: var(--txt); }
+.fc-pop.fc-menu.wb-over-menu { width: 280px; max-width: 100%; max-height: min(420px, 60vh); overflow-y: auto; }
+.wb-over-menu .fc-mi-r { min-width: 0; text-align: right; }
+.wb-over-ck { width: 14px; display: inline-flex; flex-shrink: 0; }
+/* Stratul de măsură: pastilele cum s-ar randa, fără să ocupe loc. */
+.wb-measure { position: absolute; left: 0; top: 0; width: 0; height: 0; overflow: hidden; visibility: hidden; pointer-events: none; }
+.wb-measure-row, .wb-measure-fixed { display: flex; width: max-content; }
 .wb-pill {
   height: 34px;
   padding: 0 12px;
@@ -1049,6 +1077,7 @@ main {
   .wave-band { align-items: center; gap: 6px; margin-bottom: 8px; }
   .wb-pills {
     flex-wrap: nowrap;
+    overflow: visible;
     overflow-x: auto;
     overscroll-behavior-x: contain;
     scrollbar-width: none;
