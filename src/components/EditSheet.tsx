@@ -171,6 +171,7 @@ function EditBody({ issue }: { issue: Issue }) {
           <button
             type="button"
             className={`es-check ${issue.done ? 'on' : ''}`}
+            style={project?.accent ? ({ ['--pc' as string]: project.accent }) : undefined}
             role="checkbox"
             aria-checked={issue.done}
             aria-label={issue.done ? 'Marchează nefăcut' : 'Marchează gata'}
@@ -178,7 +179,9 @@ function EditBody({ issue }: { issue: Issue }) {
             onPointerDown={keepFocus}
             onClick={toggle}
           >
-            <Icon name={issue.done ? 'done' : 'notDone'} size={20} />
+            <span className={`ck${issue.done ? ' on' : ''}${d.urgent && !issue.done ? ' urg' : ''}`}>
+              {issue.done && <Icon name="check" size={13} />}
+            </span>
           </button>
           <EditTitle
             date={date}

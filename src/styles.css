@@ -1266,7 +1266,7 @@ main {
 /* Căsuța: 18px desenați, 44px de atins (pseudo-elementul). */
 .md-task {
   position: relative; flex: none; width: 18px; height: 18px; margin-top: 0.22em;
-  border: 0; padding: 0; border-radius: var(--r-s); cursor: pointer;
+  border: 0; padding: 0; border-radius: 50%; cursor: pointer;
   background: transparent; box-shadow: inset 0 0 0 1.5px var(--txt-faint);
   color: var(--bg); display: inline-grid; place-items: center;
   transition: background 120ms, box-shadow 120ms;
@@ -4905,8 +4905,7 @@ body:has(.kb-sheet) .toast {
 .due-reminder { margin-top: 2px; }
 .if-meta-pill.reminder-pill {
   padding: 2px 8px;
-  font-size: calc(11px * var(--text-scale));
-  font-family: var(--mono);
+  font-size: calc(12px * var(--text-scale));
 }
 .due-hint {
   font-size: calc(11px * var(--text-scale));
@@ -5065,7 +5064,7 @@ body:has(.kb-sheet) .toast {
   color: var(--txt-dim);
   font-variant-numeric: tabular-nums;
 }
-.t-time.missed { color: var(--blocked); }
+.t-time.missed { color: var(--blocked); font-family: var(--display); }
 .task-row .list-title { flex: 1; min-width: 0; }
 .t-tail { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
 .t-urgent { display: inline-flex; color: var(--active); }
@@ -5377,7 +5376,7 @@ body:has(.kb-sheet) .toast {
 /* Rândul de controale. Trimite și iconițele NU se micșorează; jetonul de
    dată și numele proiectului da, tăiate cu „…" — la 320px rândul încape
    întreg (verificat de `npm run test:layout`). */
-.qs-bar { display: flex; align-items: center; gap: 6px; margin-top: 12px; }
+.qs-bar { display: flex; align-items: center; gap: 5px; margin-top: 12px; }
 .qs-due,
 .qs-ico,
 .qs-sel {
@@ -5389,8 +5388,8 @@ body:has(.kb-sheet) .toast {
   align-items: center;
 }
 .qs-due {
-  gap: 5px;
-  padding: 0 10px;
+  gap: 4px;
+  padding: 0 8px;
   flex: 0 1 auto;
   min-width: 34px;
   overflow: hidden;
@@ -5514,6 +5513,7 @@ body:has(.kb-sheet) .toast {
   color: var(--txt-faint);
 }
 .es-check.on { color: var(--done); }
+.es-check .ck { width: 22px; height: 22px; }
 .es-check:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 /* Titlul cu oglindă (`EditTitle`): textarea transparentă peste stratul care
    desenează data. Tiparul `.sh-title-wrap` din formular: `pre-wrap` și
@@ -5525,11 +5525,13 @@ body:has(.kb-sheet) .toast {
   pointer-events: none;
   color: transparent;
   overflow: hidden;
-  font-size: calc(17px * var(--text-scale));
+  font-size: calc(19px * var(--text-scale));
+  font-weight: 650;
+  letter-spacing: -0.01em;
   line-height: 28px;
   /* Textarea primește `letter-spacing: normal` din foaia browserului; oglinda
      ar moșteni-o pe a părintelui. */
-  letter-spacing: normal;
+  letter-spacing: -0.01em;
   word-spacing: normal;
   white-space: pre-wrap;
   overflow-wrap: break-word;
@@ -5563,7 +5565,9 @@ body:has(.kb-sheet) .toast {
   background: transparent;
   padding: 0;
   font: inherit;
-  font-size: calc(17px * var(--text-scale));
+  font-size: calc(19px * var(--text-scale));
+  font-weight: 650;
+  letter-spacing: -0.01em;
   line-height: 28px;
   color: var(--txt);
 }

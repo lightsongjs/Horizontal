@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useHorizontal } from '../store'
 import { useCanWriteIn } from '../hooks'
-import { hasTime, toShortDate, toTimeInput } from '../lib/schedule'
+import { hasTime, toDayMonth, toTimeInput } from '../lib/schedule'
 import {
   LONG_PRESS_MS, crossedFull, dragOffset, inEdge, lockAxis, movedBeyondTap, release, restOffset,
   type Axis, type Rest,
@@ -128,7 +128,7 @@ const TaskRowView = memo(function TaskRowView({ issue, onOpen, late = false, doc
         {/* O restanță își spune ziua ratată; altfel ora, dacă are una. Fără
             oră nu se scrie nimic — absența e cazul obișnuit. */}
         {late && issue.dueAt
-          ? <span className="t-time missed">{toShortDate(issue.dueAt)}</span>
+          ? <span className="t-time missed">{toDayMonth(issue.dueAt)}</span>
           : timed && <span className="t-time">{toTimeInput(issue.dueAt!)}</span>}
         {issue.remindAt && <Bell />}
         <Recur rrule={issue.rrule} />
