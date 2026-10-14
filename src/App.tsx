@@ -1407,7 +1407,11 @@ function Shell() {
         duration={undoEntry ? 5000 : undefined}
       />
       <SheetHost />
-      {showSearch && <QuickSearch onClose={() => setShowSearch(false)} onOpen={openTaskAnywhere} />}
+      {showSearch && <QuickSearch
+        onClose={() => setShowSearch(false)}
+        onOpen={openTaskAnywhere}
+        context={smartList ? { kind: smartList } : project && !offProject ? { kind: 'project', projectId: project.id } : null}
+      />}
       {showInfo && <InfoPanel onClose={() => setShowInfo(false)} />}
     </div>
   )

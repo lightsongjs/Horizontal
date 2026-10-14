@@ -9,6 +9,7 @@ interface Props {
   onClose: () => void
   /** Deschide un tichet din orice proiect (`openTaskAnywhere`). */
   onOpen: (id: string) => void
+  context?: SearchContext
 }
 
 /** Ce se caută: deschisele din toate proiectele, iar cu „și închise" și cele
@@ -80,20 +81,31 @@ function matchesId(query: string, id: string): boolean {
  * BEFORE the results are capped to `limit`, so an id match is never pushed
  * out by title matches that happen to sort earlier.
  */
-export function rankIssues(query: string, issues: Issue[], limit = 10): Issue[] {
-  if (!query) return issues.slice(0, limit)
+export function rankIssues(query: string, issues: Issue[], limit = 10, priority: string[] = []): Issue[] {
+  // Ce e pe ecranul de unde s-a deschis căutarea vine primul, în ordinea
+  // listei; restul după. Căutarea rămâne în toate — contextul doar ordonează.
+  const rank = new Map(priority.map((id, i) => [id, i]))
+  const ctx: Issue[] = []
+  const rest: Issue[] = []
+  for (const i of issues) (rank.has(i.id) ? ctx : rest).push(i)
+  ctx.sort((a, b) => rank.get(a.id)! - rank.get(b.id)!)
+  if (!query) return [...ctx, ...rest].slice(0, limit)
 
-  const idMatches: Issue[] = []
-  const titleMatches: Issue[] = []
-  for (const issue of issues) {
-    if (matchesId(query, issue.id)) {
-      idMatches.push(issue)
-    } else if (fuzzy(query, issue.title)) {
-      titleMatches.push(issue)
+  const tiers: Issue[][] = [[], [], [], []]
+  for (const [base, list] of [[0, ctx], [2, rest]] as const) {
+    for (const issue of list) {
+      if (matchesId(query, issue.id)) tiers[base].push(issue)
+      else if (fuzzy(query, issue.title)) tiers[base + 1].push(issue)
     }
   }
-  return [...idMatches, ...titleMatches].slice(0, limit)
+  return tiers.flat().slice(0, limit)
 }
+
+/** De unde s-a deschis căutarea — decide doar ordinea rezultatelor. */
+export type SearchContext =
+  | { kind: 'today' | 'tomorrow' | 'week' }
+  | { kind: 'project'; projectId: string }
+  | null
 
 function highlight(query: string, text: string): React.ReactNode {
   if (!query) return text
@@ -113,8 +125,8 @@ function highlight(query: string, text: string): React.ReactNode {
   return result
 }
 
-export function QuickSearch({ onClose, onOpen }: Props) {
-  const { openIssues, issues: projectIssues, projects } = useHorizontal()
+export function QuickSearch({ onClose, onOpen, context = null }: Props) {
+  const { openIssues, issues: projectIssues, projects, smartLists } = useHorizontal()
   const [query, setQuery] = useState('')
   // Bifa „și închise" e o căutare rară: închisele se cer abia la bifare, din
   // toate proiectele (nu sunt în store), și se țin cât e deschisă căutarea.
@@ -139,7 +151,16 @@ export function QuickSearch({ onClose, onOpen }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const itemsRef = useRef<HTMLDivElement>(null)
 
-  const filtered = rankIssues(query, issues, 30)
+  // „7 zile" începe de mâine: azi are lista lui.
+  const priority = useMemo(() => {
+    const list = !context ? []
+      : context.kind === 'today' ? [...smartLists.overdue, ...smartLists.today]
+      : context.kind === 'tomorrow' ? smartLists.tomorrow
+      : context.kind === 'week' ? smartLists.week.filter((d) => d.offset >= 1).flatMap((d) => d.issues)
+      : context.kind === 'project' ? issues.filter((i) => i.projectId === context.projectId) : []
+    return list.map((i) => i.id)
+  }, [context, smartLists, issues])
+  const filtered = rankIssues(query, issues, 30, priority)
 
   useEffect(() => { setSelected(0) }, [query])
 

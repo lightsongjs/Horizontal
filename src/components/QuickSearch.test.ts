@@ -145,3 +145,13 @@ describe('searchPool', () => {
     expect(searchPool([open], [closed], [closed]).map((i) => i.id)).toEqual(['H-01', 'H-02'])
   })
 })
+
+describe('rankIssues cu context', () => {
+  const pool = [makeIssue('H-01', 'alfa'), makeIssue('H-02', 'alfa beta'), makeIssue('H-03', 'gama')]
+  it('fără text: întâi lista de pe ecran, în ordinea ei', () => {
+    expect(rankIssues('', pool, 10, ['H-03', 'H-02']).map((i) => i.id)).toEqual(['H-03', 'H-02', 'H-01'])
+  })
+  it('cu text: potrivirile din context înaintea celorlalte, dar caută în toate', () => {
+    expect(rankIssues('alfa', pool, 10, ['H-02']).map((i) => i.id)).toEqual(['H-02', 'H-01'])
+  })
+})
