@@ -105,4 +105,17 @@ class AgendaTest {
         assertEquals(parseIso("2026-10-06T09:00:00.000Z"), nextReveal(listOf(a, b, c, item("D", "2026-10-06T18:00:00.000Z")), now))
         assertEquals(null, nextReveal(listOf(c), now))
     }
+
+    @Test fun agendaNativăAratăDoarCeEAlMeu_inclusivRutinele() {
+        val json = """[
+          {"id":"R-1","title":"Vase","due_at":"2026-10-06T18:00:00+00:00","all_day":false,"remind_at":"2026-10-06T17:50:00+00:00","assignee_id":null,"created_by":"u-me","projects":{"name":"Rutine","reminders_only":true}},
+          {"id":"HZ-1","title":"Al lui","due_at":"2026-10-06T18:00:00+00:00","all_day":false,"assignee_id":null,"created_by":"u-other","projects":{"name":"Daily"}},
+          {"id":"HZ-2","title":"Pasat mie","due_at":"2026-10-06T18:00:00+00:00","all_day":false,"assignee_id":"a-me","created_by":"u-other","projects":{"name":"Daily"}}
+        ]"""
+        val me = Me("a-me", "u-me")
+        assertEquals(mapOf("R-1" to parseIso("2026-10-06T17:50:00.000Z"), "HZ-2" to null), parseAgenda(json, me).associate { it.id to it.hiddenUntil })
+        assertEquals(3, parseAgenda(json).size)
+        val q = agendaQuery(now, zone, me)
+        assertTrue(q, q.contains("assignee_id,created_by") && q.contains("&or=%28assignee_id.eq.a-me"))
+    }
 }

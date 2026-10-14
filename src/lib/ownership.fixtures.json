@@ -1,0 +1,12 @@
+[
+  { "name": "pasată mie", "me": { "assigneeId": "a-me", "userId": "u-me" }, "issue": { "assigneeId": "a-me", "createdBy": "u-other" }, "want": true },
+  { "name": "pasată mie, creată de mine", "me": { "assigneeId": "a-me", "userId": "u-me" }, "issue": { "assigneeId": "a-me", "createdBy": "u-me" }, "want": true },
+  { "name": "pasată altcuiva, deși creată de mine", "me": { "assigneeId": "a-me", "userId": "u-me" }, "issue": { "assigneeId": "a-other", "createdBy": "u-me" }, "want": false },
+  { "name": "nepasată, creată de mine", "me": { "assigneeId": "a-me", "userId": "u-me" }, "issue": { "assigneeId": null, "createdBy": "u-me" }, "want": true },
+  { "name": "nepasată, creată de altcineva", "me": { "assigneeId": "a-me", "userId": "u-me" }, "issue": { "assigneeId": null, "createdBy": "u-other" }, "want": false },
+  { "name": "nepasată, fără autor (unealtă / cheia de serviciu)", "me": { "assigneeId": "a-me", "userId": "u-me" }, "issue": { "assigneeId": null, "createdBy": null }, "want": true },
+  { "name": "rând fără câmpul createdBy = fără autor", "me": { "assigneeId": "a-me", "userId": "u-me" }, "issue": { "assigneeId": null }, "want": true },
+  { "name": "cont nelegat de un nume: totul e al meu", "me": { "assigneeId": null, "userId": "u-me" }, "issue": { "assigneeId": "a-other", "createdBy": "u-other" }, "want": true },
+  { "name": "fără sesiune: totul e al meu", "me": { "assigneeId": "a-me", "userId": null }, "issue": { "assigneeId": "a-other", "createdBy": "u-other" }, "want": true },
+  { "name": "fără nicio identitate: totul e al meu", "me": { "assigneeId": null, "userId": null }, "issue": { "assigneeId": null, "createdBy": "u-other" }, "want": true }
+]

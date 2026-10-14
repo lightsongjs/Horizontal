@@ -134,20 +134,21 @@ fun rowMeta(item: AgendaItem, overdue: Boolean, now: Long, zone: ZoneId): String
  * Fără limită inferioară: o restanță de luna trecută e tot restanță. Ordonat
  * crescător, deci plafonul taie din viitor, nu din restanțe.
  */
-fun agendaQuery(now: Long, zone: ZoneId): String {
+fun agendaQuery(now: Long, zone: ZoneId, me: Me = Me.UNKNOWN): String {
     val e = { s: String -> URLEncoder.encode(s, "UTF-8") }
     val end = localDate(now, zone).plusDays(AGENDA_DAYS.toLong()).atStartOfDay(zone).toInstant().toEpochMilli()
-    return "issues?select=id,title,due_at,all_day,remind_at,rrule,urgent,projects(name,reminders_only)" +
-        "&done=is.false&due_at=lt.${e(isoJs(end))}&order=due_at.asc&limit=$AGENDA_LIMIT"
+    return "issues?select=id,title,due_at,all_day,remind_at,rrule,urgent,assignee_id,created_by,projects(name,reminders_only)" +
+        "&done=is.false&due_at=lt.${e(isoJs(end))}" + mineFilter(me) + "&order=due_at.asc&limit=$AGENDA_LIMIT"
 }
 
-/** Un rând stricat e sărit, nu aruncă (ca `parseIssues`). `isNull` înainte de `optString`: vezi acolo. */
-fun parseAgenda(json: String): List<AgendaItem> {
+/** Un rând stricat e sărit, nu aruncă (ca `parseIssues`), la fel ce nu e al meu. `isNull` înainte de `optString`: vezi acolo. */
+fun parseAgenda(json: String, me: Me = Me.UNKNOWN): List<AgendaItem> {
     val a = JSONArray(json)
     fun JSONObject.str(k: String): String? = if (!has(k) || isNull(k)) null else optString(k)
     return (0 until a.length()).mapNotNull { i ->
         val o = a.optJSONObject(i) ?: return@mapNotNull null
         val id = o.str("id")?.ifEmpty { null } ?: return@mapNotNull null
+        if (!isMine(o.str("assignee_id"), o.str("created_by"), me)) return@mapNotNull null
         val due = parseIso(o.str("due_at")) ?: return@mapNotNull null
         val routine = o.optJSONObject("projects")?.optBoolean("reminders_only", false) == true
         AgendaItem(

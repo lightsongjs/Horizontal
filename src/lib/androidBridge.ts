@@ -14,6 +14,12 @@ export const ANDROID_API_REQUIRED = 1
 export const ANDROID_API_WIDGETS = 2
 /** API 3: fereastra nativă de quick add (`setCaptureData`). */
 export const ANDROID_API_CAPTURE = 3
+/**
+ * API 4: nicio metodă nouă — citirea nativă (`SyncWorker`) taie mementourile și
+ * agenda pe `isMine`, deci și pagina le poate tăia fără ca planul să clipească
+ * între „ale mele" și „toate". O cutie mai veche primește lista întreagă.
+ */
+export const ANDROID_API_MINE = 4
 
 /** Ce îi trebuie ferestrei de quick add: proiectele în care se poate scrie și oamenii. */
 export interface CaptureData {
