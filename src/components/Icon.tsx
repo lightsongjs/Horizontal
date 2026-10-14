@@ -72,6 +72,7 @@ import {
   House,
   Tag,
   FolderDown,
+  Layers,
 } from 'lucide-react'
 
 /**
@@ -185,6 +186,8 @@ const ICONS = {
   work: Briefcase,
   home: House,
   tag: Tag,
+  /** Valul (sprintul de livrare) — jetonul din rândul formularului. */
+  wave: Layers,
   // Bara de formatare a descrierii (telefon) — roluri, nu desene.
   mdTask: SquareCheck,
   mdList: List,

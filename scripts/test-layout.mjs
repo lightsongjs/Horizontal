@@ -262,108 +262,148 @@ for (const width of PHONE_WIDTHS) {
 }
 
 /**
- * Meta colapsată din `IssueForm.tsx`, pe telefon: rămân pe ecran doar
- * urgentul și scadența, iar scadența e UN câmp cu cinci controale care nu se
- * micșorează (două câmpuri de cifre, calendarul, ceasul, ștergerea). Cu
- * butoanele crescute la deget, rândul e cel mai aproape de a se rupe — și tot
- * aici se verifică ordinea: bara stă DEASUPRA rezumatului „Detalii", ceea ce
- * vine dintr-un `order: -1`, adică exact genul de regulă pe care o rescrie
- * din greșeală următoarea atingere a secțiunii.
+ * Rândul de jetoane din `IssueForm.tsx` (design/form-compact): între titlu și
+ * descriere, un singur rând cu NUMAI ce e setat. Cazul cel mai rău: totul
+ * setat, cu nume lungi. Rândul are voie să se rupă pe două rânduri, dar nimic
+ * nu iese din el — nici pe telefon, nici în panoul lateral de ~500px, nici cu
+ * textul mărit. Iar popoverul datei (foaie de jos pe telefon, ancorat în
+ * panou) nu iese din ecran, cu calendarul și ceasul încă atingibile.
  */
-const collapsedMeta = (open = false) => `
-<div class="sheet"><div class="sheet-scroll if-body">
-  <div class="sh-meta-section${open ? '' : ' meta-collapsed'}">
-    <div class="if-fast-zone">
-      <div class="if-bar if-bar-fast">
-        <button class="if-ctl icon ghost"><svg width="15" height="15"></svg></button>
-        <div class="due-inputs">
-          <input class="due-input due-input-date" value="17/09/2026">
-          <input class="due-native" type="date">
-          <button class="due-pick"><svg width="13" height="13"></svg></button>
-          <input class="due-input due-input-time" value="09:30">
-          <input class="due-native" type="time">
-          <button class="due-pick"><svg width="13" height="13"></svg></button>
-          <button class="due-clear">×</button>
-        </div>
-      </div>
-      <div class="if-bar-sub"></div>
-    </div>
-    <button class="meta-recap">
-      <span class="meta-recap-label">Detalii</span>
-      <span class="meta-recap-sep">·</span>
-      <span class="meta-recap-text">Val 1 · Alexandru</span>
-    </button>
-    <div class="meta-body">
-      <div class="if-bar">
-        <button class="if-ctl ghost"><span class="if-av nobody">+</span><span class="if-ctl-txt">Nimeni</span></button>
-        <div class="if-seg"><button class="on">I</button><button>II</button></div>
-        <div class="if-theme-wrap"><button class="if-ctl"><span class="if-ctl-txt">temă</span></button></div>
-      </div>
-    </div>
+const CHIP = (cls, inner) => `<button type="button" class="fc-chip ${cls}" data-chip="">${inner}</button>`
+const SVG = '<svg width="14" height="14"></svg>'
+const chipRow = (pop = '') => `
+<div class="fc-row" role="toolbar">
+  ${CHIP('due late', `${SVG}Mâine <span class="fc-t">17:00</span>`)}
+  ${CHIP('', `${SVG}−1 zi`)}
+  ${CHIP('', `${SVG}Lunea și joia`)}
+  ${CHIP('', `${SVG}Scratchpad`)}
+  ${CHIP('', '<span class="fc-dot" style="background:#7C3AED"></span><span class="fc-chip-t">Raportare lunară</span>')}
+  ${CHIP('who', '<span class="fc-av">AL</span><span class="fc-chip-t">Alexandru Popescu</span>')}
+  ${CHIP('urgent', `${SVG}Urgent`)}
+  ${CHIP('icon', '<svg width="16" height="16"></svg>')}
+  ${CHIP('icon', '<svg width="16" height="16"></svg>')}
+  ${pop}
+</div>`
+const datePop = (sheet) => `
+<div class="fc-pop ${sheet ? 'fc-sheet' : ''}" role="dialog" style="${sheet ? '' : 'left:0'}">
+  ${sheet ? '<div class="fc-grab"></div>' : ''}
+  <h4 class="fc-h">Ziua</h4>
+  <div class="fc-presets">
+    <button class="fc-pre on">Azi<small>mie 14</small></button>
+    <button class="fc-pre">Mâine<small>joi 15</small></button>
+    <button class="fc-pre">Luni<small>19 oct</small></button>
+    <button class="fc-pre">+1 săpt.<small>21 oct</small></button>
   </div>
-</div></div>`
+  <div class="fc-fields">
+    <div class="due-inputs">
+      <input class="due-input due-input-date" value="17/09/2026">
+      <input class="due-native" type="date">
+      <button class="due-pick"><svg width="13" height="13"></svg></button>
+      <input class="due-input due-input-time" value="09:30">
+      <input class="due-native" type="time">
+      <button class="due-pick"><svg width="13" height="13"></svg></button>
+    </div>
+    <button class="fc-link">scoate</button>
+  </div>
+  <h4 class="fc-h">Memento</h4>
+  <div class="fc-seg"><button class="on">la oră</button><button>−30m</button><button>−1 zi</button><button>fără</button></div>
+  <p class="fc-recur"><svg width="13" height="13"></svg><span>Se repetă: lunea și joia</span><span>·</span><button class="fc-link">scoate</button></p>
+</div>`
+const formHead = (pop = '') => `
+  <div class="sh-header">
+    <span class="sh-id">EX-01</span>
+    <button class="sh-close">x</button>
+    <span class="sh-break"></span>
+    <button class="sh-check"><span class="ck"></span></button>
+    <span class="sh-title-wrap"><textarea class="sh-title-input" rows="1">Adresă email proiect</textarea></span>
+    ${chipRow(pop)}
+    <button class="sh-save">^</button>
+  </div>
+  <div class="sheet-scroll if-body"><div class="form-cols"><div class="form-col form-col-desc">desc</div></div></div>`
 
-console.log('\nMeta colapsată (IssueForm, mobil) — urgentul și scadența:')
-for (const width of PHONE_WIDTHS) {
-  const page = await browser.newPage({ viewport: { width, height: 900 } })
-  await page.setContent(`<style>${CSS}</style>${collapsedMeta()}`)
-  const m = await page.evaluate(() => {
-    const bar = document.querySelector('.if-bar-fast')
-    const field = document.querySelector('.due-inputs')
-    const picks = [...document.querySelectorAll('.due-pick')]
-    const recap = document.querySelector('.meta-recap')
-    const body = document.querySelector('.meta-body')
-    const r = (el) => el.getBoundingClientRect()
-    return {
-      // Câmpul de scadență nu iese din bară, iar ce e în el nu iese din câmp.
-      barOverflow: Math.round(r(field).right - r(bar).right),
-      fieldOverflow: field.scrollWidth - Math.round(r(field).width),
-      pick: Math.round(Math.min(...picks.map((p) => Math.min(r(p).width, r(p).height)))),
-      aboveRecap: r(bar).top < r(recap).top,
-      // Scadența ia tot golul rămas pe rând, după urgent.
-      gapRight: Math.round(r(bar).right - r(field).right),
-      dateW: Math.round(document.querySelector('.due-input-date').getBoundingClientRect().width),
-      // Colaps = „Detalii" chiar e închis.
-      bodyHidden: getComputedStyle(body).display === 'none',
-    }
-  })
-  await page.close()
-
-  check(`scadența în bară @${width}px`, m.barOverflow <= 1, `${m.barOverflow}px peste bară`)
-  check(`câmp nestrivit @${width}px`, m.fieldOverflow <= 0, `${m.fieldOverflow}px peste câmp`)
-  check(`calendar/ceas atingibile @${width}px`, m.pick >= 32, `cel mai mic ${m.pick}px`)
-  check(`scadența umple rândul @${width}px`, Math.abs(m.gapRight) <= 1, `${m.gapRight}px gol la dreapta`)
-  check(`câmpul datei crește @${width}px`, m.dateW > 82, `${m.dateW}px (peste cei 82px de desktop)`)
-  check(`bara peste „Detalii" @${width}px`, m.aboveRecap, m.aboveRecap ? 'deasupra rezumatului' : 'SUB rezumat')
-  check(`„Detalii" chiar e închis @${width}px`, m.bodyHidden, m.bodyHidden ? 'corpul e ascuns' : 'corpul rămâne vizibil')
+/** Măsurătorile comune: nimic nu iese din rând; jetoanele rămân jetoane. */
+const measureRow = () => {
+  const row = document.querySelector('.fc-row')
+  const r = (el) => el.getBoundingClientRect()
+  const chips = [...row.querySelectorAll(':scope > .fc-chip')]
+  const out = chips.filter((c) => r(c).right > r(row).right + 1 || r(c).left < r(row).left - 1)
+  // Un jeton cu text tăiat la zero („…" fără literă) nu mai spune nimic.
+  const crushed = chips.filter((c) => r(c).width < 28)
+  return {
+    overflow: row.scrollWidth - row.clientWidth,
+    out: out.length,
+    crushed: crushed.length,
+    lowest: Math.round(Math.min(...chips.map((c) => r(c).height))),
+    docOverflow: document.documentElement.scrollWidth - innerWidth,
+    // Aliniat cu textul titlului, nu cu bifa.
+    alignGap: Math.round(r(chips[0]).left - r(document.querySelector('.sh-title-wrap')).left),
+  }
 }
 
-/**
- * Desfacerea „Detaliilor" arată DOAR ce se schimbă rar. Scadența și urgentul
- * stau în afara corpului, deci un click pe rezumat nu mai are cum să le mute:
- * structural, nu geometric — un check pe poziții ar trece și cu ele înăuntru,
- * atâta timp cât nimic nu se suprapune.
- */
-console.log('\n„Detalii" desfăcut (mobil) — ce intră sub capac:')
+console.log('\nRândul de jetoane al formularului (telefon, formularul complet):')
+for (const width of PHONE_WIDTHS) {
+  const page = await browser.newPage({ viewport: { width, height: 900 } })
+  await page.setContent(`<style>${CSS}</style><div class="sheet on tall" style="position:static;transform:none;width:100%">${formHead()}</div>`)
+  const m = await page.evaluate(measureRow)
+  await page.close()
+  check(`rândul nu iese din foaie @${width}px`, m.overflow <= 0 && m.out === 0 && m.docOverflow <= 0, `${m.overflow}px, ${m.out} jetoane afară, pagina +${m.docOverflow}px`)
+  check(`jetoane nestrivite @${width}px`, m.crushed === 0, `${m.crushed} sub 28px`)
+  check(`jetoane atingibile @${width}px`, m.lowest >= 30, `cel mai scund ${m.lowest}px`)
+  check(`aliniat cu titlul @${width}px`, Math.abs(m.alignGap) <= 1, `${m.alignGap}px față de titlu`)
+}
+
+console.log('\nRândul de jetoane în panoul lateral (~500px):')
 {
-  const page = await browser.newPage({ viewport: { width: 390, height: 900 } })
-  await page.setContent(`<style>${CSS}</style>${collapsedMeta(true)}`)
+  // 1280px fereastră, din care sidebar-ul ia ~240px: lista + panoul au ~1000px.
+  const page = await browser.newPage({ viewport: { width: 1280, height: 900 } })
+  await page.setContent(`<style>${CSS}</style><div class="split" style="height:900px;width:1000px"><div class="split-list"></div><aside class="split-pane">${formHead(datePop(false))}</aside></div>`)
   const m = await page.evaluate(() => {
-    const body = document.querySelector('.meta-body')
-    const fast = document.querySelector('.if-fast-zone')
+    const pane = document.querySelector('.split-pane')
+    const pop = document.querySelector('.fc-pop')
     const r = (el) => el.getBoundingClientRect()
     return {
-      hasDue: !!body.querySelector('.due-inputs'),
-      hasUrgent: !!body.querySelector('.if-ctl.icon'),
-      visible: getComputedStyle(body).display !== 'none',
-      fastStays: r(fast).height > 0 && r(fast).bottom <= r(body).top + 1,
+      paneW: Math.round(r(pane).width),
+      popOut: Math.round(r(pop).right - r(pane).right),
+      popOverflow: pop.scrollWidth - pop.clientWidth,
+      dueOut: Math.round(r(document.querySelector('.due-inputs')).right - r(pop).right),
+    }
+  })
+  const row = await page.evaluate(measureRow)
+  await page.close()
+  check('panoul are lățimea de panou', m.paneW >= 440 && m.paneW <= 620, `${m.paneW}px`)
+  check('rândul nu iese din panou', row.overflow <= 0 && row.out === 0, `${row.overflow}px, ${row.out} jetoane afară`)
+  check('jetoane nestrivite în panou', row.crushed === 0, `${row.crushed} sub 28px`)
+  check('aliniat cu titlul în panou', Math.abs(row.alignGap) <= 1, `${row.alignGap}px`)
+  check('popoverul datei încape în panou', m.popOut <= 0 && m.popOverflow <= 0, `${m.popOut}px peste panou, ${m.popOverflow}px în el`)
+  check('câmpul datei încape în popover', m.dueOut <= 0, `${m.dueOut}px peste`)
+}
+
+console.log('\nPopoverul datei ca foaie de jos (telefon):')
+for (const width of PHONE_WIDTHS) {
+  const page = await browser.newPage({ viewport: { width, height: 900 } })
+  await page.setContent(`<style>${CSS}</style><div class="sheet on tall" style="position:static;transform:none;width:100%">${formHead()}</div>${datePop(true)}`)
+  const m = await page.evaluate(() => {
+    const pop = document.querySelector('.fc-sheet')
+    const field = document.querySelector('.fc-sheet .due-inputs')
+    const picks = [...document.querySelectorAll('.fc-sheet .due-pick')]
+    const pres = [...document.querySelectorAll('.fc-sheet .fc-pre')]
+    const r = (el) => el.getBoundingClientRect()
+    return {
+      popW: Math.round(r(pop).width),
+      popOverflow: pop.scrollWidth - pop.clientWidth,
+      fieldOut: Math.round(r(field).right - r(pop).right),
+      fieldOverflow: field.scrollWidth - Math.round(r(field).width),
+      pick: Math.round(Math.min(...picks.map((p) => Math.min(r(p).width, r(p).height)))),
+      preWrapped: pres.some((p) => p.scrollWidth > p.clientWidth + 1),
+      docOverflow: document.documentElement.scrollWidth - innerWidth,
     }
   })
   await page.close()
-  check('corpul apare', m.visible, m.visible ? 'vizibil' : 'ASCUNS')
-  check('scadența nu intră sub capac', !m.hasDue, m.hasDue ? 'e ÎN corp' : 'rămâne afară')
-  check('urgentul nu intră sub capac', !m.hasUrgent, m.hasUrgent ? 'e ÎN corp' : 'rămâne afară')
-  check('rândul rapid rămâne sus', m.fastStays, m.fastStays ? 'deasupra corpului' : 'mutat')
+  check(`foaia pe toată lățimea @${width}px`, m.popW === width && m.docOverflow <= 0, `${m.popW}px, pagina +${m.docOverflow}px`)
+  check(`nimic nu iese din foaie @${width}px`, m.popOverflow <= 0 && m.fieldOut <= 0, `${m.popOverflow}px / câmp +${m.fieldOut}px`)
+  check(`câmp nestrivit @${width}px`, m.fieldOverflow <= 0, `${m.fieldOverflow}px peste câmp`)
+  check(`calendar/ceas atingibile @${width}px`, m.pick >= 32, `cel mai mic ${m.pick}px`)
+  check(`presetările întregi @${width}px`, !m.preWrapped, m.preWrapped ? 'o presetare iese din casetă' : 'toate încap')
 }
 
 /**

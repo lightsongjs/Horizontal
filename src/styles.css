@@ -3232,9 +3232,6 @@ main {
     overflow: hidden;
     padding-bottom: 0;
   }
-  .if-body > .sh-meta-section {
-    flex-shrink: 0;
-  }
   .form-cols {
     display: grid;
     grid-template-columns: 55% 45%;
@@ -3612,209 +3609,277 @@ main {
 .sh-title-wrap.on-date .sh-title-input { cursor: pointer; }
 .sh-title-input::placeholder { color: var(--txt-faint); }
 
-/* ── META SECTION (theme/val/assignee) ──────────── */
-.sh-meta-section {
-  margin: 0 -18px 14px;
-}
-/* Pe desktop bara e un bloc rotunjit în gutter, nu o bandă până la marginea
-   foii — acolo colțurile ei cădeau pe muchie și se citeau drepte. */
-@media (min-width: 900px) {
-  .sh-meta-section { margin: 12px 0 0; }
-}
-/* Rezumatul colapsat — ascuns implicit; pe mobil (regulile din secțiunea
-   responsive) e singurul lucru vizibil cât timp .meta-collapsed e activ, ca
-   Descrierea să nu mai stea sub 5 rânduri de meta stivuită. */
-.meta-recap {
-  display: none;
-  width: 100%;
+/* ── RÂNDUL DE JETOANE al formularului (design/form-compact) ─────────────
+   Un singur rând între titlu și descriere, cu NUMAI ce e setat. Trăiește în
+   antet (`.sh-header`), sub titlu, aliniat cu textul titlului — nu cu bifa —
+   și nu se derulează: popoverele lui coboară peste corp fără să fie tăiate de
+   `overflow` al corpului. Un singur fel de jeton: 30px, `--r-s`, fundal
+   `--surface-3`, fără chenar. Accentul apare doar pe jetonul deschis. */
+.sh-header > .fc-row { order: 11; flex-basis: 100%; }
+/* Bifa (28px) + golul (6px) − marja ei (−2px): textul titlului începe acolo. */
+.sh-header:has(> .sh-check) > .fc-row { padding-left: 32px; }
+.fc-row {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
-  padding: 12px 18px;
-  background: var(--surface-2);
-  border: none;
-  text-align: left;
-  font-family: inherit;
-  cursor: pointer;
-}
-/* Statică — un rezumat scurt (un singur val, fără temă/assignee/scadență) nu
-   citește singur ca rând cu care poți interacționa; eticheta îl ancorează. */
-.meta-recap-label {
-  flex-shrink: 0;
-  font-size: calc(10px * var(--text-scale));
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--txt-faint);
-}
-.meta-recap-sep {
-  flex-shrink: 0;
-  color: var(--txt-faint);
-}
-.meta-recap-text {
-  flex: 1;
   min-width: 0;
-  font-size: calc(13px * var(--text-scale));
-  font-weight: 500;
-  color: var(--txt);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  padding: 6px 0 4px;
 }
-/* ── BARA DE META a formularului ──────────────────────────────────────
-   Un singur rând de comenzi deasupra descrierii: cine · val · urgent ·
-   scadență … temă. Fără etichete — forma spune rolul (avatar, cifră
-   romană, fulger, cifre de dată) — și fără separatoare verticale: bara
-   ÎNSĂȘI e gruparea, printr-un salt de fundal. Etichetele mono de dinainte
-   costau un rând întreg pentru patru cuvinte pe care nimeni nu le citea a
-   doua oară. */
-.if-bar {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  flex-wrap: wrap;
-  /* „Senin": un rând de jetoane, nu o cutie cu jetoane în ea. */
-  padding: 0;
-  gap: 5px;
-}
-
-/* Jetonul de control. Fără chenar: saltul e de fundal (surface-3 peste
-   surface), ca peste tot. Varianta `ghost` e pentru gol — punctat, adică
-   „adaugă aici", nu o casetă plină cu cuvântul „Fără". */
-.if-ctl {
+.fc-chip {
+  height: 30px;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  height: 32px;
+  gap: 6px;
+  max-width: 100%;
+  min-width: 0;
   padding: 0 10px;
   border: 0;
   border-radius: var(--r-s);
   background: var(--surface-3);
   color: var(--txt);
+  font-family: var(--display);
   font-size: calc(13.5px * var(--text-scale));
-  cursor: pointer;
+  font-weight: 550;
   white-space: nowrap;
-  max-width: 190px;
+  cursor: pointer;
   transition: background 0.13s, color 0.13s;
 }
-.if-ctl:hover { background: var(--line); }
-.if-ctl .if-ctl-txt { overflow: hidden; text-overflow: ellipsis; }
-.if-ctl.ghost { background: var(--surface-3); color: var(--txt-faint); box-shadow: none; }
-.if-ctl.ghost.dashed { box-shadow: none; border: 1px dashed var(--line); }
-.if-ctl.ghost:hover { color: var(--txt); }
-.if-ctl.icon { width: 32px; padding: 0; justify-content: center; }
-/* Urgent aprins: roșul de blocaj, nu accentul — accentul înseamnă „selectat",
-   iar aici informația nu e că l-ai atins, ci că tichetul arde. */
-.if-ctl.urgent-on { background: var(--blocked-soft); color: var(--blocked); }
-.if-ctl.urgent-on:hover { background: var(--blocked-soft); }
-.if-chev { color: var(--txt-faint); flex-shrink: 0; }
-.if-av {
+.fc-chip svg { color: var(--txt-dim); flex-shrink: 0; }
+.fc-chip:hover:not(:disabled) { background: var(--line); }
+.fc-chip:disabled { cursor: default; }
+.fc-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Cifrele sunt mono (regula 2). */
+.fc-t { font-family: var(--mono); font-size: calc(13px * var(--text-scale)); font-weight: 500; }
+.fc-chip-t { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.fc-chip.due svg { color: var(--accent); }
+/* Fantoma „Dată": un rând fără nimic setat tot are unde pune ziua. Fără
+   fundal ȘI fără chenar ar fi invizibilă — textul stins + iconița o țin. */
+.fc-chip.ghost { background: transparent; color: var(--txt-faint); padding: 0 8px; }
+.fc-chip.ghost svg { color: var(--txt-faint); }
+.fc-chip.ghost:hover:not(:disabled) { background: var(--surface-3); color: var(--txt); }
+.fc-chip.late, .fc-chip.urgent { background: var(--blocked-soft); color: var(--blocked); }
+.fc-chip.late svg, .fc-chip.urgent svg { color: var(--blocked); }
+.fc-chip.warn { color: var(--active); }
+/* Data venită din titlu: inelul evidențierii, ca `.qs-due.pending`. */
+.fc-chip.pending { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--accent) 55%, transparent); }
+.fc-chip.icon { width: 30px; padding: 0; justify-content: center; background: transparent; }
+.fc-chip.icon svg { color: var(--txt-faint); }
+.fc-chip.icon:hover:not(:disabled) { background: var(--surface-3); }
+.fc-chip.open, .fc-chip.open:hover:not(:disabled) { background: var(--accent-soft); color: var(--accent); }
+.fc-chip.open svg { color: var(--accent); }
+.fc-chip.who { padding: 0 9px 0 5px; }
+.fc-av {
   width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
+  display: inline-flex; align-items: center; justify-content: center;
   background: var(--accent-soft); color: var(--accent);
-  font-family: var(--mono); font-size: calc(9px * var(--text-scale)); font-weight: 700;
+  font-family: var(--mono); font-size: calc(10px * var(--text-scale)); font-weight: 650;
 }
-/* `.nobody`, nu `.empty`: `.empty` e clasa globală a stărilor goale de ecran
-   (`padding: 40px 0`), iar un jeton de 22px care o prinde devine o elipsă. */
-.if-av.nobody { background: transparent; color: var(--txt-faint); box-shadow: inset 0 0 0 1px var(--line); }
-.if-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-
-/* Valul: segmentat. Activul se marchează cu text plin plus o linie de 2px,
-   nu cu o casetă umplută (regula 3 din sistemul vizual). */
-.if-seg {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  height: 32px;
-  padding: 0 2px;
-  background: var(--surface-3);
-  border-radius: var(--r-s);
+.fc-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.fc-from-title {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: calc(12px * var(--text-scale)); font-weight: 550;
+  color: var(--txt-dim);
 }
-.if-seg button {
-  position: relative;
-  min-width: 28px;
-  height: 26px;
-  padding: 0 8px;
-  border: 0;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--txt-faint);
-  font-family: var(--display);
-  font-size: calc(11px * var(--text-scale));
+.fc-from-title svg { color: var(--accent); }
+.fc-x {
+  width: 22px; height: 22px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--txt-faint); background: transparent;
+}
+.fc-x:hover { color: var(--blocked); background: var(--blocked-soft); }
+.fc-link {
+  font-size: calc(12px * var(--text-scale));
   font-weight: 600;
-  letter-spacing: 0.06em;
-  cursor: pointer;
-  max-width: 96px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  color: var(--txt-faint);
+  background: none;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
   white-space: nowrap;
+  cursor: pointer;
 }
-.if-seg button:hover { color: var(--txt); }
-.if-seg button.on { color: var(--accent); }
-.if-seg button.on::after {
-  content: "";
+.fc-link:hover { color: var(--accent); }
+.fc-hint { font-size: calc(12px * var(--text-scale)); color: var(--txt-faint); white-space: nowrap; }
+.fc-hint.warn { color: var(--active); font-weight: 600; }
+
+/* Popoverul: o suprafață cu umbră ambientală, fără chenar (regula 1). */
+.fc-pop {
   position: absolute;
-  left: 6px; right: 6px; bottom: 1px;
-  height: 2px; border-radius: 1px;
-  background: var(--accent);
+  top: calc(100% + 2px);
+  z-index: 30;
+  width: 360px;
+  max-width: 100%;
+  padding: 12px;
+  border-radius: var(--r-m);
+  background: var(--surface);
+  box-shadow: var(--amb-lg);
+  color: var(--txt);
+  text-align: left;
 }
-
-/* Meniul temei — aceeași listă ca la dependențe, ancorată sub jeton. */
-.if-theme-wrap { position: relative; }
-.if-theme-menu { top: 100%; left: 0; margin-top: 4px; min-width: 190px; }
-.if-theme-new { color: var(--txt-faint); }
-
-/* Rândul secundar: memento și avertismente. Ce ține de scadență, dar n-are
-   ce căuta între controale. */
-.if-bar-sub {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding: 7px 2px 0;
-}
-.if-sub-label {
-  font-family: var(--display);
+.fc-pop.fc-menu { width: 240px; padding: 6px; }
+.fc-pop-who { width: 300px; }
+.fc-h {
+  margin: 12px 2px 7px;
   font-size: calc(12px * var(--text-scale));
   font-weight: 650;
-  letter-spacing: 0;
   color: var(--txt-faint);
 }
-
-/* ── INLINE SEARCH ───────────────────────────────── */
-.inline-search-wrap {
-  margin-top: 7px;
-  animation: slideDownIn 0.15s ease;
-}
-@keyframes slideDownIn {
-  from { opacity: 0; transform: translateY(-4px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.inline-search-input {
-  width: 100%;
-  font-family: var(--font);
-  font-size: calc(15px * var(--text-scale));
-  color: var(--txt);
-  background: var(--card-hi);
-  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
-  border-radius: var(--r-m);
-  padding: 8px 11px;
-  outline: none;
-  -webkit-appearance: none;
-}
-.inline-search-input::placeholder { color: var(--txt-faint); }
-.inline-ok-btn {
-  margin-top: 5px;
-  font-family: var(--font);
-  font-size: calc(14px * var(--text-scale));
-  font-weight: 600;
-  padding: 5px 14px;
+.fc-h:first-child, .fc-sheet .fc-grab + .fc-h { margin-top: 2px; }
+.fc-presets { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.fc-pre {
+  height: 52px;
+  min-width: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  border: 0;
   border-radius: var(--r-s);
-  border: none;
-  background: var(--card-hi);
+  background: var(--surface-3);
+  color: var(--txt);
+  font-size: calc(13px * var(--text-scale));
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.fc-pre small {
+  font-family: var(--mono);
+  font-size: calc(11px * var(--text-scale));
+  font-weight: 500;
+  color: var(--txt-faint);
+}
+.fc-pre:hover { background: var(--line); }
+.fc-pre.on { background: var(--accent-soft); color: var(--accent); }
+.fc-pre.on small { color: var(--accent); }
+.fc-pre:focus-visible, .fc-seg button:focus-visible, .fc-mi:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.fc-fields { display: flex; align-items: center; gap: 8px; margin-top: 8px; min-width: 0; flex-wrap: wrap; }
+/* Cu textul mărit (peste „Normal"), patru presetări pe un rând de 320px nu
+   mai încap întregi — trec pe două coloane. */
+html[data-text-large] .fc-presets { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+html[data-text-large] .fc-fields > .due-inputs { flex-basis: 100%; }
+.fc-fields > .due-inputs { flex: 1 1 220px; min-width: 0; }
+.fc-fields > .due-inputs .due-input-date { flex: 1 1 auto; }
+.fc-note { margin: 7px 2px 0; font-size: calc(12px * var(--text-scale)); color: var(--txt-faint); }
+.fc-note.warn { color: var(--active); font-weight: 600; }
+.fc-seg { display: flex; flex-wrap: wrap; gap: 5px; }
+.fc-seg button {
+  height: 28px;
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--r-s);
+  background: var(--surface-3);
   color: var(--txt-dim);
+  font-size: calc(13px * var(--text-scale));
+  font-weight: 550;
   cursor: pointer;
 }
-.inline-ok-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.fc-seg button:hover { color: var(--txt); }
+.fc-seg button.on { background: var(--accent-soft); color: var(--accent); }
+.fc-recur {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+  margin: 12px 2px 0;
+  font-size: calc(13px * var(--text-scale));
+  color: var(--txt-dim);
+}
+.fc-recur svg { color: var(--txt-faint); }
+.fc-foot {
+  margin: 12px -12px -12px;
+  padding: 9px 14px;
+  border-radius: 0 0 var(--r-m) var(--r-m);
+  background: var(--surface-2);
+  font-size: calc(12px * var(--text-scale));
+  color: var(--txt-faint);
+}
+.fc-foot kbd {
+  font-family: var(--mono);
+  font-size: calc(11px * var(--text-scale));
+  padding: 1px 5px;
+  border-radius: var(--r-s);
+  background: var(--surface-3);
+}
+/* Rândurile unui meniu. */
+.fc-mi {
+  width: 100%;
+  height: 36px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--r-s);
+  background: transparent;
+  color: var(--txt);
+  font-size: calc(13.5px * var(--text-scale));
+  font-weight: 550;
+  text-align: left;
+  cursor: pointer;
+}
+.fc-mi svg { color: var(--txt-dim); flex-shrink: 0; }
+.fc-mi:hover, .fc-mi:focus-visible { background: var(--surface-3); }
+.fc-mi.on { color: var(--accent); }
+.fc-mi.on svg { color: var(--accent); }
+.fc-mi.dim { color: var(--txt-faint); }
+.fc-mi-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fc-mi-hint { font-size: calc(12px * var(--text-scale)); font-weight: 500; color: var(--txt-faint); }
+.fc-warn {
+  margin: 6px 4px 2px;
+  padding: 8px 6px 2px;
+  box-shadow: 0 -1px 0 var(--line-soft);
+  font-size: calc(12px * var(--text-scale));
+  line-height: 1.45;
+  color: var(--txt-dim);
+}
+.fc-new { display: flex; gap: 6px; padding: 6px 4px 4px; }
+/* Un câmp își păstrează chenarul (excepția din regula 1). */
+.fc-input {
+  flex: 1; min-width: 0;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-m);
+  background: var(--surface-2);
+  color: var(--txt);
+  font-family: var(--display);
+  font-size: calc(14px * var(--text-scale));
+  outline: none;
+}
+.fc-input:focus { border-color: var(--accent); }
+.fc-ok {
+  height: 34px; padding: 0 12px;
+  border: 0; border-radius: var(--r-s);
+  background: var(--accent); color: var(--on-accent);
+  font-size: calc(13px * var(--text-scale)); font-weight: 600;
+  cursor: pointer;
+}
+.fc-ok:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Telefon: popoverul devine foaie de jos, prin portal în `body` (`ChipPop`).
+   130/131 trec peste `.sheet`/`.sheet-bg` (41/40) și peste `.toast` (120), nu
+   peste confirmările blocante (200). `--kb`: deasupra tastaturii, unde e
+   măsurată (persoana are un câmp de căutare). */
+.fc-scrim { position: fixed; inset: 0; z-index: 130; background: rgba(0, 0, 0, 0.32); }
+.fc-pop.fc-sheet {
+  position: fixed;
+  top: auto;
+  left: 0;
+  right: 0;
+  bottom: var(--kb, 0px);
+  z-index: 131;
+  width: auto;
+  max-width: none;
+  max-height: 80dvh;
+  overflow-y: auto;
+  padding: 8px 16px calc(env(safe-area-inset-bottom, 0px) + 18px);
+  border-radius: var(--r) var(--r) 0 0;
+}
+.fc-sheet.fc-menu { padding: 8px 10px calc(env(safe-area-inset-bottom, 0px) + 14px); }
+.fc-sheet .fc-mi { height: 44px; font-size: calc(15px * var(--text-scale)); }
+.fc-sheet .fc-pre { height: 56px; }
+.fc-sheet .fc-seg button { height: 34px; padding: 0 12px; }
+.fc-grab { width: 36px; height: 4px; border-radius: 2px; background: var(--surface-3); margin: 0 auto 10px; }
+/* Ținta de deget: 30px vizibil, 44px activ — padding transparent pe verticală
+   n-ar încăpea pe rând, deci jetonul crește puțin pe ecranele tactile. */
+@media (pointer: coarse) {
+  .fc-chip { height: 34px; }
+  .fc-chip.icon { width: 36px; }
+}
 
 /* ── DEP TABS (Necesită / Permite) ──────────────── */
 .sh-dep-section { margin-top: 16px; }
@@ -4529,28 +4594,6 @@ main {
     display: none;
   }
 
-  /* ── Meta colapsată: rezumat pe un rând, Descrierea urcă imediat sub el.
-     `.meta-collapsed` vine din React (`metaOpen`); implicit colapsat pe mobil. */
-  .meta-recap {
-    display: flex;
-  }
-  /* Colapsat chiar înseamnă gol: rândul rapid (urgent + scadență) e acum un
-     frate al rezumatului, randat separat pe telefon — vezi `if-fast-zone` în
-     IssueForm.tsx. Deci „Detalii" ascunde fix ce promite, iar deschiderea lui
-     nu mai mișcă scadența din loc. */
-  .meta-collapsed .meta-body {
-    display: none;
-  }
-  /* Rândul rapid nu-și mai poartă fundalul: ar fi o casetă în jurul a două
-     jetoane, lipită de altă casetă (rezumatul). */
-  .if-fast-zone {
-    padding: 10px 18px 6px;
-  }
-  .if-bar-fast {
-    background: transparent;
-    padding: 0;
-  }
-
   /* ── Issue form body: single column, shorter description box ───────
      The 2-column grid already collapses below 900px, but the fixed 560px
      description height and its column separator are desktop-oriented. */
@@ -4962,27 +5005,6 @@ body:has(.kb-sheet) .toast {
 }
 .due-pick:hover:not(:disabled) { color: var(--accent); background: var(--accent-soft); }
 .due-pick:disabled { opacity: 0.4; cursor: not-allowed; }
-.due-hint.warn { color: var(--active); font-style: normal; font-weight: 600; }
-
-/* Scadența dedusă din titlu: jetonul spune de unde vine, iar cele două butoane
-   sunt ieșirile. O recunoaștere pe care n-o poți contrazice devine dușman la
-   primul „Întâlnire la Podul 5". */
-.due-from-title {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-.due-clean-title {
-  font-size: calc(11px * var(--text-scale));
-  font-weight: 600;
-  color: var(--txt-faint);
-  text-decoration: underline;
-  text-decoration-style: dotted;
-  text-underline-offset: 2px;
-  white-space: nowrap;
-}
-.due-clean-title:hover { color: var(--accent); }
 .due-input-time { flex: 0 0 46px; text-align: center; letter-spacing: 0.02em; }
 .due-input-time::placeholder { color: var(--txt-faint); font-weight: 500; letter-spacing: 0; }
 /* Fără dată, ora nu poate însemna nimic — inertă, nu ascunsă, ca rândul să nu
@@ -4999,68 +5021,6 @@ body:has(.kb-sheet) .toast {
 }
 [data-theme='light'] .due-input::-webkit-calendar-picker-indicator { filter: none; }
 .due-input::-webkit-calendar-picker-indicator:hover { opacity: 1; }
-.due-clear {
-  width: 20px; height: 20px;
-  border-radius: 50%;
-  color: var(--txt-faint);
-  font-size: calc(13px * var(--text-scale)); line-height: 1;
-  display: inline-flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-  background: transparent;
-}
-.due-clear:hover { color: var(--blocked); background: var(--blocked-soft); }
-.due-reminder { margin-top: 2px; }
-.if-meta-pill.reminder-pill {
-  padding: 0 10px;
-}
-.due-hint {
-  font-size: calc(11px * var(--text-scale));
-  color: var(--txt-faint);
-  white-space: nowrap;
-}
-.due-recur { margin-top: 2px; }
-/* Foaia de repetare personalizată. Fundal propriu peste fundalul paginii, cu
-   umbră ambientală — fără chenar, ca orice altă suprafață (regula 1).
-   Randată printr-un portal în `document.body` (RecurrencePicker.tsx), ca să
-   nu cadă sub `.sheet`, care are `transform` necondiționat — un ascendent
-   transformat ar deveni containing block pentru acest `position: fixed`.
-   130/131 trebuie să treacă peste `.sheet`/`.sheet-bg` (41/40) ȘI peste
-   `.toast` (120, cel mai mare din fișier înainte de asta) — foaia e un
-   dialog modal, nu o notificare care poate sta dedesubt. Nu trebuie să
-   treacă peste `.bulk-confirm-overlay`/`.ccm-overlay` (200): acelea sunt
-   confirmări blocante, iar cazul „amândouă deschise" nu se întâmplă azi. */
-.rp-back { position: fixed; inset: 0; z-index: 130; background: rgba(0, 0, 0, 0.32); }
-.rp {
-  position: fixed;
-  left: 50%;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
-  transform: translateX(-50%);
-  z-index: 131;
-  width: min(94vw, 420px);
-  padding: 14px;
-  border-radius: var(--r);
-  background: var(--surface);
-  box-shadow: var(--amb-lg);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.rp-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.rp-n {
-  width: 56px;
-  padding: 4px 8px;
-  border-radius: var(--r-m);
-  /* Chenarul rămâne: un câmp fără delimitare nu se mai citește ca un câmp
-     (excepția din regula 1). */
-  border: 1px solid var(--line);
-  background: var(--surface-2);
-  color: var(--txt);
-  font-family: var(--mono);
-  font-size: calc(13px * var(--text-scale));
-}
-.rp-day { min-width: 30px; justify-content: center; font-family: var(--mono); }
-.rp-acts { display: flex; justify-content: flex-end; gap: 8px; }
-
 /* ═══════════════════════════════════════════════════════════════════
    MOD TO-DO — liste inteligente (Azi / Mâine / Next 7 days)
    Gramatica de clase e cea din ListView (.list-row, .list-group), ca
@@ -6281,9 +6241,8 @@ body:has(.kb-sheet) .toast {
 .map-node { cursor: pointer; }
 
 /* ── TELEFON: scadența, la deget ──────────────────────────────────────
-   Blocul stă la COADA fișierului, nu în media query-ul de la `.meta-collapsed`
-   unde i-ar fi locul tematic: regulile de bază ale `.due-pick` vin mai jos în
-   fișier, cu aceeași specificitate, deci de acolo le-ar fi rescris ordinea.
+   Câmpul din popoverul datei. La COADA fișierului: regulile de bază ale
+   `.due-pick` vin mai sus, cu aceeași specificitate.
    Testat de `npm run test:layout` („calendar/ceas atingibile"). */
 @media (max-width: 899px) {
 
@@ -6296,18 +6255,6 @@ body:has(.kb-sheet) .toast {
     height: 38px;
     gap: 0;
     padding: 0 2px 0 4px;
-  }
-  /* Colapsat, în bară rămân doar urgentul și scadența — deci scadența ia tot
-     restul rândului. Cu lățime pe conținut, câmpul stătea pe jumătate de ecran
-     cu un gol lat lângă el, iar cifrele rămâneau o țintă îngustă exact acolo
-     unde se apasă cu degetul. */
-  .if-bar-fast > .due-inputs {
-    flex: 1;
-    min-width: 0;
-  }
-  .if-bar-fast > .if-ctl.icon {
-    width: 38px;
-    height: 38px;
   }
   .due-input {
     font-size: calc(14px * var(--text-scale));
@@ -6325,10 +6272,6 @@ body:has(.kb-sheet) .toast {
     width: 18px;
     height: 18px;
   }
-  .due-clear {
-    width: 30px;
-    height: 30px;
-  }
 }
 
 /* Proveniența, la coada foii: un fapt care se citește o dată nu are ce căuta
@@ -6339,15 +6282,6 @@ body:has(.kb-sheet) .toast {
   padding-top: 12px;
   font-size: calc(11.5px * var(--text-scale));
   opacity: 0.75;
-}
-
-/* Sub 360px (SE-ul vechi), scadența nu mai încape pe rând lângă urgent fără
-   să-i strivească cifrele — atunci trece pe rândul ei, întreagă. Un câmp de
-   dată pe jumătate de lățime e mai rău decât un rând în plus. */
-@media (max-width: 359px) {
-  .if-bar-fast > .due-inputs {
-    flex: 1 1 100%;
-  }
 }
 
 /* ── Bara de captură (aplicația de Linux, /quick-add) ─────────────────────
@@ -7087,9 +7021,4 @@ body:has(.qab) { overflow-y: auto; }
   .att-chip.file .att-open { padding: 0 9px; }
   .att-act { width: 30px; height: 30px; }
   .sh-close, .sh-save, .sh-delete { width: 30px; height: 30px; }
-  .if-bar { padding: 5px 6px; }
-  .if-ctl { height: 28px; font-size: calc(13px * var(--text-scale)); }
-  .if-ctl.icon { width: 28px; }
-  .if-seg { height: 28px; }
-  .if-seg button { height: 22px; }
 }

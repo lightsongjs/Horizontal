@@ -467,29 +467,77 @@ LISTA_STANGA = (
              lrow('TUR-09', 'Split datorii între participanți', 'var(--layer-2)'))
 )
 
+# ── Rândul de jetoane al formularului (IssueForm.tsx, design/form-compact) ──
+# Un singur rând sub titlu, cu NUMAI ce e setat; `.fc-pop` e popoverul unui
+# jeton (pe banc adus în flux, vezi `<style>`).
+def fchip(cls, inner, label=''):
+    return '<button type="button" class="fc-chip %s" aria-label="%s">%s</button>' % (cls, label, inner)
+
+
+def fc_row(extra=''):
+    return ('<div class="fc-row" role="toolbar" aria-label="Proprietățile tichetului">'
+            + fchip('due', ic('calendar-check', 14) + 'Azi <span class="fc-t">17:00</span>')
+            + fchip('', ic('bell', 14) + 'la oră')
+            + fchip('', ic('rotate-cw', 14) + 'Săptămânal')
+            + fchip('', ic('layers', 14) + 'Val I')
+            + fchip('who', '<span class="fc-av">IS</span><span class="fc-chip-t">Ionuț</span>')
+            + fchip('icon', ic('paperclip', 16), 'Atașează')
+            + fchip('icon', ic('plus', 16), 'Adaugă')
+            + extra + '</div>')
+
+
+FC_DATE_POP = (
+    '<div class="fc-pop" role="dialog" aria-label="Scadență">'
+    '<h4 class="fc-h">Ziua</h4><div class="fc-presets">'
+    '<button class="fc-pre on">Azi<small>mie 14</small></button>'
+    '<button class="fc-pre">Mâine<small>joi 15</small></button>'
+    '<button class="fc-pre">Luni<small>19 oct</small></button>'
+    '<button class="fc-pre">+1 săpt.<small>21 oct</small></button></div>'
+    '<div class="fc-fields"><div class="due-inputs">'
+    '<input class="due-input due-input-date" value="14/10/2026">'
+    '<button class="due-pick">' + ic('calendar-check', 13) + '</button>'
+    '<input class="due-input due-input-time" value="17:00">'
+    '<button class="due-pick">' + ic('clock', 13) + '</button></div>'
+    '<button class="fc-link">scoate</button></div>'
+    '<h4 class="fc-h">Memento</h4><div class="fc-seg">'
+    '<button class="on">' + ic('check', 12) + 'la oră</button><button>−30m</button>'
+    '<button>−1 zi</button><button>fără</button></div>'
+    '<p class="fc-recur">' + ic('rotate-cw', 13) + '<span>Se repetă: săptămânal</span>'
+    '<span>·</span><button class="fc-link">scoate</button></p>'
+    '<div class="fc-foot"><kbd>Esc</kbd> închide, înapoi pe jeton</div></div>'
+)
+
+FC_WAVE_MENU = (
+    '<div class="fc-pop fc-menu" role="menu" aria-label="Val">'
+    '<button class="fc-mi" role="menuitem"><span class="fc-mi-t">Scratchpad</span></button>'
+    '<button class="fc-mi" role="menuitem"><span class="fc-mi-t">I</span><span class="fc-mi-hint">activ</span></button>'
+    '<button class="fc-mi on" role="menuitem"><span class="fc-mi-t">II</span>' + ic('check', 14) + '</button>'
+    '<p class="fc-warn">„Schema tabelelor" este o dependență a „Pagină SignUp" (val 1). Nu poți muta tichetul.</p></div>'
+)
+
+FC_ADD_MENU = (
+    '<div class="fc-pop fc-menu" role="menu" aria-label="Adaugă">'
+    '<button class="fc-mi" role="menuitem">' + ic('tag', 15) + '<span class="fc-mi-t">Temă</span></button>'
+    '<button class="fc-mi" role="menuitem">' + ic('user', 15) + '<span class="fc-mi-t">Persoană</span></button>'
+    '<button class="fc-mi" role="menuitem">' + ic('zap', 15) + '<span class="fc-mi-t">Urgent</span></button>'
+    '<button class="fc-mi dim" role="menuitem">' + ic('plus', 14) + '<span class="fc-mi-t">Temă nouă</span></button></div>'
+)
+
 LISTA_PANOU = (
     '<div class="sh-header">'
     '<button class="sh-close">%s</button>'
     '<button class="sh-copy">%s</button>'
     '<button class="sh-delete">%s</button>'
+    '<span class="sh-break"></span>'
+    '<button class="sh-check" role="checkbox" aria-checked="false"><span class="ck"></span></button>'
     '<span class="sh-title-wrap"><textarea class="sh-title-input" rows="1" '
     'style="height:52px">Cont Supabase (DB + Auth) cu politici RLS pe membership</textarea></span>'
-    '<button class="sh-save dirty">%s</button></div>'
-    % (ic('x', 16), ic('copy', 15), ic('trash-2', 14), ic('arrow-up', 16))
+    % (ic('x', 16), ic('copy', 15), ic('trash-2', 14))
+    + fc_row()
+    + '<button class="sh-save dirty">%s</button></div>' % ic('arrow-up', 16)
     + '<div class="sheet-scroll if-body">'
-      '<div class="sh-meta-section"><div class="meta-body"><div class="sh-meta-inline-row">'
-      '<div class="meta-col meta-col-theme"><span class="meta-row-label">Temă</span>'
-      '<div class="pills-row"><button class="if-meta-pill">Fără</button>'
-      '<button class="if-meta-pill active"><span class="if-meta-dot" style="background:#6e7bff"></span>Auth</button>'
-      '<button class="if-meta-add">+</button></div></div>'
-      '<div class="meta-vsep"></div>'
-      '<div class="meta-col meta-col-wave"><span class="meta-row-label">Val</span>'
-      '<div class="pills-row"><button class="if-meta-wave active">I</button>'
-      '<button class="if-meta-wave">II</button><button class="if-meta-wave">III</button></div></div>'
-      '</div></div></div>'
       '<div class="form-cols">'
       '<div class="form-col form-col-desc">'
-      '<label class="if-field-label" style="display:block;margin-bottom:8px">Descriere</label>'
       + MD_DESC_FORM + '</div>'
       '<div class="form-col form-col-right">'
       '<div class="deps-zone"><div class="deps-bar">'
@@ -817,54 +865,29 @@ CONTROALE = ''.join([
       '<button class="if-meta-wave">I</button><button class="if-meta-wave active">II</button>'
       '<button class="if-meta-add">+</button>'),
 
-    # `.due-recur` — rândul „Repetare" din formular (Task 5). Preseturile sunt
-    # `.if-meta-pill.reminder-pill`, deci fundalul normal vine din regula de bază
-    # a lui `.if-meta-pill` — dar clasa compusă n-avea nicio intrare proprie pe
-    # banc, deci n-a fost verificată cu ochiul. Un rând arată preseturile
-    # neatinse (nimic activ în afară de „fără"); al doilea arată „personalizat…"
-    # activ, cu textul lui `describeRrule` în el — exact ce desenează IssueForm
-    # când presetul curent nu e unul dintre cele cinci.
-    g('Repetare — rândul din formular',
-      '<div class="pills-row due-recur">'
-      '<span class="if-sub-label">Repetare</span>'
-      '<button class="if-meta-pill reminder-pill active">fără</button>'
-      '<button class="if-meta-pill reminder-pill">zilnic</button>'
-      '<button class="if-meta-pill reminder-pill">săptămânal</button>'
-      '<button class="if-meta-pill reminder-pill">lunar</button>'
-      '<button class="if-meta-pill reminder-pill">anual</button>'
-      '<button class="if-meta-pill reminder-pill">personalizat…</button>'
-      '</div>'
-      '<div class="pills-row due-recur">'
-      '<span class="if-sub-label">Repetare</span>'
-      '<button class="if-meta-pill reminder-pill">fără</button>'
-      '<button class="if-meta-pill reminder-pill">zilnic</button>'
-      '<button class="if-meta-pill reminder-pill">săptămânal</button>'
-      '<button class="if-meta-pill reminder-pill">lunar</button>'
-      '<button class="if-meta-pill reminder-pill">anual</button>'
-      '<button class="if-meta-pill reminder-pill active">lunea și joia</button>'
-      '</div>'),
+    # Rândul de jetoane al formularului (design/form-compact). Fiecare stare:
+    # fantoma „Dată" (fără fundal, doar text stins + iconiță — aici se vede
+    # dacă a rămas lizibilă), restanța și urgentul pe roșu, data din titlu cu
+    # inel, jetonul deschis pe accent, agrafa și „+" ca iconițe.
+    g('Jetoanele formularului',
+      fchip('due ghost', ic('calendar-check', 14) + 'Dată')
+      + fchip('due', ic('calendar-check', 14) + 'Azi <span class="fc-t">17:00</span>')
+      + fchip('due late', ic('calendar-check', 14) + 'Sâm 11/10')
+      + fchip('due pending', ic('calendar-check', 14) + 'Mâine')
+      + fchip('due open', ic('calendar-check', 14) + 'Joi <span class="fc-t">09:30</span>')
+      + fchip('', ic('bell', 14) + 'la oră')
+      + fchip('', ic('rotate-cw', 14) + 'Lunea și joia')
+      + fchip('', ic('layers', 14) + 'Val V')
+      + fchip('', '<span class="fc-dot" style="background:#7C3AED"></span><span class="fc-chip-t">Raportare</span>')
+      + fchip('who', '<span class="fc-av">IS</span><span class="fc-chip-t">Ionuț</span>')
+      + fchip('urgent', ic('zap', 14) + 'Urgent')
+      + fchip('icon', ic('paperclip', 16))
+      + fchip('icon open', ic('plus', 16))
+      + '<span class="fc-from-title">' + ic('sparkles', 13) + 'din titlu'
+        '<button class="fc-x">' + ic('x', 12) + '</button><button class="fc-link">curăță titlul</button></span>'
+      + '<span class="fc-hint warn">și ce ai de făcut?</span>'),
 
-    # Foaia de personalizare (`RecurrencePicker.tsx`, clasa `.rp`) — `position:
-    # fixed` în aplicație, ca `.sheet`/`.lb-back` mai sus; pe banc e adusă în flux
-    # cu aceleași reguli (`position: static`, `transform: none`, vezi `<style>`),
-    # ca fundalul ei (`--surface` + `--amb-lg`, fără chenar) să se vadă normal.
-    # `.rp-n` e excepția de câmp (chenar explicit); `.rp-day` reușește `if-meta-pill`,
-    # deci fundalul normal/activ e testat aici pentru prima dată pe clasa compusă.
-    g('Repetare — foaia personalizată',
-      '<div class="rp">'
-      '<div class="rp-row">'
-      '<span class="if-sub-label">La fiecare</span>'
-      '<input class="rp-n" type="text" inputMode="numeric" value="2" aria-label="La câte unități se repetă" />'
-      '<div class="pills-row">'
-      '<button class="if-meta-pill rp-day active" aria-label="luni">L</button>'
-      '<button class="if-meta-pill rp-day" aria-label="joi">J</button>'
-      '</div>'
-      '</div>'
-      '<div class="rp-acts">'
-      '<button class="if-meta-pill">Renunță</button>'
-      '<button class="if-meta-pill active">Gata</button>'
-      '</div>'
-      '</div>'),
+    g('Popoverele jetoanelor', FC_DATE_POP + FC_WAVE_MENU + FC_ADD_MENU),
 
     g('Butoane',
       '<button class="btn-primary">Salvează</button>'
@@ -882,7 +905,7 @@ CONTROALE = ''.join([
       '<button class="wave-action-btn">' + ic('share-2', 14) + '</button>'
       '<button class="wave-action-btn active">' + ic('eye-off', 14) + '</button>'
       '<button class="due-pick">' + ic('calendar-check', 14) + ' Pune o zi</button>'
-      '<button class="due-clear">' + ic('x', 13) + '</button>'
+      '<button class="fc-link">scoate</button>'
       '<button class="sidebar-new-btn">+ Proiect nou</button>'
       '<button class="qa-add">+ sub-tichet</button>'),
 
@@ -1213,10 +1236,9 @@ SHELL = """<!doctype html>
   /* `.att-del` apare la hover; pe banc n-ar fi nimic de inspectat. */
   .bench-gallery .att-del { opacity: 1; }
   .bench-gallery .bulk-bar { position: static; transform: none; }
-  /* `.rp` (RecurrencePicker) e fixed, centrat pe ecran, în aplicație; pe banc
-     ar acoperi restul galeriei. Fundalul e același `--surface` + `--amb-lg`,
-     deci ce se vede aici e ce se vede în foaia reală. */
-  .bench-gallery .rp { position: static; left: auto; bottom: auto; transform: none; width: 100%; max-width: 420px; z-index: auto; }
+  /* `.fc-pop` (popoverul unui jeton din formular) e `absolute` sub rând în
+     aplicație; pe banc e adus în flux, cu același `--surface` + `--amb-lg`. */
+  .bench-gallery .fc-pop { position: static; }
   /* `.lb-back` e fixed în aplicație; pe banc ar acoperi ecranul. */
   /* `.sheet` e fixed în aplicație; pe banc ar acoperi ecranul. Fundalul e
      același `--surface`, deci ce se vede aici e ce se vede în foaie. */
