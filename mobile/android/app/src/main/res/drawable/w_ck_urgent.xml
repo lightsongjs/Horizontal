@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Urgentul: inel de 2dp cu fundal pal (alfa 13% — tinta îl păstrează), tintat în roșu. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_checked="true" android:drawable="@drawable/w_ck_done" />
+    <item android:drawable="@drawable/w_ck_urgent_ring" />
+</selector>

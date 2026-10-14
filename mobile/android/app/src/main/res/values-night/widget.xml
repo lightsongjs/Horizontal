@@ -1,12 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="w_surface">#16161A</color>
-    <color name="w_surface2">#1E1E23</color>
-    <color name="w_txt">#FAFAF9</color>
-    <color name="w_txt_dim">#9C9CA2</color>
-    <color name="w_txt_faint">#6B6B70</color>
-    <color name="w_accent">#818CF8</color>
-    <color name="w_on_accent">#0B0B0E</color>
-    <color name="w_blocked">#DF8B84</color>
-    <color name="w_sep">#0FFFFFFF</color>
+    <color name="w_surface">#1C1D21</color>
+    <color name="w_surface_clear">#001C1D21</color>
+    <color name="w_soft">#24262A</color>
+    <color name="w_ink">#EEEFF1</color>
+    <color name="w_ink2">#A6ABB3</color>
+    <color name="w_ink3">#6E737B</color>
+    <color name="w_sep">#2A2C31</color>
+    <color name="w_accent">#5B8DFF</color>
+    <color name="w_accent_ink">#8AAEFF</color>
+    <color name="w_accent_soft">#265B8DFF</color>
+    <color name="w_on_accent">#FFFFFF</color>
+    <color name="w_danger">#FF6369</color>
+    <color name="w_star">#FFC53D</color>
+    <color name="w_ring_default">#5C6169</color>
+    <color name="w_ripple">#1FFFFFFF</color>
 </resources>

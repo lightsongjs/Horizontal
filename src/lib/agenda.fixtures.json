@@ -3,11 +3,11 @@
     "name": "restanțe sus, azi cele cu oră înaintea celor fără oră, ziua a 7-a afară",
     "now": "2026-10-06T08:00:00.000Z",
     "items": [
-      { "id": "HZ-1", "dueAt": "2026-10-04T21:00:00.000Z", "allDay": true,  "urgent": false },
+      { "id": "HZ-1", "dueAt": "2026-10-04T21:00:00.000Z", "allDay": true,  "urgent": false, "accent": "#F2600C" },
       { "id": "HZ-2", "dueAt": "2026-10-06T07:00:00.000Z", "allDay": false, "urgent": false },
       { "id": "HZ-3", "dueAt": "2026-10-05T21:00:00.000Z", "allDay": true,  "urgent": false },
-      { "id": "HZ-4", "dueAt": "2026-10-06T11:30:00.000Z", "allDay": false, "urgent": false },
-      { "id": "HZ-5", "dueAt": "2026-10-07T14:30:00.000Z", "allDay": false, "urgent": false },
+      { "id": "HZ-4", "dueAt": "2026-10-06T11:30:00.000Z", "allDay": false, "urgent": false, "accent": "#0EA5E9" },
+      { "id": "HZ-5", "dueAt": "2026-10-07T14:30:00.000Z", "allDay": false, "urgent": false, "accent": "#0af" },
       { "id": "HZ-6", "dueAt": "2026-10-12T21:00:00.000Z", "allDay": true,  "urgent": false },
       { "id": "HZ-7", "dueAt": "2026-10-11T21:00:00.000Z", "allDay": true,  "urgent": false }
     ],

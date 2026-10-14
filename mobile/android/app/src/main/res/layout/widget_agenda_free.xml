@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- „Nimic pe azi", când urmează ceva în zilele următoare. Al treilea tip de element din colecție. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:paddingStart="14dp" android:paddingEnd="14dp" android:paddingTop="8dp" android:paddingBottom="2dp">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:gravity="center_vertical" android:background="@drawable/w_soft_bg"
+        android:padding="14dp">
+        <ImageView android:layout_width="32dp" android:layout_height="32dp" android:padding="8dp"
+            android:background="@drawable/w_soft_oval" android:src="@drawable/ic_widget_check" android:tint="@color/w_accent"
+            android:importantForAccessibility="no" />
+        <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
+            android:orientation="vertical" android:layout_marginStart="12dp">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Nimic pe azi"
+                android:fontFamily="sans-serif-medium" android:textStyle="bold" android:textSize="15sp" android:textColor="@color/w_ink" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Ziua e liberă."
+                android:fontFamily="sans-serif-medium" android:textSize="13sp" android:textColor="@color/w_ink3" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

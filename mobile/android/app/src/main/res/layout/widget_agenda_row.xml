@@ -1,26 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Rândul 4×4: inelul în culoarea proiectului, titlul, sub el punctul + numele proiectului, ora în coadă.
+     Rândurile se REFOLOSESC la derulare: culoarea, inelul urgent, linia de deasupra se pun explicit la fiecare legare. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/r_root"
-    android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="52dp"
+    android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="54dp"
     android:orientation="horizontal" android:gravity="center_vertical"
-    android:paddingStart="8dp" android:paddingEnd="16dp" android:paddingTop="6dp" android:paddingBottom="6dp">
-    <!-- `focusable=false`: o căsuță focusabilă într-un rând de listă blochează atingerea pe restul rândului. -->
+    android:paddingStart="5dp" android:paddingEnd="14dp">
+    <!-- `focusable=false`: o căsuță focusabilă într-un rând de listă blochează atingerea pe restul rândului.
+         Două căsuțe (obișnuită / urgentă), una vizibilă: mai sigur decât schimbatul iconiței la rulare. -->
     <CheckBox android:id="@+id/r_check" android:layout_width="40dp" android:layout_height="40dp" android:checked="false"
+        android:button="@drawable/w_ck" android:background="@null" android:minWidth="0dp" android:minHeight="0dp" android:padding="0dp"
         android:focusable="false" android:focusableInTouchMode="false"
-        android:buttonTint="@color/w_txt_faint" android:contentDescription="Gata" />
+        android:buttonTint="@color/w_ring_default" android:contentDescription="Gata" />
+    <CheckBox android:id="@+id/r_check_urg" android:layout_width="40dp" android:layout_height="40dp" android:checked="false"
+        android:button="@drawable/w_ck_urgent" android:background="@null" android:minWidth="0dp" android:minHeight="0dp" android:padding="0dp"
+        android:focusable="false" android:focusableInTouchMode="false" android:visibility="gone"
+        android:buttonTint="@color/w_danger" android:contentDescription="Gata (urgent)" />
     <!-- Zona atingerii care deschide tichetul: un copil, nu rădăcina rândului — pe rădăcină atingerea trece
          prin clicul de rând al listei, pe care unele ecrane de start (Nova) nu-l livrează. -->
     <LinearLayout android:id="@+id/r_body" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
-        android:orientation="horizontal" android:gravity="center_vertical" android:minHeight="44dp">
-    <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
-        android:orientation="vertical" android:layout_marginStart="4dp">
-        <TextView android:id="@+id/r_title" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:fontFamily="serif" android:textSize="15sp" android:textColor="@color/w_txt" android:maxLines="1" android:ellipsize="end" />
-    </LinearLayout>
-    <TextView android:id="@+id/r_meta" android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:fontFamily="monospace" android:textSize="12sp" android:textColor="@color/w_txt_dim" android:layout_marginStart="8dp" />
-    <ImageView android:id="@+id/r_repeat" android:layout_width="14dp" android:layout_height="14dp" android:layout_marginStart="4dp"
-        android:src="@drawable/ic_widget_repeat" android:tint="@color/w_txt_dim" android:visibility="gone" />
-    <ImageView android:id="@+id/r_bell" android:layout_width="14dp" android:layout_height="14dp" android:layout_marginStart="4dp"
-        android:src="@drawable/ic_widget_bell" android:tint="@color/w_txt_dim" android:visibility="gone" />
+        android:orientation="horizontal" android:gravity="center_vertical" android:minHeight="46dp"
+        android:layout_marginStart="3dp" android:background="@drawable/w_ripple">
+        <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
+            android:orientation="vertical" android:paddingTop="8dp" android:paddingBottom="8dp">
+            <TextView android:id="@+id/r_title" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:fontFamily="sans-serif" android:textSize="15sp" android:textColor="@color/w_ink"
+                android:maxLines="1" android:ellipsize="end" />
+            <LinearLayout android:id="@+id/r_proj" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginTop="3dp">
+                <ImageView android:id="@+id/r_dot" android:layout_width="7dp" android:layout_height="7dp"
+                    android:src="@drawable/w_dot" android:importantForAccessibility="no" />
+                <TextView android:id="@+id/r_project" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:layout_marginStart="5dp" android:fontFamily="sans-serif-medium" android:textSize="12.5sp"
+                    android:textColor="@color/w_ink3" android:maxLines="1" android:ellipsize="end" />
+                <ImageView android:id="@+id/r_repeat" android:layout_width="12dp" android:layout_height="12dp" android:layout_marginStart="6dp"
+                    android:src="@drawable/ic_widget_repeat" android:tint="@color/w_ink3" android:visibility="gone"
+                    android:contentDescription="Se repetă" />
+                <ImageView android:id="@+id/r_bell" android:layout_width="12dp" android:layout_height="12dp" android:layout_marginStart="4dp"
+                    android:src="@drawable/ic_widget_bell" android:tint="@color/w_ink3" android:visibility="gone"
+                    android:contentDescription="Memento" />
+            </LinearLayout>
+        </LinearLayout>
+        <TextView android:id="@+id/r_meta" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_marginStart="10dp" android:fontFamily="sans-serif-medium" android:fontFeatureSettings="tnum"
+            android:textSize="13sp" android:textColor="@color/w_ink2" android:maxLines="1" />
     </LinearLayout>
 </LinearLayout>

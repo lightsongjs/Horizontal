@@ -3,6 +3,7 @@ package ro.horizontal.app.core
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Test
 import java.io.File
 import java.time.ZoneId
@@ -44,8 +45,14 @@ class FixturesTest {
             val items = f.getJSONArray("items").let { a -> (0 until a.length()).map { a.getJSONObject(it) }.map { o ->
                 // `routine`: ascunsă până la `remindAt ?: dueAt`, ca `revealAt` din `src/lib/routines.ts`.
                 val hidden = if (o.optBoolean("routine", false)) parseIso(if (o.has("remindAt")) o.getString("remindAt") else o.getString("dueAt")) else null
-                AgendaItem(o.getString("id"), o.getString("id"), null, o.getString("dueAt"), o.getBoolean("allDay"), false, false, o.getBoolean("urgent"), hidden)
+                AgendaItem(o.getString("id"), o.getString("id"), null, o.getString("dueAt"), o.getBoolean("allDay"), false, false, o.getBoolean("urgent"), hidden,
+                    if (o.has("accent")) o.getString("accent") else null)
             } }
+            // `accent`: culoarea proiectului trece neatinsă (vitest verifică același lucru în `agendaItems`) și se citește ca culoare.
+            for (it in items) {
+                assertEquals(f.getString("name"), it.projectAccent, Json.agendaItemFromJson(Json.agendaItemToJson(it))!!.projectAccent)
+                if (it.projectAccent != null) assertNotNull(f.getString("name"), accentArgb(it.projectAccent))
+            }
             val got = buildAgenda(items, parseIso(f.getString("now"))!!, zone).map { s ->
                 if (s.overdue) "overdue:${s.items.joinToString(",") { it.id }}" else "day${s.offset}:${s.items.joinToString(",") { it.id }}"
             }

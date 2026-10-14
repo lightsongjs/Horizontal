@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Butonul 1×1: cercul plin în accent cu „+" (varianta recomandată din design/android-widget). -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/q_root"
     android:layout_width="match_parent" android:layout_height="match_parent">
-    <ImageView android:layout_width="56dp" android:layout_height="56dp" android:layout_gravity="center" android:padding="15dp"
+    <ImageView android:layout_width="56dp" android:layout_height="56dp" android:layout_gravity="center" android:padding="14dp"
         android:background="@drawable/widget_quick_bg" android:src="@drawable/ic_widget_plus" android:tint="@color/w_on_accent"
         android:contentDescription="Adaugă o sarcină" />
 </FrameLayout>

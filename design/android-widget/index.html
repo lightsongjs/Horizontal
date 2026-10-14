@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Widget Android — Senin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..800&family=Geist+Mono:wght@400;500;600&family=Noto+Serif:wght@400;700&family=Noto+Sans+Mono:wght@400;700&family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ---------- pagina ---------- */
+:root{--pg:#F3F4F6;--pg-ink:#1A1C20;--pg-ink2:#565C66;--pg-ink3:#8A9099;--pg-card:#FFFFFF;--pg-sep:#E6E8EC;--pg-accent:#2F6BFF}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--pg);color:var(--pg-ink);font:15px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1360px;margin:0 auto;padding:40px 32px 80px}
+h1{font-size:34px;font-weight:750;letter-spacing:-.025em}
+h2{font-size:22px;font-weight:720;letter-spacing:-.015em;margin:56px 0 6px}
+h3{font-size:15px;font-weight:650;margin:28px 0 10px}
+.lede{color:var(--pg-ink2);max-width:860px;margin-top:8px}
+.note{color:var(--pg-ink2);font-size:14px;max-width:900px}
+.tag{display:inline-block;font:600 11.5px/1 Inter;padding:6px 9px;border-radius:8px;background:#E8EBF0;color:var(--pg-ink2);margin-right:6px}
+.tag.new{background:#EBF1FF;color:#1F55E0}
+.toolbar{display:flex;gap:10px;align-items:center;margin-top:18px;flex-wrap:wrap}
+.toolbar button{font:600 13px Inter;border:0;border-radius:8px;padding:9px 12px;background:#E8EBF0;color:var(--pg-ink);cursor:pointer}
+.toolbar button.on{background:var(--pg-accent);color:#fff}
+.row{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start;margin-top:18px}
+.cap{font-size:13px;color:var(--pg-ink2);margin-top:10px;max-width:412px}
+.cap b{color:var(--pg-ink)}
+.mono{font-family:"Geist Mono",monospace;font-size:.92em}
+table{border-collapse:collapse;width:100%;margin-top:14px;background:var(--pg-card);border-radius:16px;overflow:hidden;box-shadow:0 1px 2px rgba(16,24,40,.06),0 6px 20px rgba(16,24,40,.06)}
+th,td{text-align:left;vertical-align:top;padding:11px 14px;font-size:13.5px;border-bottom:1px solid var(--pg-sep)}
+th{font-weight:650;background:#F6F7F9;font-size:12.5px;color:var(--pg-ink2)}
+td code,.notes code{font-family:"Geist Mono",monospace;font-size:12px;background:#F1F3F6;padding:1px 5px;border-radius:5px}
+td.ok{color:#0E7F55;font-weight:600;white-space:nowrap}
+td.no{color:#C9363B;font-weight:600;white-space:nowrap}
+td.mid{color:#A66F00;font-weight:600;white-space:nowrap}
+.notes{background:var(--pg-card);border-radius:16px;padding:20px 24px;margin-top:14px;box-shadow:0 1px 2px rgba(16,24,40,.06),0 6px 20px rgba(16,24,40,.06)}
+.notes li{margin:6px 0 6px 18px;font-size:14px}
+.notes h3{margin-top:14px}
+
+/* ---------- telefonul ---------- */
+.phone{width:412px;border-radius:44px;padding:0;position:relative;overflow:hidden;box-shadow:0 0 0 10px #101114,0 0 0 11px #2a2b30,0 30px 60px -20px rgba(0,0,0,.45);flex-shrink:0}
+.phone.tile{border-radius:28px;box-shadow:0 0 0 1px rgba(0,0,0,.06),0 16px 40px -18px rgba(0,0,0,.35)}
+.wall{position:absolute;inset:0;z-index:0}
+.light .wall{background:
+  radial-gradient(60% 40% at 15% 10%,#FFD9C2 0,transparent 70%),
+  radial-gradient(55% 45% at 90% 25%,#C9D8FF 0,transparent 70%),
+  radial-gradient(70% 50% at 30% 80%,#D9F2E8 0,transparent 70%),
+  radial-gradient(60% 50% at 95% 90%,#F2D2EC 0,transparent 70%),#EEF0F6}
+.dark .wall{background:
+  radial-gradient(60% 40% at 10% 15%,#3A2A66 0,transparent 70%),
+  radial-gradient(55% 45% at 95% 30%,#123C5E 0,transparent 70%),
+  radial-gradient(70% 50% at 25% 85%,#1E4A43 0,transparent 70%),
+  radial-gradient(60% 50% at 95% 95%,#4A1F48 0,transparent 70%),#0E1016}
+.wall:after{content:"";position:absolute;inset:0;backdrop-filter:blur(30px)}
+.screen{position:relative;z-index:1;padding:0 24px 22px}
+.sb{height:40px;display:flex;align-items:center;justify-content:space-between;padding:0 6px;font:600 14px Roboto,system-ui;letter-spacing:.01em}
+.light .sb{color:#15171B}.dark .sb{color:#F2F3F5}
+.sb .ico{display:flex;gap:6px;align-items:center}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);row-gap:14px;column-gap:0;margin-top:14px}
+.cell{display:flex;justify-content:center;align-items:flex-start}
+.app{display:flex;flex-direction:column;align-items:center;gap:6px;font:500 11.5px Roboto,system-ui}
+.light .app{color:#20232A}.dark .app{color:#EDEEF1;text-shadow:0 1px 2px rgba(0,0,0,.4)}
+.app i{width:58px;height:58px;border-radius:17px;display:grid;place-items:center;color:#fff;box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+.dock{margin-top:22px;padding:12px 6px;border-radius:30px;display:grid;grid-template-columns:repeat(4,1fr);justify-items:center}
+.light .dock{background:rgba(255,255,255,.42)}.dark .dock{background:rgba(255,255,255,.08)}
+.dock .app span{display:none}
+.search{margin:16px 6px 0;height:48px;border-radius:24px;display:flex;align-items:center;gap:10px;padding:0 18px;font:400 14px Roboto}
+.light .search{background:rgba(255,255,255,.6);color:#5B6170}.dark .search{background:rgba(255,255,255,.1);color:#B9BDC6}
+.span4{grid-column:span 4}.span2{grid-column:span 2}
+
+/* ============================================================
+   ÎNAINTE — recreat din layout/widget_agenda + values/widget.xml
+   ============================================================ */
+.light .old{--s:#FFFFFF;--t:#29343A;--d:#566168;--f:#717C84;--a:#1A237E;--oa:#F7F9FC;--r:#A0333F}
+.dark  .old{--s:#16161A;--t:#FAFAF9;--d:#9C9CA2;--f:#6B6B70;--a:#818CF8;--oa:#0B0B0E;--r:#DF8B84}
+.old.w{background:var(--s);border-radius:16px;display:flex;flex-direction:column;overflow:hidden}
+.old .hd{display:flex;align-items:center;padding:10px 8px 4px 16px}
+.old .brand{flex:1;font:700 16px "Noto Serif",serif;color:var(--t)}
+.old .cnt{font:400 11px "Noto Sans Mono",monospace;color:var(--f);margin-right:8px}
+.old .ib{width:36px;height:36px;display:grid;place-items:center;color:var(--d)}
+.old .add{background:var(--a);color:var(--oa);border-radius:16px;margin-left:4px}
+.old .list{flex:1;overflow:hidden;padding-bottom:8px}
+.old .sec{padding:14px 16px 6px;font:700 11px "Noto Sans Mono",monospace;letter-spacing:.08em;color:var(--d)}
+.old .sec.over{color:var(--r)}.old .sec.today{color:var(--a)}
+.old .r{display:flex;align-items:center;min-height:52px;padding:6px 16px 6px 8px}
+.old .cb{width:40px;height:40px;display:grid;place-items:center;flex-shrink:0}
+.old .cb:before{content:"";width:14px;height:14px;border:2px solid var(--f);border-radius:2px}
+.old .r.over .cb:before{border-color:var(--r)}
+.old .ti{flex:1;min-width:0;margin-left:4px;font:400 15px "Noto Serif",serif;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.old .me{font:400 12px "Noto Sans Mono",monospace;color:var(--d);margin-left:8px;white-space:nowrap}
+.old .r.over .me{color:var(--r)}
+.old .ic{width:14px;height:14px;margin-left:4px;color:var(--d);display:grid}
+.old .empty{flex:1;display:grid;place-items:center;padding:16px;font:400 15px "Noto Serif",serif;color:var(--d);text-align:center}
+.oldq{width:56px;height:56px;border-radius:16px;display:grid;place-items:center;margin-top:1px}
+.light .oldq{background:#1A237E;color:#F7F9FC}.dark .oldq{background:#818CF8;color:#0B0B0E}
+
+/* ============================================================
+   DUPĂ — Senin (direcția A din design/redesign/index.html)
+   ============================================================ */
+.light .nw{--s:#FFFFFF;--ink:#1A1C20;--ink2:#565C66;--ink3:#959BA5;--sep:#EEF0F3;--soft:#F6F7F9;
+  --acc:#2F6BFF;--acc-ink:#1F55E0;--acc-soft:#EBF1FF;--dg:#E5484D;--dg-soft:#FDEEEE;--star:#F5B000;
+  --p-inbox:#2F6BFF;--p-hz:#F2600C;--p-tur:#0E9F8E;--p-ex:#D99A00;--p-apo:#8B55D6;--p-casa:#E5397B;--sh:0 1px 2px rgba(16,24,40,.06),0 10px 28px -8px rgba(16,24,40,.18)}
+.dark .nw{--s:#1C1D21;--ink:#EEEFF1;--ink2:#A6ABB3;--ink3:#6E737B;--sep:#2A2C31;--soft:#24262A;
+  --acc:#5B8DFF;--acc-ink:#8AAEFF;--acc-soft:rgba(91,141,255,.15);--dg:#FF6369;--dg-soft:rgba(255,99,105,.13);--star:#FFC53D;
+  --p-inbox:#5B8DFF;--p-hz:#FF8A3D;--p-tur:#2EC4B0;--p-ex:#F2C23A;--p-apo:#B48CF0;--p-casa:#F7679E;--sh:0 10px 30px -8px rgba(0,0,0,.6)}
+.nw{--ff:Inter,system-ui,sans-serif;--fm:"Geist Mono",ui-monospace,monospace}
+body.sys .nw{--ff:Roboto,system-ui,sans-serif;--fm:"Roboto Mono",monospace}
+.nw.w{background:var(--s);border-radius:24px;display:flex;flex-direction:column;overflow:hidden;font-family:var(--ff);box-shadow:var(--sh);position:relative}
+.nw .hd{display:flex;align-items:center;gap:8px;padding:14px 12px 0 16px}
+.nw .hd .st{color:var(--star);display:grid;flex-shrink:0}
+.nw .hd h4{font:750 24px/1 var(--ff);letter-spacing:-.025em;color:var(--ink)}
+.nw .hd .n{font:600 15px/1 var(--ff);color:var(--ink3);margin-top:3px}
+.nw .hd .sp{flex:1}
+.nw .ghost{width:34px;height:34px;display:grid;place-items:center;color:var(--ink3);border-radius:50%}
+.nw .plus{width:38px;height:38px;border-radius:50%;background:var(--acc);color:#fff;display:grid;place-items:center;box-shadow:0 6px 14px -6px color-mix(in srgb,var(--acc) 70%,transparent);flex-shrink:0}
+.nw .sub{padding:3px 16px 4px 46px;font:500 13px var(--ff);color:var(--ink3)}
+.nw .list{flex:1;overflow-y:auto;scrollbar-width:none;padding-bottom:10px}
+.nw .list::-webkit-scrollbar{display:none}
+.nw .gh{display:flex;align-items:center;gap:6px;padding:14px 16px 4px;font:650 13.5px var(--ff);color:var(--ink)}
+.nw .gh .c{color:var(--ink3);font-weight:550}
+.nw .gh .d{font:500 12px var(--fm);color:var(--ink3);margin-left:2px}
+.nw .gh.over{color:var(--dg)}
+.nw .gh.over .c{color:color-mix(in srgb,var(--dg) 70%,var(--s))}
+.nw .r{display:flex;align-items:center;gap:12px;padding:0 14px 0 14px;min-height:54px;position:relative}
+.nw .r+.r:after{content:"";position:absolute;left:48px;right:0;top:0;height:1px;background:var(--sep)}
+.nw .ck{width:22px;height:22px;border-radius:50%;flex-shrink:0;box-shadow:inset 0 0 0 1.75px color-mix(in srgb,var(--pc) 78%,var(--s))}
+.nw .ck.urg{box-shadow:inset 0 0 0 2px var(--dg);background:var(--dg-soft)}
+.nw .ck.done{background:var(--pc);box-shadow:none;display:grid;place-items:center;color:var(--s)}
+.nw .bd{flex:1;min-width:0;padding:8px 0}
+.nw .ti{font:450 15px/1.3 var(--ff);color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nw .r.isdone .ti{color:var(--ink3);text-decoration:line-through}
+.nw .pj{display:flex;align-items:center;gap:5px;font:500 12.5px/1.2 var(--ff);color:var(--ink3);margin-top:3px}
+.nw .pj:before{content:"";width:7px;height:7px;border-radius:50%;background:var(--pc)}
+.nw .pj .ic{display:grid;margin-left:4px;color:var(--ink3)}
+.nw .tl{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0}
+.nw .tm{font:500 13px var(--fm);color:var(--ink2)}
+.nw .tm.miss{color:var(--dg);font-weight:600}
+.nw .fadet{position:absolute;left:0;right:0;height:12px;background:linear-gradient(to top,transparent,var(--s));pointer-events:none;z-index:1}
+.nw .fade{position:absolute;left:0;right:0;bottom:0;height:34px;background:linear-gradient(to bottom,transparent,var(--s));pointer-events:none}
+.nw .free{margin:8px 14px 2px;padding:14px 14px;border-radius:12px;background:var(--soft);display:flex;gap:12px;align-items:center}
+.nw .free .ok{width:32px;height:32px;border-radius:50%;background:var(--acc-soft);color:var(--acc);display:grid;place-items:center;flex-shrink:0}
+.nw .free b{display:block;font:650 15px var(--ff);color:var(--ink)}
+.nw .free span{font:500 13px var(--ff);color:var(--ink3)}
+.nw .center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:12px 24px 24px;text-align:center}
+.nw .center .ok{width:44px;height:44px;border-radius:50%;background:var(--acc-soft);color:var(--acc);display:grid;place-items:center;margin-bottom:4px}
+.nw .center b{font:650 16px var(--ff);color:var(--ink)}
+.nw .center span{font:500 13.5px var(--ff);color:var(--ink3)}
+.nw .center .btn{margin-top:8px;font:600 13px var(--ff);color:var(--acc-ink);background:var(--acc-soft);border-radius:8px;padding:8px 12px}
+/* 4×2 — compact */
+.nw.cmp .hd{padding:12px 10px 4px 14px;gap:7px}
+.nw.cmp .hd h4{font-size:19px}
+.nw.cmp .hd .n{font-size:13.5px;margin-top:2px}
+.nw.cmp .plus{width:34px;height:34px}
+.nw.cmp .r{min-height:42px;gap:11px;padding:0 14px 0 13px}
+.nw.cmp .r+.r:after{left:44px}
+.nw.cmp .ck{width:20px;height:20px}
+.nw.cmp .bd{padding:0;display:flex}
+.nw.cmp .ti{font-size:14.5px}
+.nw.cmp .tl{flex-direction:row;align-items:center;gap:7px}
+.nw.cmp .dot{width:7px;height:7px;border-radius:50%;background:var(--pc)}
+.nw.cmp .gh{padding:8px 14px 2px;font-size:12.5px}
+/* 1×1 */
+.nq{width:58px;height:58px;border-radius:50%;display:grid;place-items:center;color:#fff;margin-top:0}
+.light .nq{background:#2F6BFF;box-shadow:0 10px 22px -8px rgba(47,107,255,.65)}
+.dark .nq{background:#5B8DFF;box-shadow:0 10px 22px -8px rgba(0,0,0,.7)}
+.nq.alt{border-radius:18px;width:58px;height:58px}
+.light .nq.alt{background:#fff;color:#2F6BFF;box-shadow:0 8px 20px -10px rgba(16,24,40,.35)}
+.dark .nq.alt{background:#1C1D21;color:#8AAEFF}
+.nq.alt .stq{position:absolute}
+.qlabel{font:500 11.5px Roboto;margin-top:6px;text-align:center}
+.light .qlabel{color:#20232A}.dark .qlabel{color:#EDEEF1}
+
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,412px);gap:28px 28px;margin-top:18px}
+.tile .screen{padding:18px 24px 22px}
+.lbl{font:650 12px Inter;letter-spacing:.02em;margin:0 0 10px 4px}
+.light .lbl{color:#3a3f48}.dark .lbl{color:#C9CDD5}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Widget-urile de Android, în „Senin"</h1>
+  <p class="lede">Agenda (4×4 și 4×2) și butonul de captură (1×1), pe ecranul de start al unui Redmi Note 13 Pro (HyperOS 3, Android 16), în tema deschisă și în cea închisă a sistemului. Aceleași reguli ca aplicația: suprafață albă curată, „Azi" mare cu steaua galbenă, inelul bifei în culoarea proiectului, ora în coada rândului, linii de păr în loc de chenare.</p>
+  <p class="lede" style="font-size:13.5px">Datele: miercuri, 14 octombrie, 09:41. Widget-ul arată numai sarcinile mele (<span class="mono">isMine</span>), ca acum.</p>
+  <div class="toolbar">
+    <span class="tag">Fonturi în machetă</span>
+    <button id="fInter" class="on">Inter + Geist Mono (aplicația)</button>
+    <button id="fSys">Roboto + Roboto Mono (ce poate desena widget-ul garantat)</button>
+  </div>
+
+  <h2>Înainte — widget-ul de acum</h2>
+  <p class="note">Recreat din <span class="mono">widget_agenda.xml</span>, <span class="mono">widget_agenda_row.xml</span>, <span class="mono">widget_agenda_section.xml</span> și culorile din <span class="mono">values/widget.xml</span> / <span class="mono">values-night/widget.xml</span>: serif, etichete mono majuscule, indigoul din „Scholarly Editorial", căsuța Material pătrată, proiectul nu apare deloc pe rând, raza fixă de 16dp.</p>
+  <div class="row" id="before"></div>
+
+  <h2>După — „Senin"</h2>
+  <p class="note">4×4 (ținta implicită, <span class="mono">targetCellHeight=4</span>) cu restanțe, plus butonul 1×1. Antetul spune ce contează în prima secundă: <b>câte sunt azi</b> (restanțele incluse). Tichetele de mâine și de mai târziu rămân sub el, ca acum — lista e tot „restanțe + 7 zile".</p>
+  <div class="row" id="after"></div>
+
+  <h2>Stări</h2>
+  <p class="note">Fiecare stare e un decupaj din ecranul de start, pe același fundal. Lista din „Multe sarcini" chiar se derulează în machetă.</p>
+  <h3>Tema deschisă</h3>
+  <div class="tiles" id="statesL"></div>
+  <h3>Tema închisă</h3>
+  <div class="tiles" id="statesD"></div>
+
+  <h2>Butonul de captură 1×1</h2>
+  <p class="note">Recomandarea: cercul plin în accent (stânga). Varianta albă, cu „+" în accent, se pierde mai puțin pe fundaluri foarte colorate — de ales pe telefon, pe fundalul real.</p>
+  <div class="tiles" id="quick"></div>
+
+  <h2>Ce se poate în RemoteViews (Android 12–16)</h2>
+  <p class="note">Widget-ul nu e o pagină: e un arbore de view-uri descris în XML și umflat de launcher (HyperOS) cu resursele APK-ului. Doar clasele permise, fără view-uri proprii, fără CSS. Tabelul leagă fiecare element din machetă de felul în care se face.</p>
+  <table>
+    <thead><tr><th style="width:22%">Element</th><th style="width:9%">Se poate?</th><th>Cum</th></tr></thead>
+    <tbody id="tbl"></tbody>
+  </table>
+
+  <h2>Note de implementare</h2>
+  <div class="notes">
+    <h3>Fișiere care se schimbă</h3>
+    <ul>
+      <li><code>res/layout/widget_agenda.xml</code> — antet nou (stea, „Azi", număr, dată, reîmprospătare discretă, „+" rotund); <code>FrameLayout</code> peste listă pentru dégradéul de jos.</li>
+      <li><b>Nou:</b> <code>widget_agenda_compact.xml</code> + <code>widget_agenda_row_compact.xml</code> (4×2, rând pe o linie) și <code>widget_agenda_free.xml</code> (rândul „Nimic pe azi").</li>
+      <li><code>widget_agenda_row.xml</code> — titlu + rând de proiect, coada cu ora; <code>CheckBox</code> cu <code>android:button="@drawable/w_ck"</code>. <code>widget_agenda_section.xml</code> — iconiță + etichetă + număr.</li>
+      <li><code>widget_quick.xml</code>, <code>res/drawable/</code>: <code>widget_bg</code> (rază de sistem), <code>w_ck</code> (selector), <code>w_ck_ring</code>, <code>w_ck_urgent</code>, <code>w_ck_done</code> (disc cu bifa decupată), <code>w_row_sep</code>, <code>w_add_bg</code> (oval), <code>w_fade</code>, <code>ic_widget_star</code>, <code>ic_widget_clock</code>, <code>ic_widget_check</code>.</li>
+      <li><code>values/widget.xml</code> + <code>values-night/widget.xml</code> — paleta Senin (<code>w_star</code>, <code>w_danger</code>, <code>w_danger_soft</code>, <code>w_sep</code> noi); <code>values-v31/dimens.xml</code> pentru raza de sistem.</li>
+      <li><code>xml/widget_agenda_info.xml</code> — <code>previewLayout</code> cu un exemplu static (în selectorul de widget-uri se vede forma reală), <code>minResizeHeight</code> pentru 4×2.</li>
+      <li><code>AgendaWidget.kt</code> — <code>RemoteViews(mapOf(SizeF → layout))</code> pentru 4×4 / 4×2; numărul din antet = restanțe + azi; per rând: culoarea proiectului, <code>setButtonIcon</code> pentru urgent, fundalul cu/fără linie; rândul „Nimic pe azi" ca al treilea tip de element (<code>setViewTypeCount(3)</code>).</li>
+      <li><code>core/Agenda.kt</code> — <code>AgendaItem.projectAccent</code>; citirea nativă cere <code>projects(name,accent,reminders_only)</code>; <code>sectionLabel</code> trece din MAJUSCULE în „Restanțe" / „Mâine" / „Vineri" + dată separată → se actualizează <code>AgendaTest.kt</code>. Pagina: <code>src/lib/agenda.ts</code> trimite <code>accent</code> în <code>setAgenda</code> (+ <code>agenda.fixtures.json</code>).</li>
+    </ul>
+    <h3>Livrare și riscuri</h3>
+    <ul>
+      <li><b>Cere APK nou</b>, <code>versionCode 10</code>. Partea de pagină (câmpul <code>accent</code>) se poate publica înainte: un APK vechi ignoră câmpul; contractul <code>setAgenda</code> nu primește metodă nouă, deci <code>API</code> nu crește. Un APK nou cu o pagină veche cade pe gri (<code>w_ring_default</code>) până la următoarea citire nativă, care aduce culoarea singură.</li>
+      <li><b>Rândurile se refolosesc la derulare</b>: culoarea inelului, iconița urgentă și fundalul cu linie se pun EXPLICIT pe fiecare rând (aceeași capcană ca roșul de restanță de acum).</li>
+      <li><b>Bifa e tintată în întregime</b>: discul „gata" are bifa decupată (cale <code>evenOdd</code>), nu albă, altfel tinta ar colora-o la fel ca discul.</li>
+      <li><b>Fontul</b>: Inter ca resursă <code>@font/</code> într-un layout de widget nu e garantat pe launcher-ul HyperOS — de probat întâi pe telefon (un APK de probă, nu pe master); ținta sigură e <code>sans-serif</code> / <code>sans-serif-medium</code> (pe HyperOS: MiSans). Comutatorul de sus arată diferența.</li>
+      <li><b>Raza HyperOS</b> poate diferi de 16dp din AOSP; <code>system_app_widget_background_radius</code> o ia de la launcher, deci widget-ul se potrivește cu ceasul și vremea de lângă el.</li>
+      <li>Mărimea textului din aplicație (<code>--text-scale</code>) nu ajunge în widget: acolo totul e în <code>sp</code> și urmează mărimea fontului din sistem. 4×2 trebuie verificat la „Mare" din setările Android.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+/* ---------- iconițe (lucide) ---------- */
+const P={
+ star:'<path d="M12 2.5l2.9 5.9 6.5.95-4.7 4.58 1.1 6.47L12 17.35 6.2 20.4l1.1-6.47L2.6 9.35l6.5-.95z"/>',
+ plus:'<path d="M12 5v14M5 12h14"/>',
+ refresh:'<path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/>',
+ bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+ repeat:'<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',
+ clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+ check:'<path d="M20 6 9 17l-5-5"/>',
+ phone:'<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/>',
+ msg:'<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z"/>',
+ cam:'<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/>',
+ img:'<rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/>',
+ gear:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>',
+ cal:'<rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+ globe:'<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
+ music:'<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+ search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+ wifi:'<path d="M5 12.6a10 10 0 0 1 14 0M8.5 16.1a5 5 0 0 1 7 0M2 8.8a15 15 0 0 1 20 0"/><path d="M12 20h.01"/>',
+ sig:'<path d="M2 20h.01M7 20v-4M12 20v-8M17 20V8M22 4v16"/>',
+ bat:'<rect width="16" height="10" x="2" y="7" rx="2"/><path d="M22 11v2"/><path d="M6 10v4M9.5 10v4M13 10v4" />',
+};
+const ic=(n,s=16,w=2,fill=false)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="${fill?'currentColor':'none'}" stroke="currentColor" stroke-width="${fill?0:w}" stroke-linecap="round" stroke-linejoin="round">${P[n]}</svg>`;
+
+/* ---------- date ---------- */
+const PJ={inbox:'Inbox',hz:'Horizontal',tur:'Turism',casa:'Casă',apo:'Apologetica',ex:'Examen'};
+const I=(t,p,o={})=>({t,p,...o});
+const NORMAL=[
+ {kind:'over',label:'Restanțe',items:[
+   I('Răspunde lui Mihai despre API-ul de bilete','hz',{miss:'ieri',urg:1}),
+   I('Trimite factura la contabil','casa',{miss:'11 oct'}),
+ ]},
+ {kind:'today',label:'Azi',items:[
+   I('Sună la bancă pentru cardul nou','inbox',{tm:'10:00',urg:1,bell:1}),
+   I('Ședința de sprint','hz',{tm:'11:30',bell:1}),
+   I('Ia vitamina D','casa',{tm:'14:00',rep:1,bell:1}),
+   I('Revizuiește PR-ul pentru widget','hz'),
+   I('Citește capitolul 3 din Lewis','apo'),
+ ]},
+ {kind:'day',label:'Mâine',date:'joi 15 oct',items:[
+   I('Programare service auto','casa',{tm:'09:00',bell:1}),
+   I('Plan excursie Brașov — cazare','tur'),
+ ]},
+ {kind:'day',label:'Vineri',date:'16 oct',items:[
+   I('Raport lunar pentru echipă','hz',{tm:'12:00'}),
+ ]},
+];
+const FREE=[
+ {kind:'free'},
+ {kind:'day',label:'Mâine',date:'joi 15 oct',items:[
+   I('Programare service auto','casa',{tm:'09:00',bell:1}),
+   I('Plan excursie Brașov — cazare','tur'),
+ ]},
+ {kind:'day',label:'Vineri',date:'16 oct',items:[I('Raport lunar pentru echipă','hz',{tm:'12:00'})]},
+ {kind:'day',label:'Duminică',date:'18 oct',items:[I('Sună-o pe mama','inbox',{rep:1})]},
+];
+const MANY=[
+ {kind:'over',label:'Restanțe',items:[
+   I('Răspunde lui Mihai despre API-ul de bilete','hz',{miss:'ieri',urg:1}),
+   I('Trimite factura la contabil','casa',{miss:'11 oct'}),
+   I('Reînnoiește asigurarea RCA','casa',{miss:'lun 12'}),
+   I('Exercițiile 4–7 de la seminar','ex',{miss:'ieri'}),
+ ]},
+ {kind:'today',label:'Azi',items:[
+   I('Sună la bancă pentru cardul nou','inbox',{tm:'10:00',urg:1,bell:1}),
+   I('Ședința de sprint','hz',{tm:'11:30',bell:1}),
+   I('Prânz cu Andrei','inbox',{tm:'13:00'}),
+   I('Ia vitamina D','casa',{tm:'14:00',rep:1,bell:1}),
+   I('Demo pentru client: lista „Azi"','hz',{tm:'16:30',bell:1}),
+   I('Revizuiește PR-ul pentru widget','hz'),
+   I('Citește capitolul 3 din Lewis','apo'),
+   I('Cumpără baterii pentru telecomandă','casa'),
+   I('Notițe pentru predica de duminică','apo'),
+ ]},
+ {kind:'day',label:'Mâine',date:'joi 15 oct',items:[
+   I('Programare service auto','casa',{tm:'09:00',bell:1}),
+   I('Plan excursie Brașov — cazare','tur'),
+   I('Trimite oferta pentru grupul de 12','tur',{tm:'15:00'}),
+ ]},
+ {kind:'day',label:'Vineri',date:'16 oct',items:[I('Raport lunar pentru echipă','hz',{tm:'12:00'})]},
+];
+const count=g=>g.filter(x=>x.kind==='over'||x.kind==='today').reduce((a,x)=>a+x.items.length,0);
+
+/* ---------- ÎNAINTE ---------- */
+function oldWidget(groups,{w=364,h=404,empty}={}){
+  const n=groups?groups.reduce((a,x)=>a+(x.items||[]).length,0):0;
+  let body='';
+  if(empty) body=`<div class="empty">${empty}</div>`;
+  else{
+    body='<div class="list">';
+    for(const g of groups){
+      const lab=g.kind==='over'?'RESTANȚE':g.kind==='today'?'AZI · MIE 14 OCT':g.label==='Mâine'?'MÂINE · JOI 15 OCT':'VINERI 16 OCT';
+      body+=`<div class="sec ${g.kind}">${lab}</div>`;
+      for(const it of g.items){
+        body+=`<div class="r ${g.kind==='over'?'over':''}"><div class="cb"></div><div class="ti">${it.t}</div><div class="me">${it.miss||it.tm||''}</div>${it.rep?`<span class="ic">${ic('repeat',14)}</span>`:''}${it.bell?`<span class="ic">${ic('bell',14)}</span>`:''}</div>`;
+      }
+    }
+    body+='</div>';
+  }
+  return `<div class="old w" style="width:${w}px;height:${h}px"><div class="hd"><div class="brand">Horizontal</div><div class="cnt">${n?'· '+n:''}</div><div class="ib">${ic('refresh',18)}</div><div class="ib add">${ic('plus',18,2.2)}</div></div>${body}</div>`;
+}
+
+/* ---------- DUPĂ ---------- */
+function row(it,cmp){
+  const pc=`var(--p-${it.p})`;
+  const ck=`<div class="ck${it.urg?' urg':''}${it.done?' done':''}">${it.done?ic('check',13,3):''}</div>`;
+  const tm=it.miss?`<span class="tm miss">${it.miss}</span>`:it.tm?`<span class="tm">${it.tm}</span>`:'';
+  if(cmp) return `<div class="r" style="--pc:${pc}">${ck}<div class="bd"><div class="ti">${it.t}</div></div><div class="tl">${tm}<span class="dot"></span></div></div>`;
+  const icons=(it.rep?`<span class="ic">${ic('repeat',12,2.2)}</span>`:'')+(it.bell?`<span class="ic">${ic('bell',12,2.2)}</span>`:'');
+  return `<div class="r${it.done?' isdone':''}" style="--pc:${pc}">${ck}<div class="bd"><div class="ti">${it.t}</div><div class="pj">${PJ[it.p]}${icons}</div></div><div class="tl">${tm}</div></div>`;
+}
+function newWidget(groups,{w=364,h=404,cmp=false,state='list',scroll=0,id=''}={}){
+  const n=groups?count(groups):0;
+  const head=cmp
+    ?`<div class="hd"><span class="st">${ic('star',18,0,true)}</span><h4>Azi</h4>${n?`<span class="n">${n}</span>`:''}<span class="sp"></span><span class="plus">${ic('plus',18,2.4)}</span></div>`
+    :`<div class="hd"><span class="st">${ic('star',22,0,true)}</span><h4>Azi</h4>${n?`<span class="n">${n}</span>`:''}<span class="sp"></span><span class="ghost">${ic('refresh',17,2)}</span><span class="plus">${ic('plus',20,2.4)}</span></div><div class="sub">miercuri, 14 octombrie</div>`;
+  let body='';
+  if(state==='empty7') body=`<div class="center"><span class="ok">${ic('check',22,2.6)}</span><b>Nimic pe azi</b><span>Nici în următoarele 7 zile.</span></div>`;
+  else if(state==='nodata') body=`<div class="center"><b>Încă nu știu sarcinile tale</b><span>Deschide aplicația o dată, ca să apară aici.</span><span class="btn">Deschide Horizontal</span></div>`;
+  else{
+    body=`<div style="position:relative;height:0"><div class="fadet"></div></div><div class="list" ${id?`id="${id}"`:''}>`;
+    groups.forEach((g,gi)=>{
+      if(g.kind==='free'){
+        body+=cmp?`<div class="gh" style="color:var(--ink3);padding-top:6px">${ic('check',14,2.6)}<span>Nimic pe azi</span></div>`
+          :`<div class="free"><span class="ok">${ic('check',17,2.6)}</span><div><b>Nimic pe azi</b><span>Ziua e liberă.</span></div></div>`;
+        return;
+      }
+      // „Azi" n-are cap când e primul grup: antetul widget-ului îl spune deja.
+      const showHead=!(g.kind==='today'&&gi===0);
+      if(showHead){
+        if(g.kind==='over') body+=`<div class="gh over">${ic('clock',15,2.3)}<span>${g.label}</span><span class="c">${g.items.length}</span></div>`;
+        else body+=`<div class="gh"><span>${g.label}</span>${g.date?`<span class="d">${g.date}</span>`:`<span class="c">${g.items.length}</span>`}</div>`;
+      }
+      body+=g.items.map(it=>row(it,cmp)).join('');
+    });
+    body+='</div><div class="fade"></div>';
+  }
+  return `<div class="nw w${cmp?' cmp':''}" style="width:${w}px;height:${h}px">${head}${body}</div>`;
+}
+
+/* ---------- ecranul de start ---------- */
+const APPS=[['Telefon','phone','#34C759,#1FA34A'],['Mesaje','msg','#3B9BFF,#1E6FE8'],['Cameră','cam','#6B7280,#3F4652'],['Galerie','img','#FF9F43,#F25F5C'],['Calendar','cal','#F5F6F8,#E2E5EA'],['Setări','gear','#8E96A3,#5E6673'],['Browser','globe','#4FA3FF,#7C5CFF'],['Muzică','music','#FF5A7A,#E0336B']];
+const app=([l,i,g],dark)=>{const [a,b]=g.split(',');const light=i==='cal';return `<div class="app"><i style="background:linear-gradient(160deg,${a},${b});${light?'color:#E5484D':''}">${ic(i,26,2)}</i><span>${l}</span></div>`};
+function phone(theme,inner,{tile=false}={}){
+  const sb=tile?'':`<div class="sb"><span>09:41</span><span class="ico">${ic('sig',15,2.2)}${ic('wifi',15,2.2)}${ic('bat',19,1.8)}</span></div>`;
+  return `<div class="phone ${theme}${tile?' tile':''}"><div class="wall"></div><div class="screen">${sb}${inner}</div></div>`;
+}
+const appsRow=(xs)=>xs.map(a=>`<div class="cell">${app(a)}</div>`).join('');
+function homeScreen(theme,widget,quick){
+  return phone(theme,`<div class="grid"><div class="cell span4">${widget}</div><div class="cell"><div style="display:flex;flex-direction:column;align-items:center">${quick}</div></div>${appsRow(APPS.slice(4,7))}</div>
+   <div class="dock">${APPS.slice(0,4).map(a=>app(a)).join('')}</div><div class="search">${ic('search',18,2)}<span>Caută</span></div>`);
+}
+const oldQ=`<div class="oldq">${ic('plus',26,2.2)}</div>`;
+const newQ=`<div class="nq">${ic('plus',28,2.4)}</div>`;
+
+document.getElementById('before').innerHTML=
+  ['light','dark'].map(t=>`<div>${homeScreen(t,oldWidget(NORMAL),oldQ)}<p class="cap"><b>${t==='light'?'Tema deschisă':'Tema închisă'}.</b> 4×4 cu restanțe; butonul 1×1 e pătratul indigo cu „+".</p></div>`).join('');
+document.getElementById('after').innerHTML=
+  ['light','dark'].map(t=>`<div>${homeScreen(t,newWidget(NORMAL),newQ)}<p class="cap"><b>${t==='light'?'Tema deschisă':'Tema închisă'}.</b> Restanțele au ceas și roșu; urgentul e inelul roșu, nu o iconiță; „Azi" nu-și repetă capul sub antet.</p></div>`).join('');
+
+const STATES=[
+  ['4×4 · zi obișnuită, cu restanțe',()=>newWidget(NORMAL)],
+  ['4×4 · nimic pe azi, dar urmează ceva',()=>newWidget(FREE)],
+  ['4×4 · multe sarcini (derulată)',t=>newWidget(MANY,{id:'many-'+t})],
+  ['4×4 · nimic în 7 zile',()=>newWidget(null,{state:'empty7'})],
+  ['4×4 · fără date încă (instalare proaspătă)',()=>newWidget(null,{state:'nodata'})],
+  ['4×2 · zi obișnuită',()=>newWidget(NORMAL,{h:194,cmp:true})],
+  ['4×2 · nimic pe azi',()=>newWidget(FREE,{h:194,cmp:true})],
+  ['Înainte, pentru comparație · 4×2',()=>oldWidget(NORMAL,{h:194})],
+];
+for(const t of ['light','dark']){
+  document.getElementById(t==='light'?'statesL':'statesD').innerHTML=STATES.map(([l,f])=>
+    `<div>${phone(t,`<div class="lbl">${l}</div>${f(t)}`,{tile:true})}</div>`).join('');
+}
+document.getElementById('quick').innerHTML=['light','dark'].map(t=>phone(t,`<div class="lbl">1×1 · ${t==='light'?'tema deschisă':'tema închisă'}</div>
+  <div class="grid" style="margin-top:0"><div class="cell"><div style="display:flex;flex-direction:column;align-items:center">${newQ}</div></div>
+  <div class="cell"><div style="display:flex;flex-direction:column;align-items:center"><div class="nq alt">${ic('plus',28,2.4)}</div></div></div>
+  <div class="cell"><div style="display:flex;flex-direction:column;align-items:center">${oldQ}</div></div>${appsRow(APPS.slice(5,6))}</div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);font:500 11px Inter;margin-top:6px;text-align:center" class="${t}"><span class="qlabel">recomandat</span><span class="qlabel">variantă</span><span class="qlabel">înainte</span><span></span></div>`,{tile:true})).join('');
+['light','dark'].forEach(t=>{const l=document.getElementById('many-'+t);if(l)l.scrollTop=300});
+
+/* ---------- tabelul RemoteViews ---------- */
+const T=[
+ ['Colțurile de sistem','ok','<code>android:id="@android:id/background"</code> pe rădăcină + <code>clipToOutline</code> (deja) și <code>&lt;corners android:radius="@android:dimen/system_app_widget_background_radius"/&gt;</code> în <code>widget_bg</code> (API 31). Launcher-ul HyperOS dă raza, deci widget-ul se potrivește cu vecinii.'],
+ ['Suprafața albă / aproape neagră','ok','<code>&lt;shape&gt;</code> cu <code>@color/w_surface</code>; tema închisă din <code>values-night/</code> — launcher-ul reumflă la schimbarea temei de sistem.'],
+ ['Umbra de sub widget','no','Launcher-ul desenează (sau nu) umbra containerului; din widget nu se poate pune <code>box-shadow</code>. Pe HyperOS widget-urile stau pe fundal fără umbră — în machetă umbra e doar ca să se citească suprafața pe tapet.'],
+ ['Inter (fontul aplicației)','mid','<code>android:fontFamily="@font/inter"</code> în layoutul widget-ului: se umflă cu resursele APK-ului, dar suportul pe launchere terțe (inclusiv HyperOS) e inconsistent — de probat pe Redmi înainte. Ținta sigură: <code>sans-serif</code> (titluri, <code>textStyle="bold"</code>) și <code>sans-serif-medium</code> (etichete). Pe HyperOS asta înseamnă MiSans, nu Roboto.'],
+ ['Greutăți intermediare (450, 650, 750)','mid','<code>android:textFontWeight</code> (API 28) doar din XML, și doar dacă fontul are greutatea. Fără Inter: 400 / 500 (<code>-medium</code>) / 700 (<code>bold</code>). Nu există setter remotable pentru tipar la rulare.'],
+ ['Ora mono (Geist Mono)','mid','Fără font propriu: <code>monospace</code> (Droid Sans Mono, mai lat) sau — recomandat — <code>sans-serif-medium</code> cu <code>android:fontFeatureSettings="tnum"</code>: cifre tabelare, aliniate pe coloană, fără să arate ca un terminal.'],
+ ['Steaua galbenă, ceasul, „+"','ok','Vectori în <code>res/drawable</code> (traseele lucide din <code>Icon.tsx</code>), pe <code>ImageView</code> cu <code>android:tint="@color/w_star"</code>. Culoarea la rulare: <code>setInt(id, "setColorFilter", c)</code>.'],
+ ['Inelul bifei în culoarea proiectului','ok','<code>CheckBox</code> (API 31, deja folosit) cu <code>android:button="@drawable/w_ck"</code> — selector: inel / disc plin. Culoarea pe rând: <code>setColorStateList(R.id.r_check, "setButtonTintList", …)</code>, exact ca roșul de acum. Culoarea proiectului trebuie adusă în <code>AgendaItem</code> (azi lipsește).'],
+ ['Inelul roșu urgent (cu fundal pal)','ok','Un al doilea drawable (inel 2dp + disc cu alfa 13%), schimbat cu <code>setIcon(R.id.r_check, "setButtonIcon", Icon.createWithResource(…))</code> (remotable din API 31) + tintă roșie. Tinta păstrează alfa, deci fundalul pal iese din aceeași culoare.'],
+ ['Discul „gata" după atingere','ok','Starea <code>checked</code> a selectorului. Bifa e <b>decupată</b> din disc (cale <code>evenOdd</code>), nu albă: tinta colorează tot ce e opac. Rândul dispare oricum la redesenare, cât „Gata" stă în coadă.'],
+ ['Punctul + numele proiectului','ok','Un singur <code>TextView</code>: „● Horizontal", cu <code>ForegroundColorSpan</code> pe punct — spanurile trec prin <code>setTextViewText</code>. Alternativ, <code>ImageView</code> oval 7dp + <code>setColorFilter</code>.'],
+ ['Linia de păr care pornește de sub titlu','ok','În RemoteViews nu există <code>View</code> simplu. Fundalul rândului = <code>&lt;layer-list&gt;</code> cu un item de 1px sus, <code>android:left="48dp"</code>; primul rând din grup primește fundalul fără linie (<code>setInt(id, "setBackgroundResource", …)</code>, mereu explicit).'],
+ ['Capul de grup (Restanțe / Mâine / Vineri 16 oct)','ok','<code>LinearLayout</code> cu <code>ImageView</code> (ceas, vizibil doar la restanțe) + două <code>TextView</code>; culoarea cu <code>setTextColor</code>.'],
+ ['„+" rotund în accent','ok','<code>ImageView</code> cu fundal <code>&lt;shape android:shape="oval"&gt;</code>. Umbra colorată (<code>elevation</code> + <code>outlineSpotShadowColor</code>) se poate scrie în XML, dar launcherele n-o randează sigur — designul nu se bazează pe ea.'],
+ ['4×4 și 4×2 cu layouturi diferite','ok','<code>RemoteViews(mapOf(SizeF(w,h) to …))</code> (API 31): launcher-ul alege singur la redimensionare, fără rundă prin aplicație.'],
+ ['Derularea listei','ok','<code>ListView</code> + <code>RemoteCollectionItems</code> (deja). Dégradéul de jos: <code>ImageView</code> cu <code>&lt;gradient&gt;</code> de la transparent la <code>w_surface</code>, într-un <code>FrameLayout</code> peste listă (neclicabil, atingerea trece).'],
+ ['Rândul „Nimic pe azi"','ok','Un al treilea tip de element în colecție (<code>setViewTypeCount(3)</code>); fundal <code>w_soft</code> cu raza de 12dp.'],
+ ['Feedback la atingere','ok','<code>android:background</code> cu un <code>&lt;ripple&gt;</code> propriu (nu <code>?attr/selectableItemBackground</code>: atributele de temă se rezolvă în tema launcher-ului).'],
+ ['Culori dinamice (Material You)','mid','Posibil (<code>@android:color/system_accent1_*</code>, API 31), dar deliberat NU: accentul aplicației e albastrul Senin, iar culorile proiectelor sunt ale omului.'],
+ ['Fundal translucid cu blur peste tapet','no','Fără <code>backdrop-filter</code>; un alfa pe suprafață se poate, dar fără blur textul se citește prost pe tapete colorate. Rămâne plin.'],
+ ['Glisare pe rând, animații, apăsare lungă','no','RemoteViews are doar click și <code>CheckedChange</code>. Glisarea „Mâine" rămâne în aplicație.'],
+ ['Mărimea textului din aplicație','no','<code>--text-scale</code> e al paginii; widget-ul folosește <code>sp</code> și urmează mărimea fontului din setările Android.'],
+];
+document.getElementById('tbl').innerHTML=T.map(([a,s,b])=>`<tr><td><b>${a}</b></td><td class="${s}">${s==='ok'?'Da':s==='no'?'Nu':'Parțial'}</td><td>${b}</td></tr>`).join('');
+
+/* ---------- comutatorul de fonturi ---------- */
+const fI=document.getElementById('fInter'),fS=document.getElementById('fSys');
+fI.onclick=()=>{document.body.classList.remove('sys');fI.classList.add('on');fS.classList.remove('on')};
+fS.onclick=()=>{document.body.classList.add('sys');fS.classList.add('on');fI.classList.remove('on')};
+</script>
+</body>
+</html>

@@ -21,6 +21,8 @@ data class AgendaItem(
     val hasReminder: Boolean, val recurring: Boolean, val urgent: Boolean,
     /** Rutină (proiect „doar mementouri"): ascunsă până atunci = `remind_at ?: due_at`. `src/lib/routines.ts`. */
     val hiddenUntil: Long? = null,
+    /** Culoarea proiectului (`projects.accent`, hex al omului) — inelul bifei. `null`: inel gri (o pagină veche n-o trimite). */
+    val projectAccent: String? = null,
 )
 /** `readAt` = PORNIREA citirii (ca `NativeList`); al paginii, 0 offline. */
 data class AgendaList(val items: List<AgendaItem>, val readAt: Long)
@@ -71,7 +73,10 @@ fun visibleAgenda(page: AgendaList?, native: AgendaList?, queue: List<NativeActi
     val done = queue.filter { it.kind == NativeAction.Kind.DONE }.map { it.id }.toSet() +
         held.filterValues { it >= src.readAt }.keys
     val known = src.items.map { it.id }.toSet()
-    return agendaWithEdits(src.items + creates.filter { it.id !in known }, edits, src.readAt).filter { it.id !in done }
+    // O creare nu știe culoarea proiectului; o ia de la un rând al aceluiași proiect, dacă există.
+    val accents = src.items.filter { it.project != null && it.projectAccent != null }.associate { it.project to it.projectAccent }
+    val fresh = creates.filter { it.id !in known }.map { c -> if (c.projectAccent == null) c.copy(projectAccent = accents[c.project]) else c }
+    return agendaWithEdits(src.items + fresh, edits, src.readAt).filter { it.id !in done }
 }
 
 /**
@@ -99,18 +104,51 @@ fun nextReveal(items: List<AgendaItem>, now: Long): Long? = items.mapNotNull { i
 private val ZILE = listOf("lun", "mar", "mie", "joi", "vin", "sâm", "dum")
 private val ZILE_LUNGI = listOf("luni", "marți", "miercuri", "joi", "vineri", "sâmbătă", "duminică")
 private val LUNI = listOf("ian", "feb", "mar", "apr", "mai", "iun", "iul", "aug", "sep", "oct", "nov", "dec")
-private val RO = Locale.forLanguageTag("ro")
+private val LUNI_LUNGI = listOf("ianuarie", "februarie", "martie", "aprilie", "mai", "iunie", "iulie", "august",
+    "septembrie", "octombrie", "noiembrie", "decembrie")
 private fun short(d: LocalDate) = "${ZILE[d.dayOfWeek.value - 1]} ${d.dayOfMonth} ${LUNI[d.monthValue - 1]}"
 
-fun sectionLabel(s: AgendaSection): String {
-    if (s.overdue) return "RESTANȚE"
+/**
+ * Capul unui grup („Senin"): eticheta în litere obișnuite, plus data — sau, unde
+ * data n-ar spune nimic (Restanțe, Azi), numărul. `date == null` ⇒ se arată numărul.
+ */
+data class SectionHead(val label: String, val date: String?)
+
+fun sectionHead(s: AgendaSection): SectionHead {
+    if (s.overdue) return SectionHead("Restanțe", null)
     val d = s.date!!
-    val text = when (s.offset) {
-        0 -> "azi · ${short(d)}"
-        1 -> "mâine · ${short(d)}"
-        else -> "${ZILE_LUNGI[d.dayOfWeek.value - 1]} ${d.dayOfMonth} ${LUNI[d.monthValue - 1]}"
+    return when (s.offset) {
+        0 -> SectionHead("Azi", null)
+        1 -> SectionHead("Mâine", short(d))
+        else -> SectionHead(ZILE_LUNGI[d.dayOfWeek.value - 1].replaceFirstChar { it.titlecase(Locale.ROOT) }, "${d.dayOfMonth} ${LUNI[d.monthValue - 1]}")
     }
-    return text.uppercase(RO)
+}
+
+/** „Azi" n-are cap când e primul grup: antetul widget-ului îl spune deja. */
+fun showsHead(index: Int, s: AgendaSection) = !(index == 0 && !s.overdue && s.offset == 0)
+
+/** Numărul din antet: ce e de făcut azi, restanțele incluse. */
+fun todayCount(sections: List<AgendaSection>) = sections.filter { it.overdue || it.offset == 0 }.sumOf { it.items.size }
+
+/** Rândul „Nimic pe azi": nimic restant, nimic azi, dar urmează ceva (altfel e starea goală a widget-ului). */
+fun freeToday(sections: List<AgendaSection>) = sections.isNotEmpty() && sections.none { it.overdue || it.offset == 0 }
+
+/** Linia de sub „Azi": „miercuri, 14 octombrie". */
+fun todayLine(now: Long, zone: ZoneId): String {
+    val d = localDate(now, zone)
+    return "${ZILE_LUNGI[d.dayOfWeek.value - 1]}, ${d.dayOfMonth} ${LUNI_LUNGI[d.monthValue - 1]}"
+}
+
+/** `#RGB` / `#RRGGBB` / `#AARRGGBB` → ARGB; orice altceva `null` (inel gri). Accentul e scris de om, deci nu se presupune valid. */
+fun accentArgb(hex: String?): Int? {
+    val h = hex?.trim()?.removePrefix("#") ?: return null
+    if (!h.all { it in '0'..'9' || it in 'a'..'f' || it in 'A'..'F' }) return null
+    return when (h.length) {
+        3 -> (0xFF000000.toInt()) or h.map { "$it$it" }.joinToString("").toInt(16)
+        6 -> (0xFF000000.toInt()) or h.toInt(16)
+        8 -> h.toLong(16).toInt()
+        else -> null
+    }
 }
 
 private val HM = DateTimeFormatter.ofPattern("HH:mm")
@@ -137,7 +175,7 @@ fun rowMeta(item: AgendaItem, overdue: Boolean, now: Long, zone: ZoneId): String
 fun agendaQuery(now: Long, zone: ZoneId, me: Me = Me.UNKNOWN): String {
     val e = { s: String -> URLEncoder.encode(s, "UTF-8") }
     val end = localDate(now, zone).plusDays(AGENDA_DAYS.toLong()).atStartOfDay(zone).toInstant().toEpochMilli()
-    return "issues?select=id,title,due_at,all_day,remind_at,rrule,urgent,assignee_id,created_by,projects(name,reminders_only)" +
+    return "issues?select=id,title,due_at,all_day,remind_at,rrule,urgent,assignee_id,created_by,projects(name,accent,reminders_only)" +
         "&done=is.false&due_at=lt.${e(isoJs(end))}" + mineFilter(me) + "&order=due_at.asc&limit=$AGENDA_LIMIT"
 }
 
@@ -156,6 +194,7 @@ fun parseAgenda(json: String, me: Me = Me.UNKNOWN): List<AgendaItem> {
             isoJs(due), if (o.isNull("all_day")) false else o.optBoolean("all_day", false),
             o.str("remind_at") != null, o.str("rrule") != null, if (o.isNull("urgent")) false else o.optBoolean("urgent", false),
             if (routine) parseIso(o.str("remind_at")) ?: due else null,
+            o.optJSONObject("projects")?.str("accent")?.ifBlank { null },
         )
     }
 }

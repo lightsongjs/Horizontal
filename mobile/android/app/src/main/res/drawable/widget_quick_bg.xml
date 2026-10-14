@@ -1,4 +1,5 @@
-<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+<?xml version="1.0" encoding="utf-8"?>
+<!-- „+" rotund în accent: butonul 1×1 și cel din antetul agendei. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
     <solid android:color="@color/w_accent" />
-    <corners android:radius="16dp" />
 </shape>

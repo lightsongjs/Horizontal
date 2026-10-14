@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Previzualizarea din selectorul de widget-uri (API 31, `previewLayout`): un exemplu static, ca să se vadă forma reală. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@android:id/background"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:background="@drawable/widget_bg" android:clipToOutline="true">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:gravity="center_vertical"
+        android:paddingStart="16dp" android:paddingEnd="12dp" android:paddingTop="14dp">
+        <ImageView android:layout_width="22dp" android:layout_height="22dp" android:src="@drawable/ic_widget_star" android:tint="@color/w_star" />
+        <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginStart="8dp"
+            android:text="Azi" android:fontFamily="sans-serif" android:textStyle="bold" android:textSize="24sp" android:textColor="@color/w_ink" />
+        <ImageView android:layout_width="38dp" android:layout_height="38dp" android:padding="9dp"
+            android:background="@drawable/widget_quick_bg" android:src="@drawable/ic_widget_plus" android:tint="@color/w_on_accent" />
+    </LinearLayout>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal"
+        android:gravity="center_vertical" android:paddingStart="16dp" android:paddingTop="14dp" android:paddingBottom="4dp">
+        <ImageView android:layout_width="15dp" android:layout_height="15dp" android:layout_marginEnd="6dp"
+            android:src="@drawable/ic_widget_clock" android:tint="@color/w_danger" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Restanțe"
+            android:fontFamily="sans-serif-medium" android:textStyle="bold" android:textSize="13.5sp" android:textColor="@color/w_danger" />
+    </LinearLayout>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="54dp" android:orientation="horizontal"
+        android:gravity="center_vertical" android:paddingStart="5dp" android:paddingEnd="14dp">
+        <ImageView android:layout_width="40dp" android:layout_height="40dp" android:src="@drawable/w_ck_urgent_ring" android:tint="@color/w_danger" />
+        <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginStart="3dp"
+            android:text="Trimite factura la contabil" android:fontFamily="sans-serif" android:textSize="15sp" android:textColor="@color/w_ink"
+            android:maxLines="1" android:ellipsize="end" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="ieri"
+            android:fontFamily="sans-serif-medium" android:textSize="13sp" android:textColor="@color/w_danger" />
+    </LinearLayout>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="54dp" android:orientation="horizontal"
+        android:gravity="center_vertical" android:paddingStart="5dp" android:paddingEnd="14dp" android:background="@drawable/w_row_sep">
+        <ImageView android:layout_width="40dp" android:layout_height="40dp" android:src="@drawable/w_ck_ring" android:tint="@color/w_accent" />
+        <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginStart="3dp"
+            android:text="Ședința de sprint" android:fontFamily="sans-serif" android:textSize="15sp" android:textColor="@color/w_ink" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="11:30"
+            android:fontFamily="sans-serif-medium" android:fontFeatureSettings="tnum" android:textSize="13sp" android:textColor="@color/w_ink2" />
+    </LinearLayout>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="54dp" android:orientation="horizontal"
+        android:gravity="center_vertical" android:paddingStart="5dp" android:paddingEnd="14dp" android:background="@drawable/w_row_sep">
+        <ImageView android:layout_width="40dp" android:layout_height="40dp" android:src="@drawable/w_ck_ring" android:tint="@color/w_star" />
+        <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginStart="3dp"
+            android:text="Revizuiește PR-ul pentru widget" android:fontFamily="sans-serif" android:textSize="15sp" android:textColor="@color/w_ink"
+            android:maxLines="1" android:ellipsize="end" />
+    </LinearLayout>
+</LinearLayout>
