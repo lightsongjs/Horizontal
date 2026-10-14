@@ -76,7 +76,7 @@ const SHORTCUTS: { keys: string; action: string; where?: string }[] = [
 const RULES: { title: string; body: string }[] = [
   {
     title: 'Listele',
-    body: 'Azi, Mâine și Next 7 days taie transversal toate proiectele. Restanțele apar NUMAI în Azi, deasupra sarcinilor zilei, și ca badge roșu în sidebar — o restanță e o problemă de azi, dar „Next 7 days" e o listă despre ce urmează.',
+    body: 'Azi, Mâine și 7 zile taie transversal toate proiectele. Restanțele apar NUMAI în Azi, deasupra sarcinilor zilei, și ca badge roșu în sidebar — o restanță e o problemă de azi, dar „7 zile" e o listă despre ce urmează.',
   },
   {
     title: 'Fără Inbox',

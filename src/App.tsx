@@ -97,9 +97,9 @@ function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, ca
   // fără gardă, antetul arăta „+ Tichet”/căutare/setări ale proiectului STRĂIN
   // peste un ecran care n-are treabă cu el.
   // La fel pe un filtru: proiectul din store e al tichetului docat.
-  const projectChrome = inbox || filterId ? null : project
+  const projectChrome = inbox || filterId || smartList ? null : project
   const pct = projectChrome ? Math.round(completion(projectChrome.id) * 100) : 0
-  const listCount = smartList === 'today' ? smartLists.today.length
+  const listCount = smartList === 'today' ? smartLists.overdue.length + smartLists.today.length
     : smartList === 'tomorrow' ? smartLists.tomorrow.length
     : smartList === 'week' ? smartLists.week.reduce((n, d) => n + d.issues.length, 0)
     : filter ? filterCounts[filter.id] ?? 0
@@ -132,12 +132,16 @@ function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, ca
       <button className="header-drawer-btn" onClick={onDrawer} aria-label="Meniu" title="Meniu">
         <Icon name="drawer" size={20} />
       </button>
-      <div className="logo">{inbox ? <Icon name="people" size={18} /> : list ? <Icon name={list.icon} size={18} /> : filterId ? <Icon name={filter?.icon ?? 'filter'} size={18} /> : projectChrome ? projectChrome.prefix.slice(0, 2) : 'H'}</div>
+      {/* Pe telefon titlul stă pe al doilea rând, mare, sub butoane („Senin");
+          pe desktop rămâne în rândul lor. */}
       <div className="htxt">
-        <h1>
-          {inbox ? 'Ale mele' : list ? list.label : filterId ? filter?.name ?? 'Filtru' : projectChrome ? projectChrome.name : 'Horizontal'}
-          {(list || filter) && listCount > 0 && <span className="hcount">{listCount}</span>}
-        </h1>
+        <div className="hd-title">
+          <div className={`logo${list?.kind === 'today' ? ' star' : ''}`}>{inbox ? <Icon name="people" size={20} /> : list ? <Icon name={list.icon} size={list.kind === 'today' ? 24 : 20} /> : filterId ? <Icon name={filter?.icon ?? 'filter'} size={20} /> : projectChrome ? projectChrome.prefix.slice(0, 2) : 'H'}</div>
+          <h1>
+            {inbox ? 'Ale mele' : list ? list.label : filterId ? filter?.name ?? 'Filtru' : projectChrome ? projectChrome.name : 'Horizontal'}
+            {(list || filter) && listCount > 0 && <span className="hcount">{listCount}</span>}
+          </h1>
+        </div>
         <div className="crumb">
           {inbox ? 'Ce ți-a pasat cineva.' : list ? smartCrumb(list.kind, new Date()) : filterId ? filterCrumb : projectChrome ? projectChrome.description : 'Toate proiectele tale'}
           {!projectChrome && !named && <span style={{ display: 'block', fontSize: 'calc(10px * var(--text-scale))', opacity: 0.5, marginTop: '1px' }}>Built: {getBuildAgo()}</span>}
@@ -1329,6 +1333,7 @@ function Shell() {
         filterId={filterId}
         onFilter={(id) => openScreen(filterScreen(id))}
         onFilterForm={(id) => { if (leaveDocked()) openFilterForm(id) }}
+        onSearch={() => { if (leaveDocked()) setShowSearch(true) }}
       />
       <div className="app-body">
         {ta.selectMode && ta.narrow && taskList ? <SelectionHeader /> : <Header onNewIssue={openNewIssue} onSearch={() => {

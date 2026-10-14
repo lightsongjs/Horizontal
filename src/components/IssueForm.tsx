@@ -1278,6 +1278,7 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
     <>
       {/* HEADER */}
       <div className="sh-header">
+        {isEdit && existing && <span className="sh-id">{displayIssueId(existing.id)}</span>}
         <button className="sh-close" onClick={closeSheet} aria-label="Închide"><Icon name="close" size={16} /></button>
         {docked && isEdit && (
           <button

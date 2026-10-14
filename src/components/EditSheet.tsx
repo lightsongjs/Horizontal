@@ -15,6 +15,7 @@ import type { EditorHandle } from './MarkdownEditor'
 import { FormatBar } from './FormatBar'
 import { AttachButton, ThumbRow, attachBlocked, useTicketFiles } from './SheetFiles'
 import { ProjectMark } from './ProjectMark'
+import { displayIssueId } from '../lib/issueId'
 
 /** Ce se editează din foaie — exact câmpurile pe care le poate trimite. */
 type EditFields = {
@@ -167,6 +168,7 @@ function EditBody({ issue }: { issue: Issue }) {
   return (
     <KeyboardSheet onClose={closeSheet} label={`Sarcina ${issue.id}`} className={`edit-sheet ${issue.done ? 'done' : ''}`}>
       <div className="qs-form">
+        <div className="es-meta">{displayIssueId(issue.id)}</div>
         <div className="es-head">
           <button
             type="button"
@@ -266,7 +268,7 @@ function EditBody({ issue }: { issue: Issue }) {
           {/* Proiectul unui tichet existent nu se schimbă: ID-ul îi poartă
               prefixul, iar valul și dependențele sunt ale proiectului. */}
           {project && (
-            <span className="qs-sel qs-proj" title={project.name}>
+            <span className="qs-sel qs-proj tinted" title={project.name} style={project.accent ? ({ ['--pc' as string]: project.accent }) : undefined}>
               <ProjectMark project={project} dot="t-dot" />
               <span className="qs-sel-t">{project.name}</span>
             </span>

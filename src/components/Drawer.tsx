@@ -23,7 +23,7 @@ interface Props {
 
 const same = sameTarget
 
-const initialsOf = (name: string) =>
+export const initialsOf = (name: string) =>
   name.split(/[\s@._-]+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toLocaleUpperCase('ro-RO') || '?'
 
 interface RowProps {

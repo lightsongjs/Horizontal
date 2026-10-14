@@ -25,6 +25,7 @@
   --blocked-soft: rgba(255,99,105,0.13);
   --active: #FFC53D;
   --active-soft: rgba(255,197,61,0.13);
+  --star: #FFC53D;
   /* Trei raze după rol: card / tichet-rând-câmp / buton-jeton. */
   --r: 20px;
   --r-m: 12px;
@@ -128,6 +129,7 @@ svg {
   --blocked-soft: #FDEEEE;
   --active: #C98A00;
   --active-soft: rgba(245,176,0,0.12);
+  --star: #F5B000;
   --border-strong: #D5D9DF;
   --placeholder: #A0A6AF;
   --amb: 0 1px 2px rgba(16,24,40,0.05), 0 6px 20px rgba(16,24,40,0.07);
@@ -187,12 +189,19 @@ header {
   font-size: calc(19px * var(--text-scale));
   letter-spacing: -0.04em;
 }
+/* Telefon: rândul de sus ține butoanele (☰ … căutare, ajutor), iar titlul
+   mare coboară pe rândul lui, ca în „Senin". */
+header { flex-wrap: wrap; row-gap: 2px; }
+.header-drawer-btn { margin-right: auto; }
 .htxt {
-  flex: 1;
+  flex: 1 1 100%;
+  order: 10;
   min-width: 0;
+  padding: 4px 2px 2px;
 }
+.htxt .crumb { padding-left: 42px; }
 .htxt h1 {
-  font-size: calc(22px * var(--text-scale));
+  font-size: calc(30px * var(--text-scale));
   font-weight: 750;
   letter-spacing: -0.025em;
   line-height: 1.2;
@@ -201,9 +210,12 @@ header {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.hd-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.logo.star { color: var(--star); }
+.logo.star svg { fill: currentColor; }
 .hcount {
   margin-left: 8px;
-  font-size: 0.68em;
+  font-size: 0.58em;
   font-weight: 600;
   color: var(--txt-faint);
   letter-spacing: 0;
@@ -987,9 +999,7 @@ main {
 .sheet-bg {
   position: fixed;
   inset: 0;
-  background: #00000066;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background: rgba(0,0,0,0.5);
   z-index: 40;
   opacity: 0;
   pointer-events: none;
@@ -999,6 +1009,7 @@ main {
   opacity: 1;
   pointer-events: auto;
 }
+[data-theme='light'] .sheet-bg { background: rgba(20,22,28,0.32); }
 .sheet {
   position: fixed;
   left: 0;
@@ -1221,7 +1232,7 @@ main {
 .md-h1, .md-editor .md-h1 { font-size: calc(18px * var(--text-scale)); font-weight: 600; }
 .md-h2, .md-editor .md-h2 { font-size: calc(16px * var(--text-scale)); font-weight: 600; }
 .md-h3, .md-editor .md-h3 {
-  font-family: var(--display); font-size: calc(12px * var(--text-scale)); font-weight: 500; letter-spacing: 0; color: var(--txt-dim);
+  font-family: var(--display); font-size: calc(13px * var(--text-scale)); font-weight: 700; letter-spacing: 0.01em; color: var(--txt-dim);
 }
 .md strong, .md-editor .md-strong { font-weight: 600; }
 .md em, .md-editor .md-em { font-style: italic; }
@@ -1496,9 +1507,9 @@ main {
   bottom: 24px;
   right: max(18px, calc(50% - 240px + 18px));
   z-index: 30;
-  width: 52px;
-  height: 52px;
-  border-radius: var(--r);
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
   background: var(--accent);
   color: var(--on-accent);
   font-size: calc(24px * var(--text-scale));
@@ -1506,7 +1517,7 @@ main {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 24px -4px color-mix(in srgb, var(--accent) 33%, transparent);
+  box-shadow: 0 8px 20px -4px color-mix(in srgb, var(--accent) 55%, transparent);
   transition: transform 0.13s;
 }
 .fab:active {
@@ -2776,6 +2787,57 @@ main {
     grid-row: 1;
   }
 
+  .sidebar-me {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 2px 6px 14px 8px;
+  }
+  .sidebar-me .dr-avatar { width: 28px; height: 28px; font-size: calc(11px * var(--text-scale)); }
+  .sidebar-me-name {
+    flex: 1;
+    min-width: 0;
+    font-size: calc(14px * var(--text-scale));
+    font-weight: 650;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .sidebar-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 34px;
+    padding: 0 10px;
+    margin: 0 0 10px;
+    border-radius: var(--r-s);
+    background: var(--bg);
+    box-shadow: var(--amb);
+    color: var(--txt-faint);
+    font-size: calc(13.5px * var(--text-scale));
+    text-align: left;
+  }
+  .sidebar-search span { flex: 1; }
+  .sidebar-search kbd { font-family: var(--display); font-size: calc(11.5px * var(--text-scale)); color: var(--txt-faint); }
+  .sidebar-search:hover { color: var(--txt-dim); }
+  .sidebar-seg {
+    display: flex;
+    gap: 2px;
+    margin: 4px 2px 6px;
+    padding: 3px;
+    border-radius: var(--r-s);
+    background: var(--surface-3);
+  }
+  .sidebar-seg button {
+    flex: 1;
+    padding: 3px 0;
+    border-radius: var(--r-s);
+    font-size: calc(12px * var(--text-scale));
+    font-weight: 550;
+    color: var(--txt-dim);
+  }
+  .sidebar-seg button.on { background: var(--bg); color: var(--txt); box-shadow: var(--shadow-sm, 0 1px 2px rgba(0,0,0,.3)); }
+
   .sidebar-brand {
     display: flex;
     align-items: center;
@@ -2812,11 +2874,12 @@ main {
   .sidebar-nav-item {
     display: flex;
     align-items: center;
-    gap: 9px;
-    padding: 8px 10px;
+    gap: 10px;
+    min-height: 32px;
+    padding: 5px 10px;
     border-radius: var(--r-s);
-    font-size: calc(15px * var(--text-scale));
-    font-weight: 500;
+    font-size: calc(14px * var(--text-scale));
+    font-weight: 550;
     color: var(--txt-dim);
     text-align: left;
     width: 100%;
@@ -2994,11 +3057,15 @@ main {
   header {
     padding: 18px 28px 10px;
   }
-  /* Hide back button and logo — sidebar handles navigation */
+  /* Hide back button and logo — sidebar handles navigation; steaua lui
+     „Azi" rămâne, e semnul listei. */
   .back,
-  header > .logo {
+  header .logo:not(.star) {
     display: none;
   }
+  header .htxt { order: 0; flex: 1 1 auto; padding: 0; }
+  header .crumb { padding-left: 0; }
+  header:has(.logo.star) .crumb { padding-left: 42px; }
   .htxt h1 {
     font-size: calc(26px * var(--text-scale));
   }
@@ -3082,12 +3149,6 @@ main {
     display: none;
   }
 
-  /* sheet-bg gets a stronger blur on desktop */
-  .sheet-bg.on {
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    background: rgba(0, 0, 0, 0.5);
-  }
 
   /* ── SECTION LABEL ────────────────────────────── */
   .section-label {
@@ -3232,7 +3293,7 @@ main {
   }
   /* Listele inteligente nu trec prin `.view`, deci nici prin padding-ul lui. */
   main:has(.split) > .split {
-    padding: 0 24px 20px;
+    padding: 0 0 0 24px;
   }
 
   .split {
@@ -3263,9 +3324,12 @@ main {
        e `absolute; inset: 0` și se aștepta la `.sheet`. Fără asta ar acoperi
        toată fereastra. */
     position: relative;
-    background: var(--surface);
-    border-radius: var(--r);
-    box-shadow: var(--amb-lg);
+    /* „Senin": o coloană lipită de listă, despărțită de o linie de păr — nu
+       un card care plutește peste pagină. */
+    background: var(--bg);
+    border-radius: 0;
+    box-shadow: -1px 0 0 var(--line-soft);
+    padding-left: 6px;
   }
 
   /* Formularul, în panou, e o singură coloană care se derulează ca un tot.
@@ -3287,10 +3351,21 @@ main {
   /* O singură coloană: spațiul dintre coloane (20px) n-are ce despărți. */
   .split-pane .form-col-desc { padding-right: 0; }
   .split-pane .deps-zone, .split-pane .thread { padding-left: 0; }
-  .split-pane .form-col-desc .desc-fixed {
+  /* În panou descrierea se citește ca o pagină: fără cutie, cu inel doar
+     cât scrii în ea. */
+  .split-pane .form-col-desc .desc-fixed,
+  [data-theme='light'] .split-pane .form-col-desc .desc-fixed {
     flex: 0 0 auto;
-    height: 420px;
+    height: auto;
     min-height: 420px;
+    border: 0;
+    background: none;
+    padding: 4px 0;
+  }
+  .split-pane .form-col-desc .desc-fixed:focus-within,
+  [data-theme='light'] .split-pane .form-col-desc .desc-fixed:focus-within {
+    box-shadow: 0 0 0 2px var(--accent-soft);
+    border-radius: var(--r-m);
   }
 
   .split-empty {
@@ -3314,9 +3389,10 @@ main {
    salt de fundal — nu o casetă umplută, care s-ar fi bătut cu `.selected`
    (selecția în masă) pe același rând. */
 .list-row.docked:not(.selected) {
-  background: var(--surface-2);
-  box-shadow: inset 2px 0 0 var(--accent), var(--amb);
+  background: var(--accent-soft);
 }
+.list-row.docked::after,
+.list-row:has(+ .list-row.docked)::after { display: none; }
 .list-row.docked .list-title {
   color: var(--txt);
   font-weight: 600;
@@ -3347,6 +3423,7 @@ main {
 .sh-header {
   flex-shrink: 0;
   display: flex;
+  flex-wrap: wrap;
   /* Sus, nu la mijloc: titlul se rupe pe mai multe rânduri, iar butoanele
      rotunde trebuie să rămână la primul rând. Decalajul de 4px de pe
      `.sh-title-wrap` păstrează cazul cu un singur rând exact cum arăta. */
@@ -3356,6 +3433,37 @@ main {
   background: var(--card);
   position: relative;
 }
+/* „Senin": primul rând = ID-ul, apoi acțiunile ca iconițe fără fundal, în
+   dreapta (închide ultimul); titlul mare coboară pe rândul lui. */
+.sh-id {
+  order: 0;
+  margin-right: auto;
+  align-self: center;
+  font-family: var(--mono);
+  font-size: calc(12px * var(--text-scale));
+  font-weight: 500;
+  color: var(--txt-faint);
+  padding-left: 2px;
+}
+.sh-header > [aria-label="Deschide mare"] { order: 1; }
+.sh-header > .sh-copy { order: 2; }
+.sh-header > .sh-delete { order: 3; }
+.sh-header > .sh-save { order: 4; }
+.sh-header > .sh-close { order: 5; }
+.sh-header > .sh-title-wrap { order: 10; flex: 1 1 100%; }
+.sh-header > .sh-close,
+.sh-header > .sh-copy,
+.sh-header > .sh-delete:not(.confirming),
+.sh-header > [aria-label="Deschide mare"] {
+  width: 32px; height: 32px;
+  background: none;
+  color: var(--txt-faint);
+}
+.sh-header > .sh-close:hover,
+.sh-header > .sh-copy:hover,
+.sh-header > [aria-label="Deschide mare"]:hover { background: var(--surface-3); color: var(--txt); }
+.sh-header:not(:has(.sh-id)) > .sh-save { margin-left: auto; }
+.sh-header > .sh-save:not(.dirty) { width: 32px; height: 32px; background: none; }
 .sh-close {
   flex-shrink: 0;
   width: 34px; height: 34px;
@@ -4962,9 +5070,9 @@ body:has(.kb-sheet) .toast {
 /* ── numere pe rândurile din sidebar ─────────────────────────────── */
 .sl-count {
   margin-left: auto;
-  font-family: var(--mono);
-  font-size: calc(11px * var(--text-scale));
-  font-weight: 700;
+  font-family: var(--display);
+  font-size: calc(12.5px * var(--text-scale));
+  font-weight: 550;
   color: var(--txt-faint);
 }
 .sidebar-nav-item.on .sl-count { color: var(--txt-dim); }
@@ -5003,7 +5111,10 @@ body:has(.kb-sheet) .toast {
 /* Data stă LÂNGĂ eticheta zilei, nu împinsă în marginea dreaptă. `.list-group-label`
    are `flex: 1` din modul proiecte (unde numărătoarea trebuie să stea la capăt);
    într-o listă de zile, ziua și data sunt un singur lucru. */
-.smart-list .list-group-label { flex: 0 0 auto; color: var(--gc, var(--txt)); font-weight: 650; }
+.smart-list .list-group-label { flex: 0 0 auto; color: var(--txt); font-weight: 650; }
+.smart-list .list-group:first-of-type .list-group-label { color: var(--gc, var(--txt)); }
+.smart-list .list-group { margin-bottom: 0; }
+.smart-list .list-group-head { padding: 16px 10px 6px; }
 .smart-list .list-group-num {
   background: none; width: auto; min-width: 0; padding: 0;
   font-family: var(--display); font-size: calc(14px * var(--text-scale));
@@ -5011,7 +5122,7 @@ body:has(.kb-sheet) .toast {
 }
 .list-group-ico { display: inline-flex; color: var(--gc, var(--txt-dim)); }
 /* Steaua lui „Azi" e plină și galbenă, peste tot unde apare (`today` din Icon). */
-.list-group-ico.today { color: #F5B000; }
+.list-group-ico.today { color: var(--star); }
 .list-group-ico.today svg { fill: currentColor; }
 .list-group-date { color: var(--txt-faint); font-weight: 500; margin-left: 2px; }
 .day-empty {
@@ -5054,7 +5165,7 @@ body:has(.kb-sheet) .toast {
 /* Semnul mic, generic pe rol: clopoțel („are memento") sau repetare
    („se repetă"). Un singur desen, o singură clasă — la fel cum vocabularul de
    iconițe ține un singur nume pe rol, nu unul per glifă. */
-.t-mark { color: var(--active); display: inline-flex; align-items: center; }
+.t-mark { color: var(--txt-faint); display: inline-flex; align-items: center; }
 .t-proj {
   display: inline-flex;
   align-items: center;
@@ -5102,17 +5213,16 @@ body:has(.kb-sheet) .toast {
    input transparent. Cele două TREBUIE să aibă metrici identice — orice
    diferență de font, mărime sau spațiere decalează marcajul. */
 .qa {
-  background: var(--surface);
-  border: 1px solid var(--line);
+  background: var(--surface-2);
+  border: 0;
   border-radius: var(--r-m);
-  padding: 8px 10px;
-  margin-bottom: 16px;
-  box-shadow: var(--shadow-sm);
-  transition: border-color 0.15s, box-shadow 0.15s;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  transition: box-shadow 0.15s, background 0.15s;
 }
 .qa.focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
+  background: var(--bg);
+  box-shadow: 0 0 0 2px var(--accent);
 }
 .qa.shake { animation: qa-shake 0.3s; }
 @keyframes qa-shake {
@@ -5134,10 +5244,11 @@ body:has(.kb-sheet) .toast {
 .qa-plus {
   width: 20px; height: 20px;
   border-radius: var(--r-s);
-  border: 1px dashed var(--line);
+  border: 0;
+  font-size: calc(18px * var(--text-scale));
+  font-weight: 400;
   color: var(--txt-faint);
   display: flex; align-items: center; justify-content: center;
-  font-size: calc(13px * var(--text-scale));
   flex-shrink: 0;
 }
 .qa-wrap { position: relative; flex: 1; min-width: 0; height: 24px; }
@@ -5414,6 +5525,12 @@ body:has(.kb-sheet) .toast {
   font-size: calc(16px * var(--text-scale));
 }
 .qs-proj { flex: 0 3 auto; min-width: 44px; max-width: 150px; }
+/* Proiectul unui tichet existent: jetonul ia culoarea proiectului. */
+.qs-proj.tinted {
+  background: color-mix(in srgb, var(--pc, var(--txt-faint)) 13%, transparent);
+  color: color-mix(in srgb, var(--pc, var(--txt-dim)) 80%, var(--txt));
+  font-weight: 600;
+}
 /* Agrafa a luat locul persoanei, la aceeași lățime de iconiță: pe un rând de
    390px orice cuvânt în plus ar fi luat locul numelui de proiect. Cu fișiere
    alese (foaia rapidă) = accent plus linia de 2px, ca urgent, și miniatura
@@ -5482,6 +5599,13 @@ body:has(.kb-sheet) .toast {
    Rândul de controale rămâne lipit de fundul foii când descrierea e mai
    lungă decât ecranul — altfel ar trebui derulat până la capăt ca să ajungi
    la „…". */
+.es-meta {
+  font-family: var(--mono);
+  font-size: calc(12px * var(--text-scale));
+  font-weight: 500;
+  color: var(--txt-faint);
+  margin: 0 0 8px;
+}
 .es-head { display: flex; align-items: flex-start; gap: 6px; }
 .es-check {
   flex: 0 0 auto;
@@ -5632,8 +5756,8 @@ body:has(.kb-sheet) .toast {
 @media (max-width: 899px) {
   .tabbar {
     display: flex;
-    border-top: 1px solid var(--line-soft);
-    background: var(--surface);
+    background: color-mix(in srgb, var(--bg) 94%, transparent);
+    box-shadow: 0 -1px 0 var(--line-soft);
     flex-shrink: 0;
     padding: 6px 4px calc(9px + env(safe-area-inset-bottom));
     position: relative;
@@ -5645,8 +5769,8 @@ body:has(.kb-sheet) .toast {
     flex-direction: column;
     align-items: center;
     gap: 3px;
-    font-size: calc(10px * var(--text-scale));
-    font-weight: 600;
+    font-size: calc(11.5px * var(--text-scale));
+    font-weight: 550;
     color: var(--txt-faint);
     padding: 4px 0;
     border-radius: var(--r-s);
@@ -5662,16 +5786,14 @@ body:has(.kb-sheet) .toast {
     border-radius: var(--r-s);
     background: var(--accent);
     color: var(--on-accent);
-    font-family: var(--mono);
-    font-size: calc(9px * var(--text-scale)); font-weight: 700; line-height: 14px;
+    font-family: var(--display);
+    font-size: calc(9.5px * var(--text-scale)); font-weight: 700; line-height: 14px;
     text-align: center;
   }
 
-  /* Numele proiectului costă exact lățimea care taie titlul, iar titlul e
-     singurul lucru care contează într-o listă. Rămâne punctul colorat;
-     numele întreg se vede în sheet-ul sarcinii, unde există loc. */
-  .t-proj-name { display: none; }
-  .t-proj { gap: 0; }
+  /* „Senin": numele scurt al proiectului rămâne lângă punct; titlul e cel
+     care se taie primul, iar numele are un plafon. */
+  .t-proj { max-width: 90px; }
 
   /* Butonul plutitor stă și peste liste acum, deci ultimul rând are nevoie
      de loc sub el — altfel se termină exact acolo unde începe butonul. */
@@ -6333,15 +6455,20 @@ body:has(.qab) { overflow-y: auto; }
 .group-act {
   cursor: pointer;
   margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
   font-family: var(--display);
-  font-size: calc(11px * var(--text-scale));
+  font-size: calc(13px * var(--text-scale));
   font-weight: 600;
-  color: var(--accent);
+  color: var(--accent-2);
   background: var(--accent-soft);
   border-radius: var(--r-s);
-  padding: 4px 8px;
+  padding: 0 10px;
   white-space: nowrap;
 }
+[data-theme='dark'] .group-act, :root:not([data-theme='light']) .group-act { color: var(--accent); }
 .sel-head .sel-count {
   flex: 1;
   min-width: 0;
@@ -6538,6 +6665,7 @@ body:has(.qab) { overflow-y: auto; }
   padding-top: env(safe-area-inset-top);
   animation: drawer-in 0.22s cubic-bezier(0.18, 0.9, 0.24, 1);
 }
+[data-theme='light'] .drawer { background: var(--surface-2); }
 @keyframes drawer-in { from { transform: translateX(-100%); } to { transform: none; } }
 @keyframes drawer-fade { from { opacity: 0; } to { opacity: 1; } }
 .dr-head {
@@ -6551,13 +6679,13 @@ body:has(.qab) { overflow-y: auto; }
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: var(--accent);
+  color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--mono);
-  font-size: calc(12px * var(--text-scale));
+  font-family: var(--display);
+  font-size: calc(13px * var(--text-scale));
   font-weight: 700;
   flex-shrink: 0;
 }

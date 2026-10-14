@@ -19,7 +19,7 @@ export type SmartListKind = 'today' | 'tomorrow' | 'week'
 export const SMART_LISTS: { kind: SmartListKind; label: string; icon: IconName }[] = [
   { kind: 'today', label: 'Azi', icon: 'today' },
   { kind: 'tomorrow', label: 'Mâine', icon: 'tomorrow' },
-  { kind: 'week', label: 'Next 7 days', icon: 'list' },
+  { kind: 'week', label: '7 zile', icon: 'list' },
 ]
 
 /**
