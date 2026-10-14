@@ -4585,6 +4585,40 @@ html[data-text-large] .fc-fields > .due-inputs { flex-basis: 100%; }
 .thread-comment-head { display: flex; align-items: baseline; gap: 7px; margin-bottom: 3px; }
 .thread-comment-name { font-size: calc(13px * var(--text-scale)); font-weight: 600; color: var(--txt); }
 .thread-comment-time { font-family: var(--mono); font-size: calc(11px * var(--text-scale)); color: var(--txt-faint); }
+/* Creionul unui comentariu propriu: fantomă, împins în dreapta capului. Pe
+   desktop apare la hover/focus; pe atingere stă mereu acolo, dar potolit. */
+.thread-comment-edited { font-family: var(--mono); }
+.thread-edit-btn {
+  margin-left: auto; align-self: center;
+  display: flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; padding: 0;
+  background: none; border: none; border-radius: var(--r-s);
+  color: var(--txt-faint); cursor: pointer;
+  opacity: 0.55; transition: opacity 0.14s, background 0.14s, color 0.14s;
+}
+@media (hover: hover) and (pointer: fine) {
+  .thread-edit-btn { opacity: 0; }
+  .thread-comment:hover .thread-edit-btn,
+  .thread-edit-btn:focus-visible { opacity: 1; }
+}
+.thread-edit-btn:hover { background: var(--accent-soft); color: var(--accent); opacity: 1; }
+.thread-edit-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.thread-edit { margin-top: 4px; }
+.thread-edit .thread-textarea { min-height: 60px; }
+.thread-edit-hint {
+  font-family: var(--mono); font-size: calc(10.5px * var(--text-scale)); color: var(--txt-faint);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+}
+.thread-edit-save { margin-left: 0; }
+.thread-cancel-btn {
+  margin-left: auto;
+  background: var(--surface-3); color: var(--txt-dim);
+  border: none; border-radius: var(--r-s);
+  padding: 7px 12px; font-size: calc(12.5px * var(--text-scale)); font-weight: 500; font-family: var(--font);
+  cursor: pointer; white-space: nowrap;
+}
+.thread-cancel-btn:hover { background: var(--surface-2); color: var(--txt); }
+@media (pointer: coarse) { .thread-edit-hint { display: none; } }
 .thread-comment-text { font-size: calc(13px * var(--text-scale)); line-height: 1.55; color: var(--txt); overflow-wrap: break-word; }
 .thread-comment-text.md { font-size: calc(15px * var(--text-scale)); line-height: 1.55; }
 /* Refolosește `.att-strip`/`.att-chip` din Attachments.tsx — aceleași

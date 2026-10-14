@@ -339,6 +339,9 @@ filtrele salvate și de `mergeDay` (evenimentele de calendar intră printre cele
 cu oră, nu între urgente). Widget-ul o oglindește în `core/Agenda.kt`
 (`order`, fixtures `agenda.fixtures.json`) — ajunge pe telefon doar cu APK nou.
 
+**„Azi” și „7 zile” arată doar sarcinile MELE** (`isMine`, vezi „Firul și
+pasarea”): o sarcină pasată altcuiva dispare de aici, dar rămâne în proiect.
+
 Scadența se vede și în **modul proiecte**, pe card („Ordine") și pe rând
 („Listă"): `src/components/DueChip.tsx` — ziua, ora **doar dacă** are una,
 clopoțelul **doar dacă** are memento, roșu dacă e restanță. Un tichet fără
@@ -931,6 +934,24 @@ meu` — un tichet pe care ți-l faci singur n-are niciodată `assignee_id` pus
 loc să tacă. Consecința practică, verificată manual: un tichet pe care l-ai
 creat și nu l-ai pasat NIMĂNUI nu apare în „Ale mele" — nici la tine, nici la
 altcineva — indiferent de câte comentarii capătă.
+
+**Aceeași regulă taie „Azi” și „7 zile”** (2026-10-14): acolo intră doar ce e
+al meu — `isMine` (`src/lib/ownership.ts`, pur, cu teste): pasat mie, sau
+nepasat și creat de mine ori fără autor (`created_by` null = unealtă cu cheia de
+serviciu; nu dispare). Pasat altcuiva sau nepasat-dar-al-altcuiva iese. Se
+aplică o dată, pe intrarea lui `buildSmartLists` din `store.tsx`, deci și
+numerele (sertar, sidebar, bara de jos, antetul) și căutarea din context.
+Proiectele și filtrele salvate văd tot (au regula lor). Fără identitate
+completă (mod local, fără sesiune, cont nelegat de `assignees`) nu taie nimic.
+Mementourile de pe Linux urmează regula; cele de pe Android și widget-ul NU
+încă — citirea nativă din Kotlin aduce tot și câștigă când e mai nouă, iar o
+tăietură doar în pagină ar clipi între „ale mele" și „toate" (cere APK nou).
+Web push-ul (`send-reminders`) e și el neatins.
+
+**Comentariile proprii se editează** (creionul din capul comentariului,
+`updateComment` în `Repository`, prin `net()` offline). `edited_at` îl pune
+garda din bază (`issue_events_guard`), nu clientul — grantul e numai pe `body`;
+„· editat" apare lângă oră când există. Pasele nu se editează.
 
 **Lista „Ale mele" e derivată, nu un al doilea adevăr.** `inbox_rows` e o poză
 a acelorași câmpuri care trăiesc și în tichete (`assignee_id`, `done`, titlu),

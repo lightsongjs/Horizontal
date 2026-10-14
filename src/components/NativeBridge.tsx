@@ -11,6 +11,7 @@ import { supabase } from '../lib/supabase'
 import { useCalendar } from '../calendar'
 import { upcomingEventReminders } from '../lib/calendarEvents'
 import { eventIdFromReminderId } from '../../supabase/functions/_shared/eventReminders.ts'
+import { onlyMine } from '../lib/ownership'
 
 /** Cât de des se retrimite lista chiar fără nicio schimbare: fereastra alunecă. */
 const RESEND_MS = 15 * 60_000
@@ -28,7 +29,7 @@ const REFRESH_MS = 5 * 60_000
  * timerele din pagină ar fi sugrumate cât fereastra stă ascunsă.
  */
 export function NativeBridge() {
-  const { dueLoaded, dueIssues, issues, projects, assignees, byId, refresh, toggleDone, updateIssue, syncStatus } = useHorizontal()
+  const { dueLoaded, dueIssues, issues, projects, assignees, byId, refresh, toggleDone, updateIssue, syncStatus, myAssigneeId, myUserId } = useHorizontal()
   // Evenimentele de calendar sună doar pe Linux (și prin web push). Android le
   // primește într-o etapă următoare: planul nativ ar pune „Gata"/„Amână" pe ele
   // și le-ar rescrie cu citirea lui din `issues` — vezi CLAUDE.md, „Google Calendar".
@@ -96,7 +97,13 @@ export function NativeBridge() {
       const now = new Date()
       const all = [...dueIssues, ...issues]
       if (desktop) {
-        const list = [...upcomingReminders(all, projects, now), ...upcomingEventReminders(cal.events, cal.calendars, now)]
+        // Linux sună doar ce e AL MEU, ca „Azi" (`isMine`). Pagina e singura
+        // sursă a cutiei, deci tăietura e întreagă. Android NU se taie aici:
+        // citirea nativă (`SyncWorker`, Kotlin) aduce tot și câștigă când e mai
+        // nouă — o listă tăiată doar de pagină ar clipi între „ale mele" și
+        // „toate". Paritatea cere filtrul și în Kotlin (APK nou).
+        const mine = onlyMine(all, { assigneeId: myAssigneeId, userId: myUserId })
+        const list = [...upcomingReminders(mine, projects, now), ...upcomingEventReminders(cal.events, cal.calendars, now)]
           .sort((a, b) => a.at.localeCompare(b.at))
         const json = JSON.stringify(list)
         if (json !== lastDesktop.current) { lastDesktop.current = json; desktop.setReminders(list) }
@@ -121,7 +128,7 @@ export function NativeBridge() {
     void send().catch(() => {})
     const t = setInterval(() => void send().catch(() => {}), RESEND_MS)
     return () => { cancelled = true; clearInterval(t) }
-  }, [desktop, android, widgets, dueLoaded, dueIssues, issues, projects, syncStatus, cal.events, cal.calendars])
+  }, [desktop, android, widgets, dueLoaded, dueIssues, issues, projects, syncStatus, cal.events, cal.calendars, myAssigneeId, myUserId])
 
   // Linux: `refresh` ridică `refreshing`, nu `loading`, deci ecranul nu se
   // golește; calea explicită nu trece prin pragul de 30 s.

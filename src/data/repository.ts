@@ -168,6 +168,10 @@ export interface Repository {
   /** Comentariul ȘI pasa, într-o singură scriere. Trei apeluri separate pot
    *  reuși pe jumătate: comentariul scris, tichetul rămas la tine. */
   postToThread(input: NewThreadPost): Promise<{ events: IssueEvent[]; issue: Issue }>
+  /** Rescrie corpul unui comentariu PROPRIU. `edited_at` îl pune baza (garda
+   *  `issue_events_guard`), nu clientul — grantul e doar pe `body`. O pasă nu
+   *  se editează: baza o refuză, iar interfața nu oferă creionul. */
+  updateComment(eventId: string, body: string): Promise<IssueEvent>
   markSeen(issueId: string): Promise<void>
   /** Cutia de pase: transversal pe proiecte, ca listDueIssues. */
   listInbox(): Promise<InboxRow[]>

@@ -507,6 +507,22 @@ describe('supabaseRepository', () => {
     ])
   })
 
+  it('updateComment trimite DOAR body (grantul e pe o coloană) și mapează rândul întors', async () => {
+    fakeDb.tables.issue_events = [
+      {
+        id: 'e1', issue_id: 'T-1', project_id: 'p', kind: 'comment', author_id: 'u1',
+        body: 'primul', handoff_from: null, handoff_to: null,
+        created_at: '2026-09-17T10:00:00+00:00', edited_at: null,
+      },
+    ]
+    const repo = createSupabaseRepository()
+    const e = await repo.updateComment('e1', 'al doilea')
+    expect(e.body).toBe('al doilea')
+    expect(Object.keys(fakeDb.tables.issue_events[0]).sort()).toEqual([
+      'author_id', 'body', 'created_at', 'edited_at', 'handoff_from', 'handoff_to', 'id', 'issue_id', 'kind', 'project_id',
+    ])
+  })
+
   it('listInbox citește doar rândurile nefinalizate din inbox_rows', async () => {
     fakeDb.tables.inbox_rows = [
       {
