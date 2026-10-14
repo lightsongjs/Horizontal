@@ -498,6 +498,20 @@ export function createLocalRepository(): Repository {
       return clone({ events: out, issue })
     },
 
+    async updateComment(eventId: string, body: string) {
+      const db = load()
+      const ev = (db.events ?? []).find((e) => e.id === eventId)
+      if (!ev) throw new Error(`comentariu inexistent: ${eventId}`)
+      if (ev.kind !== 'comment') throw new Error('o pasă nu se editează')
+      // Oglinda gărzii din bază: `edited_at` se mișcă doar dacă textul chiar s-a schimbat.
+      if (ev.body !== body) {
+        ev.body = body
+        ev.editedAt = new Date().toISOString()
+        save(db)
+      }
+      return clone(ev)
+    },
+
     async listClosedIssues() {
       return clone(load().issues.filter((i) => i.done))
     },

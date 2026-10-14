@@ -344,6 +344,34 @@ describe('firul', () => {
     const { events } = await repo.postToThread({ issueId: i.id, projectId: p.id, body: '   ' })
     expect(events).toEqual([])
   })
+
+  it('editarea unui comentariu rescrie corpul și pune editedAt', async () => {
+    const repo = createLocalRepository()
+    const p = await repo.createProject({ name: 'P', description: '', prefix: 'P' })
+    const i = await repo.createIssue({ projectId: p.id, title: 'T' })
+    const { events } = await repo.postToThread({ issueId: i.id, projectId: p.id, body: 'salut' })
+    const saved = await repo.updateComment(events[0].id, 'salut, **lume**')
+    expect(saved.body).toBe('salut, **lume**')
+    expect(saved.editedAt).not.toBeNull()
+    expect((await repo.listEvents(i.id))[0]).toEqual(saved)
+  })
+
+  it('același text nu marchează comentariul ca editat', async () => {
+    const repo = createLocalRepository()
+    const p = await repo.createProject({ name: 'P', description: '', prefix: 'P' })
+    const i = await repo.createIssue({ projectId: p.id, title: 'T' })
+    const { events } = await repo.postToThread({ issueId: i.id, projectId: p.id, body: 'salut' })
+    expect((await repo.updateComment(events[0].id, 'salut')).editedAt).toBeNull()
+  })
+
+  it('o pasă nu se editează', async () => {
+    const repo = createLocalRepository()
+    const p = await repo.createProject({ name: 'P', description: '', prefix: 'P' })
+    const i = await repo.createIssue({ projectId: p.id, title: 'T' })
+    const a = await repo.createAssignee('Alex')
+    const { events } = await repo.postToThread({ issueId: i.id, projectId: p.id, handoff: true, to: a.id })
+    await expect(repo.updateComment(events[0].id, 'x')).rejects.toThrow()
+  })
 })
 
 describe('localRepository — recurență', () => {

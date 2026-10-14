@@ -720,6 +720,7 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
     ensureAssigneeForMember: (pid, uid) => net(() => remote.ensureAssigneeForMember(pid, uid)),
     listEvents: (iid) => net(() => remote.listEvents(iid)),
     postToThread: (input) => net(() => remote.postToThread(input)),
+    updateComment: (id, body) => net(() => remote.updateComment(id, body)),
     // Fixările: rețea pentru scriere (ca proiectele), iar baza se ține la zi
     // doar ca primul cadru de după să le arate — nu e o coadă.
     async addPin(kind, ref) {

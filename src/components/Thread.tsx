@@ -129,6 +129,11 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff }: {
   const [sendError, setSendError] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
+  // Editarea unui comentariu propriu: un singur rând deodată, ciorna locală.
+  // `edit.original` e textul de la deschidere — murdăria se compară cu el.
+  const [edit, setEdit] = useState<{ id: string; draft: string; original: string } | null>(null)
+  const [savingEdit, setSavingEdit] = useState(false)
+
   useEffect(() => {
     let alive = true
     setLoading(true)
@@ -167,9 +172,12 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff }: {
   // firul fără nicio avertizare, lăsând fișierul orfan în storage (event_id
   // null). `to !== undefined` e starea „am ales ceva", inclusiv „către Nimeni"
   // (`to === null`) — vezi `canSubmit`.
+  // O editare deschisă și schimbată e murdărie la fel ca o ciornă netrimisă:
+  // un click pe alt rând ar fi aruncat-o în tăcere.
+  const editDirty = edit !== null && edit.draft !== edit.original
   useEffect(() => {
-    onDirtyChange(body.trim() !== '' || pending.length > 0 || to !== undefined)
-  }, [body, pending, to, onDirtyChange])
+    onDirtyChange(body.trim() !== '' || pending.length > 0 || to !== undefined || editDirty)
+  }, [body, pending, to, editDirty, onDirtyChange])
 
   const attachmentsByEvent = useMemo(() => {
     const map = new Map<string, Attachment[]>()
@@ -298,6 +306,35 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff }: {
     }
   }
 
+  const startEdit = (e: IssueEvent) => setEdit({ id: e.id, draft: e.body, original: e.body })
+  const cancelEdit = () => setEdit(null)
+
+  /**
+   * Optimist: textul nou apare pe loc, iar la eșec revine cel vechi și un
+   * toast spune de ce. `editedAt` îl pune baza (garda `issue_events_guard`) —
+   * ecoul optimist nu-l inventează, îl ia din răspuns.
+   */
+  const saveEdit = async () => {
+    if (!edit || savingEdit) return
+    const next = edit.draft.trim()
+    if (next === '') return
+    if (next === edit.original) { setEdit(null); return }
+    const prev = events.find((x) => x.id === edit.id)
+    if (!prev) { setEdit(null); return }
+    setSavingEdit(true)
+    setEvents((list) => list.map((x) => (x.id === prev.id ? { ...x, body: next } : x)))
+    setEdit(null)
+    try {
+      const saved = await repository.updateComment(prev.id, next)
+      setEvents((list) => list.map((x) => (x.id === saved.id ? saved : x)))
+    } catch (err) {
+      setEvents((list) => list.map((x) => (x.id === prev.id ? prev : x)))
+      showToast(`Comentariul nu s-a salvat: ${errorMessage(err)}`)
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
   return (
     <div className="thread">
       <span className="if-field-label" style={{ display: 'block' }}>Fir</span>
@@ -328,9 +365,51 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff }: {
                   <div className="thread-comment-card">
                     <div className="thread-comment-head">
                       <span className="thread-comment-name">{author.name}</span>
-                      <span className="thread-comment-time">{eventTime(e.createdAt, now)}</span>
+                      <span className="thread-comment-time">
+                        {eventTime(e.createdAt, now)}
+                        {e.editedAt && <span className="thread-comment-edited" title={`Editat ${eventTime(e.editedAt, now)}`}> · editat</span>}
+                      </span>
+                      {author.mine && canWrite && edit?.id !== e.id && (
+                        <button
+                          type="button"
+                          className="thread-edit-btn"
+                          onClick={() => startEdit(e)}
+                          aria-label="Editează comentariul"
+                          title="Editează"
+                        >
+                          <Icon name="edit" size={13} />
+                        </button>
+                      )}
                     </div>
-                    {e.body && <MarkdownView className="thread-comment-text" text={e.body} prefixes={prefixes} onRef={openRef} />}
+                    {edit?.id === e.id ? (
+                      <div className="thread-edit">
+                        <textarea
+                          className="thread-textarea"
+                          value={edit.draft}
+                          autoFocus
+                          onFocus={(ev) => { const n = ev.currentTarget.value.length; ev.currentTarget.setSelectionRange(n, n) }}
+                          onChange={(ev) => setEdit({ ...edit, draft: ev.target.value })}
+                          onKeyDown={(ev) => {
+                            // stopPropagation: Esc ar închide foaia/panoul, iar
+                            // Ctrl+Enter ar salva tichetul (ascultători pe window).
+                            if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); cancelEdit() }
+                            else if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)) { ev.preventDefault(); ev.stopPropagation(); void saveEdit() }
+                          }}
+                        />
+                        <div className="thread-actions">
+                          <span className="thread-edit-hint">Ctrl+↵ salvează · Esc renunță</span>
+                          <button type="button" className="thread-cancel-btn" onClick={cancelEdit}>Renunță</button>
+                          <button
+                            type="button"
+                            className="thread-send-btn thread-edit-save"
+                            disabled={edit.draft.trim() === ''}
+                            onClick={() => void saveEdit()}
+                          >
+                            Salvează
+                          </button>
+                        </div>
+                      </div>
+                    ) : e.body && <MarkdownView className="thread-comment-text" text={e.body} prefixes={prefixes} onRef={openRef} />}
                     {group.length > 0 && (
                       <div className="att-strip thread-comment-atts">
                         {group.map((a) => {

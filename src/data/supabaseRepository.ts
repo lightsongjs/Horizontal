@@ -752,6 +752,21 @@ export function createSupabaseRepository(): Repository {
       }
     },
 
+    async updateComment(eventId: string, body: string): Promise<IssueEvent> {
+      // Doar `body`: grantul de coloană refuză orice altceva, iar `edited_at`
+      // îl scrie triggerul. `.single()` pe un rând pe care RLS nu-l lasă
+      // (comentariul altcuiva, o pasă) dă PGRST116 — o eroare, nu un succes tăcut.
+      const { data, error } = await db
+        .from('issue_events')
+        .update({ body })
+        .eq('id', eventId)
+        .eq('kind', 'comment')
+        .select('*')
+        .single()
+      if (error) throw error
+      return rowToEvent(data as EventRow)
+    },
+
     async markSeen(issueId: string): Promise<void> {
       // Fără `user_id` explicit: coloana are `default auth.uid()` (migrare),
       // deci baza îl completează singură la INSERT. RLS nu suplinește o

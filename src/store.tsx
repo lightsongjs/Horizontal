@@ -26,6 +26,7 @@ import {
   unblocks,
 } from './lib/engine'
 import { buildSmartLists, smartListRange, type SmartLists } from './lib/schedule'
+import { onlyMine } from './lib/ownership'
 import { isDormant, nextReveal, routineProjectIds } from './lib/routines'
 import { didJumpOnComplete, jumpNotice } from './lib/recurrence'
 import { applyIssuePatch } from './lib/issuePatch'
@@ -670,17 +671,25 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
   // recalculează atunci: `revealTick` e ceasul, armat pe cea mai apropiată.
   const routines = useMemo(() => routineProjectIds(rawProjects), [rawProjects])
   const [revealTick, setRevealTick] = useState(0)
+  // „Azi" și „7 zile" arată doar ce e AL MEU (`isMine`: pasat mie, sau nepasat
+  // și creat de mine / fără autor). Proiectele și filtrele salvate văd tot —
+  // ele au regulile lor. Fără identitate completă `onlyMine` nu taie nimic.
+  const sessionUserId = session?.user.id ?? null
+  const myDueIssues = useMemo(
+    () => onlyMine(dueIssues, { assigneeId: myAssigneeId, userId: sessionUserId }),
+    [dueIssues, myAssigneeId, sessionUserId],
+  )
   const smartLists = useMemo(
-    () => buildSmartLists(dueIssues, new Date(), routines),
-    [dueIssues, routines, revealTick],
+    () => buildSmartLists(myDueIssues, new Date(), routines),
+    [myDueIssues, routines, revealTick],
   )
   useEffect(() => {
-    const at = nextReveal(dueIssues, routines, new Date())
+    const at = nextReveal(myDueIssues, routines, new Date())
     if (at === null) return
     // Plafonat: `setTimeout` peste ~24,8 zile se declanșează imediat.
     const t = setTimeout(() => setRevealTick((n) => n + 1), Math.min(at - Date.now() + 500, 86_400_000))
     return () => clearTimeout(t)
-  }, [dueIssues, routines, revealTick])
+  }, [myDueIssues, routines, revealTick])
   const dueIssuesRef = useRef<Issue[]>([])
   dueIssuesRef.current = dueIssues
 
