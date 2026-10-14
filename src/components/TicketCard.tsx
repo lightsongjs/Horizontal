@@ -75,13 +75,18 @@ export const TicketCard = memo(function TicketCard({ id, contextWave, selectMode
           else if (canWrite) void toggleDone(id)
         }}
       >
-        <Icon name={(selectMode ? isSelected : it.done) ? 'done' : 'notDone'} size={17} />
+        {selectMode
+          ? <Icon name={isSelected ? 'done' : 'notDone'} size={17} />
+          : (
+            <span className={`ck${it.done ? ' on' : ''}${it.urgent && !it.done ? ' urg' : ''}`}>
+              {it.done && <Icon name="check" size={12} />}
+            </span>
+          )}
       </span>
       <div className="tk-meta">
         {theme && <span className="theme-dot" style={{ background: theme.color }} />}
         <span className="tk-id">{displayIssueId(id)}</span>
         {theme && <span className="tk-theme">{theme.name}</span>}
-        {it.urgent && <span className="tk-urgent" title="Urgent"><Icon name="urgent" size={13} /></span>}
         {/* Cine ține tichetul, la capătul rândului de meta: o literă când
             nimeni nu se ciocnește, două-trei când da (vezi `shortLabels`).
             Numele întreg stă în `title` — pastila e un semn, nu o etichetă. */}

@@ -10,7 +10,7 @@ import { useHideDone, useOrderedLayers, useWaveActions, useVimNav, useCanWrite }
 import { layerVar } from '../lib/layerColors'
 
 export function OrdineView() {
-  const { waves, activeWave, blockedByObstacle, byId } = useHorizontal()
+  const { waves, activeWave, blockedByObstacle, byId, project } = useHorizontal()
   const [hideDone, toggleHideDone] = useHideDone()
   const orderedLayers = useOrderedLayers(hideDone)
   const flatLayers = useMemo(() => orderedLayers.map((g) => g.ids), [orderedLayers])
@@ -28,7 +28,9 @@ export function OrdineView() {
   const selCount = wa.selectedIds.size
 
   return (
-    <div className="panel">
+    // Culoarea proiectului ajunge la bifele cardurilor prin `--pc`, fără prop
+    // nou pe `TicketCard` (memo — vezi „Listele lungi nu se randează").
+    <div className="panel" style={project?.accent ? ({ ['--pc' as string]: project.accent }) : undefined}>
       <div className="wave-sel">
         <WaveTabs onWaveChange={wa.exitSelectMode} canWrite={canWrite} />
         <WaveActionsBar

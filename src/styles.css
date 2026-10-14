@@ -548,7 +548,7 @@ main {
   transform: scale(0.988);
 }
 .tk.done {
-  opacity: 0.45;
+  opacity: 0.55;
 }
 .tk.vim-focused {
   outline: 2px solid var(--layer-color, var(--accent));
@@ -569,9 +569,7 @@ main {
   width: 2px;
   border-radius: var(--r-m) 0 0 var(--r-m);
 }
-.tk.active::before {
-  background: color-mix(in srgb, var(--done) 60%, transparent);
-}
+.tk.active::before { display: none; }
 .tk.blocked::before {
   background: color-mix(in srgb, var(--blocked) 55%, transparent);
 }
@@ -584,8 +582,8 @@ main {
   position: absolute;
   top: 10px;
   right: 10px;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   color: var(--txt-faint);
   display: flex;
   align-items: center;
@@ -3700,7 +3698,7 @@ main {
 }
 .if-ctl:hover { background: var(--line); }
 .if-ctl .if-ctl-txt { overflow: hidden; text-overflow: ellipsis; }
-.if-ctl.ghost { background: transparent; color: var(--txt-faint); box-shadow: inset 0 0 0 1px var(--line); }
+.if-ctl.ghost { background: var(--surface-3); color: var(--txt-faint); box-shadow: none; }
 .if-ctl.ghost.dashed { box-shadow: none; border: 1px dashed var(--line); }
 .if-ctl.ghost:hover { color: var(--txt); }
 .if-ctl.icon { width: 32px; padding: 0; justify-content: center; }
