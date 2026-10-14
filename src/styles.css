@@ -7179,3 +7179,23 @@ body:has(.qab) { overflow-y: auto; }
   .att-act { width: 30px; height: 30px; }
   .sh-close, .sh-save, .sh-delete { width: 30px; height: 30px; }
 }
+
+/* ── Laptop: listele cu o treaptă mai jos decât pe telefon (2026-10-14) ──
+   Macheta „Senin" a fost gândită pentru telefon: 15px negru plin pe rânduri
+   de 44px, lângă sidebarul de 14px, obosea ochiul pe laptop. Pe telefon
+   rămâne 15px (țintă de atingere); peste „Normal" rândurile cresc singure. */
+@media (min-width: 900px) {
+  .list-title {
+    font-size: calc(14px * var(--text-scale));
+    font-weight: 400;
+    color: color-mix(in srgb, var(--txt) 88%, var(--bg));
+  }
+  .list-row { min-height: 40px; padding: 7px 10px; }
+  .list-row.docked .list-title { font-weight: 550; color: var(--txt); }
+  .list-group-head { font-size: calc(13px * var(--text-scale)); }
+  .smart-list .list-group-num { font-size: calc(13px * var(--text-scale)); }
+  .t-time { font-size: calc(12px * var(--text-scale)); font-weight: 500; }
+  .t-proj, .list-row .row-tail .list-id { font-size: calc(12px * var(--text-scale)); }
+  .htxt h1 { font-size: calc(26px * var(--text-scale)); }
+  .split-pane .md, .split-pane .md-editor .cm-content { font-size: calc(14.5px * var(--text-scale)); }
+}
