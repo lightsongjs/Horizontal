@@ -1,4 +1,5 @@
 import {
+  Maximize2,
   ArrowLeft,
   ArrowRight,
   Crosshair,
@@ -115,6 +116,7 @@ const ICONS = {
   camera: Camera,
   edit: Pencil,
   expand: ChevronRight,
+  popOut: Maximize2,
   external: ExternalLink,
   fileArchive: FileArchive,
   fileAudio: Music,

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { compactIssueIdFrom, dockedIssueIdFrom, dockedKeyFrom, editSheet, expandSheets, renameIssueInSheets, sheetKey, type SheetState } from './ui'
+import { compactIssueIdFrom, dockedIssueIdFrom, dockedKeyFrom, editSheet, expandSheets, popOutSheets, renameIssueInSheets, sheetKey, type SheetState } from './ui'
 
 const form = (issueId?: string): SheetState => ({ kind: 'issue-form', issueId })
 
@@ -98,5 +98,23 @@ describe('expandSheets / editSheet cu full', () => {
     expect(editSheet([{ kind: 'issue-form', issueId: 'HZ-1', full: true }], 'HZ-1')).toEqual({ kind: 'issue-form', issueId: 'HZ-1', full: true })
     expect(editSheet([{ kind: 'issue-form', issueId: 'HZ-1', full: true }], 'HZ-2')).toEqual(form('HZ-2'))
     expect(editSheet([], 'HZ-3', true)).toEqual({ kind: 'issue-form', issueId: 'HZ-3', full: true })
+  })
+})
+
+describe('popOutSheets', () => {
+  it('tichetul docat trece în modal, cu aceeași cheie, și nu mai e docat', () => {
+    const docked: SheetState[] = [{ kind: 'issue-form', issueId: 'HZ-13', keyId: 'HZ-~a' }]
+    const out = popOutSheets(docked)
+    expect(out).toEqual([{ kind: 'issue-form', issueId: 'HZ-13', keyId: 'HZ-~a', popout: true }])
+    expect(dockedIssueIdFrom(out, true)).toBeNull()
+  })
+  it('un tichet nou sau o stivă mai adâncă rămân neatinse', () => {
+    const fresh: SheetState[] = [{ kind: 'issue-form' }]
+    expect(popOutSheets(fresh)).toBe(fresh)
+    const deep: SheetState[] = [{ kind: 'issue-form', issueId: 'A' }, { kind: 'issue', issueId: 'B' }]
+    expect(popOutSheets(deep)).toBe(deep)
+  })
+  it('un click pe rând după modal docheză din nou tichetul', () => {
+    expect(dockedIssueIdFrom([editSheet([{ kind: 'issue-form', issueId: 'A', popout: true }], 'A')], true)).toBe('A')
   })
 })

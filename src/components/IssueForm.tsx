@@ -273,7 +273,7 @@ function AssigneeSearch({ assigneeId, assignees, members, myAssigneeId, myUserId
  */
 export function IssueForm({ issueId, docked = false, draft }: { issueId?: string; docked?: boolean; draft?: IssueDraft }) {
   const { project, projects, waves, themes, issues, byId, activeWave, createIssue, updateIssue, deleteIssue, createTheme, assignees, myAssigneeId, createAssignee, assigneeShort, projectMembers, ensureAssigneeForMember, obstacles, obstaclesOf, createObstacle, setIssueObstacles, reportError } = useHorizontal()
-  const { closeSheet, setCloseGuard, pushSheet, openEditIssue, setDockedDirty, saveNudge, showToast } = useUI()
+  const { closeSheet, setCloseGuard, pushSheet, openEditIssue, setDockedDirty, saveNudge, showToast, popOutIssue } = useUI()
   const { session } = useAuth()
   const myUserId = session?.user.id ?? null
   const canWrite = useCanWrite()
@@ -1273,6 +1273,17 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
       {/* HEADER */}
       <div className="sh-header">
         <button className="sh-close" onClick={closeSheet} aria-label="Închide"><Icon name="close" size={16} /></button>
+        {docked && isEdit && (
+          <button
+            tabIndex={-1}
+            className="sh-copy"
+            onClick={popOutIssue}
+            aria-label="Deschide mare"
+            title="Deschide mare, peste listă"
+          >
+            <Icon name="popOut" size={15} />
+          </button>
+        )}
         {isEdit && (
           <button
             tabIndex={-1}

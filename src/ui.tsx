@@ -27,7 +27,9 @@ export type SheetState =
   | { kind: 'issue'; issueId: string; keyId?: string }
   // create when no id, edit otherwise. `full`: formularul complet chiar și pe
   // telefon — cerut din „…" al foii de tichet (vezi `compactIssueIdFrom`).
-  | { kind: 'issue-form'; issueId?: string; keyId?: string; draft?: IssueDraft; full?: boolean }
+  // `popout`: tichetul docat, deschis ca modal mare peste listă (descrieri
+  // lungi) — `dockedIssueIdFrom` îl lasă atunci modalului.
+  | { kind: 'issue-form'; issueId?: string; keyId?: string; draft?: IssueDraft; full?: boolean; popout?: boolean }
   // Foaia rapidă de pe telefon (FAB). Altă cochilie decât `.sheet` — vezi `QuickSheet`.
   | { kind: 'quick-add'; ctx: QuickCtx }
   | { kind: 'project-form' }
@@ -80,6 +82,12 @@ interface UI {
   openEditIssue(id: string, opts?: { full?: boolean }): void
   /** „…" din foaia de tichet de pe telefon: același tichet, în formularul complet. */
   expandIssue(): void
+  /**
+   * Panoul lateral → modal mare, pentru o descriere lungă. Formularul se
+   * remontează (altă poziție în arbore), deci cu modificări nesalvate refuză
+   * și clipește săgeata de salvare, ca la comutarea pe alt rând.
+   */
+  popOutIssue(): void
   openNewProject(): void
   openProjectSettings(): void
   openWaveManage(): void
@@ -124,7 +132,14 @@ const PENDING_SWITCH_MS = 4000
 export function dockedIssueIdFrom(sheets: SheetState[], hasSplitHost: boolean): string | null {
   if (!hasSplitHost || sheets.length !== 1) return null
   const only = sheets[0]
-  return only.kind === 'issue-form' ? only.issueId ?? null : null
+  return only.kind === 'issue-form' && !only.popout ? only.issueId ?? null : null
+}
+
+/** Tichetul docat trece în modalul mare, cu aceeași cheie. */
+export function popOutSheets(prev: SheetState[]): SheetState[] {
+  const only = prev.length === 1 ? prev[0] : null
+  if (only?.kind !== 'issue-form' || !only.issueId || only.popout) return prev
+  return [{ ...only, popout: true }]
 }
 
 /**
@@ -276,6 +291,10 @@ export function UIProvider({ children }: { children: ReactNode }) {
         setSheets((prev) => [editSheet(prev, issueId, opts?.full)])
       },
       expandIssue: () => setSheets(expandSheets),
+      popOutIssue: () => {
+        if (dockedDirty.current) { setSaveNudge((n) => n + 1); return }
+        setSheets(popOutSheets)
+      },
       openNewProject: () => setSheets([{ kind: 'project-form' }]),
       openProjectSettings: () => setSheets([{ kind: 'project-settings' }]),
       openWaveManage: () => setSheets([{ kind: 'wave-manage' }]),

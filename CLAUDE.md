@@ -159,6 +159,12 @@ formularul docat își raportează starea murdară (`setDockedDirty`) și
 salvare. Fără plasa asta, un click în listă ar fi aruncat în tăcere ce tocmai
 ai scris; cu un dialog, fiecare click ar fi cerut un „da".
 
+**„Deschide mare"** (iconița de lângă X, numai în panou) pune `popout: true`
+pe aceeași intrare (`popOutSheets`): `dockedIssueIdFrom` îl lasă atunci
+modalului de 94%, pentru descrieri lungi. E tot o remontare, deci cu modificări
+nesalvate refuză și clipește săgeata, ca la comutarea pe alt rând. Închiderea
+modalului închide tichetul; un click pe rând îl docheză din nou.
+
 Panoul nu e un modal, deci nu blochează tastatura listei: `shouldIgnoreKey` din
 `hooks.ts` primește `modalOpen`, nu `sheet.kind`. Ecranele „Listă" și
 „Listă · gol" din `design/preview.html` acoperă panoul, rândul docat și starea
