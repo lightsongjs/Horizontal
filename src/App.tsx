@@ -482,9 +482,20 @@ function Shell() {
    * deschis): acolo nu se poate ști ce e în spate, deci nu navigăm.
    */
   const behindTicket = useRef<string | null>(null)
-  /** Un back ne-ar duce pe alt ticket? Atunci rescriem URL-ul în loc să navigăm. */
+  /**
+   * Ecranul pe care era omul când am împins intrarea ticketului. Cu tichetul
+   * deschis în panou poți schimba ecranul (alt proiect din bara laterală), iar
+   * URL-ul rămâne al ticketului — în spate stă tot ecranul vechi. Un `back()`
+   * la închidere te-ar fi aruncat acolo (un clic pe „Cards" ducea pe „Azi").
+   */
+  const behindScreen = useRef<string | null>(null)
+  // Pe o listă proiectul din store e doar al tichetului deschis, deci nu
+  // contează; contează doar dacă ești pe un proiect ca ecran.
+  const screenKey = () => screenRef.current ? `s:${screenRef.current}` : `p:${projectRef.current?.id ?? ''}`
+  /** Un back ne-ar duce pe alt ticket sau pe alt ecran? Atunci rescriem URL-ul în loc să navigăm. */
   const backLandsOnTicket = () =>
     behindTicket.current === null || parseTicketPath(behindTicket.current) !== null
+    || behindScreen.current !== screenKey()
   // O intrare pe `/` își poartă și ecranul (`hzScreen`), ca Back să știe pe
   // ce tab aterizează — vezi `TopScreen`.
   const entryState = (path: string) => (path === '/'
@@ -807,6 +818,7 @@ function Shell() {
       else {
         // Ce era în bară înainte de intrarea asta. Vezi `behindTicket`.
         behindTicket.current = window.location.pathname
+        behindScreen.current = screenKey()
         pushPath(path)
       }
     } else if (onTicketUrl && deepLinkPending.current === null) {
