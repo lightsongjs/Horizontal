@@ -580,6 +580,13 @@ export function createLocalRepository(): Repository {
       save(db)
     },
 
+    async threadSummary(issueId: string) {
+      const db = load()
+      const mine = (db.events ?? []).filter((e) => e.issueId === issueId)
+      const recent = [...mine].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 2)
+      return clone({ count: mine.length, recent, seenAt: db.seen?.[issueId] ?? null })
+    },
+
     async listInbox() {
       const db = load()
       const events = db.events ?? []

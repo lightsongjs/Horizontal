@@ -258,7 +258,13 @@ function AssigneeSearch({ assigneeId, assignees, members, myAssigneeId, myUserId
  *   focusul la fiecare click în listă, și își raportează starea „nesalvat”
  *   către `ui.tsx`, care oprește prima comutare pe alt tichet.
  */
-export function IssueForm({ issueId, docked = false, draft }: { issueId?: string; docked?: boolean; draft?: IssueDraft }) {
+export function IssueForm({ issueId, docked = false, draft, revealThread = false }: {
+  issueId?: string
+  docked?: boolean
+  draft?: IssueDraft
+  /** Deschis din rândul de fir al foii de telefon: derulează la fir, fără focus. */
+  revealThread?: boolean
+}) {
   const { project, projects, waves, themes, issues, byId, activeWave, toggleDone, createIssue, updateIssue, deleteIssue, createTheme, assignees, myAssigneeId, createAssignee, assigneeShort, projectMembers, ensureAssigneeForMember, obstacles, obstaclesOf, createObstacle, setIssueObstacles, reportError } = useHorizontal()
   const { closeSheet, setCloseGuard, pushSheet, openEditIssue, setDockedDirty, saveNudge, showToast, popOutIssue } = useUI()
   const { session } = useAuth()
@@ -1830,6 +1836,7 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
                 projectId={project.id}
                 onDirtyChange={setCommentDraftDirty}
                 onHandoff={setAssigneeId}
+                reveal={revealThread}
               />
             )}
 

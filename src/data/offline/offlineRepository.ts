@@ -719,6 +719,11 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
     createAssignee: (name) => net(() => remote.createAssignee(name)),
     ensureAssigneeForMember: (pid, uid) => net(() => remote.ensureAssigneeForMember(pid, uid)),
     listEvents: (iid) => net(() => remote.listEvents(iid)),
+    // Un tichet provizoriu n-are fir pe server; nu merită o cerere. Altfel ca
+    // firul: rețea, iar offline rândul din foaie lipsește (nu minte).
+    threadSummary: (iid) => isTempIssueId(iid)
+      ? Promise.resolve({ count: 0, recent: [], seenAt: null })
+      : net(() => remote.threadSummary(resolveId(iid))),
     postToThread: (input) => net(() => remote.postToThread(input)),
     updateComment: (id, body) => net(() => remote.updateComment(id, body)),
     // Fixările: rețea pentru scriere (ca proiectele), iar baza se ține la zi

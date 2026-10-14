@@ -29,7 +29,7 @@ export type SheetState =
   // telefon — cerut din „…" al foii de tichet (vezi `compactIssueIdFrom`).
   // `popout`: tichetul docat, deschis ca modal mare peste listă (descrieri
   // lungi) — `dockedIssueIdFrom` îl lasă atunci modalului.
-  | { kind: 'issue-form'; issueId?: string; keyId?: string; draft?: IssueDraft; full?: boolean; popout?: boolean }
+  | { kind: 'issue-form'; issueId?: string; keyId?: string; draft?: IssueDraft; full?: boolean; popout?: boolean; at?: 'thread' }
   // Foaia rapidă de pe telefon (FAB). Altă cochilie decât `.sheet` — vezi `QuickSheet`.
   | { kind: 'quick-add'; ctx: QuickCtx }
   | { kind: 'project-form' }
@@ -82,7 +82,8 @@ interface UI {
   /** `full`: sare peste foaia de telefon (după crearea unui tichet din formularul complet). */
   openEditIssue(id: string, opts?: { full?: boolean }): void
   /** „…" din foaia de tichet de pe telefon: același tichet, în formularul complet. */
-  expandIssue(): void
+  /** „…": formularul complet; `at: 'thread'` îl derulează la fir (rândul de fir al foii). */
+  expandIssue(opts?: { at?: 'thread' }): void
   /**
    * Panoul lateral → modal mare, pentru o descriere lungă. Formularul se
    * remontează (altă poziție în arbore), deci cu modificări nesalvate refuză
@@ -214,10 +215,10 @@ export function editSheet(prev: SheetState[], issueId: string, full = false): Sh
 }
 
 /** „…": singura foaie de tichet trece în formularul complet, cu aceeași cheie. */
-export function expandSheets(prev: SheetState[]): SheetState[] {
+export function expandSheets(prev: SheetState[], at?: 'thread'): SheetState[] {
   const only = prev.length === 1 ? prev[0] : null
   if (only?.kind !== 'issue-form' || !only.issueId || only.full) return prev
-  return [{ ...only, full: true }]
+  return [at ? { ...only, full: true, at } : { ...only, full: true }]
 }
 
 const Ctx = createContext<UI | null>(null)
@@ -291,7 +292,7 @@ export function UIProvider({ children }: { children: ReactNode }) {
         clearPendingSwitch()
         setSheets((prev) => [editSheet(prev, issueId, opts?.full)])
       },
-      expandIssue: () => setSheets(expandSheets),
+      expandIssue: (opts) => setSheets((prev) => expandSheets(prev, opts?.at)),
       popOutIssue: () => {
         if (dockedDirty.current) { setSaveNudge((n) => n + 1); return }
         setSheets(popOutSheets)

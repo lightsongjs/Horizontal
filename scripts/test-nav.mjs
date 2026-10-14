@@ -730,6 +730,55 @@ try {
   check('…și scadența nu s-a mișcat', ((await dueText()) ?? '').includes('17:00'), `jeton="${await dueText()}"`)
   await tel.keyboard.press('Escape')
   await tel.waitForTimeout(400)
+
+  // ── Rândul de fir din foaia de tichet ──────────────────────────────────
+  // Fără evenimente: nimic. Cu un comentariu al altcuiva, nevăzut: rândul
+  // necitit, cu textul. Atingerea → formularul complet derulat la Fir, cu
+  // „nou", FĂRĂ focus în caseta de răspuns; încărcarea firului îl face citit.
+  await openTask()
+  check('fir gol: foaia n-are rândul de fir', (await tel.locator('.edit-sheet .es-thread').count()) === 0, 'fără `.es-thread`')
+  await tel.keyboard.press('Escape')
+  await tel.waitForTimeout(500)
+  await tel.evaluate((t) => {
+    const db = JSON.parse(localStorage.getItem('horizontal:v2'))
+    const i = db.issues.find((x) => x.title.startsWith(t))
+    const at = (min) => new Date(Date.now() - min * 60_000).toISOString()
+    const ev = (id, authorId, body, min) => ({ id, issueId: i.id, projectId: i.projectId, kind: 'comment', authorId, body, handoffFrom: null, handoffTo: null, createdAt: at(min), editedAt: null })
+    // Destule cât firul să nu încapă sub formular: derularea chiar se vede.
+    const mine = Array.from({ length: 6 }, (_, k) => ev(`nav-m${k}`, 'local', `Notă de-a mea ${k}`, 300 - k))
+    db.events = [...(db.events ?? []), ...mine, ev('nav-f1', 'u-altcineva', 'Poți verifica pe staging cu clientul de test?', 120)]
+    if (db.seen) delete db.seen[i.id]
+    localStorage.setItem('horizontal:v2', JSON.stringify(db))
+  }, TITLE)
+  await tel.reload({ waitUntil: 'networkidle' })
+  await tel.waitForTimeout(1600)
+  await openTask()
+  const thRow = tel.locator('.edit-sheet .es-thread')
+  check('comentariu nevăzut: rândul de fir necitit', (await thRow.count()) === 1 && /unread/.test((await thRow.getAttribute('class')) ?? ''), `${await thRow.getAttribute('class').catch(() => 'lipsă')}`)
+  check('…cu textul și numărul', /staging/.test((await thRow.textContent()) ?? '') && /7/.test((await tel.locator('.edit-sheet .es-thread-n').textContent()) ?? ''), JSON.stringify(await thRow.textContent()))
+  await tel.locator('.edit-sheet .es-title').focus()
+  await tel.waitForTimeout(200)
+  check('cu titlul în focus rândul se ascunde', (await thRow.count()) === 0, 'ascuns')
+  await tel.locator('.edit-sheet .es-title').evaluate((el) => el.blur())
+  await tel.waitForTimeout(300)
+  await thRow.click()
+  await tel.waitForTimeout(1200)
+  check('atingerea deschide formularul complet', (await tel.locator('.sheet.on .thread').count()) === 1 && !(await editOpen()), 'formular cu fir')
+  check('…cu „nou" deasupra necititului', (await tel.locator('.sheet.on .thread-new').count()) === 1, `${await tel.locator('.sheet.on .thread-new').count()} separatoare`)
+  const seen = await tel.evaluate(() => {
+    const el = document.querySelector('.sheet.on .thread-new')
+    const r = el?.getBoundingClientRect()
+    return { inView: !!r && r.top >= 0 && r.bottom <= innerHeight, focus: document.activeElement?.className ?? '' }
+  })
+  check('…derulat la fir', seen.inView, seen.inView ? 'separatorul în ecran' : 'în afara ecranului')
+  check('…fără focus în caseta de răspuns', !/thread-textarea/.test(seen.focus), `activ="${seen.focus}"`)
+  await tel.goBack()
+  await tel.waitForTimeout(700)
+  check('Back închide formularul, rămâi pe „Azi"', (await tel.locator('.sheet.on').count()) === 0 && (await telOnAzi()), `URL=${new URL(tel.url()).pathname}`)
+  await openTask()
+  check('firul încărcat l-a făcut citit', /\bread\b/.test((await thRow.getAttribute('class').catch(() => '')) ?? ''), `${await thRow.getAttribute('class').catch(() => 'lipsă')}`)
+  await tel.keyboard.press('Escape')
+  await tel.waitForTimeout(400)
   await tel.close()
 
   // ── Gesturile de pe telefon: glisare, apăsare lungă, selecție ─────────

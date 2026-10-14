@@ -1,5 +1,6 @@
 // Logica pură a firului. Fără DOM, fără rețea — ca engine.ts și schedule.ts.
-import type { InboxRow, Issue } from './types'
+import type { Assignee, InboxRow, Issue, IssueEvent } from './types'
+import { dayOffset, toShortDate } from './schedule'
 
 /**
  * Compară momente, nu șiruri: formatări diferite ale aceluiași moment
@@ -98,4 +99,154 @@ export function reconcileInbox(
     })
   }
   return merged
+}
+
+/**
+ * Numele de afișat al unui autor de eveniment. `authorId` e un id de cont
+ * (`auth.users`), NU un id de assignee — se mapează prin `assignees.userId`.
+ * `null` = notă migrată din vechiul câmp `notes` (vezi migration-comments.sql).
+ */
+export function authorDisplay(
+  authorId: string | null,
+  assignees: readonly Assignee[],
+  myUserId: string,
+): { name: string; initials: string | null; mine: boolean } {
+  if (authorId === null) return { name: 'Notă mutată', initials: null, mine: false }
+  const mine = authorId === myUserId
+  const found = assignees.find((a) => a.userId === authorId)
+  if (found) return { name: found.name, initials: found.name.slice(0, 2).toUpperCase(), mine }
+  return { name: mine ? 'Eu' : 'Cineva', initials: mine ? 'EU' : '?', mine }
+}
+
+/** Numele unui assignee pentru o pasă (`handoffFrom`/`handoffTo` sunt id-uri
+ *  de ASSIGNEE, nu de cont — spre deosebire de `authorId`). */
+export function assigneeLabel(id: string | null, assignees: readonly Assignee[]): string {
+  if (id === null) return 'Nimeni'
+  return assignees.find((a) => a.id === id)?.name ?? 'necunoscut'
+}
+
+/**
+ * Ce știe foaia de telefon despre fir fără să-l încarce: numărul de
+ * evenimente, ultimele două și vizita mea (`issue_seen.seen_at`).
+ *
+ * Două, nu unul: `post_to_thread` scrie comentariul și pasa în aceeași
+ * tranzacție, deci cu același `created_at` — „ți l-am pasat, uite de ce" sunt
+ * două rânduri, iar ordinea dintre ele la egalitate e arbitrară.
+ */
+export interface ThreadSummary {
+  count: number
+  /** Cele mai noi evenimente, cel mai nou întâi (cel mult două). */
+  recent: IssueEvent[]
+  /** `null` = n-am deschis niciodată firul tichetului. */
+  seenAt: string | null
+}
+
+/** Cine sunt, pentru „al meu" (cont) și „către mine" (rândul din `assignees`). */
+export interface ThreadMe {
+  userId: string
+  assigneeId: string | null
+}
+
+export type ThreadRowView =
+  | { kind: 'hidden' }
+  | {
+      kind: 'unread' | 'read'
+      authorId: string | null
+      at: string
+      /** Textul comentariului; la o pasă fără mesaj, gol. */
+      body: string
+      handoff: { from: string | null; to: string | null; toMe: boolean } | null
+      /** `null` = încă nu se știe (primul cadru, din cutia de pase). */
+      count: number | null
+    }
+
+const sameMoment = (a: string, b: string) => {
+  const x = Date.parse(a)
+  const y = Date.parse(b)
+  return !isNaN(x) && x === y
+}
+
+/**
+ * Starea rândului de fir din foaia de tichet.
+ *
+ * Necitit = ultimul eveniment e al ALTCUIVA și e mai nou decât vizita mea —
+ * regula lui `isUnread`. Dacă ultimul e al meu, am răspuns, deci am citit:
+ * nu e nevoie de un „ultimul străin" separat (și deci nici de o migrare). O
+ * notă migrată (`authorId` null) nu e o veste: n-o scrie nimeni acum.
+ */
+export function threadRowState(summary: ThreadSummary | null | undefined, me: ThreadMe): ThreadRowView {
+  if (!summary || summary.count <= 0 || summary.recent.length === 0) return { kind: 'hidden' }
+  const last = summary.recent[0]
+  const next = summary.recent[1]
+  // Perechea unei pase cu mesaj: același gest, același autor, același moment.
+  const pair = next && next.kind !== last.kind && next.authorId === last.authorId && sameMoment(next.createdAt, last.createdAt)
+    ? next
+    : null
+  const hand = last.kind === 'handoff' ? last : pair?.kind === 'handoff' ? pair : null
+  const comment = last.kind === 'comment' ? last : pair?.kind === 'comment' ? pair : null
+  const foreign = last.authorId !== null && last.authorId !== me.userId
+  return {
+    kind: foreign && isUnread(last.createdAt, summary.seenAt) ? 'unread' : 'read',
+    authorId: last.authorId,
+    at: last.createdAt,
+    body: comment?.body.trim() ?? '',
+    handoff: hand
+      ? { from: hand.handoffFrom, to: hand.handoffTo, toMe: me.assigneeId !== null && hand.handoffTo === me.assigneeId }
+      : null,
+    count: summary.count,
+  }
+}
+
+/**
+ * Primul cadru, cât rezumatul e încă pe drum: un tichet pasat mie are rând în
+ * cutia de pase, iar acela știe deja dacă e necitit. Numai starea necitită se
+ * arată dinainte — un „citit" din poza cutiei ar putea fi un fir gol.
+ */
+export function threadRowFromInbox(row: InboxRow | undefined): ThreadRowView {
+  if (!row?.lastForeignAt || !isUnread(row.lastForeignAt, row.seenAt)) return { kind: 'hidden' }
+  return { kind: 'unread', authorId: row.lastForeignAuthor, at: row.lastForeignAt, body: '', handoff: null, count: null }
+}
+
+/**
+ * Ce scrie pe rând. Pasa către mine spune de ce tichetul e acum al meu („Ți
+ * l-a pasat Ionuț"); una către altcineva e „Ionuț → Ana". Mesajul, dacă e,
+ * rămâne corpul.
+ */
+export function threadRowText(
+  view: Extract<ThreadRowView, { kind: 'unread' | 'read' }>,
+  assignees: readonly Assignee[],
+  myUserId: string,
+): { who: string; initials: string; body: string } {
+  const a = authorDisplay(view.authorId, assignees, myUserId)
+  const name = a.mine ? 'Eu' : a.name
+  const initials = a.initials ?? '·'
+  if (!view.handoff) return { who: name, initials, body: view.body }
+  if (view.handoff.toMe) return { who: `Ți l-a pasat ${name}`, initials, body: view.body }
+  return { who: `${name} → ${assigneeLabel(view.handoff.to, assignees)}`, initials, body: view.body }
+}
+
+/**
+ * Primul eveniment necitit din fir, pentru separatorul „nou": al altcuiva
+ * (nu o notă migrată) și mai nou decât vizita. `seenAt` `undefined` = nu se
+ * știe (rezumatul n-a venit) → niciun separator, ca să nu mintă.
+ */
+export function firstUnreadId(events: readonly IssueEvent[], seenAt: string | null | undefined, myUserId: string): string | null {
+  if (seenAt === undefined) return null
+  const e = events.find((x) => x.authorId !== null && x.authorId !== myUserId && isUnread(x.createdAt, seenAt))
+  return e?.id ?? null
+}
+
+/** Ora scurtă de pe rândul firului: „acum", „5 min", „2 h", „ieri", „3 z", apoi data. */
+export function shortAgo(iso: string, now: Date): string {
+  const then = Date.parse(iso)
+  if (isNaN(then)) return ''
+  const min = Math.floor((now.getTime() - then) / 60_000)
+  if (min < 1) return 'acum'
+  if (min < 60) return `${min} min`
+  const h = Math.floor(min / 60)
+  if (h < 24) return `${h} h`
+  const days = -dayOffset(iso, now)
+  if (days === 1) return 'ieri'
+  if (days < 7) return `${days} z`
+  return toShortDate(iso)
 }

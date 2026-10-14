@@ -372,6 +372,23 @@ describe('firul', () => {
     const { events } = await repo.postToThread({ issueId: i.id, projectId: p.id, handoff: true, to: a.id })
     await expect(repo.updateComment(events[0].id, 'x')).rejects.toThrow()
   })
+
+  it('rezumatul firului: numărul, ultimele două (cel mai nou întâi) și vizita', async () => {
+    const repo = createLocalRepository()
+    const p = await repo.createProject({ name: 'P', description: '', prefix: 'P' })
+    const i = await repo.createIssue({ projectId: p.id, title: 'T' })
+    expect(await repo.threadSummary(i.id)).toEqual({ count: 0, recent: [], seenAt: null })
+    const a = await repo.createAssignee('Alex')
+    await repo.postToThread({ issueId: i.id, projectId: p.id, body: 'unu' })
+    await new Promise((r) => setTimeout(r, 2))
+    await repo.postToThread({ issueId: i.id, projectId: p.id, body: 'doi', handoff: true, to: a.id })
+    const s = await repo.threadSummary(i.id)
+    expect(s.count).toBe(3)
+    expect(s.recent).toHaveLength(2)
+    expect(s.recent.map((e) => e.kind).sort()).toEqual(['comment', 'handoff'])
+    // Cine scrie în fir l-a și citit (ca `post_to_thread`).
+    expect(s.seenAt).not.toBeNull()
+  })
 })
 
 describe('localRepository — recurență', () => {

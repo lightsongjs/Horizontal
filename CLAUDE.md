@@ -585,6 +585,32 @@ mijlocul telefonului. Încercate pe telefon, 2026-10-03: 20% (foaia lipită de
 bara de navigare) era prea jos, 70% prea sus. Spațiul în plus e al descrierii, deci o atingere sub text începe
 scrisul. Pe `--vvh`, nu `dvh`, ca la tastatura deschisă minimul să scadă singur.
 
+### Firul în foaia de tichet
+
+Sub jetoane, foaia arată **un singur rând de fir** (`SheetThreadRow.tsx`,
+macheta `design/sheet-comments/index.html`) — numai dacă tichetul are cel puțin
+un eveniment: ultimul (avatar, autor, ora scurtă, text) + numărul. Necitit =
+ultimul eveniment e al altcuiva și mai nou decât `issue_seen.seen_at`
+(`threadRowState`, `src/lib/thread.ts`, pur, cu teste; o notă migrată nu e
+necitită): accent-soft, „nou", corpul pe 2 rânduri. Citit: o linie gri. O pasă
+către mine scrie „Ți l-a pasat X" + mesajul (comentariul și pasa au același
+`created_at`, de-aia rezumatul aduce ultimele DOUĂ). Se ascunde cât titlul sau
+descrierea au focus.
+
+- **Datele:** `repository.threadSummary` (count exact + ultimele două + vizita),
+  cerut leneș la deschidere, ținut în memorie de `src/data/threadSummary.ts`
+  (nu în store — ar fi randat listele). Invalidat la `postToThread`/
+  `updateComment` și la `refresh()`; offline (`net()`) sau la eroare rândul
+  lipsește. Primul cadru, pentru un tichet pasat mie, vine din `inbox`
+  (`threadRowFromInbox`), numai în starea necitită.
+- **Atingerea** = „…" cu `at: 'thread'` (`expandIssue`, aceeași intrare de
+  istoric): `Thread` se derulează la separatorul „nou" (`firstUnreadId`), fără
+  focus în casetă.
+- **Citit se face în `Thread`**, după `listEvents`, pe telefon și pe desktop
+  (`markInboxSeen(id, { quiet: true })`, numai dacă e ceva străin mai nou decât
+  vizita) — înainte doar „Ale mele" marca, deci un tichet deschis din „Azi"
+  rămânea necitit la nesfârșit.
+
 ### Fișierele din foi și de ce persoana a ieșit din rând
 
 În ambele foi, locul persoanei e al agrafei (meniu: „Fă o poză" = `<input

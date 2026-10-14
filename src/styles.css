@@ -4627,6 +4627,22 @@ html[data-text-large] .fc-fields > .due-inputs { flex-basis: 100%; }
 .thread-comment-atts { margin-top: 6px; }
 .thread-comment-text + .thread-comment-atts { margin-top: 8px; }
 
+/* „nou": deasupra primului eveniment necitit la deschidere (rândul de fir al
+   foii de telefon duce aici). Necititele străine stau pe accent-soft. */
+.thread-new {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0 -2px;
+  font-size: calc(11.5px * var(--text-scale));
+  font-weight: 650;
+  color: var(--accent);
+  scroll-margin-top: 64px;
+}
+.thread-new::before, .thread-new::after { content: ""; height: 1px; flex: 1; background: color-mix(in srgb, var(--accent) 35%, transparent); }
+.thread-comment.fresh .thread-comment-card { background: var(--accent-soft); box-shadow: none; }
+.thread-comment.fresh .thread-avatar { background: var(--accent); color: var(--on-accent); }
+
 /* O pasă e un eveniment, nu un mesaj — fără casetă, ca să nu se citească
    drept replică goală. Aliniată la dreapta, ca să se deosebească dintr-o
    privire de firul de comentarii. */
@@ -5821,6 +5837,110 @@ body:has(.kb-sheet) .toast {
 .es-check.on { color: var(--done); }
 .es-check .ck { width: 22px; height: 22px; }
 .es-check:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* Rândul de fir (`SheetThreadRow`), sub jetoane: ultimul eveniment + numărul,
+   numai dacă firul are ceva. Necitit = accent-soft, avatar plin + bulină,
+   corpul pe 2 rânduri; citit = o linie gri. Macheta: design/sheet-comments. */
+.es-thread {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  /* Bara de jetoane din foaie (`.edit-sheet .qs-bar`) își întinde fundalul
+     16px (+ zona sigură) sub jetoane, anulat cu o margine negativă: rândul
+     stă deasupra ei (`z-index`), la 10px sub jetoane, ca în machetă. */
+  position: relative;
+  z-index: 1;
+  margin: 10px 0 10px;
+  padding: 9px 10px 9px 8px;
+  border: 0;
+  border-radius: var(--r-m);
+  background: var(--surface-2);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.es-thread:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.es-thread-av {
+  position: relative;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--surface-3);
+  color: var(--txt-dim);
+  font-size: calc(10.5px * var(--text-scale));
+  font-weight: 650;
+  letter-spacing: .02em;
+}
+.es-thread-tx { flex: 1; min-width: 0; }
+.es-thread-who {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  font-size: calc(13px * var(--text-scale));
+  font-weight: 600;
+  color: var(--txt-dim);
+  white-space: nowrap;
+}
+.es-thread-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.es-thread-t {
+  flex: none;
+  font-family: var(--mono);
+  font-size: calc(11.5px * var(--text-scale));
+  font-weight: 500;
+  color: var(--txt-faint);
+}
+.es-thread-new { flex: none; font-size: calc(11.5px * var(--text-scale)); font-weight: 650; color: var(--accent); }
+.es-thread-body {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  font-size: calc(14px * var(--text-scale));
+  line-height: 1.4;
+  color: var(--txt-dim);
+}
+.es-thread-body.q::before { content: "„"; }
+.es-thread-body.q::after { content: "”"; }
+.es-thread-n {
+  flex: none;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--mono);
+  font-size: calc(12px * var(--text-scale));
+  font-weight: 500;
+  color: var(--txt-faint);
+}
+/* citit: o singură linie, autorul și textul pe același rând */
+.es-thread.read { align-items: center; padding: 7px 10px 7px 8px; }
+.es-thread.read .es-thread-tx { display: flex; align-items: baseline; gap: 6px; }
+.es-thread.read .es-thread-who { flex: 0 1 auto; }
+.es-thread.read .es-thread-body { flex: 1 1 0; min-width: 0; font-size: calc(13.5px * var(--text-scale)); white-space: nowrap; display: block; text-overflow: ellipsis; }
+/* necitit */
+.es-thread.unread { background: var(--accent-soft); }
+.es-thread.unread .es-thread-av { background: var(--accent); color: var(--on-accent); }
+.es-thread.unread .es-thread-av::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--surface);
+}
+.es-thread.unread .es-thread-who { color: var(--txt); }
+.es-thread.unread .es-thread-body { color: var(--txt); -webkit-line-clamp: 2; }
+.es-thread.unread .es-thread-n { color: var(--accent); }
+
 /* Titlul cu oglindă (`EditTitle`): textarea transparentă peste stratul care
    desenează data. Tiparul `.sh-title-wrap` din formular: `pre-wrap` și
    aceeași literă pe ambele straturi, altfel marcajul alunecă pe rânduri. */

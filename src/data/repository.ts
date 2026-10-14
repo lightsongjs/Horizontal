@@ -3,6 +3,7 @@
 
 import type { Assignee, Issue, IssueEvent, InboxRow, Obstacle, ObstacleLink, Project, ProjectMember, Theme, Wave } from '../lib/types'
 import type { Pin, PinKind } from '../lib/pins'
+import type { ThreadSummary } from '../lib/thread'
 import type { FilterIcon, FilterRules, SavedFilter } from '../lib/savedFilters'
 
 export interface NewProject {
@@ -173,6 +174,12 @@ export interface Repository {
    *  se editează: baza o refuză, iar interfața nu oferă creionul. */
   updateComment(eventId: string, body: string): Promise<IssueEvent>
   markSeen(issueId: string): Promise<void>
+  /**
+   * Ce arată foaia de telefon despre fir fără să-l încarce: numărul de
+   * evenimente, ultimele două (o pasă cu mesaj sunt două rânduri cu același
+   * moment) și vizita mea. Vezi `threadRowState` din `src/lib/thread.ts`.
+   */
+  threadSummary(issueId: string): Promise<ThreadSummary>
   /** Cutia de pase: transversal pe proiecte, ca listDueIssues. */
   listInbox(): Promise<InboxRow[]>
   /**

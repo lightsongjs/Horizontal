@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { groupInbox, isUnread, reconcileInbox } from './thread'
-import type { InboxRow, Issue } from './types'
+import { firstUnreadId, groupInbox, isUnread, reconcileInbox, shortAgo, threadRowFromInbox, threadRowState, threadRowText, type ThreadSummary } from './thread'
+import type { Assignee, InboxRow, Issue, IssueEvent } from './types'
 
 const row = (patch: Partial<InboxRow>): InboxRow => ({
   issueId: 'T-1', projectId: 'p', title: 'T', done: false, assigneeId: 'a1',
@@ -128,5 +128,118 @@ describe('reconcileInbox', () => {
   it('fără nume legat nu reconciliază nimic', () => {
     const rows = [row({ issueId: 'T-1', assigneeId: 'a1' })]
     expect(reconcileInbox(rows, [issue({ id: 'T-1', assigneeId: null })], null)).toEqual(rows)
+  })
+})
+
+const ev = (patch: Partial<IssueEvent>): IssueEvent => ({
+  id: 'e', issueId: 'T-1', projectId: 'p', kind: 'comment', authorId: 'u-ion', body: 'salut',
+  handoffFrom: null, handoffTo: null, createdAt: '2026-10-14T10:00:00Z', editedAt: null, ...patch,
+})
+const sum = (recent: IssueEvent[], seenAt: string | null = null, count = recent.length): ThreadSummary => ({ count, recent, seenAt })
+const me = { userId: 'u-me', assigneeId: 'a-me' }
+const people: Assignee[] = [
+  { id: 'a-ion', name: 'Ionuț', userId: 'u-ion' },
+  { id: 'a-me', name: 'Mihai', userId: 'u-me' },
+  { id: 'a-ana', name: 'Ana', userId: 'u-ana' },
+]
+
+describe('threadRowState', () => {
+  it('ascuns fără rezumat sau cu fir gol', () => {
+    expect(threadRowState(null, me).kind).toBe('hidden')
+    expect(threadRowState(undefined, me).kind).toBe('hidden')
+    expect(threadRowState(sum([], null, 0), me).kind).toBe('hidden')
+  })
+  it('necitit: ultimul e al altcuiva și mai nou decât vizita', () => {
+    const v = threadRowState(sum([ev({})], '2026-10-14T09:00:00Z', 3), me)
+    expect(v).toMatchObject({ kind: 'unread', authorId: 'u-ion', body: 'salut', count: 3, handoff: null })
+  })
+  it('necitit și când n-am vizitat niciodată', () => {
+    expect(threadRowState(sum([ev({})]), me).kind).toBe('unread')
+  })
+  it('citit: vizita e mai nouă', () => {
+    expect(threadRowState(sum([ev({})], '2026-10-14T11:00:00Z'), me).kind).toBe('read')
+  })
+  it('citit: ultimul e al meu — am răspuns, deci am citit', () => {
+    expect(threadRowState(sum([ev({ authorId: 'u-me' })]), me).kind).toBe('read')
+  })
+  it('o notă migrată (fără autor) nu e o veste', () => {
+    expect(threadRowState(sum([ev({ authorId: null })]), me).kind).toBe('read')
+  })
+  it('pasă cu mesaj către mine: perechea de la același moment, în orice ordine', () => {
+    const hand = ev({ id: 'h', kind: 'handoff', body: '', handoffFrom: 'a-ion', handoffTo: 'a-me' })
+    const msg = ev({ id: 'c', body: '  Testează pe 4412. ' })
+    for (const recent of [[hand, msg], [msg, hand]]) {
+      const v = threadRowState(sum(recent, null, 3), me)
+      expect(v).toMatchObject({ kind: 'unread', body: 'Testează pe 4412.', handoff: { from: 'a-ion', to: 'a-me', toMe: true } })
+    }
+  })
+  it('pasă fără mesaj: comentariul mai vechi nu se lipește de ea', () => {
+    const hand = ev({ id: 'h', kind: 'handoff', body: '', handoffTo: 'a-me', createdAt: '2026-10-14T10:00:00Z' })
+    const old = ev({ id: 'c', body: 'vechi', createdAt: '2026-10-13T10:00:00Z' })
+    expect(threadRowState(sum([hand, old]), me)).toMatchObject({ body: '', handoff: { toMe: true } })
+  })
+  it('perechea cere același autor', () => {
+    const hand = ev({ id: 'h', kind: 'handoff', body: '', handoffTo: 'a-me' })
+    const other = ev({ id: 'c', authorId: 'u-ana', body: 'altcineva' })
+    expect(threadRowState(sum([hand, other]), me)).toMatchObject({ body: '' })
+  })
+  it('pasă către altcineva nu e „către mine"', () => {
+    const hand = ev({ kind: 'handoff', body: '', handoffFrom: 'a-ion', handoffTo: 'a-ana' })
+    expect(threadRowState(sum([hand]), me)).toMatchObject({ handoff: { toMe: false } })
+    // Cont nelegat de un nume: nimic nu e „către mine".
+    expect(threadRowState(sum([ev({ kind: 'handoff', handoffTo: 'a-me' })]), { userId: 'u-me', assigneeId: null }))
+      .toMatchObject({ handoff: { toMe: false } })
+  })
+})
+
+describe('threadRowFromInbox', () => {
+  it('arată dinainte doar starea necitită', () => {
+    expect(threadRowFromInbox(undefined).kind).toBe('hidden')
+    expect(threadRowFromInbox(row({ lastForeignAt: '2026-10-14T10:00:00Z', seenAt: '2026-10-14T11:00:00Z' })).kind).toBe('hidden')
+    expect(threadRowFromInbox(row({ lastForeignAt: '2026-10-14T10:00:00Z', lastForeignAuthor: 'u-ion' })))
+      .toMatchObject({ kind: 'unread', authorId: 'u-ion', count: null })
+  })
+})
+
+describe('threadRowText', () => {
+  const view = (patch: object) => ({ kind: 'unread' as const, authorId: 'u-ion', at: '', body: 'mesaj', handoff: null, count: 1, ...patch })
+  it('comentariu: numele autorului; al meu e „Eu"', () => {
+    expect(threadRowText(view({}), people, 'u-me')).toEqual({ who: 'Ionuț', initials: 'IO', body: 'mesaj' })
+    expect(threadRowText(view({ authorId: 'u-me' }), people, 'u-me').who).toBe('Eu')
+  })
+  it('pasă către mine și către altcineva', () => {
+    expect(threadRowText(view({ handoff: { from: 'a-ion', to: 'a-me', toMe: true } }), people, 'u-me').who).toBe('Ți l-a pasat Ionuț')
+    expect(threadRowText(view({ handoff: { from: 'a-ion', to: 'a-ana', toMe: false } }), people, 'u-me').who).toBe('Ionuț → Ana')
+    expect(threadRowText(view({ handoff: { from: 'a-ion', to: null, toMe: false } }), people, 'u-me').who).toBe('Ionuț → Nimeni')
+  })
+})
+
+describe('firstUnreadId', () => {
+  const evs = [
+    ev({ id: '1', authorId: 'u-me', createdAt: '2026-10-12T10:00:00Z' }),
+    ev({ id: '2', authorId: 'u-ion', createdAt: '2026-10-13T10:00:00Z' }),
+    ev({ id: '3', authorId: 'u-ion', createdAt: '2026-10-14T10:00:00Z' }),
+  ]
+  it('primul străin mai nou decât vizita', () => {
+    expect(firstUnreadId(evs, '2026-10-13T12:00:00Z', 'u-me')).toBe('3')
+    expect(firstUnreadId(evs, null, 'u-me')).toBe('2')
+    expect(firstUnreadId(evs, '2026-10-15T00:00:00Z', 'u-me')).toBeNull()
+  })
+  it('vizită necunoscută → fără separator', () => {
+    expect(firstUnreadId(evs, undefined, 'u-me')).toBeNull()
+  })
+})
+
+describe('shortAgo', () => {
+  const now = new Date(2026, 9, 14, 12, 0)
+  const at = (d: number, h: number, m = 0) => new Date(2026, 9, d, h, m).toISOString()
+  it('scurt, pe trepte', () => {
+    expect(shortAgo(at(14, 11, 59, ), now)).toBe('1 min')
+    expect(shortAgo(now.toISOString(), now)).toBe('acum')
+    expect(shortAgo(at(14, 10), now)).toBe('2 h')
+    expect(shortAgo(at(13, 8), now)).toBe('ieri')
+    expect(shortAgo(at(11, 8), now)).toBe('3 z')
+    expect(shortAgo(at(1, 8), now)).toBe('01/10')
+    expect(shortAgo('nu-i dată', now)).toBe('')
   })
 })

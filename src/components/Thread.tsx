@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { repository } from '../data'
 import {
   deleteAttachment,
@@ -23,35 +23,13 @@ import { AttachmentPicker } from './AttachmentPicker'
 import { humanSize, iconFor } from './Attachments'
 import { Lightbox } from './Lightbox'
 import { Icon } from './Icon'
-import type { Assignee, IssueEvent } from '../lib/types'
+import type { IssueEvent } from '../lib/types'
+import { assigneeLabel, authorDisplay, firstUnreadId } from '../lib/thread'
+import { invalidateThreadSummary, loadThreadSummary } from '../data/threadSummary'
 
 /** Doar în modul Supabase — la fel ca `Attachments.tsx`: attachment-urile n-au
  *  sens în modul local seeded. */
 const ATTACHMENTS_ENABLED = import.meta.env.VITE_DATA_SOURCE === 'supabase'
-
-/**
- * Numele de afișat al unui autor de eveniment. `authorId` e un id de cont
- * (`auth.users`), NU un id de assignee — se mapează prin `assignees.userId`.
- * `null` = notă migrată din vechiul câmp `notes` (vezi migration-comments.sql).
- */
-function authorDisplay(
-  authorId: string | null,
-  assignees: readonly Assignee[],
-  myUserId: string,
-): { name: string; initials: string | null; mine: boolean } {
-  if (authorId === null) return { name: 'Notă mutată', initials: null, mine: false }
-  const mine = authorId === myUserId
-  const found = assignees.find((a) => a.userId === authorId)
-  if (found) return { name: found.name, initials: found.name.slice(0, 2).toUpperCase(), mine }
-  return { name: mine ? 'Eu' : 'Cineva', initials: mine ? 'EU' : '?', mine }
-}
-
-/** Numele unui assignee pentru o pasă (`handoffFrom`/`handoffTo` sunt id-uri
- *  de ASSIGNEE, nu de cont — spre deosebire de `authorId`). */
-function assigneeLabel(id: string | null, assignees: readonly Assignee[]): string {
-  if (id === null) return 'Nimeni'
-  return assignees.find((a) => a.id === id)?.name ?? 'necunoscut'
-}
 
 /**
  * Ora unui eveniment din fir, cu data în față dacă nu e de azi. Fără asta, un
@@ -76,9 +54,15 @@ function eventTime(iso: string, now: Date): string {
  *  - NU salvează tichetul. „Trimite" scrie în fir; săgeata din antet salvează
  *    tichetul. Două butoane, două înțelesuri.
  */
-export function Thread({ issueId, projectId, onDirtyChange, onHandoff }: {
+export function Thread({ issueId, projectId, onDirtyChange, onHandoff, reveal }: {
   issueId: string
   projectId: string
+  /**
+   * Deschis din rândul de fir al foii de telefon: după încărcare, firul se
+   * derulează în vedere (la separatorul „nou", dacă e unul). Fără focus în
+   * casetă — deschizi ca să citești, tastatura ar acoperi comentariul.
+   */
+  reveal?: boolean
   onDirtyChange(dirty: boolean): void
   /**
    * Cine ține tichetul ACUM, după o pasă reușită din fir. `IssueForm` ține
@@ -91,7 +75,7 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff }: {
    */
   onHandoff(to: string | null): void
 }) {
-  const { assignees, projectMembers, ensureAssigneeForMember, byId, upsertIssue, refreshInbox, projects } = useHorizontal()
+  const { assignees, projectMembers, ensureAssigneeForMember, byId, upsertIssue, refreshInbox, projects, markInboxSeen } = useHorizontal()
   const { pushSheet, showToast } = useUI()
   const prefixes = projects.map((p) => p.prefix)
   const openRef = (id: string) => (byId[id] ? pushSheet({ kind: 'issue', issueId: id }) : showToast(`${id} nu e încărcat — deschide-i proiectul.`))
@@ -134,16 +118,50 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff }: {
   const [edit, setEdit] = useState<{ id: string; draft: string; original: string } | null>(null)
   const [savingEdit, setSavingEdit] = useState(false)
 
+  /** Primul eveniment necitit la deschidere — separatorul „nou" stă deasupra lui. */
+  const [unreadFrom, setUnreadFrom] = useState<string | null>(null)
+  const rootRef = useRef<HTMLDivElement>(null)
+  const markSeenRef = useRef(markInboxSeen)
+  markSeenRef.current = markInboxSeen
+
   useEffect(() => {
     let alive = true
     setLoading(true)
     setLoadError(null)
-    repository.listEvents(issueId)
-      .then((evs) => { if (alive) setEvents(evs) })
+    // Vizita mea vine din rezumatul firului (de obicei deja în memorie, cerut
+    // de foaia de telefon) — luată ÎNAINTE de a marca firul citit, altfel
+    // separatorul „nou" n-ar avea niciodată ce arăta.
+    Promise.all([repository.listEvents(issueId), loadThreadSummary(issueId)])
+      .then(([evs, summary]) => {
+        if (!alive) return
+        setEvents(evs)
+        const seenAt = summary ? summary.seenAt : undefined
+        setUnreadFrom(firstUnreadId(evs, seenAt, myUserId))
+        // Firul s-a încărcat efectiv, deci e citit — pe telefon și pe desktop,
+        // nu doar din „Ale mele". Doar dacă e ceva străin de citit: un fir
+        // numai al meu e deja „văzut" (`post_to_thread` marchează), iar o
+        // vizită știută ca mai nouă nu cere încă o scriere.
+        const foreign = evs.filter((e) => e.authorId !== null && e.authorId !== myUserId)
+        const lastForeign = foreign[foreign.length - 1]
+        if (lastForeign && (seenAt === undefined || seenAt === null || Date.parse(lastForeign.createdAt) > Date.parse(seenAt))) {
+          void markSeenRef.current(issueId, { quiet: true })
+        }
+      })
       .catch((e) => { if (alive) setLoadError(errorMessage(e)) })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
-  }, [issueId])
+  }, [issueId, myUserId])
+
+  // Derularea la fir, după ce evenimentele chiar sunt în DOM. `block: 'start'`
+  // pe separator (sau pe eticheta „Fir"): primul lucru nou e sus, nu sub degetul
+  // de jos. Doar o dată, la prima încărcare.
+  const revealed = useRef(false)
+  useEffect(() => {
+    if (!reveal || loading || revealed.current) return
+    revealed.current = true
+    const el = rootRef.current?.querySelector('.thread-new') ?? rootRef.current
+    el?.scrollIntoView({ block: 'start' })
+  }, [reveal, loading])
 
   const loadAttachments = async () => {
     if (!ATTACHMENTS_ENABLED) return
@@ -277,6 +295,8 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff }: {
         attachmentIds: pending.map((a) => a.id),
       })
       setEvents((prev) => [...prev, ...res.events])
+      setUnreadFrom(null) // am răspuns, deci am citit
+      invalidateThreadSummary(issueId)
       // `res.issue` NU poartă `deps` (`to_jsonb(i)` din `post_to_thread` citește
       // doar tabela `issues`) — păstrăm `deps` din tichetul vechi al store-ului.
       // Dacă tichetul vechi lipsește din store (n-ar trebui, dar dacă totuși),
@@ -327,6 +347,7 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff }: {
     try {
       const saved = await repository.updateComment(prev.id, next)
       setEvents((list) => list.map((x) => (x.id === saved.id ? saved : x)))
+      invalidateThreadSummary(issueId)
     } catch (err) {
       setEvents((list) => list.map((x) => (x.id === prev.id ? prev : x)))
       showToast(`Comentariul nu s-a salvat: ${errorMessage(err)}`)
@@ -336,7 +357,7 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff }: {
   }
 
   return (
-    <div className="thread">
+    <div className="thread" ref={rootRef}>
       <span className="if-field-label" style={{ display: 'block' }}>Fir</span>
 
       {loading && <p className="thread-loading">Se încarcă…</p>}
@@ -345,19 +366,32 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff }: {
       {!loading && !loadError && (
         <div className="thread-events">
           {events.length === 0 && <p className="thread-empty">Niciun comentariu încă.</p>}
-          {(() => { const now = new Date(); return events.map((e) => {
+          {(() => {
+            const now = new Date()
+            const unreadIdx = unreadFrom ? events.findIndex((x) => x.id === unreadFrom) : -1
+            return events.map((e, i) => {
+            const sep = i === unreadIdx
+              ? <div className="thread-new" role="separator" aria-label="Necitite de aici">nou</div>
+              : null
+            // Necitit = după separator și al altcuiva: fondul pe accent-soft.
+            const fresh = unreadIdx >= 0 && i >= unreadIdx && e.authorId !== null && e.authorId !== myUserId
             if (e.kind === 'handoff') {
               return (
-                <div key={e.id} className="thread-handoff">
-                  {assigneeLabel(e.handoffFrom, assignees)} → {assigneeLabel(e.handoffTo, assignees)}
-                  <span className="thread-handoff-time">{eventTime(e.createdAt, now)}</span>
-                </div>
+                <Fragment key={e.id}>
+                  {sep}
+                  <div className="thread-handoff">
+                    {assigneeLabel(e.handoffFrom, assignees)} → {assigneeLabel(e.handoffTo, assignees)}
+                    <span className="thread-handoff-time">{eventTime(e.createdAt, now)}</span>
+                  </div>
+                </Fragment>
               )
             }
             const author = authorDisplay(e.authorId, assignees, myUserId)
             const group = attachmentsByEvent.get(e.id) ?? []
             return (
-              <div key={e.id} className={`thread-comment${author.mine ? ' mine' : ''}`}>
+              <Fragment key={e.id}>
+              {sep}
+              <div className={`thread-comment${author.mine ? ' mine' : ''}${fresh ? ' fresh' : ''}`}>
                 <span className={`thread-avatar${author.initials === null ? ' empty' : ''}`}>
                   {author.initials}
                 </span>
@@ -447,6 +481,7 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff }: {
                   </div>
                 </div>
               </div>
+              </Fragment>
             )
           }) })()}
         </div>
