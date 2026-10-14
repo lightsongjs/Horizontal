@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  moveWave, nextWaveName, openCounts, pillText, showWaveBand, stepWave,
+  fitPills, moveWave, nextWaveName, openCounts, pillText, showWaveBand, stepWave,
   totalCounts, truncateLabel, waveLabel, waveTitle,
 } from './waveBar'
 
@@ -109,5 +109,31 @@ describe('moveWave', () => {
     expect(moveWave(dup, 3, 0)).toEqual([
       { number: 1, position: 2 }, { number: 2, position: 3 },
     ])
+  })
+})
+
+describe('fitPills', () => {
+  it('shows everything when it all fits', () => {
+    expect(fitPills([50, 60, 70], 180, 1, 40)).toEqual({ shown: [0, 1, 2], overflow: [] })
+  })
+
+  it('leaves room for the overflow pill once something spills', () => {
+    // 50+60 = 110 încap în 150-40; al treilea nu.
+    expect(fitPills([50, 60, 70, 30], 150, 0, 40)).toEqual({ shown: [0, 1], overflow: [2, 3] })
+  })
+
+  it('swaps an active wave past the cutoff in for the last visible pill', () => {
+    expect(fitPills([50, 60, 70, 30], 150, 3, 40)).toEqual({ shown: [0, 3], overflow: [1, 2] })
+    // Un activ lat scoate mai multe pastile, nu doar ultima.
+    expect(fitPills([30, 30, 30, 100], 150, 3, 40)).toEqual({ shown: [3], overflow: [0, 1, 2] })
+  })
+
+  it('keeps only the active wave with no room at all', () => {
+    expect(fitPills([50, 60], 0, 1, 40)).toEqual({ shown: [1], overflow: [0] })
+    expect(fitPills([50, 60], 0, -1, 40)).toEqual({ shown: [], overflow: [0, 1] })
+  })
+
+  it('keeps an active first pill without swapping', () => {
+    expect(fitPills([50, 60, 70], 120, 0, 40)).toEqual({ shown: [0], overflow: [1, 2] })
   })
 })

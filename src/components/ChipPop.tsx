@@ -28,6 +28,8 @@ export function ChipPop({
   onClose,
   className = '',
   align = 'start',
+  frameRef,
+  arrows = 'vertical',
   children,
 }: {
   /** Jetonul care l-a deschis: alinierea și întoarcerea focusului. */
@@ -40,6 +42,15 @@ export function ChipPop({
   className?: string
   /** `end`: lipit de marginea dreaptă a rândului (meniul „⋯" de la capătul benzii de valuri). */
   align?: 'start' | 'end'
+  /**
+   * Cutia față de care se poziționează (implicit `rowRef`). Pastila „Încă N"
+   * din banda de valuri stă într-un rând cu `overflow: hidden`: popoverul se
+   * agață de bandă (poziționată, în afara tăieturii), iar „în afară" rămâne
+   * doar pastila.
+   */
+  frameRef?: RefObject<HTMLElement | null>
+  /** `both`: și ←/→ mută prin meniu (meniul pastilei „Încă N"). */
+  arrows?: 'vertical' | 'both'
   children: ReactNode
 }) {
   const popRef = useRef<HTMLDivElement>(null)
@@ -86,22 +97,24 @@ export function ChipPop({
 
   useLayoutEffect(() => {
     if (sheet || align === 'end') return
-    const row = rowRef.current
+    const row = (frameRef ?? rowRef).current
     const pop = popRef.current
     if (!row || !pop) return
     const r = row.getBoundingClientRect()
     const a = anchor?.getBoundingClientRect()
     const want = a ? a.left - r.left : 0
     setLeft(Math.max(0, Math.min(want, r.width - pop.offsetWidth)))
-  }, [anchor, rowRef, sheet, label, align])
+  }, [anchor, rowRef, frameRef, sheet, label, align])
 
   const onKeyDown = (e: React.KeyboardEvent) => {
-    if (role !== 'menu' || (e.key !== 'ArrowDown' && e.key !== 'ArrowUp')) return
+    const back = e.key === 'ArrowUp' || (arrows === 'both' && e.key === 'ArrowLeft')
+    const fwd = e.key === 'ArrowDown' || (arrows === 'both' && e.key === 'ArrowRight')
+    if (role !== 'menu' || (!back && !fwd)) return
     const items = Array.from(popRef.current?.querySelectorAll<HTMLElement>('[role^="menuitem"]') ?? [])
     if (!items.length) return
     e.preventDefault()
     const i = items.indexOf(document.activeElement as HTMLElement)
-    const next = e.key === 'ArrowDown' ? (i + 1) % items.length : (i - 1 + items.length) % items.length
+    const next = fwd ? (i + 1) % items.length : (i - 1 + items.length) % items.length
     items[next].focus()
   }
 

@@ -909,6 +909,8 @@ CONTROALE = ''.join([
       '<button class="wb-pill">' + '<span class="lb">Val</span><span class="n">2</span></button>'
       '<button class="wb-pill on">' + '<span class="lb">Val activ</span><span class="n">5</span></button>'
       '<button class="wb-pill wb-add">' + ic('plus', 16) + '</button>'
+      '<button class="wb-pill wb-over">' + '<span class="lb">Încă 3</span>' + ic('chevron-down', 14) + '</button>'
+      '<button class="wb-pill wb-over on">' + '<span class="lb">Încă 3</span>' + ic('chevron-down', 14) + '</button>'
       '<button class="wb-mode"><span>Arbore</span><span class="x">' + ic('x', 12) + '</span></button>'
       '<button class="wb-more">' + ic('ellipsis', 18) + '</button>'
       '<button class="wb-more on">' + ic('ellipsis', 18) + '<span class="dot"></span></button>'

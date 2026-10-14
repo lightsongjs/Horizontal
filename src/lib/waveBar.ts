@@ -123,3 +123,38 @@ export function moveWave(
     .map((w, i) => ({ number: w.number, position: slots[i] }))
     .filter((c) => delivery.find((w) => w.number === c.number)?.position !== c.position)
 }
+
+/**
+ * Banda pe laptop e UN rând: ce nu încape intră în pastila „Încă N ▾".
+ *
+ * `widths[i]` = lățimea pastilei de val `i` plus spațiul de după ea, `avail` =
+ * locul rămas valurilor (Notițele, „+" și jetoanele de mod sunt deja scăzute),
+ * `overflowPillWidth` = pastila „Încă N" cu spațiul ei. Pastilele încap în
+ * ordine; dacă nu încap toate, se lasă loc pastilei de preaplin. Valul activ
+ * (`activeIdx`, -1 = niciunul: Notițele sunt active) se vede ÎNTOTDEAUNA: dacă
+ * ar cădea în meniu, ia locul ultimei pastile vizibile (și al celor de dinainte,
+ * cât e nevoie), iar acelea intră în meniu. Fără niciun loc, rămâne doar el.
+ */
+export function fitPills(
+  widths: number[],
+  avail: number,
+  activeIdx: number,
+  overflowPillWidth: number,
+): { shown: number[]; overflow: number[] } {
+  const all = widths.map((_, i) => i)
+  const sum = widths.reduce((s, w) => s + w, 0)
+  if (sum <= avail) return { shown: all, overflow: [] }
+  const room = avail - overflowPillWidth
+  const shown: number[] = []
+  let used = 0
+  for (const i of all) {
+    if (used + widths[i] > room) break
+    shown.push(i)
+    used += widths[i]
+  }
+  if (activeIdx >= 0 && activeIdx < widths.length && !shown.includes(activeIdx)) {
+    while (shown.length && used + widths[activeIdx] > room) used -= widths[shown.pop()!]
+    shown.push(activeIdx)
+  }
+  return { shown, overflow: all.filter((i) => !shown.includes(i)) }
+}

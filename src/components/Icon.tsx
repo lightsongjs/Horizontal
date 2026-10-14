@@ -104,6 +104,8 @@ const ICONS = {
   close: X,
   copy: Copy,
   collapse: ChevronDown,
+  // Pastila „Încă N" din banda de valuri: deschide o listă.
+  dropdown: ChevronDown,
   danger: TriangleAlert,
   delete: Trash2,
   // Nume de ROL, nu de desen: „obstacle", nu „octagon". Desenul se schimbă

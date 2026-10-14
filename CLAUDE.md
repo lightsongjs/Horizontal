@@ -176,7 +176,19 @@ Mockup aprobat: `design/wave-bar/index.html`. Un singur rând deasupra listei:
   activul se arată întreg; fără etichetă, „Val III". Cifra romană e **numele**
   valului (`name`), nu poziția — foaia „Valuri" o arată, iar `nextWaveName`
   continuă după cea mai mare cifră (după ștergerea lui I, nu dă „IX" de două ori).
-- **Laptop: banda se rupe pe rânduri; sub 900px derulează** orizontal, cu
+- **Laptop: banda e UN rând fix** (cerut de om, 2026-10-14: în coloana docată
+  se rupea pe trei rânduri). Ce nu încape intră în „Încă N ▾" (`ChipPop`,
+  ←/→ sau ↑/↓ + Enter, Esc înapoi pe pastilă). Regula e `fitPills`
+  (`waveBar.ts`): pastilele încap în ordine, iar valul activ e mereu pe rând —
+  dacă ar cădea în meniu, ia locul ultimei vizibile. Notițele, „+" și modurile
+  nu intră niciodată în meniu. Lățimile vin dintr-un strat ascuns
+  (`.wb-measure`), NU de pe rând: acolo, strâmtorate, activul (apoi Notițele și
+  modurile) cedează cu „…", iar o lățime cedată ar fi lăsat loc unei pastile în
+  plus. Recalcul în `useLayoutEffect` la fiecare randare (starea se schimbă doar
+  dacă s-a schimbat împărțirea) + `ResizeObserver` pe rând și pe strat (fereastra,
+  panoul, mărimea textului, fontul). `test:layout` rulează `fitPills` real
+  (esbuild) la 465px și 1100px.
+- **Sub 900px banda derulează** orizontal, cu
   estompare la capătul spre care mai sunt valuri și valul activ adus în cadru
   (prin `scrollLeft`, nu `scrollIntoView`, care ar derula și pagina). „⋯" stă
   în afara derulării. Glisarea sertarului din margine NU pornește de pe bandă
