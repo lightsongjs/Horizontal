@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { OrdineView } from './OrdineView'
+import { TabsSlot } from './tabsSlot'
 import { ListView } from './ListView'
 import { MapView } from './MapView'
 import { ThemesView } from './ThemesView'
@@ -20,6 +22,10 @@ const TABS: { key: Tab; label: string }[] = [
  * drum.
  */
 export function ProjectDetail({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
+  // Capătul rândului de taburi: aici urcă Notițele și „⋯" când proiectul are
+  // un singur val (vezi `WaveTabs`). Element în stare, nu ref: portalul are
+  // nevoie de o randare după ce elementul există.
+  const [slot, setSlot] = useState<HTMLElement | null>(null)
   return (
     <div className="view">
       <div className="tabs">
@@ -28,11 +34,14 @@ export function ProjectDetail({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => v
             {t.label}
           </button>
         ))}
+        <span className="tabs-tools" ref={setSlot} />
       </div>
-      {tab === 'ordine' && <OrdineView />}
-      {tab === 'list' && <ListView />}
-      {tab === 'graf' && <MapView />}
-      {tab === 'teme' && <ThemesView />}
+      <TabsSlot.Provider value={slot}>
+        {tab === 'ordine' && <OrdineView />}
+        {tab === 'list' && <ListView />}
+        {tab === 'graf' && <MapView />}
+        {tab === 'teme' && <ThemesView />}
+      </TabsSlot.Provider>
     </div>
   )
 }

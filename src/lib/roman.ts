@@ -14,3 +14,22 @@ export function toRoman(n: number): string {
   }
   return out
 }
+
+/**
+ * Inversul lui `toRoman`, pentru numele valurilor (I, II, …). Un șir care nu e
+ * cifră romană validă (gol, „MVP”, „IIII”) dă `null` — numele e text liber în
+ * bază, deci nu orice val are o cifră.
+ */
+export function fromRoman(s: string): number | null {
+  const t = s.trim().toUpperCase()
+  if (!/^[MDCLXVI]+$/.test(t)) return null
+  const v: Record<string, number> = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 }
+  let n = 0
+  for (let i = 0; i < t.length; i++) {
+    const cur = v[t[i]]
+    const next = i + 1 < t.length ? v[t[i + 1]] : 0
+    n += cur < next ? -cur : cur
+  }
+  // Forma canonică doar: „IIII” sau „VX” nu sunt cifre pe care le-am fi scris noi.
+  return n > 0 && toRoman(n) === t ? n : null
+}

@@ -164,6 +164,42 @@ Panoul nu e un modal, deci nu blochează tastatura listei: `shouldIgnoreKey` din
 „Listă · gol" din `design/preview.html` acoperă panoul, rândul docat și starea
 goală, în ambele teme.
 
+## Banda de valuri („Listă" și „Cards")
+
+Mockup aprobat: `design/wave-bar/index.html`. Un singur rând deasupra listei:
+`[Notițe N] [valurile] [+] [moduri ✕] … [⋯]` (`WaveTabs.tsx`, regulile pure
+în `src/lib/waveBar.ts`, cu teste).
+
+- **Pastila arată ETICHETA** valului (`label`) și numărul de tichete
+  **deschise** (aceeași cifră ca grupurile de dedesubt; totalul cu bifate e în
+  tooltip). Pe inactive eticheta se taie la 16 caractere (`truncateLabel`),
+  activul se arată întreg; fără etichetă, „Val III". Cifra romană e **numele**
+  valului (`name`), nu poziția — foaia „Valuri" o arată, iar `nextWaveName`
+  continuă după cea mai mare cifră (după ștergerea lui I, nu dă „IX" de două ori).
+- **Laptop: banda se rupe pe rânduri; sub 900px derulează** orizontal, cu
+  estompare la capătul spre care mai sunt valuri și valul activ adus în cadru
+  (prin `scrollLeft`, nu `scrollIntoView`, care ar derula și pagina). „⋯" stă
+  în afara derulării. Glisarea sertarului din margine NU pornește de pe bandă
+  (`onBand` în `App.tsx`) — `test:nav` verifică.
+- **Un singur val de livrare (sau niciunul): fără bandă.** Notițele și „⋯"
+  urcă la capătul rândului de taburi printr-un portal (`TabsSlot`, pus de
+  `ProjectDetail`); acolo Notițele sunt comutator (a doua atingere te întoarce
+  pe val). Fără niciun val, lista arată „Primul val" (`NoWaves`).
+- **„⋯ Vizualizare"** (`ChipPop`, `align="end"`; foaie de jos pe telefon):
+  Arbore (T), Ascunde bifatele, Selectează (S), „Al cui" (doar în „Listă",
+  aceeași poartă dublă ca înainte), Val nou… (doar fără bandă), Gestionează
+  valurile… (V). Un mod pornit apare în bandă ca jeton cu ✕, iar „⋯" are punct.
+- **Foaia „Valuri"** (`WaveManager.tsx`): din „+", apăsare lungă / dublu-click
+  pe pastilă (cu eticheta ei sub cursor), „⋯" sau V. Redenumire pe loc,
+  ordinea prin tragere de mâner sau ↑/↓ (`moveWave` → `reorderWaves`, scrie
+  doar `position`-urile schimbate, optimist, revine la eșec — fără migrare).
+  Ștergerea unui val cu tichete rămâne refuzată.
+- Tastele `,` / `.` = valul anterior / următor (Notițele sunt primele, fără
+  ocolire la capete). Toate trec prin `shouldIgnoreKey`.
+- Rândurile din „Listă" au inelul `.ck` în culoarea proiectului (`--pc` pe
+  `.panel`, ca în „Cards"); urgentul e inelul roșu, ID-ul stă în coadă pe
+  desktop și iese sub 900px.
+
 ## Mockups — fișier local, nu Artifact
 
 Pentru orice mockup/design vizual (comparații before/after, explorare de layout):
@@ -240,6 +276,10 @@ după id, apoi după nume (`inboxProjectId`/`isInboxProject`, oglindit în
 `core/Capture.kt`), nu după numele afișat: numele e al omului. `#inbox` și
 `#daily` merg amândouă. Iconița lui (`inbox`) ține locul bulinei, prin
 `ProjectMark` — de-aia numele nu mai are nevoie de emoji.
+În sidebar Inbox stă **primul**, oricare ar fi ordinea trasă (`inboxFirst`
+din `src/lib/projectOrder.ts`); nu se trage, iar un proiect lăsat peste el
+trece imediat după (`reorderWithInboxFirst`). În sertar stă oricum deasupra
+proiectelor, lângă liste.
 
 **Închiderea unei foi nu e o navigare înapoi.** La deschidere se împinge o
 intrare de istoric (ca Back să închidă foaia), iar la închidere se desface cu

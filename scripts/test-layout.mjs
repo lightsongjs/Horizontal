@@ -144,69 +144,107 @@ for (const width of PHONE_WIDTHS) {
 }
 
 /**
- * Bara de filtre de om stă pe rând PROPRIU, frate al `.wave-sel` — nu al
- * treilea copil al lui. Un check pe LĂȚIME nu prinde greșeala asta: sub
- * 899px `.wave-sel` are deja `flex-wrap: wrap`, deci rândurile se despart
- * oricum indiferent unde stă elementul, iar la 1000px+ diferența e reală
- * (970px vs. 579px) dar tot rămâne peste orice prag rezonabil de „lățime minimă" —
- * verificat empiric, mutând bara ca al treilea copil: testul pe lățimi trecea
- * la fel. De-aia verificarea de mai jos e STRUCTURALĂ (`.who-bar` nu are voie
- * să aibă `.wave-sel` ca părinte), nu geometrică. Celelalte trei — înălțimea
- * jetonului, derularea, vizibilitatea — chiar testează ce pretind și rămân.
+ * Banda de valuri (`WaveTabs.tsx`): [Notițe] [valuri] [+] [moduri ✕] … [⋯].
+ * Pe telefon derulează orizontal în interiorul ei; pagina nu are voie să
+ * crească, iar „⋯" stă în afara derulării, deci trebuie să fie întreg pe
+ * ecran la orice lățime. Pe desktop, într-o coloană docată (~760px), banda se
+ * rupe pe rânduri: toate pastilele în interiorul ei, niciuna tăiată. Cu un
+ * singur val, Notițele și „⋯" urcă în rândul de taburi (`.tabs-tools`) —
+ * la 320px rândul acela nu are voie să iasă din ecran.
+ * Datele sunt MateCuSens (etichete lungi) plus două jetoane de mod.
  */
-const whoBar = () => `
-<div class="wave-sel">
-  <div class="wave-tabs"><button>Val 1</button><button>Val 2</button><button>Val 3</button></div>
-  <div class="wave-actions"><button>A</button><button>B</button></div>
-</div>
-<div class="who-bar">
-  <button class="who-chip">Toți <span class="n">12</span></button>
-  <button class="who-chip">Nepasate <span class="n">7</span></button>
-  <button class="who-chip on">Alexandru <span class="n">3</span></button>
-  <button class="who-chip">Maria Popescu <span class="n">2</span></button>
+const PILLS = [
+  ['MVP', 12], ['Extindere clase 7,8,12', 88, true], ['Discutie cu Mih…', 7], ['matecusens.ro', 11],
+  ['2026-09-17', 2], ['Val VI', 0], ['Campuri aditiona…', 2], ['Cost Unitar', 1],
+]
+const waveBand = () => `
+<div class="wave-band">
+  <div class="wb-pills" role="tablist">
+    <button class="wb-pill wb-scratch" role="tab"><svg width="16" height="16"></svg><span class="n">3</span></button>
+    <span class="wb-sep"></span>
+    ${PILLS.map(([l, n, on]) => `<button class="wb-pill${on ? ' on' : ''}" role="tab"><span class="lb">${l}</span><span class="n">${n}</span></button>`).join('')}
+    <button class="wb-pill wb-add"><svg width="16" height="16"></svg></button>
+    <button class="wb-mode"><span>Fără bifate</span><span class="x"><svg width="12" height="12"></svg></span></button>
+    <button class="wb-mode"><span>Nepasate</span><span class="x"><svg width="12" height="12"></svg></span></button>
+  </div>
+  <span class="wb-more-wrap"><button class="wb-more"><svg width="18" height="18"></svg><span class="dot"></span></button></span>
 </div>`
+const tabsRow = (tools) => `
+<div class="tabs">
+  <button class="tab on">List</button><button class="tab">Cards</button><button class="tab">Hartă</button><button class="tab">Teme</button>
+  <span class="tabs-tools">${tools}</span>
+</div>`
+const SOLO_TOOLS = `<span class="wb-tools"><button class="wb-pill wb-scratch"><svg width="16" height="16"></svg><span class="n">13</span></button><span class="wb-more-wrap"><button class="wb-more"><svg width="18" height="18"></svg></button></span></span>`
 
-console.log('Bara de filtre de om (ListView):')
-{
-  const page = await browser.newPage({ viewport: { width: 390, height: 900 } })
-  await page.setContent(`<style>${CSS}</style>${whoBar()}`)
-  const isSibling = await page.evaluate(() => {
-    const bar = document.querySelector('.who-bar')
-    const waveSel = document.querySelector('.wave-sel')
-    return bar.parentElement !== waveSel
+console.log('Banda de valuri (Listă / Cards):')
+for (const width of PHONE_WIDTHS) {
+  const page = await browser.newPage({ viewport: { width, height: 900 } })
+  await page.setContent(`<style>${CSS}</style><div class="view"><div class="panel">${waveBand()}</div></div>`)
+  const m = await page.evaluate(() => {
+    const pills = document.querySelector('.wb-pills')
+    const more = document.querySelector('.wb-more').getBoundingClientRect()
+    const add = getComputedStyle(document.querySelector('.wb-add'))
+    const pill = document.querySelector('.wb-pill:not(.on)')
+    const ps = getComputedStyle(pill)
+    return {
+      doc: document.documentElement.scrollWidth,
+      moreL: Math.round(more.left), moreR: Math.round(more.right), moreW: Math.round(more.width),
+      scrolls: pills.scrollWidth > pills.clientWidth,
+      overflowX: getComputedStyle(pills).overflowX,
+      wraps: getComputedStyle(pills).flexWrap,
+      pillH: Math.round(pill.getBoundingClientRect().height),
+      pillVisible: ps.backgroundColor !== 'rgba(0, 0, 0, 0)' || ps.boxShadow !== 'none',
+      addVisible: add.outlineStyle !== 'none' || add.backgroundColor !== 'rgba(0, 0, 0, 0)',
+    }
   })
   await page.close()
-  check(
-    '`.who-bar` nu e al treilea copil al `.wave-sel`',
-    isSibling,
-    isSibling ? 'e frate, nu copil' : 'COPIL — ar fura din `.wave-tabs` (flex:1)',
-  )
+  check(`pagina nu se lățește @${width}px`, m.doc <= width, `scrollWidth=${m.doc}px`)
+  check(`„⋯" întreg pe ecran @${width}px`, m.moreL >= 0 && m.moreR <= width && m.moreW >= 30, `${m.moreL}–${m.moreR}px`)
+  check(`banda derulează, nu se rupe @${width}px`, m.scrolls && m.overflowX === 'auto' && m.wraps === 'nowrap', `overflow-x: ${m.overflowX}, wrap: ${m.wraps}`)
+  check(`pastilă atingibilă și vizibilă @${width}px`, m.pillH >= 30 && m.pillVisible, `${m.pillH}px, vizibilă=${m.pillVisible}`)
+  check(`„+" vizibil @${width}px`, m.addVisible, m.addVisible ? 'contur punctat' : 'INVIZIBIL')
 }
 
 for (const width of PHONE_WIDTHS) {
   const page = await browser.newPage({ viewport: { width, height: 900 } })
-  await page.setContent(`<style>${CSS}</style>${whoBar()}`)
+  await page.setContent(`<style>${CSS}</style><div class="view">${tabsRow(SOLO_TOOLS)}</div>`)
   const m = await page.evaluate(() => {
-    const bar = document.querySelector('.who-bar')
-    const chip = document.querySelector('.who-chip')
-    const barStyle = getComputedStyle(bar)
-    const chipStyle = getComputedStyle(chip)
+    const tools = document.querySelector('.tabs-tools').getBoundingClientRect()
+    const tabs = [...document.querySelectorAll('.tab')].map((t) => t.getBoundingClientRect())
     return {
-      chipH: Math.round(chip.getBoundingClientRect().height),
-      // Bara își duce singură depășirea, prin scroll orizontal — nu o împinge
-      // în pagină și nu se înfășoară. (Proprietatea de derulat trăiește pe
-      // BARĂ, nu pe jeton — jetonul nu se derulează pe cont propriu.)
-      scrolls: bar.scrollWidth > Math.round(bar.getBoundingClientRect().width),
-      overflowX: barStyle.overflowX,
-      // Un control fără fundal ȘI fără chenar e invizibil.
-      visible: chipStyle.backgroundColor !== 'rgba(0, 0, 0, 0)' || chipStyle.boxShadow !== 'none',
+      doc: document.documentElement.scrollWidth,
+      toolsR: Math.round(tools.right),
+      // Calcă peste un tab doar dacă stă pe același rând cu el.
+      overlap: tabs.some((t) => t.right > tools.left + 0.5 && t.bottom > tools.top + 0.5 && t.top < tools.bottom - 0.5),
+      oneLine: new Set(tabs.map((t) => Math.round(t.top))).size === 1,
     }
   })
   await page.close()
+  // Cu text mărit (TEXT_SCALE) uneltele au voie să cadă pe rândul următor —
+  // dar nu să iasă din ecran sau să calce peste un tab.
+  const lineOk = m.oneLine || Boolean(process.env.TEXT_SCALE)
+  check(`un singur val: Notițe + „⋯" în rândul de taburi @${width}px`, m.doc <= width && m.toolsR <= width && !m.overlap && lineOk,
+    `dreapta=${m.toolsR}px, suprapus=${m.overlap}, un rând=${m.oneLine}`)
+}
 
-  check(`jeton atingibil @${width}px`, m.chipH >= 28, `${m.chipH}px înălțime`)
-  check(`bara se derulează @${width}px`, !m.scrolls || m.overflowX === 'auto', `overflow-x: ${m.overflowX}`)
-  check(`jeton vizibil @${width}px`, m.visible, m.visible ? 'are fundal sau umbră' : 'INVIZIBIL')
+{
+  // Desktop, coloana listei lângă panoul lateral (~760px): banda se rupe.
+  const page = await browser.newPage({ viewport: { width: 1280, height: 900 } })
+  await page.setContent(`<style>${CSS}</style><div style="width:760px"><div class="panel">${waveBand()}</div></div>`)
+  const m = await page.evaluate(() => {
+    const band = document.querySelector('.wave-band').getBoundingClientRect()
+    const items = [...document.querySelectorAll('.wb-pills > *')].map((e) => e.getBoundingClientRect())
+    const more = document.querySelector('.wb-more').getBoundingClientRect()
+    return {
+      rows: new Set(items.map((r) => Math.round(r.top))).size,
+      inside: items.every((r) => r.left >= band.left - 0.5 && r.right <= band.right + 0.5),
+      overflow: Math.round(document.querySelector('.wb-pills').scrollWidth - document.querySelector('.wb-pills').clientWidth),
+      moreIn: more.right <= band.right + 0.5,
+    }
+  })
+  await page.close()
+  check('coloana docată (760px): banda se rupe pe rânduri', m.rows >= 2, `${m.rows} rânduri`)
+  check('coloana docată (760px): nicio pastilă în afara benzii', m.inside && m.overflow <= 0 && m.moreIn, `overflow=${m.overflow}px`)
 }
 
 /**

@@ -27,6 +27,7 @@ export function ChipPop({
   label,
   onClose,
   className = '',
+  align = 'start',
   children,
 }: {
   /** Jetonul care l-a deschis: alinierea și întoarcerea focusului. */
@@ -37,6 +38,8 @@ export function ChipPop({
   label: string
   onClose(returnFocus: boolean): void
   className?: string
+  /** `end`: lipit de marginea dreaptă a rândului (meniul „⋯" de la capătul benzii de valuri). */
+  align?: 'start' | 'end'
   children: ReactNode
 }) {
   const popRef = useRef<HTMLDivElement>(null)
@@ -75,14 +78,14 @@ export function ChipPop({
     if (!pop) return
     const target =
       pop.querySelector<HTMLElement>('[data-autofocus]') ??
-      pop.querySelector<HTMLElement>(role === 'menu' ? '[role="menuitem"]' : 'button, input')
+      pop.querySelector<HTMLElement>(role === 'menu' ? '[role^="menuitem"]' : 'button, input')
     if (target && !(sheet && target.tagName === 'INPUT')) target.focus({ preventScroll: true })
     // Doar la deschidere — `label` schimbă conținutul, nu deschiderea.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [label])
 
   useLayoutEffect(() => {
-    if (sheet) return
+    if (sheet || align === 'end') return
     const row = rowRef.current
     const pop = popRef.current
     if (!row || !pop) return
@@ -90,11 +93,11 @@ export function ChipPop({
     const a = anchor?.getBoundingClientRect()
     const want = a ? a.left - r.left : 0
     setLeft(Math.max(0, Math.min(want, r.width - pop.offsetWidth)))
-  }, [anchor, rowRef, sheet, label])
+  }, [anchor, rowRef, sheet, label, align])
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (role !== 'menu' || (e.key !== 'ArrowDown' && e.key !== 'ArrowUp')) return
-    const items = Array.from(popRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])
+    const items = Array.from(popRef.current?.querySelectorAll<HTMLElement>('[role^="menuitem"]') ?? [])
     if (!items.length) return
     e.preventDefault()
     const i = items.indexOf(document.activeElement as HTMLElement)
@@ -108,7 +111,7 @@ export function ChipPop({
       className={`fc-pop ${sheet ? 'fc-sheet' : ''} ${role === 'menu' ? 'fc-menu' : ''} ${className}`}
       role={role}
       aria-label={label}
-      style={sheet ? undefined : { left }}
+      style={sheet ? undefined : align === 'end' ? { right: 0 } : { left }}
       onKeyDown={onKeyDown}
     >
       {sheet && <div className="fc-grab" aria-hidden="true" />}

@@ -4,9 +4,9 @@ import { useUI } from '../ui'
 import { TicketCard } from './TicketCard'
 import { WaveGate } from './WaveGate'
 import { WaveTabs } from './WaveTabs'
-import { WaveActionsBar } from './WaveActionsBar'
+import { NoWaves } from './NoWaves'
 import { BulkBar } from './BulkBar'
-import { useHideDone, useOrderedLayers, useWaveActions, useVimNav, useCanWrite } from '../hooks'
+import { useHideDone, useOrderedLayers, useWaveActions, useVimNav } from '../hooks'
 import { layerVar } from '../lib/layerColors'
 
 export function OrdineView() {
@@ -16,7 +16,6 @@ export function OrdineView() {
   const flatLayers = useMemo(() => orderedLayers.map((g) => g.ids), [orderedLayers])
 
   const wa = useWaveActions()
-  const canWrite = useCanWrite()
   const { focusedId } = useVimNav(flatLayers)
   // Stabil, ca `TicketCard` (memo) să nu se randeze din nou la fiecare foaie.
   const { openEditIssue } = useUI()
@@ -31,24 +30,23 @@ export function OrdineView() {
     // Culoarea proiectului ajunge la bifele cardurilor prin `--pc`, fără prop
     // nou pe `TicketCard` (memo — vezi „Listele lungi nu se randează").
     <div className="panel" style={project?.accent ? ({ ['--pc' as string]: project.accent }) : undefined}>
-      <div className="wave-sel">
-        <WaveTabs onWaveChange={wa.exitSelectMode} canWrite={canWrite} />
-        <WaveActionsBar
-          treeViewActive={wa.treeViewActive}
-          onToggleTree={wa.toggleTree}
-          hideDone={hideDone}
-          onToggleHideDone={toggleHideDone}
-          selectMode={wa.selectMode}
-          onEnterSelect={wa.enterSelectMode}
-          onExitSelect={wa.exitSelectMode}
-          canWrite={canWrite}
-        />
-      </div>
+      <WaveTabs
+        onWaveChange={wa.exitSelectMode}
+        modes={{
+          tree: wa.treeViewActive,
+          onToggleTree: wa.toggleTree,
+          hideDone,
+          onToggleHideDone: toggleHideDone,
+          selectMode: wa.selectMode,
+          onEnterSelect: wa.enterSelectMode,
+          onExitSelect: wa.exitSelectMode,
+        }}
+      />
 
       <WaveGate />
 
-      {waves.length === 0 ? (
-        <p className="empty">Niciun val încă. Apasă rotița din bara de valuri ca să adaugi primul (sprint).</p>
+      {!waves.some((w) => w.number !== 0) && orderedLayers.length === 0 ? (
+        <NoWaves />
       ) : orderedLayers.length === 0 ? (
         <p className="empty">Niciun tichet în acest val. Apasă + ca să adaugi unul.</p>
       ) : (

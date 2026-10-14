@@ -34,7 +34,8 @@ export type SheetState =
   | { kind: 'quick-add'; ctx: QuickCtx }
   | { kind: 'project-form' }
   | { kind: 'project-settings' }
-  | { kind: 'wave-manage' }
+  // `focus`: valul a cărui etichetă primește cursorul (apăsare lungă / dublu-click pe pastilă).
+  | { kind: 'wave-manage'; focus?: number | 'new' }
   | { kind: 'theme-manage' }
   | { kind: 'app-settings' }
   | { kind: 'obstacle-form'; obstacleId?: string } // creare când n-are id
@@ -90,7 +91,7 @@ interface UI {
   popOutIssue(): void
   openNewProject(): void
   openProjectSettings(): void
-  openWaveManage(): void
+  openWaveManage(focus?: number | 'new'): void
   openThemeManage(): void
   /** Rotița: fundalul și mărimea textului, pe dispozitiv. */
   openAppSettings(): void
@@ -297,7 +298,12 @@ export function UIProvider({ children }: { children: ReactNode }) {
       },
       openNewProject: () => setSheets([{ kind: 'project-form' }]),
       openProjectSettings: () => setSheets([{ kind: 'project-settings' }]),
-      openWaveManage: () => setSheets([{ kind: 'wave-manage' }]),
+      openWaveManage: (focus) => {
+        // Foaia înlocuiește stiva, deci și un tichet docat — cu ce s-a scris
+        // nesalvat în el. Aceeași plasă ca `popOutIssue`.
+        if (dockedIssueId && dockedDirty.current) { setSaveNudge((n) => n + 1); return }
+        setSheets([{ kind: 'wave-manage', focus }])
+      },
       openThemeManage: () => setSheets([{ kind: 'theme-manage' }]),
       openAppSettings: () => setSheets([{ kind: 'app-settings' }]),
       openUserForm: (userId) => setSheets([{ kind: 'user-form', userId }]),

@@ -12,6 +12,7 @@
   /* Al treilea ton: jetoane, piste, fundal de câmp — pus PE un card. */
   --surface-3: #2B2D32;
   --line: #2A2C31;
+  --border-strong: #3A3D44;
   --line-soft: #1F2024;
   --txt: #EEEFF1;
   --txt-dim: #A6ABB3;
@@ -687,6 +688,9 @@ main {
   margin-bottom: 3px;
 }
 .list-id { font-size: calc(11px * var(--text-scale)); color: var(--txt-dim); flex: 0 0 auto; }
+/* Listă proiect: ID-ul în coada rândului, pe desktop; pe telefon iese. */
+.list-row .row-tail .list-id { font-family: var(--mono); font-size: calc(12px * var(--text-scale)); color: var(--txt-faint); }
+@media (max-width: 899px) { .list-row .row-tail .list-id { display: none; } }
 .list-title { font-size: calc(15px * var(--text-scale)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .list-row .tk-urgent { margin-left: auto; }
 /* List-row parity with .tk states (tree / select / vim) */
@@ -860,144 +864,196 @@ main {
 /* Pe card, chipul se lipește la dreapta lui `.tk-sub`, după dependențe. */
 .tk-sub .due-chip { margin-left: auto; }
 
-/* WAVE SELECTOR */
-.wave-sel {
+/* BANDA DE VALURI („Listă" și „Cards", `WaveTabs.tsx`).
+   [Notițe N] [valurile: eticheta + nr. deschise] [+] [moduri ✕] … [⋯].
+   Laptop: se rupe pe rânduri, ca toate valurile să fie la un click. Sub 900px
+   derulează orizontal (mai jos), cu „⋯" fix la capăt. */
+.wave-band {
   display: flex;
   align-items: flex-start;
-  gap: 6px;
-  margin-bottom: 14px;
+  gap: 8px;
+  margin: -2px 0 14px;
 }
-/* Wrap onto as many rows as needed so every wave is reachable without
-   horizontal scrolling (which hid the last tabs when there were many). */
-.wave-tabs {
+.wave-band.solo { justify-content: flex-end; }
+.wb-pills {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 6px 18px;
+  align-items: center;
+  gap: 6px;
   flex: 1;
+  min-width: 0;
 }
-.split-list .wave-sel { flex-wrap: wrap; }
-.split-list .wave-actions { flex-basis: 100%; }
-.wave-actions {
-  display: flex;
-  gap: 5px;
-  flex-shrink: 0;
-  align-items: center;
-}
-.wbtn {
-  flex-shrink: 0;
-  padding: 2px 2px 10px;
-  background: none;
-  color: var(--txt-faint);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 3px;
-  line-height: 1.1;
-  position: relative;
-  transition: color 0.15s;
-}
-.wbtn .wname {
-  font-family: var(--display);
-  font-size: calc(19px * var(--text-scale));
-  font-weight: 700;
-  letter-spacing: -0.02em;
-}
-.wbtn .wsub {
-  font-family: var(--display);
-  font-size: calc(9.5px * var(--text-scale));
-  letter-spacing: 0;
-  color: inherit;
-}
-/* All delivery-wave tabs share one standard width; long labels truncate. */
-.wbtn:not(.wscratch):not(.wmanage) {
-  box-sizing: border-box;
-  width: 92px;
-}
-.wbtn:not(.wscratch):not(.wmanage) .wsub {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.wbtn.on {
-  color: var(--txt);
-}
-.wbtn.on .wsub {
-  color: var(--accent);
-}
-/* Linia care marchează valul activ, pe firul de sub fâșie. */
-.wbtn.on::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 2px;
-  border-radius: 2px;
-  background: var(--accent);
-}
-/* Scratchpad: not a delivery wave — quiet, centered, no numeral. */
-.wbtn.wscratch {
-  padding: 4px 8px 10px;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  color: var(--txt-faint);
-}
-.wbtn.wscratch .wname {
-  display: flex;
-}
-.wbtn.wscratch .wsub {
-  letter-spacing: 0.06em;
-}
-/* Selectat, notițele rămân potolite: linia da, accentul nu. */
-.wbtn.wscratch.on {
+.wb-pill {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: var(--r-s);
+  background: var(--surface-2);
   color: var(--txt-dim);
-}
-.wbtn.wscratch.on .wsub {
-  color: var(--txt-dim);
-}
-.wbtn.wscratch.on::after {
-  background: var(--txt-faint);
-}
-
-/* FILTRU DE OM (Listă) — rând PROPRIU, frate al `.wave-sel`, nu al treilea
-   copil: acolo `.wave-tabs` are flex:1 și valurile s-ar strivi. Numărul de
-   oameni nu e mărginit ca cel de valuri, deci scroll orizontal, nu wrap. */
-.who-bar {
-  display: flex;
+  font-size: calc(14px * var(--text-scale));
+  font-weight: 550;
+  display: inline-flex;
+  align-items: center;
   gap: 7px;
-  margin-bottom: 14px;
-  padding: 8px 15px;
-  overflow-x: auto;
-  background: var(--surface);
-  box-shadow: var(--amb);
-  border-radius: var(--r-m);
-  scrollbar-width: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  /* Apăsarea lungă e a noastră (foaia „Valuri"), nu a meniului de text. */
+  -webkit-touch-callout: none;
+  user-select: none;
 }
-.who-bar::-webkit-scrollbar { display: none; }
-.who-chip {
+.wb-pill:hover { color: var(--txt); background: var(--surface-3); }
+.wb-pill .lb { max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
+.wb-pill .n { font-family: var(--mono); font-size: calc(12px * var(--text-scale)); font-weight: 500; color: var(--txt-faint); }
+.wb-pill.on { background: var(--accent-soft); color: var(--accent); font-weight: 650; }
+.wb-pill.on .n { color: var(--accent); }
+.wb-pill:focus-visible, .wb-more:focus-visible, .wb-mode:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.wb-scratch { padding: 0 10px; gap: 6px; }
+/* „Adaugă aici": afordanța punctată e una din liniile permise (regula 1). */
+.wb-add {
+  width: 34px;
+  padding: 0;
+  justify-content: center;
+  background: transparent;
+  color: var(--txt-faint);
+  outline: 1.5px dashed var(--border-strong);
+  outline-offset: -1.5px;
+}
+.wb-add:hover { background: var(--surface-2); }
+.wb-sep { width: 1px; height: 20px; background: var(--line); flex-shrink: 0; margin: 0 2px; }
+/* Un mod pornit (arbore, fără bifate, filtrul de om): jeton cu ✕. */
+.wb-mode {
+  height: 30px;
+  padding: 0 6px 0 10px;
+  border-radius: var(--r-s);
+  background: var(--surface-2);
+  color: var(--txt);
+  font-size: calc(13px * var(--text-scale));
+  font-weight: 600;
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  white-space: nowrap;
   flex-shrink: 0;
-  background: var(--surface-3);
-  border: 0;
-  /* Jeton, ca `.holder`/`.dep-tab-btn` — r-s, nu r-m. */
-  border-radius: var(--r-s);
-  padding: 6px 10px;
-  color: var(--txt-dim);
-  font-size: calc(13px * var(--text-scale));
   cursor: pointer;
 }
-/* Activ = text plin + linie de 2px. Nicio casetă umplută, niciun gradient. */
-.who-chip.on {
-  color: var(--txt);
-  box-shadow: inset 0 -2px 0 var(--accent);
+.wb-mode .x { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; color: var(--txt-faint); }
+.wb-mode:hover .x { background: var(--surface-3); color: var(--txt); }
+.wb-more-wrap { position: relative; display: inline-flex; flex-shrink: 0; }
+.wb-more {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--r-s);
+  display: grid;
+  place-items: center;
+  background: var(--surface-2);
+  color: var(--txt-dim);
+  position: relative;
+  cursor: pointer;
 }
-.who-chip .n { font-family: var(--mono); font-size: calc(10px * var(--text-scale)); color: var(--txt-faint); }
-.who-chip.on .n { color: var(--accent); }
+.wb-more:hover { color: var(--txt); background: var(--surface-3); }
+.wb-more.on { background: var(--accent-soft); color: var(--accent); }
+/* Punctul: ceva din „⋯" diferă de implicit. */
+.wb-more .dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--surface-2);
+}
+.wb-more.on .dot { box-shadow: 0 0 0 2px var(--accent-soft); }
+/* Un singur val: Notițele și „⋯" stau la capătul rândului de taburi. */
+.tabs-tools { margin-left: auto; display: flex; align-items: flex-start; flex-shrink: 0; }
+.tabs-tools:empty { display: none; }
+.wb-tools { display: flex; align-items: center; gap: 6px; }
+.tabs-tools .wb-pill, .tabs-tools .wb-more { height: 30px; }
+.tabs-tools .wb-more { width: 30px; }
+.tabs-tools .wb-more .dot { top: 4px; right: 4px; }
+.tabs-tools .wb-tools { margin-top: -4px; }
+
+/* Meniul „⋯ Vizualizare" (`ChipPop`): popover pe desktop, foaie pe telefon. */
+.fc-pop.wb-menu:not(.fc-sheet) { width: 290px; max-width: calc(100vw - 32px); }
+.wb-menu .fc-h { margin-left: 10px; }
+.wb-kbd {
+  font-family: var(--mono);
+  font-size: calc(11.5px * var(--text-scale));
+  font-weight: 500;
+  color: var(--txt-faint);
+  background: var(--surface-2);
+  padding: 2px 6px;
+  border-radius: var(--r-s);
+}
+.fc-mi:hover .wb-kbd, .fc-mi:focus-visible .wb-kbd { background: var(--bg); }
+/* Comutator: raza mare (≥ jumătatea înălțimii) îl face pastilă. */
+.wb-tgl {
+  width: 34px;
+  height: 20px;
+  border-radius: var(--r);
+  background: var(--surface-3);
+  position: relative;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.wb-tgl::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: left 0.15s;
+}
+.wb-tgl.on { background: var(--accent); }
+.wb-tgl.on::after { left: 16px; }
+.wb-hr { height: 1px; background: var(--line-soft); margin: 6px 4px; }
+.wb-who { padding: 0 6px 6px; }
+.wb-who .n { font-family: var(--mono); font-size: calc(11px * var(--text-scale)); opacity: 0.8; margin-left: 2px; }
+
+/* Proiect fără niciun val de livrare. */
+.no-waves { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+.no-waves p { margin: 0; }
+
+@media (max-width: 899px) {
+  /* Telefon: banda derulează. „⋯" rămâne în afara derulării. Padding-ul
+     vertical dă pastilei de 34px o zonă de atingere de 44px. */
+  .wave-band { align-items: center; gap: 6px; margin-bottom: 8px; }
+  .wb-pills {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    position: relative;
+    padding: 5px 0;
+    margin: -5px 0;
+  }
+  .wb-pills::-webkit-scrollbar { display: none; }
+  .wb-pills.fade-r { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); }
+  .wb-pills.fade-l { -webkit-mask-image: linear-gradient(90deg, transparent, #000 24px); mask-image: linear-gradient(90deg, transparent, #000 24px); }
+  .wb-pills.fade-l.fade-r {
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 24px, #000 calc(100% - 28px), transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 24px, #000 calc(100% - 28px), transparent);
+  }
+  .wb-pill .lb { max-width: 200px; }
+  /* Taburile + Notițe + „⋯" pe un rând: taburile se strâng puțin. Cu text
+     mărit nu mai încap oricum — atunci uneltele cad pe rândul următor, la
+     dreapta, în loc să iasă din ecran. */
+  .tabs:has(.tabs-tools:not(:empty)) { gap: 4px 16px; flex-wrap: wrap; }
+  .tabs-tools { align-self: center; }
+  .tabs-tools .wb-tools { margin-top: 0; }
+}
+@media (max-width: 374px) {
+  .tabs:has(.tabs-tools:not(:empty)) { column-gap: 10px; }
+  .tabs:has(.tabs-tools:not(:empty)) .tab { padding-left: 0; padding-right: 0; }
+  .tabs-tools .wb-tools { gap: 4px; }
+  .tabs-tools .wb-scratch { padding: 0 8px; }
+}
+
 
 /* BOTTOM SHEET */
 .sheet-bg {
@@ -1570,15 +1626,6 @@ main {
   flex-shrink: 0;
 }
 
-.wbtn.wmanage {
-  align-items: center;
-  justify-content: center;
-  color: var(--txt-faint);
-}
-.wbtn.wmanage .wname {
-  display: flex;
-}
-
 .tk-theme {
   font-size: calc(11px * var(--text-scale));
   font-weight: 600;
@@ -1624,44 +1671,104 @@ main {
   margin-bottom: 8px;
 }
 
-/* WAVE MANAGER */
-.wave-roman {
-  flex-shrink: 0;
-  min-width: 38px;
-  text-align: center;
-  font-weight: 700;
-  font-size: calc(15px * var(--text-scale));
-  color: var(--txt-dim);
-  background: var(--surface-3);
-  border-radius: var(--r-s);
-  padding: 9px 8px;
-}
-.wave-edit {
+/* FOAIA „VALURI" (`WaveManager.tsx`): mâner · cifra (numele) · eticheta ·
+   nr. deschise · ștergere. Separatorul de rând e singura linie, ca în liste. */
+.we {
   display: flex;
-  gap: 7px;
-  margin-bottom: 7px;
   align-items: center;
+  gap: 8px;
+  min-height: 52px;
+  position: relative;
+  background: var(--surface);
+  border-radius: var(--r-m);
 }
-.wave-edit input {
+.we::after {
+  content: '';
+  position: absolute;
+  left: 32px;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--line-soft);
+  pointer-events: none;
+}
+.we.shifting { transition: transform 0.15s ease; }
+.we.lift { box-shadow: var(--amb); z-index: 2; }
+.we.lift::after { display: none; }
+.we-grip {
+  width: 24px;
+  height: 38px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  color: var(--txt-faint);
+  background: transparent;
+  border-radius: var(--r-s);
+  cursor: grab;
+  touch-action: none;
+}
+.we.lift .we-grip { cursor: grabbing; }
+.we-grip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.we-rn {
+  min-width: 28px;
+  flex-shrink: 0;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: calc(11px * var(--text-scale));
+  color: var(--txt-faint);
+}
+.we-input {
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: var(--r-m);
   background: var(--surface-2);
   border: 1px solid var(--line);
-  border-radius: var(--r-m);
-  padding: 9px 11px;
   color: var(--txt);
   font-family: inherit;
   font-size: calc(15px * var(--text-scale));
-  min-width: 0;
 }
-.wave-edit input:first-child {
-  flex: 2;
+.we-input:focus { outline: none; border-color: var(--accent); background: var(--bg); box-shadow: inset 0 0 0 1px var(--accent); }
+.we-input::placeholder { color: var(--txt-faint); }
+.we-field { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; color: var(--txt-dim); font-size: calc(15px * var(--text-scale)); }
+.we-n {
+  min-width: 28px;
+  flex-shrink: 0;
+  text-align: right;
+  font-family: var(--mono);
+  font-size: calc(12px * var(--text-scale));
+  color: var(--txt-faint);
 }
-.wave-edit input:nth-child(2) {
-  flex: 1;
+.we-del {
+  min-width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-s);
+  background: transparent;
+  color: var(--txt-faint);
+  font-size: calc(13px * var(--text-scale));
+  font-weight: 600;
 }
-.wave-edit input:focus {
-  outline: none;
-  border-color: color-mix(in srgb, var(--accent) 53%, transparent);
+button.we-del:hover { color: var(--blocked); background: var(--blocked-soft); }
+.we-new { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+.we-new .we-input { height: 42px; background: var(--bg); border-color: var(--border-strong); }
+.we-add {
+  height: 42px;
+  padding: 0 16px;
+  border-radius: var(--r-s);
+  background: var(--accent);
+  color: var(--on-accent, #fff);
+  font-weight: 650;
+  font-size: calc(14px * var(--text-scale));
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
 }
+.we-add:disabled { opacity: 0.5; }
 .wave-del {
   flex-shrink: 0;
   background: var(--surface-2);
@@ -1968,28 +2075,6 @@ main {
   gap: 6px;
   margin-bottom: 10px;
   margin-top: -6px;
-}
-
-/* ── Hide done button ── */
-.wave-action-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 5px 10px;
-  border-radius: var(--r-s);
-  background: var(--surface-2);
-  color: var(--txt-faint);
-  font-size: calc(12px * var(--text-scale));
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s;
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-.wave-action-btn:hover { color: var(--txt); background: var(--surface-3); }
-.wave-action-btn.active {
-  background: var(--accent-soft);
-  color: var(--accent);
 }
 
 /* ── Bulk action bar ── */
@@ -4556,22 +4641,6 @@ html[data-text-large] .fc-fields > .due-inputs { flex-basis: 100%; }
   .tab {
     padding: 12px 4px;
     min-height: 44px;
-  }
-
-  /* ── Wave selector: give the wave tabs the full first row and drop the
-     Tree/Ascunde/Select actions onto their own row below, so waves are
-     no longer crushed into a tiny (and sometimes clipped) scroll strip. */
-  .wave-sel {
-    flex-wrap: wrap;
-  }
-  .wave-actions {
-    flex: 0 0 100%;
-    justify-content: flex-end;
-    margin-top: 8px;
-  }
-  .wave-action-btn {
-    padding: 9px 14px;
-    font-size: calc(13px * var(--text-scale));
   }
 
   /* ── Issue form meta: stack Temă / Val / Assigned vertically instead of
