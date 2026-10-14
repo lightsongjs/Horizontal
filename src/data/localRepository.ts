@@ -498,6 +498,10 @@ export function createLocalRepository(): Repository {
       return clone({ events: out, issue })
     },
 
+    async listClosedIssues() {
+      return clone(load().issues.filter((i) => i.done))
+    },
+
     async listOpenIssues() {
       return clone(load().issues.filter((i) => !i.done))
     },

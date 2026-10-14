@@ -110,6 +110,12 @@ export interface Repository {
    * transversal și tichetele FĂRĂ scadență — `listDueIssues` nu le vede.
    */
   listOpenIssues(): Promise<Issue[]>
+  /**
+   * Tichetele BIFATE din toate proiectele, cele mai noi întâi, plafonate —
+   * doar pentru căutarea cu „și închise". Fără dependențe (`deps: []`): un
+   * rezultat de căutare doar se deschide, iar deschiderea încarcă proiectul.
+   */
+  listClosedIssues(): Promise<Issue[]>
   createIssue(input: NewIssue): Promise<Issue>
   updateIssue(id: string, patch: Partial<Issue>): Promise<Issue>
   /** Deletes the issue and any dependency edges referencing it. */

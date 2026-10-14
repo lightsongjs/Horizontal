@@ -60,7 +60,7 @@ const SHORTCUTS: { keys: string; action: string; where?: string }[] = [
   { keys: 'C', action: 'Sare în quick add', where: 'în listele Azi / Mâine / 7 zile' },
   { keys: 'Tab', action: 'Descriere sub titlu', where: 'în quick add' },
   { keys: 'Ctrl+↵', action: 'Adaugă din descriere', where: 'în quick add' },
-  { keys: 'O', action: 'Caută tichet', where: 'în proiect' },
+  { keys: 'O · Ctrl+F', action: 'Caută tichet (deschise; bifa „și închise" le adaugă pe cele bifate)', where: 'oriunde' },
   { keys: 'P', action: 'Proiect nou', where: 'admin' },
   { keys: '1 2 3 4', action: 'Taburile List / Cards / Hartă / Teme', where: 'în proiect' },
   { keys: 'T', action: 'Tree view', where: 'în Cards' },

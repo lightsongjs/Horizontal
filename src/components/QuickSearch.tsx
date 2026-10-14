@@ -1,12 +1,26 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useHorizontal } from '../store'
-import { useUI } from '../ui'
+import { repository } from '../data'
 import type { Issue } from '../lib/types'
 import { Icon } from './Icon'
 import { displayIssueId } from '../lib/issueId'
 
 interface Props {
   onClose: () => void
+  /** Deschide un tichet din orice proiect (`openTaskAnywhere`). */
+  onOpen: (id: string) => void
+}
+
+/** Ce se caută: deschisele din toate proiectele, iar cu „și închise" și cele
+ *  bifate. O singură sursă pe tichet, ca la `openIssues`: varianta din
+ *  proiectul deschis e cea mai proaspătă. */
+export function searchPool(open: Issue[], loaded: Issue[], closed: Issue[] | null): Issue[] {
+  const m = new Map<string, Issue>()
+  for (const i of open) m.set(i.id, i)
+  if (closed) for (const i of closed) m.set(i.id, i)
+  for (const i of loaded) m.set(i.id, i)
+  const all = [...m.values()]
+  return closed ? all : all.filter((i) => !i.done)
 }
 
 // Lowercase + strip diacritics (ă→a, â→a, î→i, ș→s, ț→t, …) so a query
@@ -99,15 +113,33 @@ function highlight(query: string, text: string): React.ReactNode {
   return result
 }
 
-export function QuickSearch({ onClose }: Props) {
-  const { issues } = useHorizontal()
-  const { openEditIssue } = useUI()
+export function QuickSearch({ onClose, onOpen }: Props) {
+  const { openIssues, issues: projectIssues, projects } = useHorizontal()
   const [query, setQuery] = useState('')
+  // Bifa „și închise" e o căutare rară: închisele se cer abia la bifare, din
+  // toate proiectele (nu sunt în store), și se țin cât e deschisă căutarea.
+  const [withClosed, setWithClosed] = useState(false)
+  const [closed, setClosed] = useState<Issue[] | null>(null)
+  const [closedState, setClosedState] = useState<'idle' | 'loading' | 'error'>('idle')
+  useEffect(() => {
+    if (!withClosed || closed) return
+    let alive = true
+    setClosedState('loading')
+    repository.listClosedIssues()
+      .then((list) => { if (alive) { setClosed(list); setClosedState('idle') } })
+      .catch(() => { if (alive) setClosedState('error') })
+    return () => { alive = false }
+  }, [withClosed, closed])
+  const issues = useMemo(
+    () => searchPool(openIssues, projectIssues, withClosed ? closed ?? [] : null),
+    [openIssues, projectIssues, withClosed, closed],
+  )
+  const projectName = (id: string) => projects.find((p) => p.id === id)?.name
   const [selected, setSelected] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   const itemsRef = useRef<HTMLDivElement>(null)
 
-  const filtered = rankIssues(query, issues)
+  const filtered = rankIssues(query, issues, 30)
 
   useEffect(() => { setSelected(0) }, [query])
 
@@ -121,8 +153,8 @@ export function QuickSearch({ onClose }: Props) {
   }, [selected])
 
   const open = (id: string) => {
-    openEditIssue(id)
     onClose()
+    onOpen(id)
   }
 
   const onKey = (e: React.KeyboardEvent) => {
@@ -149,13 +181,19 @@ export function QuickSearch({ onClose }: Props) {
             className="qs-input"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Caută tichet…"
+            placeholder={withClosed ? 'Caută în toate tichetele…' : 'Caută în tichetele deschise…'}
             autoComplete="off"
             autoCorrect="off"
             spellCheck={false}
           />
           <kbd className="qs-esc-badge">esc</kbd>
         </div>
+        <label className="qs-scope">
+          <input type="checkbox" checked={withClosed} onChange={(e) => { setWithClosed(e.target.checked); inputRef.current?.focus() }} />
+          și închise
+          {withClosed && closedState === 'loading' && <span className="qs-scope-note">se încarcă…</span>}
+          {withClosed && closedState === 'error' && <span className="qs-scope-note warn">nu s-au putut aduce — doar deschise</span>}
+        </label>
 
         {filtered.length > 0 && (
           <div className="qs-results" ref={itemsRef}>
@@ -168,6 +206,7 @@ export function QuickSearch({ onClose }: Props) {
               >
                 <span className="qs-item-id">{displayIssueId(issue.id)}</span>
                 <span className="qs-item-title">{highlight(query, issue.title)}</span>
+                <span className="qs-item-proj">{projectName(issue.projectId)}</span>
                 {issue.done && <span className="qs-item-done"><Icon name="check" size={14} label="Gata" /></span>}
               </button>
             ))}

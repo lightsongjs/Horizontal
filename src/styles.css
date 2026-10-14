@@ -3842,6 +3842,30 @@ main {
   display: inline-flex;
   flex-shrink: 0;
 }
+/* Căutarea e pe toate proiectele, deci rezultatul își spune proiectul. */
+.qs-item-proj {
+  flex-shrink: 0;
+  max-width: 34%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: calc(11.5px * var(--text-scale));
+  color: var(--txt-faint);
+}
+.qs-scope {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  font-family: var(--mono);
+  font-size: calc(11px * var(--text-scale));
+  color: var(--txt-dim);
+  cursor: pointer;
+  user-select: none;
+}
+.qs-scope input { accent-color: var(--accent); margin: 0; }
+.qs-scope-note { color: var(--txt-faint); }
+.qs-scope-note.warn { color: var(--blocked); }
 .qs-empty {
   padding: 24px 18px;
   color: var(--txt-faint);

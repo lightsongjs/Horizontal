@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { rankIssues } from './QuickSearch'
+import { rankIssues, searchPool } from './QuickSearch'
 import { NO_SCHEDULE } from '../lib/schedule'
 import type { Issue } from '../lib/types'
 
@@ -128,5 +128,20 @@ describe('rankIssues', () => {
       const result = rankIssues('h', issues)
       expect(result.map((i) => i.id)).toContain('H-99')
     })
+  })
+})
+
+describe('searchPool', () => {
+  const done = (i: Issue) => ({ ...i, done: true })
+  it('implicit doar deschisele; varianta proiectului încărcat câștigă', () => {
+    const a = makeIssue('H-01', 'vechi')
+    const fresh = done(makeIssue('H-01', 'nou'))
+    expect(searchPool([a], [fresh], null)).toEqual([])
+    expect(searchPool([a], [makeIssue('H-01', 'nou')], null).map((i) => i.title)).toEqual(['nou'])
+  })
+  it('cu închisele le adaugă, fără dubluri', () => {
+    const open = makeIssue('H-01', 'a')
+    const closed = done(makeIssue('H-02', 'b'))
+    expect(searchPool([open], [closed], [closed]).map((i) => i.id)).toEqual(['H-01', 'H-02'])
   })
 })

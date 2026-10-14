@@ -455,6 +455,13 @@ export function createSupabaseRepository(): Repository {
       return rows.map((row) => rowToIssue(row, deps))
     },
 
+    async listClosedIssues() {
+      const { data, error } = await db.from('issues').select('*').eq('done', true)
+        .order('created_at', { ascending: false }).limit(3000)
+      if (error) throw error
+      return ((data ?? []) as IssueRow[]).map((row) => rowToIssue(row, {}))
+    },
+
     async listOpenIssues() {
       // Fără ordonare pe server: ecranele își fac singure ordinea (proiect,
       // scadență). Dependențele pe bucăți: un `in` cu sute de ID-uri ar lungi

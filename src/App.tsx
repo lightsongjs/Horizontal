@@ -154,8 +154,8 @@ function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, ca
       )}
       {/* Not gated on canWrite, unlike its neighbours: searching changes
           nothing, so a read-only member must be able to do it. */}
-      {projectChrome && (
-        <button className="header-search-btn" onClick={onSearch} aria-label="Caută tichet" title="Caută tichet (O)">
+      {(
+        <button className="header-search-btn" onClick={onSearch} aria-label="Caută tichet" title="Caută tichet (O, Ctrl+F)">
           <Icon name="search" size={15} />
         </button>
       )}
@@ -1168,6 +1168,16 @@ function Shell() {
       // s-ar închide și el.
 
       const target = e.target as HTMLElement
+      // Ctrl+F = căutarea de tichete, și dintr-un câmp: căutarea din pagină a
+      // browserului găsește doar rândurile randate. Rămâne a browserului peste
+      // un tichet deschis ca modal (descrierea lungă) și în editorul de
+      // descriere.
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'f'
+        && !modalOpen && !showSearch && !showUsers && !target.closest('.cm-editor')) {
+        e.preventDefault()
+        if (leaveDocked()) setShowSearch(true)
+        return
+      }
       if (['INPUT', 'TEXTAREA'].includes(target.tagName) || target.isContentEditable) return
       if (e.metaKey || e.ctrlKey || e.altKey) return
 
@@ -1212,7 +1222,7 @@ function Shell() {
         if (!leaveDocked()) return
         project && openNewIssue()
       }
-      else if (e.key === 'o' || e.key === 'O') { e.preventDefault(); if (offProject) return; if (!leaveDocked()) return; project && setShowSearch(true) }
+      else if (e.key === 'o' || e.key === 'O') { e.preventDefault(); if (!leaveDocked()) return; setShowSearch(true) }
       else if (e.key === 'p' || e.key === 'P') { e.preventDefault(); if (!isAdmin) return; if (!leaveDocked()) return; openNewProject() }
       else if (e.key === '?') { e.preventDefault(); setShowInfo(v => !v) }
       else if (e.key === '[') { e.preventDefault(); toggleSidebar() }
@@ -1319,7 +1329,12 @@ function Shell() {
         onFilterForm={(id) => { if (leaveDocked()) openFilterForm(id) }}
       />
       <div className="app-body">
-        {ta.selectMode && ta.narrow && taskList ? <SelectionHeader /> : <Header onNewIssue={openNewIssue} onSearch={() => setShowSearch(true)} onProjectSettings={openProjectSettings} onRefresh={refresh} onInfo={() => setShowInfo(true)} canWrite={canWrite} smartList={smartList} onDrawer={openDrawer} sidebarCollapsed={sidebarCollapsed} onToggleSidebar={toggleSidebar} inbox={inInbox} filterId={filterId} />}
+        {ta.selectMode && ta.narrow && taskList ? <SelectionHeader /> : <Header onNewIssue={openNewIssue} onSearch={() => {
+          // Focus în gestul atingerii, ca la foaia rapidă: altfel telefonul nu ridică tastatura.
+          if (!leaveDocked()) return
+          flushSync(() => setShowSearch(true))
+          document.querySelector<HTMLInputElement>('.qs-input')?.focus()
+        }} onProjectSettings={openProjectSettings} onRefresh={refresh} onInfo={() => setShowInfo(true)} canWrite={canWrite} smartList={smartList} onDrawer={openDrawer} sidebarCollapsed={sidebarCollapsed} onToggleSidebar={toggleSidebar} inbox={inInbox} filterId={filterId} />}
         <main ref={mainRef}>
           {pullY > 0 && (
             <div style={{ textAlign: 'center', padding: '6px 0', fontSize: 'calc(13px * var(--text-scale))', color: 'var(--txt-dim)', transform: `translateY(${pullY * 0.4}px)`, transition: pullY === 0 ? 'transform 0.3s' : 'none' }}>
@@ -1392,7 +1407,7 @@ function Shell() {
         duration={undoEntry ? 5000 : undefined}
       />
       <SheetHost />
-      {showSearch && <QuickSearch onClose={() => setShowSearch(false)} />}
+      {showSearch && <QuickSearch onClose={() => setShowSearch(false)} onOpen={openTaskAnywhere} />}
       {showInfo && <InfoPanel onClose={() => setShowInfo(false)} />}
     </div>
   )

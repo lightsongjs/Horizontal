@@ -646,6 +646,9 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
     listInbox: () => read(K.inbox, () => remote.listInbox()),
     listPins: () => read(K.pins, () => remote.listPins()),
     listSavedFilters: () => read(K.filters, () => remote.listSavedFilters()),
+    // Doar pentru căutare, la cerere: n-are rost o copie pe disc a tuturor
+    // tichetelor închise. Offline, căutarea rămâne pe cele deschise.
+    listClosedIssues: () => net(() => remote.listClosedIssues()),
     async listOpenIssues() {
       // Ca `listDueIssues`: serverul întâi, iar o golire care a apucat să
       // scrie între timp în bază face răspunsul vechi — atunci baza câștigă.
