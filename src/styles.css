@@ -6318,6 +6318,7 @@ body:has(.qab) { overflow-y: auto; }
 .list-group-head.selectable { cursor: pointer; }
 .list-group-head.selectable .list-group-label { color: var(--accent); }
 .group-act {
+  cursor: pointer;
   margin-left: auto;
   font-family: var(--mono);
   font-size: calc(11px * var(--text-scale));

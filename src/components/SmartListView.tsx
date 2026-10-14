@@ -154,10 +154,10 @@ export function SmartListView({ kind, onOpenTask, focusSignal = 0 }: Props) {
               color="var(--blocked)"
               onOpen={onOpenTask}
               late
-              action={narrow ? {
+              action={{
                 label: 'Mută restanțele pe azi',
                 onClick: () => void ta.run({ kind: 'date', preset: { kind: 'today' } }, smartLists.overdue.map((i) => i.id)),
-              } : undefined}
+              }}
             />
             <Group
               label="Azi"
