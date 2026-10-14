@@ -37,51 +37,45 @@ Build through step 5 of the build order in REQUIREMENTS.md (data layer → layer
 ## Stack notes
 Mobile-first, dark theme, bottom sheets. Persistence target: Supabase fits the example. Adjust to your team's stack.
 
-## Sistemul vizual — „Scholarly Editorial"
+## Sistemul vizual — „Senin" (din 2026-10-14)
 
-Aplicația a primit feedback de designer: „arată AI-generated". Diagnosticul
-concret era fundal aproape negru cu accent neon, chenar de 1px pe fiecare bloc,
-rotunjiri la întâmplare, gradient pe orice element activ, și emoji în loc de
-iconițe. Sistemul de acum e preluat din Apologetica
-(`/OneDrive/01-Proiecte-Main/2026-02-11_apologetica`, vezi
-`stitch_extracted/stitch/oxford_scholarly/DESIGN.md`).
+Istoric: prima versiune arăta „AI-generated" (neon pe negru, chenar pe tot,
+emoji); a urmat „Scholarly Editorial" (serif, mono, aproape monocrom), despre
+care un client a zis „făcută în 1990, fadă". Acum: **„Senin"**, direcția A din
+`design/redesign/index.html` (macheta aprobată — deschide-o înainte să atingi
+stiluri). Abaterile asumate față de machetă, cu poze: `design/redesign/abateri/`.
 
-**Mockup-ul aprobat: `design/index.html`** — jetoanele, comparația înainte/după
-și tabelul de migrare. Deschide-l în browser înainte să atingi stiluri.
+### Regulile
 
-### Cele cinci reguli
-
-1. **Fără linii.** Un chenar de 1px nu delimitează nimic. Secțiunile se despart
-   prin salt de fundal (`--surface` peste `--bg`) plus `box-shadow: var(--amb)`.
-   Linia rămâne doar unde nu e decor: separatoare de rând, inele de focus,
-   chenarul câmpurilor de input (un câmp fără delimitare nu se mai citește ca
-   un câmp), afordanțele punctate („adaugă aici") și legendele de tastă.
-2. **Serif pentru tot ce e limbă, mono pentru tot ce e cifră.** Literata pe
-   titluri, nume, corp; IBM Plex Mono pe ID-uri, procente, ore, etichete
-   majuscule. Regula practică: *dacă e cifră sau cod, e mono*.
-3. **Un singur accent, potolit.** `--accent` (`#818CF8` închis / `#1A237E`
-   deschis). Niciun gradient pe stări active: se marchează cu text plin plus o
-   linie de 2px, nu cu o casetă umplută.
-4. **Umbră ambientală, nu digitală.** `--amb` / `--amb-lg`, o singură dată pe
-   element. Nimic nu are și umbră, și chenar, și rotunjire mare.
-5. **Iconițe, nu emoji.** `src/components/Icon.tsx` — un vocabular cu nume de
-   ROL (`urgent`, nu `zap`), ca desenul să se schimbe într-un loc. SVG inline
-   (lucide-react, scuturat la build), nu fontul Material Symbols: aplicația e
-   PWA offline-first, iar un font de iconițe de la Google ar da pătrate de tofu
-   fără rețea, unul local ar intra în manifestul de precache. Excepțiile de la
-   regulă sunt `↵`, `↑↓`, `Ctrl+↵` — acolo glifa **e** tasta.
+1. **Alb curat, Inter, culoare cu rost.** Fontul de limbă e Inter (`--display`);
+   cifrele (ore, ID-uri) rămân pe Geist Mono (`--mono`) — recomandarea
+   designerului. Etichetele NU mai sunt mono cu majuscule: Inter 12px/650.
+   Fără italice (doar `*text*` scris de om în descriere).
+2. **Culoarea proiectului pe bifă.** Bifa e un inel `.ck` în `--pc` (accentul
+   proiectului, pus inline de rând / de tablă), plin când e gata; urgentul e
+   inelul roșu (`.ck.urg`), nu o iconiță. Același control în listă, pe carduri,
+   în foaia de tichet și în formular.
+3. **Rânduri plate.** Listele sunt rânduri pe `--bg` despărțite de o linie de
+   păr (`::after`, pornește de sub titlu), nu carduri cu umbră. Ora / ziua
+   ratată („11 oct") și proiectul stau în coada rândului.
+4. **Fără chenare decorative.** Salt de fundal (`--surface-2/3`) sau umbră
+   (`--amb`), niciodată amândouă cu chenar. Câmpurile de input își păstrează
+   delimitarea; panoul lateral e o coloană lipită de listă cu o linie de păr.
+5. **Un singur accent** (`--accent`, albastru) plus `--star` (galbenul lui
+   „Azi", plin) și culorile de stare. **Iconițe, nu emoji** — `Icon.tsx`,
+   vocabular pe ROL (`today` = steaua).
 
 ### Raze, pe rol
 
-`--r-s` 6px butoane/jetoane · `--r-m` 10px tichete/rânduri/câmpuri ·
-`--r` 16px carduri/panouri/foi · `50%` ce e cu adevărat rotund. **Nu adăuga o
-a patra valoare.** Înainte erau 22, iar 7px/8px/9px arătau identic.
+`--r-s` 8px butoane/jetoane · `--r-m` 12px rânduri/câmpuri/tichete ·
+`--r` 20px carduri/panouri/foi · `50%` ce e cu adevărat rotund. **Nu adăuga o
+a patra valoare.**
 
 ### Layere și culori de temă
 
-Rampa de layere e **secvențială** (indigo → verdigris), definită per temă în
-`:root` ca `--layer-0..4`, fiindcă o culoare care se citește pe `#0B0B0E` nu se
-citește pe `#F7F9FC`. `src/lib/layerColors.ts` întoarce `var(--layer-N)`, nu
+Rampa de layere e **secvențială** (albastru → verde), definită per temă în
+`:root` ca `--layer-0..4`, fiindcă o culoare care se citește pe `#141517` nu se
+citește pe `#FFFFFF`. `src/lib/layerColors.ts` întoarce `var(--layer-N)`, nu
 hex. Culoarea layerului trăiește în coloana verticală a grupului, în numărul
 layerului și în jetonul de dependență — **nu** pe conturul fiecărui card.
 Culorile de temă și accentele de proiect sunt date de utilizator (DB), deci
@@ -467,6 +461,8 @@ tichet acolo, iar formularul e la o atingere. „…" pune `full: true` pe
 aceeași intrare (fără istoric nou), deci Back închide formularul și te lasă
 pe lista din care ai pornit. Un tichet creat din formularul complet
 (`openEditIssue(id, { full: true })`) rămâne în formular.
+
+**Rândul de jetoane (zi, urgent, proiect, agrafă, „…") stă sub titlu** în foaia de tichet (redesignul „Senin", 2026-10-14): foaia se deschide ca să citești, deci ziua se vede odată cu titlul, chiar peste o descriere lungă. În foaia rapidă rămâne jos, lângă tastatură — acolo întâi scrii. Mânerul de sus închide foaia trăgând-o în jos (`sheetDismiss`, `lib/swipe.ts`).
 
 **Nu ia focusul la deschidere:** deschizi ca să citești, iar tastatura ar
 acoperi exact descrierea. Proiectul e afișat, nu ales — ID-ul îi poartă

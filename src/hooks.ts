@@ -501,7 +501,7 @@ export interface TitleDate {
  * ridicarea degetului, deci termenul pornește de acolo, nu de la apăsare (o
  * atingere ținută ar fi trecut de el): dacă nu vine, nu fură următorul click.
  */
-function swallowNextClick() {
+export function swallowNextClick() {
   let t = setTimeout(() => done(), 5000)
   const stop = (e: MouseEvent) => { e.preventDefault(); e.stopPropagation(); done() }
   const up = () => { clearTimeout(t); t = setTimeout(() => done(), 400) }

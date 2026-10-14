@@ -1,0 +1,731 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Horizontal — trei direcții de redesign</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..800&family=Geist:wght@400..700&family=Geist+Mono:wght@400;500;600&family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Figtree:wght@400..700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   Pagina-gazdă (neutră, nu face parte din nicio direcție)
+   ============================================================ */
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--page:#EDEBE7;--page-ink:#1D1C1A;--page-dim:#6F6B64;--page-card:#FFFFFF}
+html{background:var(--page)}
+body{font-family:Inter,system-ui,sans-serif;color:var(--page-ink);background:var(--page);-webkit-font-smoothing:antialiased}
+svg{display:block;flex-shrink:0}
+.wrap{max-width:1360px;margin:0 auto;padding:48px 16px 96px}
+.intro{display:grid;grid-template-columns:1.25fr 1fr;gap:48px;align-items:end;margin-bottom:28px}
+.intro .eyebrow{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--page-dim)}
+.intro h1{font-size:44px;line-height:1.05;letter-spacing:-.03em;font-weight:750;margin:10px 0 14px}
+.intro p{font-size:16px;line-height:1.55;color:#45423D;max-width:62ch}
+.intro .fb{background:var(--page-card);border-radius:16px;padding:20px 22px;box-shadow:0 1px 2px rgba(0,0,0,.04),0 8px 24px rgba(0,0,0,.05)}
+.intro .fb b{display:block;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--page-dim);margin-bottom:8px}
+.intro .fb q{display:block;font-size:15px;line-height:1.5;color:#2B2925;quotes:"„" "”"}
+.intro .fb q+q{margin-top:6px}
+.switch{position:sticky;top:0;z-index:20;display:flex;gap:6px;padding:10px 0;background:var(--page);margin-bottom:24px}
+.switch button{font:inherit;font-size:14px;font-weight:600;border:0;cursor:pointer;padding:10px 16px;border-radius:12px;background:transparent;color:var(--page-dim);display:flex;gap:10px;align-items:center}
+.switch button i{font-style:normal;font-size:12px;font-weight:700;width:22px;height:22px;border-radius:7px;display:grid;place-items:center;background:#DDD9D2;color:#5A564F}
+.switch button[aria-selected=true]{background:var(--page-card);color:var(--page-ink);box-shadow:0 1px 2px rgba(0,0,0,.05),0 4px 12px rgba(0,0,0,.06)}
+.switch button[aria-selected=true] i{background:var(--page-ink);color:#fff}
+.switch .sp{flex:1}
+.dir{display:none}
+.dir.on{display:block}
+.dir-head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:22px}
+.dir-head h2{font-size:30px;letter-spacing:-.02em;font-weight:750}
+.dir-head h2 small{font-size:15px;font-weight:500;color:var(--page-dim);letter-spacing:0;margin-left:10px}
+.dir-head p{font-size:15px;color:#45423D;margin-top:6px;max-width:80ch;line-height:1.5}
+.theme-tg{display:flex;background:#DDD9D2;border-radius:12px;padding:3px;flex-shrink:0}
+.theme-tg button{font:inherit;font-size:13px;font-weight:600;border:0;background:transparent;color:#5A564F;padding:7px 12px;border-radius:9px;cursor:pointer;display:flex;gap:6px;align-items:center}
+.theme-tg button[aria-pressed=true]{background:#fff;color:var(--page-ink);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.stage{display:flex;gap:24px;align-items:flex-start}
+.cap{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--page-dim);margin:0 0 10px 4px}
+.device{background:#111;border-radius:52px;padding:11px;box-shadow:0 30px 60px -20px rgba(0,0,0,.35),0 0 0 1px rgba(0,0,0,.4) inset}
+.device .screen{border-radius:42px}
+.laptop-wrap{margin-top:36px}
+.laptop{background:#121212;border-radius:18px 18px 6px 6px;padding:12px;width:max-content;box-shadow:0 40px 80px -30px rgba(0,0,0,.4)}
+.laptop-base{height:16px;width:1340px;margin-left:-18px;background:linear-gradient(#C9C6C0,#AFABA4);border-radius:0 0 18px 18px}
+.rec{margin-top:72px;background:var(--page-card);border-radius:24px;padding:40px 44px;box-shadow:0 1px 2px rgba(0,0,0,.04),0 12px 32px rgba(0,0,0,.06)}
+.rec h2{font-size:32px;letter-spacing:-.02em;font-weight:750;margin-bottom:6px}
+.rec .lead{font-size:17px;line-height:1.55;color:#3A3732;max-width:78ch;margin-bottom:28px}
+.rec .cols{display:grid;grid-template-columns:1fr 1fr;gap:40px}
+.rec h3{font-size:13px;letter-spacing:.07em;text-transform:uppercase;color:var(--page-dim);margin:0 0 12px}
+.rec ul{list-style:none}
+.rec li{font-size:15px;line-height:1.5;color:#2F2C28;padding:9px 0 9px 22px;position:relative}
+.rec li+li{box-shadow:0 -1px 0 #EFEDE9}
+.rec li:before{content:"";position:absolute;left:2px;top:17px;width:8px;height:8px;border-radius:50%;background:#2F6BFF}
+.rec code{font-family:"Geist Mono",monospace;font-size:13px;background:#F1EFEB;border-radius:5px;padding:1px 5px}
+.rec .verdict{display:flex;gap:16px;align-items:center;background:#F3F6FF;border-radius:16px;padding:18px 22px;margin-bottom:30px}
+.rec .verdict .badge{width:44px;height:44px;border-radius:14px;background:#2F6BFF;color:#fff;display:grid;place-items:center;font-weight:800;font-size:20px;flex-shrink:0}
+.rec .verdict p{font-size:16px;line-height:1.5;color:#1D2A4D}
+
+/* ============================================================
+   Structură comună a ecranelor (doar geometrie)
+   Culoarea, fontul și forma le dă fiecare direcție.
+   ============================================================ */
+.screen{width:390px;height:844px;position:relative;overflow:hidden;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.3;font-feature-settings:"tnum" 1,"cv11" 1}
+.sb{height:46px;display:flex;align-items:center;justify-content:space-between;padding:6px 30px 0 34px;font-size:15px;font-weight:600;color:var(--ink);font-family:Inter,system-ui,sans-serif}
+.sb .ic{display:flex;gap:6px;align-items:center}
+.ibtn{width:36px;height:36px;display:grid;place-items:center;border-radius:var(--r-s);color:var(--ink-2)}
+.hd-top{display:flex;align-items:center;gap:4px;padding:2px 10px 0}
+.hd-top .sp{flex:1}
+.row{display:flex;align-items:center;gap:12px;height:46px;padding:0 16px;position:relative}
+.row .t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tail{display:flex;align-items:center;gap:8px;flex-shrink:0;color:var(--ink-3);font-size:13px}
+.ck{width:20px;height:20px;flex-shrink:0;display:grid;place-items:center}
+.grp-head{display:flex;align-items:center;gap:8px}
+.grp-head .sp{flex:1}
+.fab{position:absolute;right:18px;bottom:96px;display:grid;place-items:center;z-index:3}
+.tabs{position:absolute;left:0;right:0;bottom:0;display:flex;z-index:4}
+.tabs .tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11.5px}
+.home{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:var(--ink);opacity:.85;z-index:6}
+.scrim{position:absolute;inset:0;background:var(--scrim);z-index:8}
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:9;background:var(--sheet);padding:10px 20px 30px}
+.grab{width:38px;height:5px;border-radius:3px;background:var(--ink-3);opacity:.45;margin:0 auto 12px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;font-size:13.5px;white-space:nowrap}
+.md h4{margin:16px 0 6px}
+.md .task{display:flex;gap:10px;align-items:flex-start;padding:4px 0}
+.md .task .bx{width:18px;height:18px;flex-shrink:0;margin-top:1px;display:grid;place-items:center}
+.md .task.done span:last-child{text-decoration:line-through;color:var(--ink-3)}
+.md ul.bul{padding-left:18px}
+.md ul.bul li{padding:2px 0}
+.md p{margin:8px 0}
+/* laptop */
+.lscreen{width:1280px;height:800px;display:flex;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;overflow:hidden;border-radius:8px;font-feature-settings:"tnum" 1,"cv11" 1}
+.side{width:240px;flex-shrink:0;display:flex;flex-direction:column;padding:14px 10px}
+.side .nav{display:flex;align-items:center;gap:10px;height:32px;padding:0 10px;font-size:14px}
+.side .nav .n{margin-left:auto;font-size:12.5px}
+.side .lbl{margin:18px 10px 6px}
+.side .foot{margin-top:auto;display:flex;align-items:center;gap:8px;padding:0 4px}
+.lmain{flex:1;min-width:0;display:flex;flex-direction:column;position:relative}
+.lmain .lrow{height:40px}
+.dock{width:470px;flex-shrink:0;overflow:hidden;display:flex;flex-direction:column}
+.thread .ev{display:flex;gap:10px;padding:10px 0}
+.av{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:10.5px;font-weight:700;flex-shrink:0;color:#fff}
+/* token card */
+.tok{flex:1;min-width:0;border-radius:20px;padding:22px 22px 24px;background:var(--page-card);box-shadow:0 1px 2px rgba(0,0,0,.04),0 8px 24px rgba(0,0,0,.05);align-self:stretch}
+.tok h3{font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--page-dim);margin:20px 0 10px}
+.tok h3:first-child{margin-top:0}
+.sw{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.sw div{height:44px;border-radius:10px;position:relative;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06)}
+.sw div span{position:absolute;left:0;right:0;top:48px;font-family:"Geist Mono",monospace;font-size:9.5px;color:var(--page-dim);text-align:center}
+.sw-row{margin-bottom:26px}
+.sw-cap{font-size:12px;color:var(--page-dim);margin-bottom:6px}
+.ts{display:flex;flex-direction:column;gap:8px}
+.ts div{display:flex;align-items:baseline;gap:12px}
+.ts div em{font-style:normal;font-family:"Geist Mono",monospace;font-size:11px;color:var(--page-dim);width:92px;flex-shrink:0}
+.rad{display:flex;gap:12px;align-items:flex-end}
+.rad div{background:#E9E6E0;display:flex;align-items:flex-end;justify-content:center;font-family:"Geist Mono",monospace;font-size:10.5px;color:#5A564F;padding-bottom:6px}
+.why{font-size:14.5px;line-height:1.55;color:#3A3732}
+.pros{margin-top:12px;display:grid;gap:6px}
+.pros div{font-size:13.5px;line-height:1.45;color:#45423D;display:flex;gap:8px}
+.pros div b{flex-shrink:0;width:16px;color:#2E8B57}
+.pros div.con b{color:#C2410C}
+.mini{margin-top:4px}
+
+/* ============================================================
+   DIRECȚIA A — „Senin" (Things 3 / Todoist / Reminders)
+   ============================================================ */
+#A{--f-body:Inter,system-ui,sans-serif;--f-disp:Inter,system-ui,sans-serif;--r-s:8px;--r-m:12px;--r:20px}
+#A[data-theme=light]{--bg:#FFFFFF;--bg-2:#F6F7F9;--sheet:#FFFFFF;--raise:#F1F3F6;--raise-2:#E8EBF0;--ink:#1A1C20;--ink-2:#565C66;--ink-3:#959BA5;--sep:#EEF0F3;
+  --accent:#2F6BFF;--accent-ink:#1F55E0;--accent-soft:#EBF1FF;--danger:#E5484D;--danger-soft:#FDEEEE;--star:#F5B000;--scrim:rgba(20,22,28,.32);
+  --p-inbox:#2F6BFF;--p-hz:#F2600C;--p-tur:#0E9F8E;--p-ex:#D99A00;--p-apo:#8B55D6;--p-casa:#E5397B;--shadow:0 1px 2px rgba(16,24,40,.06),0 6px 20px rgba(16,24,40,.07)}
+#A[data-theme=dark]{--bg:#141517;--bg-2:#1B1C1F;--sheet:#1E1F23;--raise:#26282C;--raise-2:#303237;--ink:#EEEFF1;--ink-2:#A6ABB3;--ink-3:#6E737B;--sep:#24262A;
+  --accent:#5B8DFF;--accent-ink:#8AAEFF;--accent-soft:rgba(91,141,255,.15);--danger:#FF6369;--danger-soft:rgba(255,99,105,.13);--star:#FFC53D;--scrim:rgba(0,0,0,.5);
+  --p-inbox:#5B8DFF;--p-hz:#FF8A3D;--p-tur:#2EC4B0;--p-ex:#F2C23A;--p-apo:#B48CF0;--p-casa:#F7679E;--shadow:0 1px 0 rgba(255,255,255,.04) inset,0 10px 30px rgba(0,0,0,.45)}
+#A .hd-title{display:flex;align-items:center;gap:10px;padding:10px 20px 2px}
+#A .hd-title h1{font-size:30px;font-weight:750;letter-spacing:-.025em}
+#A .hd-title .cnt{font-size:17px;font-weight:600;color:var(--ink-3);margin-left:2px;margin-top:4px}
+#A .hd-sub{padding:0 20px 8px 56px;font-size:13.5px;color:var(--ink-3)}
+#A .grp-head{padding:16px 20px 6px;font-size:14px;font-weight:650}
+#A .grp-head .gc{color:var(--ink-3);font-weight:550}
+#A .grp-head.over{color:var(--danger)}
+#A .move{font:inherit;font-size:13px;font-weight:600;color:var(--accent-ink);background:var(--accent-soft);border:0;height:28px;padding:0 10px;border-radius:var(--r-s);display:flex;align-items:center;gap:5px}
+#A .row{padding:0 20px;gap:12px}
+#A .row+.row:after{content:"";position:absolute;left:52px;right:0;top:0;height:1px;background:var(--sep)}
+#A .row .t{font-size:15px;color:var(--ink)}
+#A .ck{border-radius:50%;box-shadow:inset 0 0 0 1.75px color-mix(in srgb,var(--pc) 75%,var(--bg))}
+#A .ck.urg{box-shadow:inset 0 0 0 2px var(--danger);background:var(--danger-soft)}
+#A .ck.done{background:var(--pc);box-shadow:none;color:#fff}
+#A .tm{font-size:13px;font-weight:600;color:var(--ink-2)}
+#A .missed{color:var(--danger);font-weight:600;font-size:13px}
+#A .pj{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:var(--ink-3);font-weight:500}
+#A .pj:before{content:"";width:7px;height:7px;border-radius:50%;background:var(--pc)}
+#A .tail .urg{color:var(--danger)}
+#A .tail .bl{color:var(--ink-3)}
+#A .donel{padding:14px 20px;font-size:13.5px;color:var(--ink-3);display:flex;gap:6px;align-items:center}
+#A .fab{width:56px;height:56px;border-radius:50%;background:var(--accent);color:#fff;box-shadow:0 8px 20px -4px color-mix(in srgb,var(--accent) 55%,transparent)}
+#A .tabs{height:84px;padding:8px 18px 22px;background:color-mix(in srgb,var(--bg) 94%,transparent);box-shadow:0 -1px 0 var(--sep)}
+#A .tabs .tab{color:var(--ink-3);font-weight:550}
+#A .tabs .tab.on{color:var(--accent)}
+#A .sheet{border-radius:var(--r) var(--r) 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.18)}
+#A .sh-meta{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-3);font-weight:500;margin-bottom:10px}
+#A .sh-meta .sp{flex:1}
+#A .sh-title{display:flex;gap:12px;align-items:flex-start;margin-bottom:14px}
+#A .sh-title .ck{width:24px;height:24px;margin-top:2px}
+#A .sh-title h2{font-size:21px;font-weight:700;letter-spacing:-.015em;line-height:1.25}
+#A .chip{background:var(--raise);border-radius:var(--r-s);color:var(--ink-2);font-weight:550}
+#A .sheet .chips{gap:5px}
+#A .sheet .chip{padding:0 8px;gap:5px}
+#A .chip.acc{background:var(--accent-soft);color:var(--accent-ink)}
+#A .chip.pc{background:color-mix(in srgb,var(--pc) 13%,transparent);color:color-mix(in srgb,var(--pc) 80%,var(--ink))}
+#A .md{margin-top:18px;font-size:15px;line-height:1.5;color:var(--ink)}
+#A .md h4{font-size:13px;font-weight:700;color:var(--ink-2);letter-spacing:.01em}
+#A .md .task .bx{border-radius:50%;box-shadow:inset 0 0 0 1.75px var(--ink-3)}
+#A .md .task.done .bx{background:var(--accent);box-shadow:none;color:#fff}
+#A .md ul.bul li::marker{color:var(--ink-3)}
+#A .md code{font-size:13px;background:var(--raise);padding:1px 5px;border-radius:5px;font-family:"Geist Mono",monospace}
+#A .md a{color:var(--accent-ink);text-decoration:none;font-weight:550}
+#A .prog{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-3);font-weight:600;margin-left:8px}
+#A .prog i{display:block;width:44px;height:4px;border-radius:2px;background:var(--raise-2);overflow:hidden}
+#A .prog i:after{content:"";display:block;height:100%;width:33%;background:var(--accent)}
+/* A laptop */
+#A .side{background:var(--bg-2)}
+#A .side .me{display:flex;align-items:center;gap:10px;padding:4px 10px 14px;font-weight:650}
+#A .side .search{display:flex;align-items:center;gap:8px;height:34px;padding:0 10px;margin:0 0 10px;border-radius:var(--r-s);background:var(--bg);color:var(--ink-3);font-size:13.5px;box-shadow:var(--shadow)}
+#A .side .search kbd{margin-left:auto;font-family:inherit;font-size:11.5px;color:var(--ink-3)}
+#A .side .nav{border-radius:var(--r-s);color:var(--ink-2);font-weight:550}
+#A .side .nav.on{background:var(--raise-2);color:var(--ink)}
+#A .side .nav .n{color:var(--ink-3);font-weight:550}
+#A .side .lbl{font-size:12px;font-weight:650;color:var(--ink-3)}
+#A .side .dot{width:10px;height:10px;border-radius:50%;background:var(--pc);margin:0 3px}
+#A .lmain .mhd{padding:22px 32px 8px}
+#A .lmain .mhd .hd-title{padding:0}
+#A .lmain .mhd .hd-sub{padding:2px 0 0 38px}
+#A .qa{margin:10px 32px 2px;display:flex;align-items:center;gap:12px;height:40px;padding:0 12px;border-radius:var(--r-m);color:var(--ink-3);background:var(--bg-2);font-size:14px}
+#A .qa kbd{margin-left:auto;font:inherit;font-size:12px}
+#A .lmain .grp-head{padding:18px 32px 6px}
+#A .lmain .row{padding:0 32px}
+#A .lmain .row+.row:after{left:64px;right:32px}
+#A .lmain .row.sel{background:var(--accent-soft);border-radius:var(--r-m);margin:0 20px;padding:0 12px}
+#A .lmain .row.sel .t{font-weight:600}
+#A .lmain .row.sel+.row:after,#A .lmain .row.sel:after{display:none}
+#A .dock{background:var(--bg);box-shadow:-1px 0 0 var(--sep);padding:18px 28px}
+#A .dock .md{font-size:14.5px}
+#A .thread{margin-top:22px;padding-top:16px;box-shadow:0 -1px 0 var(--sep)}
+#A .thread .th{font-size:13px;font-weight:700;color:var(--ink-2);margin-bottom:4px}
+#A .thread .who{font-size:13.5px;font-weight:650}
+#A .thread .when{font-size:12px;color:var(--ink-3);margin-left:6px;font-weight:500}
+#A .thread .body{font-size:14px;line-height:1.5;color:var(--ink);margin-top:2px}
+#A .thread .hand{font-size:13px;color:var(--ink-2);display:flex;gap:8px;align-items:center;padding:6px 0 6px 36px}
+#A .compose{margin-top:10px;display:flex;align-items:center;gap:8px;background:var(--bg-2);border-radius:var(--r-m);padding:8px 8px 8px 14px;color:var(--ink-3);font-size:14px}
+#A .compose .send{margin-left:auto;width:32px;height:32px;border-radius:var(--r-s);background:var(--accent);color:#fff;display:grid;place-items:center}
+#A .compose .pass{display:flex;gap:4px;align-items:center;font-size:13px;color:var(--ink-2);font-weight:550;padding:0 8px;height:32px;border-radius:var(--r-s);background:var(--bg)}
+
+/* ============================================================
+   DIRECȚIA B — „Precizie" (Linear / Raycast)
+   ============================================================ */
+#B{--f-body:Geist,Inter,system-ui,sans-serif;--f-mono:"Geist Mono",ui-monospace,monospace;--r-s:5px;--r-m:7px;--r:12px}
+#B[data-theme=dark]{--bg:#0C0D0F;--bg-2:#101114;--sheet:#15161A;--raise:#1B1C20;--raise-2:#24252A;--hover:#141518;--ink:#F1F2F4;--ink-2:#A2A6AE;--ink-3:#62666F;--sep:#1A1B1F;
+  --accent:#FF5A2C;--accent-ink:#FF7A55;--accent-soft:rgba(255,90,44,.14);--danger:#FF4F64;--danger-soft:rgba(255,79,100,.12);--warn:#F5B53D;--ok:#35D08A;--scrim:rgba(0,0,0,.6);
+  --p-inbox:#8D96A8;--p-hz:#4E9BFF;--p-tur:#35D08A;--p-ex:#F5B53D;--p-apo:#B58CFF;--p-casa:#FF6EA8;--ring:0 0 0 1px rgba(255,255,255,.06)}
+#B[data-theme=light]{--bg:#FFFFFF;--bg-2:#F7F7F8;--sheet:#FFFFFF;--raise:#F1F1F3;--raise-2:#E7E7EA;--hover:#F6F6F7;--ink:#0E0F11;--ink-2:#5A5E66;--ink-3:#989CA4;--sep:#EEEEF0;
+  --accent:#E8461B;--accent-ink:#D13A11;--accent-soft:#FFEDE7;--danger:#E5243B;--danger-soft:#FDEBEE;--warn:#C98A06;--ok:#14A35F;--scrim:rgba(10,10,12,.35);
+  --p-inbox:#6B7385;--p-hz:#2577F0;--p-tur:#10A363;--p-ex:#CF9100;--p-apo:#8B5CF0;--p-casa:#E2407F;--ring:0 0 0 1px rgba(0,0,0,.07)}
+#B .screen{font-size:15px;letter-spacing:-.005em}
+#B .hd-top{padding:4px 8px 0 10px}
+#B .hd-top h1{font-size:20px;font-weight:650;letter-spacing:-.02em;margin-left:4px}
+#B .hd-top .cnt{font-family:var(--f-mono);font-size:12px;font-weight:500;color:var(--ink-2);background:var(--raise);border-radius:var(--r-s);padding:2px 6px;margin-left:8px}
+#B .seg{display:flex;gap:6px;padding:10px 16px 6px;align-items:center}
+#B .seg span{font-size:13px;font-weight:550;color:var(--ink-2);height:28px;display:flex;align-items:center;gap:6px;padding:0 10px;border-radius:var(--r-s);background:var(--raise)}
+#B .seg span b{font-family:var(--f-mono);font-weight:500;font-size:11.5px;color:var(--ink-3)}
+#B .seg span.on{background:var(--ink);color:var(--bg)}
+#B .seg span.on b{color:var(--bg);opacity:.6}
+#B .seg .date{margin-left:auto;font-family:var(--f-mono);font-size:11.5px;color:var(--ink-3);letter-spacing:.04em}
+#B .grp-head{padding:16px 16px 6px;font-family:var(--f-mono);font-size:11.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2)}
+#B .grp-head .gc{color:var(--ink-3);font-weight:500}
+#B .grp-head.over{color:var(--danger)}
+#B .grp-head.over .gc{color:var(--danger);opacity:.7}
+#B .move{font-family:var(--f-body);text-transform:none;letter-spacing:0;font-size:12.5px;font-weight:600;color:var(--ink);background:var(--raise);border:0;height:26px;padding:0 9px;border-radius:var(--r-s);display:flex;align-items:center;gap:6px}
+#B .move kbd{font-family:var(--f-mono);font-size:10.5px;color:var(--ink-3)}
+#B .row{height:44px;padding:0 16px;gap:11px}
+#B .row .t{font-size:15px;font-weight:450}
+#B .ck{width:18px;height:18px;border-radius:5px;box-shadow:inset 0 0 0 1.5px var(--ink-3)}
+#B .ck.urg{box-shadow:inset 0 0 0 1.5px var(--danger)}
+#B .ck.done{background:var(--accent);box-shadow:none;color:#fff}
+#B .tm{font-family:var(--f-mono);font-size:12.5px;color:var(--ink);font-weight:500}
+#B .missed{font-family:var(--f-mono);font-size:12px;color:var(--danger);font-weight:500}
+#B .pj{display:inline-flex;align-items:center;gap:5px;font-family:var(--f-mono);font-size:11.5px;color:var(--ink-3);font-weight:500;letter-spacing:.02em;width:38px}
+#B .pj:before{content:"";width:8px;height:8px;border-radius:2px;background:var(--pc)}
+#B .tail{gap:9px}
+#B .tail .urg{color:var(--danger)}
+#B .tail .bl{color:var(--ink-3)}
+#B .prio{display:flex;gap:1.5px;align-items:flex-end;height:12px}
+#B .donel{padding:12px 16px;font-family:var(--f-mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);display:flex;gap:6px;align-items:center}
+#B .fab{width:52px;height:52px;border-radius:15px;background:var(--accent);color:#fff;box-shadow:0 10px 24px -8px var(--accent)}
+#B .tabs{height:80px;padding:8px 12px 24px;background:var(--bg-2);box-shadow:0 -1px 0 var(--sep)}
+#B .tabs .tab{color:var(--ink-3);font-weight:550;font-size:11px;position:relative}
+#B .tabs .tab.on{color:var(--ink)}
+#B .tabs .tab.on:before{content:"";position:absolute;top:-8px;width:20px;height:2px;border-radius:2px;background:var(--accent)}
+#B .sheet{border-radius:var(--r) var(--r) 0 0;box-shadow:var(--ring),0 -16px 40px rgba(0,0,0,.35);padding:8px 18px 30px}
+#B .sh-meta{display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:12px;color:var(--ink-3);margin-bottom:12px}
+#B .sh-meta .sp{flex:1}
+#B .sh-meta .key{color:var(--ink-2)}
+#B .sh-title{display:flex;gap:11px;align-items:flex-start;margin-bottom:14px}
+#B .sh-title .ck{width:20px;height:20px;margin-top:3px}
+#B .sh-title h2{font-size:20px;font-weight:600;letter-spacing:-.02em;line-height:1.25}
+#B .chip{background:var(--raise);border-radius:var(--r-s);color:var(--ink-2);font-weight:500;font-size:13px;height:28px;padding:0 9px}
+#B .chip .m{font-family:var(--f-mono);font-size:12px;color:var(--ink)}
+#B .chip.acc{background:var(--accent-soft);color:var(--accent-ink)}
+#B .chip.pc:before{content:"";width:8px;height:8px;border-radius:2px;background:var(--pc)}
+#B .md{margin-top:18px;font-size:15px;line-height:1.55;color:var(--ink)}
+#B .md h4{font-family:var(--f-mono);font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+#B .md .task .bx{border-radius:4px;box-shadow:inset 0 0 0 1.5px var(--ink-3);width:16px;height:16px;margin-top:3px}
+#B .md .task.done .bx{background:var(--accent);box-shadow:none;color:#fff}
+#B .md ul.bul{list-style:none;padding-left:4px}
+#B .md ul.bul li{position:relative;padding-left:16px}
+#B .md ul.bul li:before{content:"";position:absolute;left:2px;top:13px;width:5px;height:1.5px;background:var(--ink-3)}
+#B .md code{font-family:var(--f-mono);font-size:12.5px;background:var(--raise);padding:1px 5px;border-radius:4px}
+#B .md a{color:var(--accent-ink);text-decoration:none;font-family:var(--f-mono);font-size:13px}
+#B .prog{font-family:var(--f-mono);font-size:11px;color:var(--ink-3);margin-left:8px;letter-spacing:.02em}
+#B .side{background:var(--bg-2);box-shadow:1px 0 0 var(--sep)}
+#B .side .me{display:flex;align-items:center;gap:9px;padding:2px 8px 12px;font-weight:600;font-size:14px}
+#B .side .me .ws{width:22px;height:22px;border-radius:6px;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:12px;font-weight:700}
+#B .side .search{display:flex;align-items:center;gap:8px;height:32px;padding:0 10px;margin:0 0 8px;border-radius:var(--r-m);background:var(--raise);color:var(--ink-3);font-size:13px}
+#B kbd{font-family:var(--f-mono);font-size:10.5px;color:var(--ink-3);background:var(--raise-2);border-radius:4px;padding:1px 5px;margin-left:auto;font-weight:500}
+#B .side .nav{border-radius:var(--r-s);color:var(--ink-2);font-weight:500;height:30px;font-size:13.5px}
+#B .side .nav.on{background:var(--raise);color:var(--ink)}
+#B .side .nav .n{font-family:var(--f-mono);font-size:11.5px;color:var(--ink-3)}
+#B .side .lbl{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+#B .side .dot{width:9px;height:9px;border-radius:2.5px;background:var(--pc);margin:0 3px}
+#B .lmain .mhd{height:52px;display:flex;align-items:center;gap:10px;padding:0 20px;box-shadow:0 1px 0 var(--sep)}
+#B .lmain .mhd h1{font-size:15px;font-weight:600}
+#B .lmain .mhd .crumb{color:var(--ink-3);font-size:14px}
+#B .lmain .mhd .cnt{font-family:var(--f-mono);font-size:11.5px;color:var(--ink-2);background:var(--raise);border-radius:4px;padding:2px 6px}
+#B .lmain .mhd .sp{flex:1}
+#B .lmain .mhd .btn{display:flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:var(--r-s);font-size:13px;font-weight:550;background:var(--raise);color:var(--ink)}
+#B .lmain .mhd .btn.pri{background:var(--accent);color:#fff}
+#B .lmain .mhd .btn.pri kbd{background:rgba(255,255,255,.18);color:#fff}
+#B .lmain .seg{padding:10px 20px 4px}
+#B .lmain .grp-head{padding:16px 20px 6px}
+#B .lmain .row{padding:0 20px;height:38px;gap:12px}
+#B .lmain .row .t{font-size:14px}
+#B .lmain .row:hover,#B .lmain .row.hov{background:var(--hover)}
+#B .lmain .row.sel{background:var(--raise)}
+#B .lmain .row.sel:before{content:"";position:absolute;left:0;top:6px;bottom:6px;width:2px;border-radius:2px;background:var(--accent)}
+#B .rid{font-family:var(--f-mono);font-size:12px;color:var(--ink-3);width:58px;flex-shrink:0}
+#B .lmain .pj{width:auto}
+#B .dock{background:var(--bg-2);box-shadow:-1px 0 0 var(--sep);padding:0}
+#B .dock .dh{height:52px;display:flex;align-items:center;gap:8px;padding:0 14px 0 22px;box-shadow:0 1px 0 var(--sep);font-family:var(--f-mono);font-size:12px;color:var(--ink-3)}
+#B .dock .dh .sp{flex:1}
+#B .dock .db{padding:18px 22px}
+#B .dock .md{font-size:14px}
+#B .props{display:grid;grid-template-columns:96px 1fr;row-gap:2px;font-size:13px;margin:4px 0 6px}
+#B .props dt{color:var(--ink-3);height:28px;display:flex;align-items:center}
+#B .props dd{height:28px;display:flex;align-items:center;gap:7px;color:var(--ink)}
+#B .props dd .m{font-family:var(--f-mono);font-size:12.5px}
+#B .thread{margin-top:18px}
+#B .thread .th{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);font-weight:600;margin-bottom:4px}
+#B .thread .ev{padding:8px 0}
+#B .thread .av{width:22px;height:22px;font-size:9.5px;border-radius:6px}
+#B .thread .who{font-size:13px;font-weight:600}
+#B .thread .when{font-family:var(--f-mono);font-size:11px;color:var(--ink-3);margin-left:6px}
+#B .thread .body{font-size:13.5px;line-height:1.5;color:var(--ink);margin-top:2px}
+#B .thread .card{background:var(--raise);border-radius:var(--r-m);padding:9px 12px;flex:1}
+#B .thread .hand{font-size:12.5px;color:var(--ink-3);display:flex;gap:8px;align-items:center;padding:4px 0 4px 6px;font-family:var(--f-mono)}
+#B .compose{margin-top:10px;display:flex;align-items:center;gap:8px;background:var(--raise);border-radius:var(--r-m);padding:7px 7px 7px 12px;color:var(--ink-3);font-size:13.5px}
+#B .compose .send{width:28px;height:28px;border-radius:var(--r-s);background:var(--accent);color:#fff;display:grid;place-items:center;margin-left:6px}
+#B .compose .pass{margin-left:auto;display:flex;gap:5px;align-items:center;font-size:12.5px;color:var(--ink-2);font-weight:550;padding:0 8px;height:28px;border-radius:var(--r-s);background:var(--raise-2)}
+
+/* ============================================================
+   DIRECȚIA C — „Cald" (Arc / Notion Calendar / Craft)
+   ============================================================ */
+#C{--f-body:Figtree,Inter,system-ui,sans-serif;--f-disp:"Bricolage Grotesque",Figtree,sans-serif;--r-s:10px;--r-m:14px;--r:22px}
+#C[data-theme=light]{--bg:#FAF6EF;--bg-2:#F3EDE2;--card:#FFFDF9;--sheet:#FFFDF9;--raise:#F2EBDF;--raise-2:#E9DFCF;--ink:#2A241D;--ink-2:#6C6256;--ink-3:#A3978A;--sep:#F0E8DC;
+  --accent:#EB5A33;--accent-ink:#C9431F;--accent-soft:#FCE5DA;--danger:#D63E2A;--danger-soft:#FBE3DD;--sun:#FFD772;--sun-2:#FFC94A;--sun-ink:#3B2B0C;--scrim:rgba(42,30,18,.32);
+  --p-inbox:#3D7BF5;--p-hz:#EB5A33;--p-tur:#18997F;--p-ex:#D99A12;--p-apo:#7A5AD8;--p-casa:#D9468A;--soft:0 1px 2px rgba(80,55,20,.06),0 8px 24px -6px rgba(80,55,20,.12)}
+#C[data-theme=dark]{--bg:#191612;--bg-2:#201C17;--card:#25211B;--sheet:#2A251F;--raise:#322C24;--raise-2:#3D362D;--ink:#F5EEE4;--ink-2:#B9AD9E;--ink-3:#807567;--sep:#2C2720;
+  --accent:#FF7A52;--accent-ink:#FF9A7A;--accent-soft:rgba(255,122,82,.15);--danger:#FF7360;--danger-soft:rgba(255,115,96,.13);--sun:#3B2F17;--sun-2:#4A3A19;--sun-ink:#FFDC86;--scrim:rgba(0,0,0,.55);
+  --p-inbox:#6E9BFF;--p-hz:#FF7A52;--p-tur:#3CC2A3;--p-ex:#F2C14E;--p-apo:#A88BF5;--p-casa:#F278B0;--soft:0 1px 0 rgba(255,255,255,.04) inset,0 10px 28px rgba(0,0,0,.4)}
+#C .screen{font-size:15px}
+#C .hd-top{padding:2px 12px 0}
+#C .hd-top .me{width:30px;height:30px;border-radius:50%;background:var(--p-tur);color:#fff;display:grid;place-items:center;font-size:12px;font-weight:700;margin-left:4px}
+#C .hero{margin:6px 16px 4px;border-radius:var(--r);background:var(--sun);color:var(--sun-ink);padding:16px 18px 16px;position:relative;overflow:hidden;display:flex;align-items:flex-end;gap:12px}
+#C .hero .sunart{position:absolute;right:-44px;top:-52px;opacity:1}
+#C .sheet .chips{gap:5px}
+#C .sheet .chip{padding:0 9px;gap:5px}
+#C .hero h1{font-family:var(--f-disp);font-size:36px;font-weight:750;letter-spacing:-.03em;line-height:1}
+#C .hero .d{font-size:14px;font-weight:550;margin-top:6px;opacity:.75}
+#C .hero .stat{margin-left:auto;text-align:right;position:relative;font-size:12.5px;font-weight:600;opacity:.85}
+#C .hero .stat b{display:block;font-family:var(--f-disp);font-size:24px;font-weight:700;opacity:1}
+#C .grp{margin:10px 12px 0;background:var(--card);border-radius:var(--r-m);box-shadow:var(--soft);overflow:hidden}
+#C .grp-head{padding:12px 14px 4px;font-family:var(--f-disp);font-size:16px;font-weight:700;letter-spacing:-.01em}
+#C .grp-head .gc{font-family:var(--f-body);font-size:13px;color:var(--ink-3);font-weight:600}
+#C .grp.over{background:color-mix(in srgb,var(--danger) 7%,var(--card))}
+#C .grp.over .grp-head{color:var(--danger)}
+#C .move{font:inherit;font-size:12.5px;font-weight:700;color:#fff;background:var(--danger);border:0;height:28px;padding:0 11px;border-radius:999px;display:flex;align-items:center;gap:5px}
+#C .row{height:46px;padding:0 14px;gap:12px}
+#C .row+.row:after{content:"";position:absolute;left:46px;right:14px;top:0;height:1px;background:var(--sep)}
+#C .grp.over .row+.row:after{background:color-mix(in srgb,var(--danger) 12%,transparent)}
+#C .row .t{font-size:15px;font-weight:500}
+#C .ck{width:20px;height:20px;border-radius:7px;background:color-mix(in srgb,var(--pc) 16%,transparent);box-shadow:inset 0 0 0 1.75px color-mix(in srgb,var(--pc) 70%,transparent)}
+#C .ck.urg{background:var(--danger-soft);box-shadow:inset 0 0 0 2px var(--danger)}
+#C .ck.done{background:var(--pc);box-shadow:none;color:#fff}
+#C .tm{font-size:13px;font-weight:700;color:var(--ink);background:var(--raise);padding:3px 7px;border-radius:999px}
+#C .missed{font-size:12.5px;font-weight:700;color:var(--danger)}
+#C .pj{font-size:12px;font-weight:650;padding:3px 8px;border-radius:999px;background:color-mix(in srgb,var(--pc) 14%,transparent);color:color-mix(in srgb,var(--pc) 82%,var(--ink))}
+#C .tail .urg{color:var(--danger)}
+#C .tail .bl{color:var(--ink-3)}
+#C .donel{padding:14px 26px;font-size:13.5px;color:var(--ink-3);display:flex;gap:6px;align-items:center;font-weight:600}
+#C .fab{width:58px;height:58px;border-radius:20px;background:var(--accent);color:#fff;box-shadow:0 12px 24px -8px color-mix(in srgb,var(--accent) 80%,transparent),inset 0 -3px 0 rgba(0,0,0,.12);bottom:100px}
+#C .tabs{left:16px;right:16px;bottom:24px;height:62px;border-radius:999px;background:var(--card);box-shadow:var(--soft),0 0 0 1px color-mix(in srgb,var(--ink) 5%,transparent);padding:6px}
+#C .tabs .tab{flex-direction:row;justify-content:center;gap:7px;font-size:13.5px;font-weight:650;color:var(--ink-2);border-radius:999px}
+#C .tabs .tab.on{background:var(--ink);color:var(--bg)}
+#C .home{bottom:7px}
+#C .sheet{border-radius:28px 28px 0 0;box-shadow:0 -12px 40px rgba(40,25,10,.2);padding:10px 20px 30px}
+#C .sh-meta{display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:12.5px;color:var(--ink-3);font-weight:600}
+#C .sh-meta .sp{flex:1}
+#C .sh-title{display:flex;gap:12px;align-items:flex-start;margin-bottom:14px}
+#C .sh-title .ck{width:26px;height:26px;border-radius:9px;margin-top:2px}
+#C .sh-title h2{font-family:var(--f-disp);font-size:23px;font-weight:700;letter-spacing:-.02em;line-height:1.2}
+#C .chip{background:var(--raise);border-radius:999px;color:var(--ink-2);font-weight:650;font-size:13px;height:30px;padding:0 11px}
+#C .chip.acc{background:var(--sun);color:var(--sun-ink)}
+#C .chip.pc{background:color-mix(in srgb,var(--pc) 15%,transparent);color:color-mix(in srgb,var(--pc) 82%,var(--ink))}
+#C .md{margin-top:16px;font-size:15px;line-height:1.55;color:var(--ink)}
+#C .md h4{font-family:var(--f-disp);font-size:16px;font-weight:700;letter-spacing:-.01em}
+#C .md .task .bx{border-radius:6px;box-shadow:inset 0 0 0 1.75px var(--ink-3)}
+#C .md .task.done .bx{background:var(--p-tur);box-shadow:none;color:#fff}
+#C .md ul.bul li::marker{color:var(--accent)}
+#C .md code{font-size:13px;background:var(--raise);padding:1px 6px;border-radius:6px;font-family:"Geist Mono",monospace}
+#C .md a{color:var(--accent-ink);font-weight:650;text-decoration:none}
+#C .prog{display:inline-flex;font-family:var(--f-body);font-size:12px;font-weight:700;color:var(--p-tur);background:color-mix(in srgb,var(--p-tur) 14%,transparent);border-radius:999px;padding:2px 8px;margin-left:8px;letter-spacing:0}
+#C .lscreen{background:var(--bg-2)}
+#C .side{padding:16px 12px}
+#C .side .me{display:flex;align-items:center;gap:10px;padding:2px 8px 14px;font-family:var(--f-disp);font-size:18px;font-weight:700;letter-spacing:-.01em}
+#C .side .search{display:flex;align-items:center;gap:8px;height:36px;padding:0 12px;margin:0 0 12px;border-radius:999px;background:var(--card);color:var(--ink-3);font-size:13.5px;box-shadow:var(--soft)}
+#C .side .search kbd{margin-left:auto;font:inherit;font-size:11.5px;font-weight:600}
+#C .side .nav{border-radius:var(--r-s);color:var(--ink-2);font-weight:600;height:34px}
+#C .side .nav.on{background:var(--card);color:var(--ink);box-shadow:var(--soft)}
+#C .side .nav .n{color:var(--ink-3);font-weight:650}
+#C .side .nav .ico{width:24px;height:24px;border-radius:8px;display:grid;place-items:center;margin-left:-4px}
+#C .side .lbl{font-size:12px;font-weight:700;color:var(--ink-3)}
+#C .side .dot{width:22px;height:22px;border-radius:7px;background:color-mix(in srgb,var(--pc) 18%,transparent);color:var(--pc);display:grid;place-items:center;font-size:11px;font-weight:800;margin-left:-3px}
+#C .lmain{background:var(--bg);margin:10px 0 10px;border-radius:18px 0 0 18px;box-shadow:var(--soft)}
+#C .lmain .hero{margin:16px 22px 4px;padding:18px 22px}
+#C .lmain .hero h1{font-size:34px}
+#C .qa{margin:12px 22px 0;display:flex;align-items:center;gap:12px;height:42px;padding:0 14px;border-radius:999px;color:var(--ink-3);background:var(--card);box-shadow:var(--soft);font-size:14px;font-weight:550}
+#C .qa kbd{margin-left:auto;font:inherit;font-size:12px}
+#C .lmain .grp{margin:12px 22px 0}
+#C .lmain .row{height:42px}
+#C .lmain .row.sel{background:var(--accent-soft)}
+#C .lmain .row.sel:after,#C .lmain .row.sel+.row:after{display:none}
+#C .dock{background:var(--card);margin:10px 10px 10px 0;border-radius:0 18px 18px 0;box-shadow:var(--soft);padding:18px 26px}
+#C .dock .md{font-size:14.5px}
+#C .thread{margin-top:20px;background:var(--bg);border-radius:var(--r-m);padding:12px 14px}
+#C .thread .th{font-family:var(--f-disp);font-size:15px;font-weight:700;margin-bottom:2px}
+#C .thread .ev{padding:8px 0}
+#C .thread .who{font-size:13.5px;font-weight:700}
+#C .thread .when{font-size:12px;color:var(--ink-3);margin-left:6px;font-weight:600}
+#C .thread .body{font-size:14px;line-height:1.5;margin-top:2px}
+#C .thread .hand{font-size:13px;color:var(--ink-2);display:flex;gap:8px;align-items:center;padding:6px 10px;border-radius:999px;background:var(--sun);color:var(--sun-ink);font-weight:600;width:max-content;margin:4px 0}
+#C .compose{margin-top:8px;display:flex;align-items:center;gap:8px;background:var(--card);border-radius:999px;padding:6px 6px 6px 14px;color:var(--ink-3);font-size:14px;box-shadow:var(--soft)}
+#C .compose .send{margin-left:6px;width:32px;height:32px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center}
+#C .compose .pass{margin-left:auto;display:flex;gap:4px;align-items:center;font-size:13px;color:var(--ink-2);font-weight:650;padding:0 10px;height:30px;border-radius:999px;background:var(--raise)}
+#C .empty{background:var(--card);border-radius:var(--r);box-shadow:var(--soft);padding:18px;text-align:center}
+#C .empty h5{font-family:var(--f-disp);font-size:19px;font-weight:700;letter-spacing:-.01em;margin-top:8px}
+#C .empty p{font-size:13.5px;color:var(--ink-2);margin-top:4px;line-height:1.45}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="intro">
+    <div>
+      <div class="eyebrow">Horizontal · explorare vizuală · 14 octombrie 2026</div>
+      <h1>Trei direcții pentru o aplicație care să-ți facă plăcere s-o deschizi.</h1>
+      <p>Aceleași ecrane, același conținut real, trei personalități. Fiecare direcție arată „Azi” pe telefon, foaia de tichet, laptopul cu panoul lateral și jetoanele din care e făcută. Comută tema din dreapta fiecărei direcții.</p>
+    </div>
+    <div class="fb">
+      <b>Ce a spus clientul</b>
+      <q>Arată ca o aplicație făcută în 1990.</q>
+      <q>Pare că totul e făcut de AI.</q>
+      <q>N-are culori, e fadă, nu-ți face plăcere să te uiți la ea.</q>
+    </div>
+  </header>
+  <nav class="switch" role="tablist">
+    <button role="tab" data-go="A" aria-selected="true"><i>A</i>Senin — productivitate curată</button>
+    <button role="tab" data-go="B" aria-selected="false"><i>B</i>Precizie — unealtă, contrast</button>
+    <button role="tab" data-go="C" aria-selected="false"><i>C</i>Cald — personalitate</button>
+    <span class="sp"></span>
+    <button data-go="rec" aria-selected="false">Recomandarea</button>
+  </nav>
+
+  <section class="dir on" id="A" data-theme="light"></section>
+  <section class="dir" id="B" data-theme="dark"></section>
+  <section class="dir" id="C" data-theme="light"></section>
+
+  <section class="rec" id="rec">
+    <h2>Recomandarea designerului</h2>
+    <p class="lead">Pentru omul ăsta — utilizator intens, listă zilnică pe telefon, planificare pe laptop, și o aplicație pe care o arată clienților — recomand <b>A · Senin</b>, cu două împrumuturi precise din B: cifrele în mono (ore, ID-uri) și scurtăturile vizibile pe desktop.</p>
+    <div class="verdict"><div class="badge">A</div><p><b>De ce A și nu B sau C.</b> Plângerea e „fadă” și „1990”, nu „prea puțin densă”. A rezolvă exact asta: culoarea capătă un rost (fiecare proiect are culoarea lui, folosită în bifă, în jeton și în sertar), tipografia e cea a aplicațiilor pe care clientul le folosește deja, iar densitatea rămâne compactă (46px pe rând, 15px corp). B e cea mai frumoasă pe întuneric, dar pe telefon, ziua, citește ca o consolă — bun pentru un dezvoltator, rece pentru un client. C are cea mai multă personalitate, dar personalitatea îmbătrânește repede, iar blocul cald din „Azi” costă ~90px de listă pe fiecare deschidere.</p></div>
+    <div class="cols">
+      <div>
+        <h3>Ce se schimbă doar din jetoane</h3>
+        <ul>
+          <li><code>:root</code> din <code>src/styles.css</code>: suprafețele (<code>--bg</code>, <code>--surface*</code>), textul, <code>--accent</code> albastru în loc de indigo, <code>--blocked</code> → roșu clar; tema deschisă devine implicită, cea închisă rămâne cu aceleași nume de jetoane.</li>
+          <li>Fonturile: Literata + IBM Plex Mono → Inter (corp, titluri) + Geist Mono (ore, ID-uri). Regula „cifră sau cod = mono” rămâne; „limbă = serif” cade.</li>
+          <li>Razele: 6 / 10 / 16 → 8 / 12 / 20. Tot trei valori, pe același rol.</li>
+          <li><code>--layer-0..4</code>: rampa rămâne secvențială, recalibrată pe albastru → verde ca să nu se bată cu culorile de proiect.</li>
+          <li><code>--text-scale</code> și <code>calc(Npx * var(--text-scale))</code> nu se ating — doar valorile de bază.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Ce cere mai mult decât jetoane</h3>
+        <ul>
+          <li><b>Culoarea proiectului în rând</b>: <code>TaskRow</code> trebuie să primească culoarea ca prop (nu din <code>useUI()</code> — regula din „Listele lungi”), pentru inelul bifei și bulina din coadă.</li>
+          <li><b>Bifa rotundă colorată</b>: componenta de bifă din <code>TaskRow</code>, <code>TicketCard</code>, <code>EditSheet</code>, <code>QuickSheet</code>; urgentul devine inel roșu, nu iconiță separată.</li>
+          <li><b>Antetul listelor</b>: titlul mare cu iconiță de rol + data dedesubt; <code>Icon.tsx</code> primește <code>today</code> (stea/soare).</li>
+          <li><b>Sertarul și sidebar-ul</b> (<code>Drawer.tsx</code>, <code>Sidebar.tsx</code>): bulină de culoare per proiect în loc de <code>ProjectMark</code> monocrom.</li>
+          <li><b>Markdown-ul</b>: căsuțele din <code>MarkdownView</code> și decorările CodeMirror din <code>MarkdownEditor</code> (rotunde, umplute pe accent).</li>
+          <li>Verificare: <code>design/preview.html</code> în ambele teme, apoi <code>npm run test:layout</code> (Inter e mai lat decât Literata la 15px — jetoanele din foi trebuie remăsurate la 320px).</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+/* ---------- iconițe (traseu lucide, desenate inline) ---------- */
+const P = {
+  bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+  flag:'<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/>',
+  clip:'<path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>',
+  cal:'<rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  week:'<rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  menu:'<path d="M4 7h16M4 12h16M4 17h16"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>',
+  star:'<path d="M12 2.5l2.9 5.9 6.5.95-4.7 4.58 1.1 6.47L12 17.35 6.2 20.4l1.1-6.47L2.6 9.35l6.5-.95z"/>',
+  user:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+  inbox:'<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+  more:'<circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/>',
+  check:'<path d="M20 6 9 17l-5-5"/>',
+  arrow:'<path d="M5 12h14M13 6l6 6-6 6"/>',
+  down:'<path d="m6 9 6 6 6-6"/>',
+  right:'<path d="m9 18 6-6-6-6"/>',
+  repeat:'<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',
+  send:'<path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/>',
+  filter:'<path d="M3 5h18M6 12h12M10 19h4"/>',
+  max:'<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>',
+  x:'<path d="M18 6 6 18M6 6l12 12"/>',
+  swap:'<path d="m16 3 4 4-4 4M20 7H4M8 21l-4-4 4-4M4 17h16"/>',
+  folder:'<path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/>',
+  gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+  zap:'<path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>',
+  moon:'<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+  hash:'<path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/>',
+};
+const ic=(n,s=16,w=1.9,fill=false)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="${fill?'currentColor':'none'}" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round">${P[n]}</svg>`;
+
+/* ---------- date reale ---------- */
+const PJ={inbox:{n:'Inbox',s:'Inbox',k:'D'},hz:{n:'Horizontal',s:'Horizontal',k:'HZ'},tur:{n:'Aplicație Turism',s:'Turism',k:'TUR'},ex:{n:'Exemplu',s:'Exemplu',k:'EX'},apo:{n:'Apologetica',s:'Apologetica',k:'APO'},casa:{n:'Casă',s:'Casă',k:'CAS'}};
+const OVER=[
+  {t:'Deploy funcția reminder-action',p:'hz',id:'HZ-138',missed:'11 oct',urgent:1,bell:1},
+  {t:'Webhook Supabase → Mailjet',p:'tur',id:'TUR-05',missed:'12 oct'},
+];
+const TODAY=[
+  {t:'Plătește factura Digi',p:'casa',id:'CAS-31',urgent:1},
+  {t:'Cont Supabase (DB + Auth)',p:'tur',id:'TUR-01',time:'09:30',bell:1},
+  {t:'Sună la service pentru revizie',p:'inbox',id:'D-212',time:'10:30',bell:1},
+  {t:'Pregătește demo pentru client',p:'hz',id:'HZ-142',time:'16:00',bell:1,attach:2,sel:1},
+  {t:'Răspunde Anei la mail despre ofertă',p:'ex',id:'EX-7'},
+  {t:'Split datorii (sora: 40 cor.)',p:'tur',id:'TUR-09'},
+  {t:'Citește spec-ul pentru modul offline',p:'hz',id:'HZ-131',recur:1},
+  {t:'Cumpără baterii AA',p:'inbox',id:'D-215'},
+];
+
+/* bucăți comune */
+const statusBar=()=>`<div class="sb"><span>9:41</span><span class="ic">
+ <svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>
+ <svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 2.2c2.4 0 4.6.9 6.2 2.4l1.2-1.3C13.5 1.4 10.9.4 8 .4S2.5 1.4.6 3.3l1.2 1.3C3.4 3.1 5.6 2.2 8 2.2zm0 3.6c1.4 0 2.7.5 3.7 1.4l1.2-1.3A7.2 7.2 0 0 0 8 4c-1.9 0-3.6.7-4.9 1.9l1.2 1.3c1-.9 2.3-1.4 3.7-1.4zM8 9.4c-.6 0-1.2.2-1.6.6L8 11.8 9.6 10c-.4-.4-1-.6-1.6-.6z"/></svg>
+ <svg width="27" height="13" viewBox="0 0 27 13" fill="none"><rect x=".5" y=".5" width="23" height="12" rx="3.5" stroke="currentColor" opacity=".4"/><rect x="2" y="2" width="17" height="9" rx="2" fill="currentColor"/><path d="M25 4.5v4c.8-.3 1.3-1.1 1.3-2s-.5-1.7-1.3-2z" fill="currentColor" opacity=".45"/></svg>
+</span></div>`;
+const ck=(r,big)=>`<span class="ck${r.urgent?' urg':''}${r.done?' done':''}" style="--pc:var(--p-${r.p})">${r.done?ic('check',big?14:12,3):''}</span>`;
+
+function pj(d,p,lap){
+  if(d==='B') return `<span class="pj" style="--pc:var(--p-${p})">${PJ[p].k}</span>`;
+  return `<span class="pj" style="--pc:var(--p-${p})">${lap?PJ[p].n:PJ[p].s}</span>`;
+}
+function row(d,r,o={}){
+  const tail=[];
+  if(r.missed) tail.push(d==='B'?`<span class="missed">${r.missed}</span>`:`<span class="missed">${r.missed}</span>`);
+  if(r.time) tail.push(`<span class="tm">${r.time}</span>`);
+  if(r.recur) tail.push(`<span class="bl">${ic('repeat',14)}</span>`);
+  if(r.attach&&o.lap) tail.push(`<span class="bl">${ic('clip',14)}</span>`);
+  if(r.bell) tail.push(`<span class="bl">${ic('bell',14)}</span>`);
+  if(r.urgent&&d!=='A'&&d!=='C') tail.push(`<span class="urg">${ic('flag',14,2,true)}</span>`);
+  tail.push(pj(d,r.p,o.lap));
+  const id=(d==='B'&&o.lap)?`<span class="rid">${r.id}</span>`:'';
+  return `<div class="row${o.lap?' lrow':''}${o.lap&&r.sel?' sel':''}">${ck(r)}${id}<span class="t">${r.t}</span><span class="tail">${tail.join('')}</span></div>`;
+}
+const moveBtn=(d)=>d==='B'?`<button class="move">${ic('arrow',13,2.2)}Mută pe azi<kbd>⇧T</kbd></button>`:`<button class="move">${ic('arrow',13,2.2)}Mută restanțele pe azi</button>`;
+
+function groups(d,lap){
+  const oh=`<div class="grp-head over">${d==='B'?'':ic('clock',16,2.1)}<span>Restanțe</span><span class="gc">${OVER.length}</span><span class="sp"></span>${moveBtn(d)}</div>`;
+  const th=`<div class="grp-head">${d==='A'?`<span style="color:var(--star)">${ic('star',16,0,true)}</span>`:''}<span>${d==='C'?'Azi':'Azi'}</span><span class="gc">${TODAY.length}</span></div>`;
+  const ov=OVER.map(r=>row(d,r,{lap})).join(''), td=TODAY.map(r=>row(d,r,{lap})).join('');
+  const done=`<div class="donel">${ic('check',14,2.2)} Terminate azi · 3 ${ic('down',14,2)}</div>`;
+  if(d==='C') return `<div class="grp over">${oh}${ov}</div><div class="grp">${th}${td}</div>${done}`;
+  return oh+ov+th+td+done;
+}
+
+/* ---------- antete pe direcție ---------- */
+function header(d){
+  if(d==='A') return `<div class="hd-top"><span class="ibtn">${ic('menu',22,2)}</span><span class="sp"></span><span class="ibtn">${ic('search',20)}</span><span class="ibtn">${ic('more',20,2.4)}</span></div>
+   <div class="hd-title"><span style="color:var(--star)">${ic('star',26,0,true)}</span><h1>Azi</h1><span class="cnt">10</span></div><div class="hd-sub">miercuri, 14 octombrie</div>`;
+  if(d==='B') return `<div class="hd-top"><span class="ibtn">${ic('menu',20,2)}</span><h1>Azi</h1><span class="cnt">10</span><span class="sp"></span><span class="ibtn">${ic('search',19)}</span><span class="ibtn">${ic('filter',19,2)}</span></div>
+   <div class="seg"><span class="on">Toate <b>10</b></span><span>Urgente <b>2</b></span><span>Cu oră <b>3</b></span><span class="date">MIE 14 OCT</span></div>`;
+  return `<div class="hd-top"><span class="ibtn">${ic('menu',22,2)}</span><span class="sp"></span><span class="ibtn">${ic('search',20)}</span><span class="me">IS</span></div>${hero()}`;
+}
+function hero(){
+  let rays='';for(let i=0;i<12;i++){const a=i*30*Math.PI/180;rays+=`<line x1="${70+Math.cos(a)*44}" y1="${70+Math.sin(a)*44}" x2="${70+Math.cos(a)*60}" y2="${70+Math.sin(a)*60}"/>`}
+  return `<div class="hero"><svg class="sunart" width="140" height="140" viewBox="0 0 140 140"><circle cx="70" cy="70" r="34" fill="var(--sun-2)"/><g stroke="var(--sun-2)" stroke-width="8" stroke-linecap="round">${rays}</g></svg>
+   <div style="position:relative"><h1>Azi</h1><div class="d">miercuri, 14 octombrie</div></div>
+   <div class="stat"><b>3 / 13</b>gata azi</div></div>`;
+}
+
+/* ---------- tab bar ---------- */
+function tabs(d){
+  const T=[['sun','Azi',1],['week','7 zile'],['user','Ale mele']];
+  return `<div class="tabs">${T.map(([i,l,on])=>`<div class="tab${on?' on':''}">${ic(i,d==='C'?18:22,on?2.2:1.8)}<span>${l}</span></div>`).join('')}</div><div class="home"></div>`;
+}
+function phoneList(d){
+  return `<div class="device"><div class="screen">${statusBar()}${header(d)}<div class="list">${groups(d)}</div>
+   <div class="fab">${ic('plus',26,2.4)}</div>${tabs(d)}</div></div>`;
+}
+
+/* ---------- foaia de tichet ---------- */
+function md(d){
+  const bx=(done)=>`<span class="bx">${done?ic('check',11,3.2):''}</span>`;
+  return `<div class="md">
+   <h4 style="margin-top:0">Înainte de demo <span class="prog">${d==='B'?'1/3':d==='A'?'<i></i>1 din 3':'1 din 3'}</span></h4>
+   <div class="task done">${bx(1)}<span>Build nou pe master</span></div>
+   <div class="task">${bx(0)}<span>Date de probă în Inbox</span></div>
+   <div class="task">${bx(0)}<span>Verifică foaia rapidă la 390px</span></div>
+   <h4>Ce arătăm</h4>
+   <ul class="bul"><li>Listele inteligente: Azi, 7 zile</li><li>Mementourile pe telefon și laptop</li><li>Panoul lateral peste <code>1200px</code></li></ul>
+   <p>Blocat de <a href="#">HZ-138</a> până intră funcția nouă.</p></div>`;
+}
+function chips(d,lap){
+  const bt=lap?'15:30':'';
+  const pc=`style="--pc:var(--p-hz)"`;
+  if(d==='B') return `<div class="chips"><span class="chip acc">${ic('cal',14)}Azi</span><span class="chip">${ic('clock',14)}<span class="m">16:00</span></span><span class="chip">${ic('bell',14)}${lap?'<span class="m">15:30</span>':''}</span><span class="chip pc" ${pc}>Horizontal</span><span class="chip">${ic('clip',14)}<span class="m">2</span></span></div>`;
+  return `<div class="chips"><span class="chip acc">${ic('cal',15)}Azi</span><span class="chip">${ic('clock',15)}16:00</span><span class="chip">${ic('bell',15)}${bt}</span><span class="chip pc" ${pc}>${d==='A'?`<span style="width:8px;height:8px;border-radius:50%;background:var(--pc)"></span>`:ic('folder',14)}Horizontal</span><span class="chip">${ic('clip',15)}2</span></div>`;
+}
+function sheetBody(d,lap){
+  const t=TODAY.find(r=>r.sel);
+  const meta=d==='B'
+   ?`<div class="sh-meta"><span class="key">HZ-142</span><span>·</span><span>Horizontal</span><span class="sp"></span>${lap?`<span class="ibtn">${ic('max',16)}</span><span class="ibtn">${ic('more',18,2.4)}</span><span class="ibtn">${ic('x',17)}</span>`:`<span class="ibtn">${ic('more',18,2.4)}</span>`}</div>`
+   :`<div class="sh-meta"><span>HZ-142</span><span class="sp"></span>${lap?`<span class="ibtn">${ic('max',16)}</span>`:''}<span class="ibtn">${ic('more',18,2.4)}</span>${lap?`<span class="ibtn">${ic('x',17)}</span>`:''}</div>`;
+  return `${meta}<div class="sh-title">${ck(t,1)}<h2>${t.t}</h2></div>${chips(d,lap)}${md(d)}`;
+}
+function phoneSheet(d){
+  return `<div class="device"><div class="screen">${statusBar()}${header(d)}<div class="list">${groups(d)}</div>${tabs(d)}
+   <div class="scrim"></div><div class="sheet" style="height:604px"><div class="grab"></div>${sheetBody(d)}</div></div></div>`;
+}
+
+/* ---------- laptop ---------- */
+function sidebar(d){
+  const nav=(icn,l,n,on,col)=>`<div class="nav${on?' on':''}">${d==='C'?`<span class="ico" style="background:color-mix(in srgb,${col} 18%,transparent);color:${col}">${ic(icn,14,2.1)}</span>`:`<span style="color:${on?(d==='B'?'var(--accent)':col):'currentColor'}">${ic(icn,16,on?2.2:1.9,icn==='star'&&on)}</span>`}<span>${l}</span><span class="n">${n}</span></div>`;
+  const prj=(p,n)=>`<div class="nav"><span class="dot" style="--pc:var(--p-${p})">${d==='C'?PJ[p].n[0]:''}</span><span>${PJ[p].n}</span><span class="n">${n}</span></div>`;
+  const me=d==='B'?`<div class="me"><span class="ws">H</span>Horizontal<span style="margin-left:auto;color:var(--ink-3)">${ic('down',14)}</span></div>`
+    :d==='C'?`<div class="me">Horizontal<span style="margin-left:auto"></span><span class="av" style="background:var(--p-tur)">IS</span></div>`
+    :`<div class="me"><span class="av" style="background:var(--p-tur)">IS</span>Ionuț S.<span style="margin-left:auto;color:var(--ink-3)">${ic('gear',16)}</span></div>`;
+  const kb=d==='B'?'<kbd>O</kbd>':'<kbd>Ctrl F</kbd>';
+  return `<aside class="side">${me}<div class="search">${ic('search',15)}Caută${kb}</div>
+   ${nav(d==='A'?'star':'sun','Azi',10,1,d==='A'?'var(--star)':'var(--accent)')}${nav('week','7 zile',17,0,'var(--p-tur)')}${nav('user','Ale mele',3,0,'var(--p-apo)')}${nav('inbox','Inbox',6,0,'var(--p-inbox)')}
+   <div class="lbl">Filtre</div>${nav('zap','Urgente',2,0,'var(--danger)')}${nav('hash','Pasate lui Alex',4,0,'var(--p-ex)')}
+   <div class="lbl">Proiecte</div>${prj('hz',23)}${prj('tur',9)}${prj('ex',4)}${prj('apo',12)}${prj('casa',6)}
+   <div class="foot"><div class="nav" style="flex:1;color:var(--ink-3)">${ic('plus',16)}<span>Proiect nou</span></div>${d==='B'?`<span class="ibtn">${ic('gear',16)}</span>`:''}</div></aside>`;
+}
+function mainCol(d){
+  let head;
+  if(d==='A') head=`<div class="mhd"><div class="hd-title"><span style="color:var(--star)">${ic('star',26,0,true)}</span><h1>Azi</h1><span class="cnt">10</span></div><div class="hd-sub">miercuri, 14 octombrie</div></div><div class="qa">${ic('plus',18,2.2)}Adaugă o sarcină — „mâine la 10 #turism”<kbd>C</kbd></div>`;
+  else if(d==='B') head=`<div class="mhd"><span style="color:var(--accent)">${ic('sun',16,2.2)}</span><h1>Azi</h1><span class="cnt">10</span><span class="crumb">· mie 14 oct</span><span class="sp"></span><span class="btn">${ic('filter',14,2)}Afișare</span><span class="btn pri">${ic('plus',14,2.4)}Sarcină<kbd>C</kbd></span></div><div class="seg"><span class="on">Toate <b>10</b></span><span>Urgente <b>2</b></span><span>Cu oră <b>3</b></span></div>`;
+  else head=`${hero()}<div class="qa">${ic('plus',18,2.2)}Adaugă o sarcină — „mâine la 10 #turism”<kbd>C</kbd></div>`;
+  return `<div class="lmain">${head}<div class="list">${groups(d,1)}</div></div>`;
+}
+function dock(d){
+  const t=TODAY.find(r=>r.sel);
+  const thread=`<div class="thread"><div class="th">Fir</div>
+   <div class="ev"><span class="av" style="background:var(--p-ex)">AL</span><div class="${d==='B'?'card':''}"><span class="who">Alex</span><span class="when">${d==='B'?'10:12':'azi, 10:12'}</span><div class="body">Am pus datele de probă în Inbox. Verifică te rog foaia rapidă pe telefon.</div></div></div>
+   <div class="hand">${ic('swap',14,2)}Alex ți-a pasat tichetul${d==='B'?' · 10:12':''}</div>
+   <div class="compose">Scrie un comentariu…<span class="pass">${ic('swap',13,2)}Pasează</span><span class="send">${ic('send',15,2)}</span></div></div>`;
+  if(d==='B') return `<aside class="dock"><div class="dh"><span style="color:var(--ink-2)">HZ-142</span><span class="sp"></span><span class="ibtn">${ic('max',15)}</span><span class="ibtn">${ic('more',17,2.4)}</span><span class="ibtn">${ic('x',16)}</span></div><div class="db">
+   <div class="sh-title">${ck(t,1)}<h2>${t.t}</h2></div>
+   <dl class="props"><dt>Scadență</dt><dd><span style="color:var(--accent)">${ic('cal',14)}</span>Azi <span class="m">16:00</span></dd><dt>Memento</dt><dd>${ic('bell',14)}<span class="m">15:30</span></dd><dt>Proiect</dt><dd><span style="width:8px;height:8px;border-radius:2px;background:var(--p-hz)"></span>Horizontal</dd><dt>Fișiere</dt><dd>${ic('clip',14)}<span class="m">2</span></dd></dl>
+   ${md(d)}${thread}</div></aside>`;
+  return `<aside class="dock">${sheetBody(d,1)}${thread}</aside>`;
+}
+function laptop(d){return `<div class="laptop"><div class="lscreen">${sidebar(d)}${mainCol(d)}${dock(d)}</div></div><div class="laptop-base"></div>`}
+
+/* ---------- jetoane ---------- */
+const TOK={
+ A:{name:'Senin',sub:'Things 3 · Todoist · Reminders',
+  desc:'Mult alb, sans-serif prietenos, iar culoarea apare doar unde poartă informație: fiecare proiect își are culoarea în bifă, în bulină și în sertar.',
+  light:[['#FFFFFF','bg'],['#F6F7F9','bg-2'],['#1A1C20','ink'],['#2F6BFF','accent'],['#E5484D','urgent'],['#F5B000','azi']],
+  dark:[['#141517','bg'],['#1E1F23','sheet'],['#EEEFF1','ink'],['#5B8DFF','accent'],['#FF6369','urgent'],['#FFC53D','azi']],
+  proj:[['#2F6BFF','Inbox'],['#F2600C','HZ'],['#0E9F8E','TUR'],['#D99A00','EX'],['#8B55D6','APO'],['#E5397B','CAS']],
+  type:[['Titlu 30/750','font:750 30px Inter;letter-spacing:-.025em','Azi'],['Grup 14/650','font:650 14px Inter','Restanțe'],['Corp 15/400','font:400 15px Inter','Pregătește demo pentru client'],['Meta 13/600','font:600 13px Inter;color:#565C66','10:30 · Horizontal']],
+  rad:[8,12,20],
+  why:'Cea mai sigură cale de la „1990” la „aplicație din 2026”: limbaj vizual pe care clientul îl recunoaște instant, fără să fie generic, fiindcă proiectele colorează lista.',
+  pros:[['+','Culoare cu rost, nu decor; se citește dintr-o privire ce e al cui.'],['+','Ambele teme la fel de solide; deschisă implicit.'],['−','Mai puțin „memorabilă” decât C; personalitatea vine din culorile proiectelor.']]},
+ B:{name:'Precizie',sub:'Linear · Raycast',
+  desc:'O unealtă: dens, crisp, ierarhie din greutate și majuscule mono. O singură culoare de brand vie (vermilion), restul sunt culori de stare.',
+  light:[['#FFFFFF','bg'],['#F7F7F8','bg-2'],['#0E0F11','ink'],['#E8461B','brand'],['#E5243B','urgent'],['#14A35F','ok']],
+  dark:[['#0C0D0F','bg'],['#15161A','sheet'],['#F1F2F4','ink'],['#FF5A2C','brand'],['#FF4F64','urgent'],['#35D08A','ok']],
+  proj:[['#8D96A8','D'],['#4E9BFF','HZ'],['#35D08A','TUR'],['#F5B53D','EX'],['#B58CFF','APO'],['#FF6EA8','CAS']],
+  type:[['Titlu 20/650','font:650 20px Geist;letter-spacing:-.02em','Azi'],['Etichetă 11.5 mono','font:600 11.5px \'Geist Mono\';letter-spacing:.07em;text-transform:uppercase','Restanțe · 2'],['Corp 15/450','font:450 15px Geist','Pregătește demo pentru client'],['Cifre mono 12.5','font:500 12.5px \'Geist Mono\'','HZ-142  16:00']],
+  rad:[5,7,12],
+  why:'Credibilitate de „unealtă serioasă” și cel mai bun mod întunecat; scurtăturile și ID-urile sunt la vedere, ca într-un instrument profesionist.',
+  pros:[['+','Cea mai mare densitate fără să pară înghesuită.'],['+','Tema întunecată e vedeta; ID-urile și orele în mono.'],['−','Pe telefon, ziua, poate părea rece — mai mult consolă decât agendă.']]},
+ C:{name:'Cald',sub:'Arc · Notion Calendar · Craft',
+  desc:'Neutre calde, un font de afiș cu caracter (Bricolage Grotesque) peste un sans curat (Figtree), blocuri de culoare și adâncime moale.',
+  light:[['#FAF6EF','bg'],['#FFFDF9','card'],['#2A241D','ink'],['#EB5A33','accent'],['#FFD772','azi'],['#D63E2A','urgent']],
+  dark:[['#191612','bg'],['#25211B','card'],['#F5EEE4','ink'],['#FF7A52','accent'],['#3B2F17','azi'],['#FF7360','urgent']],
+  proj:[['#3D7BF5','Inbox'],['#EB5A33','HZ'],['#18997F','TUR'],['#D99A12','EX'],['#7A5AD8','APO'],['#D9468A','CAS']],
+  type:[['Afiș 36/750','font:750 36px \'Bricolage Grotesque\';letter-spacing:-.03em','Azi'],['Grup 16/700','font:700 16px \'Bricolage Grotesque\'','Restanțe'],['Corp 15/500','font:500 15px Figtree','Pregătește demo pentru client'],['Meta 13/700','font:700 13px Figtree;color:#6C6256','10:30 · Turism']],
+  rad:[10,14,22],
+  why:'Cea mai multă bucurie la deschidere: „Azi” e un loc, nu un titlu. Riscul e ca personalitatea să obosească și să coste spațiu de listă.',
+  pros:[['+','Cea mai „caldă” și memorabilă; starea goală are ilustrație.'],['+','Grupurile pe carduri dau ordine fără linii.'],['−','Blocul „Azi” ia ~90px; pastilele colorate cer disciplină să nu devină zgomot.']]},
+};
+function tokCard(d){
+  const k=TOK[d];
+  const sw=(arr)=>`<div class="sw">${arr.map(([c,l])=>`<div style="background:${c}"><span>${l}</span></div>`).join('')}</div>`;
+  const empty=d==='C'?`<h3>Stare goală</h3><div class="mini" data-theme-scope><div class="empty" style="background:#FFFDF9;--soft:0 1px 2px rgba(80,55,20,.06),0 8px 24px -6px rgba(80,55,20,.12)">
+   <svg width="120" height="74" viewBox="0 0 120 74" style="margin:0 auto"><ellipse cx="60" cy="66" rx="46" ry="6" fill="#F2EBDF"/><path d="M20 62c4-18 18-30 40-30s36 12 40 30z" fill="#FFD772"/><circle cx="60" cy="40" r="11" fill="#FFC94A"/><g stroke="#FFC94A" stroke-width="4" stroke-linecap="round"><path d="M60 14v6M38 22l4 4M82 22l-4 4M30 40h6M84 40h6"/></g><path d="M50 52l7 6 13-14" fill="none" stroke="#18997F" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+   <h5 style="font-family:'Bricolage Grotesque';color:#2A241D">Gata pe azi.</h5><p style="font-family:Figtree;color:#6C6256">Ai bifat tot. Mâine ai 4 sarcini — prima la 09:00.</p></div></div>`:'';
+  return `<aside class="tok">
+   <h3>Paletă · deschisă</h3><div class="sw-row">${sw(k.light)}</div>
+   <h3>Paletă · închisă</h3><div class="sw-row">${sw(k.dark)}</div>
+   <h3>Culori de proiect</h3><div class="sw-row">${sw(k.proj)}</div>
+   <h3>Tipografie</h3><div class="ts">${k.type.map(([l,s,t])=>`<div><em>${l}</em><span style="${s}">${t}</span></div>`).join('')}</div>
+   <h3>Raze — trei, pe rol</h3><div class="rad">${k.rad.map((r,i)=>`<div style="width:${[44,58,76][i]}px;height:${[34,42,50][i]}px;border-radius:${r}px">${r}px</div>`).join('')}<div style="width:34px;height:34px;border-radius:50%">●</div></div>
+   <h3>De ce</h3><p class="why">${k.why}</p><div class="pros">${k.pros.map(([s,t])=>`<div class="${s==='−'?'con':''}"><b>${s}</b><span>${t}</span></div>`).join('')}</div>
+   ${empty}</aside>`;
+}
+
+function render(d){
+  const el=document.getElementById(d), k=TOK[d], th=el.dataset.theme;
+  el.innerHTML=`<div class="dir-head"><div><h2>${d} · ${k.name}<small>${k.sub}</small></h2><p>${k.desc}</p></div>
+   <div class="theme-tg"><button data-t="light" aria-pressed="${th==='light'}">${ic('sun',14,2)}Deschisă</button><button data-t="dark" aria-pressed="${th==='dark'}">${ic('moon',14,2)}Închisă</button></div></div>
+   <div class="stage"><div><div class="cap">Telefon · Azi</div>${phoneList(d)}</div><div><div class="cap">Telefon · foaia de tichet</div>${phoneSheet(d)}</div>${tokCard(d)}</div>
+   <div class="laptop-wrap"><div class="cap">Laptop · 1280 × 800 · listă + panou lateral</div>${laptop(d)}</div>`;
+  el.querySelectorAll('.theme-tg button').forEach(b=>b.onclick=()=>{el.dataset.theme=b.dataset.t;render(d)});
+}
+['A','B','C'].forEach(render);
+
+function go(id){
+  document.querySelectorAll('.switch button').forEach(b=>b.setAttribute('aria-selected',b.dataset.go===id));
+  if(id==='rec'){document.getElementById('rec').scrollIntoView({behavior:'smooth'});return}
+  document.querySelectorAll('.dir').forEach(s=>s.classList.toggle('on',s.id===id));
+}
+document.querySelectorAll('.switch button').forEach(b=>b.onclick=()=>go(b.dataset.go));
+const h=location.hash.slice(1); if(h){ const [id,t]=h.split('-'); if(t){document.getElementById(id).dataset.theme=t;render(id)} if(id) go(id) }
+</script>
+</body>
+</html>

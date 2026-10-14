@@ -185,6 +185,7 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, rich = false,
           onKeyDown={onKey('title')}
           suggestions={{ projects, people: assignees, placement: rich ? 'flow' : 'below' }}
         />
+        {!rich && !focus && !text && <kbd className="qa-kbd">C</kbd>}
       </div>
 
       {descOpen && (

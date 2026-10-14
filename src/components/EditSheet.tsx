@@ -15,6 +15,7 @@ import type { EditorHandle } from './MarkdownEditor'
 import { FormatBar } from './FormatBar'
 import { AttachButton, ThumbRow, attachBlocked, useTicketFiles } from './SheetFiles'
 import { ProjectMark } from './ProjectMark'
+import { displayIssueId } from '../lib/issueId'
 
 /** Ce se editează din foaie — exact câmpurile pe care le poate trimite. */
 type EditFields = {
@@ -167,10 +168,12 @@ function EditBody({ issue }: { issue: Issue }) {
   return (
     <KeyboardSheet onClose={closeSheet} label={`Sarcina ${issue.id}`} className={`edit-sheet ${issue.done ? 'done' : ''}`}>
       <div className="qs-form">
+        <div className="es-meta">{displayIssueId(issue.id)}</div>
         <div className="es-head">
           <button
             type="button"
             className={`es-check ${issue.done ? 'on' : ''}`}
+            style={project?.accent ? ({ ['--pc' as string]: project.accent }) : undefined}
             role="checkbox"
             aria-checked={issue.done}
             aria-label={issue.done ? 'Marchează nefăcut' : 'Marchează gata'}
@@ -178,7 +181,9 @@ function EditBody({ issue }: { issue: Issue }) {
             onPointerDown={keepFocus}
             onClick={toggle}
           >
-            <Icon name={issue.done ? 'done' : 'notDone'} size={20} />
+            <span className={`ck${issue.done ? ' on' : ''}${d.urgent && !issue.done ? ' urg' : ''}`}>
+              {issue.done && <Icon name="check" size={13} />}
+            </span>
           </button>
           <EditTitle
             date={date}
@@ -193,48 +198,9 @@ function EditBody({ issue }: { issue: Issue }) {
             }}
           />
         </div>
-        <ThumbRow files={files} canDelete={canWrite} onError={showToast} issueId={issue.id} title={d.title} />
-        <DescField
-          ref={descRef}
-          className="es-desc"
-          value={d.desc}
-          readOnly={!canWrite}
-          placeholder={canWrite ? 'Descriere' : ''}
-          ariaLabel="Descrierea sarcinii"
-          prefixes={prefixes}
-          onRef={openRef}
-          onChange={(desc) => a.type({ desc })}
-          onCommit={(desc) => void a.commit({ desc })}
-          onFocus={() => setDescFocus(true)}
-          onBlur={() => { setDescFocus(false); void a.flush() }}
-        />
-
-        <p className={`qs-status ${status ? 'warn' : ''}`} role="status">{status}</p>
-
-        {whenOpen && canWrite && (
-          <div className="qs-when">
-            <Icon name="due" size={14} />
-            <input
-              type="date"
-              aria-label="Ziua"
-              value={d.dueAt ? toDateInput(d.dueAt) : ''}
-              onChange={(e) => setDue(e.target.value, d.dueAt && !d.allDay ? toTimeInput(d.dueAt) : '')}
-            />
-            <input
-              type="time"
-              aria-label="Ora"
-              value={d.dueAt && !d.allDay ? toTimeInput(d.dueAt) : ''}
-              onChange={(e) => setDue(d.dueAt ? toDateInput(d.dueAt) : toDateInput(new Date().toISOString()), e.target.value)}
-            />
-            {d.dueAt && (
-              <button type="button" className="qs-clear" onPointerDown={keepFocus} onClick={() => setDue('', '')}>
-                fără dată
-              </button>
-            )}
-          </div>
-        )}
-
-        {descFocus && canWrite && <FormatBar onFormat={(c) => descRef.current?.format(c)} />}
+        {/* Sub titlu, nu jos: foaia asta se deschide ca să citești, deci ziua și
+            proiectul se văd odată cu titlul, chiar și peste o descriere lungă.
+            Jos, cât scrii, e locul barei de formatare („Senin", 2026-10-14). */}
         <div className="qs-bar">
           <button
             type="button"
@@ -263,7 +229,7 @@ function EditBody({ issue }: { issue: Issue }) {
           {/* Proiectul unui tichet existent nu se schimbă: ID-ul îi poartă
               prefixul, iar valul și dependențele sunt ale proiectului. */}
           {project && (
-            <span className="qs-sel qs-proj" title={project.name}>
+            <span className="qs-sel qs-proj tinted" title={project.name} style={project.accent ? ({ ['--pc' as string]: project.accent }) : undefined}>
               <ProjectMark project={project} dot="t-dot" />
               <span className="qs-sel-t">{project.name}</span>
             </span>
@@ -301,6 +267,48 @@ function EditBody({ issue }: { issue: Issue }) {
             <Icon name="more" size={16} />
           </button>
         </div>
+        <p className={`qs-status ${status ? 'warn' : ''}`} role="status">{status}</p>
+
+        {whenOpen && canWrite && (
+          <div className="qs-when">
+            <Icon name="due" size={14} />
+            <input
+              type="date"
+              aria-label="Ziua"
+              value={d.dueAt ? toDateInput(d.dueAt) : ''}
+              onChange={(e) => setDue(e.target.value, d.dueAt && !d.allDay ? toTimeInput(d.dueAt) : '')}
+            />
+            <input
+              type="time"
+              aria-label="Ora"
+              value={d.dueAt && !d.allDay ? toTimeInput(d.dueAt) : ''}
+              onChange={(e) => setDue(d.dueAt ? toDateInput(d.dueAt) : toDateInput(new Date().toISOString()), e.target.value)}
+            />
+            {d.dueAt && (
+              <button type="button" className="qs-clear" onPointerDown={keepFocus} onClick={() => setDue('', '')}>
+                fără dată
+              </button>
+            )}
+          </div>
+        )}
+
+        <ThumbRow files={files} canDelete={canWrite} onError={showToast} issueId={issue.id} title={d.title} />
+        <DescField
+          ref={descRef}
+          className="es-desc"
+          value={d.desc}
+          readOnly={!canWrite}
+          placeholder={canWrite ? 'Descriere' : ''}
+          ariaLabel="Descrierea sarcinii"
+          prefixes={prefixes}
+          onRef={openRef}
+          onChange={(desc) => a.type({ desc })}
+          onCommit={(desc) => void a.commit({ desc })}
+          onFocus={() => setDescFocus(true)}
+          onBlur={() => { setDescFocus(false); void a.flush() }}
+        />
+
+        {descFocus && canWrite && <FormatBar onFormat={(c) => descRef.current?.format(c)} />}
       </div>
     </KeyboardSheet>
   )

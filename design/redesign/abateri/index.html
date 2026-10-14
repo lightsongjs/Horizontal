@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Abateri de la machetă</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;750&display=swap">
+<style>
+  :root { --bg:#F6F7F9; --card:#fff; --ink:#1A1C20; --ink2:#565C66; --ink3:#868C96; --red:#E5484D; --blue:#2F6BFF; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:Inter,system-ui,sans-serif; }
+  main { max-width:980px; margin:0 auto; padding:24px 16px 60px; }
+  h1 { font-size:26px; font-weight:750; letter-spacing:-.02em; margin:0 0 6px; }
+  .lead { color:var(--ink2); margin:0 0 28px; line-height:1.5; }
+  section { background:var(--card); border-radius:20px; padding:20px; margin-bottom:20px; box-shadow:0 1px 2px rgba(16,24,40,.05),0 6px 20px rgba(16,24,40,.07); }
+  h2 { font-size:18px; margin:0 0 6px; }
+  p { margin:0 0 10px; line-height:1.55; color:var(--ink2); }
+  p b { color:var(--ink); }
+  .who { display:inline-block; font-size:12.5px; font-weight:600; padding:3px 8px; border-radius:8px; margin-bottom:12px; }
+  .who.me { background:#FDEEEE; color:var(--red); }
+  .who.des { background:#EBF1FF; color:var(--blue); }
+  .pair { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:12px; }
+  figure { margin:0; }
+  figcaption { font-size:13px; font-weight:600; color:var(--ink3); margin-bottom:6px; }
+  img { width:100%; height:auto; border-radius:12px; display:block; background:#eee; }
+  @media (max-width:600px) { .pair { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<main>
+
+  <section id="doua-ferestre">
+    <h2>Punctul 2, lămurit: sunt DOUĂ ferestre diferite</h2>
+    <p>Pe telefon, de jos urcă două ferestre care seamănă, dar fac lucruri diferite:</p>
+    <p><b>A. Fereastra de sarcină</b> — apare când <b>atingi o sarcină care există deja</b> în listă. O deschizi ca s-o citești sau s-o modifici.</p>
+    <p><b>B. Fereastra de adăugare</b> — apare când apeși <b>butonul albastru +</b>. O deschizi ca să scrii o sarcină nouă.</p>
+    <p>Acum, în amândouă, rândul de butoane (data, proiectul, agrafa) e <b>jos</b> (încercuit). Propunerea mea: <b>în A îl mut sus, sub titlu</b> (acolo citești — vezi data imediat, chiar și la o descriere lungă); <b>în B rămâne jos</b> (acolo scrii — întâi titlul, apoi alegi data, cu degetul lângă tastatură).</p>
+    <div class="pair">
+      <figure><figcaption>A. Fereastra de sarcină — propun: rândul urcă sub titlu</figcaption><img src="w-sheet.png" alt=""></figure>
+      <figure><figcaption>B. Fereastra de adăugare (+) — propun: rămâne jos</figcaption><img src="w-quick.png" alt=""></figure>
+    </div>
+  </section>
+  <h1>Unde aplicația nu e identică cu macheta</h1>
+  <p class="lead">Patru locuri. În fiecare: stânga = macheta pe care ai aprobat-o, dreapta = aplicația acum. Zona despre care e vorba e încercuită cu roșu. Eticheta spune cine a decis abaterea.</p>
+
+  <section>
+    <h2>1. Liniuța gri de deasupra ferestrei de sarcină (telefon)</h2>
+    <span class="who me">Decizia mea, nu a designerului</span>
+    <p>Când atingi o sarcină pe telefon, de jos urcă o fereastră. În machetă, sus pe ea e o <b>liniuță gri scurtă</b>. Pe telefoane, liniuța asta înseamnă de obicei „trage-mă în jos ca să mă închizi”. La noi fereastra nu se închide trăgând-o (se închide atingând zona întunecată de deasupra), așa că n-am pus-o. <b>Se poate face și tragerea</b>, dacă o vrei.</p>
+    <div class="pair">
+      <figure><figcaption>Macheta</figcaption><img src="m-handle.png" alt=""></figure>
+      <figure><figcaption>Aplicația</figcaption><img src="a-handle.png" alt=""></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>2. Rândul de butoane din fereastra de sarcină (telefon)</h2>
+    <span class="who me">Decizia mea, nu a designerului</span>
+    <p>Butoanele „Azi 16:00”, proiectul, agrafa etc. stau în machetă <b>imediat sub titlu</b>. În aplicație au rămas <b>jos</b>, sub descriere — așa erau și înainte de redesign: când scrii, tastatura urcă și ele stau chiar deasupra ei. Le pot muta sub titlu ca în machetă.</p>
+    <div class="pair">
+      <figure><figcaption>Macheta</figcaption><img src="m-chips.png" alt=""></figure>
+      <figure><figcaption>Aplicația</figcaption><img src="a-chips.png" alt=""></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>3. Fontul orelor (și al ID-urilor ca „HZ-12”)</h2>
+    <span class="who des">Recomandarea designerului — nu ta, am greșit când am zis că ai ales-o tu</span>
+    <p>În machetă ora „09:30” e scrisă cu același font ca restul. În aplicație e scrisă cu un <b>font de tip mașină de scris</b> (cifrele au toate aceeași lățime). Designerul a recomandat asta când a propus varianta A, dar <b>macheta însăși nu arată așa</b> — de-aici confuzia. Pot trece orele pe fontul obișnuit, ca în machetă.</p>
+    <div class="pair">
+      <figure><figcaption>Macheta</figcaption><img src="m-time.png" alt=""></figure>
+      <figure><figcaption>Aplicația</figcaption><img src="a-time.png" alt=""></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>4. Numărul de lângă proiect (bara din stânga, laptop)</h2>
+    <span class="who me">Decizia mea, nu a designerului</span>
+    <p>În machetă, lângă fiecare proiect e <b>câte sarcini deschise are</b> („23”, „9”). În aplicație e <b>cât la sută e terminat</b> („7%”), cum era și înainte. Pot pune numărul de sarcini, ca în machetă.</p>
+    <div class="pair">
+      <figure><figcaption>Macheta</figcaption><img src="m-side.png" alt=""></figure>
+      <figure><figcaption>Aplicația</figcaption><img src="a-side.png" alt=""></figure>
+    </div>
+  </section>
+</main>
+</body>
+</html>

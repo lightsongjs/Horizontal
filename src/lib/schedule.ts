@@ -323,6 +323,13 @@ export function toShortDate(d: Date | string): string {
   return `${pad(x.getDate())}/${pad(x.getMonth() + 1)}`
 }
 
+const MON_SHORT = ['ian', 'feb', 'mar', 'apr', 'mai', 'iun', 'iul', 'aug', 'sep', 'oct', 'noi', 'dec']
+/** „11 oct" — ziua ratată din coada unui rând: se citește, nu se decodează. */
+export function toDayMonth(d: Date | string): string {
+  const x = typeof d === 'string' ? new Date(d) : d
+  return `${x.getDate()} ${MON_SHORT[x.getMonth()]}`
+}
+
 /** `aaaa-ll-zz` (valoarea unui input nativ de dată) → `zz/ll/aaaa`. */
 export function displayFromInputDate(value: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)

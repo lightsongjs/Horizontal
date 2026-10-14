@@ -23,7 +23,7 @@ interface Props {
 
 const same = sameTarget
 
-const initialsOf = (name: string) =>
+export const initialsOf = (name: string) =>
   name.split(/[\s@._-]+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toLocaleUpperCase('ro-RO') || '?'
 
 interface RowProps {
@@ -125,7 +125,7 @@ export function Drawer({ current, onPick, onClose, onSettings, onNewProject, onF
           )}
 
           <div className="dr-group">
-            <Row icon={<Icon name="today" size={19} />} label="Azi" on={same(current, { kind: 'screen', screen: 'today' })}
+            <Row icon={<span className="today"><Icon name="today" size={19} /></span>} label="Azi" on={same(current, { kind: 'screen', screen: 'today' })}
               onClick={() => go({ kind: 'screen', screen: 'today' })} onMenu={openMenu}
               count={smartLists.today.length} late={smartLists.overdue.length} />
             <Row icon={<Icon name="list" size={19} />} label="7 zile" on={same(current, { kind: 'screen', screen: 'week' })}

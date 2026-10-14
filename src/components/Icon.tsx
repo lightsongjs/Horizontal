@@ -27,7 +27,6 @@ import {
   ListIndentIncrease,
   Sun,
   Users,
-  CalendarDays,
   FileArchive,
   FileCode,
   FileText,
@@ -162,7 +161,8 @@ const ICONS = {
   checkAll: CheckCheck,
   themeDark: Moon,
   themeLight: Sun,
-  today: CalendarDays,
+  today: Star,
+  overdue: Clock,
   tomorrow: CalendarClock,
   due: CalendarCheck,
   /** Ora unei scadențe (glisarea „Oră”): ceasul sistemului. */

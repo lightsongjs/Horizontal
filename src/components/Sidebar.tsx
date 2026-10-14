@@ -12,6 +12,7 @@ import { getAndroidBridge } from '../lib/androidBridge'
 import { ProjectMark } from './ProjectMark'
 import { livePins, type PinKind } from '../lib/pins'
 import { PinGlyph, PinMenu, pinLabel, pinTarget, type MenuTarget } from './NavMenu'
+import { initialsOf } from './Drawer'
 
 function getBuildAgo(): string {
   const diff = Math.floor((Date.now() - new Date(__BUILD_TIME__).getTime()) / 1000)
@@ -40,10 +41,12 @@ interface SidebarProps {
   onFilter?: (id: string) => void
   /** „+" de la titlul „Filtre" (fără id) și „Editează" din meniul unui filtru. */
   onFilterForm?: (id?: string) => void
+  /** Câmpul „Caută” din capul barei (aceeași căutare ca O / Ctrl+F). */
+  onSearch?: () => void
 }
 
-export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNavigate, smartList = null, onSmartList, inboxActive = false, inboxUnread = 0, inboxTotal = 0, onInbox, filterId = null, onFilter, onFilterForm }: SidebarProps = {}) {
-  const { projects, project, completion, selectProject, reorderProjects, smartLists, reportError, pins, savedFilters, filterCounts } = useHorizontal()
+export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNavigate, smartList = null, onSmartList, inboxActive = false, inboxUnread = 0, inboxTotal = 0, onInbox, filterId = null, onFilter, onFilterForm, onSearch }: SidebarProps = {}) {
+  const { projects, project, openCountByProject, selectProject, reorderProjects, smartLists, reportError, pins, savedFilters, filterCounts, assignees, myAssigneeId } = useHorizontal()
   // Meniul de fixare: click dreapta pe un rând, sau ⋮ pe rândul de proiect.
   const [menu, setMenu] = useState<MenuTarget | null>(null)
   const menuAt = (kind: PinKind, ref: string, label: string) => (e: React.MouseEvent) => {
@@ -58,7 +61,8 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
   // Navigate away from any overlay (e.g. Users) then select a project.
   const goToProject = (id: string | null) => { onNavigate?.(); selectProject(id) }
   const { openNewProject, openNewIssue, openAppSettings } = useUI()
-  const { enabled, signOut } = useAuth()
+  const { enabled, signOut, session } = useAuth()
+  const who = assignees.find((a) => a.id === myAssigneeId)?.name ?? session?.user.email ?? 'Local'
   const onSignOut = async () => {
     const st = repository.sync?.status() ?? { offline: false, pending: 0 }
     const offline = st.offline || navigator.onLine === false
@@ -125,13 +129,22 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
 
   return (
     <aside className="sidebar">
-      <div className="sidebar-brand">
-        <div className="logo">H</div>
-        <div className="sidebar-brand-txt">
-          <span className="sidebar-app-name">Horizontal</span>
-          <span style={{ display: 'block', fontSize: 'calc(9px * var(--text-scale))', color: 'var(--txt-dim)', opacity: 0.6, lineHeight: 1.4 }}>Built: {getBuildAgo()}</span>
-        </div>
+      {/* Cine ești, apoi căutarea — ca în sertarul de pe telefon. Data
+          buildului a trecut în `title`: e pentru depanare, nu pentru ochi. */}
+      <div className="sidebar-me" title={`Built: ${getBuildAgo()}`}>
+        <span className="dr-avatar" aria-hidden="true">{initialsOf(who)}</span>
+        <span className="sidebar-me-name">{who}</span>
+        <button className="sidebar-theme-btn" onClick={openAppSettings} aria-label="Setări" title="Setări">
+          <Icon name="settingsApp" size={16} />
+        </button>
       </div>
+      {onSearch && (
+        <button className="sidebar-search" onClick={onSearch}>
+          <Icon name="search" size={15} />
+          <span>Caută</span>
+          <kbd>Ctrl F</kbd>
+        </button>
+      )}
 
       <button
         className={`sidebar-nav-item ${!project && !showUsers && !smartList && !offProject ? 'on' : ''}`}
@@ -193,8 +206,6 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
         </>
       )}
 
-      <div className="sidebar-section-label">Sarcini</div>
-
       {SMART_LISTS.map(({ kind, label, icon }) => (
         <button
           key={kind}
@@ -202,7 +213,7 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
           onClick={() => onSmartList?.(kind)}
           onContextMenu={kind === 'week' ? menuAt('list', 'week', '7 zile') : undefined}
         >
-          <span className="sidebar-nav-icon"><Icon name={icon} size={17} /></span>
+          <span className={`sidebar-nav-icon ${icon}`}><Icon name={icon} size={17} /></span>
           <span>{label}</span>
           {/* Restanțele nu au rând propriu: ar fi un rând gol în ziua bună.
               Trăiesc ca badge pe „Azi", fiindcă sunt o problemă de azi. */}
@@ -252,12 +263,9 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
 
       <div className="sidebar-section-label">Proiecte</div>
 
-      <div style={{ display: 'flex', gap: 4, margin: '6px 0 2px', padding: '0 2px' }}>
+      <div className="sidebar-seg" role="tablist">
         {(['all', 'personal', 'work'] as const).map((f) => (
-          <button key={f} onClick={() => setFilter(f)}
-            style={{ flex: 1, fontSize: 'calc(10px * var(--text-scale))', padding: '3px 0', borderRadius: 5, border: '1px solid var(--line-soft)',
-              background: filter === f ? 'var(--accent)' : 'transparent',
-              color: filter === f ? '#fff' : 'var(--txt-dim)', cursor: 'pointer', fontWeight: filter === f ? 600 : 400 }}>
+          <button key={f} role="tab" aria-selected={filter === f} className={filter === f ? 'on' : ''} onClick={() => setFilter(f)}>
             {f === 'all' ? 'Toate' : f === 'personal' ? 'Personal' : 'Serviciu'}
           </button>
         ))}
@@ -265,7 +273,7 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
 
       <div className="sidebar-proj-list">
         {visibleProjects.map((p) => {
-          const pct = Math.round(completion(p.id) * 100)
+          const open = openCountByProject[p.id] ?? 0
           const isActive = project?.id === p.id
           return (
             <div
@@ -301,7 +309,8 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
               <button className="sidebar-proj-btn" onClick={() => goToProject(p.id)}>
                 <ProjectMark project={p} dot="sidebar-proj-dot" size={14} />
                 <span className="sidebar-proj-name">{p.name}</span>
-                <span className="sidebar-proj-pct">{pct}%</span>
+                {/* Câte sarcini deschise are — procentul de gata nu ajuta la nimic aici. */}
+                {open > 0 && <span className="sidebar-proj-pct">{open}</span>}
               </button>
               <button
                 type="button"
@@ -332,9 +341,6 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
             {projectChrome ? 'Tichet nou' : 'Proiect nou'}
           </button>
         )}
-        <button className="sidebar-theme-btn" onClick={openAppSettings} aria-label="Setări" title="Setări">
-          <Icon name="settingsApp" size={15} />
-        </button>
         {enabled && (
           <button className="sidebar-theme-btn" onClick={() => void onSignOut().catch((e) => reportError(e instanceof Error ? e.message : String(e)))} aria-label="Deconectare" title="Deconectare">
             <Icon name="logout" size={15} />
