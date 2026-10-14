@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from 'vitest'
 import fixtures from './agenda.fixtures.json'
-import { buildSmartLists, NO_SCHEDULE } from './schedule'
+import { buildSmartLists, NO_SCHEDULE, SMART_LIST_DAYS } from './schedule'
 import { agendaItems, AGENDA_LIMIT } from './agenda'
 import type { Issue } from './types'
 
@@ -21,7 +21,11 @@ describe('agenda — fixtures comune cu Kotlin', () => {
       const lists = buildSmartLists(items, new Date(f.now), new Set(['rut']))
       const got: unknown[] = []
       if (lists.overdue.length) got.push({ section: 'overdue', ids: lists.overdue.map((i) => i.id) })
-      lists.week.forEach((d, offset) => { if (d.issues.length) got.push({ section: 'day', offset, ids: d.issues.map((i) => i.id) }) })
+      // Widget-ul arată azi + zilele 1..6 (`SMART_LIST_DAYS`); lista „7 zile" din
+      // aplicație începe de mâine și ține până la +7, deci azi vine din `today`,
+      // iar ziua +7 nu e a widget-ului.
+      const days = [{ offset: 0, issues: lists.today }, ...lists.week.filter((d) => d.offset < SMART_LIST_DAYS)]
+      days.forEach(({ offset, issues }) => { if (issues.length) got.push({ section: 'day', offset, ids: issues.map((i) => i.id) }) })
       expect(got).toEqual(f.want)
     })
   }

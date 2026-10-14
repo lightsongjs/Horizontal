@@ -275,9 +275,21 @@ const supabase = createClient(
 
 Pe lângă proiecte cu layere și valuri, aplicația e și listă de sarcini: un tichet
 poate avea **scadență** (`due_at`, `all_day`, `remind_at`), iar listele
-inteligente **Azi / Mâine / Next 7 days** taie transversal toate proiectele.
+inteligente **Azi / 7 zile** taie transversal toate proiectele.
 Decizii și de-ce-uri: `docs/superpowers/brainstorm/2026-08-24-mod-todo.md`.
 Mockup vizual: `prototype-todo.html`.
+
+**„7 zile" începe de MÂINE** (decizia omului + designer, 2026-10-14): zilele
++1..+7 (`WEEK_FIRST_OFFSET`/`WEEK_LAST_OFFSET`, `buildSmartLists`), iar azi și
+restanțele stau numai în „Azi" — nimic nu apare în ambele liste, deci nici nu
+se numără de două ori. Lista „Mâine" a dispărut (era primul grup din „7 zile"
+încă o dată); o stare veche `'tomorrow'` (`LAST_VIEW_KEY`, `hzScreen`) se
+citește ca `'week'` (`toScreen` din `App.tsx`). Captura din „7 zile" primește
+mâine (`smartListDueAt`), altfel ar dispărea din lista în care ai scris-o.
+Fetch-ul (`smartListRange`) cere până la începutul zilei +8, exclusiv.
+**Widget-ul și filtrele salvate NU s-au mutat:** ele rămân pe azi + 6
+(`SMART_LIST_DAYS`), fiindcă widget-ul își grupează singur rândurile în
+`core/Agenda.kt` (APK) și le arată pe toate într-o singură listă.
 
 **Inbox e doar un proiect.** Fiecare sarcină are în continuare un proiect; Inbox
 (fost „✅Daily", id `d`) e cel în care cade o captură fără proiect ales — din
@@ -1473,7 +1485,7 @@ voie să piardă un memento.
 
 ## Google Calendar (etapa 1: doar citire)
 
-Evenimentele conturilor Google legate apar în „Azi", „Mâine" și „7 zile"
+Evenimentele conturilor Google legate apar în „Azi" și „7 zile"
 (NU în ecranul unui filtru și NU în numerele din sertar), amestecate pe oră
 printre sarcini, și sună de două ori: cu 10 minute înainte și la start. Pașii
 omului (proiect GCP, client OAuth, secrete): `docs/google-calendar-setup.md`.

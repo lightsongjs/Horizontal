@@ -1,4 +1,4 @@
-// Evenimentele din Google Calendar în listele de zi („Azi", „Mâine", „7 zile")
+// Evenimentele din Google Calendar în listele de zi („Azi", „7 zile")
 // — pur, testat pe fixtures, ca `schedule.ts`. Nimic de aici nu e o sarcină:
 // un eveniment nu se bifează, nu se glisează, nu se numără în sertar. Stă doar
 // lângă sarcini, la ora lui, ca ziua să se citească într-un singur loc.

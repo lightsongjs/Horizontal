@@ -127,7 +127,6 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
   }
   const counts: Record<SmartListKind, number> = {
     today: smartLists.today.filter((i) => inFilter(i.projectId)).length,
-    tomorrow: smartLists.tomorrow.filter((i) => inFilter(i.projectId)).length,
     week: smartLists.week.reduce((n, d) => n + d.issues.filter((i) => inFilter(i.projectId)).length, 0),
   }
   const overdueCount = smartLists.overdue.filter((i) => inFilter(i.projectId)).length

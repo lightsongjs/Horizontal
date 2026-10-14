@@ -4,7 +4,7 @@ import { useUI } from '../ui'
 import { PushToggle } from './PushToggle'
 import { QuickAdd } from './QuickAdd'
 import { TaskRow } from './TaskRow'
-import { addDays, startOfLocalDay, toShortDate } from '../lib/schedule'
+import { addDays, startOfLocalDay, toShortDate, WEEK_FIRST_OFFSET } from '../lib/schedule'
 import type { Issue } from '../lib/types'
 import { Icon, type IconName } from './Icon'
 import { SplitView } from './SplitView'
@@ -14,29 +14,33 @@ import { useCalendar } from '../calendar'
 import { eventsOn, mergeDay, type DayEvents } from '../lib/calendarEvents'
 import { EventBand, EventRow } from './EventRow'
 
-export type SmartListKind = 'today' | 'tomorrow' | 'week'
+/**
+ * „Mâine" nu mai e o listă (2026-10-14): „7 zile" începe de mâine, deci o
+ * listă separată ar fi fost primul grup din „7 zile" încă o dată. O stare
+ * veche `'tomorrow'` (ultima vizualizare, `hzScreen`) se citește ca `'week'`
+ * — vezi `isScreen` din `App.tsx`.
+ */
+export type SmartListKind = 'today' | 'week'
 
 export const SMART_LISTS: { kind: SmartListKind; label: string; icon: IconName }[] = [
   { kind: 'today', label: 'Azi', icon: 'today' },
-  { kind: 'tomorrow', label: 'Mâine', icon: 'tomorrow' },
   { kind: 'week', label: '7 zile', icon: 'list' },
 ]
 
 /**
- * Scadența implicită a unei sarcini adăugate din listă: ziua listei. În
- * „Next 7 days" nu există o zi anume, deci azi. Comună rândului de captură și
+ * Scadența implicită a unei sarcini adăugate din listă: ziua în care apare.
+ * „Azi" → azi; „7 zile" începe de mâine, deci mâine — altfel captura ar
+ * dispărea din lista în care tocmai ai scris-o. Comună rândului de captură și
  * foii rapide deschise din FAB.
  */
 export function smartListDueAt(kind: SmartListKind, now = new Date()): string {
   const today = startOfLocalDay(now)
-  return (kind === 'tomorrow' ? addDays(today, 1) : today).toISOString()
+  return (kind === 'week' ? addDays(today, WEEK_FIRST_OFFSET) : today).toISOString()
 }
 
 const DAYS_FULL = ['duminică', 'luni', 'marți', 'miercuri', 'joi', 'vineri', 'sâmbătă']
-const MON_FULL = ['ianuarie', 'februarie', 'martie', 'aprilie', 'mai', 'iunie', 'iulie', 'august', 'septembrie', 'octombrie', 'noiembrie', 'decembrie']
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
-const longDate = (d: Date) => `${DAYS_FULL[d.getDay()]}, ${d.getDate()} ${MON_FULL[d.getMonth()]}`
 
 interface GroupProps {
   label: string
@@ -133,7 +137,6 @@ export function SmartListView({ kind, onOpenTask, focusSignal = 0 }: Props) {
   // Rândurile de pe ecran, pentru „Toate" din antetul selecției.
   const visible = kind === 'today'
     ? [...smartLists.overdue, ...smartLists.today, ...(showDone ? smartLists.doneToday : [])]
-    : kind === 'tomorrow' ? smartLists.tomorrow
     : smartLists.week.flatMap((d) => d.issues)
   const visibleKey = visible.map((i) => i.id).join(',')
   const { setVisible, exitSelectMode } = ta
@@ -185,25 +188,12 @@ export function SmartListView({ kind, onOpenTask, focusSignal = 0 }: Props) {
           </>
         )}
 
-        {kind === 'tomorrow' && (
-          <Group
-            label="Mâine"
-            date={longDate(addDays(today, 1))}
-            issues={smartLists.tomorrow}
-            color="var(--active)"
-            onOpen={onOpenTask}
-            empty="Mâine e liber. Deocamdată."
-            events={eventsFor(addDays(today, 1))}
-          />
-        )}
-
         {kind === 'week' && smartLists.week.map(({ offset, date, issues }) => (
           <Group
             key={offset}
-            label={offset === 0 ? 'Azi' : offset === 1 ? 'Mâine' : cap(DAYS_FULL[date.getDay()])}
+            label={offset === 1 ? 'Mâine' : cap(DAYS_FULL[date.getDay()])}
             date={toShortDate(date)}
             issues={issues}
-            icon={offset === 0 ? 'today' : undefined}
             onOpen={onOpenTask}
             empty="—"
             events={eventsFor(date)}

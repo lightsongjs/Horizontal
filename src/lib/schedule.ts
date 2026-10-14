@@ -63,19 +63,32 @@ export function isOverdue(issue: Pick<Issue, 'dueAt' | 'allDay' | 'done'>, now: 
 
 /**
  * Fereastra pe care o cere aplicația de la depozit: tot ce e nefinalizat cu
- * scadență înainte de sfârșitul zilei a șaptea, plus bifatele de azi încolo.
- * O singură interogare hrănește toate cele trei liste și numerele din sidebar.
+ * scadență înainte de sfârșitul ultimei zile din „7 zile" (azi + 7, deci `to`
+ * = începutul zilei a opta, exclusiv), plus bifatele de azi încolo.
+ * O singură interogare hrănește „Azi", „7 zile" și numerele din sidebar.
  */
 export function smartListRange(now: Date): DueRange {
   const today = startOfLocalDay(now)
   return {
-    to: addDays(today, SMART_LIST_DAYS).toISOString(),
+    to: addDays(today, WEEK_LAST_OFFSET + 1).toISOString(),
     doneFrom: today.toISOString(),
   }
 }
 
-/** „Next 7 days" = azi + următoarele șase. */
+/**
+ * Fereastra de 7 zile a widget-ului (`agenda.ts`) și a filtrelor salvate
+ * („în 7 zile" = azi + următoarele șase). NU e fereastra listei „7 zile" din
+ * aplicație — aceea începe de mâine (`WEEK_FIRST_OFFSET`..`WEEK_LAST_OFFSET`).
+ * Widget-ul are propria grupare în `core/Agenda.kt`, cu fixtures comune.
+ */
 export const SMART_LIST_DAYS = 7
+
+/**
+ * Lista „7 zile" = mâine + următoarele șase: zilele +1..+7 (decizia omului,
+ * 2026-10-14). Azi și restanțele stau în „Azi", nu se repetă aici.
+ */
+export const WEEK_FIRST_OFFSET = 1
+export const WEEK_LAST_OFFSET = 7
 
 /**
  * Ordinea unui grup din „Azi" / „7 zile" (și din Restanțe):
@@ -113,19 +126,21 @@ export interface SmartLists {
   overdue: Issue[]
   /** Nefinalizate cu scadență azi. */
   today: Issue[]
-  /** Nefinalizate cu scadență mâine. */
-  tomorrow: Issue[]
-  /** Zilele 0..6, fiecare cu sarcinile ei nefinalizate. Restanțele NU intră. */
+  /**
+   * Zilele +1..+7 (de mâine, șapte zile), fiecare cu sarcinile ei
+   * nefinalizate. Nici azi, nici restanțele nu intră: ele sunt în „Azi".
+   */
   week: { offset: number; date: Date; issues: Issue[] }[]
   /** Bifate azi — pentru secțiunea colapsată din lista de azi. */
   doneToday: Issue[]
 }
 
 /**
- * Taie o listă de tichete cu scadență în cele trei liste inteligente.
+ * Taie o listă de tichete cu scadență în listele inteligente.
  *
  * Restanțele apar NUMAI în `overdue`, niciodată în `today` sau în `week`: o
- * restanță e o problemă de azi, dar „Next 7 days" e o listă despre ce urmează.
+ * restanță e o problemă de azi, dar „7 zile" e o listă despre ce urmează —
+ * de mâine încolo, deci nici sarcinile de azi nu se dublează acolo.
  * Dublarea ar face ca aceeași sarcină să fie numărată de două ori în badge-uri.
  *
  * Rutinele (`routines` = proiecte „doar mementouri") lipsesc până sună.
@@ -147,7 +162,7 @@ export function buildSmartLists(issues: Issue[], now: Date, routines: Set<string
       overdue.push(it)
       continue
     }
-    if (off >= 0 && off < SMART_LIST_DAYS) {
+    if (off >= 0 && off <= WEEK_LAST_OFFSET) {
       const bucket = byOffset.get(off)
       if (bucket) bucket.push(it)
       else byOffset.set(off, [it])
@@ -157,13 +172,12 @@ export function buildSmartLists(issues: Issue[], now: Date, routines: Set<string
   overdue.sort(compareDue)
   doneToday.sort(compareDue)
   const today = startOfLocalDay(now)
-  const week = Array.from({ length: SMART_LIST_DAYS }, (_, offset) => ({
-    offset,
-    date: addDays(today, offset),
-    issues: (byOffset.get(offset) ?? []).sort(compareDue),
-  }))
+  const week = Array.from({ length: WEEK_LAST_OFFSET - WEEK_FIRST_OFFSET + 1 }, (_, i) => {
+    const offset = WEEK_FIRST_OFFSET + i
+    return { offset, date: addDays(today, offset), issues: (byOffset.get(offset) ?? []).sort(compareDue) }
+  })
 
-  return { overdue, today: week[0].issues, tomorrow: week[1].issues, week, doneToday }
+  return { overdue, today: (byOffset.get(0) ?? []).sort(compareDue), week, doneToday }
 }
 
 // ── Punte către <input type="date"> și <input type="time"> ──────────────────
@@ -328,6 +342,21 @@ const MON_SHORT = ['ian', 'feb', 'mar', 'apr', 'mai', 'iun', 'iul', 'aug', 'sep'
 export function toDayMonth(d: Date | string): string {
   const x = typeof d === 'string' ? new Date(d) : d
   return `${x.getDate()} ${MON_SHORT[x.getMonth()]}`
+}
+
+/**
+ * Subtitlul listei „7 zile": „Următoarele 7 zile · 15–21 oct", sau
+ * „… · 28 oct – 3 noi" peste o graniță de lună. Zilele sunt cele din
+ * `buildSmartLists` (+1..+7), deci intervalul spune exact ce e pe ecran.
+ */
+export function weekCrumb(now: Date): string {
+  const today = startOfLocalDay(now)
+  const a = addDays(today, WEEK_FIRST_OFFSET)
+  const b = addDays(today, WEEK_LAST_OFFSET)
+  const range = a.getMonth() === b.getMonth()
+    ? `${a.getDate()}–${toDayMonth(b)}`
+    : `${toDayMonth(a)} – ${toDayMonth(b)}`
+  return `Următoarele 7 zile · ${range}`
 }
 
 /** `aaaa-ll-zz` (valoarea unui input nativ de dată) → `zz/ll/aaaa`. */
