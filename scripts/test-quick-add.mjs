@@ -97,14 +97,14 @@ try {
   await page.goto(BASE, { waitUntil: 'networkidle' })
   const aziAfter = await openList('Azi')
   check('Enter pe câmp gol n-a creat nimic („Azi" are tot atâtea rânduri)', aziAfter.length === aziBefore, `${aziBefore} -> ${aziAfter.length}`)
-  const rows = await openList('Mâine')
-  check('sarcina din bară apare în „Mâine", la 10:00', rows.some((r) => r.includes('test bară') && r.includes('10:00')), rows.join(' / '))
+  const rows = await openList('7 zile')
+  check('sarcina din bară apare în „7 zile" (mâine), la 10:00', rows.some((r) => r.includes('test bară') && r.includes('10:00')), rows.join(' / '))
   // Slab prin construcție: în browser nu există punte, deci Esc nu ascunde bara
   // și nu putem apăsa Enter "după"; verificăm doar că Esc singur nu scrie nimic.
   check('textul de la Esc nu s-a salvat', !rows.some((r) => r.includes('nu trebuie salvat')))
-  // Sarcina cu semne e pentru MÂINE, deci e aici; titlul ei e exact „test semne".
+  // Sarcina cu semne e pentru MÂINE, deci e în „7 zile"; titlul ei e exact „test semne".
   const signs = rows.find((r) => r.includes('test semne')) ?? ''
-  check('sarcina cu semne a ajuns în „Mâine"', signs !== '', rows.join(' / '))
+  check('sarcina cu semne a ajuns în „7 zile" (mâine)', signs !== '', rows.join(' / '))
   check('semnele nu rămân în titlu', signs !== '' && !signs.includes('#') && !signs.includes('!') && signs.split('\n').includes('test semne'), signs)
 
   // ── Descrierea (Tab) și fereastra care crește ────────────────────────────
@@ -202,7 +202,7 @@ try {
   check('după trimitere nu rămâne nimic stocat', (await dIn.inputValue()) === '' && (await desk.locator('.qab .qa-desc').count()) === 0)
   await page.setViewportSize({ width: 1400, height: 900 })
   await page.goto(BASE, { waitUntil: 'networkidle' })
-  await openList('Mâine')
+  await openList('7 zile')
   await page.locator('.task-row', { hasText: 'test descriere' }).first().click()
   await page.waitForTimeout(1000)
   await page.locator('.desc-fixed .md-editor').first().waitFor({ timeout: 5000 })

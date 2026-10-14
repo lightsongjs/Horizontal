@@ -103,7 +103,7 @@ export function rankIssues(query: string, issues: Issue[], limit = 10, priority:
 
 /** De unde s-a deschis căutarea — decide doar ordinea rezultatelor. */
 export type SearchContext =
-  | { kind: 'today' | 'tomorrow' | 'week' }
+  | { kind: 'today' | 'week' }
   | { kind: 'project'; projectId: string }
   | null
 
@@ -151,12 +151,11 @@ export function QuickSearch({ onClose, onOpen, context = null }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const itemsRef = useRef<HTMLDivElement>(null)
 
-  // „7 zile" începe de mâine: azi are lista lui.
+  // „7 zile" începe de mâine (`buildSmartLists`): azi are lista lui.
   const priority = useMemo(() => {
     const list = !context ? []
       : context.kind === 'today' ? [...smartLists.overdue, ...smartLists.today]
-      : context.kind === 'tomorrow' ? smartLists.tomorrow
-      : context.kind === 'week' ? smartLists.week.filter((d) => d.offset >= 1).flatMap((d) => d.issues)
+      : context.kind === 'week' ? smartLists.week.flatMap((d) => d.issues)
       : context.kind === 'project' ? issues.filter((i) => i.projectId === context.projectId) : []
     return list.map((i) => i.id)
   }, [context, smartLists, issues])

@@ -1,5 +1,5 @@
-// Ce vede widget-ul de pe ecranul de start: restanțele și zilele 0..6, ca
-// listele „Azi" / „7 zile". Pagina trimite rândurile NEGRUPATE: gruparea o face
+// Ce vede widget-ul de pe ecranul de start: restanțele și zilele 0..6 (azi +
+// 6, NU „7 zile" din aplicație, care începe de mâine). Pagina trimite rândurile NEGRUPATE: gruparea o face
 // cutia (`core/Agenda.kt`), fiindcă la miezul nopții se schimbă fără date noi.
 // Regula e `buildSmartLists`; fixtures comune în `agenda.fixtures.json`.
 

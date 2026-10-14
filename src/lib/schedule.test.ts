@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   NO_SCHEDULE, buildSmartLists, compareDue, dayOffset, defaultReminder, fromInputs, isOverdue,
-  reminderAt, reminderKindOf, reschedule, smartListRange, startOfLocalDay, toDateInput, toTimeInput,
+  reminderAt, reminderKindOf, reschedule, smartListRange, startOfLocalDay, weekCrumb, toDateInput, toTimeInput,
   toDisplayDate, fromDisplayDate, maskDateInput, displayFromInputDate,
   maskTimeInput, fromTimeText,
 } from './schedule'
@@ -68,7 +68,8 @@ describe('buildSmartLists', () => {
     task('today-done', { ...at(0, 9), done: true }),
     task('tmr', at(1, 9)),
     task('day6', at(6, 10)),
-    task('day7-outside', at(7, 10)),
+    task('day7', at(7, 23, 30)),
+    task('day8-outside', at(8)),
     task('no-due'),
   ]
   const L = buildSmartLists(issues, NOW)
@@ -83,11 +84,19 @@ describe('buildSmartLists', () => {
     expect(L.today.map((i) => i.id)).toEqual(['today-14', 'today-16', 'today-allday'])
   })
 
-  it('mâine e ziua 1, iar fereastra se închide la a șaptea zi', () => {
-    expect(L.tomorrow.map((i) => i.id)).toEqual(['tmr'])
+  it('„7 zile" începe de mâine (+1) și se închide la ziua +7, inclusiv', () => {
     expect(L.week).toHaveLength(7)
-    expect(L.week[6].issues.map((i) => i.id)).toEqual(['day6'])
-    expect(L.week.flatMap((d) => d.issues.map((i) => i.id))).not.toContain('day7-outside')
+    expect(L.week.map((d) => d.offset)).toEqual([1, 2, 3, 4, 5, 6, 7])
+    expect(L.week[0].date).toEqual(new Date(2026, 7, 25))
+    expect(L.week[0].issues.map((i) => i.id)).toEqual(['tmr'])
+    expect(L.week[5].issues.map((i) => i.id)).toEqual(['day6'])
+    expect(L.week[6].issues.map((i) => i.id)).toEqual(['day7'])
+    expect(L.week.flatMap((d) => d.issues.map((i) => i.id))).not.toContain('day8-outside')
+  })
+
+  it('azi NU e în „7 zile" — stă numai în „Azi"', () => {
+    const week = L.week.flatMap((d) => d.issues.map((i) => i.id))
+    for (const id of ['today-allday', 'today-14', 'today-16', 'today-done']) expect(week).not.toContain(id)
   })
 
   it('bifatele de azi sunt separate, nu în today', () => {
@@ -142,15 +151,24 @@ describe('compareDue', () => {
     const L = buildSmartLists([
       task('m-zi', at(1)), task('m10', at(1, 10)), task('m-u', { ...at(1), urgent: true }),
     ], NOW)
-    expect(L.tomorrow.map((i) => i.id)).toEqual(['m-u', 'm10', 'm-zi'])
+    expect(L.week[0].issues.map((i) => i.id)).toEqual(['m-u', 'm10', 'm-zi'])
   })
 })
 
 describe('smartListRange', () => {
-  it('cere șapte zile în viitor și bifatele doar de azi', () => {
+  it('cere până la sfârșitul zilei +7 (exclusiv începutul zilei +8) și bifatele doar de azi', () => {
     const r = smartListRange(NOW)
-    expect(r.to).toBe(new Date(2026, 7, 31).toISOString())
+    expect(r.to).toBe(new Date(2026, 8, 1).toISOString())
     expect(r.doneFrom).toBe(startOfLocalDay(NOW).toISOString())
+  })
+})
+
+describe('weekCrumb', () => {
+  it('în aceeași lună: „15–21 oct"', () => {
+    expect(weekCrumb(new Date(2026, 9, 14, 10))).toBe('Următoarele 7 zile · 15–21 oct')
+  })
+  it('peste o graniță de lună, luna la ambele capete', () => {
+    expect(weekCrumb(new Date(2026, 9, 27, 23, 50))).toBe('Următoarele 7 zile · 28 oct – 3 noi')
   })
 })
 

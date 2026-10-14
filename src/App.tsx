@@ -32,6 +32,7 @@ import { preloadEditor } from './components/DescField'
 import { FilterView } from './components/FilterView'
 import { FILTER_DELETED_EVENT, OPEN_FILTER_EVENT } from './components/FilterForm'
 import { describeRules } from './lib/savedFilters'
+import { weekCrumb } from './lib/schedule'
 import type { NavTarget } from './components/NavMenu'
 import { TaskActionsProvider, useTaskActions } from './components/TaskActions'
 import { SelectionBar, SelectionHeader } from './components/SelectionChrome'
@@ -73,17 +74,10 @@ function getBuildAgo(): string {
 const DAYS_FULL = ['duminică', 'luni', 'marți', 'miercuri', 'joi', 'vineri', 'sâmbătă']
 const MON_FULL = ['ianuarie', 'februarie', 'martie', 'aprilie', 'mai', 'iunie', 'iulie', 'august', 'septembrie', 'octombrie', 'noiembrie', 'decembrie']
 
-/** Subtitlul unei liste inteligente: ziua ei, sau intervalul, în litere. */
+/** Subtitlul unei liste inteligente: ziua ei, sau intervalul „7 zile". */
 function smartCrumb(kind: SmartListKind, now: Date): string {
-  const d = new Date(now)
-  if (kind === 'tomorrow') d.setDate(d.getDate() + 1)
-  if (kind === 'week') {
-    const end = new Date(now)
-    end.setDate(end.getDate() + 6)
-    const from = now.getMonth() === end.getMonth() ? `${now.getDate()}` : `${now.getDate()} ${MON_FULL[now.getMonth()]}`
-    return `${from} – ${end.getDate()} ${MON_FULL[end.getMonth()]}`
-  }
-  return `${DAYS_FULL[d.getDay()]}, ${d.getDate()} ${MON_FULL[d.getMonth()]}`
+  if (kind === 'week') return weekCrumb(now)
+  return `${DAYS_FULL[now.getDay()]}, ${now.getDate()} ${MON_FULL[now.getMonth()]}`
 }
 
 function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, canWrite, smartList, onDrawer, sidebarCollapsed, onToggleSidebar, inbox = false, filterId = null }: { onNewIssue: () => void; onSearch: () => void; onProjectSettings: () => void; onRefresh: () => void; onInfo: () => void; canWrite: boolean; smartList: SmartListKind | null; /** ☰ de pe telefon: sertarul de navigare. */ onDrawer: () => void; sidebarCollapsed: boolean; onToggleSidebar: () => void; /** „Ale mele" — opțional, ca vechile call-site-uri (fără el) să rămână valide. */ inbox?: boolean; /** Filtrul salvat de pe ecran. */ filterId?: string | null }) {
@@ -100,7 +94,6 @@ function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, ca
   const projectChrome = inbox || filterId || smartList ? null : project
   const pct = projectChrome ? Math.round(completion(projectChrome.id) * 100) : 0
   const listCount = smartList === 'today' ? smartLists.overdue.length + smartLists.today.length
-    : smartList === 'tomorrow' ? smartLists.tomorrow.length
     : smartList === 'week' ? smartLists.week.reduce((n, d) => n + d.issues.length, 0)
     : filter ? filterCounts[filter.id] ?? 0
     : 0
@@ -256,7 +249,14 @@ type FilterScreen = `filter:${string}`
 const filterScreen = (id: string): FilterScreen => `filter:${id}`
 const filterIdOf = (s: string | null | undefined): string | null => (s?.startsWith('filter:') && s.length > 7 ? s.slice(7) : null)
 const isScreen = (v: string | null | undefined): v is Screen =>
-  v === 'inbox' || v === 'today' || v === 'tomorrow' || v === 'week' || filterIdOf(v) !== null
+  v === 'inbox' || v === 'today' || v === 'week' || filterIdOf(v) !== null
+/**
+ * Un ecran memorat (`LAST_VIEW_KEY`, `hzScreen`) → ecranul de azi. „Mâine" a
+ * fost o listă până pe 2026-10-14; o stare veche `'tomorrow'` aterizează pe
+ * „7 zile", care începe exact cu ziua de mâine.
+ */
+const toScreen = (v: string | null | undefined): Screen | null =>
+  v === 'tomorrow' ? 'week' : isScreen(v) ? v : null
 /**
  * Ce ecran arată o intrare de istoric pe `/` (`history.state.hzScreen`).
  * `/` e URL-ul tuturor tab-urilor de sus, deci fără marcaj un Back n-ar avea
@@ -265,13 +265,13 @@ const isScreen = (v: string | null | undefined): v is Screen =>
 type TopScreen = Screen | 'projects'
 const readTopScreen = (): TopScreen | null => {
   const v = (window.history.state as { hzScreen?: string } | null)?.hzScreen
-  return v === 'projects' ? v : isScreen(v) ? v : null
+  return v === 'projects' ? v : toScreen(v)
 }
 
 /** `smart:today` → `today`, `smart:filter:<id>` → `filter:<id>`. Orice altceva → null. */
 function parseLastView(raw: string | null): Screen | null {
   const kind = raw?.startsWith('smart:') ? raw.slice(6) : null
-  return isScreen(kind) ? kind : null
+  return toScreen(kind)
 }
 
 const slugify = (name: string) =>
@@ -316,7 +316,7 @@ function Shell() {
    */
   const [screen, setScreen] = useState<Screen | null>(null)
   const filterId = filterIdOf(screen)
-  const smartList: SmartListKind | null = screen === 'today' || screen === 'tomorrow' || screen === 'week' ? screen : null
+  const smartList: SmartListKind | null = screen === 'today' || screen === 'week' ? screen : null
   // Derivat o singură dată, folosit de orice loc care presupunea „dacă
   // `project` e încărcat, sunt pe ecranul proiectului" — o presupunere
   // adevărată înainte de „Ale mele", unde o pasă docată încarcă proiectul EI
@@ -1219,7 +1219,7 @@ function Shell() {
       // C = „creează", dar „creează" înseamnă altceva în cele două contexte.
       // Într-o listă inteligentă nu există proiect activ (se alege abia când
       // deschizi o sarcină), deci vechiul `project && openNewIssue()` nu făcea
-      // NIMIC pe „Azi"/„Mâine". Acolo creare = quick add, cu selectorul lui de
+      // NIMIC pe „Azi"/„7 zile". Acolo creare = quick add, cu selectorul lui de
       // proiect — fără Inbox, fiecare sarcină are un proiect. `canWrite` e
       // despre proiectul DESCHIS, deci nu se aplică; dreptul îl decide
       // `useWritableProjects`, care hrănește chiar selectorul acela.

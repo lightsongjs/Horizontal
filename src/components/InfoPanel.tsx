@@ -57,7 +57,7 @@ const SHORTCUTS: { keys: string; action: string; where?: string }[] = [
   { keys: 'Ctrl+,', action: 'Deschide panoul acesta' },
   { keys: '?', action: 'Același panou' },
   { keys: 'C', action: 'Tichet nou', where: 'în proiect' },
-  { keys: 'C', action: 'Sare în quick add', where: 'în listele Azi / Mâine / 7 zile' },
+  { keys: 'C', action: 'Sare în quick add', where: 'în listele Azi / 7 zile' },
   { keys: 'Tab', action: 'Descriere sub titlu', where: 'în quick add' },
   { keys: 'Ctrl+↵', action: 'Adaugă din descriere', where: 'în quick add' },
   { keys: 'O · Ctrl+F', action: 'Caută tichet (deschise; bifa „și închise" le adaugă pe cele bifate)', where: 'oriunde' },
@@ -79,7 +79,7 @@ const SHORTCUTS: { keys: string; action: string; where?: string }[] = [
 const RULES: { title: string; body: string }[] = [
   {
     title: 'Listele',
-    body: 'Azi, Mâine și 7 zile taie transversal toate proiectele. Restanțele apar NUMAI în Azi, deasupra sarcinilor zilei, și ca badge roșu în sidebar — o restanță e o problemă de azi, dar „7 zile" e o listă despre ce urmează.',
+    body: 'Azi și 7 zile taie transversal toate proiectele. „7 zile" începe de MÂINE și ține șapte zile (mâine e primul ei grup); azi și restanțele stau numai în Azi — restanțele deasupra sarcinilor zilei și ca badge roșu în sidebar. O sarcină adăugată din „7 zile" primește ziua de mâine, din Azi pe cea de azi.',
   },
   {
     title: 'Fără Inbox',
