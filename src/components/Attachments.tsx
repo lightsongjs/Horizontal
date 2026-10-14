@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useRef, useState, type MutableRefObject, type RefObject } from 'react'
 import {
   deleteAttachment,
   downloadAllAttachments,
@@ -106,6 +106,8 @@ export function Attachments({
   readOnly = false,
   dropZone,
   onDropActive,
+  hideEmpty = false,
+  addRef,
 }: {
   issueId?: string
   projectId: string
@@ -120,6 +122,13 @@ export function Attachments({
    *  asta nu randează `dropZone`, iar un `classList.add` pe un nod al altcuiva
    *  se bate cu React la următoarea randare. */
   onDropActive?: (active: boolean) => void
+  /** Fără fișiere, bara nu se randează deloc (formularul are agrafa în rândul
+   *  de jetoane). Reapare cât se trage un fișier peste zona de drop, cât se
+   *  urcă ceva, sau cu un mesaj de spus. */
+  hideEmpty?: boolean
+  /** Prin el, un buton din afara barei (agrafa din rândul formularului) predă
+   *  fișiere aceluiași drum de urcare — fără o a doua copie a lui `addFiles`. */
+  addRef?: MutableRefObject<((files: File[]) => void) | null>
 }) {
   const [items, setItems] = useState<Attachment[]>([])
   const [urls, setUrls] = useState<Record<string, string>>({})
@@ -217,6 +226,12 @@ export function Attachments({
     },
     [issueId, projectId],
   )
+
+  useEffect(() => {
+    if (!addRef) return
+    addRef.current = (files) => void addFiles(['Files'], files)
+    return () => { addRef.current = null }
+  }, [addRef, addFiles])
 
   // Paste. Se ascultă pe `document` fiindcă cursorul e aproape sigur în
   // descriere sau notițe, nu în zona de fișiere, deci un `onPaste` pe container
@@ -334,6 +349,7 @@ export function Attachments({
 
   // Read-only fără fișiere: bara n-ar spune nimic și n-ar oferi nimic.
   if (readOnly && items.length === 0) return null
+  if (hideEmpty && items.length === 0 && busy === 0 && !dragging && !message) return null
 
   return (
     <div className="att-zone">

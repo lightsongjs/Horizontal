@@ -544,6 +544,32 @@ Descărcări, deci folderul e ÎN arhivă — `HZ-12 Titlu.zip` → `HZ-12 Titlu
 Ascuns în APK: WebView-ul n-are `DownloadListener`, iar un `blob:` n-ar face
 nimic acolo — ar cere un APK nou.
 
+## Rândul de jetoane al formularului
+
+Între titlu și descriere, formularul complet (panou, modal, telefon) are UN
+rând de jetoane cu **numai ce e setat** (mockup: `design/form-compact/index.html`):
+scadența (fantoma „Dată” când lipsește — singura cu jeton gol), mementoul
+(doar peste o oră), repetarea, valul (ascuns cu un singur val), tema,
+persoana, urgentul, apoi agrafa și „+” (temă, persoană, urgent). Ce apare o
+decide `visibleChips`/`addMenuItems` (`src/lib/formChips.ts`, pur, cu teste).
+Rândul stă în `.sh-header`, deci nu se derulează, iar popoverele lui nu sunt
+tăiate de `overflow` al corpului.
+
+- **Un singur popover deschis** (`openPop` din `IssueForm`), în cochilia
+  `ChipPop.tsx`: Esc ascultat în faza de CAPTURĂ cu `stopPropagation` (tiparul
+  din `Lightbox`) închide doar popoverul și întoarce focusul pe jeton — altfel
+  Escape-ul din `SheetHost`/`SplitView` ar fi închis tot formularul. Sub
+  900px popoverul e foaie de jos, prin portal în `body` (`.sheet` are
+  `transform`).
+- Popoverul datei refolosește câmpul scris (`dueText`/`timeText`, aceeași
+  validare) plus presetări (Azi · Mâine · Luni · +1 săpt.) și mementoul.
+  Logica de murdărie e neatinsă: deschiderea unui tichet nu-l face „nesalvat”.
+- Bara de fișiere apare numai cu fișiere (`Attachments hideEmpty`); agrafa din
+  rând urcă prin același drum (`addRef`). Tragerea peste coloana descrierii
+  merge în continuare — bara reapare cât se trage.
+- Teste: `npm run test:layout` măsoară rândul la 320–430px, în panoul de
+  ~500px și popoverul datei ca foaie; bancul („Controale”) are toate stările.
+
 ## Descrierea în markdown
 
 Descrierea unui tichet e text markdown, citit și scris cu **aceeași gramatică**:
@@ -665,13 +691,11 @@ ar trebui să ghicească din context. Subsetul RRULE e mic și închis (`FREQ`,
 `INTERVAL`, `BYDAY`, `BYMONTHDAY`); `UNTIL` și `COUNT` sunt **refuzate**, nu
 ignorate — ignorate ar face o serie mărginită să curgă la nesfârșit.
 
-Rândul din formular arată jetoane preconfigurate (`fără · zilnic · săptămânal
-· lunar · anual`) plus un jeton `personalizat…` care deschide o foaie mică cu
-interval și, pentru săptămânal, zilele (`RecurrencePicker.tsx`). Foaia se
-randează cu `createPortal` direct în `document.body`, nu în locul ei firesc în
-arbore: `.sheet` are `transform`, iar un ancestor cu `transform` devine
-containing block pentru `position: fixed` — fără portal, foaia s-ar poziționa
-față de foaia din spate, nu față de ecran.
+**Repetarea nu se alege din butoane** (decizia omului, 2026-10-14): se scrie
+în titlu, iar `parseDue` o recunoaște. Formularul doar o arată — jetonul
+„Săptămânal” în rândul de jetoane (`recurChipLabel`) și, în popoverul datei,
+„Se repetă: săptămânal · scoate”. Preseturile și `RecurrencePicker` au fost
+scoase. O recurență fără dată nu se arată și nu se salvează (`rruleOut`).
 
 Anularea e un pas, ținut în memoria paginii cât ține toast-ul (`recurrenceUndo`
 în `store.tsx`), nu în bază — de-aia nu există `prev_due_at`/`prev_remind_at`.

@@ -1,25 +1,30 @@
-import { useRef, useState, useEffect, useLayoutEffect, useCallback } from 'react'
+import { useRef, useState, useEffect, useLayoutEffect, useCallback, type ChangeEvent } from 'react'
 import { detectCycle, requiredDepWave } from '../lib/engine'
 import { buildAssigneeOptions, type AssigneeOption } from '../lib/assigneeOptions'
 import { useAuth } from '../auth'
 import { useHorizontal } from '../store'
 import { useUI, type IssueDraft } from '../ui'
-import { useCanWrite, useMediaQuery, useTitleDate } from '../hooks'
+import { useCanWrite, useCoarsePointer, useMediaQuery, useTitleDate } from '../hooks'
 import { ticketUrl } from '../lib/deepLink'
 import { stripSpans } from '../lib/parseDue'
 import { fold } from '../lib/text'
 import { fillFromTitle, titleToSave, type FillMemo } from '../lib/titleDueFill'
 import {
   DATE_PLACEHOLDER, NO_SCHEDULE, TIME_PLACEHOLDER, defaultReminder, displayFromInputDate,
-  fromDisplayDate, fromInputs, fromTimeText, maskDateInput, maskTimeInput, reminderAt,
-  reminderKindOf, toDisplayDate, toShortDate, toTimeInput, type ReminderKind,
+  fromDisplayDate, fromInputs, fromTimeText, isOverdue, maskDateInput, maskTimeInput, reminderAt,
+  reminderKindOf, toDateInput, toDisplayDate, toShortDate, toTimeInput, type ReminderKind,
 } from '../lib/schedule'
+import { dueLabelParts } from '../lib/quickDraft'
+import {
+  REMINDER_CHIP, REMINDER_OPTIONS, addMenuItems, datePresets, recurChipLabel, visibleChips, waveChipLabel,
+} from '../lib/formChips'
 import { Attachments } from './Attachments'
 import { Thread } from './Thread'
 import { DescField } from './DescField'
 import type { EditorHandle } from './MarkdownEditor'
 import { describeRrule } from '../lib/recurrence'
-import { PRESETS, RecurrencePicker, presetOf } from './RecurrencePicker'
+import { ChipPop } from './ChipPop'
+import { attachBlocked } from './SheetFiles'
 import type { Issue, TestScenario } from '../lib/types'
 import { Icon } from './Icon'
 import { displayIssueId, isTempIssueId } from '../lib/issueId'
@@ -29,28 +34,9 @@ import { OfflineError } from '../data/offline/netError'
 
 const PALETTE = ['#0284C7', '#059669', '#D97706', '#EA580C', '#E11D48', '#7C3AED', '#06B6D4']
 
-export interface MetaRecapInput {
-  themeName: string | null
-  waveName: string
-  assigneeName: string | null
-  urgent: boolean
-  dueLabel: string | null
-}
-
-/**
- * Rezumatul pe un rând al meta colapsate pe mobil — doar ce e deja setat.
- * Valul e mereu prezent (fiecare tichet are unul); restul apar condiționat.
- */
-export function buildMetaRecap(input: MetaRecapInput): string {
-  return [input.themeName, input.waveName, input.assigneeName, input.urgent ? '⚡ Urgent' : null, input.dueLabel]
-    .filter((part): part is string => !!part)
-    .join(' · ')
-}
-
 /**
  * Formularul e murdar de obstacole când setul de id-uri reale diferă de ce e
- * salvat — ordinea nu contează. Extrasă pură ca să fie testabilă fără randare,
- * la fel ca `buildMetaRecap`.
+ * salvat — ordinea nu contează. Extrasă pură ca să fie testabilă fără randare.
  */
 export function obstaclesDirty(current: string[], saved: string[]): boolean {
   return current.slice().sort().join(',') !== saved.slice().sort().join(',')
@@ -425,7 +411,6 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
   // Mementoul implicit urmează forma scadenței cât timp userul nu l-a atins.
   const [reminderTouched, setReminderTouched] = useState(false)
   const [rrule, setRrule] = useState<string | null>(existing?.rrule ?? seed?.rrule ?? null)
-  const [showRecur, setShowRecur] = useState(false)
   const schedule = (() => {
     const { dueAt, allDay } = fromInputs(dueDate, dueTime)
     // Un tichet existent își păstrează mementoul salvat cât scadența are aceeași
@@ -450,12 +435,20 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
    */
   const rruleOut = dueDate ? rrule : null
 
-  // Pe mobil, blocul de meta pornește colapsat într-un rezumat pe un rând —
-  // altfel Temă/Val/Assigned/Prioritate/Scadență stivuite împing Descrierea
-  // sub fold. Pe desktop CSS-ul ignoră starea asta și ține blocul mereu deschis.
-  const [metaOpen, setMetaOpen] = useState(false)
-
-  const [showThemeMenu, setShowThemeMenu] = useState(false)
+  /**
+   * Rândul de jetoane are UN singur popover deschis odată (data, valul, „+",
+   * tema, persoana, agrafa). O singură stare, nu un boolean pe fiecare: două
+   * meniuri deschise unul peste altul nu au ce căuta într-un rând de 30px.
+   */
+  const [openPop, setOpenPop] = useState<null | 'date' | 'wave' | 'add' | 'theme' | 'who' | 'attach'>(null)
+  /** Jetonul care a deschis popoverul: aliniere și întoarcerea focusului la Esc. */
+  const popAnchor = useRef<HTMLElement | null>(null)
+  const chipRowRef = useRef<HTMLDivElement>(null)
+  /** Drumul de urcare al barei de fișiere, chemat de agrafa din rând. */
+  const addFilesRef = useRef<((files: File[]) => void) | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
+  const coarse = useCoarsePointer()
   const [showNewTheme, setShowNewTheme] = useState(false)
   const [newThemeName, setNewThemeName] = useState('')
   const [saving, setSaving] = useState(false)
@@ -465,7 +458,6 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
   const [obstacleError, setObstacleError] = useState<string | null>(null)
   const [confirmClose, setConfirmClose] = useState(false)
   const [depTab, setDepTab] = useState<'necesita' | 'permite' | 'obstacole'>('necesita')
-  const [showAssigneeInline, setShowAssigneeInline] = useState(false)
 
   const [depSearchQ, setDepSearchQ] = useState('')
   const [depSearchHl, setDepSearchHl] = useState(0)
@@ -621,12 +613,9 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
   })
 
   /* Aceeași limită ca media query-ul de telefon din `styles.css` — sub ea,
-     bara de meta se desparte în două grupuri (vezi comentariile de la
-     randare). O constantă în două locuri, dar limita e a LAYOUT-ului: mutată
-     doar în CSS, structura ar rămâne în urmă tăcut, deci testul de layout o
-     verifică la 320–430px. Sus, cu celelalte hook-uri: sub `if (!project)
-     return null` ar fi fost un hook condiționat, deci numărul lor s-ar fi
-     schimbat de la o randare la alta. */
+     popoverele jetoanelor devin foi de jos. Sus, cu celelalte hook-uri: sub
+     `if (!project) return null` ar fi fost un hook condiționat, deci numărul
+     lor s-ar fi schimbat de la o randare la alta. */
   const narrow = useMediaQuery('(max-width: 899px)')
 
   // Ce a reușit deja să se creeze la o salvare care a căzut pe drum: tichetul
@@ -732,28 +721,15 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
     else if (e.key === 'Escape') { setDepSearchQ(''); setDepDropdownOpen(false); setDepSearchHl(0) }
   }
 
-  // Tema aleasă și numele celui care ține tichetul, o dată: le folosesc și
-  // bara, și rezumatul de pe mobil.
   const themeObj = theme ? themes.find((t) => t.key === theme) : undefined
   const assigneeName = assigneeId ? (assignees.find((a) => a.id === assigneeId)?.name ?? null) : null
-
-  const metaRecap = buildMetaRecap({
-    themeName: themeObj?.name ?? null,
-    waveName: waves.find((w) => w.number === wave)?.name ?? `Val ${wave}`,
-    assigneeName,
-    // Urgentul și scadența NU intră în rezumat: pe mobil rămân vizibile lângă
-    // el (vezi `.meta-collapsed` din styles.css), iar un rezumat care repetă
-    // ce se vede dedesubt e zgomot pe singurul ecran unde contează lățimea.
-    urgent: false,
-    dueLabel: null,
-  })
 
   const addTheme = async () => {
     if (!canWrite) return
     const name = newThemeName.trim(); if (!name) return
     const created = await createTheme(name, PALETTE[themes.length % PALETTE.length])
     if (created) setTheme(created.key)
-    setNewThemeName(''); setShowNewTheme(false)
+    setNewThemeName(''); setShowNewTheme(false); closePop(true)
   }
 
   const cycleAfterSave = (): string | null => {
@@ -958,83 +934,101 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
 
 
 
-  /* Cele cinci controale ale barei, scoase din JSX ca VALORI: pe telefon ele
-     nu mai stau în același rând, iar o a doua copie a markup-ului ar fi
-     însemnat două locuri de ținut în pas pentru fiecare câmp. */
+  /* ── Rândul de jetoane (design/form-compact) ─────────────────────────────
+     Între titlu și descriere stă un singur rând, cu NUMAI ce e setat: data
+     (singura cu jeton-fantomă, fiindcă e cea mai des pusă), mementoul,
+     repetarea, valul, tema, persoana, urgentul — apoi agrafa și „+". Fiecare
+     jeton își deschide popoverul; `openPop` e o singură stare. Datele curg
+     exact ca înainte (aceleași `set*`), s-a schimbat doar unde stau controalele. */
 
-  const assigneeCtl = (
-    <>
+  const now = new Date()
+  const togglePop = (kind: NonNullable<typeof openPop>, anchor: HTMLElement) => {
+    if (openPop === kind) { setOpenPop(null); return }
+    popAnchor.current = anchor
+    setShowNewTheme(false)
+    setOpenPop(kind)
+  }
+  /** Din „+" într-un sub-popover: ancora rămâne „+", ca Esc să se întoarcă acolo. */
+  const switchPop = (kind: NonNullable<typeof openPop>) => {
+    setShowNewTheme(false)
+    setOpenPop(kind)
+  }
+  function closePop(returnFocus: boolean) {
+    setOpenPop(null)
+    setShowNewTheme(false)
+    if (returnFocus) popAnchor.current?.focus()
+  }
 
-    <button
-      tabIndex={-1}
-      type="button"
-      className={`if-ctl${assigneeId ? '' : ' ghost'}`}
-      onClick={() => setShowAssigneeInline((v) => !v)}
-      title={assigneeName ? `Assigned to: ${assigneeName}` : 'Assigned to — nimeni'}
-      aria-expanded={showAssigneeInline}
-    >
-      <span className={`if-av${assigneeId ? '' : ' nobody'}`}>
-        {assigneeId ? (assigneeShort[assigneeId] ?? '?') : '+'}
-      </span>
-      <span className="if-ctl-txt">{assigneeName ?? 'Nimeni'}</span>
-      <Icon name="collapse" size={12} className="if-chev" />
-    </button>
-    </>
-  )
+  /** Valul, cu aceeași gardă de dependențe ca înainte. Întoarce dacă a mers. */
+  const chooseWave = (n: number): boolean => {
+    if (isEdit && existing) {
+      const dependants = issues.filter((i) => (i.deps ?? []).includes(existing.id))
+      if (dependants.length > 0) {
+        const required = Math.min(...dependants.map((d) => d.wave))
+        if (n !== required) {
+          const names = dependants.map((d) => `„${d.title}" (val ${d.wave})`).join(', ')
+          setWaveError(`„${title}" este o dependență a ${names}. Nu poți muta tichetul.`)
+          return false
+        }
+      }
+    }
+    setWave(n)
+    setWaveError(null)
+    return true
+  }
 
-  const waveCtl = (
-    <>
-    <div className="if-seg" role="group" aria-label="Val">
-      {waves.map((w) => (
-        <button tabIndex={-1} key={w.number} type="button" title={w.name}
-          className={wave === w.number ? 'on' : ''}
-          aria-pressed={wave === w.number}
-          onClick={() => {
-            if (isEdit && existing) {
-              const dependants = issues.filter((i) => (i.deps ?? []).includes(existing.id))
-              if (dependants.length > 0) {
-                const required = Math.min(...dependants.map((d) => d.wave))
-                if (w.number !== required) {
-                  const names = dependants.map((d) => `„${d.title}" (val ${d.wave})`).join(', ')
-                  setWaveError(`„${title}" este o dependență a ${names}. Nu poți muta tichetul.`)
-                  return
-                }
-              }
-            }
-            setWave(w.number)
-            setWaveError(null)
-          }}>
-          {w.name}
-        </button>
-      ))}
-    </div>
-    </>
-  )
+  const clearDue = () => { setDueText(''); setTimeText(''); setReminderTouched(false) }
 
-  const urgentCtl = (
-    <>
-    {/* Doar fulgerul: „Prioritate" era un cuvânt pentru un singur
-        buton, iar „Urgent" scris lângă semnul de urgență e de două
-        ori același lucru. Aprins = roșul de blocaj, nu accentul. */}
-    <button
-      tabIndex={-1}
-      type="button"
-      className={`if-ctl icon${urgent ? ' urgent-on' : ' ghost'}`}
-      onClick={() => setUrgent((v) => !v)}
-      title={urgent ? 'Urgent — apasă ca să scoți' : 'Marchează urgent'}
-      aria-label="Urgent"
-      aria-pressed={urgent}
-    >
-      <Icon name="urgent" size={15} />
-    </button>
-    </>
-  )
+  /** Agrafa: refuzul spus pe față (local, offline, tichet nesalvat), altfel
+   *  fișierul nativ — cu meniu cameră/fișier pe ecranele tactile. */
+  const pickAttach = (anchor: HTMLElement) => {
+    const why = attachBlocked(existing?.id) ?? (existing ? null : 'Salvează tichetul, apoi atașează fișiere.')
+    if (why) { showToast(why); return }
+    if (coarse) { togglePop('attach', anchor); return }
+    fileInputRef.current?.click()
+  }
+  const onFilesChosen = (e: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    // Resetul e obligatoriu: același fișier ales a doua oară n-ar mai declanșa `change`.
+    e.target.value = ''
+    if (files.length) addFilesRef.current?.(files)
+  }
 
-  const dueCtl = (
-    <>
+  const chips = visibleChips({
+    hasDue: !!dueDate,
+    hasTime: !!dueTime,
+    reminder: schedule.kind,
+    rrule: rruleOut,
+    waveCount: waves.length,
+    hasTheme: !!theme,
+    hasAssignee: !!assigneeId,
+    urgent,
+  })
+  const addItems = addMenuItems({ hasTheme: !!theme, hasAssignee: !!assigneeId })
+  const dueParts = schedule.dueAt ? dueLabelParts(schedule.dueAt, schedule.allDay, now) : null
+  const late = !!schedule.dueAt && isOverdue({ dueAt: schedule.dueAt, allDay: schedule.allDay, done: existing?.done ?? false }, now)
+  const reminderLabel = schedule.kind === 'none' ? '' : REMINDER_CHIP[schedule.kind]
+  const waveObj = waves.find((w) => w.number === wave)
+  const waveLabel = waveChipLabel(waveObj?.name ?? String(wave))
+
+  /** Săgețile ←/→ se mută între jetoanele rândului (rolul `toolbar`). */
+  const onRowKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+    const target = e.target as HTMLElement
+    if (!target.hasAttribute('data-chip')) return
+    const list = Array.from(e.currentTarget.querySelectorAll<HTMLElement>(':scope [data-chip]'))
+    const i = list.indexOf(target)
+    if (i < 0) return
+    e.preventDefault()
+    list[(i + (e.key === 'ArrowRight' ? 1 : -1) + list.length) % list.length].focus()
+  }
+
+  /* Scadența: câmpul scris (zz/ll/aaaa + oră) cu selectoarele native la un
+     click distanță. Aceeași stare și aceeași validare ca înainte — doar s-a
+     mutat din bară în popoverul datei. */
+  const dueField = (
     <div className={`due-inputs${dueText ? '' : ' unset'}`} title="Scadență">
       <input
-        tabIndex={-1}
         type="text"
         inputMode="numeric"
         className={`due-input due-input-date ${dueIncomplete ? 'incomplete' : ''}`}
@@ -1058,7 +1052,6 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
         onChange={(e) => setDueText(displayFromInputDate(e.target.value))}
       />
       <button
-        tabIndex={-1}
         type="button"
         className="due-pick"
         title="Alege din calendar"
@@ -1075,7 +1068,6 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
         <Icon name="due" size={13} />
       </button>
       <input
-        tabIndex={-1}
         type="text"
         inputMode="numeric"
         className={`due-input due-input-time ${timeIncomplete ? 'incomplete' : ''}`}
@@ -1098,7 +1090,6 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
         onChange={(e) => setTimeText(e.target.value)}
       />
       <button
-        tabIndex={-1}
         type="button"
         className="due-pick"
         title="Alege ora"
@@ -1113,165 +1104,407 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
       >
         <Icon name="reminderTime" size={13} />
       </button>
-      {dueText && (
+    </div>
+  )
+
+  const presets = datePresets(now)
+  const datePop = (
+    <>
+      <h4 className="fc-h">Ziua</h4>
+      <div className="fc-presets">
+        {presets.map((p) => {
+          const on = dueDate === toDateInput(p.date.toISOString())
+          return (
+            <button
+              key={p.key}
+              type="button"
+              className={`fc-pre${on ? ' on' : ''}`}
+              aria-pressed={on}
+              data-autofocus={on || undefined}
+              onClick={() => setDueText(toDisplayDate(p.date.toISOString()))}
+            >
+              {p.label}
+              <small>{p.sub}</small>
+            </button>
+          )
+        })}
+      </div>
+      <div className="fc-fields">
+        {dueField}
+        {dueText && (
+          <button type="button" className="fc-link" onClick={clearDue} title="Fără dată">
+            scoate
+          </button>
+        )}
+      </div>
+      {(dueIncomplete || timeIncomplete) && (
+        <p className="fc-note warn">{dueIncomplete ? 'Scrie data ca zi/lună/an.' : 'Ora, de la 00:00 la 23:59.'}</p>
+      )}
+      {/* Mementoul apare numai când are ce să însemne. Pentru o sarcină de
+          zi întreagă ar suna la miezul nopții, deci acolo tace și treaba
+          o face rezumatul de dimineață. */}
+      {dueDate && !dueTime && !dueIncomplete && <p className="fc-note">Toată ziua — fără memento.</p>}
+      {dueDate && dueTime && (
+        <>
+          <h4 className="fc-h">Memento</h4>
+          <div className="fc-seg" role="group" aria-label="Memento">
+            {REMINDER_OPTIONS.map(([kind, label]) => (
+              <button
+                key={kind}
+                type="button"
+                className={schedule.kind === kind ? 'on' : ''}
+                aria-pressed={schedule.kind === kind}
+                onClick={() => { setReminder(kind); setReminderTouched(true) }}
+              >
+                {schedule.kind === kind && <Icon name="check" size={12} />}
+                {label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+      {/* Repetarea nu se alege de aici: se scrie în titlu („în fiecare luni"),
+          iar `parseDue` o recunoaște. Aici doar se vede și se scoate. */}
+      {rruleOut && (
+        <p className="fc-recur">
+          <Icon name="recurring" size={13} />
+          <span>Se repetă: {describeRrule(rruleOut) || 'personalizat'}</span>
+          <span aria-hidden="true">·</span>
+          <button type="button" className="fc-link" onClick={() => setRrule(null)}>scoate</button>
+        </p>
+      )}
+      {!narrow && (
+        <div className="fc-foot"><kbd>Esc</kbd> închide, înapoi pe jeton</div>
+      )}
+    </>
+  )
+
+  const waveMenu = (
+    <>
+      {waves.map((w) => (
         <button
-          tabIndex={-1}
+          key={w.number}
           type="button"
-          className="due-clear"
-          onClick={() => {
-          setDueText(''); setTimeText(''); setReminderTouched(false)
-        }}
-          title="Scoate scadența"
-          aria-label="Scoate scadența"
+          role="menuitem"
+          className={`fc-mi${wave === w.number ? ' on' : ''}`}
+          onClick={() => { if (chooseWave(w.number)) closePop(true) }}
         >
-          ×
+          <span className="fc-mi-t">{w.name}</span>
+          {w.number === activeWave && <span className="fc-mi-hint">activ</span>}
+          {wave === w.number && <Icon name="check" size={14} />}
+        </button>
+      ))}
+      {waveError && <p className="fc-warn">{waveError}</p>}
+    </>
+  )
+
+  const themeMenu = (
+    <>
+      {theme && (
+        <button type="button" role="menuitem" className="fc-mi" onClick={() => { setTheme(''); closePop(true) }}>
+          <span className="fc-mi-t">Fără temă</span>
         </button>
       )}
-    </div>
-    </>
-  )
-
-  const themeCtl = (
-    <>
-    {/* Tema, la capătul barei: un jeton cu punctul ei de culoare, care
-        deschide lista. Punctul e informația — numele e doar eticheta
-        lui. */}
-    <div className="if-theme-wrap">
-      <button
-        tabIndex={-1}
-        type="button"
-        className={`if-ctl${theme ? '' : ' ghost dashed'}`}
-        onClick={() => setShowThemeMenu((v) => !v)}
-        onBlur={() => setTimeout(() => setShowThemeMenu(false), 150)}
-        title={themeObj ? `Temă: ${themeObj.name}` : 'Fără temă'}
-        aria-expanded={showThemeMenu}
-      >
-        {themeObj && <span className="if-dot" style={{ background: themeObj.color }} />}
-        <span className="if-ctl-txt">{themeObj ? themeObj.name : 'temă'}</span>
-        <Icon name="collapse" size={12} className="if-chev" />
-      </button>
-      {showThemeMenu && (
-        <div className="dep-dropdown if-theme-menu">
-          <button type="button" className="dep-dd-item" onMouseDown={(e) => e.preventDefault()}
-            onClick={() => { setTheme(''); setShowThemeMenu(false) }}>
-            <span className="dep-dd-title">Fără temă</span>
-          </button>
-          {themes.map((t) => (
-            <button key={t.key} type="button" className="dep-dd-item" onMouseDown={(e) => e.preventDefault()}
-              onClick={() => { setTheme(t.key); setShowThemeMenu(false) }}>
-              <span className="if-dot" style={{ background: t.color }} />
-              <span className="dep-dd-title">{t.name}</span>
-            </button>
-          ))}
-          {canWrite && (
-            <button type="button" className="dep-dd-item if-theme-new" onMouseDown={(e) => e.preventDefault()}
-              onClick={() => { setShowThemeMenu(false); setShowNewTheme(true) }}>
-              <Icon name="add" size={13} />
-              <span className="dep-dd-title">Temă nouă</span>
-            </button>
-          )}
+      {themes.map((t) => (
+        <button
+          key={t.key}
+          type="button"
+          role="menuitem"
+          className={`fc-mi${theme === t.key ? ' on' : ''}`}
+          onClick={() => { setTheme(t.key); closePop(true) }}
+        >
+          <span className="fc-dot" style={{ background: t.color }} />
+          <span className="fc-mi-t">{t.name}</span>
+          {theme === t.key && <Icon name="check" size={14} />}
+        </button>
+      ))}
+      {canWrite && !showNewTheme && (
+        <button type="button" role="menuitem" className="fc-mi dim" onClick={() => setShowNewTheme(true)}>
+          <Icon name="add" size={14} />
+          <span className="fc-mi-t">Temă nouă</span>
+        </button>
+      )}
+      {showNewTheme && (
+        <div className="fc-new">
+          <input
+            className="fc-input"
+            value={newThemeName}
+            onChange={(e) => setNewThemeName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void addTheme() } }}
+            placeholder="Nume temă nouă…"
+            aria-label="Nume temă nouă"
+            autoFocus
+            autoComplete="off"
+            autoCorrect="off"
+            inputMode="text"
+          />
+          <button type="button" className="fc-ok" onClick={() => void addTheme()} disabled={!newThemeName.trim()}>OK</button>
         </div>
       )}
-    </div>
     </>
   )
 
-  const dueSubRow = (
+  const whoPop = (
+    <AssigneeSearch
+      assigneeId={assigneeId}
+      assignees={assignees}
+      members={projectMembers}
+      myAssigneeId={myAssigneeId}
+      myUserId={myUserId}
+      onSelect={(id) => { setAssigneeId(id); closePop(true) }}
+      onSelectMember={async (userId) => {
+        if (!project) return
+        const a = await ensureAssigneeForMember(project.id, userId)
+        setAssigneeId(a.id)
+        closePop(true)
+      }}
+      onCreateAndSelect={async (name) => {
+        const a = await createAssignee(name)
+        setAssigneeId(a.id)
+        closePop(true)
+      }}
+    />
+  )
+
+  const addMenu = (
     <>
-    {/* Rândul secundar: ce ține de scadență, dar n-are ce căuta între
-        controale — mementoul și avertismentele. Apare doar când există. */}
-    <div className="if-bar-sub">
-          {/* Mementoul apare numai când are ce să însemne. Pentru o sarcină de
-              zi întreagă ar suna la miezul nopții, deci acolo tace și treaba
-              o face rezumatul de dimineață. */}
-          {dueDate && dueTime && (
-            <div className="pills-row due-reminder">
-              <span className="if-sub-label">Memento</span>
-              {([
-                ['due', 'la oră'],
-                ['m30', '−30m'],
-                ['d1', '−1 zi'],
-                ['none', 'fără'],
-              ] as const).map(([kind, label]) => (
-                <button
-                  key={kind}
-                  tabIndex={-1}
-                  type="button"
-                  className={`if-meta-pill reminder-pill ${schedule.kind === kind ? 'active' : ''}`}
-                  onClick={() => { setReminder(kind); setReminderTouched(true) }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
-          {/* Repetarea are sens doar peste o scadență: o recurență e o funcție
-              de o dată de start. Fără dată, rândul nici nu apare. */}
-          {dueDate && (
-            <div className="pills-row due-recur">
-              <span className="if-sub-label">Repetare</span>
-              {PRESETS.map((p) => (
-                <button
-                  key={p.label}
-                  tabIndex={-1}
-                  type="button"
-                  className={`if-meta-pill reminder-pill ${presetOf(rrule) === (p.value ?? 'none') ? 'active' : ''}`}
-                  onClick={() => setRrule(p.value)}
-                >
-                  {p.label}
-                </button>
-              ))}
-              <button
-                tabIndex={-1}
-                type="button"
-                className={`if-meta-pill reminder-pill ${presetOf(rrule) === 'custom' ? 'active' : ''}`}
-                onClick={() => setShowRecur(true)}
-                title="Interval, zile ale săptămânii"
-              >
-                {presetOf(rrule) === 'custom' ? describeRrule(rrule) || 'personalizat' : 'personalizat…'}
-              </button>
-            </div>
-          )}
-          {showRecur && (
-            <RecurrencePicker value={rrule} onChange={setRrule} onClose={() => setShowRecur(false)} />
-          )}
-          {/* Semnalul că scadența a venit din titlu, cu cele două ieșiri:
-            curăță textul rămas în titlu, sau refuză de tot. Fără ele,
-            recunoașterea ar fi o ghicire pe care n-o poți contrazice. */}
-        {titleDate.active && (
-          <span className="due-from-title">
-            <span className="chip date">
-              <span className="chip-ico"><Icon name="fromTitle" size={13} /></span> din titlu
-              <button
-                tabIndex={-1}
-                type="button"
-                className="chip-x"
-                title="Nu e o dată — lasă titlul în pace"
-                aria-label="Refuză data din titlu"
-                onClick={refuseTitleDate}
-              >
-                ✕
-              </button>
-            </span>
-            <button
-              tabIndex={-1}
-              type="button"
-              className="due-clean-title"
-              title="Scoate textul datei din titlu"
-              onClick={cleanTitleFromDate}
-            >
-              curăță titlul
-            </button>
-          </span>
-        )}
-        {/* Titlul era numai dată: salvarea e stinsă, deci spune de ce. */}
-        {bareTitle && <span className="due-hint warn">și ce ai de făcut?</span>}
-        {(dueIncomplete || timeIncomplete) && (
-            <span className="due-hint warn">{dueIncomplete ? 'zi-lună-an' : 'oră 0–23'}</span>
-          )}
-          {dueDate && !dueTime && <span className="due-hint">toată ziua</span>}
-    </div>
+      {addItems.map((item) =>
+        item === 'theme' ? (
+          <button key={item} type="button" role="menuitem" className="fc-mi" onClick={() => switchPop('theme')}>
+            <Icon name="tag" size={15} /><span className="fc-mi-t">Temă</span>
+          </button>
+        ) : item === 'assignee' ? (
+          <button key={item} type="button" role="menuitem" className="fc-mi" onClick={() => switchPop('who')}>
+            <Icon name="people" size={15} /><span className="fc-mi-t">Persoană</span>
+          </button>
+        ) : (
+          <button key={item} type="button" role="menuitem" className="fc-mi" onClick={() => { setUrgent((v) => !v); closePop(true) }}>
+            <Icon name="urgent" size={15} /><span className="fc-mi-t">{urgent ? 'Scoate urgent' : 'Urgent'}</span>
+          </button>
+        ),
+      )}
     </>
+  )
+
+  const attachMenu = (
+    <>
+      <button type="button" role="menuitem" className="fc-mi" onClick={() => { closePop(false); cameraInputRef.current?.click() }}>
+        <Icon name="camera" size={15} /><span className="fc-mi-t">Fă o poză</span>
+      </button>
+      <button type="button" role="menuitem" className="fc-mi" onClick={() => { closePop(false); fileInputRef.current?.click() }}>
+        <Icon name="attachment" size={15} /><span className="fc-mi-t">Alege fișier</span>
+      </button>
+    </>
+  )
+
+  const POPS = {
+    date: { role: 'dialog', label: 'Scadență', body: datePop },
+    wave: { role: 'menu', label: 'Val', body: waveMenu },
+    theme: { role: 'menu', label: 'Temă', body: themeMenu },
+    who: { role: 'dialog', label: 'Persoană', body: whoPop },
+    add: { role: 'menu', label: 'Adaugă', body: addMenu },
+    attach: { role: 'menu', label: 'Atașează', body: attachMenu },
+  } as const
+
+  const chipProps = (kind: NonNullable<typeof openPop>, first = false) => ({
+    type: 'button' as const,
+    'data-chip': '',
+    tabIndex: first ? 0 : -1,
+    'aria-haspopup': (POPS[kind].role === 'menu' ? 'menu' : 'dialog') as 'menu' | 'dialog',
+    'aria-expanded': openPop === kind,
+    onClick: (e: React.MouseEvent<HTMLButtonElement>) => togglePop(kind, e.currentTarget),
+  })
+  const isOpen = (kind: NonNullable<typeof openPop>) => (openPop === kind ? ' open' : '')
+  // Un jeton deschis din „+" (temă, persoană) n-are jeton propriu încă: „+"
+  // rămâne marcat cât stă deschis ce a pornit din el.
+  const plusOpen = openPop === 'add' || ((openPop === 'theme' || openPop === 'who') && popAnchor.current?.dataset.plus === '1')
+
+  const chipRow = (
+    <div
+      className="fc-row"
+      role="toolbar"
+      aria-label="Proprietățile tichetului"
+      ref={chipRowRef}
+      onKeyDown={onRowKeyDown}
+    >
+      {chips.map((kind, idx) => {
+        const first = idx === 0
+        if (kind === 'due') {
+          const label = dueParts
+            ? `Scadență: ${dueParts.day}${dueParts.time ? ' ' + dueParts.time : ''}${late ? ', restantă' : ''}${reminderLabel ? `, memento ${reminderLabel}` : ''}`
+            : dueIncomplete ? `Scadență incompletă: ${dueText}` : 'Pune o dată'
+          return (
+            <button
+              key={kind}
+              {...chipProps('date', first)}
+              disabled={!canWrite}
+              className={`fc-chip due${dueParts ? '' : dueIncomplete ? ' warn' : ' ghost'}${late ? ' late' : ''}${titleDate.active ? ' pending' : ''}${isOpen('date')}`}
+              aria-label={label}
+              title={titleDate.active ? `${label} · recunoscută din titlu` : label}
+            >
+              <Icon name="due" size={14} />
+              {dueParts ? (
+                <>
+                  {dueParts.day}
+                  {dueParts.time && <span className="fc-t">{dueParts.time}</span>}
+                </>
+              ) : dueIncomplete ? (
+                <span className="fc-t">{dueText}</span>
+              ) : 'Dată'}
+            </button>
+          )
+        }
+        if (kind === 'reminder') {
+          return (
+            <button key={kind} {...chipProps('date', first)} disabled={!canWrite} className="fc-chip" aria-label={`Memento ${reminderLabel}`} title={`Memento ${reminderLabel}`}>
+              <Icon name="bell" size={14} />
+              {reminderLabel}
+            </button>
+          )
+        }
+        if (kind === 'recur') {
+          const label = recurChipLabel(rruleOut)
+          return (
+            <button key={kind} {...chipProps('date', first)} disabled={!canWrite} className="fc-chip" aria-label={`Se repetă: ${label}`} title={`Se repetă: ${label}`}>
+              <Icon name="recurring" size={14} />
+              {label}
+            </button>
+          )
+        }
+        if (kind === 'wave') {
+          return (
+            <button
+              key={kind}
+              {...chipProps('wave', first)}
+              disabled={!canWrite}
+              className={`fc-chip${isOpen('wave')}`}
+              aria-label={`Val: ${waveObj?.name ?? wave}`}
+              title={waveObj?.name}
+            >
+              <Icon name="wave" size={14} />
+              {waveLabel}
+            </button>
+          )
+        }
+        if (kind === 'theme') {
+          return (
+            <button
+              key={kind}
+              {...chipProps('theme', first)}
+              disabled={!canWrite}
+              className={`fc-chip${isOpen('theme') && !plusOpen ? ' open' : ''}`}
+              aria-label={`Temă: ${themeObj?.name ?? theme}`}
+              title={`Temă: ${themeObj?.name ?? theme}`}
+            >
+              <span className="fc-dot" style={{ background: themeObj?.color ?? 'var(--txt-faint)' }} />
+              <span className="fc-chip-t">{themeObj?.name ?? theme}</span>
+            </button>
+          )
+        }
+        if (kind === 'assignee' && assigneeId) {
+          const name = assigneeName ?? assigneeShort[assigneeId] ?? '?'
+          return (
+            <button
+              key={kind}
+              {...chipProps('who', first)}
+              disabled={!canWrite}
+              className={`fc-chip who${isOpen('who') && !plusOpen ? ' open' : ''}`}
+              aria-label={`Pasat lui ${name}`}
+              title={`Pasat lui ${name}`}
+            >
+              <span className="fc-av">{assigneeShort[assigneeId] ?? name.slice(0, 2).toUpperCase()}</span>
+              <span className="fc-chip-t">{name}</span>
+            </button>
+          )
+        }
+        if (kind === 'urgent') {
+          return (
+            <button
+              key={kind}
+              type="button"
+              data-chip=""
+              tabIndex={first ? 0 : -1}
+              disabled={!canWrite}
+              className="fc-chip urgent"
+              aria-pressed
+              aria-label="Urgent — apasă ca să scoți"
+              title="Urgent — apasă ca să scoți"
+              onClick={() => setUrgent(false)}
+            >
+              <Icon name="urgent" size={14} />
+              Urgent
+            </button>
+          )
+        }
+        return null
+      })}
+      {/* Data venită din titlu, cu cele două ieșiri: curăță textul rămas în
+          titlu, sau refuză de tot. Fără ele, recunoașterea ar fi o ghicire pe
+          care n-o poți contrazice. */}
+      {titleDate.active && (
+        <>
+          <button type="button" data-chip="" tabIndex={-1} className="fc-chip ghost" title="Scoate textul datei din titlu" onClick={cleanTitleFromDate}>
+            <Icon name="fromTitle" size={14} />
+            Curăță titlul
+          </button>
+          <button type="button" data-chip="" tabIndex={-1} className="fc-chip icon" title="Nu e o dată — lasă titlul în pace" aria-label="Refuză data din titlu" onClick={refuseTitleDate}>
+            <Icon name="close" size={14} />
+          </button>
+        </>
+      )}
+      {/* Titlul era numai dată: salvarea e stinsă, deci spune de ce. */}
+      {bareTitle && <span className="fc-hint warn">și ce ai de făcut?</span>}
+      {canWrite && (
+        // Agrafa și „+" trec pe rândul următor numai împreună: un „+" singur
+        // pe un rând ar fi exact zgomotul pe care rândul îl elimină.
+        <span className="fc-tail">
+          <button
+            type="button"
+            data-chip=""
+            tabIndex={-1}
+            className={`fc-chip icon${isOpen('attach')}`}
+            aria-label="Atașează fișier"
+            title={coarse ? 'Fă o poză sau alege un fișier' : 'Atașează fișier — sau lipește (Ctrl+V) ori trage peste descriere'}
+            aria-haspopup={coarse ? 'menu' : undefined}
+            aria-expanded={coarse ? openPop === 'attach' : undefined}
+            onClick={(e) => pickAttach(e.currentTarget)}
+          >
+            <Icon name="attachment" size={16} />
+          </button>
+          <button
+            type="button"
+            data-chip=""
+            data-plus="1"
+            tabIndex={-1}
+            className={`fc-chip icon${plusOpen ? ' open' : ''}`}
+            aria-label="Adaugă proprietate"
+            title="Temă, persoană, urgent"
+            aria-haspopup="menu"
+            aria-expanded={openPop === 'add'}
+            onClick={(e) => togglePop('add', e.currentTarget)}
+          >
+            <Icon name="add" size={16} />
+          </button>
+          {/* `capture` exclude `multiple`: camera pornește pentru un singur cadru. */}
+          <input ref={cameraInputRef} className="att-pick-input" type="file" accept="image/*" capture="environment" onChange={onFilesChosen} tabIndex={-1} aria-hidden="true" />
+          <input ref={fileInputRef} className="att-pick-input" type="file" multiple onChange={onFilesChosen} tabIndex={-1} aria-hidden="true" />
+        </span>
+      )}
+      {openPop && (
+        <ChipPop
+          key={openPop}
+          anchor={popAnchor.current}
+          rowRef={chipRowRef}
+          sheet={narrow}
+          role={POPS[openPop].role}
+          label={POPS[openPop].label}
+          className={`fc-pop-${openPop}`}
+          onClose={closePop}
+        >
+          {POPS[openPop].body}
+        </ChipPop>
+      )}
+    </div>
   )
 
   return (
@@ -1404,6 +1637,7 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
             }}
           />
         </span>
+        {chipRow}
         {canWrite && (
           <button
             tabIndex={-1}
@@ -1420,100 +1654,15 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
       {/* BODY */}
       <div className="sheet-scroll if-body">
 
-        {/* META — Temă · Val · Assigned to */}
-        <div className={`sh-meta-section${metaOpen ? '' : ' meta-collapsed'}`}>
-          {/* Rândul rapid stă ÎN AFARA „Detaliilor", pe telefon: urgentul și
-              scadența se ating în timpul zilei, deci nu au ce căuta sub un
-              capac — iar deschiderea capacului nu trebuie să le mai mute o
-              dată. Mementoul și avertismentele vin cu ele: sunt despre aceeași
-              scadență. */}
-          {narrow && (
-            <div className="if-fast-zone">
-              <div className="if-bar if-bar-fast">{urgentCtl}{dueCtl}</div>
-              {dueSubRow}
-            </div>
-          )}
-          {/* Doar pe mobil (CSS-ul de desktop îl ascunde): rezumatul înlocuiește
-              blocul întreg cât timp e colaps, ca Descrierea să urce sub titlu. */}
-          <button
-            type="button"
-            className="meta-recap"
-            onClick={() => setMetaOpen((v) => !v)}
-            aria-expanded={metaOpen}
-          >
-            <span className="meta-recap-label">Detalii</span>
-            <span className="meta-recap-sep" aria-hidden="true">·</span>
-            <span className="meta-recap-text">{metaRecap}</span>
-            <Icon name="collapse" size={14} className={`acc-chevron${metaOpen ? ' open' : ''}`} />
-          </button>
-          <div className="meta-body">
-          {/* Pe telefon, aici rămâne doar ce se schimbă rar. Urgentul și
-              scadența s-au mutat deasupra rezumatului (vezi `if-fast-zone`):
-              despărțirea e la RANDARE, nu din CSS, fiindcă un `order` le-ar fi
-              lăsat în aceeași cutie — iar atunci desfacerea „Detaliilor" ar fi
-              umflat și rândul rapid, exact ce nu trebuia.
-              Pe desktop rămâne un singur rând: cine · val · urgent · scadență
-              … temă. Fără etichete: forma spune rolul (avatar, cifră romană,
-              fulger, cifre de dată), iar numele întreg stă în `title`. */}
-          {narrow ? (
-            <div className="if-bar">{assigneeCtl}{waveCtl}{themeCtl}</div>
-          ) : (
-            <>
-              <div className="if-bar">{assigneeCtl}{waveCtl}{urgentCtl}{dueCtl}{themeCtl}</div>
-              {dueSubRow}
-            </>
-          )}
-
-          {showNewTheme && (
-            <div className="inline-search-wrap" style={{ padding: '6px 12px 8px' }}>
-              <input
-                className="inline-search-input"
-                value={newThemeName}
-                onChange={(e) => setNewThemeName(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && addTheme()}
-                placeholder="Nume temă nouă…"
-                autoFocus
-                autoComplete="off"
-                autoCorrect="off"
-                inputMode="text"
-              />
-              <button className="inline-ok-btn" onClick={addTheme} disabled={!newThemeName.trim()}>OK</button>
-            </div>
-          )}
-          {showAssigneeInline && (
-            <div className="inline-search-wrap" style={{ padding: '6px 12px 8px' }}>
-              <AssigneeSearch
-                assigneeId={null}
-                assignees={assignees}
-                members={projectMembers}
-                myAssigneeId={myAssigneeId}
-                myUserId={myUserId}
-                onSelect={(id) => { setAssigneeId(id); setShowAssigneeInline(false) }}
-                onSelectMember={async (userId) => {
-                  if (!project) return
-                  const a = await ensureAssigneeForMember(project.id, userId)
-                  setAssigneeId(a.id)
-                  setShowAssigneeInline(false)
-                }}
-                onCreateAndSelect={async (name) => {
-                  const a = await createAssignee(name)
-                  setAssigneeId(a.id)
-                  setShowAssigneeInline(false)
-                }}
-              />
-            </div>
-          )}
-          </div>
-        </div>
-
         {/* MAIN FORM — 2 cols */}
         <div className="form-cols">
 
-          {/* LEFT — descriere. Fișierele stau DEASUPRA descrierii, într-o bară
-              de o linie: sub o descriere lungă nu se mai vedeau fără scroll.
-              Coloana întreagă e zona de drop — vezi `dropZone` în Attachments. */}
+          {/* LEFT — descriere, fără etichetă: textul de sub titlu ESTE
+              descrierea. Fișierele stau deasupra ei, într-o bară de o linie
+              care apare numai când există fișiere (agrafa e în rândul de
+              jetoane). Coloana întreagă e zona de drop — vezi `dropZone` în
+              Attachments; cât se trage un fișier, bara reapare. */}
           <div className={`form-col form-col-desc ${dropActive ? 'att-dropping' : ''}`} ref={descColRef}>
-            <label className="if-field-label" style={{ display: 'block' }}>Descriere</label>
             {project && (
               <Attachments
                 issueId={existing?.id}
@@ -1522,6 +1671,8 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
                 readOnly={!canWrite}
                 dropZone={descColRef}
                 onDropActive={setDropActive}
+                hideEmpty
+                addRef={addFilesRef}
               />
             )}
             {/* Formularul are butonul Salvează: bifa schimbă doar `desc` local
