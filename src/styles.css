@@ -3767,6 +3767,18 @@ button.we-del:hover { color: var(--blocked); background: var(--blocked-soft); }
   font-family: var(--mono); font-size: calc(10px * var(--text-scale)); font-weight: 650;
 }
 .fc-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.hidden-done {
+  display: flex; align-items: center; gap: 6px;
+  padding: 10px 10px 16px;
+  font-size: calc(12.5px * var(--text-scale));
+  color: var(--txt-faint);
+}
+.hidden-done b { color: var(--accent); font-weight: 600; }
+.fc-sheet.wb-menu > .fc-h:first-child {
+  font-size: calc(19px * var(--text-scale)); font-weight: 700; color: var(--txt);
+  margin: 2px 0 8px 10px;
+}
+.fc-sheet.wb-menu { padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
 .fc-tail { display: inline-flex; gap: 6px; flex-shrink: 0; }
 .fc-link {
   font-size: calc(12px * var(--text-scale));

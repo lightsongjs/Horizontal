@@ -111,7 +111,6 @@ export function WaveManager({ focus }: { focus?: number | 'new' }) {
   return (
     <>
       <div className="sheet-head">
-        <div className="eyebrow"><Icon name="wave" size={13} /> Valuri</div>
         <h2>Valuri</h2>
         <p>Ordinea de aici e ordinea din bandă. Trage de mâner ca să muți. Fiecare val își calculează propriile layere.</p>
       </div>

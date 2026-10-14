@@ -13,7 +13,7 @@ import type { Issue, Wave } from './types'
  */
 
 /** Pe pastilele inactive eticheta se taie după atâtea caractere. */
-export const PILL_MAX = 16
+export const PILL_MAX = 18
 
 export const SCRATCH = 0
 

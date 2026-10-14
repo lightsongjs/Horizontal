@@ -26,17 +26,17 @@ describe('labels', () => {
   })
 
   it('truncates long labels on inactive pills only', () => {
-    expect(truncateLabel('Extindere clase 7,8,12')).toBe('Extindere clase…')
-    expect(Array.from(truncateLabel('Extindere clase 7,8,12')).length).toBeLessThanOrEqual(16)
-    expect(truncateLabel('Discutie cu Mihai')).toBe('Discutie cu Mih…')
+    expect(truncateLabel('Extindere clase 7,8,12')).toBe('Extindere clase 7…')
+    expect(Array.from(truncateLabel('Extindere clase 7,8,12')).length).toBeLessThanOrEqual(18)
+    expect(truncateLabel('Discutie cu Mihai')).toBe('Discutie cu Mihai')
     expect(truncateLabel('matecusens.ro')).toBe('matecusens.ro')
-    expect(truncateLabel('exact16charsxxxx')).toBe('exact16charsxxxx')
+    expect(truncateLabel('exact18charsxxxxxx')).toBe('exact18charsxxxxxx')
     expect(pillText(w(2, 'II', 'Extindere clase 7,8,12'), true)).toBe('Extindere clase 7,8,12')
-    expect(pillText(w(2, 'II', 'Extindere clase 7,8,12'), false)).toBe('Extindere clase…')
+    expect(pillText(w(2, 'II', 'Extindere clase 7,8,12'), false)).toBe('Extindere clase 7…')
   })
 
   it('does not split a surrogate pair', () => {
-    expect(truncateLabel('🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀')).toBe('🚀'.repeat(15) + '…')
+    expect(truncateLabel('🚀'.repeat(20))).toBe('🚀'.repeat(17) + '…')
   })
 
   it('titles carry the numeral, the full label and the counts', () => {

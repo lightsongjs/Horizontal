@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
-import { WaveTabs, type WhoFilter } from './WaveTabs'
+import { HiddenDone, WaveTabs, type WhoFilter } from './WaveTabs'
 import { NoWaves } from './NoWaves'
 import { BulkBar } from './BulkBar'
 import { useHideDone, useOrderedLayers, useWaveActions, useVimNav, useCanWrite } from '../hooks'
@@ -223,6 +223,8 @@ export function ListView() {
             </div>
           ))
         )}
+
+        <HiddenDone hideDone={hideDone} onShow={toggleHideDone} />
 
         {wa.selectMode && (
           <BulkBar

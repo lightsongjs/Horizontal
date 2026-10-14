@@ -300,7 +300,6 @@ function ModeChips({ modes }: { modes: ViewModes }) {
   return (
     <>
       {modes.tree && <ModeChip label="Arbore" onClear={modes.onToggleTree} />}
-      {modes.hideDone && <ModeChip label="Fără bifate" onClear={modes.onToggleHideDone} />}
       {who && whoLabel && <ModeChip label={whoLabel} onClear={() => who.onChange(null)} />}
     </>
   )
@@ -324,7 +323,9 @@ function MoreMenu({ modes, band, narrow, canWrite }: {
   const wrapRef = useRef<HTMLSpanElement>(null)
   const btnRef = useRef<HTMLButtonElement>(null)
   const who = modes.who
-  const changed = modes.tree || modes.hideDone || modes.selectMode || Boolean(who && who.value !== null)
+  // „Ascunde bifatele” nu intră: se ține minte și stă pornit de obicei, deci un
+  // punct permanent n-ar mai semnala nimic. Urma lui e la coada listei (`HiddenDone`).
+  const changed = modes.tree || modes.selectMode || Boolean(who && who.value !== null)
 
   const close = (returnFocus: boolean) => {
     setOpen(false)
@@ -422,5 +423,21 @@ function MoreMenu({ modes, band, narrow, canWrite }: {
         </ChipPop>
       )}
     </span>
+  )
+}
+
+/** La coada listei: câte bifate ascunde „Ascunde bifatele” în valul activ, cu „Arată”. */
+export function HiddenDone({ hideDone, onShow }: { hideDone: boolean; onShow(): void }) {
+  const { issues, activeWave } = useHorizontal()
+  const hidden = useMemo(
+    () => issues.filter((i) => i.wave === activeWave && i.done).length,
+    [issues, activeWave],
+  )
+  if (!hideDone || hidden === 0) return null
+  return (
+    <button type="button" className="hidden-done" onClick={onShow}>
+      <Icon name="hide" size={14} />
+      {hidden} {hidden === 1 ? 'bifat ascuns' : 'bifate ascunse'} · <b>Arată</b>
+    </button>
   )
 }

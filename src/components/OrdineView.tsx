@@ -3,7 +3,7 @@ import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { TicketCard } from './TicketCard'
 import { WaveGate } from './WaveGate'
-import { WaveTabs } from './WaveTabs'
+import { HiddenDone, WaveTabs } from './WaveTabs'
 import { NoWaves } from './NoWaves'
 import { BulkBar } from './BulkBar'
 import { useHideDone, useOrderedLayers, useWaveActions, useVimNav } from '../hooks'
@@ -94,6 +94,8 @@ export function OrdineView() {
           )
         })
       )}
+
+      <HiddenDone hideDone={hideDone} onShow={toggleHideDone} />
 
       {wa.selectMode && (
         <BulkBar
