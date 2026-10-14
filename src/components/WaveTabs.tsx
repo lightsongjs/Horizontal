@@ -259,6 +259,7 @@ function ScratchPill({ wave, count, total, on, onClick }: {
       onClick={onClick}
     >
       <Icon name="scratch" size={16} />
+      <span className="lb">{name}</span>
       <span className="n">{count}</span>
     </button>
   )

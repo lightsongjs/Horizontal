@@ -109,6 +109,30 @@ svg {
   flex-shrink: 0;
 }
 
+/* Barele de derulare: subțiri, invizibile până treci cu mouse-ul peste zona
+   care derulează (laptop). Se ascund prin culoare, nu prin lățime, deci nimic
+   nu sare la hover. Pe ecranele tactile rămâne bara overlay nativă. */
+:root {
+  --sb: color-mix(in srgb, var(--txt) 22%, transparent);
+  --sb-hi: color-mix(in srgb, var(--txt) 38%, transparent);
+}
+@media (hover: hover) and (pointer: fine) {
+  * { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+  *:hover, *:focus-within { scrollbar-color: var(--sb) transparent; }
+  /* Chromium < 121 (Electron, WebView vechi): aici contează `::-webkit-*`. */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-button { display: none; }
+  ::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: var(--r-s);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  :hover::-webkit-scrollbar-thumb { background-color: var(--sb); }
+  ::-webkit-scrollbar-thumb:hover { background-color: var(--sb-hi); }
+}
+
 /* LIGHT THEME */
 [data-theme='light'] {
   --bg: #FFFFFF;
@@ -3550,6 +3574,11 @@ button.we-del:hover { color: var(--blocked); background: var(--blocked-soft); }
 }
 .sh-header > .sh-check .ck { width: 24px; height: 24px; }
 .sh-header > .sh-title-wrap { order: 10; flex: 1 1 0; min-width: 0; }
+/* Tichet nou: n-are ID, deci titlul urcă pe rândul butoanelor (↑ ✕ în dreapta
+   lui) în loc să lase un rând gol deasupra. */
+.sh-header.is-new > .sh-break { display: none; }
+.sh-header.is-new > .sh-title-wrap { order: 0; }
+.fc-mi-r { font-family: var(--mono); font-size: calc(12px * var(--text-scale)); color: var(--txt-faint); min-width: 26px; }
 .sh-header > .sh-close,
 .sh-header > .sh-copy,
 .sh-header > .sh-delete:not(.confirming),

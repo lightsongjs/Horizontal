@@ -16,7 +16,7 @@ import {
 } from '../lib/schedule'
 import { dueLabelParts } from '../lib/quickDraft'
 import {
-  REMINDER_CHIP, REMINDER_OPTIONS, addMenuItems, datePresets, recurChipLabel, visibleChips, waveChipLabel,
+  REMINDER_CHIP, REMINDER_OPTIONS, addMenuItems, datePresets, recurChipLabel, visibleChips,
 } from '../lib/formChips'
 import { Attachments } from './Attachments'
 import { Thread } from './Thread'
@@ -27,6 +27,7 @@ import { ChipPop } from './ChipPop'
 import { attachBlocked } from './SheetFiles'
 import type { Issue, TestScenario } from '../lib/types'
 import { Icon } from './Icon'
+import { waveLabel } from '../lib/waveBar'
 import { displayIssueId, isTempIssueId } from '../lib/issueId'
 import { repository } from '../data'
 import { errorMessage } from '../lib/errorMessage'
@@ -332,7 +333,9 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
   const [title, setTitle] = useState(existing?.title ?? seed?.title ?? '')
   const [desc, setDesc] = useState(existing?.desc ?? seed?.desc ?? '')
   const [theme, setTheme] = useState(existing?.theme ?? '')
-  const [wave, setWave] = useState(existing?.wave ?? activeWave)
+  // Un val activ care nu (mai) există nu e o alegere: primul val real.
+  const [wave, setWave] = useState(existing?.wave
+    ?? (waves.some((w) => w.number === activeWave) ? activeWave : (waves.find((w) => w.number !== 0) ?? waves[0])?.number ?? activeWave))
   const [assigneeId, setAssigneeId] = useState<string | null>(existing?.assigneeId ?? seed?.assigneeId ?? null)
   const [deps, setDeps] = useState<string[]>(existing?.deps ?? [])
   const [blocks, setBlocks] = useState<string[]>(
@@ -1009,7 +1012,10 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
   const late = !!schedule.dueAt && isOverdue({ dueAt: schedule.dueAt, allDay: schedule.allDay, done: existing?.done ?? false }, now)
   const reminderLabel = schedule.kind === 'none' ? '' : REMINDER_CHIP[schedule.kind]
   const waveObj = waves.find((w) => w.number === wave)
-  const waveLabel = waveChipLabel(waveObj?.name ?? String(wave))
+  // Același text ca în bandă: eticheta valului, „Val III" fără ea, „Notițe"
+  // pentru valul 0 — niciodată numărul brut.
+  const waveText = (w: typeof waveObj) => !w ? `Val ${wave}` : w.number === 0 ? (w.label.trim() || 'Notițe') : waveLabel(w)
+  const waveChipText = waveText(waveObj)
 
   /** Săgețile ←/→ se mută între jetoanele rândului (rolul `toolbar`). */
   const onRowKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -1189,7 +1195,8 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
           className={`fc-mi${wave === w.number ? ' on' : ''}`}
           onClick={() => { if (chooseWave(w.number)) closePop(true) }}
         >
-          <span className="fc-mi-t">{w.name}</span>
+          <span className="fc-mi-r">{w.number === 0 ? '' : w.name}</span>
+          <span className="fc-mi-t">{waveText(w)}</span>
           {w.number === activeWave && <span className="fc-mi-hint">activ</span>}
           {wave === w.number && <Icon name="check" size={14} />}
         </button>
@@ -1382,7 +1389,7 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
               title={waveObj?.name}
             >
               <Icon name="wave" size={14} />
-              {waveLabel}
+              {waveChipText}
             </button>
           )
         }
@@ -1510,7 +1517,7 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
   return (
     <>
       {/* HEADER */}
-      <div className="sh-header">
+      <div className={`sh-header${isEdit ? '' : ' is-new'}`}>
         {isEdit && existing && <span className="sh-id">{displayIssueId(existing.id)}</span>}
         <button className="sh-close" onClick={closeSheet} aria-label="Închide"><Icon name="close" size={16} /></button>
         {docked && isEdit && (

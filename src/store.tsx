@@ -836,7 +836,12 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
           ])
           if (id !== currentProjectRef.current) return
           applyProjectBundle(id, { waves: w, themes: t, issues: loaded, obstacles: o, obstacleLinks: ol, members: pm }, { authoritative: true })
-          if (w.length && !w.some((x) => x.number === (proj?.currentWave ?? 1))) setActiveWave(w[0].number)
+          // Valul memorat nu mai există (șters): primul val REAL, nu Notițele —
+          // altfel proiectul se deschidea pe Notițe, iar un tichet nou primea
+          // un val inexistent („Val 1" în APIs, care are II…IX).
+          if (w.length && !w.some((x) => x.number === (proj?.currentWave ?? 1))) {
+            setActiveWave((w.find((x) => x.number !== 0) ?? w[0]).number)
+          }
         } catch (e) {
           if (id !== currentProjectRef.current) return
           setError(errorMessage(e))

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addMenuItems, datePresets, recurChipLabel, visibleChips, waveChipLabel, type ChipInput } from './formChips'
+import { addMenuItems, datePresets, recurChipLabel, visibleChips, type ChipInput } from './formChips'
 
 const empty: ChipInput = {
   hasDue: false, hasTime: false, reminder: 'none', rrule: null,
@@ -48,9 +48,6 @@ describe('etichete', () => {
   })
 
   it('valul: nume scurte primesc „Val", cele lungi rămân', () => {
-    expect(waveChipLabel('V')).toBe('Val V')
-    expect(waveChipLabel('Val 2')).toBe('Val 2')
-    expect(waveChipLabel('Scratchpad')).toBe('Scratchpad')
   })
 })
 

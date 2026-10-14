@@ -75,16 +75,6 @@ export function recurChipLabel(rrule: string | null): string {
   return d.charAt(0).toUpperCase() + d.slice(1)
 }
 
-/**
- * Eticheta jetonului de val. Numele scurte (cifre romane, „2") primesc „Val "
- * în față, ca jetonul să spună ce e; un nume lung („Scratchpad") se spune
- * singur.
- */
-export function waveChipLabel(name: string): string {
-  const n = name.trim()
-  if (/^val\b/i.test(n)) return n
-  return n.length <= 4 ? `Val ${n}` : n
-}
 
 export interface DatePreset {
   key: 'today' | 'tomorrow' | 'monday' | 'week'
