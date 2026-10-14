@@ -165,6 +165,8 @@ interface HorizontalState {
 
   createWave(name: string, label?: string): Promise<void>
   renameWave(number: number, name: string, label: string): Promise<void>
+  /** Noile poziții ale valurilor mutate prin tragere (`moveWave` din `lib/waveBar`). */
+  reorderWaves(changes: { number: number; position: number }[]): Promise<void>
   deleteWave(number: number): Promise<void>
 
   createTheme(name: string, color: string): Promise<Theme | null>
@@ -985,6 +987,27 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     [projectId],
   )
 
+  // Optimist: tragerea arată noua ordine pe loc, iar la eșec revine pe cea
+  // veche — o ordine pe jumătate scrisă n-ar mai corespunde cu nimic din bază.
+  const reorderWaves = useCallback(
+    async (changes: { number: number; position: number }[]) => {
+      if (!projectId || changes.length === 0) return
+      const pos = new Map(changes.map((c) => [c.number, c.position]))
+      let before: Wave[] = []
+      setAllWaves((prev) => {
+        before = prev
+        return prev.map((w) => (w.projectId === projectId && pos.has(w.number) ? { ...w, position: pos.get(w.number)! } : w))
+      })
+      try {
+        await Promise.all(changes.map((c) => repository.updateWave(projectId, c.number, { position: c.position })))
+      } catch (e) {
+        setAllWaves(before)
+        throw e
+      }
+    },
+    [projectId],
+  )
+
   const deleteWave = useCallback(
     async (number: number) => {
       if (!projectId) return
@@ -1406,6 +1429,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     createAssignee,
     createWave,
     renameWave,
+    reorderWaves,
     deleteWave,
     createTheme,
     updateTheme,

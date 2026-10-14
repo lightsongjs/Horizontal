@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
-import { WaveTabs } from './WaveTabs'
-import { WaveActionsBar } from './WaveActionsBar'
+import { HiddenDone, WaveTabs, type WhoFilter } from './WaveTabs'
+import { NoWaves } from './NoWaves'
 import { BulkBar } from './BulkBar'
 import { useHideDone, useOrderedLayers, useWaveActions, useVimNav, useCanWrite } from '../hooks'
 import { layerVar } from '../lib/layerColors'
@@ -14,7 +14,7 @@ import { SplitView } from './SplitView'
 import { displayIssueId } from '../lib/issueId'
 
 export function ListView() {
-  const { waves, activeWave, byId, stateOf, themeOf, toggleDone, blockedByObstacle, assignees, assigneeShort } = useHorizontal()
+  const { waves, activeWave, byId, stateOf, themeOf, toggleDone, blockedByObstacle, assignees, assigneeShort, project } = useHorizontal()
   const { openEditIssue, dockedIssueId } = useUI()
   const canWrite = useCanWrite()
   const [hideDone, toggleHideDone] = useHideDone()
@@ -52,6 +52,27 @@ export function ListView() {
       ? (assignees.find((a) => a.id === personFilter)?.name ?? null)
       : null
 
+  // Poarta e formată din DOUĂ condiții, deliberat, nu una singură:
+  // `(holders.length > 0 || showUnassignedChip)` e regula veche (f43add2) —
+  // arată filtrul dacă are ce arăta, inclusiv „Nepasate N" într-un val proaspăt
+  // unde niciun holder nu ține nimic încă, dar proiectul chiar are oameni.
+  // `&& assignees.length > 0` taie proiectele fără NICIUN om real, unde „Toți N"
+  // și „Nepasate N" ar fi aceleași cifre. Ștergerea oricăreia din cele două
+  // reproduce bug-ul pe care cealaltă îl repara. Filtrul stă în „⋯ → Al cui";
+  // ales, apare în bandă ca jeton cu ✕.
+  const who: WhoFilter | null =
+    (holders.length > 0 || showUnassignedChip) && assignees.length > 0
+      ? {
+          value: personFilter,
+          onChange: setPersonFilter,
+          options: [
+            { key: null, label: 'Toți', count: allIds.length },
+            ...(showUnassignedChip ? [{ key: 'none' as const, label: 'Nepasate', count: unassignedCount }] : []),
+            ...holders.map((a) => ({ key: a.id, label: a.name, count: countFor.get(a.id) ?? 0 })),
+          ],
+        }
+      : null
+
   const visibleLayers = useMemo(() => {
     const matches = (id: string) => {
       if (personFilter === null) return true
@@ -74,66 +95,25 @@ export function ListView() {
 
   return (
     <SplitView>
-      <div className="panel">
-        <div className="wave-sel">
-          <WaveTabs onWaveChange={wa.exitSelectMode} canWrite={canWrite} />
-          <WaveActionsBar
-            treeViewActive={wa.treeViewActive}
-            onToggleTree={wa.toggleTree}
-            hideDone={hideDone}
-            onToggleHideDone={toggleHideDone}
-            selectMode={wa.selectMode}
-            onEnterSelect={wa.enterSelectMode}
-            onExitSelect={wa.exitSelectMode}
-            canWrite={canWrite}
-          />
-        </div>
+      {/* Culoarea proiectului ajunge la bifele rândurilor prin `--pc`, ca în
+          „Cards" și în listele inteligente („Senin"). */}
+      <div className="panel" style={project?.accent ? ({ ['--pc' as string]: project.accent }) : undefined}>
+        <WaveTabs
+          onWaveChange={wa.exitSelectMode}
+          modes={{
+            tree: wa.treeViewActive,
+            onToggleTree: wa.toggleTree,
+            hideDone,
+            onToggleHideDone: toggleHideDone,
+            selectMode: wa.selectMode,
+            onEnterSelect: wa.enterSelectMode,
+            onExitSelect: wa.exitSelectMode,
+            who,
+          }}
+        />
 
-        {/* Frate al `.wave-sel`, nu al treilea copil: acolo `.wave-tabs` are
-            flex:1 și un al treilea copil ar fura din taburile de val.
-            Poarta e formată din DOUĂ condiții, deliberat, nu una singură:
-            `(holders.length > 0 || showUnassignedChip)` e regula veche
-            (f43add2) — arată bara dacă are ce arăta, inclusiv „Nepasate N"
-            într-un val proaspăt unde niciun holder nu ține nimic încă, dar
-            proiectul chiar are oameni. `&& assignees.length > 0` e intenția
-            de aici — un proiect fără NICIUN assignee real (starea de azi în
-            producție: `assignees` aproape goală) nu mai arată „Toți N" și
-            „Nepasate N" cu aceleași cifre, pe fiecare proiect. Ștergerea
-            oricăreia din cele două reproduce bug-ul pe care cealaltă îl
-            repara. */}
-        {(holders.length > 0 || showUnassignedChip) && assignees.length > 0 && (
-          <div className="who-bar">
-            <button
-              type="button"
-              className={`who-chip ${personFilter === null ? 'on' : ''}`}
-              onClick={() => setPersonFilter(null)}
-            >
-              Toți <span className="n">{allIds.length}</span>
-            </button>
-            {showUnassignedChip && (
-              <button
-                type="button"
-                className={`who-chip ${personFilter === 'none' ? 'on' : ''}`}
-                onClick={() => setPersonFilter('none')}
-              >
-                Nepasate <span className="n">{unassignedCount}</span>
-              </button>
-            )}
-            {holders.map((a) => (
-              <button
-                type="button"
-                key={a.id}
-                className={`who-chip ${personFilter === a.id ? 'on' : ''}`}
-                onClick={() => setPersonFilter(a.id)}
-              >
-                {a.name} <span className="n">{countFor.get(a.id) ?? 0}</span>
-              </button>
-            ))}
-          </div>
-        )}
-
-        {waves.length === 0 ? (
-          <p className="empty">Niciun val încă. Apasă rotița din bara de valuri ca să adaugi primul (sprint).</p>
+        {!waves.some((w) => w.number !== 0) && orderedLayers.length === 0 ? (
+          <NoWaves />
         ) : orderedLayers.length === 0 ? (
           <p className="empty">Niciun tichet în acest val. Apasă + ca să adaugi unul.</p>
         ) : visibleLayers.length === 0 ? (
@@ -204,10 +184,15 @@ export function ListView() {
                         else if (canWrite) void toggleDone(id)
                       }}
                     >
-                      <Icon name={(inSelect ? isSelected : it.done) ? 'done' : 'notDone'} size={17} />
+                      {inSelect
+                        ? (isSelected ? <span className="sel-mark"><Icon name="check" size={12} /></span> : <span className="ck" />)
+                        : (
+                          <span className={`ck${it.done ? ' on' : ''}${it.urgent && !it.done ? ' urg' : ''}`}>
+                            {it.done && <Icon name="check" size={12} />}
+                          </span>
+                        )}
                     </span>
                     {theme && <span className="theme-dot" style={{ background: theme.color }} />}
-                    <span className="list-id">{displayIssueId(id)}</span>
                     <span className="list-title">{it.title}</span>
                     {/* Coada rândului: aceeași ordine ca `.t-tail` din TaskRow. */}
                     <span className="row-tail">
@@ -226,9 +211,11 @@ export function ListView() {
                         )
                       })()}
                       <TaskProgress desc={it.desc} />
-                      {it.urgent && <span className="tk-urgent" title="Urgent"><Icon name="urgent" size={13} /></span>}
                       <DueChip issue={it} />
                       <ObstacleChip issueId={id} />
+                      {/* ID-ul în coadă: pe desktop se caută după el; sub
+                          900px iese (CSS), titlul are nevoie de loc. */}
+                      <span className="list-id">{displayIssueId(id)}</span>
                     </span>
                   </button>
                 )
@@ -236,6 +223,8 @@ export function ListView() {
             </div>
           ))
         )}
+
+        <HiddenDone hideDone={hideDone} onShow={toggleHideDone} />
 
         {wa.selectMode && (
           <BulkBar

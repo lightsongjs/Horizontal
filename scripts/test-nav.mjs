@@ -1107,6 +1107,39 @@ try {
     await dctx.close()
   }
 
+  // ── Banda de valuri vs. sertarul din margine ──────────────────────────
+  // Pe telefon banda derulează orizontal și începe la marginea paginii, în
+  // zona din care se trage sertarul (`EDGE_PX`). O tragere spre dreapta pe ea
+  // e derulare, nu sertar (`onBand` din App.tsx).
+  {
+    const bctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
+    const bp = await bctx.newPage()
+    await bp.goto(BASE, { waitUntil: 'networkidle' })
+    await bp.waitForTimeout(800)
+    await bp.locator('.header-drawer-btn').click()
+    await bp.waitForTimeout(400)
+    await bp.locator('.dr-projects .dr-row', { hasText: 'Exemplu' }).first().click()
+    await bp.waitForTimeout(800)
+    await bp.locator('.tab', { hasText: /^List/ }).first().click()
+    await bp.waitForTimeout(500)
+    const band = await bp.locator('.wb-pills').boundingBox()
+    check('banda de valuri e pe ecran (proiectul are 2 valuri)', Boolean(band), band ? `${Math.round(band.x)}px de la margine` : 'lipsește')
+    if (band) {
+      const t = await touchApi(bp)
+      const y = band.y + band.height / 2
+      await t.drag(Math.max(band.x + 4, 16), y, 190, y + 4)
+      await bp.waitForTimeout(400)
+      const opened = (await bp.locator('.drawer').count()) > 0
+      check('o glisare orizontală pe bandă nu deschide sertarul', !opened, opened ? 'S-A DESCHIS sertarul' : 'închis')
+      if (opened) { await bp.goBack(); await bp.waitForTimeout(300) }
+      // Sub bandă, aceeași tragere din margine deschide sertarul ca înainte.
+      await t.drag(8, y + 220, 170, y + 226)
+      await bp.waitForTimeout(400)
+      check('…dar din margine, sub bandă, sertarul se deschide', (await bp.locator('.drawer').count()) > 0, 'deschis')
+    }
+    await bctx.close()
+  }
+
   // ── Filtrele salvate: „+ Filtru" din sertar → ecranul filtrului → Back ──
   // Salvarea deschide filtrul ca tab de sus (`[Azi, filtru]`), deci Back duce
   // pe „Azi", nu afară din aplicație — editorul cere navigarea după ce s-a

@@ -78,7 +78,7 @@ export function useWritableProjects(): Project[] {
  *  ecranul pe care tocmai l-am câștigat ar fi devenit inertă. Cât timp scrii
  *  în panou nu se ciocnesc oricum: prima condiție prinde orice câmp de text.
  */
-function shouldIgnoreKey(e: KeyboardEvent, modalOpen: boolean): boolean {
+export function shouldIgnoreKey(e: KeyboardEvent, modalOpen: boolean): boolean {
   const target = e.target as HTMLElement
   if (['INPUT', 'TEXTAREA'].includes(target.tagName) || target.isContentEditable) return true
   if (e.metaKey || e.ctrlKey || e.altKey) return true
@@ -159,7 +159,7 @@ export interface WaveActions {
 
 /**
  * All interaction state shared by the Cards and List views: multi-select +
- * bulk actions, tree-highlight mode, and the T/Esc keyboard shortcuts. Extracted
+ * bulk actions, tree-highlight mode, and the T/S/Esc keyboard shortcuts. Extracted
  * so both views stay in lockstep instead of drifting.
  */
 export interface Selection {
@@ -224,6 +224,7 @@ export function useWaveActions(): WaveActions {
   const { activeWave, deleteIssues, updateIssue, byId } = useHorizontal()
   const { sheet, dockedIssueId } = useUI()
   const modalOpen = sheet.kind !== 'none' && !dockedIssueId
+  const canWrite = useCanWrite()
 
   const sel = useSelection()
   const { selectMode, selectedIds, toggleSelected } = sel
@@ -278,11 +279,17 @@ export function useWaveActions(): WaveActions {
       if (e.key === 't' || e.key === 'T') {
         e.preventDefault()
         toggleTree()
+      } else if ((e.key === 's' || e.key === 'S') && canWrite) {
+        // S = selecție, din „⋯ Vizualizare". Liberă: Ctrl+S (salvarea din
+        // formular) are modificator, deci nu ajunge aici.
+        e.preventDefault()
+        if (selectMode) exitSelectMode()
+        else { exitTreeView(); enterSelect() }
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [selectMode, confirmDel, treeViewActive, exitSelectMode, exitTreeView, toggleTree, modalOpen])
+  }, [selectMode, confirmDel, treeViewActive, exitSelectMode, exitTreeView, toggleTree, modalOpen, canWrite, enterSelect])
 
   // reset tree state when the active wave changes
   useEffect(() => { exitTreeView() }, [activeWave, exitTreeView])

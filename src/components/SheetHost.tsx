@@ -70,7 +70,7 @@ export function SheetHost() {
         {sheet.kind === 'issue-form' && !dockedIssueId && !compactId && <IssueForm key={sheetKey(sheet) ?? '__new__'} issueId={sheet.issueId} draft={sheet.draft} />}
         {sheet.kind === 'project-form' && <ProjectForm />}
         {sheet.kind === 'project-settings' && <ProjectSettings />}
-        {sheet.kind === 'wave-manage' && <WaveManager />}
+        {sheet.kind === 'wave-manage' && <WaveManager focus={sheet.focus} />}
         {sheet.kind === 'theme-manage' && <ThemeManager />}
         {sheet.kind === 'app-settings' && <AppSettings />}
         {sheet.kind === 'obstacle-form' && (

@@ -1,0 +1,725 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bara de valuri</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..800&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ---------- jetoanele „Senin" (copiate din src/styles.css) ---------- */
+:root{
+  --bg:#FFFFFF;--surface:#FFFFFF;--surface-2:#F6F7F9;--surface-3:#EEF0F3;
+  --line:#E6E8EC;--line-soft:#EEF0F3;--txt:#1A1C20;--txt-dim:#565C66;--txt-faint:#868C96;
+  --accent:#2F6BFF;--accent-soft:#EBF1FF;--done:#1F9D60;--blocked:#E5484D;--blocked-soft:#FDEEEE;--star:#F5B000;
+  --border-strong:#D5D9DF;
+  --amb:0 1px 2px rgba(16,24,40,.05),0 6px 20px rgba(16,24,40,.07);
+  --amb-lg:0 2px 6px rgba(16,24,40,.06),0 18px 44px rgba(16,24,40,.12);
+  --layer-0:#2F6BFF;--layer-1:#1F7FD6;
+  --r:20px;--r-m:12px;--r-s:8px;
+  --mono:'Geist Mono',ui-monospace,monospace;--display:'Inter',system-ui,sans-serif;
+  --pc:#0E9F8E; /* culoarea proiectului, pentru demonstrație */
+  --page:#ECEEF1;--page-card:#FFFFFF;--page-ink:#1A1C20;--page-dim:#646A74;--frame:#16171A;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141517;--surface:#1B1C1F;--surface-2:#232428;--surface-3:#2B2D32;--line:#2A2C31;--line-soft:#1F2024;
+  --txt:#EEEFF1;--txt-dim:#A6ABB3;--txt-faint:#757A83;--accent:#5B8DFF;--accent-soft:rgba(91,141,255,.15);
+  --done:#3DBF85;--blocked:#FF6369;--blocked-soft:rgba(255,99,105,.13);--border-strong:#3A3D44;
+  --amb:inset 0 1px 0 rgba(255,255,255,.04),0 6px 22px rgba(0,0,0,.4);--amb-lg:inset 0 1px 0 rgba(255,255,255,.05),0 16px 44px rgba(0,0,0,.5);
+  --layer-0:#5B8DFF;--layer-1:#4FA3F0;--pc:#2EC4B0;
+  --page:#0C0D0F;--page-card:#17181B;--page-ink:#EEEFF1;--page-dim:#9097A1;--frame:#000;
+}}
+:root[data-theme="dark"]{
+  --bg:#141517;--surface:#1B1C1F;--surface-2:#232428;--surface-3:#2B2D32;--line:#2A2C31;--line-soft:#1F2024;
+  --txt:#EEEFF1;--txt-dim:#A6ABB3;--txt-faint:#757A83;--accent:#5B8DFF;--accent-soft:rgba(91,141,255,.15);
+  --done:#3DBF85;--blocked:#FF6369;--blocked-soft:rgba(255,99,105,.13);--border-strong:#3A3D44;
+  --amb:inset 0 1px 0 rgba(255,255,255,.04),0 6px 22px rgba(0,0,0,.4);--amb-lg:inset 0 1px 0 rgba(255,255,255,.05),0 16px 44px rgba(0,0,0,.5);
+  --layer-0:#5B8DFF;--layer-1:#4FA3F0;--pc:#2EC4B0;
+  --page:#0C0D0F;--page-card:#17181B;--page-ink:#EEEFF1;--page-dim:#9097A1;--frame:#000;
+}
+
+/* ---------- pagina-gazdă ---------- */
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--page)}
+body{font-family:var(--display);color:var(--page-ink);-webkit-font-smoothing:antialiased;font-feature-settings:"tnum" 1,"cv11" 1}
+svg{display:block;flex-shrink:0}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+.wrap{max-width:1520px;margin:0 auto;padding:40px 16px 96px}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;flex-wrap:wrap}
+.eyebrow{font-size:12px;font-weight:650;color:var(--page-dim)}
+h1{font-size:40px;letter-spacing:-.03em;font-weight:750;margin:6px 0 10px}
+.lead{font-size:16px;line-height:1.55;color:var(--page-dim);max-width:72ch}
+.lead b{color:var(--page-ink)}
+.tg{display:flex;background:var(--page-card);border-radius:12px;padding:3px;box-shadow:var(--amb)}
+.tg button{font-size:13px;font-weight:600;padding:7px 12px;border-radius:9px;color:var(--page-dim)}
+.tg button[aria-pressed=true]{background:var(--accent);color:#fff}
+.verdict{margin:26px 0 0;background:var(--page-card);border-radius:20px;padding:22px 26px;box-shadow:var(--amb);display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:start}
+.verdict .b{width:40px;height:40px;border-radius:12px;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:800}
+.verdict p{font-size:15px;line-height:1.6}
+.verdict ul{margin:8px 0 0 18px;font-size:14.5px;line-height:1.6;color:var(--page-dim)}
+.verdict ul b{color:var(--page-ink)}
+section{margin-top:56px}
+section>h2{font-size:26px;letter-spacing:-.02em;font-weight:750}
+section>p.sub{font-size:15px;color:var(--page-dim);margin:6px 0 20px;max-width:90ch;line-height:1.5}
+.stage{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap}
+.cap{font-size:12px;font-weight:650;color:var(--page-dim);margin:0 0 8px 4px}
+.note{font-size:13px;line-height:1.5;color:var(--page-dim);max-width:390px;margin:10px 4px 0}
+.note b{color:var(--page-ink)}
+.tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 7px;border-radius:6px;background:var(--blocked-soft);color:var(--blocked);margin-left:6px;vertical-align:2px}
+.tag.ok{background:var(--accent-soft);color:var(--accent)}
+
+/* ---------- cadre ---------- */
+.lap{background:var(--frame);border-radius:16px;padding:10px;width:max-content;box-shadow:0 30px 60px -28px rgba(0,0,0,.45)}
+.lap .win{width:1000px;height:560px;background:var(--bg);color:var(--txt);border-radius:8px;overflow:hidden;display:flex;position:relative}
+.phone{background:var(--frame);border-radius:48px;padding:10px;width:max-content;box-shadow:0 30px 60px -28px rgba(0,0,0,.45)}
+.phone .scr{width:390px;height:780px;border-radius:38px;background:var(--bg);color:var(--txt);overflow:hidden;position:relative;display:flex;flex-direction:column}
+.sb{height:40px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:4px 28px 0 32px;font-size:14px;font-weight:600}
+
+/* aplicația */
+.app{font-size:15px;line-height:1.3}
+.col{width:760px;flex-shrink:0;display:flex;flex-direction:column;min-width:0;overflow:hidden;box-shadow:1px 0 0 var(--line)}
+.dock{flex:1;padding:22px 20px;background:var(--bg);overflow:hidden}
+.dock .id{font-family:var(--mono);font-size:13px;color:var(--txt-faint)}
+.dock .tt{display:flex;gap:12px;align-items:center;margin:16px 0 12px;font-size:20px;font-weight:700;white-space:nowrap}
+.dock .chip{display:inline-flex;gap:6px;align-items:center;height:30px;padding:0 10px;border-radius:var(--r-s);background:var(--surface-2);font-size:13px;font-weight:600}
+.dock p{font-size:14px;color:var(--txt-dim);margin-top:16px;line-height:1.6}
+.ph{display:flex;align-items:center;gap:10px;padding:18px 20px 6px}
+.ph h3{font-size:26px;font-weight:750;letter-spacing:-.02em}
+.ibtn{width:36px;height:36px;display:grid;place-items:center;border-radius:var(--r-s);color:var(--txt-dim);flex-shrink:0}
+.tabs{display:flex;gap:22px;padding:6px 20px 0;font-size:15px;font-weight:600;color:var(--txt-faint);box-shadow:inset 0 -1px 0 var(--line-soft)}
+.tabs > span:not(.sp):not(.tools){padding:8px 0 10px;position:relative}
+.tabs > span.on{color:var(--txt)}
+.tabs > span.on::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;border-radius:2px;background:var(--accent)}
+.phone .tabs{padding:4px 16px 0;gap:20px;font-size:14px}
+
+/* rânduri */
+.body{flex:1;overflow:hidden;padding:4px 12px 0}
+.lh{display:flex;align-items:center;gap:8px;padding:14px 8px 6px;font-size:14px;font-weight:650;color:var(--layer-0)}
+.lh .num{width:20px;height:20px;border-radius:50%;background:color-mix(in srgb,var(--layer-0) 14%,transparent);display:grid;place-items:center;font-family:var(--mono);font-size:11px}
+.lh .sp{flex:1}.lh .c{font-family:var(--mono);font-size:12px;color:var(--txt-faint);font-weight:500}
+.lh.l2{color:var(--layer-1)}.lh.l2 .num{background:color-mix(in srgb,var(--layer-1) 14%,transparent)}
+.r{display:flex;align-items:center;gap:12px;min-height:44px;padding:8px 10px;border-radius:var(--r-m);position:relative}
+.r::after{content:"";position:absolute;left:42px;right:0;bottom:0;height:1px;background:var(--line-soft)}
+.r.sel{background:var(--accent-soft)}.r.sel::after{opacity:0}
+.r .t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.r .tail{display:flex;gap:8px;align-items:center;font-family:var(--mono);font-size:12px;color:var(--txt-faint);flex-shrink:0}
+.r .id{font-family:var(--mono);font-size:12px;color:var(--txt-faint)}
+.ck{width:20px;height:20px;border-radius:50%;flex-shrink:0;box-shadow:inset 0 0 0 1.75px color-mix(in srgb,var(--pc) 80%,var(--bg))}
+.ck.urg{box-shadow:inset 0 0 0 2px var(--blocked);background:var(--blocked-soft)}
+.ck.old{box-shadow:inset 0 0 0 1.75px var(--txt-faint)}
+.dchip{font-family:var(--mono);font-size:12px;padding:3px 7px;border-radius:6px;background:var(--surface-2);color:var(--txt-dim)}
+
+/* ---------- ÎNAINTE (recreare a ecranului de azi) ---------- */
+.old-waves{display:flex;align-items:flex-end;gap:0;padding:12px 20px 0}
+.ow{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:0 8px 10px;min-width:0;flex:1;position:relative;color:var(--txt-faint)}
+.ow b{font-size:28px;font-weight:800;line-height:1;color:var(--txt-faint);font-family:var(--display)}
+.ow small{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.ow.on b{color:var(--txt)}.ow.on small{color:var(--accent)}
+.ow.on::after{content:"";position:absolute;left:4px;right:20%;bottom:0;height:3px;border-radius:2px;background:var(--accent)}
+.ow.ic{flex:0 0 auto;align-items:center}
+.old-tools{display:flex;gap:8px;padding:12px 20px 0}
+.old-tools span{display:inline-flex;gap:7px;align-items:center;height:34px;padding:0 13px;border-radius:var(--r-s);background:var(--surface-2);font-size:14px;color:var(--txt-dim)}
+.old-tools span.on{background:var(--accent-soft);color:var(--accent)}
+.old-who{margin:12px 20px 0;padding:10px 12px;border-radius:var(--r-m);background:var(--surface);box-shadow:var(--amb);display:flex;gap:8px}
+.old-who span{display:inline-flex;gap:6px;align-items:center;height:32px;padding:0 13px;border-radius:var(--r-s);background:var(--surface-2);font-size:14px;color:var(--txt-dim)}
+.old-who span.on{box-shadow:inset 0 -2px 0 var(--accent);background:var(--surface-3);color:var(--txt)}
+.old-who i{font-style:normal;font-family:var(--mono);font-size:11px;color:var(--accent)}
+.phone .old-waves{padding:10px 10px 0}.phone .ow b{font-size:22px}.phone .ow small{font-size:11px}
+.phone .old-tools,.phone .old-who{margin-left:16px;margin-right:16px;padding-left:0;padding-right:0}
+.phone .old-who{padding:8px 10px}
+.rowmark{position:absolute;left:-8px;width:3px;border-radius:2px;background:var(--blocked)}
+
+/* ---------- DUPĂ: banda de valuri ---------- */
+.ws{display:flex;align-items:center;gap:8px;padding:10px 20px 6px}
+.ws-scroll{display:flex;gap:6px;flex:1;min-width:0;overflow:hidden;align-items:center}
+.ws-scroll.fade{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}
+.pill{height:34px;padding:0 12px;border-radius:var(--r-s);background:var(--surface-2);color:var(--txt-dim);font-size:14px;font-weight:550;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;flex-shrink:0}
+.pill .n{font-family:var(--mono);font-size:12px;color:var(--txt-faint);font-weight:500}
+.pill.on{background:var(--accent-soft);color:var(--accent);font-weight:650}
+.pill.on .n{color:var(--accent)}
+.pill.scratch{padding:0 10px;gap:6px}
+.pill.add{width:34px;padding:0;justify-content:center;background:transparent;box-shadow:inset 0 0 0 1.5px var(--border-strong);color:var(--txt-faint)}
+.pill.add.wide{width:auto;padding:0 12px;gap:6px}
+.pill.add{border-radius:var(--r-s);box-shadow:none;outline:1.5px dashed var(--border-strong);outline-offset:-1.5px}
+.vsep{width:1px;height:20px;background:var(--line);flex-shrink:0;margin:0 2px}
+.mode{height:30px;padding:0 6px 0 10px;border-radius:var(--r-s);background:var(--surface-2);color:var(--txt);font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;flex-shrink:0}
+.mode .x{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;color:var(--txt-faint)}
+.more{width:34px;height:34px;border-radius:var(--r-s);display:grid;place-items:center;color:var(--txt-dim);position:relative;flex-shrink:0;background:var(--surface-2)}
+.more.on{background:var(--accent-soft);color:var(--accent)}
+.more .dot{position:absolute;top:6px;right:6px;width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 2px var(--surface-2)}
+.phone .ws{padding:10px 0 6px 16px;gap:6px}
+.phone .ws .more{margin-right:16px}
+.hidden-note{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--txt-faint);padding:10px 10px 16px}
+.hidden-note b{font-weight:600;color:var(--accent)}
+
+/* meniuri și foi */
+.pop{position:absolute;background:var(--surface);border-radius:var(--r-m);box-shadow:var(--amb-lg);padding:6px;z-index:5;width:260px}
+.pop .h{font-size:12px;font-weight:650;color:var(--txt-faint);padding:8px 10px 4px}
+.mi{display:flex;align-items:center;gap:10px;height:38px;padding:0 10px;border-radius:var(--r-s);font-size:14px;color:var(--txt)}
+.mi.hl{background:var(--surface-2)}
+.mi .ic{color:var(--txt-dim)}
+.mi .sp{flex:1}
+.mi kbd,.kbd{font-family:var(--mono);font-size:11.5px;color:var(--txt-faint);background:var(--surface-2);padding:2px 6px;border-radius:5px;box-shadow:inset 0 -1px 0 var(--line)}
+.mi.hl kbd{background:var(--surface-3)}
+.mi .n{font-family:var(--mono);font-size:12px;color:var(--txt-faint)}
+.mi.on{color:var(--accent);font-weight:600}.mi.on .ic{color:var(--accent)}
+.pop hr{border:0;height:1px;background:var(--line-soft);margin:6px 4px}
+.seg{display:flex;gap:4px;padding:2px 6px 6px;flex-wrap:wrap}
+.seg span{height:30px;padding:0 10px;border-radius:var(--r-s);background:var(--surface-2);font-size:13px;display:inline-flex;align-items:center;gap:5px;color:var(--txt-dim)}
+.seg span.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.seg i{font-style:normal;font-family:var(--mono);font-size:11px;opacity:.8}
+.tgl{width:34px;height:20px;border-radius:10px;background:var(--surface-3);position:relative;flex-shrink:0}
+.tgl::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.tgl.on{background:var(--accent)}.tgl.on::after{left:16px}
+.scrim{position:absolute;inset:0;background:rgba(10,12,16,.32);z-index:4}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--surface);border-radius:var(--r) var(--r) 0 0;box-shadow:var(--amb-lg);z-index:5;padding:8px 16px 24px}
+.grab{width:36px;height:4px;border-radius:2px;background:var(--surface-3);margin:2px auto 12px}
+.sheet h4{font-size:19px;font-weight:700;letter-spacing:-.01em}
+.sheet .hint{font-size:13px;color:var(--txt-faint);margin:4px 0 12px;line-height:1.45}
+.we{display:flex;align-items:center;gap:8px;height:52px;position:relative}
+.we::after{content:"";position:absolute;left:32px;right:0;bottom:0;height:1px;background:var(--line-soft)}
+.we .grip{width:24px;color:var(--txt-faint);display:grid;place-items:center}
+.we .field{flex:1;height:38px;border-radius:var(--r-m);background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--line);display:flex;align-items:center;padding:0 12px;font-size:15px}
+.we .field.focus{box-shadow:inset 0 0 0 2px var(--accent);background:var(--bg)}
+.we .n{font-family:var(--mono);font-size:12px;color:var(--txt-faint);width:28px;text-align:right}
+.we .del{width:34px;height:34px;display:grid;place-items:center;color:var(--txt-faint);border-radius:var(--r-s)}
+.we.fixed .field{background:transparent;box-shadow:none;color:var(--txt-dim);padding-left:0;gap:8px}
+.we.lift{background:var(--surface);box-shadow:var(--amb);border-radius:var(--r-m);z-index:2;transform:translateX(4px) rotate(-.6deg)}
+.we.lift::after{display:none}
+.newval{display:flex;gap:8px;align-items:center;margin-top:12px}
+.newval .field{flex:1;height:42px;border-radius:var(--r-m);background:var(--bg);box-shadow:inset 0 0 0 1px var(--border-strong);display:flex;align-items:center;padding:0 12px;font-size:15px;color:var(--placeholder,#A0A6AF)}
+.btn{height:42px;padding:0 16px;border-radius:var(--r-s);background:var(--accent);color:#fff;font-weight:650;font-size:14px;display:inline-flex;align-items:center;gap:6px}
+.btn.ghost{background:var(--surface-2);color:var(--txt)}
+.fab{position:absolute;right:18px;bottom:92px;width:54px;height:54px;border-radius:18px;background:var(--accent);color:#fff;display:grid;place-items:center;box-shadow:var(--amb-lg);z-index:3}
+.bnav{height:72px;flex-shrink:0;display:flex;justify-content:space-around;align-items:flex-start;padding-top:10px;box-shadow:0 -1px 0 var(--line-soft);background:var(--bg);font-size:11px;font-weight:600;color:var(--txt-faint)}
+.bnav div{display:flex;flex-direction:column;align-items:center;gap:4px}
+.phd{display:flex;align-items:center;gap:6px;padding:4px 10px 0}
+.phd h3{font-size:22px;font-weight:750;letter-spacing:-.02em;flex:1;padding-left:2px}
+.empty{margin:28px 16px;padding:22px;border-radius:var(--r);background:var(--surface-2);text-align:left}
+.empty h5{font-size:16px;font-weight:700;margin-bottom:6px}
+.empty p{font-size:14px;color:var(--txt-dim);line-height:1.5;margin-bottom:14px}
+
+/* tabele */
+.card{background:var(--page-card);border-radius:20px;padding:26px 28px;box-shadow:var(--amb)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-size:12px;font-weight:650;color:var(--page-dim);padding:0 12px 10px 0}
+td{padding:11px 12px 11px 0;vertical-align:top;line-height:1.5;box-shadow:inset 0 1px 0 var(--line-soft)}
+td:first-child{font-weight:600;white-space:nowrap}
+td code,.card code{font-family:var(--mono);font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:5px}
+.k{display:inline-block;font-family:var(--mono);font-size:12px;background:var(--surface-2);box-shadow:inset 0 -1px 0 var(--line);padding:2px 7px;border-radius:5px;margin-right:2px}
+.badge{font-size:11px;font-weight:700;padding:2px 7px;border-radius:6px}
+.badge.gone{background:var(--blocked-soft);color:var(--blocked)}
+.badge.move{background:var(--accent-soft);color:var(--accent)}
+.badge.stay{background:var(--surface-2);color:var(--txt-dim)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.card h3{font-size:16px;font-weight:700;margin-bottom:10px}
+.card ul{margin-left:18px;font-size:14px;line-height:1.65;color:var(--page-dim)}
+.card ul b{color:var(--page-ink)}
+@media (max-width:900px){.two{grid-template-columns:1fr}.verdict{grid-template-columns:1fr}}
+/* ---- valuri reale: numeral mic + etichetă trunchiată ---- */
+.pill .rn{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--txt-faint);letter-spacing:.02em}
+.pill.on .rn{color:var(--accent);opacity:.75}
+.pill .lb{max-width:118px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pill.on .lb{max-width:220px}
+.phone .pill .lb{max-width:104px}
+.phone .pill.on .lb{max-width:190px}
+.pill.over{gap:5px;color:var(--txt)}
+.tabs.withtools{align-items:center}
+.tabs.withtools .sp{flex:1}
+.tabs.withtools .pill,.tabs.withtools .more{margin-bottom:6px}
+.tabs .tools{display:flex;gap:6px;align-items:center;padding-bottom:6px}
+.pop .mi .rn{font-family:var(--mono);font-size:11px;color:var(--txt-faint);width:26px}
+.we .rn{font-family:var(--mono);font-size:11px;color:var(--txt-faint);width:26px;text-align:center}
+.legacy{margin-top:16px;padding:14px 18px;border-radius:var(--r-m);background:var(--page-card);box-shadow:var(--amb);font-size:14px;line-height:1.55;color:var(--page-dim);max-width:900px}
+.legacy b{color:var(--page-ink)}
+.ws-wrap{display:flex;gap:6px;flex:1;min-width:0;flex-wrap:wrap;align-items:center}
+.ws.top{align-items:flex-start}
+.ws.top .more{margin-top:0}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="i-note" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 2v4M15 2v4M9 11h6M9 15h4"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></symbol>
+    <symbol id="i-tree" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></symbol>
+    <symbol id="i-eyeoff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10.7 5.1A10 10 0 0 1 22 12a13 13 0 0 1-1.7 2.7M6.6 6.6A13 13 0 0 0 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6M2 2l20 20M9.9 9.9a3 3 0 0 0 4.2 4.2"/></symbol>
+    <symbol id="i-select" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8 12 3 3 5-6"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
+    <symbol id="i-grip" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+    <symbol id="i-panel" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24" fill="currentColor"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></symbol>
+    <symbol id="i-week" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+    <symbol id="i-inbox" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5h13L22 12v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z"/></symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <div class="top">
+    <div>
+      <div class="eyebrow">Horizontal · machetă · 2026-10-14 · sistemul „Senin” · v2 pe date reale</div>
+      <h1>Bara de valuri</h1>
+      <p class="lead">Omul a zis: <b>„arată crunt și pe mobil și pe desktop”</b> și vrea <b>„o metodă ușoară de a le schimba… acces ușor la toate”</b>. Azi, deasupra listei stau <b>patru rânduri de crom</b> (taburi, valuri cu cifre romane mari, Tree/Arată/Select, „Toți/Nepasate” într-un card alb) înainte de primul tichet. Exemplele sunt proiecte reale: <b>MateCuSens</b> (5 valuri, etichete lungi), <b>APIs</b> (8 valuri) și <b>MCP</b> (un singur val).</p>
+    </div>
+    <div class="tg" role="group" aria-label="Temă">
+      <button data-t="light" aria-pressed="true">Luminos</button>
+      <button data-t="dark" aria-pressed="false">Întunecat</button>
+    </div>
+  </div>
+
+  <div class="verdict">
+    <div class="b">✓</div>
+    <div>
+      <p><b>Recomandarea: o singură bandă de valuri care arată eticheta, cu „+” și „⋯ Vizualizare”.</b> Patru rânduri devin două. Fiecare val e o pastilă cu <b>eticheta</b> lui („Extindere clase 7,8,12”) și numărul de tichete <b>deschise</b>. O atingere îl face activ.</p>
+      <ul>
+        <li><b>Eticheta e textul principal, cifra romană iese din bandă.</b> Ordinea se vede din poziție, iar numeralul rămâne în foaia „Valuri”, în tooltip și ca rezervă când un val n-are etichetă („Val III”). Pe telefon, cu 8 valuri, cifra ar mânca ~20px din fiecare pastilă.</li>
+        <li><b>Etichetele lungi se taie</b> la ~16 caractere pe pastilele inactive. Valul activ se arată întreg (până la ~220px).</li>
+        <li><b>Laptop: banda se rupe pe două rânduri</b> când nu încape. Toate valurile rămân la vedere, la un click. <b>Telefon: banda derulează orizontal</b>, aduce singură valul activ în cadru, iar „⋯” stă fix la capăt.</li>
+        <li><b>Un singur val (MCP), sau niciunul: nu există bandă.</b> N-ai ce comuta. Notițele și „⋯” urcă în rândul taburilor.</li>
+        <li>Tree, Ascunde bifatele, Selectează și „Al cui” intră în „⋯”. Un mod pornit apare în bandă ca jeton cu ✕.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- =================== ÎNAINTE =================== -->
+  <section>
+    <h2>Înainte <span class="tag">azi</span> · MateCuSens</h2>
+    <p class="sub">Recreare compactă a barei de azi. Ce nu merge: cifrele romane mari nu spun nimic, iar eticheta e sub ele, mică și tăiată („Extindere cla…”). Numărul include și bifatele. Sunt trei rânduri de unelte înainte de primul tichet, „Toți/Nepasate” stă într-un card cu umbră, iar bifa e gri cu ID-ul în fața titlului.</p>
+    <div class="stage">
+      <div>
+        <div class="cap">Laptop · coloana listei (760px) lângă panoul lateral</div>
+        <div class="lap"><div class="win app">
+          <div class="col">
+            <div class="ph"><span class="ibtn"><svg width="20" height="20"><use href="#i-panel"/></svg></span><h3>MateCuSens</h3></div>
+            <div class="tabs"><span class="on">Listă</span><span>Cards</span><span>Hartă</span><span>Teme</span></div>
+            <div class="old-waves">
+              <div class="ow ic"><svg width="22" height="22"><use href="#i-note"/></svg><small>3</small></div>
+              <div class="ow"><b>I</b><small>MVP · 12</small></div>
+              <div class="ow on"><b>II</b><small>Extindere clase 7,8,12 · 88</small></div>
+              <div class="ow"><b>III</b><small>Discutie cu Mihai · 7</small></div>
+              <div class="ow"><b>IV</b><small>matecusens.ro · 11</small></div>
+              <div class="ow"><b>V</b><small>2026-09-17 · 2</small></div>
+              <div class="ow ic"><svg width="20" height="20"><use href="#i-sliders"/></svg><small>valuri</small></div>
+            </div>
+            <div class="old-tools"><span><svg width="15" height="15"><use href="#i-tree"/></svg>Tree</span><span class="on"><svg width="15" height="15"><use href="#i-eyeoff"/></svg>Arată</span><span><svg width="15" height="15"><use href="#i-select"/></svg>Select</span></div>
+            <div class="old-who"><span class="on">Toți <i>88</i></span><span>Nepasate <i>88</i></span></div>
+            <div class="body">
+              <div class="lh"><span class="num">1</span>Începe aici<span class="sp"></span><span class="c">31</span></div>
+              <div class="r sel"><span class="ck old"></span><span class="id">M-212</span><span class="t"><b>Fișă de lucru — fracții, clasa a 7-a</b></span></div>
+              <div class="r"><span class="ck old"></span><span class="id">M-215</span><span class="t">Test de evaluare, clasa a 8-a</span></div>
+            </div>
+          </div>
+          <div class="dock"><div class="id">M-212</div><div class="tt"><span class="ck" style="width:26px;height:26px"></span>Fișă de lucru</div><span class="chip">II · Extindere</span><p>Exerciții cu fracții ordinare și zecimale.</p></div>
+        </div></div>
+        <p class="note">Patru rânduri (~270px) înainte de primul tichet, pe un ecran de 560px.</p>
+      </div>
+      <div>
+        <div class="cap">Telefon · 390px</div>
+        <div class="phone"><div class="scr app">
+          <div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+          <div class="phd"><span class="ibtn"><svg width="22" height="22"><use href="#i-menu"/></svg></span><h3>MateCuSens</h3><span class="ibtn"><svg width="20" height="20"><use href="#i-search"/></svg></span></div>
+          <div class="tabs"><span class="on">Listă</span><span>Cards</span><span>Hartă</span><span>Teme</span></div>
+          <div class="old-waves">
+            <div class="ow ic"><svg width="20" height="20"><use href="#i-note"/></svg><small>3</small></div>
+            <div class="ow"><b>I</b><small>MVP · 12</small></div>
+            <div class="ow on"><b>II</b><small>Extindere clase 7,8,12 · 88</small></div>
+            <div class="ow"><b>III</b><small>Discutie cu Mihai · 7</small></div>
+            <div class="ow"><b>IV</b><small>matecusens.ro · 11</small></div>
+            <div class="ow"><b>V</b><small>2026-09-17 · 2</small></div>
+            <div class="ow ic"><svg width="18" height="18"><use href="#i-sliders"/></svg><small>valuri</small></div>
+          </div>
+          <div class="old-tools"><span><svg width="15" height="15"><use href="#i-tree"/></svg>Tree</span><span class="on"><svg width="15" height="15"><use href="#i-eyeoff"/></svg>Arată</span><span><svg width="15" height="15"><use href="#i-select"/></svg>Select</span></div>
+          <div class="old-who"><span class="on">Toți <i>88</i></span><span>Nepasate <i>88</i></span></div>
+          <div class="body">
+            <div class="lh"><span class="num">1</span>Începe aici<span class="sp"></span><span class="c">31</span></div>
+            <div class="r"><span class="ck old"></span><span class="id">M-212</span><span class="t">Fișă de lucru — fracții, clasa a 7-a</span></div>
+            <div class="r"><span class="ck old"></span><span class="id">M-215</span><span class="t">Test de evaluare, clasa a 8-a</span></div>
+            <div class="r"><span class="ck old"></span><span class="id">M-219</span><span class="t">Ecuații de gradul II — exerciții</span></div>
+          </div>
+          <span class="fab"><svg width="24" height="24"><use href="#i-plus"/></svg></span>
+          <div class="bnav"><div><svg width="22" height="22"><use href="#i-star"/></svg>Azi</div><div><svg width="22" height="22"><use href="#i-week"/></svg>7 zile</div><div><svg width="22" height="22"><use href="#i-inbox"/></svg>Ale mele</div></div>
+        </div></div>
+        <p class="note">Cinci valuri în 390px: fiecare etichetă se taie după câteva litere, deci nu se mai știe ce val e care.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- =================== DUPĂ: MateCuSens =================== -->
+  <section>
+    <h2>După <span class="tag ok">recomandat</span> · MateCuSens</h2>
+    <p class="sub">Notițe · valurile cu etichetă și număr · „+” · (moduri pornite) · „⋯”. Numărul e al tichetelor <b>deschise</b>, aceeași cifră ca grupurile de dedesubt. Grupurile rămân <b>layere</b>, calculate din dependențele valului activ; banda doar alege valul. Rândurile primesc inelul „Senin” în culoarea proiectului, iar ID-ul trece în coadă.</p>
+    <div class="stage">
+      <div>
+        <div class="cap">Laptop · coloana listei (760px) · banda se rupe pe două rânduri</div>
+        <div class="lap"><div class="win app">
+          <div class="col">
+            <div class="ph"><span class="ibtn"><svg width="20" height="20"><use href="#i-panel"/></svg></span><h3>MateCuSens</h3></div>
+            <div class="tabs"><span class="on">Listă</span><span>Cards</span><span>Hartă</span><span>Teme</span></div>
+            <div class="ws top">
+              <div class="ws-wrap">
+                <span class="pill scratch" title="Notițe · 3"><svg width="16" height="16"><use href="#i-note"/></svg><span class="n">3</span></span>
+                <span class="vsep"></span>
+                <span class="pill" title="I · MVP · 12 deschise"><span class="lb">MVP</span><span class="n">12</span></span>
+                <span class="pill on" title="II · Extindere clase 7,8,12 · 88 deschise"><span class="lb">Extindere clase 7,8,12</span><span class="n">88</span></span>
+                <span class="pill" title="III · Discutie cu Mihai"><span class="lb">Discutie cu Mihai</span><span class="n">7</span></span>
+                <span class="pill" title="IV · matecusens.ro"><span class="lb">matecusens.ro</span><span class="n">11</span></span>
+                <span class="pill" title="V · 2026-09-17"><span class="lb">2026-09-17</span><span class="n">2</span></span>
+                <span class="pill add" title="Val nou"><svg width="16" height="16"><use href="#i-plus"/></svg></span>
+              </div>
+              <span class="more" title="Vizualizare"><svg width="18" height="18"><use href="#i-more"/></svg></span>
+            </div>
+            <div class="body">
+              <div class="lh"><span class="num">1</span>Începe aici<span class="sp"></span><span class="c">31</span></div>
+              <div class="r sel"><span class="ck"></span><span class="t"><b>Fișă de lucru — fracții, clasa a 7-a</b></span><span class="tail">2/5 M-212</span></div>
+              <div class="r"><span class="ck"></span><span class="t">Test de evaluare, clasa a 8-a</span><span class="tail"><span class="dchip">17 oct</span> M-215</span></div>
+              <div class="r"><span class="ck urg"></span><span class="t">Bancă de probleme, clasa a 12-a</span><span class="tail">M-230</span></div>
+              <div class="r"><span class="ck"></span><span class="t">Lecție video: teorema lui Pitagora</span><span class="tail">M-233</span></div>
+              <div class="lh l2"><span class="num">2</span>După layerul 1<span class="sp"></span><span class="c">24</span></div>
+              <div class="r"><span class="ck"></span><span class="t">Corectare automată a răspunsurilor</span><span class="tail">M-241</span></div>
+              <div class="r"><span class="ck"></span><span class="t">Ecuații de gradul II — exerciții</span><span class="tail">M-219</span></div>
+            </div>
+          </div>
+          <div class="dock"><div class="id">M-212</div><div class="tt"><span class="ck" style="width:26px;height:26px"></span>Fișă de lucru</div><span class="chip">II · Extindere</span><p>Exerciții cu fracții ordinare și zecimale.</p></div>
+        </div></div>
+        <p class="note"><b>Un rând sau două (52–92px) în loc de patru.</b> Fără panoul lateral coloana e mai lată și MateCuSens încape pe un singur rând. „Toți/Nepasate” trece în „⋯ → Al cui”, unde azi ar arăta oricum două cifre identice.</p>
+      </div>
+      <div>
+        <div class="cap">Telefon · 390px · banda derulează</div>
+        <div class="phone"><div class="scr app">
+          <div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+          <div class="phd"><span class="ibtn"><svg width="22" height="22"><use href="#i-menu"/></svg></span><h3>MateCuSens</h3><span class="ibtn"><svg width="20" height="20"><use href="#i-search"/></svg></span></div>
+          <div class="tabs"><span class="on">Listă</span><span>Cards</span><span>Hartă</span><span>Teme</span></div>
+          <div class="ws">
+            <div class="ws-scroll fade" style="-webkit-mask-image:linear-gradient(90deg,transparent,#000 24px,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,transparent,#000 24px,#000 calc(100% - 28px),transparent)">
+              <span class="pill scratch" style="margin-left:-34px"><svg width="16" height="16"><use href="#i-note"/></svg><span class="n">3</span></span>
+              <span class="pill"><span class="lb">MVP</span><span class="n">12</span></span>
+              <span class="pill on"><span class="lb">Extindere clase 7,8,12</span><span class="n">88</span></span>
+              <span class="pill"><span class="lb">Discutie cu Mihai</span><span class="n">7</span></span>
+              <span class="pill"><span class="lb">matecusens.ro</span><span class="n">11</span></span>
+            </div>
+            <span class="more"><svg width="18" height="18"><use href="#i-more"/></svg></span>
+          </div>
+          <div class="body">
+            <div class="lh"><span class="num">1</span>Începe aici<span class="sp"></span><span class="c">31</span></div>
+            <div class="r"><span class="ck"></span><span class="t">Fișă de lucru — fracții, clasa a 7-a</span></div>
+            <div class="r"><span class="ck"></span><span class="t">Test de evaluare, clasa a 8-a</span><span class="tail"><span class="dchip">17 oct</span></span></div>
+            <div class="r"><span class="ck urg"></span><span class="t">Bancă de probleme, clasa a 12-a</span></div>
+            <div class="r"><span class="ck"></span><span class="t">Lecție video: teorema lui Pitagora</span></div>
+            <div class="lh l2"><span class="num">2</span>După layerul 1<span class="sp"></span><span class="c">24</span></div>
+            <div class="r"><span class="ck"></span><span class="t">Corectare automată a răspunsurilor</span></div>
+            <div class="r"><span class="ck"></span><span class="t">Ecuații de gradul II — exerciții</span></div>
+            <div class="r"><span class="ck"></span><span class="t">Pagina de înscriere</span></div>
+          </div>
+          <span class="fab"><svg width="24" height="24"><use href="#i-plus"/></svg></span>
+          <div class="bnav"><div><svg width="22" height="22"><use href="#i-star"/></svg>Azi</div><div><svg width="22" height="22"><use href="#i-week"/></svg>7 zile</div><div><svg width="22" height="22"><use href="#i-inbox"/></svg>Ale mele</div></div>
+        </div></div>
+        <p class="note">Valul activ se vede întreg, iar celelalte se taie la ~16 caractere. „⋯” nu derulează. La deschidere și după fiecare schimbare, valul activ e adus în cadru (<code>scrollIntoView({inline:'nearest'})</code>). Pastila are 34px, într-o zonă de atingere de 44px.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- =================== APIs: multe valuri =================== -->
+  <section>
+    <h2>Multe valuri · APIs (8 valuri + Notițe)</h2>
+    <p class="sub">Numerotarea începe la II (valul I a fost șters), deci cifra de poziție și numele valului nu mai coincid. E încă un motiv să lăsăm cifra în afara benzii. Pe laptop banda ține două rânduri; pe telefon derulează, cu estompare la capătul spre care mai sunt valuri.</p>
+    <div class="stage">
+      <div>
+        <div class="cap">Laptop · 760px · două rânduri</div>
+        <div class="lap"><div class="win app" style="height:430px">
+          <div class="col">
+            <div class="ph"><span class="ibtn"><svg width="20" height="20"><use href="#i-panel"/></svg></span><h3>APIs</h3></div>
+            <div class="tabs"><span class="on">Listă</span><span>Cards</span><span>Hartă</span><span>Teme</span></div>
+            <div class="ws top">
+              <div class="ws-wrap">
+                <span class="pill scratch"><svg width="16" height="16"><use href="#i-note"/></svg><span class="n">8</span></span>
+                <span class="vsep"></span>
+                <span class="pill on"><span class="lb">Emitere NIR</span><span class="n">15</span></span>
+                <span class="pill"><span class="lb">Strategie</span><span class="n">5</span></span>
+                <span class="pill"><span class="lb">Avize</span><span class="n">2</span></span>
+                <span class="pill"><span class="lb">Campuri aditionale</span><span class="n">2</span></span>
+                <span class="pill"><span class="lb">Chitante</span><span class="n">1</span></span>
+                <span class="pill"><span class="lb">Webhooks</span><span class="n">1</span></span>
+                <span class="pill"><span class="lb">Cheltuieli</span><span class="n">1</span></span>
+                <span class="pill"><span class="lb">Cost Unitar</span><span class="n">1</span></span>
+                <span class="pill add"><svg width="16" height="16"><use href="#i-plus"/></svg></span>
+              </div>
+              <span class="more"><svg width="18" height="18"><use href="#i-more"/></svg></span>
+            </div>
+            <div class="body">
+              <div class="lh"><span class="num">1</span>Începe aici<span class="sp"></span><span class="c">9</span></div>
+              <div class="r"><span class="ck"></span><span class="t">Endpoint emitere NIR din comandă</span><span class="tail">A-88</span></div>
+              <div class="r"><span class="ck"></span><span class="t">Validare gestiune pe NIR</span><span class="tail">A-91</span></div>
+              <div class="r"><span class="ck"></span><span class="t">Documentație OpenAPI pentru NIR</span><span class="tail">A-95</span></div>
+            </div>
+          </div>
+          <div class="dock" style="opacity:.5"></div>
+        </div></div>
+        <p class="note">Dacă un proiect ar trece de ~3 rânduri (15+ valuri), al treilea rând se strânge într-o pastilă „Încă N ▾”. Pentru 8–9 valuri nu e nevoie.</p>
+      </div>
+      <div>
+        <div class="cap">Telefon · derulat la valul activ</div>
+        <div class="phone"><div class="scr app" style="height:560px">
+          <div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+          <div class="phd"><span class="ibtn"><svg width="22" height="22"><use href="#i-menu"/></svg></span><h3>APIs</h3><span class="ibtn"><svg width="20" height="20"><use href="#i-search"/></svg></span></div>
+          <div class="tabs"><span class="on">Listă</span><span>Cards</span><span>Hartă</span><span>Teme</span></div>
+          <div class="ws"><div class="ws-scroll fade" style="-webkit-mask-image:linear-gradient(90deg,transparent,#000 24px,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,transparent,#000 24px,#000 calc(100% - 28px),transparent)">
+            <span class="pill" style="margin-left:-22px"><span class="lb">Avize</span><span class="n">2</span></span>
+            <span class="pill on"><span class="lb">Campuri aditionale</span><span class="n">2</span></span>
+            <span class="pill"><span class="lb">Chitante</span><span class="n">1</span></span>
+            <span class="pill"><span class="lb">Webhooks</span><span class="n">1</span></span>
+            <span class="pill"><span class="lb">Cheltuieli</span><span class="n">1</span></span>
+          </div><span class="more"><svg width="18" height="18"><use href="#i-more"/></svg></span></div>
+          <div class="body">
+            <div class="lh"><span class="num">1</span>Începe aici<span class="sp"></span><span class="c">2</span></div>
+            <div class="r"><span class="ck"></span><span class="t">Câmpuri adiționale pe factură</span></div>
+            <div class="r"><span class="ck"></span><span class="t">Câmpuri adiționale pe aviz</span></div>
+          </div>
+        </div></div>
+        <p class="note">Estomparea arată în ce parte mai sunt valuri. Opt valuri înseamnă o derulare scurtă, nu două atingeri într-un meniu. Lista completă, cu cifre, e în foaia „Valuri”.</p>
+      </div>
+      <div>
+        <div class="cap">Telefon · la început (Notițe, „Emitere NIR” activ)</div>
+        <div class="phone"><div class="scr app" style="height:560px">
+          <div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+          <div class="phd"><span class="ibtn"><svg width="22" height="22"><use href="#i-menu"/></svg></span><h3>APIs</h3><span class="ibtn"><svg width="20" height="20"><use href="#i-search"/></svg></span></div>
+          <div class="tabs"><span class="on">Listă</span><span>Cards</span><span>Hartă</span><span>Teme</span></div>
+          <div class="ws"><div class="ws-scroll fade">
+            <span class="pill scratch"><svg width="16" height="16"><use href="#i-note"/></svg><span class="n">8</span></span>
+            <span class="pill on"><span class="lb">Emitere NIR</span><span class="n">15</span></span>
+            <span class="pill"><span class="lb">Strategie</span><span class="n">5</span></span>
+            <span class="pill"><span class="lb">Avize</span><span class="n">2</span></span>
+            <span class="pill"><span class="lb">Campuri aditionale</span><span class="n">2</span></span>
+          </div><span class="more"><svg width="18" height="18"><use href="#i-more"/></svg></span></div>
+          <div class="body">
+            <div class="lh"><span class="num">1</span>Începe aici<span class="sp"></span><span class="c">9</span></div>
+            <div class="r"><span class="ck"></span><span class="t">Endpoint emitere NIR din comandă</span></div>
+            <div class="r"><span class="ck"></span><span class="t">Validare gestiune pe NIR</span></div>
+            <div class="lh l2"><span class="num">2</span>După layerul 1<span class="sp"></span><span class="c">6</span></div>
+            <div class="r"><span class="ck"></span><span class="t">Storno NIR</span></div>
+          </div>
+        </div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =================== MCP: un singur val =================== -->
+  <section>
+    <h2>Un singur val · MCP</h2>
+    <p class="sub">Cu un singur val n-ai ce comuta, deci <b>banda dispare</b>. Notițele și „⋯” urcă în dreapta rândului de taburi, iar lista începe imediat. Valul al doilea se adaugă din „⋯ → Val nou…”, iar din acel moment banda apare. La fel se va comporta Inbox după ce trece pe un singur val.</p>
+    <div class="stage">
+      <div>
+        <div class="cap">Telefon · MCP (Notițe 3 · „MVP” 4)</div>
+        <div class="phone"><div class="scr app" style="height:600px">
+          <div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+          <div class="phd"><span class="ibtn"><svg width="22" height="22"><use href="#i-menu"/></svg></span><h3>MCP</h3><span class="ibtn"><svg width="20" height="20"><use href="#i-search"/></svg></span></div>
+          <div class="tabs withtools"><span class="on">Listă</span><span>Cards</span><span>Hartă</span><span>Teme</span><span class="sp"></span><span class="tools"><span class="pill scratch" title="Notițe · 3"><svg width="16" height="16"><use href="#i-note"/></svg><span class="n">3</span></span><span class="more"><svg width="18" height="18"><use href="#i-more"/></svg></span></span></div>
+          <div class="body">
+            <div class="lh"><span class="num">1</span>Începe aici<span class="sp"></span><span class="c">3</span></div>
+            <div class="r"><span class="ck"></span><span class="t">Server MCP — autentificare cu cheie</span></div>
+            <div class="r"><span class="ck"></span><span class="t">Unealtă: listare facturi</span></div>
+            <div class="r"><span class="ck"></span><span class="t">Unealtă: emitere factură</span></div>
+            <div class="lh l2"><span class="num">2</span>După layerul 1<span class="sp"></span><span class="c">1</span></div>
+            <div class="r"><span class="ck"></span><span class="t">Publicare în registrul MCP</span></div>
+          </div>
+        </div></div>
+        <p class="note">Aici numele valului nu se vede nicăieri, și e bine așa: „MVP” e singura opțiune. Îl găsești în „⋯ → Gestionează valurile…”.</p>
+      </div>
+      <div>
+        <div class="cap">Telefon · MCP, „⋯” deschis</div>
+        <div class="phone"><div class="scr app" style="height:600px">
+          <div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+          <div class="phd"><span class="ibtn"><svg width="22" height="22"><use href="#i-menu"/></svg></span><h3>MCP</h3></div>
+          <div class="tabs withtools"><span class="on">Listă</span><span>Cards</span><span>Hartă</span><span>Teme</span><span class="sp"></span><span class="tools"><span class="pill scratch"><svg width="16" height="16"><use href="#i-note"/></svg><span class="n">3</span></span><span class="more on"><svg width="18" height="18"><use href="#i-more"/></svg></span></span></div>
+          <div class="scrim"></div>
+          <div class="sheet" style="padding-bottom:26px">
+            <div class="grab"></div>
+            <h4>Vizualizare</h4>
+            <div style="height:6px"></div>
+            <div class="mi" style="height:46px"><svg class="ic" width="19" height="19"><use href="#i-tree"/></svg>Arbore de dependențe<span class="sp"></span><span class="tgl"></span></div>
+            <div class="mi" style="height:46px"><svg class="ic" width="19" height="19"><use href="#i-eyeoff"/></svg>Ascunde bifatele<span class="sp"></span><span class="tgl on"></span></div>
+            <div class="mi" style="height:46px"><svg class="ic" width="19" height="19"><use href="#i-select"/></svg>Selectează mai multe</div>
+            <hr style="border:0;height:1px;background:var(--line-soft);margin:6px 4px">
+            <div class="mi" style="height:46px"><svg class="ic" width="19" height="19"><use href="#i-plus"/></svg>Val nou…</div>
+            <div class="mi" style="height:46px"><svg class="ic" width="19" height="19"><use href="#i-gear"/></svg>Gestionează valurile…</div>
+          </div>
+        </div></div>
+      </div>
+      <div>
+        <div class="cap">Laptop · MCP (doar rândul de taburi)</div>
+        <div class="lap"><div class="win app" style="width:640px;height:300px">
+          <div class="col" style="width:640px">
+            <div class="ph"><span class="ibtn"><svg width="20" height="20"><use href="#i-panel"/></svg></span><h3>MCP</h3></div>
+            <div class="tabs withtools"><span class="on">Listă</span><span>Cards</span><span>Hartă</span><span>Teme</span><span class="sp"></span><span class="tools"><span class="pill scratch"><svg width="16" height="16"><use href="#i-note"/></svg><span class="n">3</span></span><span class="more"><svg width="18" height="18"><use href="#i-more"/></svg></span></span></div>
+            <div class="body">
+              <div class="lh"><span class="num">1</span>Începe aici<span class="sp"></span><span class="c">3</span></div>
+              <div class="r"><span class="ck"></span><span class="t">Server MCP — autentificare cu cheie</span><span class="tail">MC-4</span></div>
+              <div class="r"><span class="ck"></span><span class="t">Unealtă: listare facturi</span><span class="tail">MC-6</span></div>
+            </div>
+          </div>
+        </div></div>
+        <p class="note"><b>Fără niciun val</b> (proiect nou): tot fără bandă. În locul listei apare „Niciun val încă” cu butonul „Primul val”. Azi textul trimite la „rotița din bara de valuri”, o iconiță pe care trebuie s-o cauți.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- =================== MENIURI DESCHISE =================== -->
+  <section>
+    <h2>Meniurile deschise · MateCuSens</h2>
+    <p class="sub">„⋯ Vizualizare” adună uneltele și filtrul de om. „+”, apăsarea lungă pe o pastilă (telefon) sau dublu-click (desktop) deschid foaia „Valuri”, unde se văd și cifrele romane. Acolo poți redenumi pe loc, schimba ordinea prin tragere și șterge; fiecare val își arată numărul de tichete deschise. Pentru ordine, <code>updateWave(…, {position})</code> există deja în repository, deci nu trebuie migrare.</p>
+    <div class="stage">
+      <div>
+        <div class="cap">Laptop · „⋯ Vizualizare” deschis, cu un mod pornit</div>
+        <div class="lap"><div class="win app">
+          <div class="col" style="position:relative">
+            <div class="ph"><span class="ibtn"><svg width="20" height="20"><use href="#i-panel"/></svg></span><h3>MateCuSens</h3></div>
+            <div class="tabs"><span class="on">Listă</span><span>Cards</span><span>Hartă</span><span>Teme</span></div>
+            <div class="ws top">
+              <div class="ws-wrap">
+                <span class="pill scratch"><svg width="16" height="16"><use href="#i-note"/></svg><span class="n">3</span></span>
+                <span class="vsep"></span>
+                <span class="pill"><span class="lb">MVP</span><span class="n">12</span></span>
+                <span class="pill on"><span class="lb">Extindere clase 7,8,12</span><span class="n">88</span></span>
+                <span class="pill"><span class="lb">Discutie cu Mihai</span><span class="n">7</span></span>
+                <span class="pill"><span class="lb">matecusens.ro</span><span class="n">11</span></span>
+                <span class="pill"><span class="lb">2026-09-17</span><span class="n">2</span></span>
+                <span class="pill add"><svg width="16" height="16"><use href="#i-plus"/></svg></span>
+                <span class="mode">Nepasate<span class="x"><svg width="12" height="12"><use href="#i-x"/></svg></span></span>
+              </div>
+              <span class="more on"><svg width="18" height="18"><use href="#i-more"/></svg><span class="dot"></span></span>
+            </div>
+            <div class="pop" style="right:20px;top:202px;width:280px">
+              <div class="h">Vizualizare</div>
+              <div class="mi"><svg class="ic" width="17" height="17"><use href="#i-tree"/></svg>Arbore de dependențe<span class="sp"></span><kbd>T</kbd></div>
+              <div class="mi hl"><svg class="ic" width="17" height="17"><use href="#i-eyeoff"/></svg>Ascunde bifatele<span class="sp"></span><span class="tgl on"></span></div>
+              <div class="mi"><svg class="ic" width="17" height="17"><use href="#i-select"/></svg>Selectează mai multe<span class="sp"></span><kbd>S</kbd></div>
+              <hr>
+              <div class="h">Al cui</div>
+              <div class="seg"><span>Toți <i>88</i></span><span class="on">Nepasate <i>88</i></span></div>
+              <hr>
+              <div class="mi"><svg class="ic" width="17" height="17"><use href="#i-gear"/></svg>Gestionează valurile…<span class="sp"></span><kbd>V</kbd></div>
+            </div>
+            <div class="body">
+              <div class="lh"><span class="num">1</span>Începe aici<span class="sp"></span><span class="c">31</span></div>
+              <div class="r sel"><span class="ck"></span><span class="t"><b>Fișă de lucru — fracții, clasa a 7-a</b></span><span class="tail">M-212</span></div>
+              <div class="r"><span class="ck"></span><span class="t">Test de evaluare, clasa a 8-a</span><span class="tail">M-215</span></div>
+              <div class="r"><span class="ck urg"></span><span class="t">Bancă de probleme, clasa a 12-a</span><span class="tail">M-230</span></div>
+            </div>
+          </div>
+          <div class="dock"><div class="id">M-212</div><div class="tt"><span class="ck" style="width:26px;height:26px"></span>Fișă de lucru</div></div>
+        </div></div>
+        <p class="note">„Al cui” apare doar dacă proiectul are oameni, aceeași poartă ca azi în <code>ListView</code>. Un filtru diferit de „Toți” și „Tree” pornit devin jetoane în bandă, iar ✕ le oprește. Punctul pe „⋯” înseamnă că ceva diferă de implicit.</p>
+      </div>
+      <div>
+        <div class="cap">Telefon · foaia „Valuri” (din „+” sau apăsare lungă)</div>
+        <div class="phone"><div class="scr app">
+          <div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+          <div class="phd"><span class="ibtn"><svg width="22" height="22"><use href="#i-menu"/></svg></span><h3>MateCuSens</h3></div>
+          <div class="tabs"><span class="on">Listă</span><span>Cards</span><span>Hartă</span><span>Teme</span></div>
+          <div class="ws"><div class="ws-scroll fade"><span class="pill scratch"><svg width="16" height="16"><use href="#i-note"/></svg><span class="n">3</span></span><span class="pill"><span class="lb">MVP</span><span class="n">12</span></span><span class="pill on"><span class="lb">Extindere clase 7,8,12</span><span class="n">88</span></span></div><span class="more"><svg width="18" height="18"><use href="#i-more"/></svg></span></div>
+          <div class="scrim"></div>
+          <div class="sheet">
+            <div class="grab"></div>
+            <h4>Valuri</h4>
+            <p class="hint">Ordinea de aici e ordinea din bandă. Trage de ⠿ ca să muți. Fiecare val își calculează propriile layere.</p>
+            <div class="we fixed"><span class="grip"></span><span class="rn"></span><span class="field"><svg width="16" height="16"><use href="#i-note"/></svg>Notițe</span><span class="n">3</span><span class="del"></span></div>
+            <div class="we"><span class="grip"><svg width="16" height="16"><use href="#i-grip"/></svg></span><span class="rn">I</span><span class="field">MVP</span><span class="n">12</span><span class="del"><svg width="17" height="17"><use href="#i-trash"/></svg></span></div>
+            <div class="we"><span class="grip"><svg width="16" height="16"><use href="#i-grip"/></svg></span><span class="rn">II</span><span class="field focus">Extindere clase 7,8,12</span><span class="n">88</span><span class="del"><svg width="17" height="17"><use href="#i-trash"/></svg></span></div>
+            <div class="we lift"><span class="grip"><svg width="16" height="16"><use href="#i-grip"/></svg></span><span class="rn">III</span><span class="field">Discutie cu Mihai</span><span class="n">7</span><span class="del"><svg width="17" height="17"><use href="#i-trash"/></svg></span></div>
+            <div class="we"><span class="grip"><svg width="16" height="16"><use href="#i-grip"/></svg></span><span class="rn">IV</span><span class="field">matecusens.ro</span><span class="n">11</span><span class="del"><svg width="17" height="17"><use href="#i-trash"/></svg></span></div>
+            <div class="we"><span class="grip"><svg width="16" height="16"><use href="#i-grip"/></svg></span><span class="rn">V</span><span class="field">2026-09-17</span><span class="n">2</span><span class="del"><svg width="17" height="17"><use href="#i-trash"/></svg></span></div>
+            <div class="newval"><span class="field">Val nou, ex. „Lansare”</span><span class="btn"><svg width="16" height="16"><use href="#i-plus"/></svg>Adaugă</span></div>
+          </div>
+        </div></div>
+        <p class="note">Ștergerea unui val cu tichete rămâne refuzată, ca azi („Mută-le întâi”). Cifra din stânga e poziția, cea din dreapta numărul de tichete deschise.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- =================== ALTERNATIVA =================== -->
+  <section>
+    <h2>Alternativa respinsă · „Val: Extindere… ▾”</h2>
+    <p class="sub">Un singur jeton care deschide un meniu cu valurile și numerele lor. Nu ocupă niciun rând, dar valurile nu mai sunt la vedere și fiecare schimbare cere două atingeri, exact opusul a ce a cerut omul. Ar avea rost doar la 15+ valuri, iar acolo pastila „Încă N ▾” din bandă rezolvă oricum.</p>
+    <div class="stage">
+      <div>
+        <div class="cap">Telefon · meniul deschis</div>
+        <div class="phone"><div class="scr app" style="height:470px">
+          <div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+          <div class="phd"><span class="ibtn"><svg width="22" height="22"><use href="#i-menu"/></svg></span><h3>MateCuSens</h3></div>
+          <div class="tabs"><span class="on">Listă</span><span>Cards</span><span>Hartă</span><span>Teme</span></div>
+          <div class="ws"><span class="pill on" style="gap:6px"><span class="lb">Extindere clase 7,8,12</span><span class="n">88</span><svg width="14" height="14"><use href="#i-down"/></svg></span><span style="flex:1"></span><span class="more" style="margin-right:16px"><svg width="18" height="18"><use href="#i-more"/></svg></span></div>
+          <div class="pop" style="left:16px;top:180px;width:270px">
+            <div class="mi"><svg class="ic" width="16" height="16"><use href="#i-note"/></svg>Notițe<span class="sp"></span><span class="n">3</span></div>
+            <div class="mi"><span class="rn">I</span>MVP<span class="sp"></span><span class="n">12</span></div>
+            <div class="mi on"><span class="rn">II</span>Extindere clase 7,8,12<span class="sp"></span><span class="n">88</span></div>
+            <div class="mi"><span class="rn">III</span>Discutie cu Mihai<span class="sp"></span><span class="n">7</span></div>
+            <div class="mi"><span class="rn">IV</span>matecusens.ro<span class="sp"></span><span class="n">11</span></div>
+            <div class="mi"><span class="rn">V</span>2026-09-17<span class="sp"></span><span class="n">2</span></div>
+            <hr><div class="mi"><svg class="ic" width="16" height="16"><use href="#i-gear"/></svg>Gestionează valurile…</div>
+          </div>
+        </div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =================== TABEL + TASTATURĂ =================== -->
+  <section>
+    <h2>Ce dispare, ce se mută, ce rămâne</h2>
+    <div class="card" style="margin-top:16px">
+      <table>
+        <thead><tr><th>Element de azi</th><th></th><th>Unde ajunge</th></tr></thead>
+        <tbody>
+          <tr><td>Cifrele romane mari I / II / III</td><td><span class="badge gone">ies din bandă</span></td><td>Pastila arată <b>eticheta</b> (<code>label</code>). Cifra (<code>name</code>) rămâne în tooltip, în foaia „Valuri” și ca text de rezervă pentru un val fără etichetă.</td></tr>
+          <tr><td>Etichetele tăiate sub cifre</td><td><span class="badge move">se schimbă</span></td><td>Devin textul principal. Pe pastilele inactive se taie cu „…” după ~16 caractere; valul activ se arată întreg.</td></tr>
+          <tr><td>„Extindere · 88” (inclusiv bifatele)</td><td><span class="badge move">se schimbă</span></td><td>Numărul tichetelor <b>deschise</b>, ca grupurile de dedesubt. Totalul cu bifate e în <code>title</code>.</td></tr>
+          <tr><td>Rotița „valuri”</td><td><span class="badge move">se mută</span></td><td>„+” la capătul benzii, apăsare lungă / dublu-click pe pastilă, „⋯ → Gestionează valurile…”, tasta <span class="k">V</span>.</td></tr>
+          <tr><td>Tree · Arată/Ascunde · Select</td><td><span class="badge move">se mută</span></td><td>În „⋯ Vizualizare”. Tree pornit apare ca jeton „Tree ✕”; selecția are deja bara ei (<code>BulkBar</code>).</td></tr>
+          <tr><td>Cardul „Toți / Nepasate / nume”</td><td><span class="badge move">se mută</span></td><td>În „⋯ → Al cui”. Un filtru diferit de Toți apare în bandă ca jeton cu ✕.</td></tr>
+          <tr><td>Banda la un singur val / la zero valuri</td><td><span class="badge gone">dispare</span></td><td>Notițele și „⋯” urcă în rândul taburilor (MCP; Inbox după ce trece pe un singur val).</td></tr>
+          <tr><td>Notițe (valul 0)</td><td><span class="badge stay">rămâne</span></td><td>Prima pastilă, iconiță + număr, la o atingere.</td></tr>
+          <tr><td>Grupurile pe layere</td><td><span class="badge stay">rămâne</span></td><td>Calculate din valul activ (<code>computeLayers</code> neatins). Banda alege valul, nu layerul.</td></tr>
+          <tr><td>Bifa gri + ID în față (Listă proiect)</td><td><span class="badge move">se schimbă</span></td><td>Inelul <code>.ck</code> în culoarea proiectului. <code>ListView</code> nu pune <code>--pc</code> pe <code>.panel</code>, pe când <code>OrdineView</code> îl pune. ID-ul trece în coada rândului pe desktop; pe telefon iese.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="two" style="margin-top:24px">
+      <div class="card">
+        <h3>Tastatură (desktop)</h3>
+        <ul>
+          <li><span class="k">1</span>–<span class="k">4</span> rămân ale taburilor (Listă/Cards/Hartă/Teme), neatinse.</li>
+          <li><b>Nou:</b> <span class="k">,</span> / <span class="k">.</span> = valul anterior / următor. Libere azi.</li>
+          <li><b>Nou:</b> <span class="k">V</span> = foaia „Valuri”. Liberă azi.</li>
+          <li><span class="k">T</span> = arbore (există, în <code>useWaveActions</code>); <b>nou</b> <span class="k">S</span> = selecție (liberă în afara formularului, unde Ctrl+S salvează).</li>
+          <li>Toate trec prin <code>shouldIgnoreKey</code> (nu în câmpuri, nu cu modal) și se adaugă în <code>InfoPanel</code>.</li>
+          <li>Pastilele formează un <code>role="tablist"</code>: ←/→ mută între ele când focusul e în bandă.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Note de implementare</h3>
+        <ul>
+          <li><code>WaveTabs.tsx</code> se rescrie: pastile cu <code>label || name</code>, „+” și <code>useLongPress</code>. Pe desktop banda e <code>flex-wrap</code>, sub 900px <code>overflow-x: auto</code>. Sub 2 valuri de livrare nu se randează. <code>WaveActionsBar.tsx</code> devine „⋯”, iar <code>.who-bar</code> intră în meniu.</li>
+          <li><b>Cifra afișată azi e POZIȚIA</b> (<code>toRoman(indexOf+1)</code>), nu <code>name</code>. În APIs asta dă I…VIII, deși numele merg II…IX. Foaia „Valuri” trebuie să aleagă una; recomand <code>name</code>, ca să se potrivească cu ce scrie omul.</li>
+          <li><code>WaveManager.tsx</code>: eticheta devine câmpul principal, ordinea se schimbă prin tragere (<code>position</code>) și apare numărul de tichete deschise.</li>
+          <li><b>Teste care numesc clasele:</b> <code>scripts/test-layout.mjs</code> (<code>.wave-sel</code>, <code>.wave-tabs</code>, <code>.wave-actions</code>, regula „<code>.who-bar</code> frate, nu copil”) și <code>design/build-preview.py</code> (<code>WAVES</code>, <code>.wbtn/.wscratch/.wmanage</code>). <code>test-nav.mjs</code> nu le numește. Adaugă: la 320px banda nu iese din ecran și „⋯” rămâne vizibil.</li>
+          <li><b>Riscuri:</b> derularea benzii vs glisarea sertarului din margine (<code>inEdge</code>/<code>lockAxis</code>), de-aceea banda începe la 16px. Un mod uitat pornit în „⋯” se vede prin jetoanele ✕ și punctul de pe „⋯”.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</div>
+<script>
+document.querySelectorAll('.tg button').forEach(b=>b.addEventListener('click',()=>{
+  document.documentElement.dataset.theme=b.dataset.t;
+  document.querySelectorAll('.tg button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+}));
+</script>
+</body>
+</html>

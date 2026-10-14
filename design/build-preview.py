@@ -195,13 +195,29 @@ def layer(idx, num, title, sub, cards, now=False):
 
 
 # ═══ ECRANUL „ORDINE" ════════════════════════════════════════════════════════
-WAVES = ('<div class="wave-sel"><div class="wave-tabs">'
-         '<button class="wbtn wscratch" title="Notițe"><span class="wname">%s</span><span class="wsub">3</span></button>'
-         '<button class="wbtn on"><span class="wname">I</span><span class="wsub">MVP · 6</span></button>'
-         '<button class="wbtn"><span class="wname">II</span><span class="wsub">Dashboard &amp; users · 2</span></button>'
-         '<button class="wbtn"><span class="wname">III</span><span class="wsub">Polish · 1</span></button>'
-         '<button class="wbtn wmanage" aria-label="Gestionează valuri"><span class="wname">%s</span><span class="wsub">valuri</span></button>'
-         '</div></div>' % (ic('notepad-text', 18), ic('settings-2', 18)))
+def wave_band(mode_chips='', more_dot=False):
+    """Banda de valuri (WaveTabs.tsx): Notițe · pastile cu eticheta și numărul
+    de DESCHISE · „+" · jetoane de mod · „⋯". Eticheta lungă inactivă e tăiată
+    (`truncateLabel`), cea activă întreagă."""
+    return ('<div class="wave-band"><div class="wb-pills" role="tablist">'
+            '<button class="wb-pill wb-scratch" role="tab" title="Notițe">%s<span class="n">3</span></button>'
+            '<span class="wb-sep"></span>'
+            '<button class="wb-pill on" role="tab"><span class="lb">MVP</span><span class="n">5</span></button>'
+            '<button class="wb-pill" role="tab"><span class="lb">Dashboard &amp; use…</span><span class="n">2</span></button>'
+            '<button class="wb-pill" role="tab"><span class="lb">Polish</span><span class="n">1</span></button>'
+            '<button class="wb-pill" role="tab"><span class="lb">Val IV</span><span class="n">0</span></button>'
+            '<button class="wb-pill wb-add" aria-label="Val nou">%s</button>%s'
+            '</div><span class="wb-more-wrap"><button class="wb-more" aria-label="Vizualizare">%s%s</button></span></div>'
+            % (ic('notepad-text', 16), ic('plus', 16), mode_chips, ic('ellipsis', 18),
+               '<span class="dot"></span>' if more_dot else ''))
+
+
+def mode_chip(label):
+    return ('<button class="wb-mode"><span>%s</span><span class="x">%s</span></button>'
+            % (label, ic('x', 12)))
+
+
+WAVES = wave_band()
 
 # Poarta valului (WaveGate.tsx): obstacolele deschise ale valului activ, peste
 # layere — un obstacol deschis (TUR-B1, blochează) și unul depășit (TUR-B3,
@@ -416,18 +432,20 @@ AZI = (QA + PUSH
 # prag `SplitView` nu randează `.split` deloc, iar formularul se întoarce în
 # foaia de jos — deci o fereastră îngustă aici nu e o regresie, e comportamentul.
 def lrow(tid, title, layer_color, done=False, urgent=False, docked=False, due=None):
+    # Inelul „Senin" în culoarea proiectului (`--pc` pe panou), roșu pe urgent;
+    # ID-ul în coada rândului (pe telefon iese).
     cls = 'list-row' + (' done' if done else '') + (' docked' if docked else '')
     tail = ''
-    if urgent:
-        tail += '<span class="tk-urgent">%s</span>' % ic('zap', 13)
     if due:
         tail += '<span class="due-chip"><span class="dc-date">%s</span></span>' % due
+    tail += '<span class="list-id">%s</span>' % tid
+    ck = ('<span class="ck on">%s</span>' % ic('check', 12) if done
+          else '<span class="ck%s"></span>' % (' urg' if urgent else ''))
     return ('<button class="%s" style="--layer-color:%s">'
             '<span class="list-check">%s</span>'
-            '<span class="list-id">%s</span>'
             '<span class="list-title">%s</span>'
             '<span class="row-tail">%s</span></button>'
-            % (cls, layer_color, ic('circle-check' if done else 'circle', 17), tid, title, tail))
+            % (cls, layer_color, ck, title, tail))
 
 
 def lgroup(num, label, count, color, rows):
@@ -439,23 +457,9 @@ def lgroup(num, label, count, color, rows):
 
 
 LISTA_STANGA = (
-    '<div class="wave-sel">'
-    '<div class="wave-tabs"><button class="wave-tab on">I</button>'
-    '<button class="wave-tab">II</button><button class="wave-tab">III</button></div>'
-    '<div class="wave-actions">'
-    '<button class="wave-action-btn">%s</button>'
-    '<button class="wave-action-btn active">%s</button>'
-    '<button class="wave-action-btn">%s</button></div></div>'
-    % (ic('share-2', 14), ic('eye-off', 14), ic('check-check', 14))
-    # Frate al `.wave-sel`, nu al treilea copil al lui — vezi comentariul din
-    # ListView.tsx. `Alex` e activ CU ZERO tichete în val: cazul din
-    # f43add2, filtrul rămâne vizibil chiar dacă schimbi valul pe unul gol.
-    + '<div class="who-bar">'
-      '<button type="button" class="who-chip">Toți <span class="n">6</span></button>'
-      '<button type="button" class="who-chip">Nepasate <span class="n">2</span></button>'
-      '<button type="button" class="who-chip on">Alex <span class="n">0</span></button>'
-      '<button type="button" class="who-chip">Ionuț <span class="n">3</span></button>'
-      '</div>'
+    # Moduri pornite: jetoane cu ✕ în bandă și punctul pe „⋯". `Alex` e ales
+    # CU ZERO tichete în val: cazul din f43add2 — filtrul rămâne vizibil.
+    wave_band(mode_chip('Fără bifate') + mode_chip('Alex'), more_dot=True)
     + lgroup(1, 'Începe aici', 2, 'var(--layer-0)',
              lrow('TUR-01', 'Cont Supabase (DB + Auth)', 'var(--layer-0)', urgent=True, docked=True, due='9 sep')
              + lrow('TUR-02', 'Schema tabelelor', 'var(--layer-0)', done=True))
@@ -554,11 +558,11 @@ LISTA_PANOU = (
 )
 
 LISTA = ('<div class="split">'
-         '<div class="split-list"><div class="panel">' + LISTA_STANGA + '</div></div>'
+         '<div class="split-list"><div class="panel" style="--pc:#0E9F8E">' + LISTA_STANGA + '</div></div>'
          '<aside class="split-pane">' + LISTA_PANOU + '</aside></div>')
 
 LISTA_GOL = ('<div class="split">'
-             '<div class="split-list"><div class="panel">' + LISTA_STANGA.replace(' docked', '') + '</div></div>'
+             '<div class="split-list"><div class="panel" style="--pc:#0E9F8E">' + LISTA_STANGA.replace(' docked', '') + '</div></div>'
              '<aside class="split-pane"><div class="split-empty">' + ic('pencil', 22)
              + '<p>Alege un tichet din listă ca să-l editezi aici.</p></div></aside></div>')
 
@@ -902,8 +906,12 @@ CONTROALE = ''.join([
       '<button class="sh-copy">' + ic('copy', 15) + '</button>'
       '<button class="sh-delete">' + ic('trash-2', 14) + '</button>'
       '<button class="sh-delete confirming">Sigur?</button>'
-      '<button class="wave-action-btn">' + ic('share-2', 14) + '</button>'
-      '<button class="wave-action-btn active">' + ic('eye-off', 14) + '</button>'
+      '<button class="wb-pill">' + '<span class="lb">Val</span><span class="n">2</span></button>'
+      '<button class="wb-pill on">' + '<span class="lb">Val activ</span><span class="n">5</span></button>'
+      '<button class="wb-pill wb-add">' + ic('plus', 16) + '</button>'
+      '<button class="wb-mode"><span>Arbore</span><span class="x">' + ic('x', 12) + '</span></button>'
+      '<button class="wb-more">' + ic('ellipsis', 18) + '</button>'
+      '<button class="wb-more on">' + ic('ellipsis', 18) + '<span class="dot"></span></button>'
       '<button class="due-pick">' + ic('calendar-check', 14) + ' Pune o zi</button>'
       '<button class="fc-link">scoate</button>'
       '<button class="sidebar-new-btn">+ Proiect nou</button>'
@@ -1105,7 +1113,7 @@ SCREENS = {
     # meta+dependențe.
     'fir': ('Aplicație Turism', 'Fir · TUR-07', 'TU', True, True,
             '<div class="split">'
-            '<div class="split-list"><div class="panel">' + LISTA_STANGA + '</div></div>'
+            '<div class="split-list"><div class="panel" style="--pc:#0E9F8E">' + LISTA_STANGA + '</div></div>'
             '<aside class="split-pane">'
             '<div class="sh-header">'
             '<button class="sh-close">%s</button>'

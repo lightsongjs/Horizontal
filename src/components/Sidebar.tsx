@@ -13,6 +13,8 @@ import { ProjectMark } from './ProjectMark'
 import { livePins, type PinKind } from '../lib/pins'
 import { PinGlyph, PinMenu, pinLabel, pinTarget, type MenuTarget } from './NavMenu'
 import { initialsOf } from './Drawer'
+import { inboxProjectId } from '../lib/captureTokens'
+import { inboxFirst, reorderWithInboxFirst } from '../lib/projectOrder'
 
 function getBuildAgo(): string {
   const diff = Math.floor((Date.now() - new Date(__BUILD_TIME__).getTime()) / 1000)
@@ -112,7 +114,10 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
   const [dragOver, setDragOver] = useState<string | null>(null)
   const [filter, setFilter] = useState<'all' | 'personal' | 'work'>('all')
 
-  const visibleProjects = filter === 'all' ? projects : projects.filter((p) => p.type === filter)
+  // Inbox primul, oricare ar fi ordinea trasă (`inboxFirst`); restul o păstrează.
+  const ordered = inboxFirst(projects)
+  const visibleProjects = filter === 'all' ? ordered : ordered.filter((p) => p.type === filter)
+  const inboxId = inboxProjectId(projects)
 
   // Chipsurile filtrează și numerele listelor inteligente: „nu-mi arăta
   // serviciul în weekend" e exact motivul pentru care există.
@@ -279,7 +284,7 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
             <div
               key={p.id}
               className={`sidebar-proj-item ${isActive ? 'on' : ''} ${dragOver === p.id ? 'drag-over' : ''}`}
-              draggable
+              draggable={p.id !== inboxId}
               onDragStart={(e) => { dragId.current = p.id; e.dataTransfer.effectAllowed = 'move' }}
               onDragOver={(e) => {
                 // Un fișier tras deasupra ține de zona de attachment, nu de
@@ -293,19 +298,18 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
                 e.preventDefault()
                 setDragOver(null)
                 if (!dragId.current || dragId.current === p.id) return
-                const ids = projects.map((x) => x.id)
-                const from = ids.indexOf(dragId.current)
-                const to = ids.indexOf(p.id)
-                const next = [...ids]
-                next.splice(from, 1)
-                next.splice(to, 0, dragId.current)
-                reorderProjects(next)
+                // Ordinea AFIȘATĂ (cu Inbox primul): lăsat peste Inbox, un
+                // proiect trece imediat după el; Inbox însuși nu se trage.
+                const next = reorderWithInboxFirst(projects, dragId.current, p.id)
+                if (next) reorderProjects(next)
                 dragId.current = null
               }}
               onDragEnd={() => { setDragOver(null); dragId.current = null }}
               onContextMenu={menuAt('project', p.id, p.name)}
             >
-              <span className="sidebar-drag-handle" title="Trage pentru a reordona" aria-label="Trage pentru a reordona"><Icon name="drag" size={15} /></span>
+              {p.id === inboxId
+                ? <span className="sidebar-drag-handle" aria-hidden="true" style={{ visibility: 'hidden' }}><Icon name="drag" size={15} /></span>
+                : <span className="sidebar-drag-handle" title="Trage pentru a reordona" aria-label="Trage pentru a reordona"><Icon name="drag" size={15} /></span>}
               <button className="sidebar-proj-btn" onClick={() => goToProject(p.id)}>
                 <ProjectMark project={p} dot="sidebar-proj-dot" size={14} />
                 <span className="sidebar-proj-name">{p.name}</span>

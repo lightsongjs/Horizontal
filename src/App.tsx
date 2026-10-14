@@ -1048,7 +1048,10 @@ function Shell() {
     let s: { x: number; y: number; axis: Axis } | null = null
     const onStart = (e: TouchEvent) => {
       const t = e.touches[0]
-      s = t.clientX < EDGE_PX && canEdgeOpenRef.current() ? { x: t.clientX, y: t.clientY, axis: 'pending' } : null
+      // Banda de valuri derulează orizontal și începe la marginea paginii:
+      // o tragere spre dreapta pe ea e derulare înapoi, nu sertarul.
+      const onBand = (e.target as Element | null)?.closest?.('.wb-pills')
+      s = t.clientX < EDGE_PX && !onBand && canEdgeOpenRef.current() ? { x: t.clientX, y: t.clientY, axis: 'pending' } : null
     }
     const onMove = (e: TouchEvent) => {
       if (!s) return
