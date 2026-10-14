@@ -206,8 +206,6 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
         </>
       )}
 
-      <div className="sidebar-section-label">Sarcini</div>
-
       {SMART_LISTS.map(({ kind, label, icon }) => (
         <button
           key={kind}
@@ -215,7 +213,7 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
           onClick={() => onSmartList?.(kind)}
           onContextMenu={kind === 'week' ? menuAt('list', 'week', '7 zile') : undefined}
         >
-          <span className="sidebar-nav-icon"><Icon name={icon} size={17} /></span>
+          <span className={`sidebar-nav-icon ${icon}`}><Icon name={icon} size={17} /></span>
           <span>{label}</span>
           {/* Restanțele nu au rând propriu: ar fi un rând gol în ziua bună.
               Trăiesc ca badge pe „Azi", fiindcă sunt o problemă de azi. */}

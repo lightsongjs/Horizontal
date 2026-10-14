@@ -211,7 +211,12 @@ header { flex-wrap: wrap; row-gap: 2px; }
   text-overflow: ellipsis;
 }
 .hd-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.logo:not(.star) { color: var(--txt-dim); }
 .logo.star { color: var(--star); }
+/* Steaua lui „Azi" e galbenă și plină când lista e cea deschisă. */
+.sidebar-nav-item.on .sidebar-nav-icon.today, .dr-row.on .dr-row-ico .today { color: var(--star); opacity: 1; }
+.sidebar-nav-item.on .sidebar-nav-icon.today svg, .dr-row.on .dr-row-ico .today svg { fill: currentColor; }
+.dr-row-ico .today { display: inline-flex; }
 .logo.star svg { fill: currentColor; }
 .hcount {
   margin-left: 8px;
@@ -387,7 +392,6 @@ main {
   position: sticky;
   top: 0;
   z-index: 5;
-  box-shadow: inset 0 -1px 0 var(--line);
   gap: 20px;
 }
 .tab {
@@ -874,6 +878,8 @@ main {
   gap: 6px 18px;
   flex: 1;
 }
+.split-list .wave-sel { flex-wrap: wrap; }
+.split-list .wave-actions { flex-basis: 100%; }
 .wave-actions {
   display: flex;
   gap: 5px;
@@ -2182,11 +2188,12 @@ main {
 .if-meta-pill {
   display: inline-flex; align-items: center; gap: 4px;
   border-radius: var(--r-s);
-  padding: 3px 10px;
-  font-size: calc(12px * var(--text-scale)); font-weight: 600;
+  height: 28px;
+  padding: 0 10px;
+  font-size: calc(13px * var(--text-scale)); font-weight: 550;
   cursor: pointer;
   background: var(--surface-3);
-  color: var(--txt-faint);
+  color: var(--txt-dim);
   transition: all 0.13s;
   white-space: nowrap;
 }
@@ -2256,8 +2263,8 @@ main {
 
 .if-field-label {
   font-family: var(--display);
-  font-size: calc(10.5px * var(--text-scale));
-  font-weight: 600;
+  font-size: calc(12px * var(--text-scale));
+  font-weight: 650;
   letter-spacing: 0;
   color: var(--txt-faint);
   margin-bottom: 6px;
@@ -3011,10 +3018,10 @@ main {
     gap: 8px;
     padding: 9px 12px;
     border-radius: var(--r-s);
-    background: var(--surface-2);
-    color: var(--txt-dim);
+    background: none;
+    color: var(--txt-faint);
     font-size: calc(14px * var(--text-scale));
-    font-weight: 600;
+    font-weight: 500;
     flex: 1;
     text-align: left;
     transition: color 0.15s, background 0.15s;
@@ -3064,11 +3071,8 @@ main {
     display: none;
   }
   header .htxt { order: 0; flex: 1 1 auto; padding: 0; }
-  header .crumb { padding-left: 0; }
-  header:has(.logo.star) .crumb { padding-left: 42px; }
-  .htxt h1 {
-    font-size: calc(26px * var(--text-scale));
-  }
+  header .htxt .crumb { padding-left: 0; }
+  header:has(.logo.star) .htxt .crumb { padding-left: 42px; }
 
   /* ── MAIN CONTENT ───────────────────────────── */
   main {
@@ -3329,8 +3333,11 @@ main {
     background: var(--bg);
     border-radius: 0;
     box-shadow: -1px 0 0 var(--line-soft);
-    padding-left: 6px;
+    padding-left: 0;
   }
+  .split-pane .sh-header { background: var(--bg); }
+  .split-pane .sh-header,
+  .split-pane .if-body { padding-left: 28px; padding-right: 28px; }
 
   /* Formularul, în panou, e o singură coloană care se derulează ca un tot.
      Gridul 55/45 de la modal e croit pentru 94vw; la 500px ar fi dat două
@@ -3450,7 +3457,16 @@ main {
 .sh-header > .sh-delete { order: 3; }
 .sh-header > .sh-save { order: 4; }
 .sh-header > .sh-close { order: 5; }
-.sh-header > .sh-title-wrap { order: 10; flex: 1 1 100%; }
+.sh-header > .sh-break { order: 8; flex-basis: 100%; height: 0; }
+.sh-header > .sh-check {
+  order: 9;
+  flex: 0 0 auto;
+  width: 28px; height: 32px;
+  display: inline-flex; align-items: center; justify-content: center;
+  margin-left: -2px;
+}
+.sh-header > .sh-check .ck { width: 24px; height: 24px; }
+.sh-header > .sh-title-wrap { order: 10; flex: 1 1 0; min-width: 0; }
 .sh-header > .sh-close,
 .sh-header > .sh-copy,
 .sh-header > .sh-delete:not(.confirming),
@@ -3655,11 +3671,9 @@ main {
   align-items: center;
   gap: 7px;
   flex-wrap: wrap;
-  padding: 7px 8px;
-  /* `--surface-2`, nu `--surface`: în panoul lateral foaia E deja `--surface`,
-     deci bara ar fi fost invizibilă exact acolo unde se folosește cel mai des. */
-  background: var(--surface-2);
-  border-radius: var(--r-m);
+  /* „Senin": un rând de jetoane, nu o cutie cu jetoane în ea. */
+  padding: 0;
+  gap: 5px;
 }
 
 /* Jetonul de control. Fără chenar: saltul e de fundal (surface-3 peste
@@ -3759,8 +3773,8 @@ main {
 }
 .if-sub-label {
   font-family: var(--display);
-  font-size: calc(10px * var(--text-scale));
-  font-weight: 600;
+  font-size: calc(12px * var(--text-scale));
+  font-weight: 650;
   letter-spacing: 0;
   color: var(--txt-faint);
 }
@@ -4903,7 +4917,6 @@ body:has(.kb-sheet) .toast {
   padding: 0 4px 0 8px;
   border-radius: var(--r-s);
   background: var(--surface-3);
-  box-shadow: inset 0 0 0 1px var(--line);
   /* Ancora pentru `.due-native`, care e poziționat absolut. */
   position: relative;
 }
@@ -4997,8 +5010,7 @@ body:has(.kb-sheet) .toast {
 .due-clear:hover { color: var(--blocked); background: var(--blocked-soft); }
 .due-reminder { margin-top: 2px; }
 .if-meta-pill.reminder-pill {
-  padding: 2px 8px;
-  font-size: calc(12px * var(--text-scale));
+  padding: 0 10px;
 }
 .due-hint {
   font-size: calc(11px * var(--text-scale));
@@ -5111,8 +5123,7 @@ body:has(.kb-sheet) .toast {
 /* Data stă LÂNGĂ eticheta zilei, nu împinsă în marginea dreaptă. `.list-group-label`
    are `flex: 1` din modul proiecte (unde numărătoarea trebuie să stea la capăt);
    într-o listă de zile, ziua și data sunt un singur lucru. */
-.smart-list .list-group-label { flex: 0 0 auto; color: var(--txt); font-weight: 650; }
-.smart-list .list-group:first-of-type .list-group-label { color: var(--gc, var(--txt)); }
+.smart-list .list-group-label { flex: 0 0 auto; color: var(--gc, var(--txt)); font-weight: 650; }
 .smart-list .list-group { margin-bottom: 0; }
 .smart-list .list-group-head { padding: 16px 10px 6px; }
 .smart-list .list-group-num {
@@ -5128,7 +5139,7 @@ body:has(.kb-sheet) .toast {
 .day-empty {
   font-size: calc(12.5px * var(--text-scale));
   color: var(--txt-faint);
-  padding: 0 4px 2px;
+  padding: 0 10px 2px;
 }
 /* O zi goală n-are voie să ocupe cât una plină — altfel o săptămână liberă e
    un ecran de derulat prin nimic. */
@@ -5332,6 +5343,7 @@ body:has(.kb-sheet) .toast {
   padding: 1px 4px;
   background: var(--surface-2);
 }
+.qa-kbd { margin-left: auto; font-family: var(--display); font-size: calc(12px * var(--text-scale)); color: var(--txt-faint); }
 .qa-noproject {
   color: var(--txt-faint);
   font-size: calc(14px * var(--text-scale));
@@ -5409,7 +5421,7 @@ body:has(.kb-sheet) .toast {
   background: var(--surface);
   border-radius: var(--r) var(--r) 0 0;
   box-shadow: var(--amb-lg);
-  padding: 14px 14px calc(10px + env(safe-area-inset-bottom));
+  padding: 14px 16px calc(10px + env(safe-area-inset-bottom));
   animation: kb-sheet-in 0.2s cubic-bezier(0.18, 0.9, 0.24, 1);
 }
 @keyframes kb-sheet-in {
@@ -6778,7 +6790,7 @@ body:has(.qab) { overflow-y: auto; }
   width: 100%;
   min-height: 44px;
   padding: 9px 10px;
-  border-radius: var(--r-m);
+  border-radius: var(--r-s);
   font-size: calc(15px * var(--text-scale));
   color: var(--txt-dim);
   text-align: left;

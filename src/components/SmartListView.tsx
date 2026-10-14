@@ -78,7 +78,7 @@ function Group({ label, date, issues, color, onOpen, late, empty, action, events
         <span className="list-group-num">{issues.length}</span>
         {date && <span className="list-group-date">{date}</span>}
         {action && !ta.selectMode && issues.length > 0 && (
-          <button type="button" className="group-act" onClick={action.onClick}>{action.label}</button>
+          <button type="button" className="group-act" onClick={action.onClick}><Icon name="forward" size={13} />{action.label}</button>
         )}
       </div>
       {events && <EventBand items={events.band} />}
@@ -203,7 +203,7 @@ export function SmartListView({ kind, onOpenTask, focusSignal = 0 }: Props) {
             label={offset === 0 ? 'Azi' : offset === 1 ? 'Mâine' : cap(DAYS_FULL[date.getDay()])}
             date={toShortDate(date)}
             issues={issues}
-            color={offset === 0 ? 'var(--accent)' : offset === 1 ? 'var(--active)' : undefined}
+            icon={offset === 0 ? 'today' : undefined}
             onOpen={onOpenTask}
             empty="—"
             events={eventsFor(date)}

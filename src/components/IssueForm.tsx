@@ -272,7 +272,7 @@ function AssigneeSearch({ assigneeId, assignees, members, myAssigneeId, myUserId
  *   către `ui.tsx`, care oprește prima comutare pe alt tichet.
  */
 export function IssueForm({ issueId, docked = false, draft }: { issueId?: string; docked?: boolean; draft?: IssueDraft }) {
-  const { project, projects, waves, themes, issues, byId, activeWave, createIssue, updateIssue, deleteIssue, createTheme, assignees, myAssigneeId, createAssignee, assigneeShort, projectMembers, ensureAssigneeForMember, obstacles, obstaclesOf, createObstacle, setIssueObstacles, reportError } = useHorizontal()
+  const { project, projects, waves, themes, issues, byId, activeWave, toggleDone, createIssue, updateIssue, deleteIssue, createTheme, assignees, myAssigneeId, createAssignee, assigneeShort, projectMembers, ensureAssigneeForMember, obstacles, obstaclesOf, createObstacle, setIssueObstacles, reportError } = useHorizontal()
   const { closeSheet, setCloseGuard, pushSheet, openEditIssue, setDockedDirty, saveNudge, showToast, popOutIssue } = useUI()
   const { session } = useAuth()
   const myUserId = session?.user.id ?? null
@@ -1325,6 +1325,26 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
             ) : (
               <Icon name="delete" size={14} />
             )}
+          </button>
+        )}
+        {/* Bifa în culoarea proiectului, înaintea titlului („Senin"). Bifează
+            direct, ca în listă — nu e un câmp al formularului. */}
+        <span className="sh-break" aria-hidden="true" />
+        {isEdit && existing && (
+          <button
+            type="button"
+            tabIndex={-1}
+            className="sh-check"
+            role="checkbox"
+            aria-checked={existing.done}
+            aria-label={existing.done ? 'Marchează nefăcut' : 'Marchează gata'}
+            disabled={!canWrite}
+            style={project?.accent ? ({ ['--pc' as string]: project.accent }) : undefined}
+            onClick={() => void toggleDone(existing.id)}
+          >
+            <span className={`ck${existing.done ? ' on' : ''}${existing.urgent && !existing.done ? ' urg' : ''}`}>
+              {existing.done && <Icon name="check" size={13} />}
+            </span>
           </button>
         )}
         {/* Aceleași două straturi ca la adăugarea rapidă: oglinda desenează
