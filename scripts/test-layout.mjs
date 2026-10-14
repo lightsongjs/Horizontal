@@ -337,6 +337,8 @@ const measureRow = () => {
     docOverflow: document.documentElement.scrollWidth - innerWidth,
     // Aliniat cu textul titlului, nu cu bifa.
     alignGap: Math.round(r(chips[0]).left - r(document.querySelector('.sh-title-wrap')).left),
+    // Pe telefon rândul pornește de sub bifă (ca foaia de tichet), nu de sub titlu.
+    checkGap: Math.round(r(chips[0]).left - r(document.querySelector('.sh-check .ck') ?? document.querySelector('.sh-title-wrap')).left),
   }
 }
 
@@ -349,7 +351,7 @@ for (const width of PHONE_WIDTHS) {
   check(`rândul nu iese din foaie @${width}px`, m.overflow <= 0 && m.out === 0 && m.docOverflow <= 0, `${m.overflow}px, ${m.out} jetoane afară, pagina +${m.docOverflow}px`)
   check(`jetoane nestrivite @${width}px`, m.crushed === 0, `${m.crushed} sub 28px`)
   check(`jetoane atingibile @${width}px`, m.lowest >= 30, `cel mai scund ${m.lowest}px`)
-  check(`aliniat cu titlul @${width}px`, Math.abs(m.alignGap) <= 1, `${m.alignGap}px față de titlu`)
+  check(`aliniat cu bifa @${width}px`, Math.abs(m.checkGap) <= 1, `${m.checkGap}px față de bifă`)
 }
 
 console.log('\nRândul de jetoane în panoul lateral (~500px):')

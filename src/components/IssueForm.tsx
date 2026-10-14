@@ -1016,7 +1016,7 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
     const target = e.target as HTMLElement
     if (!target.hasAttribute('data-chip')) return
-    const list = Array.from(e.currentTarget.querySelectorAll<HTMLElement>(':scope > [data-chip]'))
+    const list = Array.from(e.currentTarget.querySelectorAll<HTMLElement>(':scope [data-chip]'))
     const i = list.indexOf(target)
     if (i < 0) return
     e.preventDefault()
@@ -1340,7 +1340,7 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
               disabled={!canWrite}
               className={`fc-chip due${dueParts ? '' : dueIncomplete ? ' warn' : ' ghost'}${late ? ' late' : ''}${titleDate.active ? ' pending' : ''}${isOpen('date')}`}
               aria-label={label}
-              title={label}
+              title={titleDate.active ? `${label} · recunoscută din titlu` : label}
             >
               <Icon name="due" size={14} />
               {dueParts ? (
@@ -1442,21 +1442,22 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
           titlu, sau refuză de tot. Fără ele, recunoașterea ar fi o ghicire pe
           care n-o poți contrazice. */}
       {titleDate.active && (
-        <span className="fc-from-title">
-          <Icon name="fromTitle" size={13} />
-          din titlu
-          <button type="button" className="fc-x" title="Nu e o dată — lasă titlul în pace" aria-label="Refuză data din titlu" onClick={refuseTitleDate}>
-            <Icon name="close" size={12} />
+        <>
+          <button type="button" data-chip="" tabIndex={-1} className="fc-chip ghost" title="Scoate textul datei din titlu" onClick={cleanTitleFromDate}>
+            <Icon name="fromTitle" size={14} />
+            Curăță titlul
           </button>
-          <button type="button" className="fc-link" title="Scoate textul datei din titlu" onClick={cleanTitleFromDate}>
-            curăță titlul
+          <button type="button" data-chip="" tabIndex={-1} className="fc-chip icon" title="Nu e o dată — lasă titlul în pace" aria-label="Refuză data din titlu" onClick={refuseTitleDate}>
+            <Icon name="close" size={14} />
           </button>
-        </span>
+        </>
       )}
       {/* Titlul era numai dată: salvarea e stinsă, deci spune de ce. */}
       {bareTitle && <span className="fc-hint warn">și ce ai de făcut?</span>}
       {canWrite && (
-        <>
+        // Agrafa și „+" trec pe rândul următor numai împreună: un „+" singur
+        // pe un rând ar fi exact zgomotul pe care rândul îl elimină.
+        <span className="fc-tail">
           <button
             type="button"
             data-chip=""
@@ -1487,7 +1488,7 @@ export function IssueForm({ issueId, docked = false, draft }: { issueId?: string
           {/* `capture` exclude `multiple`: camera pornește pentru un singur cadru. */}
           <input ref={cameraInputRef} className="att-pick-input" type="file" accept="image/*" capture="environment" onChange={onFilesChosen} tabIndex={-1} aria-hidden="true" />
           <input ref={fileInputRef} className="att-pick-input" type="file" multiple onChange={onFilesChosen} tabIndex={-1} aria-hidden="true" />
-        </>
+        </span>
       )}
       {openPop && (
         <ChipPop

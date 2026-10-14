@@ -3618,6 +3618,11 @@ main {
 .sh-header > .fc-row { order: 11; flex-basis: 100%; }
 /* Bifa (28px) + golul (6px) − marja ei (−2px): textul titlului începe acolo. */
 .sh-header:has(> .sh-check) > .fc-row { padding-left: 32px; }
+@media (max-width: 899px) {
+  /* Pe telefon rândul se aliniază cu bifa, ca în foaia de tichet: 32px în
+     plus încap încă un jeton pe rând. */
+  .sh-header:has(> .sh-check) > .fc-row { padding-left: 0; }
+}
 .fc-row {
   position: relative;
   display: flex;
@@ -3677,18 +3682,7 @@ main {
   font-family: var(--mono); font-size: calc(10px * var(--text-scale)); font-weight: 650;
 }
 .fc-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.fc-from-title {
-  display: inline-flex; align-items: center; gap: 5px;
-  font-size: calc(12px * var(--text-scale)); font-weight: 550;
-  color: var(--txt-dim);
-}
-.fc-from-title svg { color: var(--accent); }
-.fc-x {
-  width: 22px; height: 22px; border-radius: 50%;
-  display: inline-flex; align-items: center; justify-content: center;
-  color: var(--txt-faint); background: transparent;
-}
-.fc-x:hover { color: var(--blocked); background: var(--blocked-soft); }
+.fc-tail { display: inline-flex; gap: 6px; flex-shrink: 0; }
 .fc-link {
   font-size: calc(12px * var(--text-scale));
   font-weight: 600;
@@ -3756,6 +3750,18 @@ main {
 html[data-text-large] .fc-presets { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 html[data-text-large] .fc-fields > .due-inputs { flex-basis: 100%; }
 .fc-fields > .due-inputs { flex: 1 1 220px; min-width: 0; }
+/* În popover data e un câmp de scris, deci se citește ca un câmp: contur,
+   text în culoarea normală (regula 1 din „Senin"). */
+.fc-fields > .due-inputs {
+  background: transparent;
+  box-shadow: none;
+  border: 1px solid var(--line);
+  border-radius: var(--r-m);
+}
+.fc-fields > .due-inputs:focus-within { border-color: var(--accent); }
+.fc-fields .due-input-date, .fc-fields .due-input-time { color: var(--txt); }
+.fc-fields .fc-link, .fc-recur .fc-link { text-decoration: none; }
+.fc-fields .due-input-date { text-align: left; padding-left: 4px; }
 .fc-fields > .due-inputs .due-input-date { flex: 1 1 auto; }
 .fc-note { margin: 7px 2px 0; font-size: calc(12px * var(--text-scale)); color: var(--txt-faint); }
 .fc-note.warn { color: var(--active); font-weight: 600; }

@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="ro" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Formular compact</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;550;600;650;700;750&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Jetoanele „Senin", direcția A (design/redesign/index.html) */
+:root,[data-theme=light]{
+  --bg:#FFFFFF;--bg-2:#F6F7F9;--sheet:#FFFFFF;--raise:#F1F3F6;--raise-2:#E8EBF0;--chip:#EEF0F3;
+  --ink:#1A1C20;--ink-2:#565C66;--ink-3:#959BA5;--sep:#EEF0F3;
+  --accent:#2F6BFF;--accent-ink:#1F55E0;--accent-soft:#EBF1FF;--danger:#E5484D;--danger-soft:#FDEEEE;--star:#F5B000;
+  --p-hz:#F2600C;--p-tur:#0E9F8E;--p-apo:#8B55D6;
+  --shadow:0 1px 2px rgba(16,24,40,.06),0 6px 20px rgba(16,24,40,.07);
+  --pop:0 2px 4px rgba(16,24,40,.06),0 12px 32px rgba(16,24,40,.14);
+  --page:#EDEBE7;--page-ink:#1D1C1A;--page-dim:#6F6B64;--page-card:#FFFFFF;--page-line:#EFEDE9;
+  --bad:#B4232A;--bad-soft:#FBEAEA;--good:#0E7C6B;--good-soft:#E3F5F1;
+}
+[data-theme=dark]{
+  --bg:#141517;--bg-2:#1B1C1F;--sheet:#1E1F23;--raise:#26282C;--raise-2:#303237;--chip:#26282C;
+  --ink:#EEEFF1;--ink-2:#A6ABB3;--ink-3:#6E737B;--sep:#24262A;
+  --accent:#5B8DFF;--accent-ink:#8AAEFF;--accent-soft:rgba(91,141,255,.15);--danger:#FF6369;--danger-soft:rgba(255,99,105,.13);--star:#FFC53D;
+  --p-hz:#FF8A3D;--p-tur:#2EC4B0;--p-apo:#B48CF0;
+  --shadow:0 1px 0 rgba(255,255,255,.04) inset,0 10px 30px rgba(0,0,0,.45);
+  --pop:0 1px 0 rgba(255,255,255,.05) inset,0 16px 40px rgba(0,0,0,.55);
+  --page:#0F1012;--page-ink:#EEEFF1;--page-dim:#8C9199;--page-card:#1B1C1F;--page-line:#26282C;
+  --bad:#FF8A8F;--bad-soft:rgba(255,99,105,.12);--good:#4FD1BC;--good-soft:rgba(46,196,176,.12);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--page);color:var(--page-ink)}
+body{font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;font-feature-settings:"cv11" 1}
+svg{display:block;flex-shrink:0}
+.mono{font-family:"Geist Mono",ui-monospace,monospace}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+
+.wrap{max-width:1240px;margin:0 auto;padding:40px 16px 96px}
+.intro{display:flex;justify-content:space-between;gap:32px;align-items:flex-end;margin-bottom:28px;flex-wrap:wrap}
+.eyebrow{font-size:12px;font-weight:650;letter-spacing:.07em;text-transform:uppercase;color:var(--page-dim)}
+h1{font-size:38px;line-height:1.08;letter-spacing:-.03em;font-weight:750;margin:8px 0 10px}
+.intro p{font-size:16px;line-height:1.55;color:var(--page-dim);max-width:64ch}
+.intro q{quotes:"„" "”";color:var(--page-ink);font-weight:550}
+.tg{display:flex;background:var(--page-line);border-radius:12px;padding:3px}
+.tg button{font-size:13px;font-weight:600;color:var(--page-dim);padding:7px 12px;border-radius:9px}
+.tg button[aria-pressed=true]{background:var(--page-card);color:var(--page-ink);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,560px));gap:36px 40px;justify-content:center}
+.cap{display:flex;align-items:baseline;gap:10px;margin:0 0 10px 4px}
+.cap b{font-size:12px;font-weight:650;letter-spacing:.07em;text-transform:uppercase;color:var(--page-dim)}
+.cap span{font-size:13px;color:var(--page-dim)}
+.cap .tag{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 7px;border-radius:6px}
+.tag.bad{background:var(--bad-soft);color:var(--bad)}
+.tag.good{background:var(--good-soft);color:var(--good)}
+
+/* ---------- panoul docat ---------- */
+.panel{width:100%;max-width:560px;background:var(--bg);color:var(--ink);border-radius:20px;box-shadow:var(--shadow);position:relative;overflow:visible;padding:18px 28px 26px;min-height:520px}
+.ph{display:flex;align-items:center;gap:2px;height:32px;margin-bottom:10px}
+.ph .id{font-family:"Geist Mono",monospace;font-size:13px;color:var(--ink-3);flex:1;letter-spacing:.01em}
+.ib{width:34px;height:34px;display:grid;place-items:center;border-radius:8px;color:var(--ink-3)}
+.ib.save{color:var(--accent)}
+.th{display:flex;gap:12px;align-items:flex-start;margin-bottom:14px}
+.ck{width:22px;height:22px;border-radius:50%;box-shadow:inset 0 0 0 2px var(--pc,#0E9F8E);flex-shrink:0;margin-top:3px}
+.ck.urg{box-shadow:inset 0 0 0 2px var(--danger)}
+.th h2{font-size:21px;line-height:1.3;font-weight:700;letter-spacing:-.015em}
+.desc{font-size:15px;line-height:1.6;color:var(--ink)}
+.desc p+p{margin-top:12px}
+.sect{margin-top:22px;font-size:12px;font-weight:650;color:var(--ink-3);display:flex;gap:8px;align-items:center}
+.sect i{font-style:normal;flex:1;height:1px;background:var(--sep)}
+
+/* ---------- ÎNAINTE: reproducere ---------- */
+.old .bar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.o-ctl{height:34px;display:flex;align-items:center;gap:8px;padding:0 10px;border-radius:8px;background:var(--raise);font-size:14px;font-weight:550;color:var(--ink)}
+.o-av{width:22px;height:22px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-family:"Geist Mono",monospace;font-size:11px;font-weight:600;display:grid;place-items:center}
+.o-seg{display:flex;align-items:center;height:34px;padding:0 6px;border-radius:8px;background:var(--raise)}
+.o-seg span{font-size:13px;font-weight:600;color:var(--ink-3);padding:0 8px;height:34px;display:grid;place-items:center;position:relative}
+.o-seg span.on{color:var(--accent)}
+.o-seg span.on:after{content:"";position:absolute;left:8px;right:8px;bottom:5px;height:2px;border-radius:2px;background:var(--accent)}
+.o-date{font-family:"Geist Mono",monospace;font-size:14px;gap:10px}
+.o-date svg{color:var(--ink-3)}
+.o-ghost{background:transparent;box-shadow:inset 0 0 0 1px var(--raise-2);color:var(--ink-3);border-style:dashed}
+.o-row{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin:8px 0}
+.o-row .lb{font-size:13px;font-weight:600;color:var(--ink-3);margin-right:4px}
+.o-pill{font-size:14px;font-weight:550;padding:6px 11px;border-radius:8px;background:var(--raise);color:var(--ink)}
+.o-pill.on{background:var(--accent-soft);color:var(--accent)}
+.o-lbl{font-size:13px;font-weight:600;color:var(--ink-3);margin:16px 0 8px}
+.o-att{height:44px;border-radius:12px;background:var(--bg-2);display:flex;align-items:center;padding:0 12px;gap:14px;color:var(--ink-3);margin-bottom:14px}
+.o-att .sp{flex:1}
+.strike{position:relative}
+.note{position:absolute;right:-12px;font-size:11px;font-weight:700;color:var(--bad);background:var(--bad-soft);padding:2px 6px;border-radius:6px;transform:translateX(100%)}
+
+/* ---------- DUPĂ: rândul de jetoane ---------- */
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 18px 34px;position:relative}
+.chip{height:30px;display:inline-flex;align-items:center;gap:6px;padding:0 10px;border-radius:8px;background:var(--chip);font-size:13.5px;font-weight:550;color:var(--ink);white-space:nowrap;position:relative}
+.chip svg{color:var(--ink-2)}
+.chip .t{font-family:"Geist Mono",monospace;font-size:13px;font-weight:500}
+.chip.due svg{color:var(--accent)}
+.chip.today{color:var(--ink)}
+.chip.late{background:var(--danger-soft);color:var(--danger)}
+.chip.late svg{color:var(--danger)}
+.chip.urgent{background:var(--danger-soft);color:var(--danger)}
+.chip.urgent svg{color:var(--danger)}
+.chip.ghost{background:transparent;color:var(--ink-3);padding:0 8px}
+.chip.ghost svg{color:var(--ink-3)}
+.chip.icon{width:30px;padding:0;justify-content:center;background:transparent}
+.chip.icon svg{color:var(--ink-3)}
+.chip.open{background:var(--accent-soft);color:var(--accent-ink)}
+.chip.open svg{color:var(--accent)}
+.chip .dot{width:8px;height:8px;border-radius:50%}
+.chip .av{width:20px;height:20px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-size:10.5px;font-weight:650;display:grid;place-items:center;margin-left:-4px;letter-spacing:.02em}
+.chip.who{padding:0 8px 0 9px}
+.chip:focus-visible,.focusdemo{outline:2px solid var(--accent);outline-offset:2px}
+.kbd{font-family:"Geist Mono",monospace;font-size:11px;color:var(--ink-3);background:var(--raise);border-radius:5px;padding:1px 5px}
+
+/* popovere */
+.pop{position:absolute;z-index:5;background:var(--sheet);border-radius:12px;box-shadow:var(--pop);padding:12px;color:var(--ink)}
+.pop h4{font-size:12px;font-weight:650;color:var(--ink-3);margin:12px 2px 7px}
+.pop h4:first-child{margin-top:2px}
+.presets{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.pre{height:52px;border-radius:8px;background:var(--raise);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:13px;font-weight:600}
+.pre small{font-family:"Geist Mono",monospace;font-size:11px;font-weight:500;color:var(--ink-3)}
+.pre.on{background:var(--accent-soft);color:var(--accent-ink)}
+.pre.on small{color:var(--accent)}
+.fields{display:grid;grid-template-columns:1fr 104px 34px;gap:6px}
+.field{height:36px;border-radius:12px;box-shadow:inset 0 0 0 1px var(--raise-2);display:flex;align-items:center;justify-content:space-between;padding:0 11px;font-family:"Geist Mono",monospace;font-size:13.5px;color:var(--ink)}
+.field svg{color:var(--ink-3)}
+.field.x{justify-content:center;padding:0;box-shadow:none;color:var(--ink-3)}
+.seg{display:flex;flex-wrap:wrap;gap:5px}
+.seg span{height:28px;display:inline-flex;align-items:center;gap:5px;padding:0 10px;border-radius:8px;background:var(--raise);font-size:13px;font-weight:550;color:var(--ink-2)}
+.seg span.on{background:var(--accent-soft);color:var(--accent-ink)}
+.pop .foot{margin:12px -12px -12px;padding:9px 14px;background:var(--bg-2);border-radius:0 0 12px 12px;font-size:12px;color:var(--ink-3);display:flex;gap:10px;flex-wrap:wrap}
+
+.menu{min-width:220px;padding:6px}
+.mi{height:36px;display:flex;align-items:center;gap:10px;padding:0 10px;border-radius:8px;font-size:13.5px;font-weight:550;color:var(--ink)}
+.mi svg{color:var(--ink-2)}
+.mi .sp{flex:1}
+.mi.hl{background:var(--raise)}
+.mi.on{color:var(--accent-ink)}
+.mi.on svg{color:var(--accent)}
+.mi .hint{font-size:12px;font-weight:500;color:var(--ink-3)}
+.mi .r{font-family:"Geist Mono",monospace;font-size:12px;color:var(--ink-3);width:26px}
+.menu hr{border:0;height:1px;background:var(--sep);margin:5px 4px}
+.menu .warn{font-size:12px;line-height:1.45;color:var(--ink-2);padding:6px 10px 4px}
+
+/* bara de fișiere, când chiar există fișiere */
+.att{display:flex;gap:8px;margin:0 0 16px 34px}
+.thumb{width:56px;height:44px;border-radius:8px;background:linear-gradient(135deg,#C9D6F2,#E9E2D6)}
+.thumb.b{background:linear-gradient(135deg,#D9E8E2,#CBD3E6)}
+.att .add{width:44px;height:44px;border-radius:8px;display:grid;place-items:center;color:var(--ink-3);background:var(--bg-2)}
+
+/* ---------- telefon ---------- */
+.phone{width:390px;height:700px;background:#111;border-radius:46px;padding:10px;box-shadow:0 30px 60px -20px rgba(0,0,0,.35)}
+.phone .scr{width:100%;height:100%;border-radius:37px;background:var(--bg);color:var(--ink);overflow:hidden;position:relative;padding:54px 20px 0}
+.phone .chips{margin-left:34px}
+.phone .scrim{position:absolute;inset:0;background:rgba(20,22,28,.32)}
+.phone .bs{position:absolute;left:0;right:0;bottom:0;background:var(--sheet);border-radius:20px 20px 0 0;padding:10px 16px 26px;box-shadow:var(--pop)}
+.phone .grab{width:36px;height:4px;border-radius:2px;background:var(--raise-2);margin:0 auto 6px}
+
+/* ---------- text ---------- */
+.doc{margin-top:56px;background:var(--page-card);border-radius:20px;padding:34px 38px;box-shadow:0 1px 2px rgba(0,0,0,.04),0 12px 32px rgba(0,0,0,.06)}
+.doc h2{font-size:26px;letter-spacing:-.02em;font-weight:750;margin-bottom:8px}
+.doc .lead{font-size:15.5px;line-height:1.55;color:var(--page-dim);max-width:80ch;margin-bottom:22px}
+table{width:100%;border-collapse:collapse;font-size:14px;line-height:1.45}
+th{text-align:left;font-size:12px;font-weight:650;color:var(--page-dim);padding:0 14px 8px 0;vertical-align:bottom}
+td{padding:10px 14px 10px 0;vertical-align:top;box-shadow:0 -1px 0 var(--page-line)}
+td:first-child{font-weight:600;white-space:nowrap;width:150px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:36px;margin-top:30px}
+.doc h3{font-size:12px;font-weight:650;letter-spacing:.07em;text-transform:uppercase;color:var(--page-dim);margin-bottom:10px}
+.doc ul{list-style:none}
+.doc li{font-size:14.5px;line-height:1.5;padding:8px 0 8px 20px;position:relative}
+.doc li+li{box-shadow:0 -1px 0 var(--page-line)}
+.doc li:before{content:"";position:absolute;left:2px;top:16px;width:7px;height:7px;border-radius:50%;background:var(--accent)}
+.doc code{font-family:"Geist Mono",monospace;font-size:12.5px;background:var(--page-line);border-radius:5px;padding:1px 5px}
+.dim{color:var(--page-dim)}
+
+@media (max-width:1180px){.grid{grid-template-columns:minmax(0,560px)}.cols{grid-template-columns:1fr}.note{display:none}}
+@media (max-width:600px){.panel{padding:16px 16px 22px}.chips,.att{margin-left:0}.phone{transform:scale(.85);transform-origin:top left}h1{font-size:30px}.doc{padding:24px 18px}td:first-child{white-space:normal;width:auto}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="cal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+    <symbol id="clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+    <symbol id="bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></symbol>
+    <symbol id="repeat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></symbol>
+    <symbol id="zap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></symbol>
+    <symbol id="clip" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></symbol>
+    <symbol id="plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+    <symbol id="waves" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></symbol>
+    <symbol id="tag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4z"/><circle cx="7.5" cy="7.5" r="1"/></symbol>
+    <symbol id="user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+    <symbol id="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7M12 19V5"/></symbol>
+    <symbol id="exp" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></symbol>
+    <symbol id="copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="14" height="14" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+    <symbol id="trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+    <symbol id="img" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <header class="intro">
+    <div>
+      <div class="eyebrow">Formularul tichetului · panoul lateral · 2026-10-14</div>
+      <h1>Un rând de jetoane, nu șapte rânduri de controale</h1>
+      <p>Omul: <q>chiar ne trebuie toate nebuniile alea?</q> Nu. Între titlu și descriere stăteau 7 grupuri de controale, iar 5 dintre ele erau goale sau pe valoarea implicită. Propunerea: arătăm numai ce e <b>setat</b>, totul pe un singur rând; restul stă după „+”.</p>
+    </div>
+    <div class="tg" role="group" aria-label="Temă">
+      <button type="button" aria-pressed="true" data-t="light">Luminos</button>
+      <button type="button" aria-pressed="false" data-t="dark">Întunecat</button>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <!-- ===================== 1. ÎNAINTE ===================== -->
+    <section>
+      <div class="cap"><span class="tag bad">Înainte</span><b>Azi în producție</b><span>~330px de controale până la text</span></div>
+      <div class="panel old">
+        <div class="ph"><span class="id">MS-256</span>
+          <span class="ib"><svg width="17" height="17"><use href="#exp"/></svg></span><span class="ib"><svg width="17" height="17"><use href="#copy"/></svg></span><span class="ib"><svg width="17" height="17"><use href="#trash"/></svg></span><span class="ib save"><svg width="18" height="18"><use href="#up"/></svg></span><span class="ib"><svg width="17" height="17"><use href="#x"/></svg></span>
+        </div>
+        <div class="th"><span class="ck"></span><h2>Să se vadă numărul de abonați pe clase și niveluri</h2></div>
+        <div class="bar">
+          <span class="o-ctl"><span class="o-av">I</span>Ionut<svg width="13" height="13"><use href="#chev"/></svg></span>
+          <span class="o-seg"><span>Scratchpad</span><span>Val 1</span><span>II</span><span>III</span><span>IV</span><span class="on">V</span></span>
+          <span class="o-ctl"><svg width="15" height="15" style="color:var(--ink-3)"><use href="#zap"/></svg></span>
+          <span class="o-ctl o-date">14/10/2026 <svg width="15" height="15"><use href="#cal"/></svg> 17:00 <svg width="15" height="15"><use href="#clock"/></svg><svg width="13" height="13"><use href="#x"/></svg></span>
+          <span class="o-ctl o-ghost">temă <svg width="13" height="13"><use href="#chev"/></svg></span>
+        </div>
+        <div class="o-row"><span class="lb">Memento</span><span class="o-pill on">la oră</span><span class="o-pill">−30m</span><span class="o-pill">−1 zi</span><span class="o-pill">fără</span></div>
+        <div class="o-row"><span class="lb">Repetare</span><span class="o-pill on">fără</span><span class="o-pill">zilnic</span><span class="o-pill">zile lucrătoare</span><span class="o-pill">săptămânal</span><span class="o-pill">lunar</span><span class="o-pill">anual</span><span class="o-pill">personalizat…</span></div>
+        <div class="o-lbl">Descriere</div>
+        <div class="o-att"><svg width="17" height="17"><use href="#clip"/></svg><span class="sp"></span><svg width="18" height="18"><use href="#img"/></svg><svg width="18" height="18"><use href="#plus"/></svg></div>
+        <div class="desc"><p>Momentan nu se vede câți plătitori sunt pe fiecare clasă și nivel în parte.</p><p>Ajută la eficientizarea marketingului…</p></div>
+      </div>
+    </section>
+
+    <!-- ===================== 2. DUPĂ ===================== -->
+    <section>
+      <div class="cap"><span class="tag good">După</span><b>Același tichet, în repaus</b><span>un rând, 30px</span></div>
+      <div class="panel">
+        <div class="ph"><span class="id">MS-256</span>
+          <span class="ib"><svg width="17" height="17"><use href="#exp"/></svg></span><span class="ib"><svg width="17" height="17"><use href="#copy"/></svg></span><span class="ib"><svg width="17" height="17"><use href="#trash"/></svg></span><span class="ib save"><svg width="18" height="18"><use href="#up"/></svg></span><span class="ib"><svg width="17" height="17"><use href="#x"/></svg></span>
+        </div>
+        <div class="th"><span class="ck"></span><h2>Să se vadă numărul de abonați pe clase și niveluri</h2></div>
+        <div class="chips" role="toolbar" aria-label="Proprietățile tichetului">
+          <button class="chip due" aria-haspopup="dialog" aria-label="Scadență: azi, 17:00, memento la oră"><svg width="14" height="14"><use href="#cal"/></svg>Azi <span class="t">17:00</span></button>
+          <button class="chip" aria-haspopup="dialog" aria-label="Memento la oră"><svg width="14" height="14"><use href="#bell"/></svg>la oră</button>
+          <button class="chip" aria-haspopup="menu" aria-label="Val: V"><svg width="14" height="14"><use href="#waves"/></svg>Val V</button>
+          <button class="chip who" aria-haspopup="menu" aria-label="Pasat lui Ionut"><span class="av">IS</span>Ionut</button>
+          <button class="chip icon" aria-label="Atașează fișier"><svg width="16" height="16"><use href="#clip"/></svg></button>
+          <button class="chip icon" aria-haspopup="menu" aria-label="Adaugă proprietate"><svg width="16" height="16"><use href="#plus"/></svg></button>
+        </div>
+        <div class="desc"><p>Momentan nu se vede câți plătitori sunt pe fiecare clasă și nivel în parte.</p><p>Ajută la eficientizarea marketingului, a se identifica unde mai trebuie lucrat, pe ce clasă, pe ce nivel.</p><p>Unde se poate pune asta?</p></div>
+        <div class="sect">Dependențe <i></i></div>
+      </div>
+    </section>
+
+    <!-- ===================== 3. DUPĂ + dată ===================== -->
+    <section>
+      <div class="cap"><span class="tag good">După</span><b>Jetonul de dată, deschis</b><span>dată · oră · memento · repetare, într-un loc</span></div>
+      <div class="panel" style="min-height:560px">
+        <div class="ph"><span class="id">MS-256</span><span class="ib"><svg width="17" height="17"><use href="#exp"/></svg></span><span class="ib"><svg width="17" height="17"><use href="#copy"/></svg></span><span class="ib"><svg width="17" height="17"><use href="#trash"/></svg></span><span class="ib save"><svg width="18" height="18"><use href="#up"/></svg></span><span class="ib"><svg width="17" height="17"><use href="#x"/></svg></span></div>
+        <div class="th"><span class="ck"></span><h2>Să se vadă numărul de abonați pe clase și niveluri</h2></div>
+        <div class="chips">
+          <span class="chip due open" aria-expanded="true"><svg width="14" height="14"><use href="#cal"/></svg>Azi <span class="t">17:00</span></span>
+          <span class="chip"><svg width="14" height="14"><use href="#bell"/></svg>la oră</span>
+          <span class="chip"><svg width="14" height="14"><use href="#repeat"/></svg>Săptămânal</span>
+          <span class="chip"><svg width="14" height="14"><use href="#waves"/></svg>Val V</span>
+          <span class="chip icon"><svg width="16" height="16"><use href="#clip"/></svg></span>
+          <span class="chip icon"><svg width="16" height="16"><use href="#plus"/></svg></span>
+
+          <div class="pop" role="dialog" aria-label="Scadență" style="top:38px;left:0;width:356px">
+            <h4>Ziua</h4>
+            <div class="presets">
+              <span class="pre on">Azi<small>mie 14</small></span>
+              <span class="pre">Mâine<small>joi 15</small></span>
+              <span class="pre">Luni<small>19 oct</small></span>
+              <span class="pre">+1 săpt.<small>21 oct</small></span>
+            </div>
+            <div class="fields" style="margin-top:8px">
+              <span class="field">14.10.2026 <svg width="14" height="14"><use href="#cal"/></svg></span>
+              <span class="field">17:00 <svg width="14" height="14"><use href="#clock"/></svg></span>
+              <span class="field x" title="Fără dată" aria-label="Scoate scadența"><svg width="15" height="15"><use href="#x"/></svg></span>
+            </div>
+            <h4>Memento</h4>
+            <div class="seg"><span class="on"><svg width="12" height="12"><use href="#check"/></svg>la oră</span><span>−30m</span><span>−1 zi</span><span>fără</span></div>
+            <h4>Repetare</h4>
+            <div class="seg"><span>fără</span><span>zilnic</span><span>lucrătoare</span><span class="on"><svg width="12" height="12"><use href="#check"/></svg>săptămânal</span><span>lunar</span><span>anual</span><span>personalizat…</span></div>
+            <div class="foot"><span><span class="kbd">Esc</span> închide, înapoi pe jeton</span><span><span class="kbd">Tab</span> între secțiuni</span></div>
+          </div>
+        </div>
+        <div class="desc" style="opacity:.35"><p>Momentan nu se vede câți plătitori sunt pe fiecare clasă și nivel în parte.</p><p>Ajută la eficientizarea marketingului, a se identifica unde mai trebuie lucrat, pe ce clasă, pe ce nivel.</p><p>Unde se poate pune asta?</p><p>&nbsp;</p><p>&nbsp;</p><p>&nbsp;</p><p>&nbsp;</p><p>&nbsp;</p></div>
+      </div>
+    </section>
+
+    <!-- ===================== 4. DUPĂ + val + „+” ===================== -->
+    <section>
+      <div class="cap"><span class="tag good">După</span><b>Valul și „+”</b><span>un jeton cu meniu, nu șase taburi</span></div>
+      <div class="panel" style="min-height:560px">
+        <div class="ph"><span class="id">MS-256</span><span class="ib"><svg width="17" height="17"><use href="#exp"/></svg></span><span class="ib"><svg width="17" height="17"><use href="#copy"/></svg></span><span class="ib"><svg width="17" height="17"><use href="#trash"/></svg></span><span class="ib save"><svg width="18" height="18"><use href="#up"/></svg></span><span class="ib"><svg width="17" height="17"><use href="#x"/></svg></span></div>
+        <div class="th"><span class="ck urg"></span><h2>Să se vadă numărul de abonați pe clase și niveluri</h2></div>
+        <div class="chips">
+          <span class="chip late"><svg width="14" height="14"><use href="#cal"/></svg>11 oct</span>
+          <span class="chip urgent"><svg width="14" height="14"><use href="#zap"/></svg>Urgent</span>
+          <span class="chip open" aria-expanded="true"><svg width="14" height="14"><use href="#waves"/></svg>Val V<svg width="12" height="12"><use href="#chev"/></svg></span>
+          <span class="chip"><span class="dot" style="background:var(--p-apo)"></span>Raportare</span>
+          <span class="chip icon"><svg width="16" height="16"><use href="#clip"/></svg></span>
+          <span class="chip icon open"><svg width="16" height="16"><use href="#plus"/></svg></span>
+
+          <div class="pop menu" role="menu" aria-label="Val" style="top:38px;left:0;width:232px">
+            <div class="mi"><span class="r">S</span>Scratchpad<span class="sp"></span></div>
+            <div class="mi"><span class="r">I</span>Val 1</div>
+            <div class="mi"><span class="r">II</span>Val 2</div>
+            <div class="mi"><span class="r">III</span>Val 3</div>
+            <div class="mi hl"><span class="r">IV</span>Val 4<span class="sp"></span><span class="hint">activ</span></div>
+            <div class="mi on"><span class="r">V</span>Val 5<span class="sp"></span><svg width="14" height="14"><use href="#check"/></svg></div>
+            <hr>
+            <div class="warn">Mutat mai devreme de val IV, ar trage cu el și „Export CSV” (val IV), care depinde de el.</div>
+          </div>
+
+          <div class="pop menu" role="menu" aria-label="Adaugă" style="top:38px;right:0;width:204px">
+            <div class="mi hl"><svg width="15" height="15"><use href="#repeat"/></svg>Repetare<span class="sp"></span><span class="kbd">R</span></div>
+            <div class="mi"><svg width="15" height="15"><use href="#bell"/></svg>Memento<span class="sp"></span><span class="kbd">M</span></div>
+            <div class="mi"><svg width="15" height="15"><use href="#user"/></svg>Persoană<span class="sp"></span><span class="kbd">P</span></div>
+            <hr>
+            <div class="mi"><svg width="15" height="15"><use href="#zap"/></svg>Scoate urgent</div>
+          </div>
+        </div>
+        <div class="att"><span class="thumb"></span><span class="thumb b"></span><span class="add"><svg width="16" height="16"><use href="#plus"/></svg></span></div>
+        <div class="desc" style="opacity:.35"><p>Momentan nu se vede câți plătitori sunt pe fiecare clasă și nivel în parte.</p><p>Ajută la eficientizarea marketingului…</p></div>
+      </div>
+    </section>
+
+    <!-- ===================== 5. gol ===================== -->
+    <section>
+      <div class="cap"><b>După · tichet gol</b><span>ce vezi când nimic nu e setat</span></div>
+      <div class="panel" style="min-height:300px">
+        <div class="ph"><span class="id">HZ-~k3f9a</span><span class="ib"><svg width="17" height="17"><use href="#exp"/></svg></span><span class="ib save"><svg width="18" height="18"><use href="#up"/></svg></span><span class="ib"><svg width="17" height="17"><use href="#x"/></svg></span></div>
+        <div class="th"><span class="ck" style="--pc:var(--p-hz)"></span><h2>Factura pentru hosting</h2></div>
+        <div class="chips">
+          <button class="chip ghost focusdemo"><svg width="14" height="14"><use href="#cal"/></svg>Dată</button>
+          <button class="chip icon"><svg width="16" height="16"><use href="#clip"/></svg></button>
+          <button class="chip icon"><svg width="16" height="16"><use href="#plus"/></svg></button>
+        </div>
+        <div class="desc" style="color:var(--ink-3)">Scrie o descriere…</div>
+        <p style="font-size:12.5px;line-height:1.5;color:var(--ink-3);margin-top:26px">Data e singura proprietate care are jeton-fantomă: e cea mai des pusă. Valul nu apare deloc în Inbox (un singur val = nimic de ales). Inelul albastru e focusul de tastatură.</p>
+      </div>
+    </section>
+
+    <!-- ===================== 6. telefon ===================== -->
+    <section>
+      <div class="cap"><b>Telefon · formularul complet</b><span>același rând; popoverul devine foaie</span></div>
+      <div class="phone"><div class="scr">
+        <div class="ph"><span class="id">MS-256</span><span class="ib save"><svg width="18" height="18"><use href="#up"/></svg></span><span class="ib"><svg width="17" height="17"><use href="#x"/></svg></span></div>
+        <div class="th"><span class="ck"></span><h2 style="font-size:19px">Să se vadă numărul de abonați pe clase și niveluri</h2></div>
+        <div class="chips">
+          <span class="chip due open"><svg width="14" height="14"><use href="#cal"/></svg>Azi <span class="t">17:00</span></span>
+          <span class="chip"><svg width="14" height="14"><use href="#bell"/></svg>la oră</span>
+          <span class="chip"><svg width="14" height="14"><use href="#waves"/></svg>Val V</span>
+          <span class="chip icon"><svg width="16" height="16"><use href="#clip"/></svg></span>
+          <span class="chip icon"><svg width="16" height="16"><use href="#plus"/></svg></span>
+        </div>
+        <div class="desc" style="font-size:14.5px">Momentan nu se vede câți plătitori sunt pe fiecare clasă și nivel în parte.</div>
+        <div class="scrim"></div>
+        <div class="bs" role="dialog" aria-label="Scadență">
+          <div class="grab"></div>
+          <div class="pop" style="position:static;box-shadow:none;padding:6px 0 0">
+            <h4>Ziua</h4>
+            <div class="presets"><span class="pre on">Azi<small>mie 14</small></span><span class="pre">Mâine<small>joi 15</small></span><span class="pre">Luni<small>19 oct</small></span><span class="pre">+1 săpt.<small>21 oct</small></span></div>
+            <div class="fields" style="margin-top:8px;grid-template-columns:1fr 96px 36px"><span class="field">14.10.2026 <svg width="14" height="14"><use href="#cal"/></svg></span><span class="field">17:00 <svg width="14" height="14"><use href="#clock"/></svg></span><span class="field x"><svg width="15" height="15"><use href="#x"/></svg></span></div>
+            <h4>Memento</h4>
+            <div class="seg"><span class="on">la oră</span><span>−30m</span><span>−1 zi</span><span>fără</span></div>
+            <h4>Repetare</h4>
+            <div class="seg"><span class="on">fără</span><span>zilnic</span><span>lucrătoare</span><span>săptămânal</span><span>lunar</span><span>anual</span><span>personalizat…</span></div>
+          </div>
+        </div>
+      </div></div>
+    </section>
+  </div>
+
+  <!-- ===================== text ===================== -->
+  <div class="doc">
+    <h2>Ce dispare, ce se mută, ce rămâne</h2>
+    <p class="lead">Nicio funcție nu se pierde. Se pierde doar obligația de a vedea, la fiecare tichet, controale pentru lucruri pe care nu le-ai setat.</p>
+    <table>
+      <thead><tr><th>Element</th><th>Azi</th><th>Propunere</th></tr></thead>
+      <tbody>
+        <tr><td>Eticheta „Descriere”</td><td>Rând propriu</td><td><b>Dispare.</b> Textul de sub titlu e descrierea; când e gol, scrie „Scrie o descriere…”.</td></tr>
+        <tr><td>Bara de fișiere</td><td>Mereu, și goală</td><td><b>Dispare cât e goală.</b> Agrafa intră în rând. Cu fișiere apar miniaturile, ca acum. Tragerea unui fișier peste coloană merge în continuare.</td></tr>
+        <tr><td>Memento</td><td>Rând de 4 butoane</td><td><b>Se mută</b> în popoverul datei. În rând: jetonul clopoțel + „la oră”, numai dacă scadența are oră.</td></tr>
+        <tr><td>Repetare</td><td>Rând de 7 butoane</td><td><b>Se mută</b> în popoverul datei. În rând: „Săptămânal” numai dacă e setată. „personalizat…” deschide același <code>RecurrencePicker</code>.</td></tr>
+        <tr><td>Val</td><td>6 taburi</td><td><b>Un jeton „Val V”</b> cu meniu: toate valurile, cel activ marcat, avertismentul despre dependențe stă în meniu. Ascuns în proiectele cu un singur val (Inbox).</td></tr>
+        <tr><td>Dată + oră + ×</td><td>Două câmpuri mereu vizibile</td><td><b>Jetonul „Azi 17:00”</b> (restanța în roșu, ca în listă). Câmpurile native și „scoate” sunt în popover, plus 4 presetări.</td></tr>
+        <tr><td>Persoană</td><td>Select „Ionut ▾”</td><td><b>Inițiale + nume</b>, numai dacă e pasat. Altfel în „+”. Pasarea obișnuită rămâne în fir.</td></tr>
+        <tr><td>Urgent</td><td>Buton-fulger mereu</td><td><b>Jeton roșu</b> numai când e urgent (și inelul roșu de pe bifă, ca peste tot). Pornit din „+” sau cu tastă.</td></tr>
+        <tr><td>Temă</td><td>Select-fantomă „temă ▾”</td><td><b>Jeton cu bulina temei</b>, numai dacă e setată; altfel în „+”.</td></tr>
+        <tr><td>Rămâne neatins</td><td colspan="2">ID-ul și acțiunile din antet, bifa și titlul (cu recunoașterea datei), descrierea markdown, dependențele, firul, salvarea explicită (<span class="kbd">Ctrl+↵</span> / <span class="kbd">Ctrl+S</span>).</td></tr>
+      </tbody>
+    </table>
+
+    <div class="cols">
+      <div>
+        <h3>De ce</h3>
+        <ul>
+          <li><b>Absența e informația.</b> Aceeași regulă ca la <code>DueChip</code>: un tichet fără temă nu are nevoie de un „temă ▾” gol. 5 din 7 controale arătau starea implicită.</li>
+          <li><b>Frecvența decide locul.</b> Data e des: jeton-fantomă mereu la vedere. Memento și repetare țin de dată, deci stau în popoverul ei. Val, temă și persoană sunt rare per tichet: în „+”.</li>
+          <li><b>Descrierea urcă ~300px.</b> Pe laptop, textul începe la a doua linie sub titlu, nu la jumătatea panoului. Panoul e pentru citit și scris, nu pentru configurat.</li>
+          <li><b>Un singur vocabular pe ambele ecrane.</b> Foaia de pe telefon (<code>EditSheet</code>) are deja rândul compact. Formularul complet îl preia, așa că pe laptop și pe telefon un tichet se citește la fel.</li>
+          <li><b>Mai puține chenare și culori.</b> Un singur fel de jeton (8px, <code>#EEF0F3</code>, Inter 550). Accentul apare numai pe jetonul deschis și pe valoarea aleasă.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Tastatură și accesibilitate</h3>
+        <ul>
+          <li>Rândul e un <code>role="toolbar"</code>: un singur Tab intră în el, <span class="kbd">←</span><span class="kbd">→</span> se mută între jetoane. Fiecare jeton are <code>aria-label</code> complet („Scadență: azi, 17:00, memento la oră”).</li>
+          <li>Popoverul datei e <code>role="dialog"</code>, cu focusul pe presetarea aleasă. Meniurile sunt <code>role="menu"</code> cu săgeți și Enter. <span class="kbd">Esc</span> închide și pune focusul înapoi pe jeton.</li>
+          <li>În „+”, tastele de o literă (R, M, P) merg <b>numai cât meniul e deschis</b>. Panoul docat nu e modal, deci scurtăturile listei (C, O, 1–4) sunt încă active; o literă globală în formular s-ar bate cu ele.</li>
+          <li>Ținta de atingere pe telefon: jetonul are 30px vizibil și 44px zonă activă (padding transparent).</li>
+          <li>Telefon: același rând în formularul complet. Popoverele devin foi de jos (dată, val, „+”), iar „Detalii · …” și zona rapidă dispar: rândul e deja rezumatul.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.querySelectorAll('.tg button').forEach(function(b){
+  b.addEventListener('click',function(){
+    document.documentElement.dataset.theme=b.dataset.t;
+    document.querySelectorAll('.tg button').forEach(function(x){x.setAttribute('aria-pressed',String(x===b))});
+  });
+});
+if(location.hash==='#dark'){document.querySelector('.tg [data-t=dark]').click()}
+</script>
+</body>
+</html>

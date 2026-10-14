@@ -881,10 +881,10 @@ CONTROALE = ''.join([
       + fchip('', '<span class="fc-dot" style="background:#7C3AED"></span><span class="fc-chip-t">Raportare</span>')
       + fchip('who', '<span class="fc-av">IS</span><span class="fc-chip-t">Ionuț</span>')
       + fchip('urgent', ic('zap', 14) + 'Urgent')
-      + fchip('icon', ic('paperclip', 16))
-      + fchip('icon open', ic('plus', 16))
-      + '<span class="fc-from-title">' + ic('sparkles', 13) + 'din titlu'
-        '<button class="fc-x">' + ic('x', 12) + '</button><button class="fc-link">curăță titlul</button></span>'
+      + fchip('ghost', ic('sparkles', 14) + 'Curăță titlul')
+      + fchip('icon', ic('x', 14))
+      + '<span class="fc-tail">' + fchip('icon', ic('paperclip', 16))
+      + fchip('icon open', ic('plus', 16)) + '</span>'
       + '<span class="fc-hint warn">și ce ai de făcut?</span>'),
 
     g('Popoverele jetoanelor', FC_DATE_POP + FC_WAVE_MENU + FC_ADD_MENU),
