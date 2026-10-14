@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { compactIssueIdFrom, sheetKey, useUI } from '../ui'
+import { useHorizontal } from '../store'
 import { useMediaQuery } from '../hooks'
 import { EditSheet } from './EditSheet'
 import { IssueSheet } from './IssueSheet'
@@ -18,6 +19,7 @@ import { EventSheet } from './EventSheet'
 
 export function SheetHost() {
   const { sheet, canGoBack, closeSheet, goBack, dockedIssueId } = useUI()
+  const { byId } = useHorizontal()
   // Când formularul stă în panoul lateral, stiva e exact el — deci aici nu mai
   // rămâne nimic de arătat, nici modal, nici fundal. Un card de dependență
   // împins deasupra lui iese din condiția de docare și modalul revine.
@@ -67,7 +69,11 @@ export function SheetHost() {
           </button>
         )}
         {sheet.kind === 'issue' && <IssueSheet key={sheetKey(sheet)} issueId={sheet.issueId} />}
-        {sheet.kind === 'issue-form' && !dockedIssueId && !compactId && <IssueForm key={sheetKey(sheet) ?? '__new__'} issueId={sheet.issueId} draft={sheet.draft} revealThread={sheet.at === 'thread'} />}
+        {/* Un tichet existent se montează abia după ce a sosit (vezi SplitView):
+            altfel formularul pornea gol și o salvare ar fi creat alt tichet. */}
+        {sheet.kind === 'issue-form' && !dockedIssueId && !compactId && (sheet.issueId && !byId[sheet.issueId]
+          ? <p className="empty">Se încarcă tichetul…</p>
+          : <IssueForm key={sheetKey(sheet) ?? '__new__'} issueId={sheet.issueId} draft={sheet.draft} revealThread={sheet.at === 'thread'} />)}
         {sheet.kind === 'project-form' && <ProjectForm />}
         {sheet.kind === 'project-settings' && <ProjectSettings />}
         {sheet.kind === 'wave-manage' && <WaveManager focus={sheet.focus} />}

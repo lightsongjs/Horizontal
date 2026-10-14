@@ -78,11 +78,19 @@ export function SplitView({ children }: { children: ReactNode }) {
 
              Prima parte e `dockedKeyId`, nu ID-ul: un tichet creat offline
              care primește numărul real NU se remontează (vezi `sheetKey`). */
-          <IssueForm
-            key={`${dockedKeyId}:${byId[dockedIssueId]?.dueAt ?? ''}`}
-            issueId={dockedIssueId}
-            docked
-          />
+          // Formularul își citește câmpurile o singură dată, la montare. Montat
+          // înainte să sosească tichetul (proiectul lui încă se încarcă — un
+          // tichet deschis dintr-un filtru), pornea gol și rămânea gol: titlul
+          // apărea ca „MS-256", iar o salvare ar fi creat alt tichet.
+          byId[dockedIssueId] ? (
+            <IssueForm
+              key={`${dockedKeyId}:${byId[dockedIssueId]?.dueAt ?? ''}`}
+              issueId={dockedIssueId}
+              docked
+            />
+          ) : (
+            <div className="split-empty"><p>Se încarcă tichetul…</p></div>
+          )
         ) : (
           <div className="split-empty">
             <Icon name="edit" size={22} />
