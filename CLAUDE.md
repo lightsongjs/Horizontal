@@ -687,6 +687,31 @@ tăiate de `overflow` al corpului.
 - Teste: `npm run test:layout` măsoară rândul la 320–430px, în panoul de
   ~500px și popoverul datei ca foaie; bancul („Controale”) are toate stările.
 
+## Descrierea e un câmp, comentariul un rând
+
+Macheta aprobată: `design/desc-box/index.html` (2026-10-15). Se scriu descrieri
+mult mai des decât comentarii, deci ierarhia e: descrierea = câmpul principal,
+caseta de comentariu = discretă.
+
+- **Descrierea** (`DescFold` pune `.desc-box` pe cutie, deci panou, modal 94%,
+  formularul și foaia de telefon arată la fel): `--surface-2` + linie de păr
+  (`box-shadow` inset; în întunecat `--txt` 7%), raza `--r-m`, fără umbră.
+  Focus: fundalul paginii (`--surface` în foi), contur accent + inel
+  `--accent-soft` de 3px. Citit și scris arată la fel. „Arată tot"/„Restrânge"
+  stă ÎN cutie (`after` din `DescField`, după editor — editorul rămâne primul
+  copil, pe el îl măsoară `DescFold`), pe `--surface-3`; focusul lui nu aprinde
+  inelul (`:not(:has(> .desc-more:focus))`). Codul din casetă urcă pe
+  `--surface-3`. În foaia de tichet caseta ține toată lățimea, aliniată cu
+  rândul de fir, nu după bifă.
+- **Caseta de comentariu** (`Thread`, regula `composerOpen` din
+  `src/lib/composer.ts`, pură, cu teste): în repaus un rând de 40px fără fundal
+  (avatarul tău, „Scrie un comentariu…", agrafa care alege direct un fișier);
+  deschisă cât are focus ORI ciornă (text, fișiere urcate/în urcare, „către…"
+  ales), cu acțiunile înăuntru. Textarea-ul e același element în ambele stări,
+  deci focusul nu sare. Agrafa din repaus nu ia focusul (`preventDefault` pe
+  `pointerdown`/`mousedown`), altfel ar dispărea sub deget înainte de click.
+  Fără drept de scriere caseta nu se mai randează.
+
 ## Descrierea în markdown
 
 Descrierea unui tichet e text markdown, citit și scris cu **aceeași gramatică**:

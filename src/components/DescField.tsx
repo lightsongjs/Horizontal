@@ -1,4 +1,4 @@
-import { Suspense, forwardRef, lazy, useImperativeHandle, useLayoutEffect, useRef, type CSSProperties, type MouseEvent, type MutableRefObject, type Ref } from 'react'
+import { Suspense, forwardRef, lazy, useImperativeHandle, useLayoutEffect, useRef, type CSSProperties, type MouseEvent, type MutableRefObject, type ReactNode, type Ref } from 'react'
 import type { EditorHandle, FormatCmd, MarkdownEditorProps } from './MarkdownEditor'
 
 /**
@@ -18,16 +18,21 @@ export const preloadEditor = () => { import('./MarkdownEditor').catch(() => {}) 
  * editorul sosește cu cursorul în textarea, focusul trece în editor, la
  * același loc (tastatura de pe telefon nu coboară).
  */
-/** Cutia însăși (`fieldRef`, `style`, `onMouseDown`): `DescFold` o măsoară și o pliază. */
+/**
+ * Cutia însăși (`fieldRef`, `style`, `onMouseDown`): `DescFold` o măsoară și o
+ * pliază. `after` stă în cutie, DUPĂ editor („Arată tot"), ca editorul să
+ * rămână primul copil — pe el îl măsoară `DescFold`.
+ */
 type BoxProps = {
   className?: string
   style?: CSSProperties
   fieldRef?: Ref<HTMLDivElement>
   onMouseDown?(e: MouseEvent<HTMLDivElement>): void
+  after?: ReactNode
 }
 
 export const DescField = forwardRef<EditorHandle, MarkdownEditorProps & BoxProps>(
-  function DescField({ className = '', style, fieldRef, onMouseDown, ...p }, ref) {
+  function DescField({ className = '', style, fieldRef, onMouseDown, after, ...p }, ref) {
     const editor = useRef<EditorHandle>(null)
     const fallback = useRef<HTMLTextAreaElement>(null)
     const handoff = useRef<number | null>(null)
@@ -56,6 +61,7 @@ export const DescField = forwardRef<EditorHandle, MarkdownEditorProps & BoxProps
         >
           <MarkdownEditor ref={editor} {...p} takeFocus={() => { const at = handoff.current; handoff.current = null; return at }} />
         </Suspense>
+        {after}
       </div>
     )
   },

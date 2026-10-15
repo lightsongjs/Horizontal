@@ -103,9 +103,10 @@ def md_editor():
             '<div class="cm-content" contenteditable="true" role="textbox">%s</div></div></div></div>' % lines)
 
 
-def md_field(cls='desc-fixed', style=''):
-    """`DescField`: `.md-field` + clasa primită, editorul înăuntru."""
-    return '<div class="md-field %s"%s>%s</div>' % (cls, ' style="%s"' % style if style else '', md_editor())
+def md_field(cls='desc-fixed', style='', after=''):
+    """`DescFold` → `DescField`: `.md-field.desc-box` + clasa primită, editorul
+    înăuntru, apoi `after` („Arată tot", tot în casetă)."""
+    return '<div class="md-field desc-box %s"%s>%s%s</div>' % (cls, ' style="%s"' % style if style else '', md_editor(), after)
 
 
 MD_FORMAT = ('<div class="md-format" role="toolbar" aria-label="Formatare">%s</div>'
@@ -132,9 +133,9 @@ DESCRIERE = (
 
 MD_DESC_FORM = md_field('desc-fixed')
 # Panoul: descrierea cât textul (`DescFold`), pliată cu „Arată tot".
-MD_DESC_FIT = (md_field('desc-fixed desc-fit capped', '--desc-cap:120px')
-               + '<button type="button" class="desc-more" aria-expanded="false">' + ic('chevron-down', 15)
-               + '<span>Arată tot</span><span class="desc-more-n">· încă 6 rânduri</span></button>')
+MD_DESC_FIT = md_field('desc-fixed desc-fit capped', '--desc-cap:120px',
+                       '<button type="button" class="desc-more" aria-expanded="false">' + ic('chevron-down', 15)
+                       + '<span>Arată tot</span><span class="desc-more-n">· încă 6 rânduri</span></button>')
 
 
 def thread_row(kind):
@@ -706,12 +707,12 @@ THREAD_EVENTS = (
 # se vadă `.dep-dd-item`-urile lângă rest. Butonul „Trimite" arată deja
 # eticheta de pasă, fiindcă `to !== undefined`.
 THREAD_COMPOSE = (
-    '<div class="thread-compose">'
+    '<div class="thread-compose open">'
     '<div class="thread-pending"><span class="thread-pending-chip">'
     + ic('paperclip', 13) + '<span class="thread-pending-name">contract-v3.pdf</span>'
     '<button type="button" aria-label="Scoate contract-v3.pdf">' + ic('x', 11) + '</button>'
     '</span></div>'
-    '<textarea class="thread-textarea" placeholder="Scrie un comentariu…"></textarea>'
+    '<div class="thread-field"><textarea class="thread-textarea" rows="1" placeholder="Scrie un comentariu…"></textarea></div>'
     '<div class="thread-actions">'
     + att_acts()
     + '<div class="thread-to-wrap">'
@@ -722,13 +723,23 @@ THREAD_COMPOSE = (
       '<button type="button" class="dep-dd-item"><span class="dep-dd-title">Alex</span></button>'
       '<button type="button" class="dep-dd-item"><span class="dep-dd-title">Ionuț (eu)</span></button>'
       '</div></div>'
+    + '<span class="thread-hint">Enter trimite</span>'
     + '<button type="button" class="thread-send-btn">Trimite și pasează</button>'
     + '</div></div>'
+)
+# Caseta în repaus (`composerOpen` = false): un rând, doar linia de păr.
+THREAD_COMPOSE_REST = (
+    '<div class="thread-compose"><div class="thread-field">'
+    '<span class="thread-me" aria-hidden="true">IO</span>'
+    '<textarea class="thread-textarea" rows="1" placeholder="Scrie un comentariu…"></textarea>'
+    '<button type="button" class="thread-clip" aria-label="Atașează un fișier">' + ic('paperclip', 16) + '</button>'
+    '</div></div>'
 )
 
 FIR = (
     '<span class="if-field-label" style="display:block;margin-bottom:8px">Fir</span>'
-    + THREAD_EVENTS + THREAD_COMPOSE
+    + THREAD_EVENTS + THREAD_COMPOSE_REST
+    + '<div style="height:14px"></div>' + THREAD_COMPOSE
 )
 
 # ═══ ECRANUL „ALE MELE" — cutia de pase (InboxView.tsx) ══════════════════════
