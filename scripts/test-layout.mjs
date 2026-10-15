@@ -1166,6 +1166,125 @@ for (const width of PHONE_WIDTHS) {
   check(`numărul + › întregi @${width}px`, m.unread.nInside && !m.unread.nClipped && m.read.nInside && !m.read.nClipped, 'da')
 }
 
+// Galeria (Lightbox) — componenta REALĂ, împachetată cu esbuild, montată în
+// interiorul unei `.sheet` (care are `transform`, ca în aplicație). Regresia
+// din 2026-10-15: pe telefon se vedea un sfert din poză, fiindcă `position:
+// fixed` sub un strămoș cu `transform` se așază față de foaie, iar `max-height:
+// 100%` pe un element de grid nu se rezolva. Aici: poza încape întreagă în
+// ecran, în portret și în peisaj, pentru o poză lată și una înaltă; plus
+// dublu-tap, ciupit și închiderea.
+console.log('\nGaleria (Lightbox) — poza încape întreagă, mărirea:')
+const { outputFiles: [lbBundle] } = await esbuild.build({
+  stdin: {
+    contents: `
+      import { createElement as h, useState } from 'react'
+      import { createRoot } from 'react-dom/client'
+      import { Lightbox } from './components/Lightbox'
+      function Harness({ items }) {
+        const [index, setIndex] = useState(0)
+        const [open, setOpen] = useState(true)
+        window.__lb = { open, index }
+        return h('div', { className: 'sheet on tall' }, h('div', { className: 'sheet-scroll' },
+          h('div', { style: { height: 200 } }, 'formular'),
+          open && h(Lightbox, { items, index, urlFor: (a) => a.path, canDelete: true,
+            onIndex: setIndex, onClose: () => setOpen(false), onDelete: () => {} })))
+      }
+      window.__mount = (items) => createRoot(document.getElementById('app')).render(h(Harness, { items }))
+    `,
+    resolveDir: fileURLToPath(new URL('../src', import.meta.url)),
+    loader: 'tsx',
+  },
+  bundle: true, write: false, format: 'iife', jsx: 'automatic', loader: { '.tsx': 'tsx', '.ts': 'ts' },
+  define: { 'process.env.NODE_ENV': '"production"', 'import.meta.env': '{}' },
+  // `signedDownloadUrl` trage clientul Supabase; galeria nu-l cheamă fără click pe „Descarcă".
+  plugins: [{ name: 'stub-attachments', setup(b) {
+    b.onResolve({ filter: /data\/attachments$/ }, () => ({ path: 'attachments', namespace: 'stub' }))
+    b.onLoad({ filter: /.*/, namespace: 'stub' }, () => ({ contents: 'export const signedDownloadUrl = async () => null', loader: 'js' }))
+  } }],
+})
+const lbSvg = (w, h) => 'data:image/svg+xml;base64,' + Buffer.from(
+  `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">` +
+  `<rect width="${w}" height="${h}" fill="#3b6ea5"/><rect x="${w * 0.02}" y="${h * 0.02}" width="${w * 0.96}" height="${h * 0.96}" fill="none" stroke="#f5c542" stroke-width="${Math.min(w, h) * 0.02}"/>` +
+  `<circle cx="${w / 2}" cy="${h / 2}" r="${Math.min(w, h) / 4}" fill="#e8eef5"/></svg>`).toString('base64')
+const LB_IMAGES = [['lata-4000x3000.jpg', 4000, 3000], ['inalta-1080x2400.png', 1080, 2400]]
+const LB_SHOTS = process.env.LB_SHOTS
+for (const vp of [{ width: 390, height: 844 }, { width: 844, height: 390 }]) {
+  for (const [name, w, h] of LB_IMAGES) {
+    const page = await browser.newPage({ viewport: vp, hasTouch: true, isMobile: true })
+    // Același viewport ca `index.html` (`isMobile` fără el ar așeza pagina pe 980px).
+    await page.setContent(`<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"><style>${CSS}</style><div id="app"></div><script>${lbBundle.text}</script>`)
+    if (process.env.LB_DEBUG) {
+      page.on('console', (msg) => console.log('   [page]', msg.text()))
+      await page.evaluate(() => { for (const t of ['pointerdown', 'pointermove', 'pointerup', 'pointercancel', 'click', 'dblclick']) document.addEventListener(t, (e) => console.log(t, e.pointerType, e.pointerId, e.target.tagName, e.timeStamp | 0), true) })
+    }
+    await page.evaluate(([items]) => window.__mount(items), [[
+      { id: 'a', path: lbSvg(w, h), filename: name },
+      { id: 'b', path: lbSvg(1200, 800), filename: 'a-doua.jpg' },
+    ]])
+    await page.waitForFunction(() => document.querySelector('.lb-body img')?.complete)
+    const tag = `${name} @${vp.width}×${vp.height}`
+    const m = await page.evaluate(() => {
+      const back = document.querySelector('.lb-back')
+      const body = document.querySelector('.lb-body').getBoundingClientRect()
+      const r = document.querySelector('.lb-body img').getBoundingClientRect()
+      return { inBody: back.parentElement === document.body, vw: innerWidth, vh: innerHeight, body, img: { x: r.x, y: r.y, w: r.width, h: r.height, right: r.right, bottom: r.bottom } }
+    })
+    check(`galeria e în <body>, nu prinsă în foaie — ${tag}`, m.inBody, 'părintele nu e body')
+    const fits = m.img.x >= -0.5 && m.img.y >= -0.5 && m.img.right <= m.vw + 0.5 && m.img.bottom <= m.vh + 0.5
+      && m.img.y >= m.body.top - 0.5 && m.img.bottom <= m.body.bottom + 0.5
+    check(`poza încape întreagă — ${tag}`, fits, `img ${Math.round(m.img.x)},${Math.round(m.img.y)} ${Math.round(m.img.w)}×${Math.round(m.img.h)} în ${m.vw}×${m.vh}`)
+    // Și o umple pe o latură (nu încape fiindcă a ieșit mică).
+    const fill = Math.max(m.img.w / (m.body.width - 16), m.img.h / (m.body.height - 16))
+    check(`poza umple cutia pe o latură — ${tag}`, fill > 0.98, `${fill.toFixed(2)}`)
+    check(`proporțiile păstrate — ${tag}`, Math.abs(m.img.w / m.img.h - w / h) < 0.02, `${(m.img.w / m.img.h).toFixed(3)} vs ${(w / h).toFixed(3)}`)
+
+    // `LB_SHOTS=<dosar>`: capturile pentru ochi, în ambele teme.
+    if (LB_SHOTS) {
+      for (const theme of ['dark', 'light']) {
+        await page.evaluate((t) => document.documentElement.setAttribute('data-theme', t), theme)
+        await page.screenshot({ path: `${LB_SHOTS}/${vp.width}x${vp.height}-${name.split('-')[0]}-${theme}.png` })
+      }
+    }
+
+    // Dublu-tap în centru → 2×; încă unul → înapoi întreagă. O atingere pe poză nu închide.
+    const cdp = await page.context().newCDPSession(page)
+    const touch = (type, pts) => cdp.send('Input.dispatchTouchEvent', {
+      type, touchPoints: pts.map(([x, y], i) => ({ x, y, id: i + 1, radiusX: 4, radiusY: 4, force: 1 })),
+    })
+    const cx = m.img.x + m.img.w / 2, cy = m.img.y + m.img.h / 2
+    const imgW = () => page.evaluate(() => document.querySelector('.lb-body img').getBoundingClientRect().width)
+    const tapAt = async (x, y) => { await touch('touchStart', [[x, y]]); await page.waitForTimeout(30); await touch('touchEnd', []) }
+    await tapAt(cx, cy); await page.waitForTimeout(80); await tapAt(cx, cy)
+    await page.waitForTimeout(350)
+    const w2 = await imgW()
+    check(`dublu-tap mărește 2× — ${tag}`, Math.abs(w2 / m.img.w - 2) < 0.05, `${(w2 / m.img.w).toFixed(2)}×`)
+    check(`atingerea pe poză nu închide — ${tag}`, await page.evaluate(() => window.__lb.open), 'închisă')
+    if (LB_SHOTS) await page.screenshot({ path: `${LB_SHOTS}/${vp.width}x${vp.height}-${name.split('-')[0]}-zoom2x.png` })
+    // Mărită, o tragere orizontală mută poza, nu trece la următoarea.
+    await touch('touchStart', [[cx, cy]])
+    for (let i = 1; i <= 8; i++) { await touch('touchMove', [[cx - i * 10, cy]]); await page.waitForTimeout(16) }
+    await touch('touchEnd', [])
+    await page.waitForTimeout(50)
+    check(`mărită, tragerea nu răsfoiește — ${tag}`, await page.evaluate(() => window.__lb.index === 0), 'a trecut la următoarea')
+    await page.waitForTimeout(350)
+    await tapAt(cx, cy); await page.waitForTimeout(80); await tapAt(cx, cy)
+    await page.waitForTimeout(350)
+    const w1 = await imgW()
+    check(`al doilea dublu-tap revine la întreg — ${tag}`, Math.abs(w1 / m.img.w - 1) < 0.02, `${(w1 / m.img.w).toFixed(2)}×`)
+    // Ciupit: degetele de la 60px la 180px distanță → ~3×.
+    await touch('touchStart', [[cx - 30, cy], [cx + 30, cy]])
+    for (let i = 1; i <= 10; i++) { await touch('touchMove', [[cx - 30 - i * 6, cy], [cx + 30 + i * 6, cy]]); await page.waitForTimeout(16) }
+    await touch('touchEnd', [])
+    await page.waitForTimeout(50)
+    const w3 = await imgW()
+    check(`ciupitul mărește ~3× — ${tag}`, Math.abs(w3 / m.img.w - 3) < 0.15, `${(w3 / m.img.w).toFixed(2)}×`)
+    check(`ciupitul nu închide și nu răsfoiește — ${tag}`, await page.evaluate(() => window.__lb.open && window.__lb.index === 0), 'stare schimbată')
+    await page.keyboard.press('Escape')
+    check(`Esc închide — ${tag}`, await page.evaluate(() => !window.__lb.open && !document.querySelector('.lb-back')), 'încă deschisă')
+    await page.close()
+  }
+}
+
 await browser.close()
 
 if (failures.length) {

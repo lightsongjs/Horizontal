@@ -5216,7 +5216,14 @@ body:has(.kb-sheet) .toast {
 /* Singurul loc din aplicație unde regula „fără linii" nu se aplică: fundalul e
    negru opac, nu o suprafață a temei, deci un salt de fundal n-ar delimita
    nimic. Chenarul subțire alb E delimitarea. */
-.lb-back { position: fixed; inset: 0; z-index: 60; display: grid; grid-template-rows: auto 1fr; background: rgba(0, 0, 0, 0.92); }
+/* Decupajele ecranului (notch, bara de gesturi) ca padding: pe telefon în
+   peisaj notch-ul stă pe o latură, iar o poză întinsă până la margine ar intra
+   sub el. */
+.lb-back {
+  position: fixed; inset: 0; z-index: 60; display: grid; grid-template-rows: auto minmax(0, 1fr);
+  background: rgba(0, 0, 0, 0.92);
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+}
 .lb-bar { display: flex; align-items: center; gap: 10px; padding: 10px 12px; color: #fff; font-size: calc(13px * var(--text-scale)); }
 .lb-name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* „3 / 7" — cifre, deci mono, ca peste tot. */
@@ -5229,9 +5236,24 @@ body:has(.kb-sheet) .toast {
    starea să se recunoască dintr-o privire în ambele locuri. */
 .lb-del.armed { background: var(--blocked); border-color: var(--blocked); color: var(--on-accent); }
 .lb-del.armed:hover { background: var(--blocked); }
-.lb-body { position: relative; display: grid; place-items: center; overflow: auto; padding: 8px; }
-.lb-body img { max-width: 100%; max-height: 100%; object-fit: contain; }
-.lb-off { color: #fff; font-size: calc(13px * var(--text-scale)); }
+/* Imaginea încape ÎNTREAGĂ: poziționată absolut, `max-*` se raportează la o
+   cutie definită. Ca element de grid, `max-height: 100%` nu se rezolva (rândul
+   `1fr` își lua înălțimea chiar din imagine), deci o poză înaltă ieșea din
+   ecran pe jos. `inset: 8px` + `margin: auto` o centrează; mărirea e un
+   `transform` din `Lightbox` (`lib/zoom.ts`), iar `touch-action: none` lasă
+   ciupitul și tragerea galeriei, nu browserului. */
+.lb-body { position: relative; overflow: hidden; min-height: 0; touch-action: none; cursor: zoom-in; }
+.lb-body.zoomed { cursor: grab; }
+.lb-body.zoomed:active { cursor: grabbing; }
+.lb-body img {
+  position: absolute; inset: 8px; margin: auto;
+  max-width: calc(100% - 16px); max-height: calc(100% - 16px);
+  transform-origin: 50% 50%; will-change: transform;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+}
+.lb-body img.anim { transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1); }
+@media (prefers-reduced-motion: reduce) { .lb-body img.anim { transition: none; } }
+.lb-off { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-size: calc(13px * var(--text-scale)); }
 
 /* Săgețile stau PESTE imagine, pe margini. Rotunde de-a binelea, deci 50% —
    nu o a patra rază. Fără chenar: discul translucid e deja delimitarea.
