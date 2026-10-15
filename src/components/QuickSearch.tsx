@@ -87,28 +87,53 @@ export function newestFirst(a: Issue, b: Issue): number {
 }
 const idNumber = (id: string) => Number(id.match(/\d+/)?.[0] ?? 0)
 
+/** Cât de bine se potrivește titlul: 0 = la început de cuvânt („alex" în
+ *  „scrie lui Alex"), 1 = în interiorul unui cuvânt, 2 = doar subsecvență
+ *  („alex" în „Adaugă … la … pe Linux"), -1 = deloc. */
+export function titleTier(query: string, title: string): number {
+  const q = fold(query.trim())
+  if (!q) return 0
+  const t = fold(title)
+  const at = t.indexOf(q)
+  if (at >= 0) {
+    for (let i = at; i >= 0; i = t.indexOf(q, i + 1)) {
+      if (i === 0 || !/[\p{L}\p{N}]/u.test(t[i - 1])) return 0
+    }
+    return 1
+  }
+  return fuzzy(q, t) ? 2 : -1
+}
+
 /**
- * Pură, ca s-o putem testa fără să montăm componenta. Un rezultat se potrivește
- * pe titlu (subsecvență, fără diacritice) sau pe ID (subșir, `matchesId`).
- * Potrivirile pe ID vin înaintea celor doar pe titlu; în fiecare nivel, cele
- * mai noi întâi (`newestFirst`). Ordonarea e ÎNAINTE de tăierea la `limit`,
- * ca o potrivire pe ID să nu fie împinsă afară de potriviri pe titlu.
+ * Pură, ca s-o putem testa fără să montăm componenta. Nivelurile, în ordine:
+ * ID (subșir, `matchesId`), apoi titlul pe nivelurile lui `titleTier`. În
+ * fiecare nivel, cele mai noi întâi (`newestFirst`). Calitatea potrivirii bate
+ * vechimea: „alex" scris întreg într-un titlu vechi stă deasupra unei
+ * subsecvențe împrăștiate într-unul de azi. Ordonarea e ÎNAINTE de tăierea la
+ * `limit`, ca o potrivire bună să nu fie împinsă afară de una slabă.
  */
 export function rankIssues(query: string, issues: Issue[], limit = 10): Issue[] {
   const sorted = [...issues].sort(newestFirst)
   if (!query) return sorted.slice(0, limit)
-  const byId: Issue[] = []
-  const byTitle: Issue[] = []
+  const tiers: Issue[][] = [[], [], [], []]
   for (const issue of sorted) {
-    if (matchesId(query, issue.id)) byId.push(issue)
-    else if (fuzzy(query, issue.title)) byTitle.push(issue)
+    if (matchesId(query, issue.id)) { tiers[0].push(issue); continue }
+    const t = titleTier(query, issue.title)
+    if (t >= 0) tiers[t + 1].push(issue)
   }
-  return [...byId, ...byTitle].slice(0, limit)
+  return tiers.flat().slice(0, limit)
 }
 
 function highlight(query: string, text: string): React.ReactNode {
   if (!query) return text
   const q = fold(query)
+  // Subșir întreg: se marchează bucata aceea, nu literele împrăștiate pe care
+  // le-ar găsi subsecvența. `fold` păstrează pozițiile (vezi mai sus).
+  const at = fold(text).indexOf(q.trim())
+  if (q.trim() && at >= 0) {
+    const end = at + q.trim().length
+    return [text.slice(0, at), <mark key="m">{text.slice(at, end)}</mark>, text.slice(end)]
+  }
   const result: React.ReactNode[] = []
   let qi = 0
   let segStart = 0

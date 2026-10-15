@@ -122,6 +122,13 @@ descrescător (la egalitate, numărul din ID), și fără text, și în fiecare 
 „adaug ceva și-mi amintesc că mai trebuia altceva” — caută ce tocmai a scris.
 Ordinea după ecranul de unde se deschidea căutarea (contextul) a ieșit.
 
+**Calitatea potrivirii bate vechimea**: nivelurile sunt ID → titlu cu
+potrivirea la început de cuvânt → în interiorul unui cuvânt → subsecvență
+împrăștiată (`titleTier`); vechimea ordonează doar ÎN nivel. Cu vechimea
+peste tot, „alex" aducea întâi „Adaugă … la … pe Linux" (subsecvență, dar
+nou) și abia pe locul 4 „scrie lui Alex". Evidențierea marchează subșirul
+întreg când există, nu literele împrăștiate.
+
 ## Panoul lateral (split view)
 
 Peste 1200px, „Listă" și listele inteligente se împart în două: lista în

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { rankIssues, searchPool } from './QuickSearch'
+import { rankIssues, searchPool, titleTier } from './QuickSearch'
 import { NO_SCHEDULE } from '../lib/schedule'
 import type { Issue } from '../lib/types'
 
@@ -170,5 +170,27 @@ describe('rankIssues: cele mai noi întâi', () => {
     const copy = [...pool]
     rankIssues('', pool)
     expect(pool).toEqual(copy)
+  })
+})
+
+describe('rankIssues: calitatea potrivirii bate vechimea', () => {
+  // Cazul din producție, 2026-10-15: „alex" aducea întâi subsecvențe
+  // împrăștiate din tichete noi, iar „scrie lui Alex" stătea pe locul 4.
+  const pool = [
+    makeIssue('D-178', 'Adaugă script ANAF de la Simona pe Linux', '2026-10-15T09:00:00.000Z'),
+    makeIssue('D-172', 'in parcare la dedeman cu Ana excursie', '2026-10-14T09:00:00.000Z'),
+    makeIssue('D-171', 'scrie lui Alex lorda', '2026-10-13T09:00:00.000Z'),
+    makeIssue('R-06', 'daily cu Alex L', '2026-09-01T09:00:00.000Z'),
+    makeIssue('D-50', 'Alexandrescu, Aleksa', '2026-08-01T09:00:00.000Z'),
+    makeIssue('D-40', 'Calexit', '2026-10-15T10:00:00.000Z'),
+  ]
+  it('început de cuvânt, apoi în cuvânt, apoi subsecvență; fiecare nivel, cele mai noi întâi', () => {
+    expect(rankIssues('alex', pool).map((i) => i.id)).toEqual(['D-171', 'R-06', 'D-50', 'D-40', 'D-178', 'D-172'])
+  })
+  it('titleTier: fără diacritice și fără majuscule', () => {
+    expect(titleTier('ses', 'Școala, șes')).toBe(0)
+    expect(titleTier('lex', 'Alex')).toBe(1)
+    expect(titleTier('alx', 'Alex')).toBe(2)
+    expect(titleTier('zz', 'Alex')).toBe(-1)
   })
 })
