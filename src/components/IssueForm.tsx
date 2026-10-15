@@ -20,7 +20,8 @@ import {
 } from '../lib/formChips'
 import { Attachments } from './Attachments'
 import { Thread } from './Thread'
-import { DescField } from './DescField'
+import { DescFold } from './DescFold'
+import { SheetThreadRow } from './SheetThreadRow'
 import type { EditorHandle } from './MarkdownEditor'
 import { describeRrule } from '../lib/recurrence'
 import { ChipPop } from './ChipPop'
@@ -626,6 +627,27 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
      `if (!project) return null` ar fi fost un hook condiționat, deci numărul
      lor s-ar fi schimbat de la o randare la alta. */
   const narrow = useMediaQuery('(max-width: 899px)')
+  /**
+   * Panoul și telefonul: descrierea are înălțimea textului (`DescFold`), iar
+   * sus stă rândul de fir. Modalul de 94% rămâne cum era — acolo descrierea e
+   * coloana de lectură, iar Firul e deja pe ecran, în coloana dreaptă.
+   */
+  const fit = docked || narrow
+  const bodyRef = useRef<HTMLDivElement>(null)
+  /**
+   * Rândul de fir: derulare lină a corpului la „nou" (altfel la „Fir") și
+   * focus pe secțiunea firului, NU în casetă — derulezi ca să citești.
+   * `scrollTo` pe corp, nu `scrollIntoView`, care ar derula și pagina.
+   */
+  const toThread = () => {
+    const body = bodyRef.current
+    const thread = body?.querySelector<HTMLElement>('.thread')
+    if (!body || !thread) return
+    const target = body.querySelector<HTMLElement>('.thread-new') ?? thread
+    const top = target.getBoundingClientRect().top - body.getBoundingClientRect().top + body.scrollTop - 12
+    body.scrollTo({ top, behavior: 'smooth' })
+    thread.focus({ preventScroll: true })
+  }
 
   // Ce a reușit deja să se creeze la o salvare care a căzut pe drum: tichetul
   // însuși și ciornele (dependențe, „permite", obstacole), cheie = id-ul
@@ -1665,7 +1687,16 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
       </div>
 
       {/* BODY */}
-      <div className="sheet-scroll if-body">
+      <div className="sheet-scroll if-body" ref={bodyRef}>
+
+        {/* Rândul de fir, primul în corp (panou și telefon; macheta
+            `design/panel-thread`): firul stă sub descriere și dependențe,
+            adesea sub pliu, iar fără rândul ăsta nu știai că tichetul are
+            comentarii. Derulează odată cu corpul, deci nu dublează Firul cât
+            îl citești. În modalul de 94% Firul e deja pe ecran, în dreapta. */}
+        {fit && isEdit && existing && (
+          <SheetThreadRow issueId={existing.id} icon="toThread" onOpen={toThread} />
+        )}
 
         {/* MAIN FORM — 2 cols */}
         <div className="form-cols">
@@ -1690,8 +1721,9 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
             )}
             {/* Formularul are butonul Salvează: bifa schimbă doar `desc` local
                 (formularul devine „murdar"), salvarea rămâne explicită. */}
-            <DescField
+            <DescFold
               ref={descRef}
+              where={fit ? (docked ? 'pane' : 'viewport') : null}
               className="desc-fixed"
               value={desc}
               readOnly={!canWrite}
@@ -1822,9 +1854,7 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
                     </div>
                   ))}
                 </div>
-              ) : (
-                <div className="dep-empty-row" />
-              )}
+              ) : null /* Fără rândul gol punctat: Firul urcă (macheta `panel-thread`). */}
 
             </div>
 

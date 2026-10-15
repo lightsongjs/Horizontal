@@ -250,3 +250,30 @@ export function shortAgo(iso: string, now: Date): string {
   if (days < 7) return `${days} z`
   return toShortDate(iso)
 }
+
+/**
+ * Merită marcat firul citit? Doar dacă e ceva străin de citit: un fir numai al
+ * meu e deja „văzut" (`post_to_thread` marchează), iar o vizită știută ca mai
+ * nouă nu cere încă o scriere. Vizita necunoscută (`undefined`, rezumatul n-a
+ * venit) nu oprește marcarea — mai bine o scriere în plus decât un „nou" care
+ * nu se mai stinge.
+ */
+export function needsSeen(events: readonly IssueEvent[], seenAt: string | null | undefined, myUserId: string): boolean {
+  const foreign = events.filter((e) => e.authorId !== null && e.authorId !== myUserId)
+  const last = foreign[foreign.length - 1]
+  if (!last) return false
+  return seenAt === undefined || seenAt === null || Date.parse(last.createdAt) > Date.parse(seenAt)
+}
+
+/**
+ * Rândul de fir rămâne „necitit" cât stă tichetul deschis, ca separatorul
+ * „nou" din fir (și el o poză de la deschidere). În panou firul se marchează
+ * citit când intră în vedere — adesea chiar la deschidere —, iar rândul ar fi
+ * clipit „nou" o clipă și s-ar fi stins. `unreadAt` = momentul ultimului
+ * eveniment văzut necitit la montare; un eveniment mai nou (răspunsul meu)
+ * lasă rândul să treacă pe „citit".
+ */
+export function keepUnread(view: ThreadRowView, unreadAt: string | null): ThreadRowView {
+  if (view.kind !== 'read' || unreadAt === null) return view
+  return Date.parse(view.at) === Date.parse(unreadAt) ? { ...view, kind: 'unread' } : view
+}

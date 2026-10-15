@@ -24,7 +24,7 @@ import { humanSize, iconFor } from './Attachments'
 import { Lightbox } from './Lightbox'
 import { Icon } from './Icon'
 import type { IssueEvent } from '../lib/types'
-import { assigneeLabel, authorDisplay, firstUnreadId } from '../lib/thread'
+import { assigneeLabel, authorDisplay, firstUnreadId, needsSeen } from '../lib/thread'
 import { invalidateThreadSummary, loadThreadSummary } from '../data/threadSummary'
 
 /** Doar în modul Supabase — la fel ca `Attachments.tsx`: attachment-urile n-au
@@ -123,11 +123,14 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff, reveal }:
   const rootRef = useRef<HTMLDivElement>(null)
   const markSeenRef = useRef(markInboxSeen)
   markSeenRef.current = markInboxSeen
+  /** Firul are ceva străin necitit și n-a fost încă văzut pe ecran. */
+  const [seenPending, setSeenPending] = useState(false)
 
   useEffect(() => {
     let alive = true
     setLoading(true)
     setLoadError(null)
+    setSeenPending(false)
     // Vizita mea vine din rezumatul firului (de obicei deja în memorie, cerut
     // de foaia de telefon) — luată ÎNAINTE de a marca firul citit, altfel
     // separatorul „nou" n-ar avea niciodată ce arăta.
@@ -137,15 +140,10 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff, reveal }:
         setEvents(evs)
         const seenAt = summary ? summary.seenAt : undefined
         setUnreadFrom(firstUnreadId(evs, seenAt, myUserId))
-        // Firul s-a încărcat efectiv, deci e citit — pe telefon și pe desktop,
-        // nu doar din „Ale mele". Doar dacă e ceva străin de citit: un fir
-        // numai al meu e deja „văzut" (`post_to_thread` marchează), iar o
-        // vizită știută ca mai nouă nu cere încă o scriere.
-        const foreign = evs.filter((e) => e.authorId !== null && e.authorId !== myUserId)
-        const lastForeign = foreign[foreign.length - 1]
-        if (lastForeign && (seenAt === undefined || seenAt === null || Date.parse(lastForeign.createdAt) > Date.parse(seenAt))) {
-          void markSeenRef.current(issueId, { quiet: true })
-        }
+        // Citit = VĂZUT, nu încărcat: marcarea așteaptă ca firul să intre în
+        // vedere (efectul de mai jos). În panou firul stă sub descriere, iar
+        // un „nou" stins la încărcare s-ar fi stins înainte să-l vezi.
+        setSeenPending(needsSeen(evs, seenAt, myUserId))
       })
       .catch((e) => { if (alive) setLoadError(errorMessage(e)) })
       .finally(() => { if (alive) setLoading(false) })
@@ -162,6 +160,26 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff, reveal }:
     const el = rootRef.current?.querySelector('.thread-new') ?? rootRef.current
     el?.scrollIntoView({ block: 'start' })
   }, [reveal, loading])
+
+  // Firul e citit când intră în vedere — pe telefon și pe desktop, nu doar din
+  // „Ale mele". Se urmărește separatorul „nou" (primul lucru necitit), altfel
+  // tot firul; `IntersectionObserver` ține cont și de decuparea panoului care
+  // derulează. Fără el (jsdom), se marchează direct, ca înainte.
+  useEffect(() => {
+    if (!seenPending || loading) return
+    const root = rootRef.current
+    const el = root?.querySelector('.thread-new') ?? root
+    if (!el) return
+    const mark = () => { setSeenPending(false); void markSeenRef.current(issueId, { quiet: true }) }
+    if (typeof IntersectionObserver === 'undefined') { mark(); return }
+    const io = new IntersectionObserver((entries) => {
+      if (!entries.some((e) => e.isIntersecting)) return
+      io.disconnect()
+      mark()
+    })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [seenPending, loading, issueId])
 
   const loadAttachments = async () => {
     if (!ATTACHMENTS_ENABLED) return
@@ -357,8 +375,12 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff, reveal }:
   }
 
   return (
-    <div className="thread" ref={rootRef}>
-      <span className="if-field-label" style={{ display: 'block' }}>Fir</span>
+    // `tabIndex={-1}`: rândul de fir de sus (`SheetThreadRow` din panou) mută
+    // focusul aici, nu în casetă — derulezi ca să citești.
+    <div className="thread" ref={rootRef} tabIndex={-1}>
+      <span className="if-field-label" style={{ display: 'block' }}>
+        Fir{!loading && events.length > 0 && <span className="thread-count">{events.length}</span>}
+      </span>
 
       {loading && <p className="thread-loading">Se încarcă…</p>}
       {loadError && <div className="banner">{loadError}</div>}

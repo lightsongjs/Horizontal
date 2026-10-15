@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { firstUnreadId, groupInbox, isUnread, reconcileInbox, shortAgo, threadRowFromInbox, threadRowState, threadRowText, type ThreadSummary } from './thread'
+import { firstUnreadId, groupInbox, keepUnread, needsSeen, isUnread, reconcileInbox, shortAgo, threadRowFromInbox, threadRowState, threadRowText, type ThreadSummary } from './thread'
 import type { Assignee, InboxRow, Issue, IssueEvent } from './types'
 
 const row = (patch: Partial<InboxRow>): InboxRow => ({
@@ -227,6 +227,41 @@ describe('firstUnreadId', () => {
   })
   it('vizită necunoscută → fără separator', () => {
     expect(firstUnreadId(evs, undefined, 'u-me')).toBeNull()
+  })
+})
+
+describe('keepUnread', () => {
+  const read = { kind: 'read' as const, authorId: 'u-ion', at: '2026-10-14T10:00:00Z', body: 'x', handoff: null, count: 2 }
+  it('același ultim eveniment, marcat între timp citit → rămâne „necitit"', () => {
+    expect(keepUnread(read, '2026-10-14T10:00:00.000+00:00').kind).toBe('unread')
+  })
+  it('un eveniment mai nou (răspunsul meu) → „citit"', () => {
+    expect(keepUnread({ ...read, at: '2026-10-14T11:00:00Z' }, '2026-10-14T10:00:00Z').kind).toBe('read')
+  })
+  it('fără necitit la deschidere, nimic nu se schimbă', () => {
+    expect(keepUnread(read, null)).toBe(read)
+    expect(keepUnread({ kind: 'hidden' }, '2026-10-14T10:00:00Z')).toEqual({ kind: 'hidden' })
+  })
+})
+
+describe('needsSeen', () => {
+  const evs = [
+    ev({ id: '1', authorId: 'u-ion', createdAt: '2026-10-13T10:00:00Z' }),
+    ev({ id: '2', authorId: 'u-me', createdAt: '2026-10-14T10:00:00Z' }),
+  ]
+  it('un străin mai nou decât vizita → da', () => {
+    expect(needsSeen(evs, '2026-10-12T00:00:00Z', 'u-me')).toBe(true)
+    expect(needsSeen(evs, null, 'u-me')).toBe(true)
+  })
+  it('vizita e mai nouă decât ultimul străin → nu (chiar dacă eu am scris după)', () => {
+    expect(needsSeen(evs, '2026-10-13T12:00:00Z', 'u-me')).toBe(false)
+  })
+  it('un fir numai al meu, sau cu note migrate, n-are ce marca', () => {
+    expect(needsSeen([evs[1]], null, 'u-me')).toBe(false)
+    expect(needsSeen([ev({ id: '3', authorId: null })], null, 'u-me')).toBe(false)
+  })
+  it('vizită necunoscută → da, ca „nou" să nu rămână aprins', () => {
+    expect(needsSeen(evs, undefined, 'u-me')).toBe(true)
   })
 })
 

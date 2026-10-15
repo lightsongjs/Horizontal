@@ -9,7 +9,8 @@ import { Echoes } from '../lib/markdown/rebase'
 import { External, Toggle, livePreview } from './markdown/livePreview'
 
 export type FormatCmd = 'task' | 'bullet' | 'bold' | 'indent' | 'outdent'
-export type EditorHandle = { focus(): void; format(cmd: FormatCmd): void }
+/** `focusEnd`: cursorul la capătul textului — o atingere sub text (`DescFold`). */
+export type EditorHandle = { focus(): void; focusEnd(): void; format(cmd: FormatCmd): void }
 export type MarkdownEditorProps = {
   value: string
   onChange(next: string): void
@@ -175,6 +176,12 @@ const MarkdownEditor = forwardRef<EditorHandle, MarkdownEditorProps>(function Ma
 
   useImperativeHandle(ref, () => ({
     focus: () => view.current?.focus(),
+    focusEnd: () => {
+      const v = view.current
+      if (!v) return
+      v.focus()
+      v.dispatch({ selection: { anchor: v.state.doc.length } })
+    },
     format: (cmd) => { if (view.current) runEdit(view.current, OPS[cmd]) },
   }), [])
 
