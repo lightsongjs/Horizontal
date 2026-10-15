@@ -310,7 +310,7 @@ function EditBody({ issue }: { issue: Issue }) {
           className="es-desc"
           value={d.desc}
           readOnly={!canWrite}
-          placeholder={canWrite ? 'Descriere' : ''}
+          placeholder={canWrite ? 'Adaugă o descriere — cerințe, notițe, context…' : ''}
           ariaLabel="Descrierea sarcinii"
           prefixes={prefixes}
           onRef={openRef}

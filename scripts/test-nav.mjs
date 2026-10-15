@@ -499,6 +499,10 @@ try {
   const screenBeforePass = await pass.locator('h1').first().textContent().catch(() => null)
   const urlBeforePass = new URL(pass.url()).pathname
 
+  // Caseta de comentariu stă strânsă într-un rând; „către…" apare la focus.
+  check('caseta de comentariu e strânsă în repaus', (await pass.locator('.thread-compose:not(.open)').count()) === 1 && (await pass.locator('.thread-to-btn').count()) === 0, 'un rând, fără acțiuni')
+  await pass.locator('.thread-compose .thread-textarea').click()
+  await pass.waitForTimeout(150)
   await pass.locator('.thread-to-btn').click()
   await pass.waitForTimeout(200)
   await pass.locator('.dep-dd-item', { hasText: 'Nimănui' }).click()

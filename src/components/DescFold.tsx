@@ -92,8 +92,9 @@ export const DescFold = forwardRef<EditorHandle, Props>(function DescFold({ clas
   const onBoxDown = (e: MouseEvent<HTMLDivElement>) => {
     if (!where || p.readOnly || e.button !== 0) return
     const t = e.target as HTMLElement
-    // În text CodeMirror își pune singur cursorul (și desface prin focus).
-    if (t.closest('.cm-content, .md-fallback')) return
+    // În text CodeMirror își pune singur cursorul (și desface prin focus);
+    // „Arată tot" stă în cutie, dar e buton, nu loc de scris.
+    if (t.closest('.cm-content, .md-fallback, .desc-more')) return
     e.preventDefault()
     setOpen(true)
     inner.current?.focusEnd()
@@ -114,30 +115,31 @@ export const DescFold = forwardRef<EditorHandle, Props>(function DescFold({ clas
   }
 
   const empty = p.value.trim() === ''
-  const cls = `${className}${where ? ' desc-fit' : ''}${where && empty ? ' desc-empty' : ''}${capped ? ' capped' : ''}`
+  const cls = `desc-box ${className}${where ? ' desc-fit' : ''}${where && empty ? ' desc-empty' : ''}${capped ? ' capped' : ''}`
+  // În cutie, nu sub ea (macheta `design/desc-box`): pliat stă jos-stânga peste
+  // estompare, desfăcut stă la coada textului.
+  const more = folds && (
+    <button
+      type="button"
+      className={`desc-more${open ? ' open' : ''}`}
+      aria-expanded={open}
+      onClick={() => (open ? collapse() : setOpen(true))}
+    >
+      <Icon name="showMore" size={15} />
+      <span>{open ? 'Restrânge' : 'Arată tot'}</span>
+      {!open && <span className="desc-more-n">· {moreLinesLabel(hidden)}</span>}
+    </button>
+  )
   return (
-    <>
-      <DescField
-        {...p}
-        ref={inner}
-        fieldRef={box}
-        className={cls}
-        style={capped ? ({ '--desc-cap': `${m.cap}px` } as CSSProperties) : undefined}
-        onMouseDown={onBoxDown}
-        onFocus={() => { setOpen(true); onFocus?.() }}
-      />
-      {folds && (
-        <button
-          type="button"
-          className={`desc-more${open ? ' open' : ''}`}
-          aria-expanded={open}
-          onClick={() => (open ? collapse() : setOpen(true))}
-        >
-          <Icon name="showMore" size={15} />
-          <span>{open ? 'Restrânge' : 'Arată tot'}</span>
-          {!open && <span className="desc-more-n">· {moreLinesLabel(hidden)}</span>}
-        </button>
-      )}
-    </>
+    <DescField
+      {...p}
+      ref={inner}
+      fieldRef={box}
+      className={cls}
+      style={capped ? ({ '--desc-cap': `${m.cap}px` } as CSSProperties) : undefined}
+      onMouseDown={onBoxDown}
+      onFocus={() => { setOpen(true); onFocus?.() }}
+      after={more}
+    />
   )
 })

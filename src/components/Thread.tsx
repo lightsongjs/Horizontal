@@ -26,6 +26,7 @@ import { Icon } from './Icon'
 import type { IssueEvent } from '../lib/types'
 import { assigneeLabel, authorDisplay, firstUnreadId, needsSeen } from '../lib/thread'
 import { invalidateThreadSummary, loadThreadSummary } from '../data/threadSummary'
+import { composerOpen } from '../lib/composer'
 
 /** Doar în modul Supabase — la fel ca `Attachments.tsx`: attachment-urile n-au
  *  sens în modul local seeded. */
@@ -112,6 +113,9 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff, reveal }:
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const restFileRef = useRef<HTMLInputElement>(null)
+  /** Focusul e undeva în caseta de comentariu — vezi `composerOpen`. */
+  const [composeFocus, setComposeFocus] = useState(false)
 
   // Editarea unui comentariu propriu: un singur rând deodată, ciorna locală.
   // `edit.original` e textul de la deschidere — murdăria se compară cu el.
@@ -274,6 +278,10 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff, reveal }:
   // pleca înaintea răspunsului de upload, iar comentariul ajungea pe fir fără
   // fișierul pe care omul tocmai îl alesese.
   const canSubmit = canWrite && !sending && busy === 0 && (body.trim() !== '' || pending.length > 0 || to !== undefined)
+
+  const composeOpen = composerOpen({ focused: composeFocus, body, pending: pending.length, busy, to })
+  // Avatarul tău din rândul în repaus: aceleași inițiale ca pe comentariile tale.
+  const myInitials = authorDisplay(myUserId, assignees, myUserId).initials ?? 'EU'
 
   const assigneeOptions = buildAssigneeOptions(assignees, projectMembers, session?.user.id ?? null)
 
@@ -509,7 +517,31 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff, reveal }:
         </div>
       )}
 
-      <div className="thread-compose">
+      {attMessage && (
+        <div className="thread-att-msg" role="status">
+          {attMessage}
+          <button type="button" onClick={() => setAttMessage(null)} aria-label="Închide mesajul">
+            <Icon name="close" size={13} />
+          </button>
+        </div>
+      )}
+
+      {/* Caseta de comentariu (`composerOpen`): în repaus un rând — avatarul
+          tău, textul, agrafa; deschisă, acțiunile stau ÎN casetă. Textarea-ul
+          e ACELAȘI element în ambele stări (al doilea copil din
+          `.thread-field`), deci focusul și cursorul trec neatinse. */}
+      {canWrite && (
+      <div
+        className={`thread-compose${composeOpen ? ' open' : ''}`}
+        onFocus={() => setComposeFocus(true)}
+        onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setComposeFocus(false) }}
+        onMouseDown={(e) => {
+          // Rândul întreg e țintă: o atingere pe avatar scrie, ca pe text.
+          if (composeOpen || (e.target as HTMLElement).closest('textarea, button')) return
+          e.preventDefault()
+          textareaRef.current?.focus()
+        }}
+      >
         {pending.length > 0 && (
           <div className="thread-pending">
             {pending.map((a) => (
@@ -524,30 +556,53 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff, reveal }:
           </div>
         )}
 
-        {attMessage && (
-          <div className="thread-att-msg" role="status">
-            {attMessage}
-            <button type="button" onClick={() => setAttMessage(null)} aria-label="Închide mesajul">
-              <Icon name="close" size={13} />
+        <div className="thread-field">
+          {!composeOpen && <span className="thread-me" aria-hidden="true">{myInitials}</span>}
+          <textarea
+            ref={textareaRef}
+            className="thread-textarea"
+            rows={1}
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder="Scrie un comentariu…"
+            aria-label="Comentariu nou"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send() }
+            }}
+          />
+          {/* Agrafa din repaus alege direct un fișier. Nu ia focusul (altfel
+              caseta s-ar deschide sub deget și butonul ar dispărea înainte de
+              click); urcarea în curs ține apoi caseta deschisă. */}
+          {!composeOpen && ATTACHMENTS_ENABLED && (
+            <button
+              type="button"
+              className="thread-clip"
+              aria-label="Atașează un fișier"
+              title="Atașează un fișier"
+              onPointerDown={(e) => e.preventDefault()}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => restFileRef.current?.click()}
+            >
+              <Icon name="attachment" size={16} />
             </button>
-          </div>
+          )}
+        </div>
+        {ATTACHMENTS_ENABLED && (
+          <input
+            ref={restFileRef}
+            className="att-pick-input"
+            type="file"
+            multiple
+            tabIndex={-1}
+            onChange={(e) => {
+              const files = Array.from(e.target.files ?? [])
+              e.target.value = ''
+              if (files.length > 0) void pickAttachments(files)
+            }}
+          />
         )}
 
-        <textarea
-          ref={textareaRef}
-          className="thread-textarea"
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          readOnly={!canWrite}
-          placeholder={canWrite ? 'Scrie un comentariu…' : undefined}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send() }
-          }}
-        />
-
-        {sendError && <div className="banner">{sendError}</div>}
-
-        {canWrite && (
+        {composeOpen && (
           <div className="thread-actions">
             {ATTACHMENTS_ENABLED && (
               <AttachmentPicker onPick={(files) => void pickAttachments(files)} disabled={busy > 0} />
@@ -593,12 +648,16 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff, reveal }:
               )}
             </div>
 
+            <span className="thread-hint">Enter trimite</span>
             <button type="button" className="thread-send-btn" disabled={!canSubmit} onClick={() => void send()}>
               {sending ? 'Se trimite…' : to !== undefined ? 'Trimite și pasează' : 'Trimite'}
             </button>
           </div>
         )}
       </div>
+      )}
+
+      {sendError && <div className="banner thread-send-error">{sendError}</div>}
 
       {lightbox && (() => {
         const idx = lightbox.images.findIndex((x) => x.id === lightbox.id)

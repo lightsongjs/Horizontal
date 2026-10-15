@@ -1727,7 +1727,7 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
               className="desc-fixed"
               value={desc}
               readOnly={!canWrite}
-              placeholder="Cerințe, notițe, context…"
+              placeholder={canWrite ? 'Adaugă o descriere — cerințe, notițe, context…' : ''}
               ariaLabel="Descrierea tichetului"
               prefixes={prefixes}
               onRef={openRef}

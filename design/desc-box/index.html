@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="ro" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Descrierea în casetă</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;650;700;750&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Jetoanele „Senin" (src/styles.css) — copiate, nu importate: macheta se deschide singură. */
+:root,[data-theme=light]{
+  --bg:#FFFFFF;--surface:#FFFFFF;--surface-2:#F6F7F9;--surface-3:#EEF0F3;--line:#E6E8EC;--line-soft:#EEF0F3;--border-strong:#D5D9DF;
+  --txt:#1A1C20;--txt-dim:#565C66;--txt-faint:#868C96;
+  --accent:#2F6BFF;--accent-soft:#EBF1FF;--on-accent:#fff;--done:#1F9D60;--field-bg:#F6F7F9;
+  --pc:#0E9F8E;--scrim:rgba(16,24,40,.28);
+  --amb-lg:0 2px 6px rgba(16,24,40,.06),0 18px 44px rgba(16,24,40,.12);
+  --page:#EDEBE7;--page-ink:#1D1C1A;--page-dim:#6F6B64;
+  --bad:#C2410C;--bad-soft:#FDEBDD;--good:#1F7A4D;--good-soft:#DDF3E7;
+}
+[data-theme=dark]{
+  --bg:#141517;--surface:#1B1C1F;--surface-2:#232428;--surface-3:#2B2D32;--line:#2A2C31;--line-soft:#1F2024;--border-strong:#3A3D44;
+  --txt:#EEEFF1;--txt-dim:#A6ABB3;--txt-faint:#757A83;
+  --accent:#5B8DFF;--accent-soft:rgba(91,141,255,.15);--on-accent:#fff;--done:#3DBF85;--field-bg:rgba(0,0,0,.15);
+  --pc:#2EC4B0;--scrim:rgba(0,0,0,.55);
+  --amb-lg:inset 0 1px 0 rgba(255,255,255,.05),0 16px 44px rgba(0,0,0,.5);
+  --page:#0F1012;--page-ink:#EEEFF1;--page-dim:#8C9199;
+  --bad:#FB923C;--bad-soft:rgba(251,146,60,.14);--good:#3DBF85;--good-soft:rgba(61,191,133,.14);
+}
+:root{--r:20px;--r-m:12px;--r-s:8px;--mono:"Geist Mono",ui-monospace,monospace;--display:Inter,system-ui,sans-serif;--text-scale:1}
+[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--page);color:var(--page-ink)}
+body{font-family:var(--display);-webkit-font-smoothing:antialiased}
+svg{display:block;flex-shrink:0}
+button{font:inherit;color:inherit}
+
+/* ── pagina ──────────────────────────────────── */
+.wrap{max-width:1180px;margin:0 auto;padding:36px 16px 80px}
+.top{display:flex;align-items:flex-start;gap:24px;justify-content:space-between;flex-wrap:wrap}
+.eyebrow{font-size:12px;font-weight:650;color:var(--page-dim)}
+h1{font-size:32px;line-height:1.1;letter-spacing:-.03em;font-weight:750;margin:6px 0 10px}
+.intro p{font-size:15px;line-height:1.55;color:var(--page-dim);max-width:92ch}
+.intro b{color:var(--page-ink);font-weight:600}
+.theme{display:flex;gap:4px;background:color-mix(in srgb,var(--page-ink) 7%,transparent);padding:3px;border-radius:var(--r-s)}
+.theme button{border:0;background:none;padding:6px 12px;border-radius:6px;font-size:13px;font-weight:600;color:var(--page-dim);cursor:pointer}
+.theme button.on{background:var(--bg);color:var(--page-ink)}
+.rules{margin-top:22px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.rule{background:color-mix(in srgb,var(--page-ink) 4%,transparent);border-radius:var(--r-m);padding:14px 16px}
+.rule b{display:block;font-size:13.5px;font-weight:650;margin-bottom:4px}
+.rule span{font-size:13px;line-height:1.5;color:var(--page-dim)}
+.rule code,.spec code{font-family:var(--mono);font-size:12px}
+.band{margin-top:44px}
+.band h2{font-size:18px;font-weight:700;letter-spacing:-.01em;margin:0 0 4px}
+.band > p{font-size:13.5px;color:var(--page-dim);margin-bottom:14px;max-width:100ch;line-height:1.5}
+.pair{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start}
+.cell{width:500px;max-width:100%}
+.cell.ph{width:390px}
+.cap{margin:0 0 8px 2px;font-size:13px;color:var(--page-dim);line-height:1.4;min-height:36px}
+.tag{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 6px;border-radius:6px;margin-right:6px;vertical-align:1px}
+.tag.old{background:var(--bad-soft);color:var(--bad)}
+.tag.new{background:var(--good-soft);color:var(--good)}
+.spec{margin-top:48px;display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:14px}
+.spec section{background:color-mix(in srgb,var(--page-ink) 4%,transparent);border-radius:var(--r-m);padding:16px 18px}
+.spec h3{font-size:14px;font-weight:700;margin-bottom:8px}
+.spec li{font-size:13px;line-height:1.55;color:var(--page-dim);margin-left:18px;margin-top:4px}
+.spec li b{color:var(--page-ink);font-weight:600}
+
+/* ── panoul docat (cromul, ca în design/panel-thread) ── */
+.pane{position:relative;width:500px;max-width:100%;background:var(--bg);color:var(--txt);
+  border-radius:var(--r-m);box-shadow:-1px 0 0 var(--line-soft),0 10px 30px rgba(0,0,0,.12);display:flex;flex-direction:column;overflow:hidden}
+.hd{padding:16px 24px 0}
+.hd-top{display:flex;align-items:center;gap:6px}
+.hd-top .id{font-family:var(--mono);font-size:13px;color:var(--txt-faint);flex:1}
+.ib{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;color:var(--txt-faint)}
+.ib.save{background:var(--surface-2)}
+.tt{display:flex;gap:10px;align-items:flex-start;margin:12px 0 10px}
+.ck{width:22px;height:22px;border-radius:50%;flex:none;margin-top:2px;box-shadow:inset 0 0 0 1.75px color-mix(in srgb,var(--pc) 80%,var(--bg))}
+.tt h3{font-size:19px;line-height:1.3;font-weight:650;letter-spacing:-.015em}
+.chips{display:flex;gap:6px;align-items:center;padding:0 0 12px 32px;flex-wrap:wrap}
+.chip{height:30px;border-radius:var(--r-s);display:inline-flex;align-items:center;gap:6px;padding:0 10px;font-size:13px;font-weight:600;color:var(--txt-faint)}
+.chip.set{background:var(--surface-2);color:var(--txt)}
+.chip.due{background:var(--accent-soft);color:var(--accent)}
+.chip.ico{width:30px;padding:0;justify-content:center}
+.bd{padding:4px 24px 22px}
+.deps{padding:14px 0 6px;display:flex;gap:6px;align-items:center}
+.dt{height:32px;border-radius:var(--r-s);display:inline-flex;align-items:center;gap:6px;padding:0 10px;font-size:13px;font-weight:600;color:var(--txt-faint);background:var(--surface-2);white-space:nowrap}
+.dt.on{background:var(--accent-soft);color:var(--accent)}
+.dsearch{flex:1;min-width:0;height:32px;border-radius:var(--r-s);border:1px solid var(--line);background:var(--field-bg);display:flex;align-items:center;gap:6px;padding:0 10px;font-size:13px;color:var(--txt-faint);white-space:nowrap;overflow:hidden}
+.thread{padding-top:18px}
+.sec{display:flex;align-items:baseline;gap:8px;font-size:12px;font-weight:650;color:var(--txt-dim);margin-bottom:10px}
+.sec .c{font-family:var(--mono);font-weight:500;color:var(--txt-faint)}
+.ev{display:flex;gap:10px;margin-bottom:10px}
+.ev .av,.cmp-av{width:28px;height:28px;border-radius:50%;flex:none;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font-family:var(--mono);font-size:10.5px;font-weight:600}
+.ev .card{flex:1;min-width:0;background:var(--surface-2);border-radius:var(--r-m);padding:10px 12px}
+.ev .h{font-size:13px;font-weight:650}
+.ev .h .t{font-family:var(--mono);font-size:11.5px;font-weight:500;color:var(--txt-faint);margin-left:6px}
+.ev .b{font-size:14.5px;line-height:1.55;margin-top:4px}
+
+/* ── markdown citit (aceleași reguli ca `.md`) ── */
+.md{font-size:calc(14.5px * var(--text-scale));line-height:1.6;color:var(--txt)}
+.md > * + *{margin-top:8px}
+.md h4{font-size:calc(15px * var(--text-scale));font-weight:650;margin-top:14px}
+.md h4:first-child{margin-top:0}
+.md ul{list-style:none}
+.md li{display:flex;gap:9px;align-items:flex-start;margin-top:3px}
+.md li.b::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--txt-faint);flex:none;margin:.68em 4px 0 6px}
+.md .tk{width:18px;height:18px;border-radius:50%;flex:none;margin-top:.2em;box-shadow:inset 0 0 0 1.5px var(--txt-faint)}
+.md .tk.on{background:var(--accent);box-shadow:none;display:grid;place-items:center;color:var(--bg)}
+.md li.done span{color:var(--txt-faint);text-decoration:line-through 1px}
+.md code{font-family:var(--mono);font-size:.88em;background:var(--surface-3);border-radius:5px;padding:1px 5px}
+.md a{color:var(--accent);text-decoration:none}
+.md .ph{color:var(--txt-faint)}
+.caret{display:inline-block;width:2px;height:1.15em;background:var(--accent);vertical-align:-.2em;margin-left:1px}
+.md .syn{color:var(--txt-faint)}
+
+/* ═════════ ÎNAINTE: ce e pe producție (`.split-pane .desc-fixed`) ═════════ */
+.d-old{position:relative;padding:4px 0;border-radius:var(--r-m);min-height:calc(14.5px * var(--text-scale) * 1.6 * 3 + 8px)}
+.d-old.empty{min-height:calc(14.5px * var(--text-scale) * 1.6 * 2 + 8px)}
+.d-old.focus{box-shadow:0 0 0 2px var(--accent-soft)}
+.d-old.capped{max-height:300px;overflow:hidden}
+.d-old.capped::after{content:"";position:absolute;inset:auto 0 0 0;height:64px;background:linear-gradient(transparent,var(--bg))}
+.more-old{display:inline-flex;align-items:center;gap:6px;height:30px;margin:6px 0 2px;padding:0 10px 0 8px;border:0;border-radius:var(--r-s);background:var(--surface-2);color:var(--txt-dim);font-size:calc(13px * var(--text-scale));font-weight:600}
+.more-n{font-family:var(--mono);font-size:calc(12px * var(--text-scale));font-weight:500;color:var(--txt-faint)}
+/* caseta de comentariu de azi (`.thread-textarea` + `.thread-actions`) */
+.c-old textarea,.c-old .ta{display:block;width:100%;min-height:72px;border-radius:var(--r-m);border:1px solid var(--line);background:rgba(0,0,0,.15);
+  padding:10px 12px;font-size:calc(15px * var(--text-scale));line-height:1.6;color:var(--txt-faint)}
+[data-theme=light] .c-old .ta{background:var(--field-bg);border-color:var(--accent-soft)}
+.c-old .acts{display:flex;align-items:center;gap:6px;margin-top:8px}
+.c-old .clip{width:30px;height:30px;border-radius:var(--r-s);display:grid;place-items:center;color:var(--txt-faint);background:var(--surface-3)}
+.to{display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 10px;border-radius:var(--r-s);background:var(--surface-3);color:var(--txt-dim);font-size:calc(12px * var(--text-scale));font-weight:500}
+.send{margin-left:auto;height:30px;padding:0 14px;border:0;border-radius:var(--r-s);background:var(--accent);color:var(--on-accent);font-size:calc(12.5px * var(--text-scale));font-weight:600}
+.send:disabled,.send.off{background:var(--surface-3);color:var(--txt-faint)}
+
+/* ═════════ DUPĂ: descrierea e un câmp (propunerea) ═════════
+   Fundal un pas mai sus (--surface-2) + linie de păr: un câmp își păstrează
+   delimitarea (regula 4), dar fără umbră. Raza câmpului = --r-m (12px). */
+.desc-box{
+  position:relative;cursor:text;
+  background:var(--surface-2);
+  box-shadow:inset 0 0 0 1px var(--line);
+  border-radius:var(--r-m);
+  padding:10px 14px;
+  min-height:calc(14.5px * var(--text-scale) * 1.6 * 3 + 20px);
+  transition:box-shadow .12s,background .12s;
+  --fold-bg:var(--surface-2);
+}
+[data-theme=dark] .desc-box{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--txt) 7%,transparent)}
+.desc-box.empty{min-height:calc(14.5px * var(--text-scale) * 1.6 * 2 + 20px)}
+.desc-box.hover{box-shadow:inset 0 0 0 1px var(--border-strong)}
+/* Focus = scrii: câmpul se „deschide" pe fundalul paginii, conturul trece pe
+   accent + inel soft. Același focus ca orice câmp din aplicație. */
+.desc-box.focus{background:var(--bg);box-shadow:inset 0 0 0 1px var(--accent),0 0 0 3px var(--accent-soft);--fold-bg:var(--bg)}
+/* Pliat: estomparea pe fundalul CASETEI, nu al panoului; butonul stă ÎN casetă,
+   pe --surface-3 — pe --surface-2 ar fi invizibil (vezi „Controale"). */
+.desc-box.capped{max-height:300px;overflow:hidden;padding-bottom:0}
+.desc-box.capped::after{content:"";position:absolute;inset:auto 0 0 0;height:84px;pointer-events:none;
+  background:linear-gradient(transparent,var(--fold-bg) 55%);border-radius:0 0 var(--r-m) var(--r-m)}
+.desc-box .more{position:absolute;left:10px;bottom:10px;z-index:1;display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px 0 8px;border:0;border-radius:var(--r-s);
+  background:var(--surface-3);color:var(--txt-dim);font-size:calc(13px * var(--text-scale));font-weight:600;cursor:pointer}
+.desc-box .more.open{position:static;margin:10px 0 0 -4px}
+.desc-box.open{padding-bottom:10px}
+/* bara de formatare la focus (telefon) */
+.fmt{display:flex;gap:4px;margin-top:10px}
+.fmt span{width:34px;height:30px;border-radius:var(--r-s);background:var(--surface-2);display:grid;place-items:center;color:var(--txt-dim);font-size:13px;font-weight:700}
+
+/* ═════════ DUPĂ: caseta de comentariu, mai discretă ═════════
+   Repaus: UN rând, fără fundal, doar linia de păr — se vede unde scrii, dar
+   cântărește mai puțin decât descrierea. Focus: se deschide în caseta întreagă,
+   cu acțiunile ÎNĂUNTRU. */
+.cmp{display:flex;align-items:center;gap:10px;min-height:40px;padding:5px 6px 5px 6px;border-radius:var(--r-m);
+  box-shadow:inset 0 0 0 1px var(--line);color:var(--txt-faint);font-size:calc(14px * var(--text-scale));cursor:text}
+[data-theme=dark] .cmp{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--txt) 9%,transparent)}
+.cmp .cmp-av{width:26px;height:26px;font-size:10px;background:var(--surface-2);color:var(--txt-dim)}
+.cmp .ph{flex:1}
+.cmp .clip{width:28px;height:28px;border-radius:var(--r-s);display:grid;place-items:center;color:var(--txt-faint)}
+.cmp.hover{box-shadow:inset 0 0 0 1px var(--border-strong)}
+.cmp.open{display:block;padding:10px 12px 8px;background:var(--bg);box-shadow:inset 0 0 0 1px var(--accent),0 0 0 3px var(--accent-soft);color:var(--txt);cursor:auto}
+.cmp.open .txt{min-height:calc(15px * var(--text-scale) * 1.6 * 2);font-size:calc(15px * var(--text-scale));line-height:1.6}
+.cmp.open .acts{display:flex;align-items:center;gap:6px;margin:6px -4px 0}
+.cmp.open .ab{width:30px;height:30px;border-radius:var(--r-s);display:grid;place-items:center;color:var(--txt-dim);background:var(--surface-2)}
+.cmp.open .to{background:var(--surface-2)}
+.cmp-hint{font-size:calc(11.5px * var(--text-scale));color:var(--txt-faint);margin-left:4px}
+
+/* ── telefonul: foaia de tichet (`EditSheet`) ── */
+.phone{position:relative;width:390px;max-width:100%;height:780px;border-radius:34px;overflow:hidden;background:var(--bg);color:var(--txt);box-shadow:0 20px 50px rgba(0,0,0,.18)}
+.status{height:40px;display:flex;align-items:center;justify-content:space-between;padding:0 26px;font-size:13px;font-weight:600;font-family:var(--mono)}
+.appbar{height:52px;display:flex;align-items:center;padding:0 16px;font-size:20px;font-weight:700;letter-spacing:-.02em}
+.list .it{display:flex;gap:12px;align-items:center;padding:13px 16px;font-size:15px;position:relative}
+.list .it::after{content:"";position:absolute;left:48px;right:0;bottom:0;height:1px;background:var(--line)}
+.list .it .ck{width:20px;height:20px;margin:0}
+.list .it small{margin-left:auto;font-size:12px;color:var(--txt-faint);font-family:var(--mono)}
+.scrim{position:absolute;inset:0;background:var(--scrim)}
+.sheet{position:absolute;left:0;right:0;bottom:0;min-height:44%;max-height:86%;overflow:hidden;background:var(--surface);border-radius:var(--r) var(--r) 0 0;box-shadow:var(--amb-lg);padding:8px 16px 28px;display:flex;flex-direction:column}
+.grab{width:36px;height:4px;border-radius:2px;background:var(--surface-3);margin:0 auto 14px;flex:none}
+.es-meta{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--txt-faint);margin-bottom:8px}
+.es-head{display:flex;gap:8px;align-items:flex-start}
+.es-title{font-size:19px;line-height:1.3;font-weight:650;letter-spacing:-.015em}
+.qs-bar{display:flex;align-items:center;gap:5px;margin:12px 0 12px}
+.qs-bar .chip{height:34px;background:var(--surface-2);color:var(--txt-dim);font-size:12px;padding:0 9px}
+.qs-bar .chip.ico{width:34px;padding:0}
+.qs-bar .chip.due{background:var(--accent-soft);color:var(--accent)}
+.qs-bar .chip.proj{font-size:13px;background:color-mix(in srgb,var(--pc) 13%,transparent);color:color-mix(in srgb,var(--pc) 80%,var(--txt))}
+.qs-bar .chip.proj i{width:8px;height:8px;border-radius:50%;background:var(--pc)}
+.sheet .d-old{margin-left:31px;padding:0}
+.sheet .desc-box{flex:1 0 auto}
+.sheet .desc-box.capped{flex:none;max-height:236px}
+/* foaia e pe --surface (în întunecat #1B1C1F): caseta urcă tot un pas */
+[data-theme=dark] .sheet .desc-box:not(.focus){background:var(--surface-2)}
+[data-theme=dark] .sheet .desc-box.focus{background:var(--surface);--fold-bg:var(--surface)}
+.sheet.kbopen{bottom:290px;min-height:0;max-height:none;padding-bottom:10px}
+.kb{position:absolute;left:0;right:0;bottom:0;height:290px;background:var(--surface-3);display:grid;place-items:center;color:var(--txt-faint);font-size:12px;font-family:var(--mono)}
+.es-thread{display:flex;align-items:center;gap:10px;margin:0 0 12px;padding:7px 10px 7px 8px;border-radius:var(--r-m);background:var(--surface-2);font-size:13.5px;color:var(--txt-dim)}
+.es-thread .av{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--surface-3);font-size:10.5px;font-weight:650;flex:none}
+.es-thread b{font-weight:600;font-size:13px}
+.es-thread .t{font-family:var(--mono);font-size:11.5px;color:var(--txt-faint)}
+.es-thread .bx{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.es-thread .n{font-family:var(--mono);font-size:12px;color:var(--txt-faint)}
+@media (max-width:560px){.hd,.bd{padding-left:16px;padding-right:16px}.chips{padding-left:0}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="i-cal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></symbol>
+  <symbol id="i-lay" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l8 4-8 4-8-4 8-4z"/><path d="M4 12l8 4 8-4M4 16l8 4 8-4"/></symbol>
+  <symbol id="i-clip" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11.5l-8.2 8.2a5 5 0 01-7-7L13 4.5a3.3 3.3 0 014.7 4.7l-8.2 8.2a1.7 1.7 0 01-2.4-2.4L14.5 7.6"/></symbol>
+  <symbol id="i-img" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M20 16l-5-5-8 8"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-exp" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+  <symbol id="i-fwd" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-obs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v5M12 16v.01"/></symbol>
+  <symbol id="i-srch" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></symbol>
+  <symbol id="i-zap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3L5 14h6l-1 7 8-11h-6l1-7z"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24" fill="currentColor"><circle cx="6" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18" cy="12" r="1.6"/></symbol>
+  <symbol id="i-ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12.5l4 4 8-9"/></symbol>
+</svg>
+
+<div class="wrap">
+  <div class="top">
+    <div class="intro">
+      <div class="eyebrow">Horizontal · panoul lateral + foaia de tichet · 2026-10-15</div>
+      <h1>Descrierea se vede ca un câmp</h1>
+      <p>Omul: <i>„Caseta de comentariu se vede clar — știi unde scrii. Descrierea nu: pare parte din fundal. O vreau încapsulată, ca o casetă. Dar comentariul să fie mai discret, fiindcă scriem descrieri mult mai des decât comentarii.”</i></p>
+      <p style="margin-top:8px"><b>Propunerea:</b> ierarhia se inversează. Descrierea devine <b>câmpul principal</b> — fundal un pas mai sus (<code>--surface-2</code>) plus linie de păr, mereu vizibilă. Caseta de comentariu coboară la <b>un singur rând fără fundal</b>, doar cu linia de păr, și se deschide în caseta întreagă (cu acțiunile înăuntru) abia la atingere.</p>
+    </div>
+    <div class="theme" role="group" aria-label="Tema">
+      <button data-t="light" class="on">Luminos</button><button data-t="dark">Întunecat</button>
+    </div>
+  </div>
+
+  <div class="rules">
+    <div class="rule"><b>1 · Descrierea = câmp plin</b><span><code>--surface-2</code> + linie de păr, raza 12px, fără umbră. Minim 3 rânduri, 2 când e goală; textul are 10/14px de aer. Același desen citit și scris — nu există „mod de editare”.</span></div>
+    <div class="rule"><b>2 · Focus = câmpul se deschide</b><span>Fundalul trece pe <code>--bg</code>, conturul pe accent + inel <code>--accent-soft</code> de 3px. Singurul loc unde apare accentul; în repaus caseta e neutră.</span></div>
+    <div class="rule"><b>3 · Pliul e în casetă</b><span>Estomparea se face pe fundalul casetei (<code>--fold-bg: --surface-2</code>), iar „Arată tot” stă înăuntru, pe <code>--surface-3</code> — pe <code>--surface-2</code> ar fi invizibil.</span></div>
+    <div class="rule"><b>4 · Comentariul, un rând</b><span>Repaus: avatarul tău + „Scrie un comentariu…” + agrafa, fără fundal, doar linia de păr (40px în loc de 72 + rândul de butoane). Focus: caseta întreagă, acțiunile înăuntru.</span></div>
+  </div>
+
+  <div id="bands"></div>
+
+  <div class="spec">
+    <section>
+      <h3>De ce câmp plin, nu doar contur</h3>
+      <ul>
+        <li>Un contur singur pe o descriere lungă desenează un <b>formular</b>: o ramă de 300px în jurul textului. Un salt de fundal de un pas se citește ca <b>o pagină pusă pe masă</b> — încapsulat, dar liniștit.</li>
+        <li>Linia de păr rămâne pentru că e un câmp (regula 4: câmpurile își păstrează delimitarea). În luminos <code>#F6F7F9</code> pe alb e prea slab singur; linia de păr îl închide.</li>
+        <li>Fără umbră. Fundal + umbră + chenar ar fi exact ce a interzis „Senin”.</li>
+      </ul>
+    </section>
+    <section>
+      <h3>Citit vs. scris pe text lung</h3>
+      <ul>
+        <li><b>Un singur desen.</b> Editorul e live preview: blocurile (căsuțe, buline) sunt mereu desenate, sintaxa inline apare doar pe rândul cu cursorul. Nu există un „mod citire” separat de comutat.</li>
+        <li>Ce se schimbă la focus e doar <b>rama</b> (accent + inel) și fundalul, care se deschide pe <code>--bg</code> — sub degete textul pare că iese din casetă spre tine, nu că intri într-un formular.</li>
+        <li>Plafonul de 45% rămâne: o descriere lungă e o casetă de ~300px cu „Arată tot” înăuntru, nu un perete gri.</li>
+      </ul>
+    </section>
+    <section>
+      <h3>Pentru implementare</h3>
+      <ul>
+        <li><code>.split-pane .form-col-desc .desc-fixed</code>: scoate <code>border:0; background:none</code>; pune <code>background:var(--surface-2); box-shadow:inset 0 0 0 1px var(--line); padding:10px 14px; --fold-bg:var(--surface-2)</code>. Întunecat: linia = <code>color-mix(--txt 7%)</code>.</li>
+        <li><code>:focus-within</code>: <code>background:var(--bg); box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 3px var(--accent-soft); --fold-bg:var(--bg)</code>.</li>
+        <li><code>.desc-more</code> în casetă: <code>--surface-3</code>, poziționat jos-stânga peste estompare; desfăcut, stă static la coada textului.</li>
+        <li><code>.edit-sheet .es-desc</code>: aceeași casetă, pe toată lățimea foii (aliniată cu rândul de fir, nu indentată la 31px).</li>
+        <li><code>Thread</code>: o stare <code>expanded</code> (focus sau text nescris ≠ ''); restrâns = rând de 40px, <code>.thread-actions</code> nerandate. Se strânge la blur doar dacă e gol și fără fișiere în așteptare.</li>
+        <li>Toate <code>font-size</code> rămân <code>calc(Npx * var(--text-scale))</code>; razele doar 8/12/20. Verificare: ecranul „Controale” din bancul de probă, ambele teme.</li>
+      </ul>
+    </section>
+  </div>
+</div>
+
+<script>
+const I = (id, s = 15) => `<svg width="${s}" height="${s}"><use href="#i-${id}"/></svg>`
+
+// ── conținut ──────────────────────────────────────
+const T_SHORT = 'Scoate bani pentru biserică'
+const T_LONG = 'Migrarea facturilor vechi în noul format'
+const SHORT = `<p>De la bancomatul de lângă Kaufland, înainte de sâmbătă. Cash, nu transfer — <b>500 lei</b> pentru reparația acoperișului.</p>`
+const LONG = `
+<h4>Context</h4>
+<p>Facturile emise înainte de 2024 sunt în formatul vechi (XML propriu, fără <code>TaxPointDate</code>). Contabilitatea le vrea în UBL 2.1, ca să le poată trimite în e-Factura la nevoie.</p>
+<h4>Pași</h4>
+<ul>
+  <li class="done"><span class="tk on">${I('ok', 12)}</span><span>Export din arhiva 2019–2023 (≈ 41 000 de facturi)</span></li>
+  <li class="done"><span class="tk on">${I('ok', 12)}</span><span>Maparea câmpurilor vechi → UBL, cu Mihai</span></li>
+  <li><span class="tk"></span><span>Conversie pe un lot de probă (luna martie 2021)</span></li>
+  <li><span class="tk"></span><span>Validare cu schema ANAF, apoi lotul complet</span></li>
+</ul>
+<h4>Atenție</h4>
+<ul>
+  <li class="b"><span>Facturile din 2019 au TVA 19%, nu 21 — nu recalcula.</span></li>
+  <li class="b"><span>Stornările se leagă de factura inițială prin <code>BillingReference</code>.</span></li>
+  <li class="b"><span>Seria „FV-” s-a schimbat în „SB-” din iulie 2022.</span></li>
+</ul>
+<p>Specificația completă: <a>anaf.ro/efactura</a></p>`
+const FOCUS_SHORT = `<p>De la bancomatul de lângă Kaufland, înainte de sâmbătă. Cash, nu transfer — <span class="syn">**</span><b>500 lei</b><span class="syn">**</span> pentru reparația acoperișului. Și chitanța<span class="caret"></span></p>`
+
+// ── piese ─────────────────────────────────────────
+const header = (id, title, due) => `
+  <div class="hd">
+    <div class="hd-top"><span class="id">${id}</span><span class="ib">${I('exp', 16)}</span><span class="ib save">${I('up', 16)}</span><span class="ib">${I('x', 16)}</span></div>
+    <div class="tt"><span class="ck"></span><h3>${title}</h3></div>
+    <div class="chips">${due ? `<span class="chip due">${I('cal')}${due}</span>` : `<span class="chip">${I('cal')}Dată</span>`}<span class="chip set">${I('lay')}Val II</span><span class="chip ico">${I('clip', 16)}</span><span class="chip ico">${I('plus', 16)}</span></div>
+  </div>`
+const deps = `<div class="deps"><span class="dt on">${I('back', 13)}Necesită</span><span class="dt">${I('fwd', 13)}Permite</span><span class="dt">${I('obs', 13)}Obstacole</span><span class="dsearch">${I('srch', 13)}Caută sau creează tichet…</span></div>`
+const ev = `<div class="ev"><span class="av">MI</span><div class="card"><div class="h">Mihai<span class="t">luni</span></div><div class="b">Am pus maparea în foaia comună. Verifică stornările, acolo am avut dubii.</div></div></div>`
+
+const oldCompose = `<div class="c-old"><div class="ta">Scrie un comentariu…</div><div class="acts"><span class="clip">${I('clip', 15)}</span><span class="to">${I('fwd', 13)}către…</span><button class="send off" disabled>Trimite</button></div></div>`
+const newCompose = (state = '') => state === 'open'
+  ? `<div class="cmp open"><div class="txt">Am verificat lotul din martie — trec 412 din 418. Cele 6 sunt stornări<span class="caret"></span></div>
+      <div class="acts"><span class="ab">${I('img', 15)}</span><span class="ab">${I('clip', 15)}</span><span class="to">${I('fwd', 13)}către…</span><span class="cmp-hint">Enter trimite</span><button class="send">Trimite</button></div></div>`
+  : `<div class="cmp ${state}"><span class="cmp-av">IO</span><span class="ph">Scrie un comentariu…</span><span class="clip">${I('clip', 16)}</span></div>`
+
+const descOld = (kind) => ({
+  empty: `<div class="d-old md empty"><span class="ph">Cerințe, notițe, context…</span></div>`,
+  short: `<div class="d-old md">${SHORT}</div>`,
+  long: `<div class="d-old md capped">${LONG}</div><button class="more-old">${I('down', 15)}Arată tot <span class="more-n">· încă 9 rânduri</span></button>`,
+  focus: `<div class="d-old md focus">${FOCUS_SHORT}</div>`,
+}[kind])
+const descNew = (kind) => ({
+  empty: `<div class="desc-box md empty"><span class="ph">Adaugă o descriere — cerințe, notițe, context…</span></div>`,
+  short: `<div class="desc-box md">${SHORT}</div>`,
+  long: `<div class="desc-box md capped">${LONG}<button class="more">${I('down', 15)}Arată tot <span class="more-n">· încă 9 rânduri</span></button></div>`,
+  focus: `<div class="desc-box md focus">${FOCUS_SHORT}</div>`,
+}[kind])
+
+const pane = ({ id, title, due, desc, compose, events = true }) => `
+  <div class="pane">${header(id, title, due)}
+    <div class="bd">${desc}${deps}
+      <div class="thread"><div class="sec">Fir${events ? ' <span class="c">1</span>' : ''}</div>${events ? ev : ''}${compose}</div>
+    </div>
+  </div>`
+
+const phone = ({ title, id, desc, kb = false, thread = false }) => `
+  <div class="phone">
+    <div class="status"><span>9:41</span><span>5G</span></div>
+    <div class="appbar">Azi</div>
+    <div class="list">
+      <div class="it"><span class="ck"></span>Plata facturii de curent<small>14:00</small></div>
+      <div class="it"><span class="ck"></span>Răspuns la oferta de hosting<small>16:30</small></div>
+      <div class="it"><span class="ck"></span>Programare la ITP<small>Inbox</small></div>
+    </div>
+    <div class="scrim"></div>
+    <div class="sheet${kb ? ' kbopen' : ''}">
+      <div class="grab"></div>
+      <div class="es-meta">${id}</div>
+      <div class="es-head"><span class="ck"></span><div class="es-title">${title}</div></div>
+      <div class="qs-bar"><span class="chip due">${I('cal', 14)}Sâm</span><span class="chip ico">${I('zap', 15)}</span><span class="chip proj"><i></i>Casă</span><span class="chip ico">${I('clip', 15)}</span><span class="chip ico">${I('more', 15)}</span></div>
+      ${thread ? `<div class="es-thread"><span class="av">MI</span><b>Mihai</b><span class="t">luni</span><span class="bx">Am pus maparea în foaia comună…</span><span class="n">2</span></div>` : ''}
+      ${desc}
+      ${kb ? `<div class="fmt"><span>B</span><span><i>I</i></span><span>☐</span><span>•</span><span>#</span></div>` : ''}
+    </div>
+    ${kb ? '<div class="kb">tastatura</div>' : ''}
+  </div>`
+
+// ── benzi ─────────────────────────────────────────
+const SH = { id: 'CS-41', title: T_SHORT, due: 'Sâm' }
+const LG = { id: 'FA-118', title: T_LONG, due: '24 oct' }
+const bands = [
+  { h: 'A · Descriere goală', p: 'Cazul cel mai des la un tichet nou. Înainte: placeholderul plutește pe fundal, nimic nu spune „aici scrii”, iar caseta de comentariu de dedesubt e singurul câmp vizibil — exact invers față de cât se folosesc.',
+    cells: [
+      ['old', 'placeholder pe fundal; comentariul e cel mai vizibil câmp', pane({ ...SH, desc: descOld('empty'), compose: oldCompose, events: false })],
+      ['new', 'câmp plin cu linie de păr; comentariul, un rând discret', pane({ ...SH, desc: descNew('empty'), compose: newCompose(), events: false })],
+    ] },
+  { h: 'B · Descriere scurtă', p: 'Două rânduri de text. Caseta ține minimul de 3 rânduri, deci rămâne loc vizibil pentru încă o propoziție; fundalul o leagă de jetoanele de deasupra, care stau tot pe <code>--surface-2</code>.',
+    cells: [
+      ['old', 'textul pare o notă pe pagină, nu un câmp', pane({ ...SH, desc: descOld('short'), compose: oldCompose })],
+      ['new', 'aceeași casetă, cu text', pane({ ...SH, desc: descNew('short'), compose: newCompose() })],
+    ] },
+  { h: 'C · Descriere lungă, pliată („Arată tot”)', p: 'Testul greu: un câmp în jurul unei descrieri formatate n-are voie să arate ca un formular. Saltul de un pas de fundal + linia de păr țin textul liniștit; pliul și butonul stau ÎN casetă, pe <code>--surface-3</code>.',
+    cells: [
+      ['old', 'pliul se estompează în panou; nu se vede unde se termină câmpul', pane({ ...LG, desc: descOld('long'), compose: oldCompose })],
+      ['new', 'pliul în casetă, „Arată tot” pe --surface-3, înăuntru', pane({ ...LG, desc: descNew('long'), compose: newCompose() })],
+    ] },
+  { h: 'D · Descrierea cu focus', p: 'Câmpul se deschide pe <code>--bg</code>, conturul trece pe accent, cu inelul soft de 3px. Sintaxa inline (<code>**</code>) apare doar pe rândul cu cursorul, ca azi.',
+    cells: [
+      ['old', 'inelul de 2px soft — singurul semn că scrii', pane({ ...SH, desc: descOld('focus'), compose: oldCompose })],
+      ['new', 'contur accent + inel; fundalul se deschide', pane({ ...SH, desc: descNew('focus'), compose: newCompose() })],
+    ] },
+  { h: 'E · Caseta de comentariu: repaus, hover, focus', p: 'Repaus: un rând de 40px, fără fundal — avatarul tău, „Scrie un comentariu…”, agrafa. Focus (sau cât are text nescris / fișiere în așteptare): caseta întreagă, cu imagine, agrafă, „către…” și Trimite înăuntru. Se strânge la blur numai dacă e goală.',
+    cells: [
+      ['old', 'azi: 72px + rândul de butoane, mereu deschisă', `<div class="pane"><div class="bd" style="padding-top:20px"><div class="thread" style="padding-top:0"><div class="sec">Fir <span class="c">1</span></div>${ev}${oldCompose}</div></div></div>`],
+      ['new', 'repaus și hover: un rând, doar linia de păr', `<div class="pane"><div class="bd" style="padding-top:20px"><div class="thread" style="padding-top:0"><div class="sec">Fir <span class="c">1</span></div>${ev}<div class="cmp-hint" style="margin:0 0 6px 2px">repaus</div>${newCompose()}<div class="cmp-hint" style="margin:14px 0 6px 2px">hover</div>${newCompose('hover')}</div></div></div>`],
+      ['new', 'focus: caseta întreagă, acțiunile înăuntru', `<div class="pane"><div class="bd" style="padding-top:20px"><div class="thread" style="padding-top:0"><div class="sec">Fir <span class="c">1</span></div>${ev}${newCompose('open')}</div></div></div>`],
+    ] },
+  { h: 'F · Telefon — foaia de tichet (390px)', p: 'Aceeași casetă, pe toată lățimea foii (aliniată cu rândul de fir, nu indentată după bifă). Foaia e pe <code>--surface</code>; în întunecat caseta urcă tot un pas (<code>--surface-2</code>). Focus cu tastatura: caseta se deschide pe fundalul foii, bara de formatare dedesubt.',
+    phone: true,
+    cells: [
+      ['old', 'azi: textul pe foaie, fără margini', phone({ ...SH, desc: `<div class="d-old md">${SHORT}</div>` })],
+      ['new', 'goală', phone({ ...SH, desc: descNew('empty') })],
+      ['new', 'scurtă', phone({ ...SH, desc: descNew('short') })],
+      ['new', 'lungă, pliată, cu rând de fir', phone({ ...LG, thread: true, desc: descNew('long') })],
+      ['new', 'focus, cu tastatura', phone({ ...SH, kb: true, desc: descNew('focus') })],
+    ] },
+]
+document.getElementById('bands').innerHTML = bands.map((b) => `
+  <div class="band"><h2>${b.h}</h2><p>${b.p}</p>
+    <div class="pair">${b.cells.map(([t, cap, html]) => `
+      <div class="cell${b.phone ? ' ph' : ''}"><div class="cap"><span class="tag ${t}">${t === 'old' ? 'înainte' : 'după'}</span>${cap}</div>${html}</div>`).join('')}
+    </div></div>`).join('')
+
+// tema
+const params = new URLSearchParams(location.search)
+const setTheme = (t) => {
+  document.documentElement.dataset.theme = t
+  document.querySelectorAll('.theme button').forEach((b) => b.classList.toggle('on', b.dataset.t === t))
+}
+document.querySelectorAll('.theme button').forEach((b) => b.onclick = () => setTheme(b.dataset.t))
+if (params.get('theme')) setTheme(params.get('theme'))
+</script>
+</body>
+</html>

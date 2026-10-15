@@ -3513,21 +3513,11 @@ button.we-del:hover { color: var(--blocked); background: var(--blocked-soft); }
   /* O singură coloană: spațiul dintre coloane (20px) n-are ce despărți. */
   .split-pane .form-col-desc { padding-right: 0; }
   .split-pane .deps-zone, .split-pane .thread { padding-left: 0; }
-  /* În panou descrierea se citește ca o pagină: fără cutie, cu inel doar
-     cât scrii în ea. */
   /* Înălțimea e a textului (`DescFold`, `.desc-fit` mai jos): minim 3 rânduri,
      2 când e goală, plafon `min(340px, 45% din panou)`. Înainte ținea 420px
-     chiar goală, iar Firul cădea sub pliu (macheta `design/panel-thread`). */
-  .split-pane .form-col-desc .desc-fixed,
-  [data-theme='light'] .split-pane .form-col-desc .desc-fixed {
-    flex: 0 0 auto;
-    border: 0;
-    background: none;
-    padding: 4px 0;
-    --fold-bg: var(--bg);
-  }
-  .split-pane .form-col-desc .desc-fixed.desc-fit { min-height: calc(15px * var(--text-scale) * 1.55 * 3 + 8px); }
-  .split-pane .form-col-desc .desc-fixed.desc-fit.desc-empty { min-height: calc(15px * var(--text-scale) * 1.55 * 2 + 8px); }
+     chiar goală, iar Firul cădea sub pliu (macheta `design/panel-thread`).
+     Desenul de câmp e `.desc-box` (macheta `design/desc-box`), ca peste tot. */
+  .split-pane .form-col-desc .desc-fixed { flex: 0 0 auto; }
   /* Rândul de fir, primul în corp. Bulina necititului are inel pe fundalul
      panoului (`--bg`), nu pe al foii. */
   .split-pane .es-thread { margin: 2px 0 12px; }
@@ -3535,11 +3525,6 @@ button.we-del:hover { color: var(--blocked); background: var(--blocked-soft); }
   .split-pane .es-thread + .form-cols .form-col-desc { padding-top: 0; }
   /* Dependențele urcă lângă text: 14px ai lor, fără încă 16 de la coloană. */
   .split-pane .form-col-desc { padding-top: 4px; padding-bottom: 0; }
-  .split-pane .form-col-desc .desc-fixed:focus-within,
-  [data-theme='light'] .split-pane .form-col-desc .desc-fixed:focus-within {
-    box-shadow: 0 0 0 2px var(--accent-soft);
-    border-radius: var(--r-m);
-  }
 
   .split-empty {
     margin: auto;
@@ -4320,42 +4305,70 @@ html[data-text-large] .fc-fields > .due-inputs { flex-basis: 100%; }
 }
 
 /* Descrierea — containerul derulează, editorul (CodeMirror) crește în el.
-   Un câmp își păstrează chenarul (regula 1): fără el, 500px de nimic nu se
-   citeau ca un loc în care scrii. Același tratament ca `.thread-textarea` și
-   `.dep-search-field`, ca cele trei câmpuri ale formularului să arate la fel. */
+   Desenul de câmp e `.desc-box`, mai jos; aici doar geometria modalului. */
 .desc-fixed {
   width: 100%;
   height: 560px;
   overflow-y: auto;
-  padding: 10px 14px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-m);
-  background: rgba(0, 0, 0, 0.15);
-  transition: border-color 0.12s;
 }
-.desc-fixed:focus-within { border-color: color-mix(in srgb, var(--accent) 30%, transparent); }
-/* Inelul editorului ar fi un al doilea contur în chenar. */
-.desc-fixed .md-editor .cm-editor.cm-focused { box-shadow: none; }
 .desc-fixed .md-editor { max-width: 68ch; }
 /* Editorul umple tot câmpul, ca o atingere sub text să scrie (ca `.es-desc`);
    fallback-ul la fel, ca încărcarea chunk-ului să nu sară caseta. */
-.desc-fixed { display: flex; flex-direction: column; cursor: text; }
+.desc-fixed { display: flex; flex-direction: column; }
 .desc-fixed > .md-editor, .desc-fixed .cm-editor { flex: 1 0 auto; display: flex; flex-direction: column; }
 .desc-fixed .cm-scroller { flex: 1 0 auto; }
 .desc-fixed > .md-fallback { flex: 1 0 auto; max-width: 68ch; }
 
+/* ── Descrierea ca un câmp (`DescFold` → `.desc-box`) ─────────────────
+   Macheta `design/desc-box`: descrierea e câmpul principal al tichetului,
+   desenat la fel în panou, în modal, în formularul și în foaia de telefon.
+   Fundal un pas mai sus + linie de păr (un câmp își păstrează delimitarea),
+   fără umbră. Citit și scris arată la fel — nu există „mod de editare"; la
+   focus câmpul se deschide pe fundalul paginii, cu contur accent + inel.
+   Linia e `box-shadow` inset, nu `border`, ca focusul să n-o îngroașe.
+   `--fold-bg` = fundalul pe care se estompează textul pliat (al CASETEI). */
+.md-field.desc-box {
+  position: relative;
+  cursor: text;
+  padding: 6px 14px;
+  border: 0;
+  border-radius: var(--r-m);
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--txt) 7%, transparent);
+  transition: box-shadow 0.12s, background 0.12s;
+  --fold-bg: var(--surface-2);
+}
+[data-theme='light'] .md-field.desc-box { box-shadow: inset 0 0 0 1px var(--line); }
+.md-field.desc-box:hover { box-shadow: inset 0 0 0 1px var(--border-strong); }
+/* `:has` scoate butonul „Arată tot": focusul lui nu înseamnă „scrii". */
+.md-field.desc-box:focus-within:not(:has(> .desc-more:focus)) {
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 3px var(--accent-soft);
+  --fold-bg: var(--bg);
+}
+/* Foile stau pe `--surface` (în întunecat cu un pas peste `--bg`): câmpul
+   deschis ia fundalul foii, nu o gaură mai închisă în ea. */
+.sheet .md-field.desc-box:focus-within:not(:has(> .desc-more:focus)),
+.edit-sheet .md-field.desc-box:focus-within:not(:has(> .desc-more:focus)) {
+  background: var(--surface);
+  --fold-bg: var(--surface);
+}
+/* Inelul editorului ar fi un al doilea contur în casetă. */
+.desc-box .md-editor .cm-editor.cm-focused { box-shadow: none; }
+.desc-box > .md-fallback { padding: 4px 0; }
+/* Codul pe `--surface-2` s-ar pierde în casetă: urcă un pas. */
+.desc-box .md-editor .md-code, .desc-box .md-editor .cm-line.md-pre { background: var(--surface-3); }
+
 /* Descrierea cu înălțimea textului (`DescFold`: panou, formularul de telefon,
    foaia de tichet). Fără înălțime fixă CodeMirror nu mai umple câmpul, deci
    atingerea sub text o prinde cutia (`onMouseDown`) și pune cursorul la capăt.
-   `--fold-bg` = fundalul pe care se estompează textul pliat. */
-.desc-fixed { --fold-bg: color-mix(in srgb, #000 15%, var(--surface)); }
-[data-theme='light'] .desc-fixed { --fold-bg: var(--field-bg); }
+   Minimul: 3 rânduri (2 goală) + 20px de aer (6+6 cutia, 4+4 editorul). */
 .desc-fixed.desc-fit {
   height: auto;
   overflow: visible;
-  min-height: calc(15px * var(--text-scale) * 1.55 * 3 + 22px);
+  min-height: calc(15px * var(--text-scale) * 1.55 * 3 + 20px);
 }
-.desc-fixed.desc-fit.desc-empty { min-height: calc(15px * var(--text-scale) * 1.55 * 2 + 22px); }
+.desc-fixed.desc-fit.desc-empty { min-height: calc(15px * var(--text-scale) * 1.55 * 2 + 20px); }
 .desc-fixed.desc-fit > .md-fallback { field-sizing: content; min-height: 0; }
 /* Pliat: textul e întreg în editor, doar desenul se oprește la plafon. Estomparea
    nu prinde atingerea — un click pe ultimul rând vizibil cade în text. */
@@ -4366,11 +4379,14 @@ html[data-text-large] .fc-fields > .due-inputs { flex-basis: 100%; }
   left: 0;
   right: 0;
   bottom: 0;
-  height: 64px;
+  height: 84px;
   pointer-events: none;
-  background: linear-gradient(transparent, var(--fold-bg, var(--bg)));
+  background: linear-gradient(transparent, var(--fold-bg, var(--bg)) 55%);
   border-radius: 0 0 var(--r-m) var(--r-m);
 }
+/* „Arată tot" stă ÎN casetă, pe `--surface-3` — pe `--surface-2`, fundalul
+   casetei, ar fi invizibil. Pliat: jos-stânga, peste estompare; desfăcut
+   („Restrânge"): la coada textului. */
 .desc-more {
   align-self: flex-start;
   flex: none;
@@ -4378,18 +4394,19 @@ html[data-text-large] .fc-fields > .due-inputs { flex-basis: 100%; }
   align-items: center;
   gap: 6px;
   height: 30px;
-  margin: 6px 0 2px;
+  margin: 6px 0 6px -4px;
   padding: 0 10px 0 8px;
   border: 0;
   border-radius: var(--r-s);
-  background: var(--surface-2);
+  background: var(--surface-3);
   color: var(--txt-dim);
   font: inherit;
   font-size: calc(13px * var(--text-scale));
   font-weight: 600;
   cursor: pointer;
 }
-.desc-more:hover { background: var(--surface-3); color: var(--txt); }
+.desc-fit.capped > .desc-more { position: absolute; left: 10px; bottom: 10px; z-index: 1; margin: 0; }
+.desc-more:hover { background: color-mix(in srgb, var(--txt) 7%, var(--surface-3)); color: var(--txt); }
 .desc-more:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .desc-more.open svg { transform: rotate(180deg); }
 .desc-more-n {
@@ -4398,9 +4415,6 @@ html[data-text-large] .fc-fields > .due-inputs { flex-basis: 100%; }
   font-weight: 500;
   color: var(--txt-faint);
 }
-/* Foaia de tichet: estomparea pe fundalul foii, butonul aliniat cu textul (după bifă). */
-.edit-sheet .es-desc { --fold-bg: var(--surface); }
-.edit-sheet .desc-more { margin-left: 31px; }
 
 /* ── DEPS ZONE ─────────────────────────────────── */
 .deps-zone {
@@ -4722,7 +4736,7 @@ html[data-text-large] .fc-fields > .due-inputs { flex-basis: 100%; }
 }
 .thread-handoff-time { font-family: var(--mono); color: var(--txt-faint); margin-left: 6px; }
 
-.thread-compose { margin-top: 4px; }
+
 
 .thread-pending { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
 .thread-pending-chip {
@@ -4759,7 +4773,92 @@ html[data-text-large] .fc-fields > .due-inputs { flex-basis: 100%; }
 .thread-textarea:focus { border-color: color-mix(in srgb, var(--accent) 30%, transparent); }
 .thread-textarea::placeholder { color: var(--txt-faint); }
 
-.thread-actions { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+/* ── Caseta de comentariu (`composerOpen`, macheta `design/desc-box`) ──
+   Descrierea e câmpul principal; comentariul cântărește mai puțin. Repaus: un
+   rând de 40px fără fundal, doar linia de păr — avatarul tău, „Scrie un
+   comentariu…", agrafa. Deschisă (focus sau ciornă): caseta întreagă, cu
+   acțiunile ÎNĂUNTRU. Linia e `box-shadow` inset, ca la descriere. */
+.thread-compose {
+  margin-top: 4px;
+  min-height: 40px;
+  padding: 5px 6px;
+  border-radius: var(--r-m);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--txt) 9%, transparent);
+  cursor: text;
+  transition: box-shadow 0.12s, background 0.12s;
+}
+[data-theme='light'] .thread-compose { box-shadow: inset 0 0 0 1px var(--line); }
+.thread-compose:not(.open):hover { box-shadow: inset 0 0 0 1px var(--border-strong); }
+.thread-field { display: flex; align-items: center; gap: 10px; }
+.thread-me {
+  flex: none;
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--surface-2); color: var(--txt-dim);
+  font-family: var(--mono); font-size: calc(10px * var(--text-scale)); font-weight: 600;
+}
+/* Textarea-ul nu mai e o cutie: caseta e cutia. */
+.thread-compose .thread-textarea,
+.thread-compose .thread-textarea:focus {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  height: calc(14px * var(--text-scale) * 1.6);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: calc(14px * var(--text-scale));
+  overflow: hidden;
+}
+.thread-clip {
+  flex: none;
+  width: 28px; height: 28px;
+  display: grid; place-items: center;
+  border: 0; padding: 0; border-radius: var(--r-s);
+  background: none; color: var(--txt-faint);
+  cursor: pointer;
+}
+.thread-clip:hover { background: var(--surface-2); color: var(--txt-dim); }
+.thread-clip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* Deschisă: fundalul paginii, conturul neutru; cu focus, accent + inel —
+   același focus ca descrierea. */
+.thread-compose.open {
+  padding: 10px 12px 8px;
+  background: var(--bg);
+  cursor: auto;
+}
+.sheet .thread-compose.open { background: var(--surface); }
+.thread-compose.open:focus-within { box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 3px var(--accent-soft); }
+.thread-compose.open .thread-textarea {
+  height: auto;
+  min-height: calc(15px * var(--text-scale) * 1.6 * 2);
+  max-height: 40vh;
+  field-sizing: content;
+  overflow-y: auto;
+  font-size: calc(15px * var(--text-scale));
+}
+.thread-actions { display: flex; align-items: center; gap: 6px; margin: 6px -4px 0; }
+/* Butoanele din casetă stau pe `--surface-2`: caseta e pe fundalul paginii. */
+.thread-compose .att-act { width: 30px; height: 30px; background: var(--surface-2); }
+.thread-compose .att-acts { gap: 6px; }
+.thread-hint {
+  margin-left: auto;
+  font-size: calc(11.5px * var(--text-scale));
+  color: var(--txt-faint);
+  white-space: nowrap;
+}
+.thread-hint + .thread-send-btn { margin-left: 4px; }
+@media (max-width: 899px), (pointer: coarse) {
+  /* Pe telefon Enter trimite tot, dar nu e o tastă de anunțat. */
+  .thread-hint { display: none; }
+  .thread-hint + .thread-send-btn { margin-left: auto; }
+}
+.thread-send-error { margin: 8px 0 0; }
+.thread-compose .thread-to-btn { background: var(--surface-2); }
+.thread-compose .thread-to-btn:hover { background: var(--surface-3); }
 
 .thread-to-wrap { position: relative; }
 .thread-to-btn {
@@ -4789,13 +4888,14 @@ html[data-text-large] .fc-fields > .due-inputs { flex-basis: 100%; }
 .thread-send-btn:disabled { background: var(--surface-3); color: var(--txt-faint); cursor: not-allowed; }
 
 /* ── LIGHT THEME OVERRIDES — issue form fields ─── */
-[data-theme='light'] .thread-textarea,
-[data-theme='light'] .dep-search-field,
-[data-theme='light'] .desc-fixed {
+/* Descrierea și caseta de comentariu își au desenul lor (`.desc-box`,
+   `.thread-compose`), aceleași în ambele teme. */
+[data-theme='light'] .thread-edit .thread-textarea,
+[data-theme='light'] .dep-search-field {
   background: var(--field-bg);
   border-color: var(--accent-soft);
 }
-[data-theme='light'] .thread-textarea:focus {
+[data-theme='light'] .thread-edit .thread-textarea:focus {
   background: var(--accent-soft);
   border-color: var(--accent);
 }
@@ -4803,8 +4903,6 @@ html[data-text-large] .fc-fields > .due-inputs { flex-basis: 100%; }
   background: var(--accent-soft);
   border-color: var(--accent);
 }
-/* Descrierea: doar chenarul. 500px nuanțați cu accent ar fi prea mult. */
-[data-theme='light'] .desc-fixed:focus-within { border-color: var(--accent); }
 
 /* ═══════════════════════════════════════════════════════════════════════
    MOBILE REFINEMENTS (< 900px)
@@ -6090,14 +6188,15 @@ body:has(.kb-sheet) .toast {
   padding-bottom: calc(16px + env(safe-area-inset-bottom));
 }
 .edit-sheet .qs-form { flex: 1 0 auto; display: flex; flex-direction: column; }
-/* Descrierea (`DescField`): spațiile vechiului `.qa-desc`, fontul din blocul
-   „Markdown". Editorul umple tot câmpul, ca o atingere sub text să scrie. */
+/* Descrierea (`DescFold` → `.desc-box`): pe toată lățimea foii, aliniată cu
+   rândul de fir, nu indentată după bifă (macheta `design/desc-box`). Fontul
+   vine din blocul „Markdown". Editorul umple tot câmpul, ca o atingere sub
+   text să scrie. */
 .edit-sheet .es-desc {
   flex: 1 0 auto;
   min-height: 88px;
-  cursor: text;
-  margin: 4px 0 0 31px;
-  width: calc(100% - 31px);
+  margin: 4px 0 0;
+  width: 100%;
   display: flex;
   flex-direction: column;
 }
