@@ -2,6 +2,15 @@ import { useTheme, type Theme } from '../theme'
 import { TEXT_SCALES } from '../lib/textScale'
 import { Icon } from './Icon'
 import { CalendarSettings } from './CalendarSettings'
+import { useAuth } from '../auth'
+import { useUI } from '../ui'
+
+/**
+ * Cererea „deschide Utilizatori”, ascultată de Shell (`App.tsx`). Ca la
+ * filtre (`OPEN_FILTER_EVENT`): foaia nu navighează singură — se închide, iar
+ * Shell-ul schimbă ecranul DUPĂ randare, cu stiva de foi deja goală.
+ */
+export const OPEN_USERS_EVENT = 'hz:open-users'
 
 const THEMES: { key: Theme; label: string }[] = [
   { key: 'light', label: 'Luminos' },
@@ -15,6 +24,8 @@ const THEMES: { key: Theme; label: string }[] = [
  */
 export function AppSettings() {
   const { theme, setTheme, textScale, setTextScale } = useTheme()
+  const { isAdmin } = useAuth()
+  const { closeSheet } = useUI()
   return (
     <>
       <div className="sheet-head">
@@ -56,6 +67,25 @@ export function AppSettings() {
 
         {/* Ale contului, nu ale dispozitivului — dar aici le caută omul. */}
         <CalendarSettings />
+
+        {/* Utilizatorii au stat în bara laterală, ca rând permanent, deși îi
+            deschide doar adminul și rar. Locul lor e lângă celelalte setări. */}
+        {isAdmin && (
+          <>
+            <div className="sheet-section-t">Administrare</div>
+            <button
+              type="button"
+              className="btn-ghost app-settings-link"
+              onClick={() => {
+                closeSheet()
+                window.dispatchEvent(new Event(OPEN_USERS_EVENT))
+              }}
+            >
+              <Icon name="members" size={15} />
+              Utilizatori
+            </button>
+          </>
+        )}
       </div>
     </>
   )

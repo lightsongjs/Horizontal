@@ -335,68 +335,6 @@ main {
   text-transform: none;
   letter-spacing: 0;
 }
-.proj {
-  background: var(--surface);
-  border-radius: var(--r);
-  padding: 15px 15px 13px;
-  margin-bottom: 10px;
-  position: relative;
-  overflow: hidden;
-  text-align: left;
-  width: 100%;
-  display: block;
-  transition: transform 0.13s ease;
-  box-shadow: var(--amb);
-}
-.proj:active {
-  transform: scale(0.984);
-}
-.proj h3 {
-  font-size: calc(18px * var(--text-scale));
-  font-weight: 700;
-  letter-spacing: -0.025em;
-  margin-bottom: 3px;
-  font-family: var(--display);
-}
-.proj > p {
-  font-size: calc(14px * var(--text-scale));
-  color: var(--txt-dim);
-  margin-bottom: 13px;
-  line-height: 1.4;
-}
-.proj-meta {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.bar {
-  flex: 1;
-  height: 4px;
-  background: color-mix(in srgb, var(--proj, var(--txt-faint)) 22%, var(--surface-3));
-  border-radius: 4px;
-  overflow: hidden;
-}
-.bar i {
-  display: block;
-  height: 100%;
-  border-radius: 4px;
-  background: var(--proj, var(--accent));
-  transition: width 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-.pct {
-  font-size: calc(14px * var(--text-scale));
-  font-weight: 700;
-  color: var(--txt);
-  min-width: 32px;
-  text-align: right;
-  font-family: var(--mono);
-}
-.proj-tags {
-  display: flex;
-  gap: 5px;
-  margin-top: 11px;
-  flex-wrap: wrap;
-}
 .mini {
   font-size: calc(11px * var(--text-scale));
   font-weight: 600;
@@ -3230,16 +3168,6 @@ button.we-del:hover { color: var(--blocked); background: var(--blocked-soft); }
     padding: 28px 32px 48px;
   }
 
-  /* Projects grid: auto-fit collapses empty tracks so 1 card = full width */
-  .proj-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 14px;
-  }
-  .proj-grid .proj {
-    margin-bottom: 0;
-  }
-
   /* Wider tabs */
   .tabs {
     max-width: none;
@@ -5534,7 +5462,6 @@ body:has(.kb-sheet) .toast {
 .t-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 /* Inbox: iconița ține locul bulinei (`ProjectMark`), în culoarea proiectului. */
 .proj-inbox { display: inline-flex; align-items: center; flex-shrink: 0; line-height: 0; }
-.proj h3 .proj-inbox { margin-right: 6px; vertical-align: -1px; }
 
 /* ── ALE MELE (InboxView.tsx) ─────────────────────────────────────────
    Aceeași lățime de citit ca listele inteligente — vezi `.smart-list`. */
@@ -6632,6 +6559,10 @@ body:has(.kb-sheet) .toast {
   min-height: 44px;
   padding: 10px 16px;
   font-size: calc(15px * var(--text-scale));
+}
+.app-settings-link {
+  display: inline-flex; align-items: center; gap: 8px; align-self: flex-start;
+  min-height: 44px; font-size: calc(14px * var(--text-scale));
 }
 .app-settings-sample {
   margin: 14px 0 6px;

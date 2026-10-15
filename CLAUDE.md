@@ -108,6 +108,20 @@ reali). Peste „Normal", `<html data-text-large>` rupe pe două linii rânduril
 care altfel ar tăia cu „…" (`.qs-bar`, `.list-group-head`). Verificare:
 `TEXT_SCALE=1.5 npm run test:layout`.
 
+Tot în rotiță stă, numai pentru admin, **„Utilizatori”** (secțiunea
+„Administrare”; până pe 2026-10-15 era un rând permanent în bara laterală).
+Foaia nu navighează singură: se închide și trimite `OPEN_USERS_EVENT`, iar
+Shell-ul deschide ecranul după randare — pe telefon prin `goTop('users')`,
+deci Back duce pe „Azi”, ca de pe orice tab.
+
+### Căutarea (O / Ctrl+F): cele mai noi întâi
+
+`rankIssues` (`QuickSearch.tsx`, cu teste) ordonează după `createdAt`
+descrescător (la egalitate, numărul din ID), și fără text, și în fiecare nivel
+(potrivirile pe ID rămân înaintea celor pe titlu). Cerința omului, 2026-10-15:
+„adaug ceva și-mi amintesc că mai trebuia altceva” — caută ce tocmai a scris.
+Ordinea după ecranul de unde se deschidea căutarea (contextul) a ieșit.
+
 ## Panoul lateral (split view)
 
 Peste 1200px, „Listă" și listele inteligente se împart în două: lista în
@@ -1012,7 +1026,7 @@ al meu — `isMine` (`src/lib/ownership.ts`, pur, cu teste): pasat mie, sau
 nepasat și creat de mine ori fără autor (`created_by` null = unealtă cu cheia de
 serviciu; nu dispare). Pasat altcuiva sau nepasat-dar-al-altcuiva iese. Se
 aplică o dată, pe intrarea lui `buildSmartLists` din `store.tsx`, deci și
-numerele (sertar, sidebar, bara de jos, antetul) și căutarea din context.
+numerele (sertar, sidebar, bara de jos, antetul).
 Proiectele și filtrele salvate văd tot (au regula lor). Fără identitate
 completă (mod local, fără sesiune, cont nelegat de `assignees`) nu taie nimic.
 Mementourile de pe Linux urmează regula, și cele de pe Android + widget-ul de
@@ -1115,7 +1129,13 @@ rândurile existente, ca să știi ce id să folosești la o legare ulterioară.
 
 „Azi", „7 zile" și „Ale mele" sunt tab-uri de sus (bara de jos), nu pagini
 una sub alta — de-aia antetul n-are săgeată: ar promite un „înapoi" spre un
-loc care nu e în spatele lor. **„Proiecte" nu mai e tab** (2026-10-10): pe
+loc care nu e în spatele lor. **Lista „Toate proiectele” nu mai există**
+(2026-10-15): proiectele stau oricum, unul câte unul, în bara laterală și în
+sertar. „Niciun ecran, niciun proiect” (proiect șters, `/project/<slug>`
+necunoscut, pornire fără proiecte, o intrare veche `hzScreen: 'projects'`)
+cade pe „Azi” — o singură regulă, efectul de după boot din `App.tsx` (gardat de
+`booted`, ca să nu vadă starea dinainte de alegerile boot-ului).
+**„Proiecte" nu mai e tab** (2026-10-10): pe
 telefon proiectele stau în sertar (☰), iar colțul antetului e mereu ☰, și în
 proiect — vezi „Sertarul și filtrele". Pe desktop `.back` e oricum ascunsă.
 

@@ -3,7 +3,7 @@ import { rankIssues, searchPool } from './QuickSearch'
 import { NO_SCHEDULE } from '../lib/schedule'
 import type { Issue } from '../lib/types'
 
-function makeIssue(id: string, title: string): Issue {
+function makeIssue(id: string, title: string, createdAt = '2026-01-01T00:00:00.000Z'): Issue {
   return {
     id,
     projectId: 'demo',
@@ -17,7 +17,7 @@ function makeIssue(id: string, title: string): Issue {
     scenarios: [],
     assigneeId: null,
     createdBy: null,
-    createdAt: '2026-01-01T00:00:00.000Z',
+    createdAt,
     urgent: false,
     ...NO_SCHEDULE,
   }
@@ -75,10 +75,10 @@ describe('rankIssues', () => {
     expect(result[0].id).toBe('H-07')
   })
 
-  it('empty query returns the first 10 issues unchanged', () => {
+  it('fără text: cele mai noi 10, după numărul din ID la aceeași dată', () => {
     const issues = Array.from({ length: 15 }, (_, n) => makeIssue(`H-${n}`, `Title ${n}`))
     const result = rankIssues('', issues)
-    expect(result).toEqual(issues.slice(0, 10))
+    expect(result.map((i) => i.id)).toEqual(['H-14', 'H-13', 'H-12', 'H-11', 'H-10', 'H-9', 'H-8', 'H-7', 'H-6', 'H-5'])
   })
 
   it('a query matching nothing returns an empty array', () => {
@@ -146,12 +146,29 @@ describe('searchPool', () => {
   })
 })
 
-describe('rankIssues cu context', () => {
-  const pool = [makeIssue('H-01', 'alfa'), makeIssue('H-02', 'alfa beta'), makeIssue('H-03', 'gama')]
-  it('fără text: întâi lista de pe ecran, în ordinea ei', () => {
-    expect(rankIssues('', pool, 10, ['H-03', 'H-02']).map((i) => i.id)).toEqual(['H-03', 'H-02', 'H-01'])
+describe('rankIssues: cele mai noi întâi', () => {
+  const pool = [
+    makeIssue('H-01', 'alfa', '2026-10-01T08:00:00.000Z'),
+    makeIssue('X-40', 'alfa beta', '2026-10-15T09:00:00+00:00'),
+    makeIssue('H-03', 'gama', '2026-10-10T08:00:00.000Z'),
+  ]
+  it('fără text: după `createdAt`, descrescător, indiferent de proiect și de formatul datei', () => {
+    expect(rankIssues('', pool).map((i) => i.id)).toEqual(['X-40', 'H-03', 'H-01'])
   })
-  it('cu text: potrivirile din context înaintea celorlalte, dar caută în toate', () => {
-    expect(rankIssues('alfa', pool, 10, ['H-02']).map((i) => i.id)).toEqual(['H-02', 'H-01'])
+  it('cu text: potrivirile pe titlu, tot cele mai noi întâi', () => {
+    expect(rankIssues('alfa', pool).map((i) => i.id)).toEqual(['X-40', 'H-01'])
+  })
+  it('potrivirile pe ID rămân înaintea celor pe titlu, oricât de noi ar fi acestea', () => {
+    const issues = [
+      makeIssue('H-04', 'vechi', '2025-01-01T00:00:00.000Z'),
+      makeIssue('H-77', 'titlu cu 04', '2026-10-15T00:00:00.000Z'),
+      makeIssue('H-504', 'mai nou', '2026-02-01T00:00:00.000Z'),
+    ]
+    expect(rankIssues('04', issues).map((i) => i.id)).toEqual(['H-504', 'H-04', 'H-77'])
+  })
+  it('nu modifică lista primită', () => {
+    const copy = [...pool]
+    rankIssues('', pool)
+    expect(pool).toEqual(copy)
   })
 })

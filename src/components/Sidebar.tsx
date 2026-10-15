@@ -25,9 +25,8 @@ function getBuildAgo(): string {
 }
 
 interface SidebarProps {
-  isAdmin?: boolean
+  /** „Utilizatori” e deschis (din rotița de setări) — niciun proiect nu e „pe ecran”. */
   showUsers?: boolean
-  onShowUsers?: () => void
   onNavigate?: () => void
   smartList?: SmartListKind | null
   onSmartList?: (kind: SmartListKind) => void
@@ -47,7 +46,7 @@ interface SidebarProps {
   onSearch?: () => void
 }
 
-export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNavigate, smartList = null, onSmartList, inboxActive = false, inboxUnread = 0, inboxTotal = 0, onInbox, filterId = null, onFilter, onFilterForm, onSearch }: SidebarProps = {}) {
+export function Sidebar({ showUsers = false, onNavigate, smartList = null, onSmartList, inboxActive = false, inboxUnread = 0, inboxTotal = 0, onInbox, filterId = null, onFilter, onFilterForm, onSearch }: SidebarProps = {}) {
   const { projects, project, openCountByProject, selectProject, reorderProjects, smartLists, reportError, pins, savedFilters, filterCounts, assignees, myAssigneeId } = useHorizontal()
   // Meniul de fixare: click dreapta pe un rând, sau ⋮ pe rândul de proiect.
   const [menu, setMenu] = useState<MenuTarget | null>(null)
@@ -60,10 +59,10 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
   // tichetului deschis, nu ecranul — aceeași gardă ca `projectChrome`.
   const offProject = inboxActive || filterId !== null
 
-  // Navigate away from any overlay (e.g. Users) then select a project.
-  const goToProject = (id: string | null) => { onNavigate?.(); selectProject(id) }
+  // Pleacă de pe orice strat (ex. Utilizatori), apoi deschide proiectul.
+  const goToProject = (id: string) => { onNavigate?.(); selectProject(id) }
   const { openNewProject, openNewIssue, openAppSettings } = useUI()
-  const { enabled, signOut, session } = useAuth()
+  const { enabled, signOut, session, isAdmin } = useAuth()
   const who = assignees.find((a) => a.id === myAssigneeId)?.name ?? session?.user.email ?? 'Local'
   const onSignOut = async () => {
     const st = repository.sync?.status() ?? { offline: false, pending: 0 }
@@ -147,33 +146,6 @@ export function Sidebar({ isAdmin = false, showUsers = false, onShowUsers, onNav
           <Icon name="search" size={15} />
           <span>Caută</span>
           <kbd>Ctrl F</kbd>
-        </button>
-      )}
-
-      <button
-        className={`sidebar-nav-item ${!project && !showUsers && !smartList && !offProject ? 'on' : ''}`}
-        onClick={() => goToProject(null)}
-      >
-        <span className="sidebar-nav-icon">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <rect x="1" y="1" width="5" height="5" rx="1.5" fill="currentColor" opacity="0.8" />
-            <rect x="8" y="1" width="5" height="5" rx="1.5" fill="currentColor" opacity="0.8" />
-            <rect x="1" y="8" width="5" height="5" rx="1.5" fill="currentColor" opacity="0.8" />
-            <rect x="8" y="8" width="5" height="5" rx="1.5" fill="currentColor" opacity="0.8" />
-          </svg>
-        </span>
-        <span>Toate proiectele</span>
-      </button>
-
-      {isAdmin && (
-        <button
-          className={`sidebar-nav-item ${showUsers ? 'on' : ''}`}
-          onClick={() => onShowUsers?.()}
-        >
-          <span className="sidebar-nav-icon">
-            <Icon name="members" size={14} />
-          </span>
-          <span>Utilizatori</span>
         </button>
       )}
 

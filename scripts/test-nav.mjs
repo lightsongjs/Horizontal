@@ -80,12 +80,23 @@ try {
   await page.goto(BASE, { waitUntil: 'networkidle' })
   await page.waitForTimeout(700)
   // O pornire proaspătă aterizează pe „Azi" (vezi `SESSION_KEY` din App.tsx),
-  // deci lista de proiecte se cere explicit înainte de tot restul testului.
+  // deci proiectul se deschide explicit din bara laterală.
   const bootScreen = await page.locator('.sidebar-nav-item.on').first().textContent()
   check('pornirea aterizează pe „Azi"', /Azi/.test(bootScreen ?? ''), `ecran=${(bootScreen ?? '').trim()}`)
-  await page.locator('.sidebar-nav-item', { hasText: 'Toate proiectele' }).first().click()
-  await page.waitForTimeout(600)
-  await page.locator('.proj').first().click()
+  // Lista „Toate proiectele" a ieșit (2026-10-15): nici rândul din bara
+  // laterală, nici un drum care să mai aterizeze pe ea. Un proiect necunoscut
+  // din URL cade pe „Azi", rădăcina.
+  const allRow = await page.locator('.sidebar-nav-item', { hasText: 'Toate proiectele' }).count()
+  check('bara laterală n-are „Toate proiectele"', allRow === 0, `rânduri=${allRow}`)
+  {
+    const lost = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+    await lost.goto(`${BASE}/project/nu-exista`, { waitUntil: 'networkidle' })
+    await lost.waitForTimeout(900)
+    const on = (await lost.locator('.sidebar-nav-item.on').first().textContent().catch(() => ''))?.trim()
+    check('un proiect necunoscut din URL aterizează pe „Azi"', /Azi/.test(on ?? ''), `ecran=${on} URL=${new URL(lost.url()).pathname}`)
+    await lost.close()
+  }
+  await page.locator('.sidebar-proj-btn').filter({ hasNotText: /Inbox/ }).first().click()
   await page.waitForTimeout(800)
   await page.locator('.tab', { hasText: /^List/ }).first().click()
   await page.waitForTimeout(500)
@@ -374,7 +385,8 @@ try {
   // proiectul rămâne încărcat. Un click pe ACELAȘI proiect în sidebar chema
   // `selectProject(null)` și `selectProject(id)` în același tick, iar garda
   // „reselectare fără efect" citea `projectId` din clojură — încă proiectul,
-  // deci al doilea apel era ignorat și rămâneai pe „Toate proiectele".
+  // deci al doilea apel era ignorat și rămâneai pe lista de proiecte (scoasă
+  // între timp, 2026-10-15).
   const same = await browser.newPage({ viewport: { width: 1440, height: 900 } })
   await same.goto(BASE, { waitUntil: 'networkidle' })
   await same.waitForTimeout(700)
@@ -419,10 +431,8 @@ try {
   const stale = await browser.newPage({ viewport: { width: 1440, height: 900 } })
   await stale.goto(BASE, { waitUntil: 'networkidle' })
   await stale.waitForTimeout(700)
-  // Idem: pornirea e pe „Azi", deci lista de proiecte se cere.
-  await stale.locator('.sidebar-nav-item', { hasText: 'Toate proiectele' }).first().click()
-  await stale.waitForTimeout(600)
-  await stale.locator('.proj').first().click()
+  // Idem: pornirea e pe „Azi", deci proiectul se deschide din bara laterală.
+  await stale.locator('.sidebar-proj-btn').filter({ hasNotText: /Inbox/ }).first().click()
   await stale.waitForTimeout(900)
   await stale.locator('.tab', { hasText: /^List/ }).first().click()
   await stale.waitForTimeout(500)
@@ -488,9 +498,7 @@ try {
   const pass = await browser.newPage({ viewport: { width: 1440, height: 900 } })
   await pass.goto(BASE, { waitUntil: 'networkidle' })
   await pass.waitForTimeout(700)
-  await pass.locator('.sidebar-nav-item', { hasText: 'Toate proiectele' }).first().click()
-  await pass.waitForTimeout(600)
-  await pass.locator('.proj').first().click()
+  await pass.locator('.sidebar-proj-btn').filter({ hasNotText: /Inbox/ }).first().click()
   await pass.waitForTimeout(900)
   await pass.locator('.tab', { hasText: /^List/ }).first().click()
   await pass.waitForTimeout(500)
