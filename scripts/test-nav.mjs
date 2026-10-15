@@ -787,6 +787,10 @@ try {
   // anularea atingerii după mișcare. Filă curată, ca un `back()` să nu
   // aterizeze pe tichetele testelor de mai sus.
   const tctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
+  // `NAV_CLOCK=2026-10-15T22:30` pornește ceasul paginii de telefon de acolo
+  // (curge normal mai departe): verificările legate de ora zilei se pot rula
+  // și „seara" fără să aștepți seara.
+  if (process.env.NAV_CLOCK) await tctx.clock.install({ time: new Date(process.env.NAV_CLOCK) })
   const touch = await tctx.newPage()
   await touch.goto(BASE, { waitUntil: 'networkidle' })
   await touch.waitForTimeout(800)
@@ -911,16 +915,29 @@ try {
     check('atingerea pe „Oră" ajunge pe input (focus), fără showPicker', focused === 'Oră' && (await touch.evaluate(() => window.__showPicker)) === 0, `focus=${focused}`)
     check('…anularea (fără change) nu schimbă nimic', (await timeOf('Gest unu')) === before && (await touch.locator('.date-sheet').count()) === 0, `ora="${await timeOf('Gest unu')}"`)
 
-    // Ales 21:45: ce trimite selectorul sistemului la OK.
+    // Ora aleasă: ce trimite selectorul sistemului la OK. „Oră" pune ora pe
+    // AZI (sarcina e în „Azi"), iar o oră deja trecută azi o face restantă:
+    // rândul arată atunci ziua ratată, nu ora. De-aia ora se alege în
+    // viitorul PAGINII, nu fixă — un 21:45 fix pica de la 21:45 încolo. În
+    // ultimele minute ale zilei nu mai e viitor; acolo rândul trebuie doar să
+    // se fi schimbat (ziua ratată în locul golului).
+    const pick = await touch.evaluate(() => {
+      const d = new Date()
+      const p = (n) => String(n).padStart(2, '0')
+      const mins = d.getHours() * 60 + d.getMinutes()
+      const at = mins < 21 * 60 + 40 ? 21 * 60 + 45 : 23 * 60 + 59
+      return { v: `${p(Math.floor(at / 60))}:${p(at % 60)}`, future: mins + 2 <= at }
+    })
     const choose = (label, v) => rowOf('Gest unu').locator(`input[aria-label="${label}"]`).evaluate((el, val) => {
       el.value = val
       el.dispatchEvent(new Event('change', { bubbles: true }))
     }, v)
-    await choose('Oră', '21:45')
+    await choose('Oră', pick.v)
     await touch.waitForTimeout(800)
     const toastT = ((await touch.locator('.toast').textContent()) ?? '').trim()
-    check('ora aleasă se scrie pe rând', (await timeOf('Gest unu')) === '21:45', `ora="${await timeOf('Gest unu')}"`)
-    check('toastul spune „Mutat la 21:45"', /Mutat la 21:45/.test(toastT), `toast="${toastT}"`)
+    const shownT = await timeOf('Gest unu')
+    check(`ora aleasă (${pick.v}) se scrie pe rând`, pick.future ? shownT === pick.v : shownT !== before, `ora="${shownT}"`)
+    check(`toastul spune „Mutat la ${pick.v}"`, toastT.includes(`Mutat la ${pick.v}`), `toast="${toastT}"`)
     check('…și banda s-a închis', !/show-right/.test((await rowOf('Gest unu').getAttribute('class')) ?? ''), (await rowOf('Gest unu').getAttribute('class')) ?? '')
     await touch.locator('.toast-act').click()
     await touch.waitForTimeout(800)
