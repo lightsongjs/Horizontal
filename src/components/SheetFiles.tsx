@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react'
-import { createPortal } from 'react-dom'
 import { repository } from '../data'
 import {
   deleteAttachment,
@@ -307,9 +306,8 @@ export function ThumbRow({ files, canDelete, onError, issueId, title }: { files:
         </span>
       ))}
       <DownloadAll items={items} issueId={issueId} title={title} onError={onError} />
-      {/* În `document.body`: foaia e `position: fixed` cu propriul z-index,
-          deci galeria ar fi rămas prinsă în stratul ei. */}
-      {viewIndex >= 0 && createPortal(
+      {/* Galeria se pune singură în `document.body` (vezi `Lightbox`). */}
+      {viewIndex >= 0 && (
         <Lightbox
           items={images}
           index={viewIndex}
@@ -319,8 +317,7 @@ export function ThumbRow({ files, canDelete, onError, issueId, title }: { files:
           onDelete={removeViewed}
           onClose={() => setViewing(null)}
           onError={onError}
-        />,
-        document.body,
+        />
       )}
     </div>
   )
