@@ -1308,6 +1308,55 @@ try {
     await fp.close()
   }
 
+  // ── Căsuțele din descriere: un click bifează rândul LUI, nu pe următorul ──
+  // ROUTIN-08: ținta de atins a căsuței (`.md-task::after`) era 44px și pe
+  // verticală, peste un rând de ~22px; a căsuței de dedesubt, mai târziu în
+  // DOM, stătea deasupra, deci jumătatea de jos a fiecărei căsuțe era a
+  // rândului următor. Click real, pe panou (1440), modal (1000) și foaie (390).
+  {
+    const DESC = '- [ ] Intretinere - ebloc \n- [ ] Convertește revolut dolari cont Simona și eu \n- [ ] Card de credit ING\n- [ ] taxa gunoi cisnadie - T a x e si i m p o z i t e 64 RON/luna  https://mail.google.com/mail/u/1/#inbox/FMfcgzQgLrqbMKgGNPxtjwVBrMBLhQKq\n- [ ] Eon\n- [ ] DIGI\n'
+    const marks = (s) => [...s.matchAll(/\[(.)\]/g)].map((m) => (m[1] === ' ' ? '.' : 'x')).join('')
+    for (const [where, viewport, scope] of [
+      ['panou', { width: 1440, height: 900 }, '.split-pane'],
+      ['modal', { width: 1000, height: 800 }, '.sheet.on'],
+      ['foaie', { width: 390, height: 844 }, '.edit-sheet'],
+    ]) {
+      const tp = await browser.newPage({ viewport })
+      await tp.goto(BASE, { waitUntil: 'networkidle' })
+      await tp.waitForTimeout(700)
+      const id = await tp.evaluate((d) => {
+        const db = JSON.parse(localStorage.getItem('horizontal:v2'))
+        const i = db.issues.find((x) => x.projectId !== 'd')
+        i.desc = d
+        localStorage.setItem('horizontal:v2', JSON.stringify(db))
+        return i.id
+      }, DESC)
+      await tp.goto(`${BASE}/${id}`, { waitUntil: 'networkidle' })
+      await tp.waitForTimeout(1500)
+      // Fiecare punct din căsuță (și 10px în lateral) trebuie să lovească
+      // căsuța ei — nu o măsurătoare de lățime, ci cine primește click-ul.
+      const stray = await tp.evaluate((sc) => {
+        const out = []
+        document.querySelectorAll(`${sc} .md-task`).forEach((b, i) => {
+          const r = b.getBoundingClientRect()
+          for (let dy = 0; dy <= r.height; dy++) for (const dx of [-10, r.width / 2, r.width + 10]) {
+            const hit = document.elementFromPoint(r.x + dx, r.y + dy)?.closest('.md-task')
+            if (hit && hit !== b) { out.push(`#${i + 1}@${dy}px`); return }
+          }
+        })
+        return out
+      }, scope)
+      check(`descriere (${where}): fiecare căsuță își primește singură click-ul`, stray.length === 0, stray.length ? `lovesc vecina: ${stray.join(' ')}` : 'fără suprapuneri')
+      const b = await tp.locator(`${scope} .md-task`).nth(2).boundingBox()
+      // Jumătatea de jos: acolo stătea ținta rândului următor.
+      await tp.mouse.click(b.x + b.width / 2, b.y + b.height - 3)
+      await tp.waitForTimeout(400)
+      const got = marks(await descOf(tp, scope))
+      check(`descriere (${where}): click pe a 3-a căsuță bifează doar a 3-a`, got === '..x...', got)
+      await tp.close()
+    }
+  }
+
   await page.close()
 } finally {
   if (browser) await browser.close()
