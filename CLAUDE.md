@@ -167,6 +167,23 @@ Panoul nu e un modal, deci nu blochează tastatura listei: `shouldIgnoreKey` din
 „Listă · gol" din `design/preview.html` acoperă panoul, rândul docat și starea
 goală, în ambele teme.
 
+**Descrierea are înălțimea textului, firul se anunță sus** (macheta
+`design/panel-thread/index.html`, 2026-10-15). Înainte descrierea din panou
+ținea 420px chiar goală, iar Firul cădea sub pliu. Acum, în panou și în
+formularul de telefon (NU în modalul de 94%, unde descrierea e coloana de
+lectură și Firul e oricum în dreapta), `DescFold` (`src/components/DescFold.tsx`,
+regulile pure în `src/lib/descFold.ts`): minim 3 rânduri (2 goală), plafon
+`min(340px, 45% din panou)` (telefon: 45% din ecranul vizibil), pliere doar dacă
+ar ascunde ≥ 4 rânduri, cu „Arată tot · încă N rânduri" / „Restrânge". Focusul
+desface; desfăcută rămâne cât trăiește formularul. Fără înălțime fixă
+CodeMirror nu mai umple cutia, deci o atingere sub text o prinde cutia și
+cheamă `focusEnd()` (nou în `EditorHandle`). Foaia de tichet (`EditSheet`)
+folosește același `DescFold`: sub plafon umple foaia ca înainte. Primul în
+corpul formularului stă `SheetThreadRow` (`icon="toThread"`): un click derulează
+corpul la „nou"/Fir (`scrollTo` pe `.if-body`, nu `scrollIntoView`) și pune
+focusul pe `.thread` (`tabIndex=-1`), nu în casetă. Rândul gol punctat al
+dependențelor (`.dep-empty-row`) a ieșit.
+
 ## Banda de valuri („Listă" și „Cards")
 
 Mockup aprobat: `design/wave-bar/index.html`. Un singur rând deasupra listei:
@@ -606,10 +623,14 @@ descrierea au focus.
 - **Atingerea** = „…" cu `at: 'thread'` (`expandIssue`, aceeași intrare de
   istoric): `Thread` se derulează la separatorul „nou" (`firstUnreadId`), fără
   focus în casetă.
-- **Citit se face în `Thread`**, după `listEvents`, pe telefon și pe desktop
-  (`markInboxSeen(id, { quiet: true })`, numai dacă e ceva străin mai nou decât
-  vizita) — înainte doar „Ale mele" marca, deci un tichet deschis din „Azi"
-  rămânea necitit la nesfârșit.
+- **Citit se face în `Thread`**, pe telefon și pe desktop, când firul **intră
+  în vedere** (`IntersectionObserver` pe separatorul „nou", altfel pe tot firul),
+  nu la încărcare — în panou firul stă sub descriere, iar un „nou" stins la
+  încărcare s-ar fi stins nevăzut. Condiția e `needsSeen` (`lib/thread.ts`):
+  ceva străin mai nou decât vizita. Rândul de sus rămâne „nou" cât stă tichetul
+  deschis (`keepUnread`), ca separatorul din fir — altfel ar fi clipit și s-ar
+  fi stins la deschidere. Înainte doar „Ale mele" marca, deci un tichet deschis
+  din „Azi" rămânea necitit la nesfârșit.
 
 ### Fișierele din foi și de ce persoana a ieșit din rând
 

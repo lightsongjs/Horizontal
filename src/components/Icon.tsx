@@ -109,6 +109,10 @@ const ICONS = {
   collapse: ChevronDown,
   // Pastila „Încă N" din banda de valuri: deschide o listă.
   dropdown: ChevronDown,
+  /** „Arată tot" sub descrierea pliată; întors (CSS) la „Restrânge". */
+  showMore: ChevronDown,
+  /** Rândul de fir din panou: derulează în jos, la Fir (pe telefon e `expand`). */
+  toThread: ChevronDown,
   danger: TriangleAlert,
   delete: Trash2,
   // Nume de ROL, nu de desen: „obstacle", nu „octagon". Desenul se schimbă

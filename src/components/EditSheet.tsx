@@ -10,7 +10,7 @@ import { mergeTitleDue } from '../lib/titleDue'
 import type { Issue } from '../lib/types'
 import { Icon } from './Icon'
 import { KeyboardSheet } from './KeyboardSheet'
-import { DescField } from './DescField'
+import { DescFold } from './DescFold'
 import type { EditorHandle } from './MarkdownEditor'
 import { FormatBar } from './FormatBar'
 import { AttachButton, ThumbRow, attachBlocked, useTicketFiles } from './SheetFiles'
@@ -301,8 +301,12 @@ function EditBody({ issue }: { issue: Issue }) {
         {!descFocus && !titleFocus && <SheetThreadRow issueId={issue.id} onOpen={() => void toFull('thread')} />}
 
         <ThumbRow files={files} canDelete={canWrite} onError={showToast} issueId={issue.id} title={d.title} />
-        <DescField
+        {/* Înălțimea textului, cu plafon de 45% din ecran și „Arată tot"
+            (`DescFold`); sub plafon umple în continuare foaia, ca o atingere
+            sub text să înceapă scrisul. */}
+        <DescFold
           ref={descRef}
+          where="viewport"
           className="es-desc"
           value={d.desc}
           readOnly={!canWrite}

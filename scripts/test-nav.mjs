@@ -17,7 +17,8 @@ import { chromium } from 'playwright'
 import { spawn } from 'node:child_process'
 import { touchApi } from './lib-touch.mjs'
 
-const PORT = 5211
+// `NAV_PORT`: două copii de lucru (worktree-uri) pot rula testul în paralel.
+const PORT = Number(process.env.NAV_PORT ?? 5211)
 const BASE = `http://localhost:${PORT}`
 const failures = []
 
@@ -149,6 +150,51 @@ try {
   await page.waitForTimeout(1000)
   const savedViaPanel = await descOf(page, '.split-pane').catch(() => null)
   check('Ctrl+Enter salvează descrierea din panou', savedViaPanel === 'a**b**', JSON.stringify(savedViaPanel))
+
+  // ── Panoul: descrierea cât textul, rândul de fir sus, citit = văzut ─────
+  // Macheta `design/panel-thread`. Un alt tichet decât cel docat, cu o
+  // descriere lungă și un comentariu străin nevăzut.
+  const dockedId = decodeURIComponent(new URL(page.url()).pathname.slice(1))
+  const other = await page.evaluate((docked) => {
+    const db = JSON.parse(localStorage.getItem('horizontal:v2'))
+    const me = db.issues.find((x) => x.id === docked)
+    const i = db.issues.find((x) => x.id !== docked && !x.done && x.projectId === me?.projectId)
+    i.desc = Array.from({ length: 40 }, (_, k) => `Rândul ${k + 1} al descrierii lungi.`).join('\n')
+    const at = new Date(Date.now() - 5 * 60_000).toISOString()
+    db.events = [...(db.events ?? []), { id: 'nav-pt1', issueId: i.id, projectId: i.projectId, kind: 'comment', authorId: 'u-altcineva', body: 'Am pus o întrebare în fir.', handoffFrom: null, handoffTo: null, createdAt: at, editedAt: null }]
+    if (db.seen) delete db.seen[i.id]
+    localStorage.setItem('horizontal:v2', JSON.stringify(db))
+    return { id: i.id, title: i.title }
+  }, dockedId)
+  await page.reload({ waitUntil: 'networkidle' })
+  await page.waitForTimeout(800)
+  await page.locator('.list-row').filter({ hasText: other.title }).first().click()
+  await page.waitForTimeout(1200)
+  const ptRow = page.locator('.split-pane .es-thread')
+  check('panou: rândul de fir sus, necitit', (await ptRow.count()) === 1 && /unread/.test((await ptRow.getAttribute('class')) ?? ''), `${await ptRow.getAttribute('class').catch(() => 'lipsă')}`)
+  const descH = async () => (await page.locator('.split-pane .desc-fixed').boundingBox())?.height ?? 0
+  const foldedH = await descH()
+  const moreBtn = page.locator('.split-pane .desc-more')
+  check('panou: descrierea lungă se pliază sub plafon', foldedH > 0 && foldedH <= 341 && /Arată tot/.test((await moreBtn.textContent().catch(() => '')) ?? ''), `${Math.round(foldedH)}px, buton="${await moreBtn.textContent().catch(() => 'lipsă')}"`)
+  await moreBtn.click()
+  await page.waitForTimeout(200)
+  check('…„Arată tot" o desface, butonul devine „Restrânge"', (await descH()) > foldedH + 100 && /Restrânge/.test((await moreBtn.textContent()) ?? ''), `${Math.round(await descH())}px`)
+  await moreBtn.click()
+  await page.waitForTimeout(200)
+  await ptRow.click()
+  await page.waitForTimeout(900)
+  const pt = await page.evaluate((id) => {
+    const body = document.querySelector('.split-pane .if-body')
+    const th = document.querySelector('.split-pane .thread')
+    const db = JSON.parse(localStorage.getItem('horizontal:v2'))
+    return { focus: document.activeElement === th, scrolled: (body?.scrollTop ?? 0) > 0, seen: !!db.seen?.[id] }
+  }, other.id)
+  check('…atingerea rândului derulează la Fir, cu focus pe fir (nu în casetă)', pt.focus && pt.scrolled, JSON.stringify(pt))
+  check('…firul văzut e marcat citit', pt.seen, pt.seen ? 'seen scris' : 'nemarcat')
+  check('…iar rândul rămâne „nou" cât stă tichetul deschis', /unread/.test((await ptRow.getAttribute('class')) ?? ''), `${await ptRow.getAttribute('class')}`)
+  // Înapoi pe tichetul docat de dinainte, ca restul testului să-l găsească.
+  await page.locator('.list-row').first().click()
+  await page.waitForTimeout(800)
 
   await page.locator('.tabs').click()
   await page.waitForTimeout(150)

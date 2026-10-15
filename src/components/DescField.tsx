@@ -1,4 +1,4 @@
-import { Suspense, forwardRef, lazy, useImperativeHandle, useLayoutEffect, useRef, type MutableRefObject } from 'react'
+import { Suspense, forwardRef, lazy, useImperativeHandle, useLayoutEffect, useRef, type CSSProperties, type MouseEvent, type MutableRefObject, type Ref } from 'react'
 import type { EditorHandle, FormatCmd, MarkdownEditorProps } from './MarkdownEditor'
 
 /**
@@ -18,17 +18,26 @@ export const preloadEditor = () => { import('./MarkdownEditor').catch(() => {}) 
  * editorul sosește cu cursorul în textarea, focusul trece în editor, la
  * același loc (tastatura de pe telefon nu coboară).
  */
-export const DescField = forwardRef<EditorHandle, MarkdownEditorProps & { className?: string }>(
-  function DescField({ className = '', ...p }, ref) {
+/** Cutia însăși (`fieldRef`, `style`, `onMouseDown`): `DescFold` o măsoară și o pliază. */
+type BoxProps = {
+  className?: string
+  style?: CSSProperties
+  fieldRef?: Ref<HTMLDivElement>
+  onMouseDown?(e: MouseEvent<HTMLDivElement>): void
+}
+
+export const DescField = forwardRef<EditorHandle, MarkdownEditorProps & BoxProps>(
+  function DescField({ className = '', style, fieldRef, onMouseDown, ...p }, ref) {
     const editor = useRef<EditorHandle>(null)
     const fallback = useRef<HTMLTextAreaElement>(null)
     const handoff = useRef<number | null>(null)
     useImperativeHandle(ref, () => ({
       focus: () => (editor.current ? editor.current.focus() : fallback.current?.focus()),
+      focusEnd: () => (editor.current ? editor.current.focusEnd() : textareaEnd(fallback.current)),
       format: (cmd: FormatCmd) => editor.current?.format(cmd),
     }), [])
     return (
-      <div className={`md-field ${className}`}>
+      <div ref={fieldRef} className={`md-field ${className}`} style={style} onMouseDown={onMouseDown}>
         <Suspense
           fallback={
             <Fallback
@@ -52,6 +61,13 @@ export const DescField = forwardRef<EditorHandle, MarkdownEditorProps & { classN
   },
 )
 
+/** Focus cu cursorul la capăt, pentru textarea-ul de rezervă. */
+function textareaEnd(t: HTMLTextAreaElement | null) {
+  if (!t) return
+  t.focus()
+  t.setSelectionRange(t.value.length, t.value.length)
+}
+
 /**
  * Textarea-ul de rezervă. Curățenia efectului de layout rulează ÎNAINTE ca
  * React să-l scoată din DOM, deci încă vede dacă avea focusul și unde era
@@ -68,7 +84,7 @@ function Fallback({ el, handoff, ...rest }: { el: MutableRefObject<HTMLTextAreaE
 /** Descrierea fără CodeMirror: rezerva pentru un chunk care n-a putut fi adus. */
 const PlainEditor = forwardRef<EditorHandle, MarkdownEditorProps>(function PlainEditor(p, ref) {
   const el = useRef<HTMLTextAreaElement>(null)
-  useImperativeHandle(ref, () => ({ focus: () => el.current?.focus(), format: () => {} }), [])
+  useImperativeHandle(ref, () => ({ focus: () => el.current?.focus(), focusEnd: () => textareaEnd(el.current), format: () => {} }), [])
   return (
     <textarea
       ref={el}

@@ -131,6 +131,22 @@ DESCRIERE = (
 
 
 MD_DESC_FORM = md_field('desc-fixed')
+# Panoul: descrierea cât textul (`DescFold`), pliată cu „Arată tot".
+MD_DESC_FIT = (md_field('desc-fixed desc-fit capped', '--desc-cap:120px')
+               + '<button type="button" class="desc-more" aria-expanded="false">' + ic('chevron-down', 15)
+               + '<span>Arată tot</span><span class="desc-more-n">· încă 6 rânduri</span></button>')
+
+
+def thread_row(kind):
+    """`SheetThreadRow` în formular (panou): ultimul eveniment + număr, săgeata în jos."""
+    return ('<button type="button" class="es-thread %s"><span class="es-thread-av">AN</span>'
+            '<span class="es-thread-tx"><span class="es-thread-who"><span class="es-thread-name">Ana</span>'
+            '<span class="es-thread-t">14 min</span>%s</span>'
+            '<span class="es-thread-body">Am verificat pe un fișier real: Excel deschide bine cu BOM, '
+            'dar LibreOffice cere separatorul la import. Merge așa?</span></span>'
+            '<span class="es-thread-n">%s3%s</span></button>'
+            % (kind, '<span class="es-thread-new">nou</span>' if kind == 'unread' else '',
+               ic('message-circle', 14), ic('chevron-down', 15)))
 
 
 
@@ -540,9 +556,10 @@ LISTA_PANOU = (
     + fc_row()
     + '<button class="sh-save dirty">%s</button></div>' % ic('arrow-up', 16)
     + '<div class="sheet-scroll if-body">'
+    + thread_row('unread') +
       '<div class="form-cols">'
       '<div class="form-col form-col-desc">'
-      + MD_DESC_FORM + '</div>'
+      + MD_DESC_FIT + '</div>'
       '<div class="form-col form-col-right">'
       '<div class="deps-zone"><div class="deps-bar">'
       '<button class="dep-tab-btn on">%s Necesită<span class="dep-tab-count">1</span></button>'
@@ -944,7 +961,11 @@ CONTROALE = ''.join([
       '<div class="dep-card"><button class="dep-card-body"><span class="dep-card-id">TUR-02</span>'
       '<span class="dep-card-title">Cont Supabase (DB + Auth)</span></button>'
       '<button class="dep-card-x">' + ic('x', 12) + '</button></div>'
-      '<div class="dep-empty-row">nimic încă</div>'),
+      # Fără `.dep-empty-row`: rândul gol punctat a ieșit (macheta `panel-thread`).
+      '<button type="button" class="desc-more" aria-expanded="false">' + ic('chevron-down', 15)
+      + '<span>Arată tot</span><span class="desc-more-n">· încă 21 de rânduri</span></button>'
+      '<button type="button" class="desc-more open" aria-expanded="true">' + ic('chevron-down', 15)
+      + '<span>Restrânge</span></button>'),
 
     g('Câmpuri',
       '<div class="fld"><textarea rows="2" placeholder="Descrierea tichetului…"></textarea></div>'
