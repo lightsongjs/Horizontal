@@ -6,7 +6,6 @@ import { HorizontalProvider, useHorizontal } from './store'
 import { UIProvider, useUI } from './ui'
 import { CalendarProvider } from './calendar'
 import { Login } from './components/Login'
-import { ProjectsView } from './components/ProjectsView'
 import { ProjectDetail, type Tab } from './components/ProjectDetail'
 import { SheetHost } from './components/SheetHost'
 import { Sidebar } from './components/Sidebar'
@@ -31,6 +30,7 @@ import { Drawer } from './components/Drawer'
 import { preloadEditor } from './components/DescField'
 import { FilterView } from './components/FilterView'
 import { FILTER_DELETED_EVENT, OPEN_FILTER_EVENT } from './components/FilterForm'
+import { OPEN_USERS_EVENT } from './components/AppSettings'
 import { describeRules } from './lib/savedFilters'
 import { weekCrumb } from './lib/schedule'
 import type { NavTarget } from './components/NavMenu'
@@ -136,7 +136,7 @@ function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, ca
           </h1>
         </div>
         <div className="crumb">
-          {inbox ? 'Ce ți-a pasat cineva.' : list ? smartCrumb(list.kind, new Date()) : filterId ? filterCrumb : projectChrome ? projectChrome.description : 'Toate proiectele tale'}
+          {inbox ? 'Ce ți-a pasat cineva.' : list ? smartCrumb(list.kind, new Date()) : filterId ? filterCrumb : projectChrome ? projectChrome.description : 'Conturi și acces'}
           {!projectChrome && !named && <span style={{ display: 'block', fontSize: 'calc(10px * var(--text-scale))', opacity: 0.5, marginTop: '1px' }}>Built: {getBuildAgo()}</span>}
         </div>
       </div>
@@ -260,12 +260,15 @@ const toScreen = (v: string | null | undefined): Screen | null =>
 /**
  * Ce ecran arată o intrare de istoric pe `/` (`history.state.hzScreen`).
  * `/` e URL-ul tuturor tab-urilor de sus, deci fără marcaj un Back n-ar avea
- * de unde ști pe ce tab aterizează. `projects` = lista de proiecte.
+ * de unde ști pe ce tab aterizează. `users` = „Utilizatori” (din rotița de
+ * setări). Lista „Toate proiectele" (`projects`) a dispărut pe 2026-10-15:
+ * proiectele stau oricum în bara laterală / sertar; o intrare veche marcată
+ * `projects` aterizează pe „Azi".
  */
-type TopScreen = Screen | 'projects'
+type TopScreen = Screen | 'users'
 const readTopScreen = (): TopScreen | null => {
   const v = (window.history.state as { hzScreen?: string } | null)?.hzScreen
-  return v === 'projects' ? v : toScreen(v)
+  return v === 'users' ? v : v === 'projects' ? 'today' : toScreen(v)
 }
 
 /** `smart:today` → `today`, `smart:filter:<id>` → `filter:<id>`. Orice altceva → null. */
@@ -304,6 +307,8 @@ function Shell() {
   const writableProjects = useWritableProjects()
   const [sidebarCollapsed, toggleSidebar] = useSidebarCollapsed()
   const [showUsers, setShowUsers] = useState(false)
+  const showUsersRef = useRef(showUsers)
+  showUsersRef.current = showUsers
   /**
    * Ecranul „peste listă" deschis — o listă inteligentă sau „Ale mele". Ca
    * `showUsers`, e un strat peste conținut care NU deține URL-ul: mașinăria de
@@ -399,6 +404,9 @@ function Shell() {
   // `refresh()` nu-l mai ridică — dar garda rămâne: efectul depinde de `loading`
   // și n-are voie să se rejoace dacă altcineva îl atinge vreodată.
   const bootDone = useRef(false)
+  // Stare, nu ref: randarea în care devine `true` e aceeași în care s-au
+  // aplicat alegerile boot-ului (proiect, ecran) — vezi efectul „spre Azi".
+  const [booted, setBooted] = useState(false)
   const sheetRef = useRef(sheet)
   sheetRef.current = sheet
   const ticketIdRef = useRef(ticketId)
@@ -499,7 +507,7 @@ function Shell() {
   // O intrare pe `/` își poartă și ecranul (`hzScreen`), ca Back să știe pe
   // ce tab aterizează — vezi `TopScreen`.
   const entryState = (path: string) => (path === '/'
-    ? { hzDepth: historyDepth.current, hzScreen: screenRef.current ?? 'projects' }
+    ? { hzDepth: historyDepth.current, hzScreen: screenRef.current ?? (showUsersRef.current ? 'users' : 'today') }
     : { hzDepth: historyDepth.current })
   const pushPath = (path: string) => {
     historyDepth.current += 1
@@ -737,7 +745,23 @@ function Shell() {
       }
     }
     urlSyncReady.current = true
+    setBooted(true)
   }, [loading]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Abia după boot (`booted`): în randarea boot-ului clojura vede încă starea
+  // dinainte de alegerile lui și ar fi trimis pe „Azi" un deep link de proiect.
+  // Fără ecran și fără proiect nu mai e nimic de arătat: lista „Toate
+  // proiectele" a dispărut (2026-10-15). Orice drum care ajungea acolo — un
+  // proiect șters, un `/project/<slug>` necunoscut, o pornire fără proiecte,
+  // Back pe o intrare veche — aterizează pe „Azi", rădăcina. O singură regulă,
+  // aici, în loc de câte o ramură la fiecare drum.
+  useEffect(() => {
+    if (!booted || loading) return
+    if (!screen && !project && !(showUsers && isAdmin)) {
+      setShowUsers(false)
+      setScreen('today')
+    }
+  }, [booted, loading, screen, project, showUsers, isAdmin])
 
   // Rezolvă deep link-ul în așteptare de îndată ce issues proiectului sunt
   // încărcate. Semnalul e `issuesLoadedFor` — o listă goală nu poate distinge
@@ -785,6 +809,9 @@ function Shell() {
     // Un `goTop` își desface stiva cu `go(-n)`, asincron: până la `popstate`
     // bara e încă pe intrarea veche, iar un push aici s-ar înfige în mijloc.
     if (tabPop.current) return
+    // Niciun ecran, niciun proiect: o stare de o randare, pe care efectul de
+    // după boot o duce pe „Azi". Un push acum ar lăsa o intrare în plus.
+    if (!screen && !project && !showUsers) return
 
     // Aceeași regulă ca `settleUrl`: cu o listă pe ecran, destinația e `/`.
     // Și `screen` în dependențe: un click în sidebar pe proiectul DEJA încărcat
@@ -797,8 +824,8 @@ function Shell() {
     // întoarce aici să găsească ecranul de acum, nu pe cel de la împingere.
     // O intrare de foaie (`hzSheet`) nu se atinge — și-ar pierde marcajul.
     else if (path === '/' && !(window.history.state as { hzSheet?: string } | null)?.hzSheet
-      && readTopScreen() !== (screen ?? 'projects')) replacePath(path)
-  }, [project?.id, screen]) // eslint-disable-line react-hooks/exhaustive-deps
+      && readTopScreen() !== (screen ?? (showUsers ? 'users' : 'today'))) replacePath(path)
+  }, [project?.id, screen, showUsers]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sheet de ticket → URL. `ticketId` vine din stiva de sheet-uri, nu din vârf,
   // deci un card de dependență deschis peste formular nu atinge URL-ul.
@@ -910,8 +937,7 @@ function Shell() {
    * De aici iese convenția Android pentru o bară de jos: Back de pe „7 zile"
    * sau „Ale mele" duce pe „Azi", iar de pe „Azi" iese din aplicație (nu mai
    * e nimic al nostru în spate). Un proiect din sertar stă tot peste „Azi"
-   * (`goProject`). `projects` (lista „Toate proiectele") rămâne un ecran de
-   * desktop și al intrărilor vechi din istoric.
+   * (`goProject`), la fel „Utilizatori” (`users`, deschis din rotița de setări).
    *
    * Comutarea unui tab desface tot ce era deasupra rădăcinii (`go(-n)`) și
    * reclădește stiva canonică `[Azi]` sau `[Azi, tab]`. Altfel fiecare atingere
@@ -925,11 +951,8 @@ function Shell() {
    */
   const tabPop = useRef<TopScreen | { project: string } | null>(null)
   const applyTop = (t: TopScreen) => {
-    setShowUsers(false)
-    if (t === 'projects') {
-      setScreen(null)
-      localStorage.removeItem(LAST_VIEW_KEY)
-    } else setScreen(t)
+    setShowUsers(t === 'users')
+    setScreen(t === 'users' ? null : t)
     selectProject(null)
   }
   /** Așază stiva canonică de pe rădăcină: `[Azi]`, sau `[Azi, t]`. */
@@ -1098,11 +1121,18 @@ function Shell() {
         else setScreen('today')
       })
     }
+    // „Utilizatori” din rotița de setări: același tipar, foaia abia s-a închis.
+    const onUsers = () => later(() => {
+      if (narrow) goTopRef.current('users')
+      else { setShowUsers(true); setScreen(null); selectProject(null) }
+    })
     window.addEventListener(OPEN_FILTER_EVENT, onOpen)
     window.addEventListener(FILTER_DELETED_EVENT, onDeleted)
+    window.addEventListener(OPEN_USERS_EVENT, onUsers)
     return () => {
       window.removeEventListener(OPEN_FILTER_EVENT, onOpen)
       window.removeEventListener(FILTER_DELETED_EVENT, onDeleted)
+      window.removeEventListener(OPEN_USERS_EVENT, onUsers)
     }
   }, [narrow, selectProject])
 
@@ -1335,9 +1365,7 @@ function Shell() {
   return (
     <div id="app" className={sidebarCollapsed ? 'sidebar-collapsed' : undefined}>
       <Sidebar
-        isAdmin={isAdmin}
         showUsers={showUsers && isAdmin}
-        onShowUsers={() => { setShowUsers(true); setScreen(null) }}
         onNavigate={() => { setShowUsers(false); exitSmartList() }}
         smartList={smartList}
         onSmartList={openScreen}
@@ -1379,7 +1407,8 @@ function Shell() {
           ) : project ? (
             <ProjectDetail tab={tab} setTab={changeTab} />
           ) : (
-            <ProjectsView />
+            // O singură randare: efectul de mai sus o duce pe „Azi".
+            <div className="view" />
           )}
         </main>
         {/* „Ale mele" n-are FAB: nu există „sarcină nouă" fără o zi și, cu
@@ -1432,7 +1461,6 @@ function Shell() {
       {showSearch && <QuickSearch
         onClose={() => setShowSearch(false)}
         onOpen={openTaskAnywhere}
-        context={smartList ? { kind: smartList } : project && !offProject ? { kind: 'project', projectId: project.id } : null}
       />}
       {showInfo && <InfoPanel onClose={() => setShowInfo(false)} />}
     </div>

@@ -364,26 +364,6 @@ HARTA = (
     + '</svg></div>'
 )
 
-# ═══ ECRANUL „PROIECTE" ══════════════════════════════════════════════════════
-def proj(i, name, desc, pct, accent, tags=()):
-    return ('<button class="proj p%d">'
-            '<h3>%s</h3><p>%s</p><div class="proj-meta">'
-            '<div class="bar"><i style="width:%d%%;background:%s"></i></div>'
-            '<span class="pct">%d%%</span></div>%s</button>'
-            % (i, name, desc, pct, accent, pct,
-               '<div class="proj-tags">%s</div>' % ''.join('<span class="mini">%s</span>' % t for t in tags)
-               if tags else ''))
-
-
-PROIECTE = ('<div class="section-label">Proiecte active <span class="cnt">3</span></div>'
-            '<div class="proj-grid">'
-            + proj(1, 'Aplicație Turism', 'Expense tracker + bilete + auth pentru călătorii', 22, '#6e7bff',
-                   ('TUR', 'val I / III', '9 tichete'))
-            + proj(2, 'Horizontal', 'Mementouri, listele inteligente, modul desktop.', 64, '#3ecf8e',
-                   ('HZ', 'val IV / V'))
-            + proj(3, 'Apologetica', 'Conținut, biblie, taxonomie. Sursa sistemului vizual.', 81, '#ffb454')
-            + '</div>')
-
 # ═══ ECRANUL „AZI" ═══════════════════════════════════════════════════════════
 def group(n, label, date, rows, gc):
     return ('<div class="list-group" style="--gc: %s"><div class="list-group-head">'
@@ -1119,7 +1099,6 @@ SCREENS = {
                '<div class="tabs"><button class="tab on">Ordine</button><button class="tab">Listă</button>'
                '<button class="tab">Hartă</button><button class="tab">Teme</button></div>'
                '<div class="panel">' + ORDINE + '</div>'),
-    'proiecte': ('Horizontal', 'Toate proiectele tale', 'H', False, True, PROIECTE),
     'azi': ('Azi', 'miercuri, 9 septembrie', None, False, False, '<div class="panel smart-list">' + AZI + '</div>'),
     'lista': ('Aplicație Turism', 'Listă · val I · panou lateral', 'TU', True, True,
               '<div class="tabs"><button class="tab">Ordine</button><button class="tab on">Listă</button>'
@@ -1291,7 +1270,6 @@ SHELL = """<!doctype html>
 <body>
 <div class="bench-bar">
   <button data-go="ordine">Ordine</button>
-  <button data-go="proiecte">Proiecte</button>
   <button data-go="azi">Azi</button>
   <button data-go="lista">Listă</button>
   <button data-go="lista-gol">Listă · gol</button>
@@ -1337,7 +1315,7 @@ __TABBAR__
 """
 
 html = (SHELL
-        .replace('__SCREENS__', ''.join(screen(k) for k in ('ordine', 'proiecte', 'azi', 'lista', 'lista-gol', 'harta', 'fir', 'foaie', 'pe-mine', 'sertar', 'utilizatori', 'cont', 'descriere', 'controale')))
+        .replace('__SCREENS__', ''.join(screen(k) for k in ('ordine', 'azi', 'lista', 'lista-gol', 'harta', 'fir', 'foaie', 'pe-mine', 'sertar', 'utilizatori', 'cont', 'descriere', 'controale')))
         .replace('__TABBAR__', TABBAR))
 out = os.path.join(ROOT, 'design/preview.html')
 io.open(out, 'w', encoding='utf-8').write(html)
