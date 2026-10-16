@@ -489,3 +489,43 @@ describe('localRepository — fixări și filtre', () => {
     expect(await repo.listPins()).toEqual([])
   })
 })
+
+describe('localRepository — mutarea în alt proiect', () => {
+  async function setup() {
+    const repo = createLocalRepository()
+    const src = await repo.createProject({ name: 'Sursă', description: '', prefix: 'SRC' })
+    const dst = await repo.createProject({ name: 'Apologetica', description: '', prefix: 'APO' })
+    await repo.createIssue({ projectId: dst.id, title: 'deja acolo' }) // APO-01
+    const a = await repo.createIssue({ projectId: src.id, title: 'de mutat', urgent: true, dueAt: '2026-10-20T07:00:00.000Z', theme: 'ui', assigneeId: 'x' })
+    return { repo, src, dst, a }
+  }
+
+  it('număr nou, val activ, fără temă; firul și vizita urmează tichetul', async () => {
+    const { repo, src, dst, a } = await setup()
+    await repo.postToThread({ issueId: a.id, projectId: src.id, body: 'salut' })
+    const moved = await repo.moveIssue(a.id, dst.id)
+    expect(moved).toMatchObject({ id: 'APO-02', projectId: dst.id, wave: dst.currentWave, theme: '', title: 'de mutat', urgent: true, dueAt: '2026-10-20T07:00:00.000Z', assigneeId: 'x' })
+    expect((await repo.listIssues(src.id)).map((i) => i.id)).not.toContain(a.id)
+    expect((await repo.listIssues(dst.id)).map((i) => i.id)).toEqual(['APO-01', 'APO-02'])
+    const events = await repo.listEvents('APO-02')
+    expect(events.map((e) => [e.body, e.projectId])).toEqual([['salut', dst.id]])
+    expect((await repo.threadSummary('APO-02')).seenAt).not.toBeNull()
+    expect((await repo.threadSummary(a.id)).count).toBe(0)
+  })
+
+  it('refuză dependențele în ambele sensuri și obstacolul', async () => {
+    const { repo, src, dst, a } = await setup()
+    const b = await repo.createIssue({ projectId: src.id, title: 'b', deps: [a.id] })
+    await expect(repo.moveIssue(a.id, dst.id)).rejects.toThrow(`Nu se poate muta ${a.id}: are dependențe (${b.id}). Scoate-le întâi.`)
+    await expect(repo.moveIssue(b.id, dst.id)).rejects.toThrow(`are dependențe (${a.id})`)
+    const c = await repo.createIssue({ projectId: src.id, title: 'c' })
+    await repo.createObstacle({ projectId: src.id, title: 'API', issueIds: [c.id] })
+    await expect(repo.moveIssue(c.id, dst.id)).rejects.toThrow('e legat de un obstacol')
+  })
+
+  it('refuză același proiect și un proiect inexistent', async () => {
+    const { repo, src, a } = await setup()
+    await expect(repo.moveIssue(a.id, src.id)).rejects.toThrow('Tichetul e deja în proiectul „Sursă".')
+    await expect(repo.moveIssue(a.id, 'nu-exista')).rejects.toThrow('Proiectul țintă nu există.')
+  })
+})

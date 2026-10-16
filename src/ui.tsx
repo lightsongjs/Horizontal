@@ -106,8 +106,13 @@ interface UI {
   closeSheet(): boolean
   goBack(): void
   pushSheet(state: SheetState): void
-  /** Un tichet creat offline a primit numărul real: foile care-l țin trec pe ID-ul nou. */
-  renameIssueId(from: string, to: string): void
+  /**
+   * Un tichet creat offline a primit numărul real, sau a fost mutat în alt
+   * proiect: foile care-l țin trec pe ID-ul nou. `remount`: cheia React se
+   * schimbă și ea (formularul complet după o mutare — și-a copiat valul și tema
+   * proiectului vechi la montare). Fără el cheia rămâne cea de la montare.
+   */
+  renameIssueId(from: string, to: string, opts?: { remount?: boolean }): void
   /** Register a guard called before closing all sheets. Return false to block close. */
   setCloseGuard(fn: (() => boolean) | null): void
   /**
@@ -188,14 +193,18 @@ export function dockedKeyFrom(sheets: SheetState[], hasSplitHost: boolean): stri
  * Foile cu `from` trec pe `to`, ținând minte cheia de la montare (prima, nu
  * una intermediară). Aceeași stivă dacă n-are ce schimba — o redenumire a
  * unui tichet care nu e deschis nu trebuie să randeze nimic.
+ *
+ * `keepKey: false` (mutarea din formularul complet): cheia devine ID-ul nou,
+ * deci formularul se remontează pe datele proiectului țintă.
  */
-export function renameIssueInSheets(sheets: SheetState[], from: string, to: string): SheetState[] {
+export function renameIssueInSheets(sheets: SheetState[], from: string, to: string, keepKey = true): SheetState[] {
   if (!sheets.some((s) => 'issueId' in s && s.issueId === from)) return sheets
-  return sheets.map((s) =>
-    (s.kind === 'issue' || s.kind === 'issue-form') && s.issueId === from
-      ? { ...s, issueId: to, keyId: s.keyId ?? from }
-      : s,
-  )
+  return sheets.map((s) => {
+    if ((s.kind !== 'issue' && s.kind !== 'issue-form') || s.issueId !== from) return s
+    if (keepKey) return { ...s, issueId: to, keyId: s.keyId ?? from }
+    const { keyId: _drop, ...rest } = s
+    return { ...rest, issueId: to }
+  })
 }
 
 /**
@@ -324,9 +333,9 @@ export function UIProvider({ children }: { children: ReactNode }) {
       // nu se remonteze și să nu piardă ce e nesalvat. Și intenția de comutare
       // în așteptare îl urmează — altfel a doua atingere pe rând n-ar mai
       // recunoaște tichetul și ar cere din nou confirmarea.
-      renameIssueId: (from, to) => {
+      renameIssueId: (from, to, opts) => {
         if (pendingSwitch.current?.id === from) pendingSwitch.current.id = to
-        setSheets((prev) => renameIssueInSheets(prev, from, to))
+        setSheets((prev) => renameIssueInSheets(prev, from, to, !opts?.remount))
       },
       setCloseGuard: (fn) => { closeGuard.current = fn },
       toast,

@@ -25,6 +25,7 @@ import { SheetThreadRow } from './SheetThreadRow'
 import type { EditorHandle } from './MarkdownEditor'
 import { describeRrule } from '../lib/recurrence'
 import { ChipPop } from './ChipPop'
+import { MoveChip } from './MoveProject'
 import { attachBlocked } from './SheetFiles'
 import type { Issue, TestScenario } from '../lib/types'
 import { Icon } from './Icon'
@@ -1547,6 +1548,11 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
       {/* HEADER */}
       <div className={`sh-header${isEdit ? '' : ' is-new'}`}>
         {isEdit && existing && <span className="sh-id">{displayIssueId(existing.id)}</span>}
+        {/* Proiectul, lângă ID: jetonul de mutare (număr nou în proiectul
+            țintă). Fără drept de scriere sau cu ID provizoriu nu apare. */}
+        {isEdit && existing && canWrite && !isTempIssueId(existing.id) && (
+          <MoveChip issue={existing} dirty={isDirty} narrow={narrow} />
+        )}
         <button className="sh-close" onClick={closeSheet} aria-label="Închide"><Icon name="close" size={16} /></button>
         {docked && isEdit && (
           <button

@@ -13,10 +13,13 @@ import type { Issue } from '../lib/types'
 import { Icon } from './Icon'
 import { KeyboardSheet } from './KeyboardSheet'
 import { NativePick } from './NativePick'
+import { MoveProjectSheet } from './MoveProject'
+import { isTempIssueId } from '../lib/issueId'
 
 /** Foaia de acțiuni deschisă peste listă: pe ce sarcini, și ce fel. */
 // `bulk-more`: ⋮ din bara de selecție — fără „Șterge", care e deja în bară.
-type ActionSheet = { kind: 'date' | 'more' | 'bulk-more' | 'assign'; ids: string[] }
+// `move`: „Mută în proiect…" din ⋮ al unui singur rând (selecția nu se mută, v1).
+type ActionSheet = { kind: 'date' | 'more' | 'bulk-more' | 'assign' | 'move'; ids: string[] }
 
 interface TaskActions extends Selection {
   /** Sub 900px: numai acolo există glisare, apăsare lungă și bara de selecție. */
@@ -217,9 +220,15 @@ export function TaskActionsProvider({ children }: { children: ReactNode }) {
           urgent={sheet.kind === 'more' ? targets.every((i) => i.urgent) && targets.length > 0 : null}
           onUrgent={() => void run(urgentActionFor(targets), sheet.ids)}
           onAssign={() => setSheet({ kind: 'assign', ids: sheet.ids })}
+          onMove={sheet.kind === 'more' && targets.length === 1 && canWrite(targets[0].projectId) && !isTempIssueId(targets[0].id)
+            ? () => setSheet({ kind: 'move', ids: sheet.ids })
+            : null}
           onDelete={() => remove(sheet.ids)}
           onClose={() => setSheet(null)}
         />
+      )}
+      {sheet?.kind === 'move' && targets.length === 1 && (
+        <MoveProjectSheet issue={targets[0]} open={false} onClose={finish} />
       )}
       {sheet?.kind === 'assign' && (
         <AssignSheet
@@ -305,8 +314,11 @@ function DateSheet({ issues, onPick, dateInitial, timeInitial, onPickDate, onPic
  * ~60px și împingeau banda peste pragul glisării complete. `urgent` e `null`
  * în ⋮ al selecției, unde bara are deja Urgent.
  */
-function MoreSheet({ count, canDelete, urgent, onUrgent, onAssign, onDelete, onClose }: {
-  count: number; canDelete: boolean; urgent: boolean | null; onUrgent(): void; onAssign(): void; onDelete(): void; onClose(): void
+function MoreSheet({ count, canDelete, urgent, onUrgent, onAssign, onMove, onDelete, onClose }: {
+  count: number; canDelete: boolean; urgent: boolean | null; onUrgent(): void; onAssign(): void
+  /** `null`: mai multe sarcini, fără drept, sau ID provizoriu — rândul lipsește. */
+  onMove: (() => void) | null
+  onDelete(): void; onClose(): void
 }) {
   return (
     <KeyboardSheet onClose={onClose} label="Mai multe" className="action-sheet">
@@ -319,6 +331,11 @@ function MoreSheet({ count, canDelete, urgent, onUrgent, onAssign, onDelete, onC
         <button type="button" className="as-item" onClick={onAssign}>
           <Icon name="people" size={18} /> Pasează
         </button>
+        {onMove && (
+          <button type="button" className="as-item" onClick={onMove}>
+            <Icon name="move" size={18} /> Mută în proiect…
+          </button>
+        )}
         {canDelete && (
           <button type="button" className="as-item danger" onClick={onDelete}>
             <Icon name="delete" size={18} /> Șterge{count > 1 ? ` ${count}` : ''}

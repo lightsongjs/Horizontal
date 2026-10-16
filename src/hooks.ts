@@ -12,6 +12,8 @@ import { Autosaver, type AutosaveStatus, type Fields, type Normalize } from './l
 import { captureDefaultProjectId, computeDraft, keyboardInset, type DraftError, type DraftSchedule, type ManualPick, type QuickCtx } from './lib/quickDraft'
 import type { NewIssue } from './data/repository'
 import { LONG_PRESS_MS, movedBeyondTap } from './lib/swipe'
+import { ticketPath } from './lib/deepLink'
+import { movedNotice } from './lib/moveIssue'
 
 const HIDE_DONE_KEY = 'horizontal:hide-done'
 const SIDEBAR_KEY = 'horizontal:sidebar-collapsed'
@@ -68,6 +70,41 @@ export function useWritableProjects(): Project[] {
     if (!enabled || isAdmin) return projects
     return projects.filter((p) => access[p.id] === 'write')
   }, [enabled, isAdmin, access, projects])
+}
+
+/**
+ * Mutarea unui tichet în alt proiect, cu tot ce nu ține de store: foaia
+ * deschisă, URL-ul și confirmarea. Același drum ca redenumirea unui tichet
+ * provizoriu (`SyncBridge` din `App.tsx`): bara se rescrie cu `replaceState`
+ * ÎNAINTE ca foaia să treacă pe ID-ul nou — altfel efectul `[ticketId]` ar fi
+ * împins o intrare nouă, iar Back ar fi aterizat pe `/HZ-12`, un tichet care
+ * nu mai există. Așa Back duce pe lista de dinainte.
+ *
+ * `open`: tichetul e deschis într-o foaie, deci proiectul țintă devine cel
+ * încărcat în store (valurile, temele, dependențele formularului sunt ale lui).
+ * `remount`: formularul complet se remontează — și-a copiat la montare valul și
+ * tema proiectului vechi, iar Salvează le-ar fi scris peste mutare. Foaia de
+ * telefon nu (`EditSheet` își rebazează ciorna din store), ca nimic din ce
+ * scrii să nu se piardă.
+ *
+ * Aruncă mesajul de arătat omului (refuz, offline); confirmarea e un toast.
+ */
+export function useMoveIssue(): (id: string, targetProjectId: string, opts?: { open?: boolean; remount?: boolean }) => Promise<Issue> {
+  const { moveIssue, projects, selectProject } = useHorizontal()
+  const { renameIssueId, showToast } = useUI()
+  const projectsRef = useRef(projects)
+  projectsRef.current = projects
+  return useCallback(async (id, targetProjectId, opts) => {
+    const moved = await moveIssue(id, targetProjectId)
+    if (window.location.pathname === ticketPath(id)) {
+      window.history.replaceState(window.history.state, '', ticketPath(moved.id))
+    }
+    renameIssueId(id, moved.id, { remount: opts?.remount })
+    if (opts?.open) selectProject(targetProjectId)
+    const name = projectsRef.current.find((p) => p.id === targetProjectId)?.name ?? targetProjectId
+    showToast(movedNotice(name, moved.id))
+    return moved
+  }, [moveIssue, renameIssueId, selectProject, showToast])
 }
 
 /** True when a keyboard shortcut should be ignored: focus is in a text field,

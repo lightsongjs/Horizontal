@@ -15,7 +15,8 @@ import type { EditorHandle } from './MarkdownEditor'
 import { FormatBar } from './FormatBar'
 import { AttachButton, ThumbRow, attachBlocked, useTicketFiles } from './SheetFiles'
 import { ProjectMark } from './ProjectMark'
-import { displayIssueId } from '../lib/issueId'
+import { displayIssueId, isTempIssueId } from '../lib/issueId'
+import { MoveProjectSheet } from './MoveProject'
 import { SheetThreadRow } from './SheetThreadRow'
 
 /** Ce se editează din foaie — exact câmpurile pe care le poate trimite. */
@@ -73,9 +74,11 @@ const keepFocus = (e: PointerEvent) => e.preventDefault()
  * deosebire de formularul complet, care și-a copiat câmpurile la montare.
  */
 export function EditSheet({ issueId }: { issueId: string }) {
-  const { byId, dueIssues } = useHorizontal()
+  const { byId, dueIssues, openIssues } = useHorizontal()
   const { closeSheet } = useUI()
-  const issue = byId[issueId] ?? dueIssues.find((i) => i.id === issueId)
+  // `openIssues` în plus: tichetul abia mutat, fără scadență, cât proiectul
+  // țintă încă se încarcă (`byId` e al proiectului deschis).
+  const issue = byId[issueId] ?? dueIssues.find((i) => i.id === issueId) ?? openIssues.find((i) => i.id === issueId)
   if (!issue) {
     return (
       <KeyboardSheet onClose={closeSheet} label="Sarcină" className="edit-sheet">
@@ -133,6 +136,10 @@ function EditBody({ issue }: { issue: Issue }) {
   useEffect(() => () => applyRef.current(), [])
   const files = useTicketFiles(issue.id, issue.projectId, showToast)
   const [whenOpen, setWhenOpen] = useState(false)
+  const [moveOpen, setMoveOpen] = useState(false)
+  // Mutarea cere scriere pe sursă (ținta o filtrează selectorul) și un număr
+  // real: `HZ-~…` încă n-a ajuns pe server.
+  const canMove = canWrite && !isTempIssueId(issue.id)
   const descRef = useRef<EditorHandle>(null)
   const [descFocus, setDescFocus] = useState(false)
   // Cu tastatura sus (titlu sau descriere în focus) rândul de fir se ascunde:
@@ -220,9 +227,25 @@ function EditBody({ issue }: { issue: Issue }) {
             <span className="qs-due-t">{parts ? parts.day : 'Fără dată'}</span>
             {parts?.time && <span className="qs-due-h">{parts.time}</span>}
           </button>
-          {/* Proiectul unui tichet existent nu se schimbă: ID-ul îi poartă
-              prefixul, iar valul și dependențele sunt ale proiectului. */}
-          {project && (
+          {/* Proiectul se schimbă prin MUTARE (număr nou, `move_issue`), nu
+              printr-un câmp: jetonul deschide foaia mică de proiecte. Fără
+              drept de scriere rămâne doar afișat. */}
+          {project && canMove && (
+            <button
+              type="button"
+              className="qs-sel qs-proj tinted"
+              title={`${project.name} — mută în alt proiect`}
+              aria-label={`Proiect: ${project.name}. Mută în alt proiect`}
+              aria-haspopup="dialog"
+              style={project.accent ? ({ ['--pc' as string]: project.accent }) : undefined}
+              onPointerDown={keepFocus}
+              onClick={() => setMoveOpen(true)}
+            >
+              <ProjectMark project={project} dot="t-dot" />
+              <span className="qs-sel-t">{project.name}</span>
+            </button>
+          )}
+          {project && !canMove && (
             <span className="qs-sel qs-proj tinted" title={project.name} style={project.accent ? ({ ['--pc' as string]: project.accent }) : undefined}>
               <ProjectMark project={project} dot="t-dot" />
               <span className="qs-sel-t">{project.name}</span>
@@ -325,6 +348,19 @@ function EditBody({ issue }: { issue: Issue }) {
 
         {descFocus && canWrite && <FormatBar onFormat={(c) => descRef.current?.format(c)} />}
       </div>
+      {moveOpen && (
+        <MoveProjectSheet
+          issue={issue}
+          open
+          // Ce așteaptă încă pauza (și o dată evidențiată în titlu) pleacă pe
+          // ID-ul vechi înainte de mutare; un eșec oprește mutarea.
+          prepare={async () => {
+            applyDate()
+            if (!(await a.flush())) throw new Error('Modificarea de dinainte nu s-a salvat — încearcă din nou.')
+          }}
+          onClose={() => setMoveOpen(false)}
+        />
+      )}
     </KeyboardSheet>
   )
 }

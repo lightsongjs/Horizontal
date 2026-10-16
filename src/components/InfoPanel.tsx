@@ -90,6 +90,10 @@ const RULES: { title: string; body: string }[] = [
     body: 'Un tichet fără assignee e al celui care l-a creat; assignee-ul înseamnă „ți l-am pasat". Nimic nu atribuie automat un tichet cuiva.',
   },
   {
+    title: 'Mutarea în alt proiect',
+    body: 'Din jetonul de proiect (foaia de tichet, lângă ID în formular) sau din ⋮ al unui rând. Tichetul primește NUMĂR NOU în proiectul țintă (HZ-12 → APO-07), iar linkul vechi nu-l mai găsește. Firul, fișierele și scadența merg cu el; valul devine cel activ al țintei, tema se golește. Un tichet cu dependențe (în orice sens) sau legat de un obstacol nu se mută — scoate-le întâi.',
+  },
+  {
     title: 'Toată ziua',
     body: 'O sarcină fără oră e „cândva azi" și stă deasupra celor cu oră. Nu devine restantă la miezul nopții, ci abia a doua zi.',
   },
