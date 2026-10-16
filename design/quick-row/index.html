@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="ro" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rândul foii rapide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;650;700;750&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Jetoanele „Senin" (src/styles.css) — copiate, nu importate: macheta se deschide singură. */
+:root,[data-theme=light]{
+  --bg:#FFFFFF;--surface:#FFFFFF;--surface-2:#F6F7F9;--surface-3:#EEF0F3;--line:#E6E8EC;
+  --txt:#1A1C20;--txt-dim:#565C66;--txt-faint:#868C96;
+  --accent:#2F6BFF;--accent-soft:#EBF1FF;--on-accent:#fff;--done:#1F9D60;
+  --blocked:#E5484D;--blocked-soft:#FDEEEE;
+  --scrim:rgba(16,24,40,.28);
+  --amb-lg:0 2px 6px rgba(16,24,40,.06),0 18px 44px rgba(16,24,40,.12);
+  --page:#EDEBE7;--page-ink:#1D1C1A;--page-dim:#6F6B64;
+  --kbd:#E3E5E9;--key:#FFFFFF;
+}
+[data-theme=dark]{
+  --bg:#141517;--surface:#1B1C1F;--surface-2:#232428;--surface-3:#2B2D32;--line:#2A2C31;
+  --txt:#EEEFF1;--txt-dim:#A6ABB3;--txt-faint:#757A83;
+  --accent:#5B8DFF;--accent-soft:rgba(91,141,255,.15);--on-accent:#fff;--done:#3DBF85;
+  --blocked:#FF6369;--blocked-soft:rgba(255,99,105,.13);
+  --scrim:rgba(0,0,0,.55);
+  --amb-lg:inset 0 1px 0 rgba(255,255,255,.05),0 16px 44px rgba(0,0,0,.5);
+  --page:#0F1012;--page-ink:#EEEFF1;--page-dim:#8C9199;
+  --kbd:#202124;--key:#3A3B3F;
+  color-scheme:dark;
+}
+:root{--r:20px;--r-m:12px;--r-s:8px;--mono:"Geist Mono",ui-monospace,monospace;--display:Inter,system-ui,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--page);color:var(--page-ink)}
+body{font-family:var(--display);-webkit-font-smoothing:antialiased}
+svg{display:block;flex-shrink:0}
+button{font:inherit;color:inherit;border:0;cursor:pointer}
+
+/* ── pagina ──────────────────────────────────── */
+.wrap{max-width:1260px;margin:0 auto;padding:36px 16px 80px}
+.top{display:flex;align-items:flex-start;gap:24px;justify-content:space-between;flex-wrap:wrap}
+.eyebrow{font-size:12px;font-weight:650;color:var(--page-dim)}
+h1{font-size:32px;line-height:1.1;letter-spacing:-.03em;font-weight:750;margin:6px 0 10px}
+.intro p{font-size:15px;line-height:1.55;color:var(--page-dim);max-width:92ch}
+.intro p+p{margin-top:8px}
+.intro b{color:var(--page-ink);font-weight:600}
+.flag{margin-top:14px;padding:12px 14px;border-radius:var(--r-m);background:color-mix(in srgb,var(--blocked) 10%,transparent);font-size:14px;line-height:1.5;max-width:100ch}
+.flag b{font-weight:650}
+.theme{display:flex;gap:4px;background:color-mix(in srgb,var(--page-ink) 7%,transparent);padding:3px;border-radius:var(--r-s)}
+.theme button{background:none;padding:6px 12px;border-radius:6px;font-size:13px;font-weight:600;color:var(--page-dim)}
+.theme button.on{background:var(--bg);color:var(--page-ink)}
+
+.opt{margin-top:34px;display:grid;grid-template-columns:minmax(240px,330px) 1fr;gap:28px;align-items:start}
+@media (max-width:900px){.opt{grid-template-columns:1fr}}
+.opt h2{font-size:19px;font-weight:700;letter-spacing:-.01em;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tag{font-size:11.5px;font-weight:650;padding:3px 8px;border-radius:var(--r-s);background:color-mix(in srgb,var(--page-ink) 8%,transparent);color:var(--page-dim)}
+.tag.rec{background:var(--accent);color:#fff}
+.opt .seq{margin-top:8px;font-family:var(--mono);font-size:12.5px;color:var(--page-dim)}
+.opt ul{margin:10px 0 0 18px;font-size:14px;line-height:1.5;color:var(--page-dim)}
+.opt li+li{margin-top:4px}
+.opt li b{color:var(--page-ink);font-weight:600}
+.phones{display:flex;gap:20px;flex-wrap:wrap}
+.cap{font-size:12px;font-weight:650;color:var(--page-dim);margin-bottom:6px}
+
+.rec-box{margin-top:44px;padding:20px 22px;border-radius:var(--r);background:var(--bg);color:var(--txt);box-shadow:var(--amb-lg);max-width:880px}
+.rec-box h2{font-size:18px;font-weight:700}
+.rec-box ol{margin:10px 0 0 20px;font-size:15px;line-height:1.55;color:var(--txt-dim)}
+.rec-box li b{color:var(--txt);font-weight:600}
+
+/* ── telefonul (390px), tăiat: lista din spate, foaia, începutul tastaturii ── */
+.phone{width:390px;max-width:100%;border-radius:24px;overflow:hidden;background:var(--bg);position:relative;box-shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px rgba(0,0,0,.12)}
+.behind{height:54px;padding:10px 16px;background:var(--bg);position:relative}
+.behind::after{content:"";position:absolute;inset:0;background:var(--scrim)}
+.behind .r{height:12px;width:62%;border-radius:4px;background:var(--surface-3);margin-top:6px}
+.behind .r:first-child{width:40%;margin-top:2px}
+.sheet{background:var(--surface);border-radius:var(--r) var(--r) 0 0;margin-top:-14px;position:relative;padding:8px 16px 10px;box-shadow:var(--amb-lg)}
+.grab{height:16px;display:flex;justify-content:center}
+.grab::before{content:"";width:38px;height:5px;border-radius:50%/100%;background:var(--surface-3)}
+[data-theme=light] .grab::before{background:#D9DCE1}
+.head{display:flex;align-items:center;gap:10px}
+.title{font-size:17px;line-height:28px;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+.title mark{background:var(--accent-soft);color:var(--accent);border-radius:4px;padding:0 2px}
+.title .caret{display:inline-block;width:1.5px;height:19px;background:var(--accent);vertical-align:-3px;margin-left:1px}
+.desc{font-size:15px;color:var(--txt-faint);margin-top:4px;line-height:22px}
+.head + .desc{padding-left:0}
+.ring-pad .desc{padding-left:32px}
+.ck{width:22px;height:22px;border-radius:50%;flex-shrink:0;box-shadow:inset 0 0 0 1.75px color-mix(in srgb,var(--pc,var(--txt-faint)) 80%,var(--bg))}
+.ck.urg{box-shadow:inset 0 0 0 2px var(--blocked);background:var(--blocked-soft)}
+.ck-btn{width:30px;height:30px;margin-left:-4px;display:grid;place-items:center;border-radius:50%;background:none}
+
+.bar{display:flex;align-items:center;gap:5px;margin-top:12px}
+.due,.ico,.sel{height:34px;border-radius:var(--r-s);background:var(--surface-2);color:var(--txt-dim);display:inline-flex;align-items:center}
+.due{gap:4px;padding:0 8px;flex:0 1 auto;min-width:34px;overflow:hidden;white-space:nowrap;font-size:12px;font-weight:600;color:var(--txt-faint)}
+.due.on{background:var(--accent-soft);color:var(--accent)}
+.due .h{font-family:var(--mono);font-weight:500}
+.ico{width:34px;justify-content:center;flex-shrink:0;position:relative}
+.sel{gap:6px;padding:0 10px;font-size:13px;white-space:nowrap;overflow:hidden;flex:0 3 auto;min-width:44px;max-width:150px}
+.sel .t{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--pc);flex-shrink:0}
+/* urgent — azi: linia de 2px; propus: fundal roșu-pal, ca data pe accent-soft */
+.urgent.on.old{color:var(--blocked);box-shadow:inset 0 -2px 0 var(--blocked)}
+.urgent.on{color:var(--blocked);background:var(--blocked-soft)}
+.attach.on{color:var(--accent);background:var(--accent-soft)}
+.attach.on.old{background:var(--surface-2);box-shadow:inset 0 -2px 0 var(--accent)}
+.n{position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;padding:0 4px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:var(--on-accent);font-size:10px;font-weight:600;line-height:1}
+.sep{flex:1 0 2px}
+.send{width:38px;height:38px;flex-shrink:0;border-radius:50%;background:var(--accent);color:var(--on-accent);display:inline-flex;align-items:center;justify-content:center;margin-left:auto}
+.sep + .ico{}
+.hint{margin-top:6px;font-size:12px;color:var(--txt-faint);min-height:0}
+.kbd{background:var(--kbd);padding:8px 4px 6px;display:grid;gap:7px}
+.kbd .row{display:flex;gap:5px;justify-content:center}
+.kbd .k{height:34px;flex:0 0 31px;border-radius:6px;background:var(--key);box-shadow:0 1px 0 rgba(0,0,0,.12)}
+/* zona degetului mare (mâna dreaptă) peste rândul de controale */
+.thumb .bar{position:relative}
+.thumb .bar::after{content:"";position:absolute;right:-16px;top:-30px;width:250px;height:100px;border-radius:50% 0 0 50%;background:radial-gradient(ellipse at 100% 60%,color-mix(in srgb,var(--done) 20%,transparent),transparent 70%);pointer-events:none}
+
+.edit{margin-top:40px}
+.edit h2{font-size:19px;font-weight:700}
+.edit p{font-size:14px;color:var(--page-dim);margin-top:6px;max-width:90ch;line-height:1.5}
+.estrip{margin-top:12px;display:grid;gap:14px}
+.estrip .phone{padding:14px 16px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="intro">
+      <div class="eyebrow">Foaia rapidă · telefon 390px · 2026-10-15</div>
+      <h1>Unde stă „Urgent" în rândul de controale</h1>
+      <p>Rândul de deasupra tastaturii, de la stânga la dreapta. Problema reală nu e vecinul lui ⚡, ci <b>ritmul</b>: azi rândul alternează jeton cu text, iconiță, jeton cu text, iconițe — <b>Azi · ⚡ · Inbox · 📎 · ⋯ · ↑</b>. Ochiul nu găsește grupuri, iar urgentul, singurul comutator, stă înghesuit între cele două jetoane care spun <i>când</i> și <i>unde</i>.</p>
+      <div class="flag"><b>Neconcordanță cu descrierea întrebării.</b> Codul de pe <code>master</code> (b61e8a7) NU are persoană în foaia rapidă: <code>QuickSheet.tsx</code> randează <b>dată · urgent · proiect · agrafă · ⋯ · trimite</b>, exact cum spune CLAUDE.md („agrafa a luat locul persoanei"). Persoana apare doar în foaia de tichet, ca inițiale numai citite, și doar dacă tichetul e pasat. Dacă pe telefon se vede o iconiță de persoană, e un build vechi în cache (service worker) sau „persoana" e de fapt ⋯ — de verificat pe telefon. Tot așa, ⚡ stă azi între <b>dată</b> și Inbox, nu între persoană și Inbox.</div>
+    </div>
+    <div class="theme" role="group" aria-label="Tema">
+      <button data-t="light" class="on">Luminos</button>
+      <button data-t="dark">Întunecat</button>
+    </div>
+  </div>
+
+  <!-- ─────────── ACUM ─────────── -->
+  <section class="opt" id="o0">
+    <div>
+      <h2>Acum <span class="tag">în producție</span></h2>
+      <div class="seq">[Azi] [⚡] [Inbox] [📎] [⋯] (↑)</div>
+      <ul>
+        <li>Jetoanele cu text sunt despărțite de ⚡ — rândul se citește în zig-zag.</li>
+        <li>Starea „urgent pornit" e o linie de 2px sub iconiță: se pierde lângă o dată pe accent-soft.</li>
+        <li>Proiectul, al doilea cel mai schimbat lucru, e împins spre mijloc de o iconiță rar folosită.</li>
+      </ul>
+    </div>
+    <div class="phones">
+      <div><div class="cap">Scris: dată recunoscută, Inbox</div>
+        <div class="phone">
+          <div class="behind"><div class="r"></div><div class="r"></div></div>
+          <div class="sheet"><div class="grab"></div>
+            <div class="title">Sună la service pentru Logan <mark>mâine la 10</mark><span class="caret"></span></div>
+            <div class="desc">Descriere</div>
+            <div class="bar">
+              <span class="due on" data-i="due"><span>Mâine</span><span class="h">10:00</span></span>
+              <span class="ico urgent" data-i="zap"></span>
+              <span class="sel" style="--pc:var(--accent)"><span data-i="inbox" data-s="12" style="color:var(--accent)"></span><span class="t">Inbox</span></span>
+              <span class="ico" data-i="clip"></span>
+              <span class="ico" data-i="more"></span>
+              <span class="send" data-i="send"></span>
+            </div>
+          </div>
+          <div class="kbd"></div>
+        </div></div>
+      <div><div class="cap">Urgent pornit, o poză, alt proiect</div>
+        <div class="phone">
+          <div class="behind"><div class="r"></div><div class="r"></div></div>
+          <div class="sheet"><div class="grab"></div>
+            <div class="title">Plătește factura Enel<span class="caret"></span></div>
+            <div class="desc">Cod client 4002 1187 — scadentă vineri</div>
+            <div class="bar">
+              <span class="due on" data-i="due"><span>Azi</span></span>
+              <span class="ico urgent on old" data-i="zap"></span>
+              <span class="sel" style="--pc:#0E9F8E"><span class="dot"></span><span class="t">Casă și facturi</span></span>
+              <span class="ico attach on old" data-i="clip"><span class="n">1</span></span>
+              <span class="ico" data-i="more"></span>
+              <span class="send" data-i="send"></span>
+            </div>
+          </div>
+          <div class="kbd"></div>
+        </div></div>
+    </div>
+  </section>
+
+  <!-- ─────────── A ─────────── -->
+  <section class="opt" id="oA">
+    <div>
+      <h2>A · Text la stânga, unelte la dreapta <span class="tag rec">recomandat</span></h2>
+      <div class="seq">[Azi] [Inbox] ··· [⚡] [📎] [⋯] (↑)</div>
+      <ul>
+        <li><b>Două grupuri:</b> <i>când + unde</i> (jetoane cu text, se taie cu „…") și <i>comutatoare</i> (iconițe 34px, fixe).</li>
+        <li>⚡ și 📎 stau în arcul degetului mare, lângă trimite: un „!" de ultim moment fără întindere.</li>
+        <li>Pornit = fundal pal + culoare (roșu pentru ⚡, accent pentru 📎), exact ca data pe accent-soft. Fără linia de 2px.</li>
+        <li>Golul elastic dintre grupuri absoarbe lățimea; la 320px cedează întâi numele proiectului, ca azi.</li>
+      </ul>
+    </div>
+    <div class="phones">
+      <div><div class="cap">Scris: dată recunoscută, Inbox</div>
+        <div class="phone">
+          <div class="behind"><div class="r"></div><div class="r"></div></div>
+          <div class="sheet"><div class="grab"></div>
+            <div class="title">Sună la service pentru Logan <mark>mâine la 10</mark><span class="caret"></span></div>
+            <div class="desc">Descriere</div>
+            <div class="bar">
+              <span class="due on" data-i="due"><span>Mâine</span><span class="h">10:00</span></span>
+              <span class="sel"><span data-i="inbox" data-s="12" style="color:var(--accent)"></span><span class="t">Inbox</span></span>
+              <span class="sep"></span>
+              <span class="ico urgent" data-i="zap"></span>
+              <span class="ico" data-i="clip"></span>
+              <span class="ico" data-i="more"></span>
+              <span class="send" data-i="send" style="margin-left:3px"></span>
+            </div>
+          </div>
+          <div class="kbd"></div>
+        </div></div>
+      <div><div class="cap">Urgent pornit, o poză, alt proiect</div>
+        <div class="phone">
+          <div class="behind"><div class="r"></div><div class="r"></div></div>
+          <div class="sheet"><div class="grab"></div>
+            <div class="title">Plătește factura Enel<span class="caret"></span></div>
+            <div class="desc">Cod client 4002 1187 — scadentă vineri</div>
+            <div class="bar">
+              <span class="due on" data-i="due"><span>Azi</span></span>
+              <span class="sel" style="--pc:#0E9F8E"><span class="dot"></span><span class="t">Casă și facturi</span></span>
+              <span class="sep"></span>
+              <span class="ico urgent on" data-i="zap"></span>
+              <span class="ico attach on" data-i="clip"><span class="n">1</span></span>
+              <span class="ico" data-i="more"></span>
+              <span class="send" data-i="send" style="margin-left:3px"></span>
+            </div>
+          </div>
+          <div class="kbd"></div>
+        </div></div>
+    </div>
+  </section>
+
+  <!-- ─────────── B ─────────── -->
+  <section class="opt" id="oB">
+    <div>
+      <h2>B · A + inelul de lângă titlu arată starea <span class="tag">variantă</span></h2>
+      <div class="seq">(○) Titlu… / [Azi] [Inbox] ··· [⚡] [📎] [⋯] (↑)</div>
+      <ul>
+        <li>Un inel <code>.ck</code> în culoarea proiectului, ca în foaia de tichet: arată de pe acum cum va arăta rândul în listă. Roșu când e urgent.</li>
+        <li><b>Inelul nu se atinge</b> — comutatorul rămâne ⚡. În foaia de tichet același inel înseamnă „gata"; aici n-are ce bifa.</li>
+        <li>Cost: un inel care arată a buton și nu face nimic; titlul pierde 32px.</li>
+      </ul>
+    </div>
+    <div class="phones">
+      <div><div class="cap">Scris: dată recunoscută, Inbox</div>
+        <div class="phone">
+          <div class="behind"><div class="r"></div><div class="r"></div></div>
+          <div class="sheet ring-pad"><div class="grab"></div>
+            <div class="head"><span class="ck" style="--pc:var(--accent)"></span>
+              <div class="title">Sună la service pentru Logan <mark>mâine la 10</mark><span class="caret"></span></div></div>
+            <div class="desc">Descriere</div>
+            <div class="bar">
+              <span class="due on" data-i="due"><span>Mâine</span><span class="h">10:00</span></span>
+              <span class="sel"><span data-i="inbox" data-s="12" style="color:var(--accent)"></span><span class="t">Inbox</span></span>
+              <span class="sep"></span>
+              <span class="ico urgent" data-i="zap"></span>
+              <span class="ico" data-i="clip"></span>
+              <span class="ico" data-i="more"></span>
+              <span class="send" data-i="send" style="margin-left:3px"></span>
+            </div>
+          </div>
+          <div class="kbd"></div>
+        </div></div>
+      <div><div class="cap">Urgent pornit, o poză, alt proiect</div>
+        <div class="phone">
+          <div class="behind"><div class="r"></div><div class="r"></div></div>
+          <div class="sheet ring-pad"><div class="grab"></div>
+            <div class="head"><span class="ck urg"></span>
+              <div class="title">Plătește factura Enel<span class="caret"></span></div></div>
+            <div class="desc">Cod client 4002 1187 — scadentă vineri</div>
+            <div class="bar">
+              <span class="due on" data-i="due"><span>Azi</span></span>
+              <span class="sel" style="--pc:#0E9F8E"><span class="dot"></span><span class="t">Casă și facturi</span></span>
+              <span class="sep"></span>
+              <span class="ico urgent on" data-i="zap"></span>
+              <span class="ico attach on" data-i="clip"><span class="n">1</span></span>
+              <span class="ico" data-i="more"></span>
+              <span class="send" data-i="send" style="margin-left:3px"></span>
+            </div>
+          </div>
+          <div class="kbd"></div>
+        </div></div>
+    </div>
+  </section>
+
+  <!-- ─────────── C ─────────── -->
+  <section class="opt" id="oC">
+    <div>
+      <h2>C · Urgentul trăiește pe inel <span class="tag">variantă</span></h2>
+      <div class="seq">(○ ← atinge) Titlu… / [Azi] [Inbox] ··· [📎] [⋯] (↑)</div>
+      <ul>
+        <li>Rândul pierde un buton: proiectul primește încă 39px, „Casă și facturi" nu se mai taie.</li>
+        <li>Atingerea inelului comută urgentul; „!" în text face același lucru.</li>
+        <li><b>Contra:</b> în foaia de tichet, în listă și pe carduri inelul = „gata". Același gest ar face două lucruri diferite în două foi la un deget distanță — încalcă regula 2 din „Senin". Și nimic nu spune că inelul se atinge.</li>
+      </ul>
+    </div>
+    <div class="phones">
+      <div><div class="cap">Scris: dată recunoscută, Inbox</div>
+        <div class="phone">
+          <div class="behind"><div class="r"></div><div class="r"></div></div>
+          <div class="sheet ring-pad"><div class="grab"></div>
+            <div class="head"><button class="ck-btn" aria-label="Urgent"><span class="ck" style="--pc:var(--accent)"></span></button>
+              <div class="title">Sună la service pentru Logan <mark>mâine la 10</mark><span class="caret"></span></div></div>
+            <div class="desc">Descriere</div>
+            <div class="bar">
+              <span class="due on" data-i="due"><span>Mâine</span><span class="h">10:00</span></span>
+              <span class="sel"><span data-i="inbox" data-s="12" style="color:var(--accent)"></span><span class="t">Inbox</span></span>
+              <span class="sep"></span>
+              <span class="ico" data-i="clip"></span>
+              <span class="ico" data-i="more"></span>
+              <span class="send" data-i="send" style="margin-left:3px"></span>
+            </div>
+          </div>
+          <div class="kbd"></div>
+        </div></div>
+      <div><div class="cap">Urgent pornit, o poză, alt proiect</div>
+        <div class="phone">
+          <div class="behind"><div class="r"></div><div class="r"></div></div>
+          <div class="sheet ring-pad"><div class="grab"></div>
+            <div class="head"><button class="ck-btn" aria-label="Urgent"><span class="ck urg"></span></button>
+              <div class="title">Plătește factura Enel<span class="caret"></span></div></div>
+            <div class="desc">Cod client 4002 1187 — scadentă vineri</div>
+            <div class="bar">
+              <span class="due on" data-i="due"><span>Azi</span></span>
+              <span class="sel" style="--pc:#0E9F8E"><span class="dot"></span><span class="t">Casă și facturi</span></span>
+              <span class="sep"></span>
+              <span class="ico attach on" data-i="clip"><span class="n">1</span></span>
+              <span class="ico" data-i="more"></span>
+              <span class="send" data-i="send" style="margin-left:3px"></span>
+            </div>
+          </div>
+          <div class="kbd"></div>
+        </div></div>
+    </div>
+  </section>
+
+  <!-- ─────────── foaia de tichet ─────────── -->
+  <section class="edit">
+    <h2>Foaia de tichet (EditSheet), aceeași regulă</h2>
+    <p>Rândul de sub titlu folosește aceleași clase. Cu A, persoana (inițialele, numai citite) intră în grupul de text, lângă proiect — „unde și al cui" — iar comutatoarele trec la dreapta. Fără trimite, ⋯ închide rândul.</p>
+    <div class="estrip">
+      <div><div class="cap">Acum</div>
+        <div class="phone"><div class="bar" style="margin:0">
+          <span class="due on" data-i="due"><span>Joi</span><span class="h">17:00</span></span>
+          <span class="ico urgent on old" data-i="zap"></span>
+          <span class="sel" style="--pc:#0E9F8E;background:color-mix(in srgb,#0E9F8E 13%,transparent);color:color-mix(in srgb,#0E9F8E 80%,var(--txt));font-weight:600"><span class="dot"></span><span class="t">Casă și facturi</span></span>
+          <span class="ico" style="color:var(--accent);font-size:11px;font-weight:600">MI</span>
+          <span class="ico" data-i="clip"></span>
+          <span class="ico" data-i="more"></span>
+        </div></div></div>
+      <div><div class="cap">Cu A</div>
+        <div class="phone"><div class="bar" style="margin:0">
+          <span class="due on" data-i="due"><span>Joi</span><span class="h">17:00</span></span>
+          <span class="sel" style="--pc:#0E9F8E;background:color-mix(in srgb,#0E9F8E 13%,transparent);color:color-mix(in srgb,#0E9F8E 80%,var(--txt));font-weight:600"><span class="dot"></span><span class="t">Casă și facturi</span></span>
+          <span class="ico" style="color:var(--accent);font-size:11px;font-weight:600">MI</span>
+          <span class="sep"></span>
+          <span class="ico urgent on" data-i="zap"></span>
+          <span class="ico" data-i="clip"></span>
+          <span class="ico" data-i="more"></span>
+        </div></div></div>
+    </div>
+  </section>
+
+  <section class="rec-box">
+    <h2>Recomandare: A</h2>
+    <ol>
+      <li><b>Grupare după fel, nu după frecvență:</b> data și proiectul (text, se taie) la stânga; ⚡ 📎 ⋯ (iconițe fixe) la dreapta, lângă trimite. Rândul se citește în două bucăți în loc de șase.</li>
+      <li><b>Urgentul rămâne buton, dar se mută în arcul degetului mare:</b> e rar, dar se decide în ultima clipă, chiar înainte de trimite — „!" în text rămâne scurtătura.</li>
+      <li><b>Starea pornit = fundal pal + culoare</b> (roșu-pal pentru ⚡, accent-pal pentru 📎), același tipar ca data; linia de 2px dispare.</li>
+      <li><b>Nu pe inel (C):</b> inelul înseamnă „gata" în listă, pe carduri și în foaia de tichet; două sensuri pentru același cerc ar fi o capcană. B e acceptabil mai târziu, dacă vrei previzualizarea rândului.</li>
+      <li><b>Persoana nu revine în rând:</b> pasarea trece prin fir; în foaia de tichet inițialele stau lângă proiect, în grupul de text, aceeași ordine ca în foaia rapidă.</li>
+    </ol>
+  </section>
+</div>
+
+<script>
+const P = {
+  due:'<path d="M8 2v3"/><path d="M16 2v3"/><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="m9 15 2 2 4-4"/>',
+  zap:'<path d="M15.914 4a1.5 1.5 0 00-2.474-1.561l-9 9A1.5 1.5 0 005.5 14h4.002a.5.5 0 01.471.666L8.086 20a1.5 1.5 0 002.475 1.56l9-9A1.5 1.5 0 0018.5 10h-3.997a.5.5 0 01-.472-.667z"/>',
+  inbox:'<polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+  clip:'<path d="m16 6-8.414 8.586a2 2 0 0 0 2.829 2.829l8.414-8.586a4 4 0 1 0-5.657-5.657l-8.379 8.551a6 6 0 1 0 8.485 8.485l8.379-8.551"/>',
+  more:'<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
+  send:'<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>',
+};
+const SZ = {due:15,zap:16,inbox:12,clip:16,more:16,send:18};
+document.querySelectorAll('[data-i]').forEach(el => {
+  const k = el.dataset.i, s = el.dataset.s || SZ[k];
+  el.insertAdjacentHTML('afterbegin', `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${k==='send'?2.4:2}" stroke-linecap="round" stroke-linejoin="round">${P[k]}</svg>`);
+});
+const rows = ['qwertyuiop','asdfghjkl','zxcvbnm'];
+document.querySelectorAll('.kbd').forEach(k => {
+  k.innerHTML = rows.map(r => `<div class="row">${[...r].map(() => '<span class="k"></span>').join('')}</div>`).join('');
+});
+const setT = t => {
+  document.documentElement.dataset.theme = t;
+  document.querySelectorAll('.theme button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
+};
+document.querySelectorAll('.theme button').forEach(b => b.onclick = () => setT(b.dataset.t));
+const q = new URLSearchParams(location.search).get('theme');
+setT(q || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+</script>
+</body>
+</html>

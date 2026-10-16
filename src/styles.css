@@ -24,6 +24,10 @@
   --done-soft: rgba(61,191,133,0.14);
   --blocked: #FF6369;
   --blocked-soft: rgba(255,99,105,0.13);
+  /* Urgent = chihlimbar, nu roșu: roșul e al restanței și al ștergerii, iar
+     galbenul (`--star`) e al lui „Azi". 8.4:1 pe --bg, 6:1 pe --urgent-soft. */
+  --urgent: #FF9548;
+  --urgent-soft: rgba(255,149,72,0.15);
   --active: #FFC53D;
   --active-soft: rgba(255,197,61,0.13);
   --star: #FFC53D;
@@ -152,6 +156,9 @@ svg {
   --done-soft: rgba(31,157,96,0.10);
   --blocked: #E5484D;
   --blocked-soft: #FDEEEE;
+  /* 4.1:1 pe alb, 3.7:1 pe --urgent-soft (inelul și iconița, nu text mic). */
+  --urgent: #D05A00;
+  --urgent-soft: #FFF0E3;
   --active: #C98A00;
   --active-soft: rgba(245,176,0,0.12);
   --star: #F5B000;
@@ -574,7 +581,7 @@ main {
 .tk-urgent {
   margin-left: auto;
   display: inline-flex;
-  color: var(--active);
+  color: var(--urgent);
 }
 .list-group { margin-bottom: 14px; }
 .list-group-head {
@@ -629,7 +636,7 @@ main {
 }
 .list-check:hover .ck:not(.on) { background: color-mix(in srgb, var(--pc, var(--txt-faint)) 12%, transparent); }
 .ck.on { background: var(--pc, var(--done)); box-shadow: none; }
-.ck.urg { box-shadow: inset 0 0 0 2px var(--blocked); background: var(--blocked-soft); }
+.ck.urg { box-shadow: inset 0 0 0 2px var(--urgent); background: var(--urgent-soft); }
 .list-row.done .list-check { color: var(--done); }
 .tk > .check {
   position: absolute;
@@ -2328,8 +2335,8 @@ button.we-del:hover { color: var(--blocked); background: var(--blocked-soft); }
   color: var(--accent);
 }
 .if-meta-pill.urgent-pill.active {
-  background: var(--blocked-soft);
-  color: var(--blocked);
+  background: var(--urgent-soft);
+  color: var(--urgent);
 }
 .if-meta-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 .if-meta-wave {
@@ -3801,8 +3808,10 @@ button.we-del:hover { color: var(--blocked); background: var(--blocked-soft); }
 .fc-chip.ghost { background: transparent; color: var(--txt-faint); padding: 0 8px; }
 .fc-chip.ghost svg { color: var(--txt-faint); }
 .fc-chip.ghost:hover:not(:disabled) { background: var(--surface-3); color: var(--txt); }
-.fc-chip.late, .fc-chip.urgent { background: var(--blocked-soft); color: var(--blocked); }
-.fc-chip.late svg, .fc-chip.urgent svg { color: var(--blocked); }
+.fc-chip.late { background: var(--blocked-soft); color: var(--blocked); }
+.fc-chip.late svg { color: var(--blocked); }
+.fc-chip.urgent { background: var(--urgent-soft); color: var(--urgent); }
+.fc-chip.urgent svg { color: var(--urgent); }
 .fc-chip.warn { color: var(--active); }
 /* Data venită din titlu: inelul evidențierii, ca `.qs-due.pending`. */
 .fc-chip.pending { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--accent) 55%, transparent); }
@@ -5523,7 +5532,7 @@ body:has(.kb-sheet) .toast {
 .t-time.missed { color: var(--blocked); font-family: var(--display); }
 .task-row .list-title { flex: 1; min-width: 0; }
 .t-tail { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
-.t-urgent { display: inline-flex; color: var(--active); }
+.t-urgent { display: inline-flex; color: var(--urgent); }
 /* Semnul mic, generic pe rol: clopoțel („are memento") sau repetare
    („se repetă"). Un singur desen, o singură clasă — la fel cum vocabularul de
    iconițe ține un singur nume pe rol, nu unul per glifă. */
@@ -5729,7 +5738,7 @@ body:has(.kb-sheet) .toast {
 .qa-who select, .qa-when input { border: 0; background: transparent; color: inherit; font: inherit; }
 .qa-when input { font-family: var(--mono); }
 .qa-urgent { border: 0; cursor: pointer; }
-.qa-urgent.on { color: var(--blocked); box-shadow: inset 0 -2px 0 var(--blocked); }
+.qa-urgent.on { color: var(--urgent); background: var(--urgent-soft); }
 
 /* Descrierea de sub titlu, deschisă cu Tab. Stă în aceeași casetă `.qa` ca
    titlul — e a doua jumătate a aceluiași câmp, deci fără chenar propriu.
@@ -5891,7 +5900,13 @@ body:has(.kb-sheet) .toast {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 .qs-ico { width: 34px; justify-content: center; flex-shrink: 0; }
-.qs-urgent.on { color: var(--blocked); box-shadow: inset 0 -2px 0 var(--blocked); }
+/* Iconițele (urgent, agrafă, „…") stau grupate la dreapta, lângă Trimite:
+   golul elastic dinaintea lui urgent desparte jetoanele cu text (când +
+   unde, care se taie primele) de comutatoare. Pornit = fundal pal + culoare,
+   ca data pe accent-soft — fără linia de 2px. Grupul e un singur element,
+   ca la text mărit să treacă întreg pe rândul al doilea. */
+.qs-tools { display: flex; align-items: center; gap: 5px; margin-left: auto; flex-shrink: 0; }
+.qs-urgent.on { color: var(--urgent); background: var(--urgent-soft); }
 .qs-sel {
   position: relative;
   gap: 6px;
@@ -5921,11 +5936,11 @@ body:has(.kb-sheet) .toast {
 }
 /* Agrafa a luat locul persoanei, la aceeași lățime de iconiță: pe un rând de
    390px orice cuvânt în plus ar fi luat locul numelui de proiect. Cu fișiere
-   alese (foaia rapidă) = accent plus linia de 2px, ca urgent, și miniatura
-   primei poze în locul agrafei. */
+   alese (foaia rapidă) = fundal accent-pal, ca urgentul pe chihlimbar-pal, și
+   miniatura primei poze în locul agrafei. */
 .qs-attach-wrap { position: relative; flex-shrink: 0; display: inline-flex; }
 .qs-attach { position: relative; overflow: visible; }
-.qs-attach.on { color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent); }
+.qs-attach.on { color: var(--accent); background: var(--accent-soft); }
 .qs-attach.has-thumb { padding: 0; }
 .qs-attach img { width: 100%; height: 100%; object-fit: cover; border-radius: var(--r-s); display: block; }
 .qs-attach-n {
@@ -5964,7 +5979,6 @@ body:has(.kb-sheet) .toast {
   .qs-bar:has(.qs-send) .qs-due-h { display: none; }
 }
 .qs-send {
-  margin-left: auto;
   width: 38px;
   height: 38px;
   flex-shrink: 0;

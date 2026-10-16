@@ -220,17 +220,6 @@ function EditBody({ issue }: { issue: Issue }) {
             <span className="qs-due-t">{parts ? parts.day : 'Fără dată'}</span>
             {parts?.time && <span className="qs-due-h">{parts.time}</span>}
           </button>
-          <button
-            type="button"
-            className={`qs-ico qs-urgent ${d.urgent ? 'on' : ''}`}
-            aria-pressed={d.urgent}
-            aria-label="Urgent"
-            disabled={!canWrite}
-            onPointerDown={keepFocus}
-            onClick={() => void a.commit({ urgent: !d.urgent })}
-          >
-            <Icon name="urgent" size={16} />
-          </button>
           {/* Proiectul unui tichet existent nu se schimbă: ID-ul îi poartă
               prefixul, iar valul și dependențele sunt ale proiectului. */}
           {project && (
@@ -255,22 +244,36 @@ function EditBody({ issue }: { issue: Issue }) {
               {assigneeShort[issue.assigneeId] ?? assignee.slice(0, 2).toUpperCase()}
             </button>
           )}
-          <AttachButton
-            onPick={files.add}
-            blocked={() => attachBlocked(issue.id)}
-            onBlocked={showToast}
-            disabled={!canWrite}
-          />
-          <button
-            type="button"
-            className="qs-ico qs-more"
-            aria-label="Formularul complet"
-            title="Formularul complet: temă, dependențe, val, fir"
-            onPointerDown={keepFocus}
-            onClick={() => void toFull()}
-          >
-            <Icon name="more" size={16} />
-          </button>
+          {/* Comutatoarele la dreapta, ca în foaia rapidă. */}
+          <span className="qs-tools">
+            <button
+              type="button"
+              className={`qs-ico qs-urgent ${d.urgent ? 'on' : ''}`}
+              aria-pressed={d.urgent}
+              aria-label="Urgent"
+              disabled={!canWrite}
+              onPointerDown={keepFocus}
+              onClick={() => void a.commit({ urgent: !d.urgent })}
+            >
+              <Icon name="urgent" size={16} />
+            </button>
+            <AttachButton
+              onPick={files.add}
+              blocked={() => attachBlocked(issue.id)}
+              onBlocked={showToast}
+              disabled={!canWrite}
+            />
+            <button
+              type="button"
+              className="qs-ico qs-more"
+              aria-label="Formularul complet"
+              title="Formularul complet: temă, dependențe, val, fir"
+              onPointerDown={keepFocus}
+              onClick={() => void toFull()}
+            >
+              <Icon name="more" size={16} />
+            </button>
+          </span>
         </div>
         <p className={`qs-status ${status ? 'warn' : ''}`} role="status">{status}</p>
 

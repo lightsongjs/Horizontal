@@ -205,17 +205,6 @@ export function QuickSheet({ ctx }: { ctx: QuickCtx }) {
             <span className="qs-due-t">{parts ? parts.day : 'Fără dată'}</span>
             {parts?.time && <span className="qs-due-h">{parts.time}</span>}
           </button>
-          <button
-            type="button"
-            className={`qs-ico qs-urgent ${urgent ? 'on' : ''}`}
-            aria-pressed={urgent}
-            aria-label="Urgent"
-            title="Urgent (sau ! în text)"
-            onPointerDown={keepFocus}
-            onClick={() => q.setManual((m) => ({ ...m, urgent: !urgent }))}
-          >
-            <Icon name="urgent" size={16} />
-          </button>
           {/* Selectul nativ stă transparent PESTE eticheta desenată: atingerea
               îl deschide, iar lățimea o hotărăște eticheta, care se taie cu
               „…" — nu cea mai lungă opțiune din listă. */}
@@ -230,35 +219,51 @@ export function QuickSheet({ ctx }: { ctx: QuickCtx }) {
               {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </label>
-          {/* Agrafa a luat locul persoanei: pasarea rămâne în text (`@nume`),
-              iar o poză a tablei sau a bonului e captura care chiar se face
-              de pe telefon. Fișierele așteaptă aici până la trimitere. */}
-          <AttachButton
-            onPick={(files) => { setHeld((prev) => [...prev, ...files]); toTitle() }}
-            blocked={() => attachBlocked()}
-            onBlocked={showToast}
-            count={held.length}
-            thumb={thumb}
-          />
-          <button
-            type="button"
-            className="qs-ico qs-more"
-            aria-label="Formularul complet"
-            title="Formularul complet: temă, dependențe, val"
-            onPointerDown={keepFocus}
-            onClick={toFull}
-          >
-            <Icon name="more" size={16} />
-          </button>
-          <button
-            type="submit"
-            className="qs-send"
-            aria-label="Adaugă"
-            disabled={text.trim() === '' || saving}
-            onPointerDown={keepFocus}
-          >
-            <Icon name="send" size={18} />
-          </button>
+          {/* De aici, comutatoarele: grupate la dreapta, lângă Trimite, în
+              arcul degetului mare. Un singur grup, ca la text mărit să cadă
+              împreună pe rândul al doilea, nu rupte între rânduri. */}
+          <span className="qs-tools">
+            <button
+              type="button"
+              className={`qs-ico qs-urgent ${urgent ? 'on' : ''}`}
+              aria-pressed={urgent}
+              aria-label="Urgent"
+              title="Urgent (sau ! în text)"
+              onPointerDown={keepFocus}
+              onClick={() => q.setManual((m) => ({ ...m, urgent: !urgent }))}
+            >
+              <Icon name="urgent" size={16} />
+            </button>
+            {/* Agrafa a luat locul persoanei: pasarea rămâne în text (`@nume`),
+                iar o poză a tablei sau a bonului e captura care chiar se face
+                de pe telefon. Fișierele așteaptă aici până la trimitere. */}
+            <AttachButton
+              onPick={(files) => { setHeld((prev) => [...prev, ...files]); toTitle() }}
+              blocked={() => attachBlocked()}
+              onBlocked={showToast}
+              count={held.length}
+              thumb={thumb}
+            />
+            <button
+              type="button"
+              className="qs-ico qs-more"
+              aria-label="Formularul complet"
+              title="Formularul complet: temă, dependențe, val"
+              onPointerDown={keepFocus}
+              onClick={toFull}
+            >
+              <Icon name="more" size={16} />
+            </button>
+            <button
+              type="submit"
+              className="qs-send"
+              aria-label="Adaugă"
+              disabled={text.trim() === '' || saving}
+              onPointerDown={keepFocus}
+            >
+              <Icon name="send" size={18} />
+            </button>
+          </span>
         </div>
       </form>
     </KeyboardSheet>
