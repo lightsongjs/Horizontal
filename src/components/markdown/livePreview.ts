@@ -88,6 +88,30 @@ function build(view: EditorView, prefixes: readonly string[]): DecorationSet {
   return Decoration.set(out, true)
 }
 
+/** Rândurile (din documentul nou) atinse de schimbările unei actualizări. */
+function changedLines(u: ViewUpdate): { from: number; to: number }[] {
+  const doc = u.state.doc
+  const out: { from: number; to: number }[] = []
+  u.changes.iterChangedRanges((_fa, _ta, from, to) => {
+    out.push({ from: doc.lineAt(from).from, to: doc.lineAt(to).to })
+  })
+  return out
+}
+
+/**
+ * `old`, cu decorările de pe `lines` luate din `fresh`. Restul rămân exact cum
+ * erau — inclusiv pe rândul în compunere, dacă nu e printre ele.
+ */
+function redrawLines(old: DecorationSet, fresh: DecorationSet, lines: { from: number; to: number }[]): DecorationSet {
+  const on = (from: number, to: number) => lines.some((l) => from <= l.to && to >= l.from)
+  if (!lines.length) return old
+  const add: Range<Decoration>[] = []
+  const lo = Math.min(...lines.map((l) => l.from))
+  const hi = Math.max(...lines.map((l) => l.to))
+  fresh.between(lo, hi, (from, to, value) => { if (on(from, to)) add.push(value.range(from, to)) })
+  return old.update({ filter: (from, to) => !on(from, to), add, sort: true })
+}
+
 /**
  * Live preview. Cât tastatura compune un cuvânt (`view.composing` — Gboard,
  * corectura automată, glisarea), decorările NU se recalculează, doar se mută
@@ -103,6 +127,15 @@ export const livePreview = (prefixes: () => readonly string[]) => ViewPlugin.fro
     if (u.view.composing) {
       this.decorations = this.decorations.map(u.changes)
       this.stale = true
+      // O bifă NU încheie compunerea: pe telefon, cât descrierea are focus,
+      // Gboard ține mereu cuvântul de sub cursor „în compunere", iar atingerea
+      // căsuței nu mută cursorul. Doar mutate, decorările ar fi lăsat căsuța
+      // desenată ca înainte (documentul se schimbase și se salva), iar a doua
+      // atingere o debifa pe ascuns — „bifa nu merge" (D-187). Rândurile bifate
+      // se redesenează deci acum; restul așteaptă `compositionend`.
+      if (u.transactions.some((t) => t.annotation(Toggle))) {
+        this.decorations = redrawLines(this.decorations, build(u.view, prefixes()), changedLines(u))
+      }
       return
     }
     const editableChanged = u.startState.facet(EditorView.editable) !== u.state.facet(EditorView.editable)

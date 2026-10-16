@@ -1357,6 +1357,71 @@ try {
     }
   }
 
+  // ── D-187: pe telefon, cu descrierea în lucru, căsuța „nu mergea" ──
+  // Cât descrierea are focus, Gboard ține cuvântul de sub cursor în compunere,
+  // iar atingerea căsuței nu mută cursorul, deci compunerea rămâne. Pluginul
+  // doar muta decorările cât `view.composing`: documentul se bifa (și se
+  // salva), căsuța rămânea desenată goală, iar a doua atingere o debifa pe
+  // ascuns. Atingeri reale (CDP), compunerea prin `Input.imeSetComposition`;
+  // foaia de tichet și formularul complet, cu o descriere scurtă și una pliată.
+  {
+    const SHORT = '- [ ] unu\n- [ ] doi\n- [ ] trei\n'
+    const LONG = SHORT + Array.from({ length: 40 }, (_, i) => `- [ ] rândul ${i + 4}`).join('\n')
+    const marks = (s) => [...s.matchAll(/\[(.)\]/g)].map((m) => (m[1] === ' ' ? '.' : 'x')).join('').slice(0, 3)
+    for (const [len, DESC] of [['scurtă', SHORT], ['pliată', LONG]]) for (const full of [false, true]) {
+      const where = `${full ? 'formular' : 'foaie'}, ${len}`
+      const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
+      const tp = await ctx.newPage()
+      await tp.goto(BASE, { waitUntil: 'networkidle' })
+      await tp.waitForTimeout(700)
+      const id = await tp.evaluate((d) => {
+        const db = JSON.parse(localStorage.getItem('horizontal:v2'))
+        const i = db.issues.find((x) => x.projectId !== 'd')
+        i.desc = d
+        localStorage.setItem('horizontal:v2', JSON.stringify(db))
+        return i.id
+      }, DESC)
+      await tp.goto(`${BASE}/${id}`, { waitUntil: 'networkidle' })
+      await tp.waitForTimeout(1500)
+      const { tap, center } = await touchApi(tp)
+      let scope = '.edit-sheet'
+      if (full) {
+        const m = await center(tp.locator('.edit-sheet .qs-more'))
+        await tap(m.x, m.y)
+        await tp.waitForTimeout(900)
+        scope = '.sheet.on'
+      }
+      const box = (i) => tp.locator(`${scope} .md-task`).nth(i)
+      const drawn = () => tp.evaluate((s) => [...document.querySelectorAll(`${s} .md-task`)].slice(0, 3).map((b) => (b.classList.contains('on') ? 'x' : '.')).join(''), scope)
+      // Fără focus: atingerea bifează căsuța ei.
+      let c = await center(box(1))
+      await tap(c.x, c.y)
+      await tp.waitForTimeout(400)
+      check(`atingere (${where}), fără focus: bifează a 2-a`, marks(await descOf(tp, scope)) === '.x.' && (await drawn()) === '.x.', `doc=${marks(await descOf(tp, scope))} desen=${await drawn()}`)
+      await tap(c.x, c.y)
+      await tp.waitForTimeout(400)
+      // Cu focus și un cuvânt în compunere, ca pe Android.
+      const l1 = await tp.locator(`${scope} .cm-line`).first().boundingBox()
+      await tap(l1.x + l1.width - 4, l1.y + l1.height / 2)
+      await tp.waitForTimeout(300)
+      const cdp = await ctx.newCDPSession(tp)
+      await cdp.send('Input.imeSetComposition', { text: 'ab', selectionStart: 2, selectionEnd: 2 })
+      await tp.waitForTimeout(200)
+      c = await center(box(1))
+      await tap(c.x, c.y)
+      await tp.waitForTimeout(400)
+      check(`atingere (${where}), în compunere: căsuța se desenează bifată`, marks(await descOf(tp, scope)) === '.x.' && (await drawn()) === '.x.', `doc=${marks(await descOf(tp, scope))} desen=${await drawn()}`)
+      c = await center(box(1))
+      await tap(c.x, c.y)
+      await tp.waitForTimeout(400)
+      check(`…a doua atingere o debifează, la vedere`, marks(await descOf(tp, scope)) === '...' && (await drawn()) === '...', `doc=${marks(await descOf(tp, scope))} desen=${await drawn()}`)
+      await cdp.send('Input.insertText', { text: 'abc' })
+      await tp.waitForTimeout(300)
+      check(`…și cuvântul compus rămâne întreg`, (await descOf(tp, scope)).startsWith('- [ ] unuabc\n'), JSON.stringify((await descOf(tp, scope)).slice(0, 14)))
+      await ctx.close()
+    }
+  }
+
   await page.close()
 } finally {
   if (browser) await browser.close()
