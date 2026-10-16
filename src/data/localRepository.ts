@@ -2,6 +2,7 @@
 // example on first run. Mirrors the Supabase backend's behavior.
 
 import { applyIssuePatch } from '../lib/issuePatch'
+import { moveBlock, moveBlockMessage, movedIssue, SAME_PROJECT } from '../lib/moveIssue'
 import { withPin, withoutPin, type Pin } from '../lib/pins'
 import { normalizeRules, type SavedFilter } from '../lib/savedFilters'
 import { SEED_ISSUES, SEED_PROJECTS, SEED_THEMES, SEED_WAVES } from '../lib/seed'
@@ -338,6 +339,33 @@ export function createLocalRepository(): Repository {
     // nu se randează acolo.
     async deleteIssues(ids: string[]) {
       deleteIssuesImpl(load(), ids)
+    },
+
+    // Aceleași reguli ca `move_issue` (SQL), mai puțin dreptul: modul local
+    // n-are conturi, deci nici membri — totul e al tău, iar persoana rămâne.
+    async moveIssue(id: string, targetProjectId: string) {
+      const db = load()
+      const cur = db.issues.find((i) => i.id === id)
+      if (!cur) throw new Error(`Tichetul ${id} nu există.`)
+      const target = db.projects.find((p) => p.id === targetProjectId)
+      if (!target) throw new Error('Proiectul țintă nu există.')
+      if (cur.projectId === targetProjectId) throw new Error(SAME_PROJECT(target.name))
+      const block = moveBlock(cur, db.issues, db.obstacleLinks)
+      if (block) throw new Error(moveBlockMessage(id, block))
+      // ID-ul e unic în toată baza, nu doar în proiect: unul rămas cu același
+      // prefix în alt proiect ar ciocni — numărul sare mai departe, ca
+      // reîncercarea de la 23505 din SQL.
+      const taken = db.issues.filter((i) => i.projectId === targetProjectId).map((i) => i.id)
+      let moved = movedIssue(cur, target, taken, true)
+      while (db.issues.some((i) => i.id === moved.id)) moved = movedIssue(cur, target, [...taken, moved.id], true)
+      db.issues = db.issues.map((i) => (i.id === id ? moved : i))
+      db.events = (db.events ?? []).map((e) => (e.issueId === id ? { ...e, issueId: moved.id, projectId: targetProjectId } : e))
+      if (db.seen?.[id]) {
+        db.seen = { ...db.seen, [moved.id]: db.seen[id] }
+        delete db.seen[id]
+      }
+      save(db)
+      return clone(moved)
     },
 
     async listObstacles(projectId: string) {

@@ -1,5 +1,6 @@
 import {
   Maximize2,
+  FolderInput,
   MessageCircle,
   ArrowLeft,
   ArrowRight,
@@ -181,6 +182,8 @@ const ICONS = {
   // Foaia rapidă: trimite (rotund, accent) și „…” = formularul complet.
   send: ArrowUp,
   more: Ellipsis,
+  // Mutarea unui tichet în alt proiect (foaia de tichet, formularul, ⋮ din listă).
+  move: FolderInput,
   /** Meniul unui rând (⋮): acțiunile care nu încap pe bandă. */
   menu: EllipsisVertical,
   /** ☰ din antetul de telefon: deschide sertarul de navigare. */

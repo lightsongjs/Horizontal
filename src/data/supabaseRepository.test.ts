@@ -540,3 +540,27 @@ describe('supabaseRepository', () => {
     ])
   })
 })
+
+describe('moveIssue', () => {
+  type Rpc = (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>
+  const withRpc = (rpc: Rpc) => Object.assign(fakeDb, { rpc: vi.fn(rpc) })
+
+  it('cheamă `move_issue` și întoarce tichetul de pe ID-ul nou', async () => {
+    fakeDb.tables.issues.push({ id: 'APO-07', project_id: 'apo', title: 'mutat', details: '', wave: 3, done: false, theme: null })
+    const db = withRpc(async () => ({ data: 'APO-07', error: null }))
+    const moved = await createSupabaseRepository().moveIssue('HZ-12', 'apo')
+    expect(db.rpc).toHaveBeenCalledWith('move_issue', { p_id: 'HZ-12', p_target: 'apo' })
+    expect(moved).toMatchObject({ id: 'APO-07', projectId: 'apo', wave: 3, theme: '', deps: [] })
+  })
+
+  it('refuzul serverului ajunge cu mesajul lui', async () => {
+    const refusal = { code: 'HZM01', message: 'Nu se poate muta HZ-12: are dependențe (HZ-3). Scoate-le întâi.' }
+    withRpc(async () => ({ data: null, error: refusal }))
+    await expect(createSupabaseRepository().moveIssue('HZ-12', 'apo')).rejects.toBe(refusal)
+  })
+
+  it('fără migrare (PGRST202): un mesaj care spune ce lipsește', async () => {
+    withRpc(async () => ({ data: null, error: { code: 'PGRST202', message: 'Could not find the function public.move_issue' } }))
+    await expect(createSupabaseRepository().moveIssue('HZ-12', 'apo')).rejects.toThrow('lipsește migrarea')
+  })
+})

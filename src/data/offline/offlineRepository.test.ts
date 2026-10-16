@@ -55,6 +55,12 @@ export function fakeRemote() {
     deleteIssues: vi.fn(async (ids: string[]) => guard(() => { server.issues = server.issues.filter((i) => !ids.includes(i.id)) })()),
     deleteIssue: vi.fn(async (id: string) => guard(() => { server.issues = server.issues.filter((i) => i.id !== id) })()),
     markSeen: vi.fn(guard(() => undefined)),
+    moveIssue: vi.fn(async (id: string, target: string) => guard(() => {
+      const i = server.issues.find((x) => x.id === id)
+      if (!i) throw { message: `Tichetul ${id} nu există.`, code: 'HZM06' }
+      Object.assign(i, { id: `AP-${String(server.issues.filter((x) => x.projectId === target).length + 1).padStart(2, '0')}`, projectId: target })
+      return { ...i }
+    })()),
     postToThread: vi.fn(guard(() => ({}))),
     updateComment: vi.fn(guard(() => ({}))),
   } as unknown as Repository
@@ -840,5 +846,67 @@ describe('dueFetchedAt', () => {
     await repo.listDueIssues(range)
     await repo.sync!.clear()
     expect(repo.sync!.dueFetchedAt()).toBe(0)
+  })
+})
+
+describe('mutarea în alt proiect', () => {
+  it('offline: cere rețea, nu stă la coadă', async () => {
+    const { remote, net } = fakeRemote()
+    const repo = make(remote)
+    await repo.sync!.prefetchAll()
+    net.down = true
+    await expect(repo.moveIssue('HZ-01', 'q')).rejects.toBeInstanceOf(OfflineError)
+    expect(repo.sync!.status().pending).toBe(0)
+  })
+
+  it('refuză cât coada are scrieri pe tichetul ăsta', async () => {
+    const { remote, net } = fakeRemote()
+    const repo = make(remote)
+    await repo.sync!.prefetchAll()
+    net.down = true
+    await repo.updateIssue('HZ-01', { title: 'netrimis' })
+    net.down = false
+    await expect(repo.moveIssue('HZ-01', 'q')).rejects.toThrow('Se sincronizează încă — încearcă peste câteva secunde.')
+    expect(remote.moveIssue).not.toHaveBeenCalled()
+    // Alt tichet, fără scrieri în coadă, se mută.
+    await expect(repo.moveIssue('HZ-02', 'q')).resolves.toMatchObject({ id: 'AP-01', projectId: 'q' })
+  })
+
+  it('refuză un ID provizoriu fără să întrebe serverul', async () => {
+    const { remote } = fakeRemote()
+    const repo = make(remote)
+    await expect(repo.moveIssue('HZ-~ab12cd', 'q')).rejects.toThrow('n-a primit numărul')
+    expect(remote.moveIssue).not.toHaveBeenCalled()
+  })
+
+  it('reușită: tichetul iese din baza proiectului vechi, iar o salvare întârziată pe ID-ul vechi ajunge la cel nou', async () => {
+    const { remote } = fakeRemote()
+    const repo = make(remote)
+    await repo.sync!.prefetchAll()
+    const events: SyncEvent[] = []
+    repo.sync!.subscribe((e) => events.push(e))
+    const moved = await repo.moveIssue('HZ-01', 'q')
+    expect(moved).toMatchObject({ id: 'AP-01', projectId: 'q' })
+    expect((await repo.cache!.project('p'))?.issues.map((i) => i.id)).toEqual(['HZ-02'])
+    expect(events.some((e) => e.type === 'removed' && e.ids.includes('HZ-01'))).toBe(true)
+    await repo.updateIssue('HZ-01', { title: 'scris înainte de mutare' })
+    expect(remote.updateIssue).toHaveBeenLastCalledWith('AP-01', { title: 'scris înainte de mutare' })
+  })
+
+  it('traducerea se uită când numărul renaște (cel mai mare + 1 se refolosește)', async () => {
+    const { remote, server } = fakeRemote()
+    const repo = make(remote)
+    await repo.sync!.prefetchAll()
+    await repo.moveIssue('HZ-02', 'q')
+    // Următoarea captură în proiect primește iar HZ-02.
+    vi.mocked(remote.createIssue).mockImplementationOnce(async (input) => {
+      const i = mk('HZ-02', { title: input.title })
+      server.issues.push(i)
+      return i
+    })
+    const c = await repo.createIssue({ projectId: 'p', title: 'captură nouă' })
+    expect(c.id).toBe('HZ-02')
+    await repo.updateIssue('HZ-02', { title: 'a captura nouă' })
+    expect(remote.updateIssue).toHaveBeenLastCalledWith('HZ-02', { title: 'a captura nouă' })
   })
 })

@@ -1039,6 +1039,50 @@ scriu azi doar direct în bază.
 
 Setup: `npm run migrate supabase/migration-obstacles.sql`.
 
+## Mutarea unui tichet în alt proiect
+
+Spec: `docs/superpowers/specs/2026-10-12-mutare-tichet-intre-proiecte-design.md`
+(D-156). Tichetul primește **număr nou** în proiectul țintă (`HZ-12` →
+`APO-07`); linkul vechi nu redirecționează. Refuz la ORICE dependență (în
+oricare sens), la o legătură cu un obstacol, la un ID provizoriu și fără drept
+de scriere pe sursă ȘI pe țintă (sau admin). Valul devine cel activ al țintei,
+tema se golește, persoana rămâne doar dacă e membru al țintei (sau admin);
+firul, fișierele (rândurile) și vizitele urmează tichetul.
+
+- **Server: o singură funcție**, `move_issue(p_id, p_target)`
+  (`supabase/migration-move-issue.sql`, `security definer`, drepturile verificate
+  explicit). Insert-copie (`jsonb_populate_record`, ca o coloană nouă să se
+  copieze singură) → mută copiii → șterge vechiul: FK-urile n-au `on update
+  cascade`. Numărul = `nextIssueId` în SQL, sub `for update` pe proiectul țintă,
+  cu 3 reîncercări la 23505. Refuzurile au errcode `HZM01..06` și mesajul
+  românesc pe care îl vede omul.
+- **Pozele nu se mută fizic**: calea rămâne `vechiulProiect/HZ-12/…`; politicile
+  de select/delete de pe `storage.objects` au un al doilea drum, prin rândul din
+  `attachments` cu acel `path`.
+- **Client**: `Repository.moveIssue`; regulile pure (motivul refuzului înainte de
+  cerere, ținte cu Inbox primul, `movedIssue` pentru modul local) în
+  `src/lib/moveIssue.ts`. Învelișul offline: prin `net()` și refuzat cât coada
+  are scrieri pe tichet. Traducerea ID vechi → nou (`moved` în
+  `offlineRepository.ts`) e **doar în memorie** și se uită când numărul renaște
+  — „cel mai mare + 1" refolosește numărul, iar o traducere pe disc ar fi trimis
+  editările capturii următoare la tichetul mutat.
+- **Foaia și URL-ul**: `useMoveIssue` (`hooks.ts`) — `replaceState` ÎNAINTE de
+  `renameIssueId`, ca Back să ducă pe lista de dinainte, nu pe `/HZ-12`. Foaia de
+  telefon își păstrează cheia (fără remontare); formularul complet se remontează
+  (`remount`), fiindcă și-a copiat valul și tema la montare — și de-aia, cu
+  modificări nesalvate, meniul lui nu mută. Proiectul țintă devine cel încărcat.
+- **UI**: jetonul de proiect din `EditSheet` (foaie mică), jetonul de lângă ID din
+  `IssueForm` (`MoveChip`, `ChipPop`), „Mută în proiect…" în ⋮ (`MoreSheet`),
+  pentru UN tichet. Confirmarea e un toast, fără anulare.
+- Teste: `src/lib/moveIssue.test.ts`, `localRepository`/`offlineRepository`/
+  `supabaseRepository`, `npm run test:move-sql` (pornește singur un container
+  `supabase/postgres` de unică folosință, cu Docker; `MOVE_SQL_URL` pentru o
+  bază dată — **niciodată** producția: testul scrie), `test:nav` (mutarea din
+  foaie + Back, refuzul), `test:layout` (antetul și foaia la 320–430px).
+
+Setup: `npm run migrate supabase/migration-move-issue.sql` **ÎNAINTE** de push
+(clientul cheamă RPC-ul; fără el, mutarea spune „lipsește migrarea").
+
 ## Firul și pasarea
 
 Regula centrală, de care depinde tot restul: `assignee_id` gol înseamnă „al

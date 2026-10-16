@@ -127,6 +127,17 @@ export interface Repository {
    * half-succeed and leave the caller with a partial delete plus an error.
    */
   deleteIssues(ids: string[]): Promise<void>
+  /**
+   * Mută tichetul în alt proiect, cu NUMĂR NOU în proiectul țintă
+   * (`HZ-12` → `APO-07`), și îl întoarce așa cum e acum. Firul, fișierele și
+   * vizitele îl urmează; valul devine cel activ al țintei, tema se golește.
+   * Refuză (aruncă, cu mesaj de arătat omului) un tichet cu dependențe în orice
+   * sens, legat de un obstacol, provizoriu, sau fără drept de scriere pe sursă
+   * ȘI pe țintă. Pe Supabase e o singură funcție, `move_issue`
+   * (`supabase/migration-move-issue.sql`); regulile clientului sunt în
+   * `src/lib/moveIssue.ts`.
+   */
+  moveIssue(id: string, targetProjectId: string): Promise<Issue>
 
   listObstacles(projectId: string): Promise<Obstacle[]>
   /** Muchiile obstacol → tichet ale proiectului. Separat de obstacole ca să

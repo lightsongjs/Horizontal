@@ -1437,6 +1437,73 @@ for (const [where, vp, wrapOpen, wrapClose] of [
   await page.close()
 }
 
+/**
+ * Mutarea în alt proiect (`MoveProject.tsx`): jetonul de proiect de lângă ID
+ * în antetul formularului complet, foaia mică de proiecte de pe telefon și
+ * jetonul de proiect din foaia de tichet, devenit buton. Un nume lung de
+ * proiect se taie cu „…", nu împinge iconițele din antet pe alt rând și nu
+ * lățește foaia.
+ */
+const LONG_PROJ = 'Aplicație Turism și încă ceva foarte lung de tot'
+const moveHead = () => `
+<div class="sheet on tall" style="position:static;transform:none;width:100%">
+  <div class="sh-header">
+    <span class="sh-id">TUR-128</span>
+    <span class="sh-move"><button type="button" class="sh-move-btn"><span class="t-dot" style="background:#6e7bff"></span><span class="sh-move-t">${LONG_PROJ}</span><svg width="12" height="12"></svg></button></span>
+    <button class="sh-close">x</button>
+    <button class="sh-copy">c</button>
+    <button class="sh-delete">d</button>
+    <button class="sh-save">^</button>
+    <span class="sh-break"></span>
+    <button class="sh-check"><span class="ck"></span></button>
+    <span class="sh-title-wrap"><textarea class="sh-title-input" rows="1">Adresă email proiect</textarea></span>
+  </div>
+</div>`
+const moveSheet = () => `
+<div class="kb-sheet action-sheet move-sheet" style="animation:none">
+  <p class="as-title">Mută <span class="as-subject">${LONG}</span> în…</p>
+  <div class="as-list mv-list">
+    ${['Inbox', LONG_PROJ, 'Apologetica', 'Horizontal'].map((n) => `<button type="button" class="as-item mv-item"><span class="mv-mark"><span class="t-dot" style="background:#0ea5e9"></span></span><span class="mv-name">${n}</span></button>`).join('')}
+  </div>
+</div>`
+console.log('\nMutarea în alt proiect (antetul formularului, foaia mică):')
+for (const width of PHONE_WIDTHS) {
+  const page = await browser.newPage({ viewport: { width, height: 844 } })
+  await page.setContent(`<style>${CSS}</style>${moveHead()}`)
+  const h = await page.evaluate(() => {
+    const r = (s) => document.querySelector(s).getBoundingClientRect()
+    const head = document.querySelector('.sh-header')
+    const t = document.querySelector('.sh-move-t')
+    return {
+      overflow: head.scrollWidth - head.clientWidth,
+      docOverflow: document.documentElement.scrollWidth - innerWidth,
+      chipW: Math.round(r('.sh-move-btn').width),
+      chipH: Math.round(r('.sh-move-btn').height),
+      sameRow: Math.abs(r('.sh-move-btn').top + r('.sh-move-btn').height / 2 - (r('.sh-close').top + r('.sh-close').height / 2)) <= 2,
+      afterId: r('.sh-move-btn').left >= r('.sh-id').right,
+      ellipsis: t.scrollWidth > t.clientWidth,
+    }
+  })
+  await page.setContent(`<style>${CSS}</style>${moveSheet()}`)
+  const s = await page.evaluate(() => {
+    const sheet = document.querySelector('.move-sheet')
+    const items = [...document.querySelectorAll('.mv-item')]
+    const names = [...document.querySelectorAll('.mv-name')]
+    return {
+      overflow: sheet.scrollWidth - sheet.clientWidth,
+      docOverflow: document.documentElement.scrollWidth - innerWidth,
+      lowest: Math.round(Math.min(...items.map((i) => i.getBoundingClientRect().height))),
+      oneLine: names.every((n) => n.getBoundingClientRect().height <= 24),
+    }
+  })
+  await page.close()
+  check(`antetul cu proiectul nu iese din foaie @${width}px`, h.overflow <= 0 && h.docOverflow <= 0, `${h.overflow}px, pagina +${h.docOverflow}px`)
+  check(`jetonul de proiect lângă ID, pe rândul iconițelor @${width}px`, h.afterId && h.sameRow, `după ID=${h.afterId}, același rând=${h.sameRow}`)
+  check(`jetonul de proiect nestrivit, numele tăiat cu „…" @${width}px`, h.chipW >= 60 && h.chipH >= 28 && h.ellipsis, `${h.chipW}×${h.chipH}px, tăiat=${h.ellipsis}`)
+  check(`foaia de mutare nu se lățește @${width}px`, s.overflow <= 0 && s.docOverflow <= 0, `${s.overflow}px, pagina +${s.docOverflow}px`)
+  check(`proiectele atingibile, pe un rând @${width}px`, s.lowest >= 44 && s.oneLine, `cel mai scund ${s.lowest}px, un rând=${s.oneLine}`)
+}
+
 await browser.close()
 
 if (failures.length) {

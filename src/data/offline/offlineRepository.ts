@@ -16,6 +16,7 @@ import { errorMessage } from '../../lib/errorMessage'
 import { OfflineError, isAuthError, isNetworkError, withTimeout } from './netError'
 import { applyIssuePatch } from '../../lib/issuePatch'
 import { isTempIssueId, makeTempIssueId } from '../../lib/issueId'
+import { MOVE_SYNCING, moveBlockMessage } from '../../lib/moveIssue'
 import { cancelTempIssues, deriveDue, echoIssue, opIssueIds, overlay, remapOp, type OutboxOp, type QueuedOp } from './ops'
 import type { CacheReader, ProjectBundle, SyncControl, SyncEvent, SyncStatus } from './types'
 
@@ -140,7 +141,22 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
     const kv = await kvReady
     await kv?.set(K.remaps, Object.fromEntries(remaps)).catch(() => {})
   }
-  const resolveId = (id: string) => remaps.get(id) ?? id
+  /**
+   * ID vechi → ID nou al tichetelor MUTATE în alt proiect (`moveIssue`), ca o
+   * salvare întârziată pe ID-ul vechi (formular deschis, pauza de 800ms) să
+   * ajungă la tichetul mutat. Spre deosebire de `remaps`, numai în memorie și
+   * uitată când ID-ul renaște: numărul se refolosește („cel mai mare + 1"), iar
+   * capturezi în Inbox D-50, îl muți, următoarea captură e iar D-50 — o
+   * traducere ținută pe disc ar fi trimis editările ei la tichetul mutat.
+   */
+  const moved = new Map<string, string>()
+  const forgetMoved = (id: string) => { moved.delete(id) }
+  const resolveId = (id: string) => {
+    let out = remaps.get(id) ?? id
+    // Mutat de mai multe ori: A → B → C. Plafonat, ca un ciclu să nu blocheze.
+    for (let hop = 0; hop < 8 && moved.has(out); hop++) out = moved.get(out) ?? out
+    return out
+  }
   const resolveDeps = <T extends { deps?: string[] }>(x: T): T => (x.deps ? { ...x, deps: x.deps.map(resolveId) } : x)
 
   /**
@@ -500,6 +516,7 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
     const op = q.op
     if (op.kind === 'createIssue') {
       const created = await remote.createIssue(op.input)
+      forgetMoved(created.id)
       const done = await settle(kv, q, rest, () => baseWritesUpsert(kv, created), { from: op.tempId, to: created.id })
       if (!done.cancelled) {
         emit({ type: 'remap', from: op.tempId, to: created.id })
@@ -605,7 +622,7 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
    */
   function createDirect(raw: Parameters<Repository['createIssue']>[0]): Promise<Issue> {
     return write(
-      () => remote.createIssue(resolveDeps(raw)),
+      () => remote.createIssue(resolveDeps(raw)).then((c) => { forgetMoved(c.id); return c }),
       async (kv, created) => { emit({ type: 'issue', issue: created }); await applyWrites(kv, await baseWritesUpsert(kv, created)) },
       async (kv) => {
         const input = resolveDeps(raw)
@@ -835,6 +852,33 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
     },
 
     deleteIssue: (id) => repo.deleteIssues([id]),
+
+    /**
+     * Cere rețea (ca proiectele): numărul nou îl dă serverul, sub lacătul lui,
+     * iar o mutare pusă la coadă ar fi lăsat restul cozii să scrie pe un ID care
+     * între timp nu mai există. Din același motiv, refuză cât coada mai are
+     * scrieri pe tichetul ăsta: o editare netrimisă ar ajunge altfel pe ID-ul
+     * vechi, după ce rândul lui a fost șters.
+     */
+    async moveIssue(rawId, targetProjectId) {
+      await loadRemaps()
+      const id = resolveId(rawId)
+      if (isTempIssueId(id)) throw new Error(moveBlockMessage(id, { kind: 'temp' }))
+      if ((await pendingOps()).some((op) => opIssueIds(op).includes(id))) throw new Error(MOVE_SYNCING)
+      const issue = await net(() => remote.moveIssue(id, targetProjectId))
+      moved.set(id, issue.id)
+      forgetMoved(issue.id)
+      const kv = await kvReady
+      if (kv) {
+        await applyWrites(kv, await baseWritesRemove(kv, [id])).catch(() => {})
+        await applyWrites(kv, await baseWritesUpsert(kv, issue)).catch(() => {})
+        generation++ // o citire plecată înainte ar readuce tichetul pe ID-ul vechi
+      }
+      // Celelalte file (și store-ul): tichetul vechi dispare, cel nou apare.
+      emit({ type: 'removed', ids: [id] })
+      emit({ type: 'issue', issue })
+      return issue
+    },
 
     async deleteIssues(rawIds) {
       // Tradus ÎNAINTE de împărțire: un provizoriu deja remapat e un tichet

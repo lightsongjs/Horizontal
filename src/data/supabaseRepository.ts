@@ -540,6 +540,19 @@ export function createSupabaseRepository(): Repository {
       await deleteIssuesImpl(ids)
     },
 
+    async moveIssue(id: string, targetProjectId: string) {
+      const { data, error } = await db.rpc('move_issue', { p_id: id, p_target: targetProjectId })
+      // PGRST202 = funcția nu există: migrarea n-a fost rulată pe baza asta.
+      // Un „Could not find the function…" n-ar spune omului nimic util.
+      if (error?.code === 'PGRST202') throw new Error('Mutarea între proiecte nu e încă activă pe server (lipsește migrarea).')
+      if (error) throw error
+      // Refuzurile (`HZM0x`) vin cu mesajul românesc din `raise exception`.
+      const { data: row, error: rErr } = await db.from('issues').select('*').eq('id', data as string).single()
+      if (rErr) throw rErr
+      // Fără dependențe, prin definiție: `move_issue` refuză orice dependență.
+      return rowToIssue(row as IssueRow, {})
+    },
+
     async listObstacles(projectId: string) {
       const { data, error } = await db
         .from('obstacles')

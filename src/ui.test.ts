@@ -42,6 +42,11 @@ describe('redenumirea temp → real păstrează cheia React', () => {
     expect(renameIssueInSheets(once, 'HZ-13', 'HZ-14')).toEqual([{ kind: 'issue-form', issueId: 'HZ-14', keyId: 'HZ-~ab12cd' }])
   })
 
+  it('mutarea din formularul complet schimbă și cheia (remontare pe proiectul nou)', () => {
+    const stack: SheetState[] = [{ kind: 'issue-form', issueId: 'HZ-12', keyId: 'HZ-~ab12cd', full: true }]
+    expect(renameIssueInSheets(stack, 'HZ-12', 'APO-07', false)).toEqual([{ kind: 'issue-form', issueId: 'APO-07', full: true }])
+  })
+
   it('fără nimic de redenumit întoarce aceeași stivă (nicio randare degeaba)', () => {
     const stack = [form('HZ-3')]
     expect(renameIssueInSheets(stack, 'HZ-~ab12cd', 'HZ-13')).toBe(stack)

@@ -1422,6 +1422,84 @@ try {
     }
   }
 
+  // ── Mutarea în alt proiect (telefon, modul local) ───────────────────────
+  // Spec: foaia rămâne deschisă pe ID-ul NOU, URL-ul se rescrie (fără intrare
+  // nouă în istoric), iar Back te lasă pe lista de dinainte — nu pe `/EX-…`,
+  // un tichet care nu mai există. Din formularul complet, mutarea înapoi îl
+  // remontează pe proiectul țintă. Filă curată, cu un al doilea proiect pus în
+  // baza locală.
+  {
+    const mv = await browser.newPage({ viewport: { width: 390, height: 844 } })
+    await mv.goto(BASE, { waitUntil: 'networkidle' })
+    await mv.waitForTimeout(600)
+    await mv.evaluate(() => {
+      const db = JSON.parse(localStorage.getItem('horizontal:v2'))
+      db.projects.push({ id: 'apo', name: 'Apologetica', description: '', prefix: 'APO', currentWave: 1, accent: '#a855f7', type: 'personal' })
+      db.waves.push({ projectId: 'apo', number: 1, name: 'Val 1', label: '', position: 1 })
+      localStorage.setItem('horizontal:v2', JSON.stringify(db))
+    })
+    await mv.reload({ waitUntil: 'networkidle' })
+    await mv.waitForTimeout(800)
+    const onAziMv = async () => /Azi/.test((await mv.locator('.tabbar button.on').textContent().catch(() => '')) ?? '')
+    await mv.locator('.fab').click()
+    await mv.waitForTimeout(400)
+    await mv.keyboard.type('Sarcină de mutat')
+    await mv.keyboard.press('Enter')
+    await mv.waitForTimeout(1000)
+    await mv.locator('.task-row', { hasText: 'Sarcină de mutat' }).first().click()
+    await mv.waitForTimeout(900)
+    const before = new URL(mv.url()).pathname
+    check('mutare: foaia de tichet deschisă pe ID-ul vechi', /^\/EX-\d+$/.test(before), `URL=${before}`)
+    const depth = await mv.evaluate(() => history.length)
+    await mv.locator('.edit-sheet button.qs-proj').click()
+    await mv.waitForTimeout(400)
+    const names = await mv.locator('.move-sheet .mv-item').allTextContents()
+    check('mutare: foaia mică arată celelalte proiecte', names.length === 1 && /Apologetica/.test(names[0]), JSON.stringify(names))
+    await mv.locator('.move-sheet .mv-item', { hasText: 'Apologetica' }).click()
+    await mv.waitForTimeout(900)
+    const meta = (await mv.locator('.edit-sheet .es-meta').textContent().catch(() => ''))?.trim()
+    check('mutare: foaia rămâne deschisă, pe ID-ul nou', (await mv.locator('.edit-sheet').count()) === 1 && meta === 'APO-01', `ID=${meta}`)
+    check('mutare: foaia mică s-a închis', (await mv.locator('.move-sheet').count()) === 0, 'închisă')
+    check('mutare: URL rescris, fără intrare nouă', new URL(mv.url()).pathname === '/APO-01' && (await mv.evaluate(() => history.length)) === depth, `URL=${new URL(mv.url()).pathname}, istoric ${depth} → ${await mv.evaluate(() => history.length)}`)
+    const toast = (await mv.locator('.toast').textContent().catch(() => '')) ?? ''
+    check('mutare: confirmarea spune unde și cu ce număr', toast.includes('Mutat în „Apologetica" ca APO-01.'), JSON.stringify(toast))
+    const chip = (await mv.locator('.edit-sheet .qs-proj').textContent().catch(() => '')) ?? ''
+    check('mutare: jetonul arată proiectul nou', /Apologetica/.test(chip), JSON.stringify(chip))
+
+    // „…" → formularul complet, apoi înapoi în Exemplu din meniul de lângă ID.
+    await mv.locator('.edit-sheet .qs-more').click()
+    await mv.waitForTimeout(700)
+    await mv.locator('.sheet.on .sh-move-btn').click()
+    await mv.waitForTimeout(400)
+    await mv.locator('.fc-sheet .mv-item', { hasText: 'Exemplu' }).click()
+    await mv.waitForTimeout(900)
+    const formId = (await mv.locator('.sheet.on .sh-id').textContent().catch(() => ''))?.trim()
+    check('mutare din formular: formularul urmează tichetul', /^EX-\d+$/.test(formId ?? '') && new URL(mv.url()).pathname === `/${formId}`, `ID=${formId} URL=${new URL(mv.url()).pathname}`)
+    const formProj = (await mv.locator('.sheet.on .sh-move-btn').textContent().catch(() => '')) ?? ''
+    check('…remontat pe proiectul țintă', /Exemplu/.test(formProj), JSON.stringify(formProj))
+
+    await mv.goBack()
+    await mv.waitForTimeout(700)
+    check('mutare: Back te lasă pe lista de dinainte', (await mv.locator('.sheet.on, .edit-sheet').count()) === 0 && (await onAziMv()) && new URL(mv.url()).pathname === '/', `URL=${new URL(mv.url()).pathname}`)
+    const still = await mv.locator('.task-row', { hasText: 'Sarcină de mutat' }).count()
+    check('mutare: sarcina rămâne în „Azi", o singură dată', still === 1, `${still} rânduri`)
+    await mv.close()
+  }
+
+  // Refuzul: un tichet cu dependențe arată motivul în locul listei (desktop,
+  // meniul de lângă ID din panoul docat).
+  {
+    const rf = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+    await rf.goto(`${BASE}/EX-02`, { waitUntil: 'networkidle' })
+    await rf.waitForTimeout(1200)
+    await rf.locator('.sh-move-btn').first().click()
+    await rf.waitForTimeout(400)
+    const why = (await rf.locator('.mv-pop .mv-why').textContent().catch(() => '')) ?? ''
+    check('mutare refuzată: motivul în locul listei', why.includes('Nu se poate muta EX-02: are dependențe'), JSON.stringify(why))
+    check('…fără proiecte de ales', (await rf.locator('.mv-pop .mv-item').count()) === 0, 'listă ascunsă')
+    await rf.close()
+  }
+
   await page.close()
 } finally {
   if (browser) await browser.close()

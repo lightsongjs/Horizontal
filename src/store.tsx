@@ -214,6 +214,14 @@ interface HorizontalState {
   /** Toastul a expirat (sau pagina se ascunde): ce era amânat se execută. */
   expireUndo(): void
   deleteIssue(id: string): Promise<void>
+  /**
+   * Mută tichetul în alt proiect, cu număr nou (`HZ-12` → `APO-07`), și
+   * întoarce tichetul de acum. Scoate ID-ul vechi din toate listele derivate
+   * (proiect, liste inteligente, deschise, „Ale mele"), pune tichetul nou în
+   * ele, apoi cere un `refresh()`. Foaia deschisă și URL-ul NU sunt treaba
+   * store-ului — vezi `useMoveIssue` din `hooks.ts`.
+   */
+  moveIssue(id: string, targetProjectId: string): Promise<Issue>
   deleteIssues(ids: string[]): Promise<void>
   /**
    * Scrie un tichet deja mutat de altundeva (nu de `repository.updateIssue`)
@@ -1191,6 +1199,26 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     if (recurrenceUndoRef.current?.id === id) setRecurrenceUndo(null)
   }, [])
 
+  const moveIssue = useCallback(async (id: string, targetProjectId: string) => {
+    const moved = await repository.moveIssue(id, targetProjectId)
+    // Pe ID-ul vechi nu mai există nimic: nu doar `allIssues` (proiectul), ci
+    // și pozele transversale, care nu trec prin `upsertIssue`. Tichetul nou
+    // intră în `allIssues`, deci listele derivate (`dueIssues`, `openIssues`,
+    // `byId` după ce proiectul țintă e cel deschis) îl văd imediat.
+    const swap = (xs: Issue[]) => (xs.some((i) => i.id === id) ? xs.map((i) => (i.id === id ? moved : i)) : xs)
+    setAllIssues((prev) => [...prev.filter((i) => i.id !== id && i.id !== moved.id), moved])
+    setDueRaw(swap)
+    setOpenRaw(swap)
+    setInboxRaw((prev) => prev.map((r) => (r.issueId === id
+      ? { ...r, issueId: moved.id, projectId: moved.projectId, assigneeId: moved.assigneeId }
+      : r)))
+    if (recurrenceUndoRef.current?.id === id) setRecurrenceUndo(null)
+    // Numerele din sertar, firul, „Ale mele" (persoana poate fi scoasă de
+    // server): o rundă completă, ca după o reconectare.
+    void refreshRef.current()
+    return moved
+  }, [])
+
   const deleteIssues = useCallback(async (ids: string[]) => {
     if (ids.length === 0) return
     await repository.deleteIssues(ids)
@@ -1464,6 +1492,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     createIssue,
     updateIssue,
     deleteIssue,
+    moveIssue,
     deleteIssues,
     upsertIssue,
     applyWrites,

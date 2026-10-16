@@ -3589,6 +3589,27 @@ button.we-del:hover { color: var(--blocked); background: var(--blocked-soft); }
   color: var(--txt-faint);
   padding-left: 2px;
 }
+/* Proiectul lângă ID, ca jeton de mutare: același gri ca ID-ul, fără fundal
+   până la hover (regula 4), lățimea plafonată ca rândul de iconițe din dreapta
+   să încapă la 320px. Meniul (`ChipPop`) se ancorează de el. */
+.sh-header:has(> .sh-move) > .sh-id { margin-right: 0; }
+/* `flex: 1 1 0`: cu `flex-wrap` din antet, un jeton cu lățimea lui ar fi
+   împins iconițele pe rândul următor în loc să se micșoreze. */
+.sh-header > .sh-move { order: 0; flex: 1 1 0; min-width: 0; position: relative; align-self: center; }
+.sh-move-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 28px; max-width: min(160px, 100%); min-width: 0;
+  padding: 0 6px;
+  border-radius: var(--r-s);
+  background: none;
+  color: var(--txt-faint);
+  font-size: calc(12px * var(--text-scale));
+  font-weight: 600;
+}
+.sh-move-btn:hover, .sh-move-btn.open { background: var(--surface-3); color: var(--txt); }
+.sh-move-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.sh-move-btn svg { flex-shrink: 0; }
+.sh-move .fc-pop.mv-pop:not(.fc-sheet) { width: 260px; max-width: calc(100vw - 32px); max-height: min(420px, 60vh); overflow-y: auto; }
 .sh-header > [aria-label="Deschide mare"] { order: 1; }
 .sh-header > .sh-copy { order: 2; }
 .sh-header > .sh-delete { order: 3; }
@@ -7040,6 +7061,21 @@ body:has(.qab) { overflow-y: auto; }
 }
 .as-item:active { background: var(--surface-2); }
 .as-item.danger { color: var(--blocked); }
+.as-item:disabled, .fc-mi:disabled { opacity: 0.5; cursor: default; }
+
+/* ── Mutarea în alt proiect (foaia mică, meniul din formular) ─────── */
+.mv-list { max-height: calc(var(--vvh, 100vh) * 0.5); overflow-y: auto; }
+.mv-item { min-width: 0; }
+.mv-mark { width: 18px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.mv-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mv-why {
+  margin: 2px 2px 10px;
+  font-size: calc(14px * var(--text-scale));
+  line-height: 1.4;
+  color: var(--txt-dim);
+}
+.fc-pop .mv-why { margin: 4px 6px 8px; font-size: calc(13px * var(--text-scale)); }
+.mv-why.warn { color: var(--blocked); }
 
 /* ── TEXT MĂRIT (rotița de setări) ────────────────────────────────────
    `theme.tsx` pune `data-text-large` pe <html> peste treapta „Normal". La
