@@ -10,21 +10,21 @@ import { stripSpans } from '../lib/parseDue'
 import { fold } from '../lib/text'
 import { fillFromTitle, titleToSave, type FillMemo } from '../lib/titleDueFill'
 import {
-  DATE_PLACEHOLDER, NO_SCHEDULE, TIME_PLACEHOLDER, defaultReminder, displayFromInputDate,
-  fromDisplayDate, fromInputs, fromTimeText, isOverdue, maskDateInput, maskTimeInput, reminderAt,
-  reminderKindOf, toDateInput, toDisplayDate, toShortDate, toTimeInput, type ReminderKind,
+  NO_SCHEDULE, defaultReminder, displayFromInputDate,
+  fromDisplayDate, fromInputs, fromTimeText, isOverdue, reminderAt,
+  reminderKindOf, toDisplayDate, toShortDate, toTimeInput, type ReminderKind,
 } from '../lib/schedule'
 import { dueLabelParts } from '../lib/quickDraft'
 import {
-  REMINDER_CHIP, REMINDER_OPTIONS, addMenuItems, datePresets, recurChipLabel, visibleChips,
+  REMINDER_CHIP, addMenuItems, recurChipLabel, visibleChips,
 } from '../lib/formChips'
 import { Attachments } from './Attachments'
 import { Thread } from './Thread'
 import { DescFold } from './DescFold'
 import { SheetThreadRow } from './SheetThreadRow'
 import type { EditorHandle } from './MarkdownEditor'
-import { describeRrule } from '../lib/recurrence'
 import { ChipPop } from './ChipPop'
+import { DuePanel } from './DuePanel'
 import { MoveChip } from './MoveProject'
 import { attachBlocked } from './SheetFiles'
 import type { Issue, TestScenario } from '../lib/types'
@@ -380,15 +380,12 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
   // Text scris pe jumătate: nu e o eroare, doar nu e încă o dată. Semnalul e
   // discret, ca să nu certe pe cineva care tocmai a apăsat prima cifră.
   const dueIncomplete = dueText.trim() !== '' && dueDate === ''
-  const nativeDateRef = useRef<HTMLInputElement>(null)
   // Ca la dată: textul e starea, valoarea validată se derivă. `dueTime` rămâne
   // numele valorii validate, ca `fromInputs` să primească exact ce primea.
   const [timeText, setTimeText] = useState(
     seedDue?.dueAt && !seedDue.allDay ? toTimeInput(seedDue.dueAt) : '',
   )
   const dueTime = fromTimeText(timeText) ?? ''
-  const timeIncomplete = timeText.trim() !== '' && dueTime === ''
-  const nativeTimeRef = useRef<HTMLInputElement>(null)
   /**
    * A atins omul câmpul de titlu în această deschidere a formularului?
    *
@@ -1058,160 +1055,32 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
     list[(i + (e.key === 'ArrowRight' ? 1 : -1) + list.length) % list.length].focus()
   }
 
-  /* Scadența: câmpul scris (zz/ll/aaaa + oră) cu selectoarele native la un
-     click distanță. Aceeași stare și aceeași validare ca înainte — doar s-a
-     mutat din bară în popoverul datei. */
-  const dueField = (
-    <div className={`due-inputs${dueText ? '' : ' unset'}`} title="Scadență">
-      <input
-        type="text"
-        inputMode="numeric"
-        className={`due-input due-input-date ${dueIncomplete ? 'incomplete' : ''}`}
-        value={dueText}
-        onChange={(e) => setDueText(maskDateInput(e.target.value))}
-        placeholder={DATE_PLACEHOLDER}
-        maxLength={10}
-        aria-label="Data scadenței, zi/lună/an"
-      />
-      {/* Selectorul nativ rămâne la un click distanță — pe telefon e
-          calendarul sistemului, care bate orice am construi noi. E
-          ascuns vizual, nu absent: `showPicker()` are nevoie de el în
-          document. */}
-      <input
-        ref={nativeDateRef}
-        type="date"
-        className="due-native"
-        tabIndex={-1}
-        aria-hidden="true"
-        value={dueDate}
-        onChange={(e) => setDueText(displayFromInputDate(e.target.value))}
-      />
-      <button
-        type="button"
-        className="due-pick"
-        title="Alege din calendar"
-        aria-label="Alege data din calendar"
-        onClick={() => {
-          const el = nativeDateRef.current
-          if (!el) return
-          // `showPicker` lipsește în browsere mai vechi; atunci un
-          // click pe inputul nativ face aceeași treabă.
-          if (typeof el.showPicker === 'function') el.showPicker()
-          else el.click()
-        }}
-      >
-        <Icon name="due" size={13} />
-      </button>
-      <input
-        type="text"
-        inputMode="numeric"
-        className={`due-input due-input-time ${timeIncomplete ? 'incomplete' : ''}`}
-        value={timeText}
-        onChange={(e) => setTimeText(maskTimeInput(e.target.value))}
-        disabled={!dueDate}
-        placeholder={TIME_PLACEHOLDER}
-        maxLength={5}
-        aria-label="Ora scadenței, 24 de ore"
-        title={dueDate ? 'Lasă gol pentru toată ziua' : 'Alege întâi o zi'}
-      />
-      {/* Ceasul nativ, la un click distanță — pe telefon e cel al sistemului. */}
-      <input
-        ref={nativeTimeRef}
-        type="time"
-        className="due-native"
-        tabIndex={-1}
-        aria-hidden="true"
-        value={dueTime}
-        onChange={(e) => setTimeText(e.target.value)}
-      />
-      <button
-        type="button"
-        className="due-pick"
-        title="Alege ora"
-        aria-label="Alege ora din ceas"
-        disabled={!dueDate}
-        onClick={() => {
-          const el = nativeTimeRef.current
-          if (!el) return
-          if (typeof el.showPicker === 'function') el.showPicker()
-          else el.click()
-        }}
-      >
-        <Icon name="reminderTime" size={13} />
-      </button>
-    </div>
-  )
-
-  const presets = datePresets(now)
+  /* Scadența: presetări + câmpul scris (zz/ll/aaaa + oră), cu calendarul și
+     ceasul sistemului în câmp (`NativePick`). Același corp ca foaia de tichet
+     de pe telefon (`DuePanel`); aici doar murdărește starea formularului. */
   const datePop = (
-    <>
-      <h4 className="fc-h">Ziua</h4>
-      <div className="fc-presets">
-        {presets.map((p) => {
-          const on = dueDate === toDateInput(p.date.toISOString())
-          return (
-            <button
-              key={p.key}
-              type="button"
-              className={`fc-pre${on ? ' on' : ''}`}
-              aria-pressed={on}
-              data-autofocus={on || undefined}
-              onClick={() => setDueText(toDisplayDate(p.date.toISOString()))}
-            >
-              {p.label}
-              <small>{p.sub}</small>
-            </button>
-          )
-        })}
-      </div>
-      <div className="fc-fields">
-        {dueField}
-        {dueText && (
-          <button type="button" className="fc-link" onClick={clearDue} title="Fără dată">
-            scoate
-          </button>
-        )}
-      </div>
-      {(dueIncomplete || timeIncomplete) && (
-        <p className="fc-note warn">{dueIncomplete ? 'Scrie data ca zi/lună/an.' : 'Ora, de la 00:00 la 23:59.'}</p>
-      )}
-      {/* Mementoul apare numai când are ce să însemne. Pentru o sarcină de
-          zi întreagă ar suna la miezul nopții, deci acolo tace și treaba
-          o face rezumatul de dimineață. */}
-      {dueDate && !dueTime && !dueIncomplete && <p className="fc-note">Toată ziua — fără memento.</p>}
-      {dueDate && dueTime && (
-        <>
-          <h4 className="fc-h">Memento</h4>
-          <div className="fc-seg" role="group" aria-label="Memento">
-            {REMINDER_OPTIONS.map(([kind, label]) => (
-              <button
-                key={kind}
-                type="button"
-                className={schedule.kind === kind ? 'on' : ''}
-                aria-pressed={schedule.kind === kind}
-                onClick={() => { setReminder(kind); setReminderTouched(true) }}
-              >
-                {schedule.kind === kind && <Icon name="check" size={12} />}
-                {label}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-      {/* Repetarea nu se alege de aici: se scrie în titlu („în fiecare luni"),
-          iar `parseDue` o recunoaște. Aici doar se vede și se scoate. */}
-      {rruleOut && (
-        <p className="fc-recur">
-          <Icon name="recurring" size={13} />
-          <span>Se repetă: {describeRrule(rruleOut) || 'personalizat'}</span>
-          <span aria-hidden="true">·</span>
-          <button type="button" className="fc-link" onClick={() => setRrule(null)}>scoate</button>
-        </p>
-      )}
-      {!narrow && (
-        <div className="fc-foot"><kbd>Esc</kbd> închide, înapoi pe jeton</div>
-      )}
-    </>
+    <DuePanel
+      now={now}
+      dueText={dueText}
+      timeText={timeText}
+      dueDate={dueDate}
+      dueTime={dueTime}
+      onDueText={setDueText}
+      onTimeText={setTimeText}
+      onPreset={(day) => setDueText(toDisplayDate(day.toISOString()))}
+      onPickDate={(v) => setDueText(displayFromInputDate(v))}
+      onPickTime={(v) => {
+        // Ora fără zi n-ar însemna nimic: cade azi, ca „Oră…" din glisare.
+        if (!dueDate) setDueText(toDisplayDate(now.toISOString()))
+        setTimeText(v)
+      }}
+      onClear={clearDue}
+      reminder={schedule.kind}
+      onReminder={(kind) => { setReminder(kind); setReminderTouched(true) }}
+      rrule={rruleOut}
+      onClearRrule={() => setRrule(null)}
+      foot={!narrow && <div className="fc-foot"><kbd>Esc</kbd> închide, înapoi pe jeton</div>}
+    />
   )
 
   const waveMenu = (

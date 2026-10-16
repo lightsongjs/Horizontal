@@ -1,5 +1,21 @@
 import { describe, expect, it } from 'vitest'
-import { MIN_HIDDEN_LINES, PANE_CAP_PX, descCap, foldState, moreLinesLabel } from './descFold'
+import { MIN_HIDDEN_LINES, PANE_CAP_PX, descCap, foldState, moreLinesLabel, tapRevealsOnly } from './descFold'
+
+describe('tapRevealsOnly (D-196)', () => {
+  it('pe telefon, pliată: atingerea pe text doar arată tot', () => {
+    expect(tapRevealsOnly('viewport', true, false)).toBe(true)
+  })
+  it('pe telefon, întreagă: atingerea scrie', () => {
+    expect(tapRevealsOnly('viewport', false, false)).toBe(false)
+  })
+  it('bifa și linkurile își fac treaba și pliate', () => {
+    expect(tapRevealsOnly('viewport', true, true)).toBe(false)
+  })
+  it('panoul lateral și modalul rămân cum erau', () => {
+    expect(tapRevealsOnly('pane', true, false)).toBe(false)
+    expect(tapRevealsOnly(null, true, false)).toBe(false)
+  })
+})
 
 describe('descCap', () => {
   it('în panou: 45% din panou, dar nu peste 340px', () => {

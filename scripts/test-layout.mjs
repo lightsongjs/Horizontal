@@ -394,11 +394,9 @@ const datePop = (sheet) => `
   <div class="fc-fields">
     <div class="due-inputs">
       <input class="due-input due-input-date" value="17/09/2026">
-      <input class="due-native" type="date">
-      <button class="due-pick"><svg width="13" height="13"></svg></button>
+      <span class="native-pick due-pick"><svg width="13" height="13"></svg><input class="native-pick-input" type="date"></span>
       <input class="due-input due-input-time" value="09:30">
-      <input class="due-native" type="time">
-      <button class="due-pick"><svg width="13" height="13"></svg></button>
+      <span class="native-pick due-pick"><svg width="13" height="13"></svg><input class="native-pick-input" type="time"></span>
     </div>
     <button class="fc-link">scoate</button>
   </div>
@@ -1502,6 +1500,85 @@ for (const width of PHONE_WIDTHS) {
   check(`jetonul de proiect nestrivit, numele tăiat cu „…" @${width}px`, h.chipW >= 60 && h.chipH >= 28 && h.ellipsis, `${h.chipW}×${h.chipH}px, tăiat=${h.ellipsis}`)
   check(`foaia de mutare nu se lățește @${width}px`, s.overflow <= 0 && s.docOverflow <= 0, `${s.overflow}px, pagina +${s.docOverflow}px`)
   check(`proiectele atingibile, pe un rând @${width}px`, s.lowest >= 44 && s.oneLine, `cel mai scund ${s.lowest}px, un rând=${s.oneLine}`)
+}
+
+/**
+ * Panoul de dată al foii de tichet (D-197) — componenta REALĂ (`DuePanel` în
+ * `ChipPop` ca foaie de jos), pe un telefon cu locale `en-US`, ca al omului.
+ * Înainte, foaia arăta două inputuri native goale: `10/16/2026` și
+ * `--:-- --`. Ziua aleasă e 16 (> 12), deci ordinea zi/lună se vede.
+ */
+const { outputFiles: [dueBundle] } = await esbuild.build({
+  stdin: {
+    contents: `
+      import { createElement as h, useRef } from 'react'
+      import { createRoot } from 'react-dom/client'
+      import { ChipPop } from './components/ChipPop'
+      import { DuePanel } from './components/DuePanel'
+      const noop = () => {}
+      function Harness({ rrule }) {
+        const row = useRef(null)
+        const now = new Date(2026, 9, 16, 8, 0)
+        return h('div', { className: 'edit-sheet kb-sheet' },
+          h('div', { className: 'qs-bar', ref: row }, h('button', { className: 'qs-due on' }, 'Azi 17:30')),
+          h(ChipPop, { anchor: null, rowRef: row, sheet: true, role: 'dialog', label: 'Scadența', className: 'fc-pop-date es-due-pop', onClose: noop },
+            h(DuePanel, { now, dueText: '16/10/2026', timeText: '17:30', dueDate: '2026-10-16', dueTime: '17:30',
+              onDueText: noop, onTimeText: noop, onPreset: noop, onPickDate: noop, onPickTime: noop, onClear: noop,
+              reminder: 'm30', onReminder: noop, rrule, onClearRrule: noop })))
+      }
+      window.__mount = (rrule) => createRoot(document.getElementById('app')).render(h(Harness, { rrule }))
+    `,
+    resolveDir: fileURLToPath(new URL('../src', import.meta.url)),
+    loader: 'tsx',
+  },
+  bundle: true, write: false, format: 'iife', jsx: 'automatic', loader: { '.tsx': 'tsx', '.ts': 'ts' },
+  define: { 'process.env.NODE_ENV': '"production"', 'import.meta.env': '{}' },
+})
+const DUE_SHOTS = process.env.DUE_SHOTS
+console.log('\nPanoul de dată din foaia de tichet (telefon en-US, componenta reală):')
+for (const width of PHONE_WIDTHS) {
+  const page = await browser.newPage({ viewport: { width, height: 800 }, hasTouch: true, isMobile: true, locale: 'en-US' })
+  await page.setContent(`<meta name="viewport" content="width=device-width, initial-scale=1.0"><style>${CSS}</style><div id="app"></div><script>${dueBundle.text}</script>`)
+  await page.evaluate(() => window.__mount('FREQ=WEEKLY;BYDAY=MO,TH'))
+  await page.waitForSelector('.fc-sheet .fc-recur')
+  await page.evaluate(() => document.fonts.ready)
+  const m = await page.evaluate(() => {
+    const pop = document.querySelector('.fc-sheet')
+    const r = (el) => el.getBoundingClientRect()
+    const pres = [...pop.querySelectorAll('.fc-pre')]
+    const picks = [...pop.querySelectorAll('.due-pick')]
+    // Ce se VEDE: textul randat plus valorile câmpurilor vizibile. Inputurile
+    // native (sub iconițe) trebuie să fie transparente — al lor e formatul
+    // locale-ului, nu al nostru.
+    const natives = [...pop.querySelectorAll('input[type=date], input[type=time]')]
+    const shown = pop.innerText + ' ' + [...pop.querySelectorAll('input:not([type=date]):not([type=time])')].map((i) => i.value).join(' ')
+    return {
+      popW: Math.round(r(pop).width),
+      popOverflow: pop.scrollWidth - pop.clientWidth,
+      docOverflow: document.documentElement.scrollWidth - innerWidth,
+      preWrapped: pres.filter((p) => p.scrollWidth > p.clientWidth + 1 || r(p).right > r(pop).right).length,
+      preCount: pres.length,
+      preRow: new Set(pres.map((p) => Math.round(r(p).top))).size,
+      pick: Math.round(Math.min(...picks.map((p) => Math.min(r(p).width, r(p).height)))),
+      nativeVisible: natives.filter((i) => getComputedStyle(i).opacity !== '0').length,
+      nativeCount: natives.length,
+      shown,
+    }
+  })
+  const usFormat = /\b10\/16\/2026\b|--:--|\b(AM|PM)\b|mm\/dd/i.test(m.shown)
+  const roFormat = m.shown.includes('16/10/2026') && m.shown.includes('17:30')
+  check(`foaia de dată pe toată lățimea @${width}px`, m.popW === width && m.popOverflow <= 0 && m.docOverflow <= 0, `${m.popW}px, +${m.popOverflow}px, pagina +${m.docOverflow}px`)
+  // Cu textul mărit presetările trec, prin design, pe două coloane.
+  const maxRows = Number(process.env.TEXT_SCALE ?? 1) > 1 ? 2 : 1
+  check(`presetările încap întregi (${maxRows === 1 ? 'un rând' : 'max. două rânduri'}) @${width}px`, m.preCount === 4 && m.preWrapped === 0 && m.preRow <= maxRows,`${m.preCount} presetări, ${m.preWrapped} tăiate, ${m.preRow} rând(uri)`)
+  check(`fără text în formatul nativ @${width}px`, !usFormat && roFormat && m.nativeVisible === 0 && m.nativeCount === 2, usFormat ? `găsit: ${m.shown.replace(/\s+/g, ' ').slice(0, 120)}` : `zz/ll/aaaa + 24h, ${m.nativeCount} selectoare native transparente`)
+  check(`calendar/ceas atingibile în foaie @${width}px`, m.pick >= 32, `cel mai mic ${m.pick}px`)
+  if (DUE_SHOTS && width === 390) for (const theme of ['dark', 'light']) {
+    await page.evaluate((t) => document.documentElement.setAttribute('data-theme', t), theme)
+    await page.waitForTimeout(300) // culorile câmpurilor au `transition`
+    await page.screenshot({ path: `${DUE_SHOTS}/date-panel-390-${theme}.png` })
+  }
+  await page.close()
 }
 
 await browser.close()
