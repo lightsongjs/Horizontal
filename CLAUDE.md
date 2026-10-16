@@ -203,7 +203,12 @@ lectură și Firul e oricum în dreapta), `DescFold` (`src/components/DescFold.t
 regulile pure în `src/lib/descFold.ts`): minim 3 rânduri (2 goală), plafon
 `min(340px, 45% din panou)` (telefon: 45% din ecranul vizibil), pliere doar dacă
 ar ascunde ≥ 4 rânduri, cu „Arată tot · încă N rânduri" / „Restrânge". Focusul
-desface; desfăcută rămâne cât trăiește formularul. Fără înălțime fixă
+desface; desfăcută rămâne cât trăiește formularul. **Pe telefon (`viewport`)
+întâi citești, apoi scrii** (D-196, `tapRevealsOnly`): cât e pliată, o atingere
+pe text DOAR o desface — `onMouseDownCapture` pe cutie, înaintea CodeMirror,
+cu `preventDefault` (fără focus, deci fără tastatură) + `stopPropagation`;
+bifa, linkurile și „Arată tot" trec (`DESC_CONTROLS`). Pe textul întreg
+atingerea pune cursorul, ca înainte. Panoul lateral (mouse) e neschimbat. Fără înălțime fixă
 CodeMirror nu mai umple cutia, deci o atingere sub text o prinde cutia și
 cheamă `focusEnd()` (nou în `EditorHandle`). Foaia de tichet (`EditSheet`)
 folosește același `DescFold`: sub plafon umple foaia ca înainte. Primul în
@@ -613,6 +618,16 @@ ziua implicită a parserului nu se poate deosebi altfel de una scrisă. Pe o
 recurentă, ora schimbă seria, ziua mută doar apariția; `rrule` se schimbă
 numai la o expresie de recurență.
 
+**Jetonul de dată deschide panoul formularului** (D-197): `DuePanel`
+(`src/components/DuePanel.tsx`, același corp ca popoverul datei din formularul
+complet), în `ChipPop` ca foaie de jos — nu cele două inputuri native, care pe
+un telefon en-US arătau `10/16/2026` și `--:-- --`. `SheetDue` (`EditSheet.tsx`)
+scrie pe loc, prin `reschedule` (mementoul își ține decalajul, `rrule` neatins):
+presetările și calendarul imediat, textul scris abia când e o dată/oră validă,
+iar o oră golită (= toată ziua) la ieșirea din câmp. Deschiderea aplică întâi o
+dată evidențiată în titlu (gest de încheiere, ca „…"). Foaia RAPIDĂ are încă
+vechea bandă `qs-when`.
+
 **Fără buton de salvare.** `src/lib/autosave.ts` (pur, cu teste) + `useAutosave`
 din `hooks.ts` — gândite să fie reluate de formularul complet când pierde și el
 butonul. Textul pleacă după 800ms de pauză și la orice închidere (demontare,
@@ -717,7 +732,9 @@ tăiate de `overflow` al corpului.
   900px popoverul e foaie de jos, prin portal în `body` (`.sheet` are
   `transform`).
 - Popoverul datei refolosește câmpul scris (`dueText`/`timeText`, aceeași
-  validare) plus presetări (Azi · Mâine · Luni · +1 săpt.) și mementoul.
+  validare) plus presetări (Azi · Mâine · Luni · +1 săpt.) și mementoul —
+  `DuePanel`, comun cu foaia de tichet. Calendarul și ceasul din câmp sunt
+  `NativePick` (inputul nativ sub deget), nu `showPicker()`.
   Logica de murdărie e neatinsă: deschiderea unui tichet nu-l face „nesalvat”.
 - Bara de fișiere apare numai cu fișiere (`Attachments hideEmpty`); agrafa din
   rând urcă prin același drum (`addRef`). Tragerea peste coloana descrierii

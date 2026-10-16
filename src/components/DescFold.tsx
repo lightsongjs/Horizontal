@@ -1,7 +1,7 @@
 import { forwardRef, useImperativeHandle, useLayoutEffect, useRef, useState, type CSSProperties, type MouseEvent } from 'react'
 import { DescField } from './DescField'
 import type { EditorHandle, MarkdownEditorProps } from './MarkdownEditor'
-import { descCap, foldState, moreLinesLabel } from '../lib/descFold'
+import { DESC_CONTROLS, descCap, foldState, moreLinesLabel, tapRevealsOnly } from '../lib/descFold'
 import { Icon } from './Icon'
 
 type Props = MarkdownEditorProps & {
@@ -24,7 +24,9 @@ const ZERO: Measure = { content: 0, cap: 0, line: 0 }
  * · încă N rânduri"; desfăcută, butonul devine „Restrânge" la coada textului.
  *
  * Textul rămâne întreg în CodeMirror — pliat e doar desenul. Focusul (click în
- * text, Tab) o desface: nu scrii în ce nu vezi. Desfăcută rămâne cât trăiește
+ * text, Tab) o desface: nu scrii în ce nu vezi. Pe telefon (`viewport`) o
+ * atingere pe textul pliat NU ia focusul: doar îl desface, iar abia a doua
+ * atingere scrie (`tapRevealsOnly`, D-196) — întâi citești, apoi editezi. Desfăcută rămâne cât trăiește
  * componenta, adică cât stă tichetul deschis (cheia panoului o remontează).
  *
  * Cum cutia nu mai are înălțime fixă, CodeMirror nu mai umple tot câmpul: o
@@ -89,6 +91,21 @@ export const DescFold = forwardRef<EditorHandle, Props>(function DescFold({ clas
     }
   }, [where])
 
+  /**
+   * Pe telefon, pliată: o atingere pe text doar o arată întreagă (D-196). În
+   * faza de captură, ÎNAINTEA editorului: `preventDefault` pe `mousedown`
+   * ține focusul (deci tastatura) jos, iar `stopPropagation` oprește
+   * CodeMirror să pună cursorul. Bifa și linkurile trec neatinse.
+   */
+  const onBoxDownCapture = (e: MouseEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return
+    const onControl = !!(e.target as HTMLElement).closest(DESC_CONTROLS)
+    if (!tapRevealsOnly(where, capped, onControl)) return
+    e.preventDefault()
+    e.stopPropagation()
+    setOpen(true)
+  }
+
   const onBoxDown = (e: MouseEvent<HTMLDivElement>) => {
     if (!where || p.readOnly || e.button !== 0) return
     const t = e.target as HTMLElement
@@ -138,6 +155,7 @@ export const DescFold = forwardRef<EditorHandle, Props>(function DescFold({ clas
       className={cls}
       style={capped ? ({ '--desc-cap': `${m.cap}px` } as CSSProperties) : undefined}
       onMouseDown={onBoxDown}
+      onMouseDownCapture={onBoxDownCapture}
       onFocus={() => { setOpen(true); onFocus?.() }}
       after={more}
     />

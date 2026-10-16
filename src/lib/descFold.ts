@@ -46,3 +46,17 @@ export function moreLinesLabel(n: number): string {
   const de = n !== 0 && (rest === 0 || rest >= 20)
   return `încă ${n} ${de ? 'de ' : ''}rânduri`
 }
+
+/**
+ * O atingere pe descriere, pe telefon (D-196): cât e PLIATĂ, întâi o arată
+ * întreagă — fără focus, fără tastatură; abia pe textul întreg o atingere
+ * pune cursorul. Pe ce e control în text (bifa, un link, „Arată tot") atingerea
+ * își face treaba ei, pliat sau nu. Panoul lateral (mouse) rămâne cum era:
+ * acolo un click în text e deja o alegere a locului unde scrii.
+ */
+export function tapRevealsOnly(where: 'pane' | 'viewport' | null, capped: boolean, onControl: boolean): boolean {
+  return where === 'viewport' && capped && !onControl
+}
+
+/** Ce e control în cutia descrierii: bifa, linkurile, `#HZ-12`, „Arată tot". */
+export const DESC_CONTROLS = '.md-task, [data-href], [data-ref], .desc-more'

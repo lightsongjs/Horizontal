@@ -1401,7 +1401,14 @@ try {
       await tap(c.x, c.y)
       await tp.waitForTimeout(400)
       // Cu focus și un cuvânt în compunere, ca pe Android.
-      const l1 = await tp.locator(`${scope} .cm-line`).first().boundingBox()
+      let l1 = await tp.locator(`${scope} .cm-line`).first().boundingBox()
+      // Pliată, prima atingere doar o arată întreagă (D-196); a doua scrie.
+      // Desfăcută, foaia crește și rândul se poate muta: se măsoară din nou.
+      if (len === 'pliată') {
+        await tap(l1.x + l1.width - 4, l1.y + l1.height / 2)
+        await tp.waitForTimeout(300)
+        l1 = await tp.locator(`${scope} .cm-line`).first().boundingBox()
+      }
       await tap(l1.x + l1.width - 4, l1.y + l1.height / 2)
       await tp.waitForTimeout(300)
       const cdp = await ctx.newCDPSession(tp)
@@ -1420,6 +1427,137 @@ try {
       check(`…și cuvântul compus rămâne întreg`, (await descOf(tp, scope)).startsWith('- [ ] unuabc\n'), JSON.stringify((await descOf(tp, scope)).slice(0, 14)))
       await ctx.close()
     }
+  }
+
+  // ── D-196: descrierea pliată se citește întâi, se scrie după ─────────────
+  // Pe telefon, cu „Arată tot", o atingere pe text o arăta întreagă ȘI ridica
+  // tastatura (focus în editor). Acum prima atingere doar o desface; abia pe
+  // textul întreg atingerea pune cursorul. Foaia de tichet și formularul
+  // complet, cu atingeri reale (CDP). `NAV_SHOTS=<dosar>`: capturi la 390px.
+  {
+    const SHOTS = process.env.NAV_SHOTS
+    const LONG = Array.from({ length: 45 }, (_, i) => `Rândul ${i + 1} din descrierea lungă, cu text cât să se citească.`).join('\n')
+    const shoot = async (tp, name) => {
+      if (!SHOTS) return
+      for (const theme of ['dark', 'light']) {
+        await tp.evaluate((t) => document.documentElement.setAttribute('data-theme', t), theme)
+        await tp.waitForTimeout(300)
+        await tp.screenshot({ path: `${SHOTS}/${name}-390-${theme}.png` })
+      }
+    }
+    for (const full of [false, true]) {
+      const where = full ? 'formular' : 'foaie'
+      const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, locale: 'en-US' })
+      const tp = await ctx.newPage()
+      await tp.goto(BASE, { waitUntil: 'networkidle' })
+      await tp.waitForTimeout(700)
+      const id = await tp.evaluate((d) => {
+        const db = JSON.parse(localStorage.getItem('horizontal:v2'))
+        const i = db.issues.find((x) => x.projectId !== 'd')
+        i.desc = d
+        localStorage.setItem('horizontal:v2', JSON.stringify(db))
+        return i.id
+      }, LONG)
+      await tp.goto(`${BASE}/${id}`, { waitUntil: 'networkidle' })
+      await tp.waitForTimeout(1500)
+      const { tap, center } = await touchApi(tp)
+      let scope = '.edit-sheet'
+      if (full) {
+        const m = await center(tp.locator('.edit-sheet .qs-more'))
+        await tap(m.x, m.y)
+        await tp.waitForTimeout(900)
+        scope = '.sheet.on'
+      }
+      await tp.locator(`${scope} .cm-line`).first().waitFor({ timeout: 5000 })
+      const expanded = () => tp.locator(`${scope} .desc-more`).getAttribute('aria-expanded').catch(() => null)
+      const inEditor = () => tp.evaluate(() => !!document.activeElement?.closest('.md-editor'))
+      check(`D-196 (${where}): descrierea lungă pornește pliată`, (await expanded()) === 'false', `aria-expanded=${await expanded()}`)
+      if (!full) await shoot(tp, 'desc-folded')
+      // Pe un rând din mijlocul textului, nu pe „Arată tot".
+      const line = await center(tp.locator(`${scope} .cm-line`).nth(3))
+      await tap(line.x, line.y)
+      await tp.waitForTimeout(400)
+      check(`D-196 (${where}): prima atingere pe text o arată întreagă`, (await expanded()) === 'true', `aria-expanded=${await expanded()}`)
+      check(`D-196 (${where}): …fără focus în editor (fără tastatură)`, !(await inEditor()), `activ=${await tp.evaluate(() => document.activeElement?.className)}`)
+      if (!full) await shoot(tp, 'desc-expanded')
+      const line2 = await center(tp.locator(`${scope} .cm-line`).nth(3))
+      await tap(line2.x, line2.y)
+      await tp.waitForTimeout(400)
+      check(`D-196 (${where}): a doua atingere pune cursorul`, await inEditor(), `activ=${await tp.evaluate(() => document.activeElement?.className)}`)
+      if (!full) await shoot(tp, 'desc-editing')
+      await ctx.close()
+    }
+  }
+
+  // ── D-197: data din foaia de tichet ─────────────────────────────────────
+  // Jetonul de dată deschide același panou ca formularul complet (presetări,
+  // câmpul `zz/ll/aaaa` + `hh:mm`), ca foaie de jos — nu inputurile native
+  // goale, care pe un telefon en-US arătau `10/16/2026` și `--:-- --`.
+  // „Mâine" scrie pe loc (autosave), verificat în baza locală.
+  {
+    const SHOTS = process.env.NAV_SHOTS
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, locale: 'en-US' })
+    const tp = await ctx.newPage()
+    await tp.goto(BASE, { waitUntil: 'networkidle' })
+    await tp.waitForTimeout(700)
+    await tp.locator('.fab').click()
+    await tp.waitForTimeout(400)
+    await tp.keyboard.type('Sarcină pentru panoul de dată')
+    await tp.keyboard.press('Enter')
+    await tp.waitForTimeout(1000)
+    const { tap, center } = await touchApi(tp)
+    const r = await center(tp.locator('.task-row', { hasText: 'Sarcină pentru panoul de dată' }).first())
+    await tap(r.x, r.y)
+    await tp.waitForTimeout(900)
+    const chip = await center(tp.locator('.edit-sheet .qs-due'))
+    await tap(chip.x, chip.y)
+    await tp.waitForTimeout(500)
+    const pop = tp.locator('.fc-sheet.es-due-pop')
+    check('D-197: jetonul de dată deschide panoul ca foaie de jos', (await pop.count()) === 1, `${await pop.count()} panouri`)
+    const shown = await pop.evaluate((el) => ({
+      text: el.innerText,
+      fields: [...el.querySelectorAll('input.due-input')].map((i) => i.value),
+      nativeVisible: [...el.querySelectorAll('input[type=date], input[type=time]')].filter((i) => getComputedStyle(i).opacity !== '0').length,
+      presets: [...el.querySelectorAll('.fc-pre')].map((b) => b.firstChild.textContent),
+    })).catch(() => null)
+    check('D-197: presetările Azi · Mâine · Luni · +1 săpt.', shown?.presets.join('|') === 'Azi|Mâine|Luni|+1 săpt.', JSON.stringify(shown?.presets))
+    check('D-197: fără text în formatul nativ', !!shown && shown.nativeVisible === 0 && !/--:--|\b(AM|PM)\b|\d{2}\/\d{2}\/\d{4}/.test(shown.text) && /^\d{2}\/\d{2}\/\d{4}$/.test(shown.fields[0] ?? ''),
+      JSON.stringify(shown?.fields))
+    if (SHOTS) for (const theme of ['dark', 'light']) {
+      await tp.evaluate((t) => document.documentElement.setAttribute('data-theme', t), theme)
+      await tp.waitForTimeout(300)
+      await tp.screenshot({ path: `${SHOTS}/sheet-date-panel-390-${theme}.png` })
+    }
+    const want = await tp.evaluate(() => { const d = new Date(); d.setDate(d.getDate() + 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` })
+    const mBtn = await center(pop.locator('.fc-pre', { hasText: 'Mâine' }))
+    await tap(mBtn.x, mBtn.y)
+    await tp.waitForTimeout(800)
+    const stored = await tp.evaluate(() => {
+      const i = JSON.parse(localStorage.getItem('horizontal:v2')).issues.find((x) => x.title === 'Sarcină pentru panoul de dată')
+      if (!i?.dueAt) return null
+      const d = new Date(i.dueAt)
+      return { day: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`, allDay: i.allDay }
+    })
+    check('D-197: „Mâine" din foaie scrie data pe loc', stored?.day === want, `${JSON.stringify(stored)} vs ${want}`)
+    const field = await pop.locator('input.due-input-date').inputValue().catch(() => null)
+    check('…și câmpul o arată zz/ll/aaaa', field === `${want.slice(8, 10)}/${want.slice(5, 7)}/${want.slice(0, 4)}`, JSON.stringify(field))
+    const chipText = (await tp.locator('.edit-sheet .qs-due').textContent().catch(() => '')) ?? ''
+    check('…iar jetonul spune „Mâine"', /Mâine/.test(chipText), JSON.stringify(chipText))
+    // Ora scrisă (24h) pleacă imediat ce e întreagă.
+    await pop.locator('input.due-input-time').fill('17:30')
+    await tp.waitForTimeout(800)
+    const t = await tp.evaluate(() => {
+      const i = JSON.parse(localStorage.getItem('horizontal:v2')).issues.find((x) => x.title === 'Sarcină pentru panoul de dată')
+      const d = new Date(i.dueAt)
+      return `${d.getHours()}:${d.getMinutes()} allDay=${i.allDay}`
+    })
+    check('D-197: ora scrisă în câmp se salvează (24h)', t === '17:30 allDay=false', t)
+    if (SHOTS) for (const theme of ['dark', 'light']) {
+      await tp.evaluate((th) => document.documentElement.setAttribute('data-theme', th), theme)
+      await tp.waitForTimeout(300)
+      await tp.screenshot({ path: `${SHOTS}/sheet-date-panel-time-390-${theme}.png` })
+    }
+    await ctx.close()
   }
 
   // ── Mutarea în alt proiect (telefon, modul local) ───────────────────────

@@ -5,7 +5,10 @@ import { useAutosave, useCanWriteIn, useTitleDate, type TitleDate } from '../hoo
 import type { Normalize } from '../lib/autosave'
 import { dateFragments } from '../lib/parseDue'
 import { dueLabelParts } from '../lib/quickDraft'
-import { fromInputs, reschedule, toDateInput, toTimeInput } from '../lib/schedule'
+import {
+  displayFromInputDate, fromDisplayDate, fromInputs, fromTimeText, reminderAt, reminderKindOf, reschedule,
+  toDateInput, toDisplayDate, toTimeInput,
+} from '../lib/schedule'
 import { mergeTitleDue } from '../lib/titleDue'
 import type { Issue } from '../lib/types'
 import { Icon } from './Icon'
@@ -18,6 +21,8 @@ import { ProjectMark } from './ProjectMark'
 import { displayIssueId, isTempIssueId } from '../lib/issueId'
 import { MoveProjectSheet } from './MoveProject'
 import { SheetThreadRow } from './SheetThreadRow'
+import { ChipPop } from './ChipPop'
+import { DuePanel } from './DuePanel'
 
 /** Ce se editează din foaie — exact câmpurile pe care le poate trimite. */
 type EditFields = {
@@ -136,6 +141,8 @@ function EditBody({ issue }: { issue: Issue }) {
   useEffect(() => () => applyRef.current(), [])
   const files = useTicketFiles(issue.id, issue.projectId, showToast)
   const [whenOpen, setWhenOpen] = useState(false)
+  const barRef = useRef<HTMLDivElement>(null)
+  const dueAnchor = useRef<HTMLElement | null>(null)
   const [moveOpen, setMoveOpen] = useState(false)
   // Mutarea cere scriere pe sursă (ținta o filtrează selectorul) și un număr
   // real: `HZ-~…` încă n-a ajuns pe server.
@@ -151,9 +158,6 @@ function EditBody({ issue }: { issue: Issue }) {
   // `#HZ-12` din descriere: cardul tichetului, dacă e încărcat.
   const openRef = (id: string) => (byId[id] ? pushSheet({ kind: 'issue', issueId: id }) : showToast(`${id} nu e încărcat — deschide-i proiectul.`))
 
-  const setDue = (date: string, time: string) => {
-    void a.commit(reschedule(d, fromInputs(date, time)))
-  }
   const toFull = async (at?: 'thread') => {
     // Formularul complet își citește câmpurile din store la montare: ce
     // așteaptă încă pauza trebuie să fi ajuns acolo înainte — inclusiv o
@@ -213,7 +217,7 @@ function EditBody({ issue }: { issue: Issue }) {
         {/* Sub titlu, nu jos: foaia asta se deschide ca să citești, deci ziua și
             proiectul se văd odată cu titlul, chiar și peste o descriere lungă.
             Jos, cât scrii, e locul barei de formatare („Senin", 2026-10-14). */}
-        <div className="qs-bar">
+        <div className="qs-bar" ref={barRef}>
           <button
             type="button"
             className={`qs-due ${shown.dueAt ? 'on' : ''} ${preview ? 'pending' : ''}`}
@@ -221,7 +225,14 @@ function EditBody({ issue }: { issue: Issue }) {
             aria-label={parts ? `Scadența${preview ? ' (din titlu)' : ''}: ${parts.day}${parts.time ? ' ' + parts.time : ''}` : 'Fără dată'}
             disabled={!canWrite}
             onPointerDown={keepFocus}
-            onClick={() => setWhenOpen((v) => !v)}
+            onClick={(e) => {
+              if (whenOpen) { setWhenOpen(false); return }
+              // Deschiderea e un gest de încheiere, ca „…": o dată evidențiată
+              // în titlu se aplică acum, ca panoul să arate scadența adevărată.
+              applyDate()
+              dueAnchor.current = e.currentTarget
+              setWhenOpen(true)
+            }}
           >
             <Icon name={shown.rrule ? 'recurring' : 'due'} size={15} />
             <span className="qs-due-t">{parts ? parts.day : 'Fără dată'}</span>
@@ -300,29 +311,6 @@ function EditBody({ issue }: { issue: Issue }) {
         </div>
         <p className={`qs-status ${status ? 'warn' : ''}`} role="status">{status}</p>
 
-        {whenOpen && canWrite && (
-          <div className="qs-when">
-            <Icon name="due" size={14} />
-            <input
-              type="date"
-              aria-label="Ziua"
-              value={d.dueAt ? toDateInput(d.dueAt) : ''}
-              onChange={(e) => setDue(e.target.value, d.dueAt && !d.allDay ? toTimeInput(d.dueAt) : '')}
-            />
-            <input
-              type="time"
-              aria-label="Ora"
-              value={d.dueAt && !d.allDay ? toTimeInput(d.dueAt) : ''}
-              onChange={(e) => setDue(d.dueAt ? toDateInput(d.dueAt) : toDateInput(new Date().toISOString()), e.target.value)}
-            />
-            {d.dueAt && (
-              <button type="button" className="qs-clear" onPointerDown={keepFocus} onClick={() => setDue('', '')}>
-                fără dată
-              </button>
-            )}
-          </div>
-        )}
-
         {/* Firul, sub jetoane: numai dacă are ceva, și nu cât scrii. */}
         {!descFocus && !titleFocus && <SheetThreadRow issueId={issue.id} onOpen={() => void toFull('thread')} />}
 
@@ -348,6 +336,19 @@ function EditBody({ issue }: { issue: Issue }) {
 
         {descFocus && canWrite && <FormatBar onFormat={(c) => descRef.current?.format(c)} />}
       </div>
+      {whenOpen && canWrite && (
+        <ChipPop
+          anchor={dueAnchor.current}
+          rowRef={barRef}
+          sheet
+          role="dialog"
+          label="Scadența"
+          className="fc-pop-date es-due-pop"
+          onClose={(back) => { setWhenOpen(false); if (back) dueAnchor.current?.focus() }}
+        >
+          <SheetDue fields={d} commit={(patch) => void a.commit(patch)} />
+        </ChipPop>
+      )}
       {moveOpen && (
         <MoveProjectSheet
           issue={issue}
@@ -362,6 +363,69 @@ function EditBody({ issue }: { issue: Issue }) {
         />
       )}
     </KeyboardSheet>
+  )
+}
+
+/**
+ * Panoul de dată al foii (D-197): același corp ca popoverul formularului
+ * complet (`DuePanel`), ca foaie de jos — nu cele două inputuri native goale,
+ * care pe un telefon în engleză arătau `10/16/2026` și `--:-- --`.
+ *
+ * Fiecare alegere pleacă imediat, ca orice jeton al foii (autosave: numai
+ * câmpurile schimbate). Mutarea trece prin `reschedule`, deci mementoul își
+ * păstrează decalajul; `rrule` rămâne neatins, iar triggerul face restul:
+ * ziua mută doar apariția, ora mută seria.
+ *
+ * Câmpurile scrise țin textul local (scris pe jumătate nu e o dată) și se
+ * scriu abia când textul e valid; o oră golită înseamnă „toată ziua", dar
+ * numai la ieșirea din câmp — altfel ștergerea lui „10:30" cifră cu cifră ar
+ * fi scris o zi întreagă la jumătatea drumului.
+ */
+function SheetDue({ fields: d, commit }: { fields: EditFields; commit(patch: Partial<EditFields>): void }) {
+  const curDate = d.dueAt ? toDateInput(d.dueAt) : ''
+  const curTime = d.dueAt && !d.allDay ? toTimeInput(d.dueAt) : ''
+  const [dueText, setDueText] = useState(d.dueAt ? toDisplayDate(d.dueAt) : '')
+  const [timeText, setTimeText] = useState(curTime)
+  // O scriere venită din altă parte (presetare, calendar, alt dispozitiv):
+  // câmpurile o urmează, dacă nu spun deja același lucru.
+  useEffect(() => {
+    setDueText((t) => ((fromDisplayDate(t) ?? '') === curDate ? t : curDate ? displayFromInputDate(curDate) : ''))
+    setTimeText((t) => ((fromTimeText(t) ?? '') === curTime ? t : curTime))
+  }, [curDate, curTime])
+  const dueDate = fromDisplayDate(dueText) ?? ''
+  const dueTime = fromTimeText(timeText) ?? ''
+  const move = (date: string, time: string) => {
+    if (date === curDate && time === curTime) return
+    commit(reschedule(d, fromInputs(date, time)))
+  }
+  const now = new Date()
+  return (
+    <DuePanel
+      now={now}
+      dueText={dueText}
+      timeText={timeText}
+      dueDate={dueDate}
+      dueTime={dueTime}
+      onDueText={(t) => {
+        setDueText(t)
+        const v = fromDisplayDate(t)
+        if (v) move(v, curTime)
+      }}
+      onTimeText={(t) => {
+        setTimeText(t)
+        const v = fromTimeText(t)
+        if (v && curDate) move(curDate, v)
+      }}
+      onTimeBlur={() => { if (timeText.trim() === '' && curDate) move(curDate, '') }}
+      onPreset={(day) => move(toDateInput(day.toISOString()), curTime)}
+      onPickDate={(v) => move(v, curTime)}
+      onPickTime={(v) => move(curDate || toDateInput(now.toISOString()), v)}
+      onClear={() => commit(reschedule(d, { dueAt: null, allDay: true }))}
+      reminder={reminderKindOf(d.dueAt, d.remindAt)}
+      onReminder={(kind) => commit({ remindAt: reminderAt(d.dueAt, kind) })}
+      rrule={d.dueAt ? d.rrule : null}
+      onClearRrule={() => commit({ rrule: null })}
+    />
   )
 }
 

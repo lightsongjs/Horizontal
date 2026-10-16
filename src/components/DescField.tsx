@@ -28,11 +28,13 @@ type BoxProps = {
   style?: CSSProperties
   fieldRef?: Ref<HTMLDivElement>
   onMouseDown?(e: MouseEvent<HTMLDivElement>): void
+  /** Înaintea editorului (faza de captură): pliată, o atingere doar arată tot. */
+  onMouseDownCapture?(e: MouseEvent<HTMLDivElement>): void
   after?: ReactNode
 }
 
 export const DescField = forwardRef<EditorHandle, MarkdownEditorProps & BoxProps>(
-  function DescField({ className = '', style, fieldRef, onMouseDown, after, ...p }, ref) {
+  function DescField({ className = '', style, fieldRef, onMouseDown, onMouseDownCapture, after, ...p }, ref) {
     const editor = useRef<EditorHandle>(null)
     const fallback = useRef<HTMLTextAreaElement>(null)
     const handoff = useRef<number | null>(null)
@@ -42,7 +44,7 @@ export const DescField = forwardRef<EditorHandle, MarkdownEditorProps & BoxProps
       format: (cmd: FormatCmd) => editor.current?.format(cmd),
     }), [])
     return (
-      <div ref={fieldRef} className={`md-field ${className}`} style={style} onMouseDown={onMouseDown}>
+      <div ref={fieldRef} className={`md-field ${className}`} style={style} onMouseDown={onMouseDown} onMouseDownCapture={onMouseDownCapture}>
         <Suspense
           fallback={
             <Fallback
