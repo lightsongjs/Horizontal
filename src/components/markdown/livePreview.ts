@@ -20,6 +20,18 @@ class BulletWidget extends WidgetType {
   }
 }
 
+/** Numărul, desenat în coloana marcajului — același text ca în document. */
+class NumWidget extends WidgetType {
+  constructor(readonly text: string) { super() }
+  eq(o: NumWidget) { return o.text === this.text }
+  toDOM() {
+    const s = document.createElement('span')
+    s.className = 'md-num'
+    s.textContent = this.text
+    return s
+  }
+}
+
 class HrWidget extends WidgetType {
   eq() { return true }
   toDOM() {
@@ -71,7 +83,8 @@ function build(view: EditorView, prefixes: readonly string[]): DecorationSet {
     switch (s.k) {
       case 'hide': out.push(Decoration.replace({}).range(s.from, s.to)); break
       case 'mark': out.push(Decoration.mark({ class: s.cls, attributes: s.attrs }).range(s.from, s.to)); break
-      case 'line': out.push(Decoration.line({ class: s.cls }).range(s.at)); break
+      case 'line': out.push(Decoration.line({ class: s.cls, attributes: s.attrs }).range(s.at)); break
+      case 'num': out.push(Decoration.replace({ widget: new NumWidget(s.text) }).range(s.from, s.to)); break
       case 'bullet': out.push(Decoration.replace({ widget: new BulletWidget() }).range(s.from, s.to)); break
       case 'hr': out.push(Decoration.replace({ widget: new HrWidget() }).range(s.from, s.to)); break
       case 'task': out.push(Decoration.replace({ widget: new TaskWidget(s.checked, disabled) }).range(s.from, s.to)); break

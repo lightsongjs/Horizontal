@@ -759,6 +759,19 @@ Subsetul îl dă specul (`docs/superpowers/specs/2026-10-12-descriere-markdown-d
   **sintaxa inline doar pe linia cu cursorul** (`**`, `` ` ``, `[]()`): blocul
   e structură pe care o atingi, inline-ul e text pe care îl corectezi. Rândul cu
   focus își arată sintaxa ca să știi ce ștergi.
+- **Rândul de listă are o singură geometrie** (2026-10-16): marcajul (căsuță,
+  bulină, număr) stă într-o coloană fixă `--md-gutter`, textul și rândurile lui
+  rupte pornesc după ea (agățat), iar marcajul se centrează pe PRIMUL rând prin
+  `1lh`, nu pe linia de bază — o căsuță goală și una cu SVG-ul bifei au linii de
+  bază diferite, și de-aia cea bifată stătea ~2px mai jos. Cititorul: `li`
+  relativ, marcajul absolut. Editorul: `decorationSpecs` pune pe linie
+  `md-li md-li-<fel>` + `--md-depth`, iar widgetul înghite indentarea dinainte
+  și spațiul de după (lățimea unui spațiu depinde de font, a coloanei nu);
+  `padding-left` + `text-indent` negativ îl aduc în coloană. Pe telefon
+  (`max-width: 899px`, `pointer: coarse`) rândul cu căsuță are ~44px
+  (`--md-task-pad`), iar ținta `::after` acoperă exact rândul ei, cu tot cu
+  padding — niciodată pe al vecinului. `test:layout` măsoară centrarea (±1px)
+  și agățarea pe componentele reale, la 1400/390 și text ×1/×1.5.
 - **Bifa nu ia focusul și pleacă prin `commit`.** `preventDefault` pe
   `pointerdown` și `mousedown` — altfel o atingere ar ridica tastatura exact
   peste lista pe care o bifezi. Pe editor bifa e o tranzacție cu adnotarea

@@ -74,7 +74,8 @@ MD_VIEW = (
     'câmpul <code class="md-code">stripe-signature</code> e obligatoriu. Vezi '
     '<button type="button" class="md-ref">TUR-04</button> și '
     '<a class="md-link" href="https://exemplu.ro">documentația</a>.</p>'
-    '<ul>' + md_li(True, 'Endpoint de test pe staging') + md_li(False, 'Verificare semnătură')
+    '<ul>' + md_li(True, 'Endpoint de test pe staging')
+    + md_li(False, 'Verificare semnătură, cu un text destul de lung cât să se rupă pe al doilea rând')
     + md_li(False, 'Reîncercări cu backoff') +
     '<li class="md-li"><div class="md-li-body"><p>Notă simplă, fără căsuță</p></div></li></ul>'
     '<blockquote><p>Nu loga niciodată corpul cererii.</p></blockquote>'
@@ -84,8 +85,15 @@ MD_VIEW = (
     '</div>')
 
 
-def md_line(html, cls=''):
-    return '<div class="cm-line%s">%s</div>' % (' ' + cls if cls else '', html or '<br>')
+def md_line(html, cls='', depth=None):
+    style = ' style="--md-depth:%d"' % depth if depth is not None else ''
+    return '<div class="cm-line%s"%s>%s</div>' % (' ' + cls if cls else '', style, html or '<br>')
+
+
+def md_task_line(on, html, depth=0):
+    """Un rând de căsuță în editor: clasa și adâncimea pe linie (`decorations.ts`)."""
+    return md_line(md_task(on) + ('<span class="md-done">%s</span>' % html if on else html),
+                   'md-li md-li-task' + (' md-li-done' if on else ''), depth)
 
 
 def md_editor():
@@ -93,9 +101,11 @@ def md_editor():
     lines = (
         md_line('Webhook plăți', 'md-h2')
         + md_line('Validăm <span class="md-strong">semnătura</span> cu <span class="md-code">stripe-signature</span>.')
-        + md_line(md_task(True) + '<span class="md-done">Endpoint de test pe staging</span>')
-        + md_line(md_task(False) + 'Verificare semnătură')
-        + md_line('<span class="md-bullet" aria-hidden="true"></span>Notă simplă')
+        + md_task_line(True, 'Endpoint de test pe staging')
+        + md_task_line(False, 'Verificare semnătură, cu un text destul de lung cât să se rupă pe al doilea rând')
+        + md_task_line(True, 'Subpas bifat', 1)
+        + md_line('<span class="md-bullet" aria-hidden="true"></span>Notă simplă', 'md-li md-li-bullet', 0)
+        + md_line('<span class="md-num">1.</span>Primul pas', 'md-li md-li-num', 0)
         + md_line('Nu loga corpul cererii.', 'md-quote')
         + md_line('')
     )
