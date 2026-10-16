@@ -193,19 +193,20 @@ def tk(tid, theme, theme_color, title, done=False, urgent=False, deps=None,
 
 
 def trow(time, title, proj, dot, done=False, late=False, urgent=False, bell=False, allday=False):
+    # Bifa = inelul `.ck` în culoarea proiectului, ca în TaskRow.tsx; urgentul
+    # e inelul chihlimbar (`.ck.urg`), nu o iconiță în coadă.
     tail = ''
-    if urgent:
-        tail += '<span class="t-urgent" title="Urgent">%s</span>' % ic('zap', 13)
     if bell:
         tail += '<span class="t-mark" aria-label="Are memento">%s</span>' % ic('bell', 12)
     tail += ('<span class="t-proj"><span class="t-dot" style="background:%s"></span>'
              '<span class="t-proj-name">%s</span></span>' % (dot, proj))
     return ('<button class="list-row task-row%s%s">'
-            '<span class="list-check" role="checkbox" aria-checked="%s">%s</span>'
+            '<span class="list-check" role="checkbox" aria-checked="%s" style="--pc:%s">%s</span>'
             '<span class="t-time%s">%s</span><span class="list-title">%s</span>'
             '<span class="t-tail">%s</span></button>'
-            % (' done' if done else '', ' late' if late else '', str(done).lower(),
-               ic('circle-check' if done else 'circle', 17),
+            % (' done' if done else '', ' late' if late else '', str(done).lower(), dot,
+               ('<span class="ck on">%s</span>' % ic('check', 12)) if done
+               else '<span class="ck%s"></span>' % (' urg' if urgent else ''),
                ' allday' if allday else '', time, title, tail))
 
 
@@ -439,7 +440,7 @@ AZI = (QA + PUSH
 # prag `SplitView` nu randează `.split` deloc, iar formularul se întoarce în
 # foaia de jos — deci o fereastră îngustă aici nu e o regresie, e comportamentul.
 def lrow(tid, title, layer_color, done=False, urgent=False, docked=False, due=None):
-    # Inelul „Senin" în culoarea proiectului (`--pc` pe panou), roșu pe urgent;
+    # Inelul „Senin" în culoarea proiectului (`--pc` pe panou), chihlimbar pe urgent;
     # ID-ul în coada rândului (pe telefon iese).
     cls = 'list-row' + (' done' if done else '') + (' docked' if docked else '')
     tail = ''
@@ -889,7 +890,7 @@ CONTROALE = ''.join([
 
     # Rândul de jetoane al formularului (design/form-compact). Fiecare stare:
     # fantoma „Dată" (fără fundal, doar text stins + iconiță — aici se vede
-    # dacă a rămas lizibilă), restanța și urgentul pe roșu, data din titlu cu
+    # dacă a rămas lizibilă), restanța pe roșu, urgentul pe chihlimbar, data din titlu cu
     # inel, jetonul deschis pe accent, agrafa și „+" ca iconițe.
     g('Jetoanele formularului',
       fchip('due ghost', ic('calendar-check', 14) + 'Dată')
@@ -1093,14 +1094,15 @@ FOAIE = ('<div class="sheet-bg on"></div>'
          '<button type="button" class="qs-clear">fără dată</button></div>'
          '<div class="qs-bar">'
          '<button type="button" class="qs-due on">%s<span class="qs-due-t">Mâine 10:00</span></button>'
-         '<button type="button" class="qs-ico qs-urgent on" aria-label="Urgent">%s</button>'
          '<label class="qs-sel qs-proj"><span class="t-dot" style="background:#6e7bff"></span>'
          '<span class="qs-sel-t">Aplicație Turism</span><select><option>Aplicație Turism</option></select></label>'
+         '<span class="qs-tools">'
+         '<button type="button" class="qs-ico qs-urgent on" aria-label="Urgent">%s</button>'
          '<span class="qs-attach-wrap"><button type="button" class="qs-ico qs-attach on" aria-label="Atașează">%s'
          '<span class="qs-attach-n">2</span></button></span>'
          '<button type="button" class="qs-ico qs-more" aria-label="Formularul complet">%s</button>'
          '<button type="submit" class="qs-send" aria-label="Adaugă">%s</button>'
-         '</div></form></div>'
+         '</span></div></form></div>'
          % (ic('calendar-check', 14), ic('calendar-check', 15), ic('zap', 16), ic('paperclip', 16),
             ic('ellipsis', 16), ic('arrow-up', 18)))
 

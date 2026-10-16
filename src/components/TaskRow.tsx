@@ -104,7 +104,7 @@ const TaskRowView = memo(function TaskRowView({ issue, onOpen, late = false, doc
         aria-checked={selecting ? selected : issue.done}
         aria-label={selecting ? (selected ? 'Deselectează' : 'Selectează') : issue.done ? 'Marchează nefăcut' : 'Marchează gata'}
         // Culoarea proiectului e pe bifă („Senin"): se vede al cui e rândul
-        // fără să citești coada. Urgentul e inelul roșu, nu o iconiță în plus.
+        // fără să citești coada. Urgentul e inelul chihlimbar, nu o iconiță în plus.
         style={project?.accent ? ({ ['--pc' as string]: project.accent }) : undefined}
         onClick={(e) => {
           e.stopPropagation()

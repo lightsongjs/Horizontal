@@ -53,8 +53,8 @@ stiluri). Abaterile asumate față de machetă, cu poze: `design/redesign/abater
    Fără italice (doar `*text*` scris de om în descriere).
 2. **Culoarea proiectului pe bifă.** Bifa e un inel `.ck` în `--pc` (accentul
    proiectului, pus inline de rând / de tablă), plin când e gata; urgentul e
-   inelul roșu (`.ck.urg`), nu o iconiță. Același control în listă, pe carduri,
-   în foaia de tichet și în formular.
+   inelul chihlimbar (`.ck.urg`, `--urgent`), nu o iconiță. Același control în
+   listă, pe carduri, în foaia de tichet și în formular.
 3. **Rânduri plate.** Listele sunt rânduri pe `--bg` despărțite de o linie de
    păr (`::after`, pornește de sub titlu), nu carduri cu umbră. Ora / ziua
    ratată („11 oct") și proiectul stau în coada rândului.
@@ -64,6 +64,13 @@ stiluri). Abaterile asumate față de machetă, cu poze: `design/redesign/abater
 5. **Un singur accent** (`--accent`, albastru) plus `--star` (galbenul lui
    „Azi", plin) și culorile de stare. **Iconițe, nu emoji** — `Icon.tsx`,
    vocabular pe ROL (`today` = steaua).
+6. **Urgentul e chihlimbar, nu roșu** (decizia omului, 2026-10-16):
+   `--urgent` / `--urgent-soft`, definite per temă (luminos `#D05A00` pe
+   `#FFF0E3`, întunecat `#FF9548` pe 15%), ≥3:1 pe fundal și pe varianta pală.
+   Pornit = fundal pal + culoare (inelul, jetonul din formular, ⚡ din foi),
+   fără linia de 2px. **Roșul (`--blocked`) rămâne numai pentru restanță
+   („ieri", Restanțe) și ștergere** — două sensuri pe aceeași culoare făceau
+   o sarcină urgentă să arate întârziată. Distinct și de `--star` (galben).
 
 ### Raze, pe rol
 
@@ -250,7 +257,7 @@ Mockup aprobat: `design/wave-bar/index.html`. Un singur rând deasupra listei:
 - Tastele `,` / `.` = valul anterior / următor (Notițele sunt primele, fără
   ocolire la capete). Toate trec prin `shouldIgnoreKey`.
 - Rândurile din „Listă" au inelul `.ck` în culoarea proiectului (`--pc` pe
-  `.panel`, ca în „Cards"); urgentul e inelul roșu, ID-ul stă în coadă pe
+  `.panel`, ca în „Cards"); urgentul e inelul chihlimbar, ID-ul stă în coadă pe
   desktop și iese sub 900px.
 
 ## Mockups — fișier local, nu Artifact
@@ -570,7 +577,17 @@ aceeași intrare (fără istoric nou), deci Back închide formularul și te las�
 pe lista din care ai pornit. Un tichet creat din formularul complet
 (`openEditIssue(id, { full: true })`) rămâne în formular.
 
-**Rândul de jetoane (zi, urgent, proiect, agrafă, „…") stă sub titlu** în foaia de tichet (redesignul „Senin", 2026-10-14): foaia se deschide ca să citești, deci ziua se vede odată cu titlul, chiar peste o descriere lungă. În foaia rapidă rămâne jos, lângă tastatură — acolo întâi scrii. Mânerul de sus închide foaia trăgând-o în jos (`sheetDismiss`, `lib/swipe.ts`).
+**Rândul de jetoane stă sub titlu** în foaia de tichet (redesignul „Senin", 2026-10-14): foaia se deschide ca să citești, deci ziua se vede odată cu titlul, chiar peste o descriere lungă. În foaia rapidă rămâne jos, lângă tastatură — acolo întâi scrii. Mânerul de sus închide foaia trăgând-o în jos (`sheetDismiss`, `lib/swipe.ts`).
+
+**Ordinea rândului, în ambele foi** (decizia omului, 2026-10-16, macheta
+`design/quick-row/index.html`, varianta A): `[zi] [proiect] (inițiale) ···
+[⚡] [📎] [⋯] (↑)`. Jetoanele cu text (când + unde) la stânga, ele se taie
+primele cu „…"; comutatoarele (iconițe fixe) grupate la dreapta, lângă
+Trimite, în arcul degetului mare. Grupul e un singur element (`.qs-tools`,
+`margin-left: auto` = golul elastic), ca la text mărit să treacă întreg pe
+rândul al doilea, nu rupt. Pornit = fundal pal + culoare (⚡ pe
+`--urgent-soft`, 📎 pe `--accent-soft`), ca data; fără linia de 2px.
+`test:layout` verifică grupul la 320–430px.
 
 **Nu ia focusul la deschidere:** deschizi ca să citești, iar tastatura ar
 acoperi exact descrierea. Proiectul e afișat, nu ales — ID-ul îi poartă
@@ -1580,7 +1597,7 @@ Pro (HyperOS 3, Android 16).
   foaie după o atingere din widget → `leave()` (`moveTaskToBack`).
   **Desenul e „Senin"** (din `versionCode 10`, macheta `design/android-widget/index.html`):
   antet cu steaua, „Azi" și numărul de azi (restanțele incluse, `todayCount`), rânduri
-  cu inelul în culoarea proiectului (urgent = inelul roșu, a doua `CheckBox` comutată
+  cu inelul în culoarea proiectului (urgent = inelul roșu — încă, `w_ck_urgent.xml`; chihlimbarul paginii cere un APK nou —, a doua `CheckBox` comutată
   prin vizibilitate), capete în litere obișnuite (`sectionHead`; „Azi" primul n-are cap,
   `showsHead`), rândul „Nimic pe azi" (`freeToday`). Două forme alese de launcher după
   mărime (`RemoteViews(Map<SizeF,…>)`, API 31): 4×4 și compactul 4×2 (plafon de 60 de

@@ -652,12 +652,14 @@ const quickBar = ({ day = 'Mie 07/10', time = '10:00', proj = 'Aplicație Turism
   <textarea class="qa-desc" rows="1" placeholder="Descriere"></textarea>
   <div class="qs-bar">
     <button type="button" class="qs-due on"><svg width="15" height="15"></svg><span class="qs-due-t">${day}</span><span class="qs-due-h">${time}</span></button>
-    <button type="button" class="qs-ico qs-urgent on"><svg width="16" height="16"></svg></button>
     <label class="qs-sel qs-proj"><span class="t-dot" style="background:#6e7bff"></span><span class="qs-sel-t">${proj}</span><select><option>x</option></select></label>
     ${send ? '' : '<button type="button" class="qs-ico qs-who-badge">MIH</button>'}
+    <span class="qs-tools">
+    <button type="button" class="qs-ico qs-urgent on"><svg width="16" height="16"></svg></button>
     ${ATTACH(menu)}
     <button type="button" class="qs-ico qs-more"><svg width="16" height="16"></svg></button>
     ${send ? '<button type="submit" class="qs-send"><svg width="18" height="18"></svg></button>' : ''}
+    </span>
   </div>
 </form></div>`
 
@@ -695,7 +697,11 @@ for (const width of PHONE_WIDTHS) {
     const barR = bar.getBoundingClientRect()
     const send = document.querySelector('.qs-send')?.getBoundingClientRect() ?? r('.qs-more')
     const attach = r('.qs-attach')
-    const kids = [...bar.children].filter((el) => !el.classList.contains('qs-attach-wrap')).concat([document.querySelector('.qs-attach')])
+    // `.qs-tools` e doar grupul comutatoarelor (fără fundal, deliberat): se
+    // verifică fiecare control din el, nu cutia.
+    const kids = [...bar.children, ...bar.querySelector('.qs-tools').children]
+      .filter((el) => !el.classList.contains('qs-attach-wrap') && !el.classList.contains('qs-tools'))
+      .concat([document.querySelector('.qs-attach')])
     const invisible = kids.filter((el) => {
       const cs = getComputedStyle(el)
       return cs.backgroundColor === 'rgba(0, 0, 0, 0)' && cs.borderStyle === 'none'
@@ -707,6 +713,11 @@ for (const width of PHONE_WIDTHS) {
       proj: Math.round(r('.qs-proj').width),
       due: Math.round(r('.qs-due').width),
       attachW: Math.round(attach.width),
+      // Comutatoarele (urgent, agrafă, „…") stau lipite unul de altul, la
+      // dreapta, după jetoanele cu text — golul elastic e înaintea lui urgent.
+      toolsGap: Math.round(attach.left - r('.qs-urgent').right),
+      // Cu text mărit grupul poate trece întreg pe rândul al doilea.
+      toolsAfterText: r('.qs-urgent').left >= r('.qs-proj').right || r('.qs-urgent').top >= r('.qs-proj').bottom,
       invisible,
     }
   })
@@ -715,6 +726,7 @@ for (const width of PHONE_WIDTHS) {
   check(`${send ? 'trimite' : '„…"'} nestrivit @${width}px`, m.sendW >= 34 && m.sendInside, `${m.sendW}px${m.sendInside ? '' : ', împins afară'}`)
   check(`agrafa nestrivită @${width}px`, m.attachW >= 34, `${m.attachW}px`)
   check(`proiectul vizibil @${width}px`, m.proj >= 40, `${m.proj}px`)
+  check(`urgent grupat cu agrafa, la dreapta @${width}px`, m.toolsAfterText && m.toolsGap <= 6, `${m.toolsGap}px până la agrafă`)
   check(`jetonul de dată vizibil @${width}px`, m.due >= 34, `${m.due}px`)
   check(`fiecare control are fundal @${width}px`, m.invisible.length === 0, m.invisible.length ? `INVIZIBIL: ${m.invisible.join(', ')}` : 'toate')
 }
