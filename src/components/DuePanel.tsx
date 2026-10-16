@@ -1,8 +1,9 @@
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { datePresets, REMINDER_OPTIONS } from '../lib/formChips'
 import { describeRrule } from '../lib/recurrence'
 import {
-  DATE_PLACEHOLDER, TIME_PLACEHOLDER, maskDateInput, maskTimeInput, toDateInput, type ReminderKind,
+  DATE_PLACEHOLDER, TIME_PLACEHOLDER, displayFromInputDate, fromDisplayDate, fromTimeText, maskDateInput,
+  maskTimeInput, toDateInput, type ReminderKind,
 } from '../lib/schedule'
 import { Icon } from './Icon'
 import { NativePick } from './NativePick'
@@ -57,11 +58,15 @@ export function DuePanel({
   onPickDate(value: string): void
   onPickTime(value: string): void
   onClear(): void
-  reminder: ReminderKind
-  onReminder(kind: ReminderKind): void
-  /** Recurența care chiar se salvează (fără dată nu există). */
-  rrule: string | null
-  onClearRrule(): void
+  /**
+   * Fără `onReminder` rândul mementoului lipsește (foaia rapidă: captura pune
+   * mementoul implicit, ca înainte de panou — nu-l alege).
+   */
+  reminder?: ReminderKind
+  onReminder?(kind: ReminderKind): void
+  /** Recurența care chiar se salvează (fără dată nu există). Fără `onClearRrule` nu se arată. */
+  rrule?: string | null
+  onClearRrule?(): void
   foot?: ReactNode
 }) {
   const dueIncomplete = dueText.trim() !== '' && dueDate === ''
@@ -147,8 +152,8 @@ export function DuePanel({
       {/* Mementoul apare numai când are ce să însemne. Pentru o sarcină de
           zi întreagă ar suna la miezul nopții, deci acolo tace și treaba
           o face rezumatul de dimineață. */}
-      {dueDate && !dueTime && !dueIncomplete && <p className="fc-note">Toată ziua — fără memento.</p>}
-      {dueDate && dueTime && (
+      {onReminder && dueDate && !dueTime && !dueIncomplete && <p className="fc-note">Toată ziua — fără memento.</p>}
+      {onReminder && dueDate && dueTime && (
         <>
           <h4 className="fc-h">Memento</h4>
           <div className="fc-seg" role="group" aria-label="Memento">
@@ -169,7 +174,7 @@ export function DuePanel({
       )}
       {/* Repetarea nu se alege de aici: se scrie în titlu („în fiecare luni"),
           iar `parseDue` o recunoaște. Aici doar se vede și se scoate. */}
-      {rrule && (
+      {rrule && onClearRrule && (
         <>
           <p className="fc-recur">
             <Icon name="recurring" size={13} />
@@ -183,4 +188,29 @@ export function DuePanel({
       {foot}
     </>
   )
+}
+
+/**
+ * Textul câmpurilor scrise ale panoului, ținut de cine îl folosește: scris pe
+ * jumătate nu e o dată, deci textul e local, iar valoarea validă (`dueDate`,
+ * `dueTime`) se scrie abia când e întreagă. O schimbare venită din altă parte
+ * (presetare, calendar, alt dispozitiv, data din titlu) e urmată de câmpuri,
+ * dacă nu spun deja același lucru. `curDate`/`curTime` = ce e acum adevărat
+ * (`aaaa-ll-zz`, `HH:MM`, sau `''`).
+ */
+export function useDueFields(curDate: string, curTime: string) {
+  const [dueText, setDueText] = useState(curDate ? displayFromInputDate(curDate) : '')
+  const [timeText, setTimeText] = useState(curTime)
+  useEffect(() => {
+    setDueText((t) => ((fromDisplayDate(t) ?? '') === curDate ? t : curDate ? displayFromInputDate(curDate) : ''))
+    setTimeText((t) => ((fromTimeText(t) ?? '') === curTime ? t : curTime))
+  }, [curDate, curTime])
+  return {
+    dueText,
+    setDueText,
+    timeText,
+    setTimeText,
+    dueDate: fromDisplayDate(dueText) ?? '',
+    dueTime: fromTimeText(timeText) ?? '',
+  }
 }

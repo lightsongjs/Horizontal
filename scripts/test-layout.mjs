@@ -1581,6 +1581,79 @@ for (const width of PHONE_WIDTHS) {
   await page.close()
 }
 
+/**
+ * Panoul de dată al FOII RAPIDE — componenta reală (`QuickDue` = `DuePanel`
+ * fără memento), inline deasupra rândului de controale, telefon `en-US`.
+ * Înainte: fâșia cu două inputuri native (`10/16/2026`, `--:-- --`). Rândul
+ * de sub panou rămâne cel obișnuit: „Mâine" și „Exemplu" se citesc întregi.
+ */
+const { outputFiles: [quickDueBundle] } = await esbuild.build({
+  stdin: {
+    contents: `
+      import { createElement as h } from 'react'
+      import { createRoot } from 'react-dom/client'
+      import { QuickDue } from './components/QuickDue'
+      const noop = () => {}
+      window.__mount = (el) => createRoot(el).render(h(QuickDue, {
+        dueAt: new Date(2026, 9, 16, 17, 30).toISOString(), allDay: false, fallbackDay: '2026-10-16',
+        onDue: noop, onPicked: noop, onClear: noop,
+      }))
+    `,
+    resolveDir: fileURLToPath(new URL('../src', import.meta.url)),
+    loader: 'tsx',
+  },
+  bundle: true, write: false, format: 'iife', jsx: 'automatic', loader: { '.tsx': 'tsx', '.ts': 'ts' },
+  define: { 'process.env.NODE_ENV': '"production"', 'import.meta.env': '{}' },
+})
+console.log('\nPanoul de dată din foaia rapidă (telefon en-US, componenta reală):')
+for (const width of PHONE_WIDTHS) {
+  const page = await browser.newPage({ viewport: { width, height: 800 }, hasTouch: true, isMobile: true, locale: 'en-US' })
+  const html = quickBar({ day: 'Mâine', proj: 'Exemplu' }).replace('<div class="qs-bar">', '<div id="when"></div><div class="qs-bar">')
+  await page.setContent(`<meta name="viewport" content="width=device-width, initial-scale=1.0"><style>${CSS}</style>${html}<script>${quickDueBundle.text}</script>`)
+  await page.evaluate(() => { const at = document.getElementById('when'); window.__mount(at) })
+  await page.waitForSelector('.qs-when .fc-presets')
+  await page.evaluate(() => document.fonts.ready)
+  const m = await page.evaluate(() => {
+    const sheet = document.querySelector('.quick-sheet')
+    const pan = document.querySelector('.qs-when')
+    const r = (el) => el.getBoundingClientRect()
+    const pres = [...pan.querySelectorAll('.fc-pre')]
+    const picks = [...pan.querySelectorAll('.due-pick')]
+    const natives = [...pan.querySelectorAll('input[type=date], input[type=time]')]
+    const shown = pan.innerText + ' ' + [...pan.querySelectorAll('input:not([type=date]):not([type=time])')].map((i) => i.value).join(' ')
+    return {
+      overflow: Math.max(sheet.scrollWidth - sheet.clientWidth, pan.scrollWidth - pan.clientWidth),
+      docOverflow: document.documentElement.scrollWidth - innerWidth,
+      preWrapped: pres.filter((p) => p.scrollWidth > p.clientWidth + 1 || r(p).right > r(pan).right).length,
+      preCount: pres.length,
+      preRow: new Set(pres.map((p) => Math.round(r(p).top))).size,
+      pick: Math.round(Math.min(...picks.map((p) => Math.min(r(p).width, r(p).height)))),
+      nativeVisible: natives.filter((i) => getComputedStyle(i).opacity !== '0').length,
+      nativeCount: natives.length,
+      reminder: pan.querySelector('.fc-seg') !== null,
+      above: r(pan).bottom <= r(document.querySelector('.qs-bar')).top,
+      shown,
+    }
+  })
+  const usFormat = /\b10\/16\/2026\b|--:--|\b(AM|PM)\b|mm\/dd/i.test(m.shown)
+  const roFormat = m.shown.includes('16/10/2026') && m.shown.includes('17:30')
+  const maxRows = Number(process.env.TEXT_SCALE ?? 1) > 1 ? 2 : 1
+  check(`foaia rapidă: panoul nu lățește foaia @${width}px`, m.overflow <= 0 && m.docOverflow <= 0 && m.above, `+${m.overflow}px, pagina +${m.docOverflow}px, deasupra rândului=${m.above}`)
+  check(`foaia rapidă: presetările încap întregi @${width}px`, m.preCount === 4 && m.preWrapped === 0 && m.preRow <= maxRows, `${m.preCount} presetări, ${m.preWrapped} tăiate, ${m.preRow} rând(uri)`)
+  check(`foaia rapidă: fără text în formatul nativ, fără memento @${width}px`, !usFormat && roFormat && m.nativeVisible === 0 && m.nativeCount === 2 && !m.reminder, usFormat ? `găsit: ${m.shown.replace(/\s+/g, ' ').slice(0, 120)}` : `zz/ll/aaaa + 24h, memento=${m.reminder}`)
+  check(`foaia rapidă: calendar/ceas atingibile @${width}px`, m.pick >= 32, `cel mai mic ${m.pick}px`)
+  if (width === 390) {
+    const rd = await readable(page)
+    check('foaia rapidă cu panoul: „Mâine" și „Exemplu" întregi', rd.day === 'întreg' && rd.proj === 'întreg', `${rd.day}, ${rd.proj}`)
+  }
+  if (DUE_SHOTS && width === 390) for (const theme of ['dark', 'light']) {
+    await page.evaluate((t) => document.documentElement.setAttribute('data-theme', t), theme)
+    await page.waitForTimeout(300)
+    await page.screenshot({ path: `${DUE_SHOTS}/quick-date-390-${theme}.png` })
+  }
+  await page.close()
+}
+
 await browser.close()
 
 if (failures.length) {

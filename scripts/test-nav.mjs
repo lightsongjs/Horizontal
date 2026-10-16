@@ -1560,6 +1560,65 @@ try {
     await ctx.close()
   }
 
+  // ── Data din foaia rapidă ───────────────────────────────────────────────
+  // Jetonul de dată al capturii deschide același `DuePanel` (inline, deasupra
+  // rândului), nu fâșia cu două inputuri native. Nimic nu se scrie până la
+  // Trimite: „Mâine" pune data în ciornă (bate data listei), titlul își
+  // păstrează focusul (tastatura rămâne), iar sarcina trimisă e pe mâine.
+  {
+    const SHOTS = process.env.NAV_SHOTS
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, locale: 'en-US' })
+    const qp = await ctx.newPage()
+    await qp.goto(BASE, { waitUntil: 'networkidle' })
+    await qp.waitForTimeout(700)
+    const { tap, center } = await touchApi(qp)
+    const fab = await center(qp.locator('.fab'))
+    await tap(fab.x, fab.y)
+    await qp.waitForTimeout(400)
+    const chip = await center(qp.locator('.quick-sheet .qs-due'))
+    await tap(chip.x, chip.y)
+    await qp.waitForTimeout(300)
+    const pan = qp.locator('.quick-sheet .qs-when')
+    const shown = await pan.evaluate((el) => ({
+      text: el.innerText,
+      fields: [...el.querySelectorAll('input.due-input')].map((i) => i.value),
+      nativeVisible: [...el.querySelectorAll('input[type=date], input[type=time]')].filter((i) => getComputedStyle(i).opacity !== '0').length,
+      presets: [...el.querySelectorAll('.fc-pre')].map((b) => b.firstChild.textContent),
+      reminder: !!el.querySelector('.fc-seg'),
+    })).catch(() => null)
+    check('foaia rapidă: jetonul de dată deschide panoul (Azi · Mâine · Luni · +1 săpt.)', shown?.presets.join('|') === 'Azi|Mâine|Luni|+1 săpt.', JSON.stringify(shown?.presets))
+    check('…fără text în formatul nativ și fără memento', !!shown && shown.nativeVisible === 0 && !shown.reminder && !/--:--|\b(AM|PM)\b/.test(shown.text) && /^\d{2}\/\d{2}\/\d{4}$/.test(shown.fields[0] ?? ''),
+      JSON.stringify(shown?.fields))
+    const want = await qp.evaluate(() => { const d = new Date(); d.setDate(d.getDate() + 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` })
+    const mBtn = await center(pan.locator('.fc-pre', { hasText: 'Mâine' }))
+    await tap(mBtn.x, mBtn.y)
+    await qp.waitForTimeout(300)
+    const inTitle = await qp.evaluate(() => document.activeElement?.classList.contains('qa-input') ?? false)
+    check('…„Mâine" lasă focusul în titlu (tastatura rămâne)', inTitle, String(inTitle))
+    const chipText = (await qp.locator('.quick-sheet .qs-due').textContent().catch(() => '')) ?? ''
+    check('…iar jetonul spune „Mâine"', /Mâine/.test(chipText), JSON.stringify(chipText))
+    const before = await qp.evaluate(() => JSON.parse(localStorage.getItem('horizontal:v2')).issues.length)
+    await qp.keyboard.type('Captură din panoul de dată')
+    if (SHOTS) for (const theme of ['dark', 'light']) {
+      await qp.evaluate((t) => document.documentElement.setAttribute('data-theme', t), theme)
+      await qp.waitForTimeout(300)
+      await qp.screenshot({ path: `${SHOTS}/quick-date-panel-390-${theme}.png` })
+    }
+    const nothingYet = await qp.evaluate(() => JSON.parse(localStorage.getItem('horizontal:v2')).issues.length)
+    check('…nimic nu se scrie înainte de Trimite', nothingYet === before, `${before} → ${nothingYet}`)
+    const send = await center(qp.locator('.quick-sheet .qs-send'))
+    await tap(send.x, send.y)
+    await qp.waitForTimeout(900)
+    const stored = await qp.evaluate(() => {
+      const i = JSON.parse(localStorage.getItem('horizontal:v2')).issues.find((x) => x.title === 'Captură din panoul de dată')
+      if (!i?.dueAt) return null
+      const d = new Date(i.dueAt)
+      return { day: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`, allDay: i.allDay }
+    })
+    check('foaia rapidă: sarcina trimisă e pe mâine', stored?.day === want, `${JSON.stringify(stored)} vs ${want}`)
+    await ctx.close()
+  }
+
   // ── Mutarea în alt proiect (telefon, modul local) ───────────────────────
   // Spec: foaia rămâne deschisă pe ID-ul NOU, URL-ul se rescrie (fără intrare
   // nouă în istoric), iar Back te lasă pe lista de dinainte — nu pe `/EX-…`,
