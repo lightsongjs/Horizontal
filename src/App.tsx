@@ -31,6 +31,7 @@ import { preloadEditor } from './components/DescField'
 import { FilterView } from './components/FilterView'
 import { FILTER_DELETED_EVENT, OPEN_FILTER_EVENT } from './components/FilterForm'
 import { OPEN_USERS_EVENT } from './components/AppSettings'
+import { GO_TODAY_EVENT } from './lib/androidBridge'
 import { describeRules } from './lib/savedFilters'
 import { weekCrumb } from './lib/schedule'
 import type { NavTarget } from './components/NavMenu'
@@ -1126,10 +1127,17 @@ function Shell() {
       if (narrow) goTopRef.current('users')
       else { setShowUsers(true); setScreen(null); selectProject(null) }
     })
+    // Atingerea pe notificarea fixă din bară (Android, `NativeBridge`): „Azi".
+    const onToday = () => later(() => {
+      if (narrow) goTopRef.current('today')
+      else { setShowUsers(false); setScreen('today'); selectProject(null) }
+    })
+    window.addEventListener(GO_TODAY_EVENT, onToday)
     window.addEventListener(OPEN_FILTER_EVENT, onOpen)
     window.addEventListener(FILTER_DELETED_EVENT, onDeleted)
     window.addEventListener(OPEN_USERS_EVENT, onUsers)
     return () => {
+      window.removeEventListener(GO_TODAY_EVENT, onToday)
       window.removeEventListener(OPEN_FILTER_EVENT, onOpen)
       window.removeEventListener(FILTER_DELETED_EVENT, onDeleted)
       window.removeEventListener(OPEN_USERS_EVENT, onUsers)

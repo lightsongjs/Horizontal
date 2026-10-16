@@ -61,6 +61,12 @@ class HorizontalAndroidPlugin : Plugin() {
             notifyListeners("widget", JSObject().put("kind", "open").put("id", id), true)
             return
         }
+        // Eveniment separat, nu „widget": o pagină veche ar fi luat orice „widget" fără `open` drept „quick".
+        if (intent.getBooleanExtra(Shade.EXTRA_TODAY, false)) {
+            intent.removeExtra(Shade.EXTRA_TODAY)
+            notifyListeners("shade", JSObject().put("kind", "today"), true)
+            return
+        }
         if (intent.getBooleanExtra(Widgets.EXTRA_QUICK, false)) {
             intent.removeExtra(Widgets.EXTRA_QUICK)
             notifyListeners("widget", JSObject().put("kind", "quick"), true)
@@ -90,6 +96,15 @@ class HorizontalAndroidPlugin : Plugin() {
         PlanStore.edit(context) { s -> s.copy(agendaPage = list) to Unit }
         Widgets.refresh(context)
         call.resolve()
+    }
+
+    /** API 5. Notificarea fixă din bară (`Shade`): pornită implicit, ținută pe dispozitiv. */
+    @PluginMethod fun getShade(call: PluginCall) { call.resolve(JSObject().put("enabled", Shade.enabled(context))) }
+
+    @PluginMethod fun setShade(call: PluginCall) {
+        val on = call.getBoolean("enabled") ?: return call.reject("lipsește enabled")
+        Shade.setEnabled(context, on)
+        call.resolve(JSObject().put("enabled", Shade.enabled(context)))
     }
 
     /** Proiectele în care se poate scrie și oamenii, pentru fereastra de quick add (`QuickAddActivity`). */
@@ -170,7 +185,10 @@ class HorizontalAndroidPlugin : Plugin() {
         requestPermissionForAlias("notifications", call, "onNotifPermission")
     }
 
-    @PermissionCallback private fun onNotifPermission(call: PluginCall) { call.resolve(JSObject().put("notifications", notifState())) }
+    @PermissionCallback private fun onNotifPermission(call: PluginCall) {
+        Widgets.refresh(context)   // notificarea din bară (`Shade`) apare imediat ce e voie, nu la următoarea listă
+        call.resolve(JSObject().put("notifications", notifState()))
+    }
 
     @PluginMethod fun openSettings(call: PluginCall) {
         val pkg = context.packageName
@@ -191,7 +209,8 @@ class HorizontalAndroidPlugin : Plugin() {
         // 3: setCaptureData (fereastra nativă de quick add).
         // 4: nicio metodă nouă — citirea nativă taie pe `isMine` (`core/Ownership.kt`),
         //    deci pagina poate trimite și ea doar ce e al meu (`ANDROID_API_MINE`).
-        const val API = 4
+        // 5: getShade / setShade și evenimentul „shade" (notificarea fixă din bară, D-185).
+        const val API = 5
         @Volatile private var instance: HorizontalAndroidPlugin? = null
 
         /**

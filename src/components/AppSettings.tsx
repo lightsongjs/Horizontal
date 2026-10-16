@@ -2,6 +2,7 @@ import { useTheme, type Theme } from '../theme'
 import { TEXT_SCALES } from '../lib/textScale'
 import { Icon } from './Icon'
 import { CalendarSettings } from './CalendarSettings'
+import { AndroidShadeSetting } from './AndroidShadeSetting'
 import { useAuth } from '../auth'
 import { useUI } from '../ui'
 
@@ -64,6 +65,9 @@ export function AppSettings() {
           ))}
         </div>
         <p className="app-settings-sample">Așa arată textul unei sarcini.</p>
+
+        {/* Doar în cutia de Android (API 5): notificarea fixă din bară e a telefonului. */}
+        <AndroidShadeSetting />
 
         {/* Ale contului, nu ale dispozitivului — dar aici le caută omul. */}
         <CalendarSettings />

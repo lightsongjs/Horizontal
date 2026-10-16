@@ -47,10 +47,14 @@ class AgendaWidget : AppWidgetProvider() {
         private val COMPACT_SIZE = SizeF(180f, 110f)
         private val FULL_SIZE = SizeF(180f, 240f)
 
+        /** Agenda văzută de widget — și de notificarea din bară (`Shade`), ca numărul să fie același. */
+        fun stateOf(s: PlanStore.State, now: Long, zone: ZoneId): AgendaState =
+            agendaState(s.agendaPage, s.agendaNative, s.queue, now, zone, s.agendaHeld,
+                createsAsAgenda(s.creates, maxOf(s.agendaPage?.readAt ?: 0, s.agendaNative?.readAt ?: 0)), s.edits)
+
         fun render(ctx: Context, s: PlanStore.State, now: Long = System.currentTimeMillis()): RemoteViews {
             val zone = ZoneId.systemDefault()
-            val state = agendaState(s.agendaPage, s.agendaNative, s.queue, now, zone, s.agendaHeld,
-                createsAsAgenda(s.creates, maxOf(s.agendaPage?.readAt ?: 0, s.agendaNative?.readAt ?: 0)), s.edits)
+            val state = stateOf(s, now, zone)
             val full = build(ctx, state, now, zone, compact = false)
             if (Build.VERSION.SDK_INT < 31) return full
             return RemoteViews(mapOf(COMPACT_SIZE to build(ctx, state, now, zone, compact = true), FULL_SIZE to full))
