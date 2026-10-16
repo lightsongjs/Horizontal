@@ -46,6 +46,8 @@
         <receiver android:name=".AlarmReceiver" android:exported="false" />
         <receiver android:name=".RecheckReceiver" android:exported="false" />
         <receiver android:name=".ActionReceiver" android:exported="false" />
+        <!-- Miezul nopții / ieșirea unei rutine: redesenează widget-urile și notificarea din bară. -->
+        <receiver android:name=".RefreshReceiver" android:exported="false" />
         <!-- Exportat fiindcă sistemul îl cheamă; acțiunile din filtru sunt toate protejate (doar sistemul le poate trimite). -->
         <receiver android:name=".BootReceiver" android:exported="true">
             <intent-filter>

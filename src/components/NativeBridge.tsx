@@ -3,7 +3,7 @@ import { useHorizontal } from '../store'
 import { useWritableProjects } from '../hooks'
 import { repository } from '../data'
 import { getDesktopBridge, upcomingReminders, type DesktopAction } from '../lib/desktopBridge'
-import { ANDROID_API_CAPTURE, ANDROID_API_MINE, ANDROID_API_WIDGETS, ANDROID_WINDOW, agendaKey, captureData, captureKey, androidListKey, canTakeActions, getAndroidBridge, pageReadAt } from '../lib/androidBridge'
+import { ANDROID_API_CAPTURE, ANDROID_API_MINE, ANDROID_API_SHADE, ANDROID_API_WIDGETS, ANDROID_WINDOW, GO_TODAY_EVENT, agendaKey, captureData, captureKey, androidListKey, canTakeActions, getAndroidBridge, pageReadAt } from '../lib/androidBridge'
 import { agendaItems } from '../lib/agenda'
 import { parseTicketPath } from '../lib/deepLink'
 import { runNativeAction } from '../lib/nativeAction'
@@ -214,6 +214,14 @@ export function NativeBridge() {
       document.removeEventListener('visibilitychange', onVis)
     }
   }, [android, widgets, dueLoaded])
+
+  // Atingerea pe notificarea fixă din bară (API 5): aplicația pe „Azi", oricare ar fi
+  // ecranul pe care rămăsese. La pornire la rece cutia reține evenimentul până aici.
+  useEffect(() => {
+    if (!android || api < ANDROID_API_SHADE) return
+    const sub = android.addListener('shade', () => { window.dispatchEvent(new Event(GO_TODAY_EVENT)) })
+    return () => { void sub.then((l) => l.remove()).catch(() => {}) }
+  }, [android, api])
 
   useEffect(() => {
     // Preluarea abia după prima citire de REȚEA a scadențelor, nu pe cadrul din

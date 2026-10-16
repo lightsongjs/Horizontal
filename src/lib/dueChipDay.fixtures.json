@@ -1,0 +1,10 @@
+[
+  { "name": "azi, la miezul nopții", "now": "2026-10-16T19:59:00.000Z", "dueAt": "2026-10-15T21:00:00.000Z", "want": "Azi" },
+  { "name": "mâine", "now": "2026-10-16T19:59:00.000Z", "dueAt": "2026-10-17T06:00:00.000Z", "want": "Mâine" },
+  { "name": "ieri", "now": "2026-10-16T19:59:00.000Z", "dueAt": "2026-10-15T06:00:00.000Z", "want": "Ieri" },
+  { "name": "ziua și luna", "now": "2026-10-16T19:59:00.000Z", "dueAt": "2026-10-20T06:00:00.000Z", "want": "20 oct" },
+  { "name": "noiembrie e „noi”", "now": "2026-10-16T19:59:00.000Z", "dueAt": "2026-11-03T08:00:00.000Z", "want": "3 noi" },
+  { "name": "restanță veche", "now": "2026-10-16T19:59:00.000Z", "dueAt": "2026-10-11T21:00:00.000Z", "want": "12 oct" },
+  { "name": "alt an", "now": "2026-10-16T19:59:00.000Z", "dueAt": "2027-01-03T07:00:00.000Z", "want": "3 ian 2027" },
+  { "name": "după miezul nopții local, nu UTC", "now": "2026-10-16T21:30:00.000Z", "dueAt": "2026-10-17T06:00:00.000Z", "want": "Azi" }
+]

@@ -20,6 +20,11 @@ export const ANDROID_API_CAPTURE = 3
  * între „ale mele" și „toate". O cutie mai veche primește lista întreagă.
  */
 export const ANDROID_API_MINE = 4
+/**
+ * API 5: notificarea fixă din bară (D-185) — `getShade`/`setShade` și evenimentul
+ * `shade` (atingerea pe ea: aplicația pe „Azi"). Pornită implicit, de cutie.
+ */
+export const ANDROID_API_SHADE = 5
 
 /** Ce îi trebuie ferestrei de quick add: proiectele în care se poate scrie și oamenii. */
 export interface CaptureData {
@@ -30,6 +35,10 @@ export interface CaptureData {
 
 /** Atingere pe widget, reținută de cutie până pune pagina ascultătorul. */
 export type WidgetEvent = { kind: 'open'; id: string } | { kind: 'quick' }
+/** Atingere pe notificarea din bară (API 5). Eveniment separat de `widget`: o pagină veche l-ar fi citit drept `quick`. */
+export type ShadeEvent = { kind: 'today' }
+/** Cererea „du-mă pe Azi", ascultată de Shell (`App.tsx`), ca `OPEN_USERS_EVENT`. */
+export const GO_TODAY_EVENT = 'hz:go-today'
 /** Un telefon nedeschis câteva zile trebuie să aibă tot planul. */
 export const ANDROID_WINDOW = { horizonMs: 7 * 24 * 3_600_000, limit: 100 }
 
@@ -67,9 +76,15 @@ export interface HorizontalAndroidPlugin {
   showKeyboard(): Promise<void>
   /** API 3. */
   setCaptureData(o: CaptureData): Promise<void>
+  /** API 5. Notificarea fixă din bară: pornită sau nu, pe acest telefon. */
+  getShade(): Promise<{ enabled: boolean }>
+  /** API 5. */
+  setShade(o: { enabled: boolean }): Promise<{ enabled: boolean }>
   addListener(event: 'reminderAction', fn: (a: DesktopAction) => void): Promise<Listener>
   addListener(event: 'changed', fn: () => void): Promise<Listener>
   addListener(event: 'widget', fn: (e: WidgetEvent) => void): Promise<Listener>
+  /** API 5. */
+  addListener(event: 'shade', fn: (e: ShadeEvent) => void): Promise<Listener>
 }
 
 interface CapacitorGlobal {
@@ -114,6 +129,8 @@ function buildBridge(cap: CapacitorGlobal): HorizontalAndroidPlugin {
     leave: call('leave'),
     showKeyboard: call('showKeyboard'),
     setCaptureData: call('setCaptureData'),
+    getShade: call('getShade'),
+    setShade: call('setShade'),
     async addListener(eventName: string, fn: (d: never) => void) {
       const callbackId = cap.nativeCallback(NAME, 'addListener', { eventName }, fn as (d: unknown) => void)
       return { remove: async () => { await cap.nativePromise(NAME, 'removeListener', { eventName, callbackId }) } }

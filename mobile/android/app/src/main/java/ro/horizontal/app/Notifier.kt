@@ -34,6 +34,7 @@ object Notifier {
             // noaptea te învață să-l ignori (răspunsul omului, 2026-10-02).
         })
         nm.createNotificationChannel(NotificationChannel(CH_STATUS, "Stare", NotificationManager.IMPORTANCE_LOW))
+        nm.createNotificationChannel(Shade.channel(ctx))
     }
 
     private fun extras(i: Intent, r: Reminder) = i.putExtra("id", r.id).putExtra("key", r.key).putExtra("at", r.at)

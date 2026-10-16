@@ -10,7 +10,7 @@ import ro.horizontal.app.core.visibleAgenda
 import java.time.LocalDate
 import java.time.ZoneId
 
-/** Widget-urile de pe ecranul de start. `refresh` e chemat din `Engine.reschedule` și din `setAgenda`. */
+/** Widget-urile de pe ecranul de start și notificarea din bară (`Shade`). `refresh` e chemat din `Engine.reschedule` și din `setAgenda`. */
 object Widgets {
     const val EXTRA_OPEN = "hz-widget-open"
     const val EXTRA_QUICK = "hz-widget-quick"
@@ -24,10 +24,13 @@ object Widgets {
     fun refresh(ctx: Context) {
         try {
             val ids = AgendaWidget.ids(ctx)
-            if (ids.isEmpty()) return
+            val shade = Shade.enabled(ctx)
             val plan = PlanStore.read(ctx)
-            val views = AgendaWidget.render(ctx, plan)
-            AppWidgetManager.getInstance(ctx).updateAppWidget(ids, views)
+            // Notificarea din bară (`Shade`) înaintea widget-ului: are propriul try, deci un widget
+            // care aruncă nu o lasă în urmă. Fără ea și fără widget, nici alarma de la miezul nopții.
+            Shade.refresh(ctx, plan)
+            if (ids.isEmpty() && !shade) return
+            if (ids.isNotEmpty()) AppWidgetManager.getInstance(ctx).updateAppWidget(ids, AgendaWidget.render(ctx, plan))
             val items = visibleAgenda(plan.agendaPage, plan.agendaNative, plan.queue).orEmpty()
             armNext(ctx, nextReveal(items, System.currentTimeMillis()))
         } catch (e: Exception) {
@@ -45,7 +48,7 @@ object Widgets {
         val zone = ZoneId.systemDefault()
         val midnight = LocalDate.now(zone).plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli() + 60_000
         val at = if (reveal != null) minOf(midnight, reveal + 1_000) else midnight
-        val pi = PendingIntent.getBroadcast(ctx, 3, Intent(ctx, AgendaWidget::class.java).setAction(AgendaWidget.ACTION_MIDNIGHT),
+        val pi = PendingIntent.getBroadcast(ctx, 3, Intent(ctx, RefreshReceiver::class.java).setAction(AgendaWidget.ACTION_MIDNIGHT),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         (ctx.getSystemService(Context.ALARM_SERVICE) as AlarmManager).set(AlarmManager.RTC, at, pi)
     }

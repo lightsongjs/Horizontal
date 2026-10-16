@@ -64,6 +64,14 @@ class FixturesTest {
         }
     }
 
+    @Test fun dueChipDay() {
+        val all = load("dueChipDay.fixtures.json")
+        for (i in 0 until all.length()) {
+            val f = all.getJSONObject(i)
+            assertEquals(f.getString("name"), f.getString("want"), dueChipDay(parseIso(f.getString("dueAt"))!!, parseIso(f.getString("now"))!!, zone))
+        }
+    }
+
     @Test fun ownership() {
         val all = load("ownership.fixtures.json")
         for (i in 0 until all.length()) {

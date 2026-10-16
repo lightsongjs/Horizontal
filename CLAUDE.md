@@ -1653,6 +1653,23 @@ Pro (HyperOS 3, Android 16).
   sistem (pe HyperOS: MiSans), cu cifre tabelare (`tnum`): Inter ca `@font/` nu e
   garantat într-un `RemoteViews` umflat de launcher.
 
+- **Notificarea fixă din bară** (D-185, „ca TickTick", din `versionCode 11`, API 5):
+  `Shade.kt`, canal propriu `bara-azi` (LOW, fără sunet), `ongoing`. Arată numărul
+  de azi (`todayCount`, același cu al widget-ului — e aceeași agendă,
+  `AgendaWidget.stateOf`), prima sarcină și ziua ei (`dueChipDay`, cuvintele
+  aplicației; fixtures comune `src/lib/dueChipDay.fixtures.json`), sau „Nimic pe
+  azi" + ce urmează. Textul e pur, în `core/Shade.kt`. „+" = `QuickAddActivity`
+  (`Widgets.quick`); atingerea = aplicația pe „Azi" (evenimentul `shade`, separat
+  de `widget`, pe care o pagină veche l-ar fi luat drept „quick" → `GO_TODAY_EVENT`
+  în `App.tsx`). Se redesenează din `Widgets.refresh`, deci la orice listă, acțiune,
+  repornire și la alarma de la miezul nopții — care acum țintește `RefreshReceiver`,
+  nu `AgendaWidget` (dezactivat sub Android 12), și se armează și fără widget. Fără
+  agendă (instalare proaspătă, deconectat) nu apare. Comutatorul e al TELEFONULUI
+  (`hz-shade` în SharedPreferences, pornit implicit, supraviețuiește logout-ului):
+  `getShade`/`setShade`, în rotița de setări (`AndroidShadeSetting.tsx`, doar la
+  `api >= ANDROID_API_SHADE`). Pe Android 14+ omul o poate da la o parte; revine la
+  următoarea redesenare.
+
 - **Fereastra de quick add** (spec: `docs/superpowers/specs/2026-10-06-quick-add-nativ-design.md`):
   butonul widget-ului deschide `QuickAddActivity` — nativă, fără WebView. Regulile
   de captură au O SINGURĂ sursă: `computeDraft` (`src/lib/quickDraft.ts`), folosit
