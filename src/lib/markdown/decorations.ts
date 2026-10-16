@@ -9,12 +9,19 @@ import { refPattern, safeHref } from './safeUrl'
  * mereu, și pe linia cu cursorul, altfel rândul ar sări sub deget. Sintaxa
  * INLINE (`**`, `` ` ``, `[]()`, `## `, `> `) se ascunde doar pe liniile fără
  * cursor (`reveal`).
+ *
+ * Un rând de listă e desenat ca în cititor: marcajul (căsuță, bulină, număr)
+ * stă într-o coloană de lățime fixă (`--md-gutter`), iar textul — și rândurile
+ * lui rupte — pornesc după ea. De-aia marcajul înghite indentarea dinaintea lui
+ * și spațiul de după (adâncimea o poartă linia, `--md-depth`): lățimea unui
+ * spațiu depinde de font, a coloanei nu.
  */
 export type DecoSpec =
   | { k: 'hide'; from: number; to: number }
   | { k: 'mark'; from: number; to: number; cls: string; attrs?: Record<string, string> }
-  | { k: 'line'; at: number; cls: string }
+  | { k: 'line'; at: number; cls: string; attrs?: Record<string, string> }
   | { k: 'bullet'; from: number; to: number }
+  | { k: 'num'; from: number; to: number; text: string }
   | { k: 'task'; from: number; to: number; checked: boolean }
   | { k: 'hr'; from: number; to: number }
 
@@ -93,16 +100,30 @@ export function decorationSpecs(text: string, reveal: ReadonlySet<number>, prefi
           return
         }
         case 'ListMark': {
+          // Indentarea dinainte intră în marcaj doar dacă e numai spații —
+          // într-un citat (`> - a`) rândul rămâne cum era.
+          const ls = starts[lineOf(n.from)]
+          const lead = /^[ \t]*$/.test(text.slice(ls, n.from)) ? ls : n.from
+          let depth = -1
+          for (let p = n.node.parent; p; p = p.parent) if (p.name === 'BulletList' || p.name === 'OrderedList') depth++
+          const line = (kind: string, extra = '') => {
+            if (lead === ls) out.push({ k: 'line', at: ls, cls: `md-li md-li-${kind}${extra}`, attrs: { style: `--md-depth:${Math.max(0, depth)}` } })
+          }
+          const space = (at: number) => (text[at] === ' ' || text[at] === '\t' ? at + 1 : at)
           const next = n.node.nextSibling
           if (next?.name === 'Task') {
             const m = next.getChild('TaskMarker')!
             const checked = text[m.from + 1] !== ' '
-            out.push({ k: 'task', from: n.from, to: m.to, checked })
-            if (checked) out.push({ k: 'mark', from: m.to, to: next.to, cls: 'md-done' })
+            const to = space(m.to)
+            out.push({ k: 'task', from: lead, to, checked })
+            line('task', checked ? ' md-li-done' : '')
+            if (checked && to < next.to) out.push({ k: 'mark', from: to, to: next.to, cls: 'md-done' })
           } else if (/[-*+]/.test(text[n.from])) {
-            out.push({ k: 'bullet', from: n.from, to: n.to })
+            out.push({ k: 'bullet', from: lead, to: space(n.to) })
+            line('bullet')
           } else {
-            out.push({ k: 'mark', from: n.from, to: n.to, cls: 'md-num' })
+            out.push({ k: 'num', from: lead, to: space(n.to), text: text.slice(n.from, n.to) })
+            line('num')
           }
           return
         }

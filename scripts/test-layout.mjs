@@ -1285,6 +1285,140 @@ for (const vp of [{ width: 390, height: 844 }, { width: 844, height: 390 }]) {
   }
 }
 
+// Căsuțele din descriere — componentele REALE (MarkdownEditor cu CodeMirror,
+// MarkdownView), împachetate cu esbuild. Regresia din 2026-10-16: căsuța
+// BIFATĂ stătea mai jos decât cele goale (era aliniată pe linia de bază, iar
+// SVG-ul bifei muta linia de bază). Aici: centrul fiecărei căsuțe (și al
+// fiecărei buline) e la ±1px de centrul primului rând de text, bifată sau nu,
+// în editor (cu și fără focus) și în cititor; rândul rupt e agățat sub text,
+// nu sub căsuță; pe telefon rândurile cu căsuță sunt la ≥40px una de alta.
+console.log('\nCăsuțele din descriere — aliniate pe primul rând, în editor și în cititor:')
+const { outputFiles: [mdBundle] } = await esbuild.build({
+  stdin: {
+    contents: `
+      import { createElement as h } from 'react'
+      import { createRoot } from 'react-dom/client'
+      import MarkdownEditor from './components/MarkdownEditor'
+      import { MarkdownView } from './components/MarkdownView'
+      window.__mount = (text, wrap) => {
+        const noop = () => {}
+        createRoot(document.getElementById('ed')).render(h(MarkdownEditor, { value: text, onChange: noop, onCommit: noop, ariaLabel: 'Descriere', prefixes: ['HZ'] }))
+        createRoot(document.getElementById('rd')).render(h(MarkdownView, { text, prefixes: ['HZ'], onToggle: noop, className: 'issue-desc' }))
+      }
+    `,
+    resolveDir: fileURLToPath(new URL('../src', import.meta.url)),
+    loader: 'tsx',
+  },
+  bundle: true, write: false, format: 'iife', jsx: 'automatic', loader: { '.tsx': 'tsx', '.ts': 'ts' },
+  define: { 'process.env.NODE_ENV': '"production"', 'import.meta.env': '{}' },
+})
+const MD_TASKS = [
+  '- [x] Intretinere - ebloc',
+  '- [ ] Convertește revolut dolari cont Simona și eu',
+  '- [x] Card de credit **ING**',
+  '- [ ] taxa gunoi cisnadie - T a x e si i m p o z i t e 64 RON/luna https://mail.google.com/mail/u/1/#inbox/FMfcgzQgLrqbMKgGNPxtjwVBrMBLhQKq',
+  '- [ ] Eon',
+  '  - [x] factura din `octombrie`',
+  '- [x] DIGI',
+  '- notă fără căsuță, dar destul de lungă cât să se rupă pe încă un rând în coloana îngustă',
+  '1. primul pas',
+  '2. al doilea',
+].join('\n')
+const MD_SHOTS = process.env.MD_SHOTS
+for (const [where, vp, wrapOpen, wrapClose] of [
+  ['panou 1400', { width: 1400, height: 1000 }, '<div class="split-pane" style="position:static;width:560px;padding:16px"><div class="md-field desc-box desc-fixed" id="ed"></div><div style="height:24px"></div><div class="md issue-desc-wrap" id="rd"></div></div>', ''],
+  ['foaie 390', { width: 390, height: 1200 }, '<div class="edit-sheet" style="position:static;transform:none;padding:0 18px"><div class="es-desc md-field desc-box" id="ed"></div><div style="height:24px"></div><div id="rd"></div></div>', ''],
+]) for (const scale of [1, 1.5]) {
+  const tag = `${where}, text ×${scale}`
+  const page = await browser.newPage({ viewport: vp, ...(vp.width < 900 ? { hasTouch: true, isMobile: true } : {}) })
+  await page.setContent(`<meta name="viewport" content="width=device-width, initial-scale=1.0"><style>${CSS}\n:root{--text-scale:${scale}}</style>${wrapOpen}${wrapClose}<script>${mdBundle.text}</script>`)
+  await page.evaluate((t) => window.__mount(t), MD_TASKS)
+  await page.waitForSelector('#ed .md-task')
+  await page.evaluate(() => document.fonts.ready)
+  const measure = () => page.evaluate(() => {
+    // Primul caracter de text al rândului, în afara marcajului.
+    const firstChar = (row, marker) => {
+      const w = document.createTreeWalker(row, NodeFilter.SHOW_TEXT)
+      for (let n = w.nextNode(); n; n = w.nextNode()) {
+        if (marker.contains(n) || n.parentElement.closest('.md-task,.md-bullet,.md-num')) continue
+        const i = n.data.search(/\S/)
+        if (i < 0) continue
+        const r = document.createRange(); r.setStart(n, i); r.setEnd(n, i + 1)
+        return r.getClientRects()[0]
+      }
+      return null
+    }
+    const scan = (root, rowSel) => [...root.querySelectorAll('.md-task, .md-bullet, ul > li.md-li:not(.md-li-task)')].map((m) => {
+      const row = m.matches('li') ? m : m.closest(rowSel)
+      const isPseudo = m.matches('li')
+      let box
+      if (isPseudo) {
+        const cs = getComputedStyle(m, '::before'), lr = m.getBoundingClientRect()
+        const top = lr.top + parseFloat(cs.top), h = parseFloat(cs.height)
+        box = { cy: top + h / 2 }
+      } else {
+        const r = m.classList.contains('md-bullet')
+          ? (() => { const lr = m.getBoundingClientRect(), cs = getComputedStyle(m, '::before'); return { top: lr.top + parseFloat(cs.top), height: parseFloat(cs.height) } })()
+          : m.getBoundingClientRect()
+        box = { cy: r.top + r.height / 2 }
+      }
+      // Rândul de text, nu sub-lista din el.
+      const body = isPseudo ? m : row
+      const c = firstChar(isPseudo ? [...body.childNodes].find((x) => x.nodeType === 1) ?? body : body, isPseudo ? document.createElement('i') : m)
+      const left = m.matches('li') ? null : m.getBoundingClientRect().left
+      return { kind: m.className.split(' ')[0] || 'li', on: m.classList.contains('on'), cy: box.cy, ty: c ? (c.top + c.bottom) / 2 : NaN, tx: c?.left, left, rowTop: row.getBoundingClientRect().top }
+    })
+    const ed = document.querySelector('#ed'), rd = document.querySelector('#rd')
+    // Agățarea: rândul rupt (al 4-lea, cu URL) pornește sub text, nu sub căsuță.
+    const hang = (root, sel) => {
+      const m = root.querySelectorAll('.md-task')[3]
+      const row = m.closest(sel)
+      const text = row.matches('li') ? row.querySelector('.md-li-body') : row
+      const r = document.createRange(); r.selectNodeContents(text)
+      const tops = []
+      for (const q of r.getClientRects()) if (q.width > 1 && q.left >= m.getBoundingClientRect().right - 0.5 && !tops.some((t) => Math.abs(t.top - q.top) < 2)) tops.push({ top: q.top, left: q.left })
+      tops.sort((a, b) => a.top - b.top)
+      return { lines: tops.length, first: tops[0]?.left, second: tops[1]?.left, box: m.getBoundingClientRect() }
+    }
+    return { ed: scan(ed, '.cm-line'), rd: scan(rd, 'li'), hangEd: hang(ed, '.cm-line'), hangRd: hang(rd, 'li') }
+  })
+  for (const focused of [false, true]) {
+    if (focused) {
+      // Cursorul pe rândul cu ING: sintaxa inline (`**`) se arată pe el.
+      const cm = page.locator('#ed .cm-line').nth(2)
+      const b = await cm.boundingBox()
+      await page.mouse.click(b.x + b.width - 4, b.y + b.height / 2)
+      await page.waitForTimeout(150)
+    }
+    const m = await measure()
+    const sides = focused ? [['editor cu focus', m.ed, m.hangEd]] : [['editor', m.ed, m.hangEd], ['cititor', m.rd, m.hangRd]]
+    for (const [side, rows, hg] of sides) {
+      const off = rows.filter((r) => !(Math.abs(r.cy - r.ty) <= 1))
+      check(`${side} (${tag}): marcajul centrat pe primul rând, bifat sau nu`, rows.length >= 8 && off.length === 0,
+        off.length ? off.map((r) => `${r.kind}${r.on ? '✓' : ''} Δ${(r.cy - r.ty).toFixed(1)}px`).join(' ') : `${rows.length} marcaje`)
+      const tasks = rows.filter((r) => r.kind === 'md-task')
+      const onOff = tasks.filter((r) => r.on).map((r) => r.cy - r.rowTop), offOn = tasks.filter((r) => !r.on).map((r) => r.cy - r.rowTop)
+      check(`${side} (${tag}): bifată și goală la aceeași înălțime în rând`, Math.max(...onOff, ...offOn) - Math.min(...onOff, ...offOn) <= 1, `${onOff.map((x) => x.toFixed(1))} vs ${offOn.map((x) => x.toFixed(1))}`)
+      check(`${side} (${tag}): rândul rupt e agățat sub text`, hg.lines >= 2 && Math.abs(hg.first - hg.second) <= 1 && hg.second > hg.box.right + 4,
+        `${hg.lines} rânduri, ${hg.first?.toFixed(1)} / ${hg.second?.toFixed(1)}, căsuța până la ${hg.box.right.toFixed(1)}`)
+      // Textul pornește în aceeași coloană la căsuță, bulină și număr (adâncimea 0).
+      const xs = rows.filter((r) => Number.isFinite(r.tx)).map((r) => r.tx)
+      const col = xs.length ? Math.min(...xs) : 0
+      const top0 = rows.filter((r) => Math.abs(r.tx - col) <= 1).length
+      check(`${side} (${tag}): textul în aceeași coloană pe căsuțe și buline`, top0 >= rows.length - 1, `${top0}/${rows.length} la x=${col.toFixed(1)}`)
+      const pitch = tasks.slice(0, 3).map((r, i, a) => (i ? r.cy - a[i - 1].cy : null)).filter((x) => x !== null)
+      if (vp.width < 900) check(`${side} (${tag}): pe telefon rândurile cu căsuță la ≥40px`, pitch.every((d) => d >= 40), pitch.map((d) => d.toFixed(1)).join(', '))
+      else check(`${side} (${tag}): pe desktop rândul rămâne strâns`, pitch.every((d) => d <= 34), pitch.map((d) => d.toFixed(1)).join(', '))
+    }
+    if (MD_SHOTS) for (const theme of ['dark', 'light']) {
+      await page.evaluate((t) => document.documentElement.setAttribute('data-theme', t), theme)
+      const slug = `${where.replace(' ', '-')}-x${scale}-${focused ? 'focus' : 'repaus'}-${theme}`
+      await page.screenshot({ path: `${MD_SHOTS}/${slug}.png`, fullPage: true })
+    }
+  }
+  await page.close()
+}
+
 await browser.close()
 
 if (failures.length) {

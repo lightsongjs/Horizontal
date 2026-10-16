@@ -19,12 +19,25 @@ describe('decorationSpecs', () => {
   })
   it('căsuța e desenată și pe linia cu cursorul; rândul bifat e tăiat', () => {
     const d = decorationSpecs('- [x] gata', new Set([0]), [])
-    expect(d).toContainEqual({ k: 'task', from: 0, to: 5, checked: true })
-    expect(d).toContainEqual({ k: 'mark', from: 5, to: 10, cls: 'md-done' })
+    expect(d).toContainEqual({ k: 'task', from: 0, to: 6, checked: true })
+    expect(d).toContainEqual({ k: 'mark', from: 6, to: 10, cls: 'md-done' })
+    expect(d).toContainEqual({ k: 'line', at: 0, cls: 'md-li md-li-task md-li-done', attrs: { style: '--md-depth:0' } })
   })
-  it('bulina înlocuiește „-", numărul doar se colorează', () => {
-    expect(of(decorationSpecs('- a', none, []), 'bullet')).toEqual([{ k: 'bullet', from: 0, to: 1 }])
-    expect(decorationSpecs('1. a', none, [])).toContainEqual({ k: 'mark', from: 0, to: 2, cls: 'md-num' })
+  it('bulina și numărul înghit spațiul de după; linia își poartă felul', () => {
+    const b = decorationSpecs('- a', none, [])
+    expect(of(b, 'bullet')).toEqual([{ k: 'bullet', from: 0, to: 2 }])
+    expect(b).toContainEqual({ k: 'line', at: 0, cls: 'md-li md-li-bullet', attrs: { style: '--md-depth:0' } })
+    expect(of(decorationSpecs('1. a', none, []), 'num')).toEqual([{ k: 'num', from: 0, to: 3, text: '1.' }])
+  })
+  it('indentarea intră în marcaj, adâncimea pe linie', () => {
+    const d = decorationSpecs('- a\n  - [ ] b', none, [])
+    expect(d).toContainEqual({ k: 'task', from: 4, to: 12, checked: false })
+    expect(d).toContainEqual({ k: 'line', at: 4, cls: 'md-li md-li-task', attrs: { style: '--md-depth:1' } })
+  })
+  it('în citat marcajul rămâne pe loc și linia nu e de listă', () => {
+    const d = decorationSpecs('> - a', none, [])
+    expect(of(d, 'bullet')).toEqual([{ k: 'bullet', from: 2, to: 4 }])
+    expect(d.some((s) => s.k === 'line' && s.cls.startsWith('md-li'))).toBe(false)
   })
   it('linkul: textul rămâne, sintaxa se ascunde, href-ul sigur e pe mark', () => {
     const d = decorationSpecs('[x](https://a.ro)', none, [])

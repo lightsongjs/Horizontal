@@ -1311,40 +1311,66 @@ main {
   background: none; border: 0; padding: 0; cursor: pointer;
 }
 .md-hr { text-align: center; margin: 1.2em 0; font-family: var(--mono); color: var(--txt-faint); }
-.md ul, .md ol { margin: 0 0 0.65em; padding-left: 1.4em; }
-.md li { margin: 0.15em 0; }
-.md li > p { margin: 0; }
-.md ul > li.md-li:not(.md-li-task) { list-style: none; position: relative; }
-.md ul > li.md-li:not(.md-li-task)::before, .md-editor .md-bullet {
-  content: ''; display: inline-block; width: 5px; height: 5px; border-radius: 50%;
-  background: var(--txt-faint); vertical-align: middle;
+.md ul, .md ol { margin: 0 0 0.65em; padding-left: var(--md-gutter); }
+.md li { margin: 0; }
+/* Sub-lista nu deschide un gol în listă (în editor e doar rândul următor). */
+.md li ul, .md li ol { margin: 0; }
+.md li > p, .md-li-body > p { margin: 0; }
+/* ── Rândul de listă, în cititor ȘI în editor ──
+   O singură geometrie: marcajul stă într-o coloană fixă (`--md-gutter`) la
+   stânga textului, iar textul și rândurile lui rupte pornesc după ea (agățat,
+   nu sub căsuță). Pe verticală marcajul se centrează pe PRIMUL rând, prin
+   `1lh` — nu prin linia de bază: o căsuță goală și una cu bifa (un SVG
+   înăuntru) au linii de bază diferite, și de-aia cea bifată stătea mai jos.
+   Cititorul: `li` relativ, marcajul absolut în coloană. Editorul (o linie
+   CodeMirror, `.md-li` + `--md-depth`): `padding-left` = coloanele, `text-indent`
+   negativ aduce marcajul — un widget de lățimea coloanei — înapoi în ea. */
+.md, .md-editor {
+  /* Crește cu textul (mărimea textului), ca numerele să încapă în coloană. */
+  --md-gutter: max(26px, 1.7em);
+  /* Pe telefon fiecare căsuță are ~44px de rând (`.md-li-task`), ca s-o
+     nimerești cu degetul mare; pe desktop rândul rămâne strâns. */
+  --md-task-pad: 0px;
 }
-.md ul > li.md-li:not(.md-li-task)::before { position: absolute; left: -0.95em; top: 0.72em; }
+@media (max-width: 899px), (pointer: coarse) {
+  .md, .md-editor { --md-task-pad: max(0px, calc((44px - 1lh) / 2)); }
+}
+.md ul > li.md-li, .md ol > li.md-li { position: relative; }
+.md ul > li.md-li:not(.md-li-task) { list-style: none; }
+.md ul > li.md-li:not(.md-li-task)::before, .md-editor .md-bullet::before {
+  content: ''; position: absolute; width: 5px; height: 5px; border-radius: 50%;
+  background: var(--txt-faint);
+  top: calc(0.5lh - 2.5px);
+}
+/* Bulina pe axa căsuței (9px = jumătate din 18). */
+.md ul > li.md-li:not(.md-li-task)::before { left: calc(6.5px - var(--md-gutter)); }
+.md-editor .md-bullet::before { left: 6.5px; }
 .md ol { font-variant-numeric: tabular-nums; }
 .md ol > li::marker, .md-editor .md-num { font-family: var(--mono); color: var(--txt-dim); }
-.md-li-task { list-style: none; display: flex; gap: 10px; align-items: flex-start; margin-left: -1.4em; }
-.md-li-body { flex: 1; min-width: 0; }
-/* Căsuța: 18px desenați, mai mult de atins (pseudo-elementul): 13px în
-   lateral, dar pe verticală EXACT un rând (`1lh`, de-aia `font: inherit`).
-   Înainte ținta era 44px și pe verticală, adică trecea peste căsuțele de pe
-   rândurile vecine — iar a următoarei, venită mai târziu în DOM, stătea
-   deasupra: un click pe jumătatea de jos a căsuței bifa rândul de DEDESUBT
-   (ROUTIN-08, în panou, unde rândul are ~22px). `-2px` e rezerva fără `lh`. */
+.md-li-task { list-style: none; padding-block: var(--md-task-pad); }
+/* Cu sub-listă, rândul de jos e al ei: fără încă un pad (în editor nu există). */
+.md-li-task:has(> .md-li-body > :is(ul, ol):last-child) { padding-bottom: 0; }
+.md-li-body { min-width: 0; }
+/* Căsuța: 18px desenați. Ținta de atins (pseudo-elementul): 13px în lateral,
+   iar pe verticală EXACT rândul ei — primul rând plus `--md-task-pad` deasupra
+   și dedesubt, adică până la marginea rândului vecin, niciodată peste el.
+   Înainte ținta era 44px fixă, peste un rând de ~22px; a căsuței de dedesubt,
+   mai târziu în DOM, stătea deasupra: un click pe jumătatea de jos bifa rândul
+   următor (ROUTIN-08). `font: inherit` = `1lh` e rândul textului. */
 .md-task {
-  /* Marginile erau în em-ul butonului (13.33px, din foaia browserului);
-     cu `font: inherit` le scriem în px, ca desenul să nu se miște. */
-  font: inherit;
-  position: relative; flex: none; width: 18px; height: 18px; margin-top: 2.93px;
+  font: inherit; text-indent: 0;
+  flex: none; width: 18px; height: 18px;
   border: 0; padding: 0; border-radius: 50%; cursor: pointer;
   background: transparent; box-shadow: inset 0 0 0 1.5px var(--txt-faint);
   color: var(--bg); display: inline-grid; place-items: center;
   transition: background 120ms, box-shadow 120ms;
-  vertical-align: -2.67px;
 }
+.md-task > svg { display: block; }
+.md .md-task { position: absolute; left: calc(-1 * var(--md-gutter)); top: calc(var(--md-task-pad) + (1lh - 18px) / 2); }
 .md-task::after {
   content: ''; position: absolute; left: -13px; right: -13px;
   top: -2px; bottom: -2px;
-  top: calc((18px - 1lh) / 2); bottom: calc((18px - 1lh) / 2);
+  top: calc((18px - 1lh) / 2 - var(--md-task-pad)); bottom: calc((18px - 1lh) / 2 - var(--md-task-pad));
 }
 .md-task.on { background: var(--accent); box-shadow: none; }
 .md-task:disabled { cursor: default; }
@@ -1371,8 +1397,21 @@ main {
   font-family: var(--mono); font-size: calc(13px * var(--text-scale));
   background: var(--surface-2); padding: 0 14px;
 }
-.md-editor .md-bullet { margin: 0 0.55em 0 0.25em; }
-.md-editor .md-task { margin: 0 0.45em 0 0; }
+.md-editor .cm-line.md-li {
+  padding-left: calc((var(--md-depth, 0) + 1) * var(--md-gutter));
+  text-indent: calc(-1 * var(--md-gutter));
+}
+.md-editor .cm-line.md-li-task { padding-block: var(--md-task-pad); }
+/* Widgeturile marcajului: lățimea coloanei, aliniate pe SUSUL rândului
+   (`vertical-align: top`), nu pe linia de bază. */
+.md-editor .md-task, .md-editor .md-bullet, .md-editor .md-num { vertical-align: top; text-indent: 0; }
+.md-editor .md-task { position: relative; margin: calc((1lh - 18px) / 2) calc(var(--md-gutter) - 18px) 0 0; }
+.md-editor .md-bullet { display: inline-block; position: relative; width: var(--md-gutter); height: 1lh; }
+.md-editor .md-num {
+  display: inline-flex; justify-content: flex-end; width: var(--md-gutter);
+  /* Ca `::marker`-ul cititorului: numărul, apoi un spațiu (mono) până la text. */
+  padding-right: 0.6em; box-sizing: border-box; white-space: nowrap;
+}
 .md-editor .md-hr { display: inline-block; width: 100%; }
 .md-fallback {
   width: 100%; min-height: 6em; resize: none; border: 0; outline: none; background: transparent;
