@@ -1206,7 +1206,12 @@ const lbSvg = (w, h) => 'data:image/svg+xml;base64,' + Buffer.from(
   `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">` +
   `<rect width="${w}" height="${h}" fill="#3b6ea5"/><rect x="${w * 0.02}" y="${h * 0.02}" width="${w * 0.96}" height="${h * 0.96}" fill="none" stroke="#f5c542" stroke-width="${Math.min(w, h) * 0.02}"/>` +
   `<circle cx="${w / 2}" cy="${h / 2}" r="${Math.min(w, h) / 4}" fill="#e8eef5"/></svg>`).toString('base64')
-const LB_IMAGES = [['lata-4000x3000.jpg', 4000, 3000], ['inalta-1080x2400.png', 1080, 2400]]
+// Numele lungi, fără spații, sunt cele reale de pe Android („Screenshot_…"):
+// unul scurt n-ar fi prins coloana care se lățea după bară (D-175).
+const LB_IMAGES = [
+  ['lata-4000x3000-Screenshot_2026-10-16-20-37-27-202_ro.horizontal.app.jpg', 4000, 3000],
+  ['inalta-1080x2400.png', 1080, 2400],
+]
 const LB_SHOTS = process.env.LB_SHOTS
 for (const vp of [{ width: 390, height: 844 }, { width: 844, height: 390 }]) {
   for (const [name, w, h] of LB_IMAGES) {
@@ -1227,9 +1232,10 @@ for (const vp of [{ width: 390, height: 844 }, { width: 844, height: 390 }]) {
       const back = document.querySelector('.lb-back')
       const body = document.querySelector('.lb-body').getBoundingClientRect()
       const r = document.querySelector('.lb-body img').getBoundingClientRect()
-      return { inBody: back.parentElement === document.body, vw: innerWidth, vh: innerHeight, body, img: { x: r.x, y: r.y, w: r.width, h: r.height, right: r.right, bottom: r.bottom } }
+      return { bar: document.querySelector('.lb-bar').getBoundingClientRect().toJSON(), inBody: back.parentElement === document.body, vw: innerWidth, vh: innerHeight, body, img: { x: r.x, y: r.y, w: r.width, h: r.height, right: r.right, bottom: r.bottom } }
     })
     check(`galeria e în <body>, nu prinsă în foaie — ${tag}`, m.inBody, 'părintele nu e body')
+    check(`bara și cutia nu ies din ecran — ${tag}`, m.bar.right <= m.vw + 0.5 && m.body.right <= m.vw + 0.5, `bara ${Math.round(m.bar.right)}, cutia ${Math.round(m.body.right)} pe ${m.vw}`)
     const fits = m.img.x >= -0.5 && m.img.y >= -0.5 && m.img.right <= m.vw + 0.5 && m.img.bottom <= m.vh + 0.5
       && m.img.y >= m.body.top - 0.5 && m.img.bottom <= m.body.bottom + 0.5
     check(`poza încape întreagă — ${tag}`, fits, `img ${Math.round(m.img.x)},${Math.round(m.img.y)} ${Math.round(m.img.w)}×${Math.round(m.img.h)} în ${m.vw}×${m.vh}`)

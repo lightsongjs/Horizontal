@@ -5272,6 +5272,12 @@ body:has(.kb-sheet) .toast {
    sub el. */
 .lb-back {
   position: fixed; inset: 0; z-index: 60; display: grid; grid-template-rows: auto minmax(0, 1fr);
+  /* Coloana `minmax(0, 1fr)`, nu cea implicită (`auto`): implicit coloana
+     crește cât conținutul minim al barei, iar un nume lung, fără spații
+     („Screenshot_2026-10-16-…_ro.horizontal.app.jpg", `nowrap`) o lățea la
+     591px pe un ecran de 392 — poza ieșea pe dreapta, iar butoanele barei
+     cu totul din ecran (D-175, măsurat pe telefon). */
+  grid-template-columns: minmax(0, 1fr);
   background: rgba(0, 0, 0, 0.92);
   padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
 }
