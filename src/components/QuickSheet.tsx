@@ -3,7 +3,7 @@ import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { useQuickDraft } from '../hooks'
 import { dueLabelParts, quickKey, type QuickCtx } from '../lib/quickDraft'
-import { fromInputs, toDateInput, toTimeInput } from '../lib/schedule'
+import { fromInputs, toDateInput } from '../lib/schedule'
 import { describeRrule } from '../lib/recurrence'
 import { Icon } from './Icon'
 import { KeyboardSheet } from './KeyboardSheet'
@@ -12,6 +12,7 @@ import { uploadPicked } from '../data/attachments'
 import { pickFiles } from '../lib/pickFiles'
 import { AttachButton, attachBlocked, filesNoun } from './SheetFiles'
 import { ProjectMark } from './ProjectMark'
+import { QuickDue } from './QuickDue'
 
 /**
  * Un buton din foaie nu ia focusul: titlul îl păstrează, deci tastatura nu
@@ -165,31 +166,14 @@ export function QuickSheet({ ctx }: { ctx: QuickCtx }) {
         <p className={`qs-status ${warn ? 'warn' : ''}`} role="status">{status}</p>
 
         {whenOpen && (
-          <div className="qs-when">
-            <Icon name="due" size={14} />
-            <input
-              type="date"
-              aria-label="Ziua"
-              value={dueAt ? toDateInput(dueAt) : ''}
-              onChange={(e) => { setDue(e.target.value, dueAt && !allDay ? toTimeInput(dueAt) : ''); toTitle() }}
-            />
-            <input
-              type="time"
-              aria-label="Ora"
-              value={dueAt && !allDay ? toTimeInput(dueAt) : ''}
-              onChange={(e) => { setDue(dueAt ? toDateInput(dueAt) : fallbackDay, e.target.value); toTitle() }}
-            />
-            {dueAt && (
-              <button
-                type="button"
-                className="qs-clear"
-                onPointerDown={keepFocus}
-                onClick={() => q.setManual((m) => ({ ...m, due: { dueAt: null, allDay: true } }))}
-              >
-                fără dată
-              </button>
-            )}
-          </div>
+          <QuickDue
+            dueAt={dueAt}
+            allDay={allDay}
+            fallbackDay={fallbackDay}
+            onDue={setDue}
+            onPicked={toTitle}
+            onClear={() => q.setManual((m) => ({ ...m, due: { dueAt: null, allDay: true } }))}
+          />
         )}
 
         <div className="qs-bar">

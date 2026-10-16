@@ -6,8 +6,8 @@ import type { Normalize } from '../lib/autosave'
 import { dateFragments } from '../lib/parseDue'
 import { dueLabelParts } from '../lib/quickDraft'
 import {
-  displayFromInputDate, fromDisplayDate, fromInputs, fromTimeText, reminderAt, reminderKindOf, reschedule,
-  toDateInput, toDisplayDate, toTimeInput,
+  fromDisplayDate, fromInputs, fromTimeText, reminderAt, reminderKindOf, reschedule,
+  toDateInput, toTimeInput,
 } from '../lib/schedule'
 import { mergeTitleDue } from '../lib/titleDue'
 import type { Issue } from '../lib/types'
@@ -22,7 +22,7 @@ import { displayIssueId, isTempIssueId } from '../lib/issueId'
 import { MoveProjectSheet } from './MoveProject'
 import { SheetThreadRow } from './SheetThreadRow'
 import { ChipPop } from './ChipPop'
-import { DuePanel } from './DuePanel'
+import { DuePanel, useDueFields } from './DuePanel'
 
 /** Ce se editează din foaie — exact câmpurile pe care le poate trimite. */
 type EditFields = {
@@ -384,16 +384,7 @@ function EditBody({ issue }: { issue: Issue }) {
 function SheetDue({ fields: d, commit }: { fields: EditFields; commit(patch: Partial<EditFields>): void }) {
   const curDate = d.dueAt ? toDateInput(d.dueAt) : ''
   const curTime = d.dueAt && !d.allDay ? toTimeInput(d.dueAt) : ''
-  const [dueText, setDueText] = useState(d.dueAt ? toDisplayDate(d.dueAt) : '')
-  const [timeText, setTimeText] = useState(curTime)
-  // O scriere venită din altă parte (presetare, calendar, alt dispozitiv):
-  // câmpurile o urmează, dacă nu spun deja același lucru.
-  useEffect(() => {
-    setDueText((t) => ((fromDisplayDate(t) ?? '') === curDate ? t : curDate ? displayFromInputDate(curDate) : ''))
-    setTimeText((t) => ((fromTimeText(t) ?? '') === curTime ? t : curTime))
-  }, [curDate, curTime])
-  const dueDate = fromDisplayDate(dueText) ?? ''
-  const dueTime = fromTimeText(timeText) ?? ''
+  const { dueText, setDueText, timeText, setTimeText, dueDate, dueTime } = useDueFields(curDate, curTime)
   const move = (date: string, time: string) => {
     if (date === curDate && time === curTime) return
     commit(reschedule(d, fromInputs(date, time)))

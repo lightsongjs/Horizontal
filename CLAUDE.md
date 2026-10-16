@@ -562,6 +562,17 @@ tastatura deschisă. Dacă nici nu se micșorează, nici nu mișcă
 `replaceState`. După trimitere foaia se închide, iar confirmarea e Toast-ul
 (`showToast` din `ui.tsx`) — cu tastatura jos, nu mai e acoperit.
 
+**Data din foaia rapidă e tot `DuePanel`** (`QuickDue.tsx`), dar inline
+deasupra rândului de controale (`.qs-when`), nu foaie de jos — foaia stă lipită
+de tastatură. Nimic nu pleacă până la Trimite: fiecare alegere e `manual.due` în
+ciornă, care bate data din titlu (`draftSchedule`); „scoate" = fără dată. Fără
+rândul mementoului și fără „Se repetă" (captura pune mementoul implicit,
+repetarea vine din titlu) — `DuePanel` le ascunde fără `onReminder` /
+`onClearRrule`. Butoanele panoului nu iau focusul (`pointerdown` prevenit pe
+container), deci după „Mâine" tastatura rămâne și scrisul în titlu continuă;
+după calendar / ceas focusul revine pe titlu. Rândul din listă și bara de pe
+Linux (`QuickAdd`) au încă inputurile native — sunt pe desktop.
+
 **Descrierea pe desktop:** Tab peste un titlu început o deschide, Shift+Tab sau
 Backspace pe descriere goală te întorc, Ctrl+Enter salvează din ea (tabelul e
 `quickKey`). Pe un titlu gol Tab rămâne navigare. Bara de captură își cere
@@ -625,8 +636,8 @@ un telefon en-US arătau `10/16/2026` și `--:-- --`. `SheetDue` (`EditSheet.tsx
 scrie pe loc, prin `reschedule` (mementoul își ține decalajul, `rrule` neatins):
 presetările și calendarul imediat, textul scris abia când e o dată/oră validă,
 iar o oră golită (= toată ziua) la ieșirea din câmp. Deschiderea aplică întâi o
-dată evidențiată în titlu (gest de încheiere, ca „…"). Foaia RAPIDĂ are încă
-vechea bandă `qs-when`.
+dată evidențiată în titlu (gest de încheiere, ca „…"). Textul câmpurilor
+(scris pe jumătate) îl ține `useDueFields`, comun cu foaia rapidă.
 
 **Fără buton de salvare.** `src/lib/autosave.ts` (pur, cu teste) + `useAutosave`
 din `hooks.ts` — gândite să fie reluate de formularul complet când pierde și el

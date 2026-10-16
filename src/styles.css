@@ -5854,33 +5854,15 @@ body:has(.kb-sheet) .toast {
 .qs-status { margin: 6px 0 0; font-size: calc(12.5px * var(--text-scale)); color: var(--txt-faint); }
 .qs-status:empty { display: none; }
 .qs-status.warn { color: var(--blocked); font-weight: 600; }
+/* Panoul de dată al capturii (`DuePanel`, ca în foaia de tichet), inline
+   deasupra rândului de controale: foaia rapidă e lipită de tastatură, deci
+   nu o a doua foaie de jos. Un salt de fundal, fără chenar. */
 .qs-when {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
   margin-top: 10px;
-  padding: 6px 8px;
+  padding: 10px;
   border-radius: var(--r-m);
   background: var(--surface-2);
-  color: var(--txt-dim);
-}
-.qs-when input {
-  border: 0;
-  border-radius: var(--r-s);
-  background: var(--surface);
   color: var(--txt);
-  font-family: var(--mono);
-  font-size: calc(14px * var(--text-scale));
-  padding: 5px 7px;
-}
-.qs-clear {
-  margin-left: auto;
-  padding: 5px 9px;
-  border-radius: var(--r-s);
-  background: var(--surface);
-  color: var(--txt-dim);
-  font-size: calc(12.5px * var(--text-scale));
 }
 /* Rândul de controale. Trimite și iconițele NU se micșorează; jetonul de
    dată și numele proiectului da, tăiate cu „…" — la 320px rândul încape
