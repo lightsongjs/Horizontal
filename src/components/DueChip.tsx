@@ -1,4 +1,4 @@
-import { hasTime, isOverdue, reminderKindOf, toDisplayDate, toShortDate, toTimeInput } from '../lib/schedule'
+import { dueChipDay, hasTime, isOverdue, reminderKindOf, toDisplayDate, toTimeInput } from '../lib/schedule'
 import { describeRrule } from '../lib/recurrence'
 import type { Issue } from '../lib/types'
 import { Icon } from './Icon'
@@ -82,14 +82,14 @@ interface Props {
  * scadența e excepția, nu regula (în listele inteligente e invers, de asta
  * `TaskRow` chiar arată un „—" în coloana de oră).
  *
- * Anul lipsește din chip, ca la `toShortDate` peste tot altundeva; e în `title`.
+ * Ziua e scrisă ca în listele inteligente (`dueChipDay`); data completă e în `title`.
  */
 export function DueChip({ issue, now }: Props) {
   if (!issue.dueAt) return null
   const at = now ?? new Date()
   return (
     <span className={`due-chip${isOverdue(issue, at) ? ' late' : ''}`} title={dueTitle(issue, at)}>
-      <span className="dc-date">{toShortDate(issue.dueAt)}</span>
+      <span className="dc-date">{dueChipDay(issue.dueAt, at)}</span>
       {hasTime(issue) && <span className="dc-time">{toTimeInput(issue.dueAt)}</span>}
       {issue.remindAt && <Bell />}
       <Recur rrule={issue.rrule} />

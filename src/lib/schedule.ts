@@ -345,6 +345,21 @@ export function toDayMonth(d: Date | string): string {
 }
 
 /**
+ * Ziua din jetonul de scadență al modului proiecte (`DueChip`): „Azi",
+ * „Mâine", „Ieri", altfel „20 oct" — aceleași cuvinte ca listele inteligente.
+ * Înainte jetonul scria „16/10", iar omul n-a recunoscut în el o dată
+ * (2026-10-16). Anul doar când nu e cel curent; complet, în `title`.
+ */
+export function dueChipDay(iso: string, now: Date): string {
+  const off = dayOffset(iso, now)
+  if (off === 0) return 'Azi'
+  if (off === 1) return 'Mâine'
+  if (off === -1) return 'Ieri'
+  const d = new Date(iso)
+  return d.getFullYear() === now.getFullYear() ? toDayMonth(d) : `${toDayMonth(d)} ${d.getFullYear()}`
+}
+
+/**
  * Subtitlul listei „7 zile": „Următoarele 7 zile · 15–21 oct", sau
  * „… · 28 oct – 3 noi" peste o graniță de lună. Zilele sunt cele din
  * `buildSmartLists` (+1..+7), deci intervalul spune exact ce e pe ecran.

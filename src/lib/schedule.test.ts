@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  NO_SCHEDULE, buildSmartLists, compareDue, dayOffset, defaultReminder, fromInputs, isOverdue,
+  NO_SCHEDULE, dueChipDay, buildSmartLists, compareDue, dayOffset, defaultReminder, fromInputs, isOverdue,
   reminderAt, reminderKindOf, reschedule, smartListRange, startOfLocalDay, weekCrumb, toDateInput, toTimeInput,
   toDisplayDate, fromDisplayDate, maskDateInput, displayFromInputDate,
   maskTimeInput, fromTimeText,
@@ -316,5 +316,16 @@ describe('reschedule', () => {
   it('fără dată pleacă și recurența; cu dată, recurența nu e în patch', () => {
     expect(reschedule({ dueAt: T10, allDay: false, remindAt: T10 }, { dueAt: null, allDay: true })).toEqual({ dueAt: null, allDay: true, remindAt: null, rrule: null })
     expect('rrule' in reschedule({ dueAt: T10, allDay: false, remindAt: T10 }, { dueAt: T12, allDay: false })).toBe(false)
+  })
+})
+
+describe('dueChipDay', () => {
+  const now = new Date(2026, 9, 16, 22, 59)
+  it('azi, mâine, ieri, altfel ziua și luna; anul doar dacă e altul', () => {
+    expect(dueChipDay(new Date(2026, 9, 16, 0, 0).toISOString(), now)).toBe('Azi')
+    expect(dueChipDay(new Date(2026, 9, 17, 9, 0).toISOString(), now)).toBe('Mâine')
+    expect(dueChipDay(new Date(2026, 9, 15, 9, 0).toISOString(), now)).toBe('Ieri')
+    expect(dueChipDay(new Date(2026, 9, 20, 9, 0).toISOString(), now)).toBe('20 oct')
+    expect(dueChipDay(new Date(2027, 0, 3, 9, 0).toISOString(), now)).toBe('3 ian 2027')
   })
 })
