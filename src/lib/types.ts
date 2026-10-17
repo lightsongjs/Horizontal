@@ -114,6 +114,13 @@ export interface Issue {
   remindAt: string | null
   /** RRULE pentru recurență. Rezervat — motorul vine mai târziu. */
   rrule: string | null
+  /**
+   * Când a fost fixat tichetul („Fixează sus", ca Pin din TickTick), ISO.
+   * `null` = nefixat. Un tichet fixat, deschis și al meu stă primul în „Azi",
+   * cu sau fără scadență; în „Listă" urcă primul în grupul lui. Ordinea între
+   * fixate: cel fixat cel mai recent, primul. Regulile: `src/lib/pinned.ts`.
+   */
+  pinnedAt: string | null
 }
 
 /** Output of computeLayers: layer depth -> issue ids, ordered within layer. */

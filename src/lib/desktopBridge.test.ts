@@ -6,7 +6,7 @@ const now = new Date('2026-10-02T10:00:00.000Z')
 const base: Issue = {
   id: 'HZ-1', projectId: 'p1', title: 'Sună la bancă', desc: '', theme: '', wave: 1, deps: [], done: false,
   selectors: [], scenarios: [], assigneeId: null, createdBy: null, createdAt: '2026-10-01T00:00:00.000Z',
-  urgent: false, dueAt: '2026-10-02T12:00:00.000Z', allDay: false, remindAt: '2026-10-02T12:00:00.000Z', rrule: null,
+  urgent: false, dueAt: '2026-10-02T12:00:00.000Z', allDay: false, remindAt: '2026-10-02T12:00:00.000Z', rrule: null, pinnedAt: null,
 }
 const projects = [{ id: 'p1', name: 'Personal' }]
 const at = (iso: string): Issue => ({ ...base, remindAt: iso })

@@ -44,6 +44,7 @@ export function echoIssue(input: NewIssue, id: string, project: Project, created
     allDay: input.allDay ?? true,
     remindAt: input.remindAt ?? null,
     rrule: input.rrule ?? null,
+    pinnedAt: null,
   }
 }
 

@@ -11,7 +11,7 @@ export const proj: Project = { id: 'p', name: 'P', description: '', prefix: 'HZ'
 export const mk = (id: string, over: Partial<Issue> = {}): Issue => ({
   id, projectId: 'p', title: id, desc: '', theme: '', wave: 1, deps: [], done: false, selectors: [],
   scenarios: [], assigneeId: null, createdBy: null, createdAt: '2026-09-01T00:00:00.000Z', urgent: false,
-  dueAt: null, allDay: true, remindAt: null, rrule: null, ...over,
+  dueAt: null, allDay: true, remindAt: null, rrule: null, pinnedAt: null, ...over,
 })
 
 export function fakeRemote() {

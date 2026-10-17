@@ -7,7 +7,7 @@ const base: Issue = {
   done: false, selectors: [], scenarios: [], assigneeId: null, createdBy: null,
   createdAt: '2026-09-01T00:00:00.000Z', urgent: false,
   dueAt: '2026-09-28T07:00:00.000Z', allDay: false, remindAt: '2026-09-28T06:50:00.000Z',
-  rrule: 'FREQ=DAILY',
+  rrule: 'FREQ=DAILY', pinnedAt: null,
 }
 
 describe('applyIssuePatch', () => {

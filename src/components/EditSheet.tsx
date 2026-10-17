@@ -9,6 +9,7 @@ import {
   fromDisplayDate, fromInputs, fromTimeText, reminderAt, reminderKindOf, reschedule,
   toDateInput, toTimeInput,
 } from '../lib/schedule'
+import { pinPatch } from '../lib/pinned'
 import { mergeTitleDue } from '../lib/titleDue'
 import type { Issue } from '../lib/types'
 import { Icon } from './Icon'
@@ -33,6 +34,7 @@ type EditFields = {
   remindAt: string | null
   rrule: string | null
   urgent: boolean
+  pinnedAt: string | null
 }
 
 const fieldsOf = (i: Issue): EditFields => ({
@@ -43,6 +45,7 @@ const fieldsOf = (i: Issue): EditFields => ({
   remindAt: i.remindAt,
   rrule: i.rrule ?? null,
   urgent: i.urgent,
+  pinnedAt: i.pinnedAt ?? null,
 })
 
 /**
@@ -183,7 +186,24 @@ function EditBody({ issue }: { issue: Issue }) {
   return (
     <KeyboardSheet onClose={closeSheet} label={`Sarcina ${issue.id}`} className={`edit-sheet ${issue.done ? 'done' : ''}`}>
       <div className="qs-form">
-        <div className="es-meta">{displayIssueId(issue.id)}</div>
+        <div className="es-meta">
+          <span>{displayIssueId(issue.id)}</span>
+          {/* Fixează sus (`pinnedAt`): pe rândul ID-ului, nu în rândul de
+              jetoane — acela e plin la 320px și e despre când/unde, iar
+              fixarea e despre locul în listă. Pleacă imediat, ca urgentul. */}
+          <button
+            type="button"
+            className={`es-pin ${d.pinnedAt ? 'on' : ''}`}
+            aria-pressed={!!d.pinnedAt}
+            aria-label={d.pinnedAt ? 'Scoate de sus' : 'Fixează sus'}
+            title={d.pinnedAt ? 'Fixat sus în „Azi" — atinge ca să scoți' : 'Fixează sus în „Azi"'}
+            disabled={!canWrite}
+            onPointerDown={keepFocus}
+            onClick={() => void a.commit(pinPatch(d, new Date()))}
+          >
+            <Icon name="pin" size={15} />
+          </button>
+        </div>
         <div className="es-head">
           <button
             type="button"

@@ -3,7 +3,7 @@ import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { useCanWriteFn, useMediaQuery, useSelection, type Selection } from '../hooks'
 import {
-  bulkNotice, canClearDate, countRecurring, deleteNotice, nextMonday, planBulk, urgentTarget,
+  bulkNotice, canClearDate, countRecurring, deleteNotice, nextMonday, pinTarget, planBulk, urgentTarget,
   type BulkAction, type DatePreset,
 } from '../lib/bulkActions'
 import { didJumpOnComplete } from '../lib/recurrence'
@@ -219,6 +219,8 @@ export function TaskActionsProvider({ children }: { children: ReactNode }) {
           canDelete={sheet.kind === 'more'}
           urgent={sheet.kind === 'more' ? targets.every((i) => i.urgent) && targets.length > 0 : null}
           onUrgent={() => void run(urgentActionFor(targets), sheet.ids)}
+          pin={pinTarget(targets)}
+          onPin={() => void run({ kind: 'pin', value: pinTarget(targets) }, sheet.ids)}
           onAssign={() => setSheet({ kind: 'assign', ids: sheet.ids })}
           onMove={sheet.kind === 'more' && targets.length === 1 && canWrite(targets[0].projectId) && !isTempIssueId(targets[0].id)
             ? () => setSheet({ kind: 'move', ids: sheet.ids })
@@ -314,8 +316,11 @@ function DateSheet({ issues, onPick, dateInitial, timeInitial, onPickDate, onPic
  * ~60px și împingeau banda peste pragul glisării complete. `urgent` e `null`
  * în ⋮ al selecției, unde bara are deja Urgent.
  */
-function MoreSheet({ count, canDelete, urgent, onUrgent, onAssign, onMove, onDelete, onClose }: {
-  count: number; canDelete: boolean; urgent: boolean | null; onUrgent(): void; onAssign(): void
+function MoreSheet({ count, canDelete, urgent, onUrgent, pin, onPin, onAssign, onMove, onDelete, onClose }: {
+  count: number; canDelete: boolean; urgent: boolean | null; onUrgent(): void
+  /** `true` = gestul fixează (măcar una nefixată); `false` = toate sunt fixate, gestul scoate. */
+  pin: boolean; onPin(): void
+  onAssign(): void
   /** `null`: mai multe sarcini, fără drept, sau ID provizoriu — rândul lipsește. */
   onMove: (() => void) | null
   onDelete(): void; onClose(): void
@@ -328,6 +333,9 @@ function MoreSheet({ count, canDelete, urgent, onUrgent, onAssign, onMove, onDel
             <Icon name="urgent" size={18} /> {urgent ? 'Scoate urgent' : 'Urgent'}
           </button>
         )}
+        <button type="button" className="as-item" onClick={onPin}>
+          <Icon name={pin ? 'pin' : 'unpin'} size={18} /> {pin ? 'Fixează sus' : 'Scoate de sus'}
+        </button>
         <button type="button" className="as-item" onClick={onAssign}>
           <Icon name="people" size={18} /> Pasează
         </button>

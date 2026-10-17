@@ -1176,6 +1176,67 @@ for (const width of PHONE_WIDTHS) {
   check(`numărul + › întregi @${width}px`, m.unread.nInside && !m.unread.nClipped && m.read.nInside && !m.read.nClipped, 'da')
 }
 
+/**
+ * Sarcinile fixate (`pinnedAt`): grupul „Fixate" din „Azi" (capul cu piuneza),
+ * un rând al grupului cu ziua în cuvinte („Mâine 10:00", `.t-day`; ora
+ * cade sub 380px) + proiectul lung, un rând cu semnul de fixare (`.t-pin`), și butonul de pe rândul ID-ului din foaia de tichet
+ * (`.es-pin`). Semnul și ziua stau în `.t-tail` (`flex-shrink: 0`), deci
+ * titlul trebuie să mai primească loc, iar butonul n-are voie să crească
+ * rândul ID-ului (marginile negative) sau să iasă din foaie.
+ */
+const PIN_TITLE = 'Credențiale ANAF: utilizator, parolă și codul de pe SMS pentru depunere'
+const pinnedList = () => `
+<div class="panel smart-list"><div class="list-group" style="--gc: var(--accent)">
+  <div class="list-group-head"><span class="list-group-ico pin"><svg width="15" height="15"></svg></span><span class="list-group-label">Fixate</span><span class="list-group-num">2</span></div>
+  <button class="list-row task-row" id="pin-a"><span class="list-check"><span class="ck"></span></span><span class="list-title">${PIN_TITLE}</span><span class="t-tail"><span class="t-time t-day">Mâine<span class="t-day-h"> 10:00</span></span><span class="t-proj"><span class="t-dot" style="background:#0ea5e9"></span><span class="t-proj-name">Aplicație Turism și încă ceva lung</span></span></span></button>
+  <button class="list-row task-row" id="pin-b"><span class="list-check"><span class="ck"></span></span><span class="list-title">Rând fixat din Listă</span><span class="t-tail"><span class="t-pin" id="pin-mark"><svg width="13" height="13"></svg></span><span class="t-proj"><span class="t-dot" style="background:#0ea5e9"></span><span class="t-proj-name">Inbox</span></span></span></button>
+</div></div>
+<div class="kb-sheet edit-sheet" style="animation:none;position:static"><div class="qs-form">
+  <div class="es-meta"><span>TUR-128</span><button type="button" class="es-pin on" id="es-pin"><svg width="15" height="15"></svg></button></div>
+  <div class="es-head"><button class="es-check"><span class="ck"></span></button><textarea class="sh-title-input" rows="1">x</textarea></div>
+</div></div>`
+console.log('\nSarcinile fixate (grupul din Azi, semnul din rând, butonul din foaie):')
+for (const width of PHONE_WIDTHS) {
+  const page = await browser.newPage({ viewport: { width, height: 844 } })
+  await page.setContent(`<style>${CSS}</style>${pinnedList()}`)
+  const m = await page.evaluate(() => {
+    const r = (s) => document.querySelector(s).getBoundingClientRect()
+    const row = document.getElementById('pin-a')
+    const day = row.querySelector('.t-day')
+    const mark = document.getElementById('pin-mark')
+    const meta = document.querySelector('.es-meta')
+    const pin = document.getElementById('es-pin')
+    const sheet = document.querySelector('.kb-sheet')
+    const metaSpan = meta.querySelector('span')
+    const cs = getComputedStyle(pin)
+    return {
+      rowOverflow: Math.round(row.scrollWidth - row.getBoundingClientRect().width),
+      titleW: Math.round(row.querySelector('.list-title').getBoundingClientRect().width),
+      dayClipped: day.scrollWidth > day.clientWidth + 1,
+      markW: Math.round(mark.getBoundingClientRect().width),
+      markColor: getComputedStyle(mark).color,
+      headIco: Math.round(r('.list-group-ico.pin').width),
+      pinW: Math.round(pin.getBoundingClientRect().width),
+      pinH: Math.round(pin.getBoundingClientRect().height),
+      pinBg: cs.backgroundColor,
+      pinInside: pin.getBoundingClientRect().right <= sheet.getBoundingClientRect().right + 0.5,
+      sameRow: r('#es-pin').top < metaSpan.getBoundingClientRect().bottom && r('#es-pin').bottom > metaSpan.getBoundingClientRect().top,
+      metaH: Math.round(meta.getBoundingClientRect().height),
+      textH: Math.round(metaSpan.getBoundingClientRect().height),
+      docOverflow: document.documentElement.scrollWidth - innerWidth,
+    }
+  })
+  await page.close()
+  check(`rândul fixat nu iese din listă @${width}px`, m.rowOverflow <= 0 && m.docOverflow <= 0, `${m.rowOverflow}px, pagina +${m.docOverflow}px`)
+  check(`titlul rândului fixat mai are loc @${width}px`, m.titleW > 80, `${m.titleW}px`)
+  check(`semnul de fixare se vede, în accent @${width}px`, m.markW >= 13 && m.markColor !== 'rgba(0, 0, 0, 0)' && m.headIco >= 15, `${m.markW}px, ${m.markColor}, cap ${m.headIco}px`)
+  check(`ziua din coadă („Mâine 10:00") netăiată @${width}px`, !m.dayClipped, `tăiat=${m.dayClipped}`)
+  check(`butonul de fixare din foaie: 28px, cu fundal, pe rândul ID-ului @${width}px`,
+    m.pinW === 28 && m.pinH === 28 && m.pinBg !== 'rgba(0, 0, 0, 0)' && m.pinInside && m.sameRow,
+    `${m.pinW}×${m.pinH}px, ${m.pinBg}, în foaie=${m.pinInside}, același rând=${m.sameRow}`)
+  check(`rândul ID-ului nu crește din cauza butonului @${width}px`, m.metaH <= m.textH + 1, `${m.metaH}px vs text ${m.textH}px`)
+}
+
 // Galeria (Lightbox) — componenta REALĂ, împachetată cu esbuild, montată în
 // interiorul unei `.sheet` (care are `transform`, ca în aplicație). Regresia
 // din 2026-10-15: pe telefon se vedea un sfert din poză, fiindcă `position:
@@ -1449,6 +1510,7 @@ const moveHead = () => `
     <span class="sh-id">TUR-128</span>
     <span class="sh-move"><button type="button" class="sh-move-btn"><span class="t-dot" style="background:#6e7bff"></span><span class="sh-move-t">${LONG_PROJ}</span><svg width="12" height="12"></svg></button></span>
     <button class="sh-close">x</button>
+    <button class="sh-pin on"><svg width="15" height="15"></svg></button>
     <button class="sh-copy">c</button>
     <button class="sh-delete">d</button>
     <button class="sh-save">^</button>

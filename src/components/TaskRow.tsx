@@ -1,7 +1,8 @@
 import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useHorizontal } from '../store'
 import { swallowNextClick, useCanWriteIn } from '../hooks'
-import { hasTime, toDayMonth, toTimeInput } from '../lib/schedule'
+import { dayOffset, dueChipDay, hasTime, toDayMonth, toTimeInput } from '../lib/schedule'
+import { isPinnedOpen } from '../lib/pinned'
 import {
   LONG_PRESS_MS, crossedFull, dragOffset, inEdge, lockAxis, movedBeyondTap, release, restOffset,
   type Axis, type Rest,
@@ -23,6 +24,12 @@ interface Props {
    *  schimbă la ORICE deschidere de foaie, iar citit aici randa din nou fiecare
    *  rând — cu 300 de sarcini, o atingere pe telefon costa o secundă. */
   docked?: boolean
+  /**
+   * Grupul „Fixate" din „Azi": rândurile vin din orice zi, deci o scadență
+   * care nu e azi își spune ziua („Mâine", „20 oct"), nu doar ora — altfel
+   * „10:00" ar părea azi.
+   */
+  day?: boolean
 }
 
 const vibrate = (ms: number) => {
@@ -84,15 +91,16 @@ function sameIssue(a: Issue, b: Issue): boolean {
 }
 
 function sameRow(a: ViewProps, b: ViewProps): boolean {
-  return a.onOpen === b.onOpen && a.onToggle === b.onToggle && a.late === b.late && a.docked === b.docked
+  return a.onOpen === b.onOpen && a.onToggle === b.onToggle && a.late === b.late && a.docked === b.docked && a.day === b.day
     && a.project === b.project && sameIssue(a.issue, b.issue)
 }
 
 /** Cere ca `onOpen` să fie stabil (`openTaskAnywhere` din App). */
-const TaskRowView = memo(function TaskRowView({ issue, onOpen, late = false, docked = false, project, onToggle }: ViewProps) {
+const TaskRowView = memo(function TaskRowView({ issue, onOpen, late = false, docked = false, day = false, project, onToggle }: ViewProps) {
   const ta = useTaskActions()
   const canWrite = useCanWriteIn(issue.projectId)
   const timed = hasTime(issue)
+  const otherDay = day && !late && !!issue.dueAt && dayOffset(issue.dueAt, new Date()) !== 0
   const selecting = ta.narrow && ta.selectMode
   const selected = selecting && ta.selectedIds.has(issue.id)
 
@@ -124,12 +132,18 @@ const TaskRowView = memo(function TaskRowView({ issue, onOpen, late = false, doc
       <span className="list-title">{issue.title}</span>
 
       <span className="t-tail">
+        {/* Fixat sus (`pinnedAt`): semnul stă primul în coadă, ca să se vadă
+            în „Listă"/filtre. În grupul „Fixate" (`day`) lipsește: capul
+            grupului îl spune deja, iar la 320px locul e al titlului. */}
+        {isPinnedOpen(issue) && !day && <span className="t-pin" title="Fixat sus"><Icon name="pin" size={13} /></span>}
         <TaskProgress desc={issue.desc} />
         {/* O restanță își spune ziua ratată; altfel ora, dacă are una. Fără
             oră nu se scrie nimic — absența e cazul obișnuit. */}
         {late && issue.dueAt
           ? <span className="t-time missed">{toDayMonth(issue.dueAt)}</span>
-          : timed && <span className="t-time">{toTimeInput(issue.dueAt!)}</span>}
+          : otherDay
+            ? <span className="t-time t-day">{dueChipDay(issue.dueAt!, new Date())}{timed && <span className="t-day-h"> {toTimeInput(issue.dueAt!)}</span>}</span>
+            : timed && <span className="t-time">{toTimeInput(issue.dueAt!)}</span>}
         {issue.remindAt && <Bell />}
         <Recur rrule={issue.rrule} />
         {project && (

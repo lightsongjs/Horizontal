@@ -3611,6 +3611,10 @@ button.we-del:hover { color: var(--blocked); background: var(--blocked-soft); }
 .sh-move-btn svg { flex-shrink: 0; }
 .sh-move .fc-pop.mv-pop:not(.fc-sheet) { width: 260px; max-width: calc(100vw - 32px); max-height: min(420px, 60vh); overflow-y: auto; }
 .sh-header > [aria-label="Deschide mare"] { order: 1; }
+.sh-header > .sh-pin { order: 1; }
+/* Pe telefon antetul e plin (jetonul de proiect s-ar strivi sub 60px la
+   320px); acolo fixarea e în foaia de tichet (`.es-pin`) și în ⋮ al rândului. */
+@media (max-width: 899px) { .sh-header > .sh-pin { display: none; } }
 .sh-header > .sh-copy { order: 2; }
 .sh-header > .sh-delete { order: 3; }
 .sh-header > .sh-save { order: 4; }
@@ -3632,6 +3636,7 @@ button.we-del:hover { color: var(--blocked); background: var(--blocked-soft); }
 .fc-mi-r { font-family: var(--mono); font-size: calc(12px * var(--text-scale)); color: var(--txt-faint); min-width: 26px; }
 .sh-header > .sh-close,
 .sh-header > .sh-copy,
+.sh-header > .sh-pin,
 .sh-header > .sh-delete:not(.confirming),
 .sh-header > [aria-label="Deschide mare"] {
   width: 32px; height: 32px;
@@ -3640,9 +3645,19 @@ button.we-del:hover { color: var(--blocked); background: var(--blocked-soft); }
 }
 .sh-header > .sh-close:hover,
 .sh-header > .sh-copy:hover,
+.sh-header > .sh-pin:hover,
 .sh-header > [aria-label="Deschide mare"]:hover { background: var(--surface-3); color: var(--txt); }
 .sh-header:not(:has(.sh-id)) > .sh-save { margin-left: auto; }
 .sh-header > .sh-save:not(.dirty) { width: 32px; height: 32px; background: none; }
+.sh-pin {
+  flex-shrink: 0;
+  border-radius: var(--r-s);
+  display: flex; align-items: center; justify-content: center;
+}
+/* Fixat: accent pal + accent (ca `.es-pin.on`) — singura iconiță din antet cu
+   fundal în repaus, fiindcă e o STARE a tichetului, nu o acțiune. */
+.sh-header > .sh-pin.on,
+.sh-header > .sh-pin.on:hover { background: var(--accent-soft); color: var(--accent); }
 .sh-close {
   flex-shrink: 0;
   width: 34px; height: 34px;
@@ -5516,6 +5531,8 @@ body:has(.kb-sheet) .toast {
 /* Steaua lui „Azi" e plină și galbenă, peste tot unde apare (`today` din Icon). */
 .list-group-ico.today { color: var(--star); }
 .list-group-ico.today svg { fill: currentColor; }
+/* Capul grupului „Fixate" din „Azi": piuneza în accent, ca semnul din rând. */
+.list-group-ico.pin { color: var(--accent); }
 .list-group-date { color: var(--txt-faint); font-weight: 500; margin-left: 2px; }
 .day-empty {
   font-size: calc(12.5px * var(--text-scale));
@@ -5551,6 +5568,12 @@ body:has(.kb-sheet) .toast {
   font-variant-numeric: tabular-nums;
 }
 .t-time.missed { color: var(--blocked); font-family: var(--display); }
+/* Grupul „Fixate": o scadență în altă zi își spune ziua în cuvinte („Mâine 10:00"). */
+.t-time.t-day { font-family: var(--display); }
+/* Sub 380px ziua rămâne singură („Mâine"): ora ar lua titlului ~40px. */
+@media (max-width: 379px) { .t-day-h { display: none; } }
+/* Sarcină fixată sus (`pinnedAt`): accentul unic, fără fundal — un semn, nu un jeton. */
+.t-pin { display: inline-flex; color: var(--accent); }
 .task-row .list-title { flex: 1; min-width: 0; }
 .t-tail { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
 .t-urgent { display: inline-flex; color: var(--urgent); }
@@ -6010,7 +6033,30 @@ body:has(.kb-sheet) .toast {
   font-weight: 500;
   color: var(--txt-faint);
   margin: 0 0 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
+/* „Fixează sus" pe rândul ID-ului. Marginile negative țin rândul la înălțimea
+   textului: butonul de 28px nu împinge titlul în jos. Iese în JOS (în marginea
+   de 8px de sub ID), nu în sus: mânerul foii (`.kb-grab`, sticky, z-index 2)
+   coboară 4px peste rândul ID-ului și i-ar fi tăiat vârful.
+   Oprit = salt de fundal (ca `.qs-ico`), pornit = accent pal + accent. */
+.es-pin {
+  width: 28px;
+  height: 28px;
+  margin: 4px -4px -14px 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: var(--r-s);
+  background: var(--surface-2);
+  color: var(--txt-faint);
+}
+.es-pin.on { background: var(--accent-soft); color: var(--accent); }
+.es-pin:disabled { opacity: 0.55; }
 .es-head { display: flex; align-items: flex-start; gap: 6px; }
 .es-check {
   flex: 0 0 auto;

@@ -31,8 +31,10 @@ export type BulkAction =
   | { kind: 'urgent'; value: boolean }
   | { kind: 'done' }
   | { kind: 'assign'; assigneeId: string | null }
+  /** Fixează sus / scoate fixarea (`pinnedAt`). Vezi `lib/pinned.ts`. */
+  | { kind: 'pin'; value: boolean }
 
-type Fields = Partial<Pick<Issue, 'dueAt' | 'allDay' | 'remindAt' | 'urgent' | 'done' | 'assigneeId'>>
+type Fields = Partial<Pick<Issue, 'dueAt' | 'allDay' | 'remindAt' | 'urgent' | 'done' | 'assigneeId' | 'pinnedAt'>>
 
 export interface Write {
   id: string
@@ -138,6 +140,8 @@ export function actionPatch(issue: Issue, action: BulkAction, now: Date): Fields
     case 'urgent': return issue.urgent === action.value ? {} : { urgent: action.value }
     case 'done': return issue.done ? {} : { done: true }
     case 'assign': return (issue.assigneeId ?? null) === action.assigneeId ? {} : { assigneeId: action.assigneeId }
+    // Unul deja fixat își păstrează ora fixării (deci și locul între fixate).
+    case 'pin': return action.value === !!issue.pinnedAt ? {} : { pinnedAt: action.value ? now.toISOString() : null }
   }
 }
 
@@ -196,6 +200,11 @@ export function canClearDate(issues: Issue[]): boolean {
   return countRecurring(issues) === 0
 }
 
+/** Fixarea pe selecție, ca `urgentTarget`: toate fixate → se scoate; altfel se pune. */
+export function pinTarget(issues: Pick<Issue, 'pinnedAt'>[]): boolean {
+  return !(issues.length > 0 && issues.every((i) => !!i.pinnedAt))
+}
+
 /** Urgent pe selecție: dacă toate sunt deja urgente, se scoate; altfel se pune. */
 export function urgentTarget(issues: Issue[]): boolean {
   return !(issues.length > 0 && issues.every((i) => i.urgent))
@@ -238,6 +247,9 @@ export function bulkNotice(action: BulkAction, written: number, readOnly: number
     case 'done':
       head = plural(written, 'Gata', 'gata')
       if (jumped > 0) head += ` · ${jumped} ${jumped === 1 ? 'a sărit' : 'au sărit'} la următoarea dată`
+      break
+    case 'pin':
+      head = action.value ? plural(written, 'Fixat sus', 'fixate sus') : plural(written, 'Fixare scoasă', 'scoase de sus')
       break
     case 'assign':
       head = action.assigneeId

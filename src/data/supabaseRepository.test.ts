@@ -261,6 +261,20 @@ describe('supabaseRepository', () => {
     expect(issue.createdBy).toBeNull()
   })
 
+  it('pinnedAt: scris ca `pinned_at`, citit canonizat; fără coloană (bază nemigrată) = nefixat', async () => {
+    fakeDb.tables.issues.push({ id: 'P-05', project_id: 'p', title: 'ANAF', details: '', wave: 1, done: false })
+    const repo = createSupabaseRepository()
+    expect((await repo.listIssues('p')).find((i) => i.id === 'P-05')!.pinnedAt).toBeNull()
+    const pinned = await repo.updateIssue('P-05', { pinnedAt: '2026-10-17T07:00:00.000Z' })
+    expect(fakeDb.tables.issues.find((r) => r.id === 'P-05')!.pinned_at).toBe('2026-10-17T07:00:00.000Z')
+    expect(pinned.pinnedAt).toBe('2026-10-17T07:00:00.000Z')
+    const unpinned = await repo.updateIssue('P-05', { pinnedAt: null })
+    expect(unpinned.pinnedAt).toBeNull()
+    // Un patch fără fixare nu atinge coloana.
+    await repo.updateIssue('P-05', { title: 'ANAF 2' })
+    expect(fakeDb.tables.issues.find((r) => r.id === 'P-05')!.pinned_at).toBeNull()
+  })
+
   it('updateIssue replaces the full dependency set', async () => {
     fakeDb.tables.issues.push({ id: 'P-02', project_id: 'p', title: 'B', details: '', wave: 1, done: false })
     fakeDb.tables.dependencies.push({ issue_id: 'P-02', depends_on_id: 'P-01' })

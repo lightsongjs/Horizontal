@@ -116,6 +116,17 @@ describe('localRepository', () => {
     expect(reloaded.urgent).toBe(true)
   })
 
+  it('pinnedAt: nou = nefixat; updateIssue fixează și scoate', async () => {
+    const repo = createLocalRepository()
+    await repo.createProject({ name: 'T', description: '', prefix: 'TST' })
+    const created = await repo.createIssue({ projectId: 'tst', title: 'ANAF' })
+    expect(created.pinnedAt).toBeNull()
+    await repo.updateIssue(created.id, { pinnedAt: '2026-10-17T07:00:00.000Z' })
+    expect((await repo.listIssues('tst')).find((i) => i.id === created.id)!.pinnedAt).toBe('2026-10-17T07:00:00.000Z')
+    await repo.updateIssue(created.id, { pinnedAt: null })
+    expect((await repo.listIssues('tst')).find((i) => i.id === created.id)!.pinnedAt).toBeNull()
+  })
+
   it('deleteIssues șterge toate tichetele date și curăță dependențele către ele', async () => {
     const repo = createLocalRepository()
     await repo.createProject({ name: 'T', description: '', prefix: 'TST' })

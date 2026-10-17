@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  bulkNotice, canClearDate, countRecurring, datePatch, deleteNotice, nextMonday, planBulk, snapshot, urgentTarget,
+  bulkNotice, canClearDate, countRecurring, datePatch, deleteNotice, nextMonday, pinTarget, planBulk, snapshot, urgentTarget,
 } from './bulkActions'
 import { applyIssuePatch } from './issuePatch'
 import type { Issue } from './types'
@@ -17,7 +17,7 @@ const base: Issue = {
   id: 'HZ-01', projectId: 'p', title: 't', desc: '', theme: '', wave: 1, deps: [],
   done: false, selectors: [], scenarios: [], assigneeId: null, createdBy: null,
   createdAt: '2026-09-01T00:00:00.000Z', urgent: false,
-  dueAt: null, allDay: true, remindAt: null, rrule: null,
+  dueAt: null, allDay: true, remindAt: null, rrule: null, pinnedAt: null,
 }
 const timed: Issue = { ...base, id: 'HZ-02', dueAt: iso(2026, 10, 1, 9, 30), allDay: false, remindAt: iso(2026, 10, 1, 9, 0) }
 const allDay: Issue = { ...base, id: 'HZ-03', dueAt: iso(2026, 10, 2), allDay: true }
@@ -140,6 +140,18 @@ describe('planBulk', () => {
   it('urgent: se pune dacă măcar una nu e', () => {
     expect(urgentTarget([timed, { ...allDay, urgent: true }])).toBe(true)
     expect(urgentTarget([{ ...timed, urgent: true }])).toBe(false)
+  })
+  it('fixarea: se pune dacă măcar una nu e fixată; cea deja fixată își păstrează ora', () => {
+    const old = '2026-10-01T08:00:00.000Z'
+    const pinned = { ...allDay, pinnedAt: old }
+    expect(pinTarget([timed, pinned])).toBe(true)
+    expect(pinTarget([pinned])).toBe(false)
+    const plan = planBulk([timed, pinned], { kind: 'pin', value: true }, () => true, NOW)
+    expect(plan.writes).toEqual([{ id: 'HZ-02', patch: { pinnedAt: NOW.toISOString() }, prev: { pinnedAt: null } }])
+    const off = planBulk([timed, pinned], { kind: 'pin', value: false }, () => true, NOW)
+    expect(off.writes).toEqual([{ id: 'HZ-03', patch: { pinnedAt: null }, prev: { pinnedAt: old } }])
+    expect(bulkNotice({ kind: 'pin', value: true }, 2, 0)).toBe('2 fixate sus')
+    expect(bulkNotice({ kind: 'pin', value: false }, 1, 0)).toBe('Fixare scoasă')
   })
   it('pasarea scrie doar unde se schimbă omul', () => {
     const plan = planBulk([timed, { ...allDay, assigneeId: 'a1' }], { kind: 'assign', assigneeId: 'a1' }, () => true, NOW)
