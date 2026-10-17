@@ -6,7 +6,7 @@ import type { Normalize } from '../lib/autosave'
 import { dateFragments } from '../lib/parseDue'
 import { dueLabelParts } from '../lib/quickDraft'
 import {
-  fromDisplayDate, fromInputs, fromTimeText, reminderAt, reminderKindOf, reschedule,
+  fromInputs, reminderAt, reminderKindOf, reschedule,
   toDateInput, toTimeInput,
 } from '../lib/schedule'
 import { pinPatch } from '../lib/pinned'
@@ -23,7 +23,7 @@ import { displayIssueId, isTempIssueId } from '../lib/issueId'
 import { MoveProjectSheet } from './MoveProject'
 import { SheetThreadRow } from './SheetThreadRow'
 import { ChipPop } from './ChipPop'
-import { DuePanel, useDueFields } from './DuePanel'
+import { DuePanel } from './DuePanel'
 
 /** Ce se editează din foaie — exact câmpurile pe care le poate trimite. */
 type EditFields = {
@@ -396,15 +396,12 @@ function EditBody({ issue }: { issue: Issue }) {
  * păstrează decalajul; `rrule` rămâne neatins, iar triggerul face restul:
  * ziua mută doar apariția, ora mută seria.
  *
- * Câmpurile scrise țin textul local (scris pe jumătate nu e o dată) și se
- * scriu abia când textul e valid; o oră golită înseamnă „toată ziua", dar
- * numai la ieșirea din câmp — altfel ștergerea lui „10:30" cifră cu cifră ar
- * fi scris o zi întreagă la jumătatea drumului.
+ * Ziua și ora se aleg din calendarul / ceasul sistemului (butoanele panoului),
+ * nu se scriu; ✕ de lângă oră o scoate (toată ziua).
  */
 function SheetDue({ fields: d, commit }: { fields: EditFields; commit(patch: Partial<EditFields>): void }) {
   const curDate = d.dueAt ? toDateInput(d.dueAt) : ''
   const curTime = d.dueAt && !d.allDay ? toTimeInput(d.dueAt) : ''
-  const { dueText, setDueText, timeText, setTimeText, dueDate, dueTime } = useDueFields(curDate, curTime)
   const move = (date: string, time: string) => {
     if (date === curDate && time === curTime) return
     commit(reschedule(d, fromInputs(date, time)))
@@ -413,24 +410,12 @@ function SheetDue({ fields: d, commit }: { fields: EditFields; commit(patch: Par
   return (
     <DuePanel
       now={now}
-      dueText={dueText}
-      timeText={timeText}
-      dueDate={dueDate}
-      dueTime={dueTime}
-      onDueText={(t) => {
-        setDueText(t)
-        const v = fromDisplayDate(t)
-        if (v) move(v, curTime)
-      }}
-      onTimeText={(t) => {
-        setTimeText(t)
-        const v = fromTimeText(t)
-        if (v && curDate) move(curDate, v)
-      }}
-      onTimeBlur={() => { if (timeText.trim() === '' && curDate) move(curDate, '') }}
+      dueDate={curDate}
+      dueTime={curTime}
       onPreset={(day) => move(toDateInput(day.toISOString()), curTime)}
       onPickDate={(v) => move(v, curTime)}
       onPickTime={(v) => move(curDate || toDateInput(now.toISOString()), v)}
+      onClearTime={() => move(curDate, '')}
       onClear={() => commit(reschedule(d, { dueAt: null, allDay: true }))}
       reminder={reminderKindOf(d.dueAt, d.remindAt)}
       onReminder={(kind) => commit({ remindAt: reminderAt(d.dueAt, kind) })}

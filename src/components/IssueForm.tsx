@@ -395,9 +395,6 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
   const seedDue = existing ?? (seed?.dueAt ? { dueAt: seed.dueAt, allDay: seed.allDay } : undefined)
   const [dueText, setDueText] = useState(seedDue?.dueAt ? toDisplayDate(seedDue.dueAt) : '')
   const dueDate = fromDisplayDate(dueText) ?? ''
-  // Text scris pe jumătate: nu e o eroare, doar nu e încă o dată. Semnalul e
-  // discret, ca să nu certe pe cineva care tocmai a apăsat prima cifră.
-  const dueIncomplete = dueText.trim() !== '' && dueDate === ''
   // Ca la dată: textul e starea, valoarea validată se derivă. `dueTime` rămâne
   // numele valorii validate, ca `fromInputs` să primească exact ce primea.
   const [timeText, setTimeText] = useState(
@@ -1073,18 +1070,14 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
     list[(i + (e.key === 'ArrowRight' ? 1 : -1) + list.length) % list.length].focus()
   }
 
-  /* Scadența: presetări + câmpul scris (zz/ll/aaaa + oră), cu calendarul și
-     ceasul sistemului în câmp (`NativePick`). Același corp ca foaia de tichet
+  /* Scadența: presetări + butoanele de zi și de oră (calendarul și ceasul
+     sistemului, `NativePick`). Același corp ca foaia de tichet
      de pe telefon (`DuePanel`); aici doar murdărește starea formularului. */
   const datePop = (
     <DuePanel
       now={now}
-      dueText={dueText}
-      timeText={timeText}
       dueDate={dueDate}
       dueTime={dueTime}
-      onDueText={setDueText}
-      onTimeText={setTimeText}
       onPreset={(day) => setDueText(toDisplayDate(day.toISOString()))}
       onPickDate={(v) => setDueText(displayFromInputDate(v))}
       onPickTime={(v) => {
@@ -1092,6 +1085,7 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
         if (!dueDate) setDueText(toDisplayDate(now.toISOString()))
         setTimeText(v)
       }}
+      onClearTime={() => setTimeText('')}
       onClear={clearDue}
       reminder={schedule.kind}
       onReminder={(kind) => { setReminder(kind); setReminderTouched(true) }}
@@ -1255,13 +1249,13 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
         if (kind === 'due') {
           const label = dueParts
             ? `Scadență: ${dueParts.day}${dueParts.time ? ' ' + dueParts.time : ''}${late ? ', restantă' : ''}${reminderLabel ? `, memento ${reminderLabel}` : ''}`
-            : dueIncomplete ? `Scadență incompletă: ${dueText}` : 'Pune o dată'
+            : 'Pune o dată'
           return (
             <button
               key={kind}
               {...chipProps('date', first)}
               disabled={!canWrite}
-              className={`fc-chip due${dueParts ? '' : dueIncomplete ? ' warn' : ' ghost'}${late ? ' late' : ''}${titleDate.active ? ' pending' : ''}${isOpen('date')}`}
+              className={`fc-chip due${dueParts ? '' : ' ghost'}${late ? ' late' : ''}${titleDate.active ? ' pending' : ''}${isOpen('date')}`}
               aria-label={label}
               title={titleDate.active ? `${label} · recunoscută din titlu` : label}
             >
@@ -1271,8 +1265,6 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
                   {dueParts.day}
                   {dueParts.time && <span className="fc-t">{dueParts.time}</span>}
                 </>
-              ) : dueIncomplete ? (
-                <span className="fc-t">{dueText}</span>
               ) : 'Dată'}
             </button>
           )

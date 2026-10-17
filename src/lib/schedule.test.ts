@@ -2,8 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   NO_SCHEDULE, dueChipDay, buildSmartLists, compareDue, dayOffset, defaultReminder, fromInputs, isOverdue,
   reminderAt, reminderKindOf, reschedule, smartListRange, startOfLocalDay, weekCrumb, toDateInput, toTimeInput,
-  toDisplayDate, fromDisplayDate, maskDateInput, displayFromInputDate,
-  maskTimeInput, fromTimeText,
+  toDisplayDate, fromDisplayDate, displayFromInputDate, fromTimeText, pickDayLabel, fromInputDate,
 } from './schedule'
 import type { Issue } from './types'
 
@@ -237,47 +236,13 @@ describe('data în forma zz/ll/aaaa', () => {
     expect(fromDisplayDate('29/02/2028')).toBe('2028-02-29')
   })
 
-  it('masca pune barele și taie ce nu e cifră', () => {
-    expect(maskDateInput('2')).toBe('2')
-    expect(maskDateInput('24')).toBe('24/')
-    expect(maskDateInput('2408')).toBe('24/08/')
-    expect(maskDateInput('24082026')).toBe('24/08/2026')
-    expect(maskDateInput('24/08/2026')).toBe('24/08/2026')
-    expect(maskDateInput('2a4-b08')).toBe('24/08/')
-    // Nu se scurge peste anul de patru cifre.
-    expect(maskDateInput('240820261234')).toBe('24/08/2026')
-  })
-
   it('acceptă și cratime sau puncte la lipit, dar afișează cu bare', () => {
     expect(fromDisplayDate('24-08-2026')).toBe('2026-08-24')
     expect(fromDisplayDate('24.08.2026')).toBe('2026-08-24')
-    expect(maskDateInput('24-08-2026')).toBe('24/08/2026')
-  })
-
-  it('nu completează cifrele: primul 1 nu devine 01, altfel ziua 14 e imposibilă', () => {
-    expect(maskDateInput('1')).toBe('1')
-    expect(maskDateInput('14')).toBe('14/')
-  })
-
-  it('ștergerea nu reintroduce bara peste care ai dat backspace', () => {
-    // Utilizatorul a șters bara: rămân două cifre, deci masca o pune înapoi —
-    // dar dacă mai șterge o cifră, nu revine.
-    expect(maskDateInput('240')).toBe('24/0')
-    expect(maskDateInput('24')).toBe('24/')
-    expect(maskDateInput('2')).toBe('2')
   })
 })
 
 describe('ora în forma hh:mm', () => {
-  it('masca pune două puncte și taie ce nu e cifră', () => {
-    expect(maskTimeInput('1')).toBe('1')
-    expect(maskTimeInput('15')).toBe('15:')
-    expect(maskTimeInput('1530')).toBe('15:30')
-    expect(maskTimeInput('15:30')).toBe('15:30')
-    expect(maskTimeInput('15h30m99')).toBe('15:30')
-    expect(maskTimeInput('3 PM')).toBe('3')
-  })
-
   it('validează 24 de ore, nu 12', () => {
     expect(fromTimeText('15:30')).toBe('15:30')
     expect(fromTimeText('9:05')).toBe('09:05')
@@ -379,5 +344,25 @@ describe('buildSmartLists — fixate', () => {
       task('RUT', { projectId: 'rut', ...at(0, 18), remindAt: at(0, 18).dueAt, ...pin('2026-08-24T05:00:00.000Z') }),
     ], NOW, new Set(['rut']))
     expect(L.pinned.map((i) => i.id)).toEqual(['RUT'])
+  })
+})
+
+describe('butonul de zi din panoul datei', () => {
+  // Sâmbătă, 17 octombrie 2026.
+  const now = new Date(2026, 9, 17, 9, 0)
+  it('Azi / Mâine / Ieri, cu ziua calendaristică dedesubt', () => {
+    expect(pickDayLabel('2026-10-17', now)).toEqual({ day: 'Azi', sub: 'sâm 17 oct' })
+    expect(pickDayLabel('2026-10-18', now)).toEqual({ day: 'Mâine', sub: 'dum 18 oct' })
+    expect(pickDayLabel('2026-10-16', now)).toEqual({ day: 'Ieri', sub: 'vin 16 oct' })
+  })
+  it('altfel ziua săptămânii și data, anul doar când nu e cel curent', () => {
+    expect(pickDayLabel('2026-10-20', now)).toEqual({ day: 'Mar 20 oct', sub: '' })
+    expect(pickDayLabel('2027-01-04', now)).toEqual({ day: 'Lun 4 ian 2027', sub: '' })
+  })
+  it('valoarea calendarului nativ se validează', () => {
+    expect(fromInputDate('2026-10-20')).toBe('2026-10-20')
+    expect(fromInputDate('2026-02-31')).toBeNull()
+    expect(fromInputDate('')).toBeNull()
+    expect(fromInputDate('20/10/2026')).toBeNull()
   })
 })

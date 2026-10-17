@@ -1,41 +1,37 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { datePresets, REMINDER_OPTIONS } from '../lib/formChips'
 import { describeRrule } from '../lib/recurrence'
-import {
-  DATE_PLACEHOLDER, TIME_PLACEHOLDER, displayFromInputDate, fromDisplayDate, fromTimeText, maskDateInput,
-  maskTimeInput, toDateInput, type ReminderKind,
-} from '../lib/schedule'
+import { fromInputDate, fromTimeText, pickDayLabel, toDateInput, type ReminderKind } from '../lib/schedule'
 import { Icon } from './Icon'
 import { NativePick } from './NativePick'
 
 /**
- * Corpul popoverului de dată — UN singur desen pentru formularul complet și
- * pentru foaia de tichet de pe telefon (D-197): presetările (Azi · Mâine ·
- * Luni · +1 săpt.), câmpul scris `zz/ll/aaaa` + `hh:mm` (24 de ore, aceeași
- * validare), „scoate" (fără dată), mementoul (doar cu oră) și „Se repetă: … · scoate".
+ * Corpul popoverului de dată — UN singur desen pentru formularul complet,
+ * foaia de tichet de pe telefon (D-197) și foaia rapidă: presetările (Azi ·
+ * Mâine · Luni · +1 săpt.), DOUĂ butoane — ziua și ora —, „scoate" (fără
+ * dată), mementoul (doar cu oră) și „Se repetă: … · scoate".
+ *
+ * Nimic nu se scrie de mână (decizia omului, 2026-10-17: „nu scriu niciodată
+ * o dată de mână, aleg din calendar"). Butonul de zi spune ziua în cuvintele
+ * noastre („Azi" + „sâm 17 oct", „Lun 20 oct"), iar butonul ÎNSUȘI e un
+ * `NativePick`: inputul nativ stă sub deget, deci atingerea deschide direct
+ * calendarul sistemului — nu `showPicker()`, care pe telefon nu deschidea
+ * nimic (vezi „Gesturile de pe telefon" în CLAUDE.md). La fel ora, cu ceasul;
+ * ✕ de lângă ea o scoate (= toată ziua). Formatul afișat rămâne al nostru, nu
+ * cel al locale-ului din WebView (`10/16/2026`, `--:-- --`).
  *
  * Pur prezentare: cine îl folosește ține starea și decide când scrie. Formularul
- * doar își murdărește câmpurile (salvarea rămâne explicită); foaia scrie pe loc,
- * prin autosave.
- *
- * Calendarul și ceasul SISTEMULUI stau în câmp, ca iconițe: un `NativePick`
- * (inputul nativ sub deget), nu `showPicker()` — acela nu deschidea nimic pe
- * telefon (vezi „Gesturile de pe telefon" în CLAUDE.md). Valoarea lor intră
- * prin aceleași `onPickDate`/`onPickTime`, deci formatul afișat rămâne al
- * nostru, nu cel al locale-ului din WebView (`10/16/2026`, `--:-- --`).
+ * doar își murdărește câmpurile (salvarea rămâne explicită); foaia de tichet
+ * scrie pe loc, prin autosave; foaia rapidă pune data în ciornă.
  */
 export function DuePanel({
   now,
-  dueText,
-  timeText,
   dueDate,
   dueTime,
-  onDueText,
-  onTimeText,
-  onTimeBlur,
   onPreset,
   onPickDate,
   onPickTime,
+  onClearTime,
   onClear,
   reminder,
   onReminder,
@@ -44,19 +40,15 @@ export function DuePanel({
   foot,
 }: {
   now: Date
-  /** Textul din câmpuri, cum e scris (`zz/ll/aaaa`, `hh:mm`). */
-  dueText: string
-  timeText: string
-  /** Valorile validate (`aaaa-ll-zz`, `HH:MM`), sau `''`. */
+  /** Ce e acum adevărat: `aaaa-ll-zz` / `HH:MM`, sau `''`. */
   dueDate: string
   dueTime: string
-  onDueText(text: string): void
-  onTimeText(text: string): void
-  onTimeBlur?(): void
   onPreset(day: Date): void
-  /** Alegerea din calendarul / ceasul sistemului (`aaaa-ll-zz`, `HH:MM`). */
+  /** Alegerea din calendarul / ceasul sistemului, deja validată (`aaaa-ll-zz`, `HH:MM`). */
   onPickDate(value: string): void
   onPickTime(value: string): void
+  /** Scoate ora: sarcina rămâne pe zi, toată ziua. */
+  onClearTime(): void
   onClear(): void
   /**
    * Fără `onReminder` rândul mementoului lipsește (foaia rapidă: captura pune
@@ -69,9 +61,8 @@ export function DuePanel({
   onClearRrule?(): void
   foot?: ReactNode
 }) {
-  const dueIncomplete = dueText.trim() !== '' && dueDate === ''
-  const timeIncomplete = timeText.trim() !== '' && dueTime === ''
   const presets = datePresets(now)
+  const day = dueDate ? pickDayLabel(dueDate, now) : null
   return (
     <>
       <h4 className="fc-h">Ziua</h4>
@@ -94,65 +85,45 @@ export function DuePanel({
         })}
       </div>
       <div className="fc-fields">
-        <div className={`due-inputs${dueText ? '' : ' unset'}`} title="Scadență">
-          <input
-            type="text"
-            inputMode="numeric"
-            className={`due-input due-input-date ${dueIncomplete ? 'incomplete' : ''}`}
-            value={dueText}
-            onChange={(e) => onDueText(maskDateInput(e.target.value))}
-            placeholder={DATE_PLACEHOLDER}
-            maxLength={10}
-            aria-label="Data scadenței, zi/lună/an"
-          />
-          <NativePick
-            type="date"
-            label="Alege data…"
-            className="due-pick"
-            tabIndex={-1}
-            initial={() => dueDate || toDateInput(now.toISOString())}
-            onPick={onPickDate}
-          >
-            <Icon name="due" size={13} />
-          </NativePick>
-          <input
-            type="text"
-            inputMode="numeric"
-            className={`due-input due-input-time ${timeIncomplete ? 'incomplete' : ''}`}
-            value={timeText}
-            onChange={(e) => onTimeText(maskTimeInput(e.target.value))}
-            onBlur={onTimeBlur}
-            disabled={!dueDate}
-            placeholder={TIME_PLACEHOLDER}
-            maxLength={5}
-            aria-label="Ora scadenței, 24 de ore"
-            title={dueDate ? 'Lasă gol pentru toată ziua' : 'Alege întâi o zi'}
-          />
+        <NativePick
+          type="date"
+          label={day ? `Ziua: ${day.day}${day.sub ? `, ${day.sub}` : ''} — alege din calendar` : 'Alege data din calendar'}
+          className={`fc-pick fc-pick-date${day ? '' : ' unset'}`}
+          initial={() => dueDate || toDateInput(now.toISOString())}
+          onPick={(v) => { const d = fromInputDate(v); if (d) onPickDate(d) }}
+        >
+          <Icon name="due" size={16} />
+          <span className="fc-pick-t">{day ? day.day : 'Alege data'}</span>
+          {day?.sub && <small className="fc-pick-sub">{day.sub}</small>}
+        </NativePick>
+        <span className={`fc-time${dueTime ? ' set' : ''}`}>
           {/* Ceasul merge și fără zi: ora cade azi (ca „Oră…" din glisare). */}
           <NativePick
             type="time"
-            label="Oră…"
-            className="due-pick"
-            tabIndex={-1}
+            label={dueTime ? `Ora: ${dueTime} — alege din ceas` : 'Alege ora'}
+            className="fc-pick fc-pick-time"
             initial={() => dueTime || '09:00'}
-            onPick={onPickTime}
+            onPick={(v) => { const t = fromTimeText(v); if (t) onPickTime(t) }}
           >
-            <Icon name="reminderTime" size={13} />
+            <Icon name="reminderTime" size={16} />
+            <span className="fc-pick-t">{dueTime || 'Oră'}</span>
           </NativePick>
-        </div>
-        {dueText && (
+          {dueTime && (
+            <button type="button" className="fc-pick-x" onClick={onClearTime} title="Fără oră (toată ziua)" aria-label="Fără oră, toată ziua">
+              <Icon name="close" size={14} />
+            </button>
+          )}
+        </span>
+        {dueDate && (
           <button type="button" className="fc-link" onClick={onClear} title="Fără dată" aria-label="Fără dată">
             scoate
           </button>
         )}
       </div>
-      {(dueIncomplete || timeIncomplete) && (
-        <p className="fc-note warn">{dueIncomplete ? 'Scrie data ca zi/lună/an.' : 'Ora, de la 00:00 la 23:59.'}</p>
-      )}
       {/* Mementoul apare numai când are ce să însemne. Pentru o sarcină de
           zi întreagă ar suna la miezul nopții, deci acolo tace și treaba
           o face rezumatul de dimineață. */}
-      {onReminder && dueDate && !dueTime && !dueIncomplete && <p className="fc-note">Toată ziua — fără memento.</p>}
+      {onReminder && dueDate && !dueTime && <p className="fc-note">Toată ziua — fără memento.</p>}
       {onReminder && dueDate && dueTime && (
         <>
           <h4 className="fc-h">Memento</h4>
@@ -190,27 +161,3 @@ export function DuePanel({
   )
 }
 
-/**
- * Textul câmpurilor scrise ale panoului, ținut de cine îl folosește: scris pe
- * jumătate nu e o dată, deci textul e local, iar valoarea validă (`dueDate`,
- * `dueTime`) se scrie abia când e întreagă. O schimbare venită din altă parte
- * (presetare, calendar, alt dispozitiv, data din titlu) e urmată de câmpuri,
- * dacă nu spun deja același lucru. `curDate`/`curTime` = ce e acum adevărat
- * (`aaaa-ll-zz`, `HH:MM`, sau `''`).
- */
-export function useDueFields(curDate: string, curTime: string) {
-  const [dueText, setDueText] = useState(curDate ? displayFromInputDate(curDate) : '')
-  const [timeText, setTimeText] = useState(curTime)
-  useEffect(() => {
-    setDueText((t) => ((fromDisplayDate(t) ?? '') === curDate ? t : curDate ? displayFromInputDate(curDate) : ''))
-    setTimeText((t) => ((fromTimeText(t) ?? '') === curTime ? t : curTime))
-  }, [curDate, curTime])
-  return {
-    dueText,
-    setDueText,
-    timeText,
-    setTimeText,
-    dueDate: fromDisplayDate(dueText) ?? '',
-    dueTime: fromTimeText(timeText) ?? '',
-  }
-}

@@ -524,11 +524,11 @@ FC_DATE_POP = (
     '<button class="fc-pre">Mâine<small>joi 15</small></button>'
     '<button class="fc-pre">Luni<small>19 oct</small></button>'
     '<button class="fc-pre">+1 săpt.<small>21 oct</small></button></div>'
-    '<div class="fc-fields"><div class="due-inputs">'
-    '<input class="due-input due-input-date" value="14/10/2026">'
-    '<span class="native-pick due-pick">' + ic('calendar-check', 13) + '<input class="native-pick-input" type="date"></span>'
-    '<input class="due-input due-input-time" value="17:00">'
-    '<span class="native-pick due-pick">' + ic('clock', 13) + '<input class="native-pick-input" type="time"></span></div>'
+    '<div class="fc-fields">'
+    '<span class="native-pick fc-pick fc-pick-date">' + ic('calendar-check', 16) + '<span class="fc-pick-t">Azi</span>'
+    '<small class="fc-pick-sub">mie 14 oct</small><input class="native-pick-input" type="date"></span>'
+    '<span class="fc-time set"><span class="native-pick fc-pick fc-pick-time">' + ic('clock', 16) + '<span class="fc-pick-t">17:00</span>'
+    '<input class="native-pick-input" type="time"></span><button class="fc-pick-x">' + ic('x', 14) + '</button></span>'
     '<button class="fc-link">scoate</button></div>'
     '<h4 class="fc-h">Memento</h4><div class="fc-seg">'
     '<button class="on">' + ic('check', 12) + 'la oră</button><button>−30m</button>'
@@ -952,7 +952,10 @@ CONTROALE = ''.join([
       '<button class="wb-mode"><span>Arbore</span><span class="x">' + ic('x', 12) + '</span></button>'
       '<button class="wb-more">' + ic('ellipsis', 18) + '</button>'
       '<button class="wb-more on">' + ic('ellipsis', 18) + '<span class="dot"></span></button>'
-      '<button class="due-pick">' + ic('calendar-check', 14) + ' Pune o zi</button>'
+      '<span class="native-pick fc-pick fc-pick-date unset">' + ic('calendar-check', 16) + '<span class="fc-pick-t">Alege data</span></span>'
+      '<span class="fc-time"><span class="native-pick fc-pick fc-pick-time">' + ic('clock', 16) + '<span class="fc-pick-t">Oră</span></span></span>'
+      '<span class="fc-time set"><span class="native-pick fc-pick fc-pick-time">' + ic('clock', 16) + '<span class="fc-pick-t">10:30</span></span>'
+      '<button class="fc-pick-x">' + ic('x', 14) + '</button></span>'
       '<button class="fc-link">scoate</button>'
       '<button class="sidebar-new-btn">+ Proiect nou</button>'
       '<button class="qa-add">+ sub-tichet</button>'),
@@ -991,7 +994,6 @@ CONTROALE = ''.join([
     g('Câmpuri',
       '<div class="fld"><textarea rows="2" placeholder="Descrierea tichetului…"></textarea></div>'
       '<input class="dep-search-input" placeholder="Caută un tichet…" />'
-      '<div class="due-input"><span class="due-native">9 sep 2026</span></div>'
       '<div class="dep-search-field"><input class="dep-search-input-sm" placeholder="Caută…" /></div>'),
 
     # Fixarea (`pinnedAt`): butonul de pe rândul ID-ului din foaia de tichet
@@ -1140,11 +1142,11 @@ FOAIE = ('<div class="sheet-bg on"></div>'
          '<button type="button" class="fc-pre on">Mâine<small>joi 10</small></button>'
          '<button type="button" class="fc-pre">Luni<small>14 sep</small></button>'
          '<button type="button" class="fc-pre">+1 săpt.<small>16 sep</small></button></div>'
-         '<div class="fc-fields"><div class="due-inputs">'
-         '<input class="due-input due-input-date" value="10/09/2026">'
-         '<span class="native-pick due-pick">%s<input class="native-pick-input" type="date"></span>'
-         '<input class="due-input due-input-time" value="10:00">'
-         '<span class="native-pick due-pick">%s<input class="native-pick-input" type="time"></span></div>'
+         '<div class="fc-fields">'
+         '<span class="native-pick fc-pick fc-pick-date">%s<span class="fc-pick-t">Mâine</span>'
+         '<small class="fc-pick-sub">joi 10 sep</small><input class="native-pick-input" type="date"></span>'
+         '<span class="fc-time set"><span class="native-pick fc-pick fc-pick-time">%s<span class="fc-pick-t">10:00</span>'
+         '<input class="native-pick-input" type="time"></span><button type="button" class="fc-pick-x">%s</button></span>'
          '<button type="button" class="fc-link">scoate</button></div></div>'
          '<div class="qs-bar">'
          '<button type="button" class="qs-due on">%s<span class="qs-due-t">Mâine 10:00</span></button>'
@@ -1157,7 +1159,7 @@ FOAIE = ('<div class="sheet-bg on"></div>'
          '<button type="button" class="qs-ico qs-more" aria-label="Formularul complet">%s</button>'
          '<button type="submit" class="qs-send" aria-label="Adaugă">%s</button>'
          '</span></div></form></div>'
-         % (ic('calendar-check', 13), ic('clock', 13), ic('calendar-check', 15), ic('zap', 16), ic('paperclip', 16),
+         % (ic('calendar-check', 16), ic('clock', 16), ic('x', 14), ic('calendar-check', 15), ic('zap', 16), ic('paperclip', 16),
             ic('ellipsis', 16), ic('arrow-up', 18)))
 
 SCREENS = {
