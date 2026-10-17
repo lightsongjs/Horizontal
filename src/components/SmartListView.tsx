@@ -4,6 +4,7 @@ import { useUI } from '../ui'
 import { PushToggle } from './PushToggle'
 import { QuickAdd } from './QuickAdd'
 import { TaskRow } from './TaskRow'
+import { useRowPinKey } from './RowPin'
 import { addDays, isOverdue, startOfLocalDay, toShortDate, WEEK_FIRST_OFFSET } from '../lib/schedule'
 import type { Issue } from '../lib/types'
 import { Icon, type IconName } from './Icon'
@@ -121,6 +122,8 @@ interface Props {
 export function SmartListView({ kind, onOpenTask, focusSignal = 0 }: Props) {
   const { smartLists, dueLoaded } = useHorizontal()
   const { dockedIssueId } = useUI()
+  // F pe rândul cu focusul de tastatură (Tab), fără tichet deschis.
+  useRowPinKey()
   const cal = useCalendar()
   const [showDone, setShowDone] = useState(false)
   // Un ceas pe minut, doar cât sunt evenimente: un eveniment terminat se

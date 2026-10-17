@@ -8,6 +8,7 @@ import { TaskRow } from './TaskRow'
 import { SplitView } from './SplitView'
 import { ProjectMark } from './ProjectMark'
 import { useTaskActions } from './TaskActions'
+import { useRowPinKey } from './RowPin'
 
 function ProjectGroup({ projectId, issues, onOpen, now }: { projectId: string; issues: Issue[]; onOpen(id: string): void; now: Date }) {
   const { projects } = useHorizontal()
@@ -43,6 +44,7 @@ function ProjectGroup({ projectId, issues, onOpen, now }: { projectId: string; i
 export function FilterView({ filterId, onOpenTask }: { filterId: string; onOpenTask(id: string): void }) {
   const { savedFilters, filtersLoaded, openIssues, openLoaded, projects, filterContext } = useHorizontal()
   const ta = useTaskActions()
+  useRowPinKey()
   const filter = savedFilters.find((f) => f.id === filterId) ?? null
   const now = filterContext.now
 

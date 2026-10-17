@@ -1005,6 +1005,20 @@ CONTROALE = ''.join([
       '<span class="t-tail"><span class="t-pin">%s</span><span class="t-time">09:30</span></span>'
       % (ic('pin', 15), ic('pin', 15), ic('pin', 15), ic('pin', 15), ic('pin', 13))),
 
+    # Piuneza de rând pe desktop (`RowPin`): în repaus transparentă (aici forțată
+    # vizibilă, ca la hover), pornită = accent cu capul plin; meniul de click
+    # dreapta al rândului (`.ctx-menu`, „Fixează sus" + F).
+    g('Fixare din rând (desktop)',
+      '<button class="list-row task-row" style="width:300px"><span class="list-check"><span class="ck"></span></span>'
+      '<span class="list-title">Hover pe rând</span><span class="t-tail"><span role="button" class="t-pin row-pin" style="opacity:1">%s</span>'
+      '<span class="t-time">09:30</span></span></button>'
+      '<button class="list-row task-row" style="width:300px"><span class="list-check"><span class="ck"></span></span>'
+      '<span class="list-title">Rând fixat</span><span class="t-tail"><span role="button" class="t-pin row-pin on">%s</span>'
+      '<span class="t-time">09:30</span></span></button>'
+      '<div class="ctx-menu" style="position:static"><button class="as-item">%s Fixează sus<kbd class="ctx-key">F</kbd></button>'
+      '<button class="as-item">%s Marchează urgent</button></div>'
+      % (ic('pin', 13), ic('pin', 13), ic('pin', 18), ic('zap', 18))),
+
     g('Rânduri de listă',
       lrow('TUR-04', 'Rând normal', 'var(--layer-1)')
       + lrow('TUR-01', 'Deschis în panoul lateral', 'var(--layer-0)', docked=True)

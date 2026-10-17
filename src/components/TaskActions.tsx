@@ -47,6 +47,11 @@ interface TaskActions extends Selection {
   layers: number
   /** Back: închide stratul de sus. */
   popLayer(): void
+  /**
+   * Click dreapta pe un rând, pe desktop: meniul mic de lângă cursor
+   * (`RowMenu`). Stabil, ca rândurile `memo` să nu se randeze din nou.
+   */
+  openRowMenu(id: string, at: { x: number; y: number }): void
 }
 
 const Ctx = createContext<TaskActions | null>(null)
@@ -71,6 +76,8 @@ export function TaskActionsProvider({ children }: { children: ReactNode }) {
   const sel = useSelection()
   const [openRow, setOpenRow] = useState<string | null>(null)
   const [sheet, setSheet] = useState<ActionSheet | null>(null)
+  // În afara `value`: deschiderea meniului nu randează rândurile din nou.
+  const [rowMenu, setRowMenu] = useState<{ id: string; x: number; y: number } | null>(null)
   const visible = useRef<string[]>([])
 
   const dueRef = useRef(dueIssues)
@@ -193,9 +200,13 @@ export function TaskActionsProvider({ children }: { children: ReactNode }) {
     else exitSelectMode()
   }, [sheet, exitSelectMode])
 
+  const openRowMenu = useCallback((id: string, at: { x: number; y: number }) => setRowMenu({ id, ...at }), [])
+
   const value = useMemo<TaskActions>(() => ({
-    ...sel, narrow, openRow, setOpenRow, setVisible, issuesOf, selectAllVisible, run, remove, openSheet, dateInitial, timeInitial, applyDate, applyTime, layers, popLayer,
-  }), [sel, narrow, openRow, setVisible, issuesOf, selectAllVisible, run, remove, openSheet, dateInitial, timeInitial, applyDate, applyTime, layers, popLayer])
+    ...sel, narrow, openRow, setOpenRow, setVisible, issuesOf, selectAllVisible, run, remove, openSheet, dateInitial, timeInitial, applyDate, applyTime, layers, popLayer, openRowMenu,
+  }), [sel, narrow, openRow, setVisible, issuesOf, selectAllVisible, run, remove, openSheet, dateInitial, timeInitial, applyDate, applyTime, layers, popLayer, openRowMenu])
+
+  const menuIssue = rowMenu ? issuesOf([rowMenu.id])[0] : undefined
 
   const targets = sheet ? issuesOf(sheet.ids) : []
 
@@ -231,6 +242,15 @@ export function TaskActionsProvider({ children }: { children: ReactNode }) {
       )}
       {sheet?.kind === 'move' && targets.length === 1 && (
         <MoveProjectSheet issue={targets[0]} open={false} onClose={finish} />
+      )}
+      {rowMenu && menuIssue && (
+        <RowMenu
+          issue={menuIssue}
+          at={rowMenu}
+          onPin={() => void run({ kind: 'pin', value: !menuIssue.pinnedAt }, [menuIssue.id])}
+          onUrgent={() => void run({ kind: 'urgent', value: !menuIssue.urgent }, [menuIssue.id])}
+          onClose={() => setRowMenu(null)}
+        />
       )}
       {sheet?.kind === 'assign' && (
         <AssignSheet
@@ -374,6 +394,48 @@ function AssignSheet({ onPick, onClose }: { onPick(id: string | null): void; onC
         ))}
       </div>
     </KeyboardSheet>
+  )
+}
+
+/**
+ * Meniul de click dreapta al unui rând (desktop): aceeași cutie ca meniul din
+ * sidebar (`.ctx-menu`, `PinMenu`), cu „Fixează sus" și „Urgent" — cele două
+ * comutatoare de rând care pe telefon stau în ⋮. Esc ascultat în CAPTURĂ, cu
+ * `stopPropagation` (tiparul `ChipPop`): altfel Escape-ul panoului lateral ar
+ * închide și tichetul docat.
+ */
+function RowMenu({ issue, at, onPin, onUrgent, onClose }: {
+  issue: Issue; at: { x: number; y: number }; onPin(): void; onUrgent(): void; onClose(): void
+}) {
+  const first = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    first.current?.focus({ preventScroll: true })
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      e.preventDefault()
+      e.stopPropagation()
+      onClose()
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [onClose])
+  // Ținut în ecran, ca în `PinMenu`.
+  const left = Math.min(at.x, window.innerWidth - 200)
+  const top = Math.min(at.y, window.innerHeight - 110)
+  const pinned = !!issue.pinnedAt
+  return (
+    <>
+      <div className="ctx-menu-bg" onClick={onClose} onContextMenu={(e) => { e.preventDefault(); onClose() }} />
+      <div className="ctx-menu" role="menu" aria-label={issue.title} style={{ left, top }}>
+        <button ref={first} type="button" className="as-item" role="menuitem" onClick={() => { onClose(); onPin() }}>
+          <Icon name={pinned ? 'unpin' : 'pin'} size={18} /> {pinned ? 'Scoate de sus' : 'Fixează sus'}
+          <kbd className="ctx-key">F</kbd>
+        </button>
+        <button type="button" className="as-item" role="menuitem" onClick={() => { onClose(); onUrgent() }}>
+          <Icon name="urgent" size={18} /> {issue.urgent ? 'Scoate urgent' : 'Marchează urgent'}
+        </button>
+      </div>
+    </>
   )
 }
 

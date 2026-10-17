@@ -5574,6 +5574,30 @@ body:has(.kb-sheet) .toast {
 @media (max-width: 379px) { .t-day-h { display: none; } }
 /* Sarcină fixată sus (`pinnedAt`): accentul unic, fără fundal — un semn, nu un jeton. */
 .t-pin { display: inline-flex; color: var(--accent); }
+/* Piuneza-buton din coada rândului (`RowPin`, desktop). Fără mouse rămâne
+   numai pe rândurile fixate, ca semn; cu mouse își ține locul pe orice rând
+   (transparentă), deci la hover nimic nu sare și titlul nu se taie. */
+.row-pin:not(.on) { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  .row-pin {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; margin: -2px -3px;
+    border-radius: var(--r-s);
+    color: var(--txt-faint);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.12s, background 0.12s, color 0.12s;
+  }
+  .row-pin:not(.on) { display: inline-flex; }
+  .list-row:hover .row-pin,
+  .list-row:focus-visible .row-pin,
+  .row-pin.on { opacity: 1; }
+  .row-pin:hover { background: var(--surface-3); color: var(--txt); }
+  /* Fixat: accentul, cu capul piunezei plin — o stare, nu doar o acțiune. */
+  .row-pin.on { color: var(--accent); }
+  .row-pin.on svg { fill: currentColor; }
+  .row-pin.on:hover { background: var(--accent-soft); color: var(--accent); }
+}
 .task-row .list-title { flex: 1; min-width: 0; }
 .t-tail { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
 .t-urgent { display: inline-flex; color: var(--urgent); }
@@ -7394,6 +7418,13 @@ body:has(.qab) { overflow-y: auto; }
 }
 .ctx-menu .as-item { padding: 8px 10px; font-size: calc(14px * var(--text-scale)); gap: 10px; }
 .ctx-menu .as-item:hover { background: var(--surface-2); }
+/* Scurtătura din dreapta unui rând de meniu (meniul rândului: F). */
+.ctx-key {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: calc(11px * var(--text-scale));
+  color: var(--txt-faint);
+}
 .sidebar-row-menu {
   display: flex;
   align-items: center;
