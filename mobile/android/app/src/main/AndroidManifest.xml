@@ -34,7 +34,7 @@
 
         <!-- Fereastra de quick add a widget-ului: nativă, peste ecranul de start, fără WebView.
              Sarcină proprie (`taskAffinity`), ca să nu aducă în față aplicația; tastatura o ridică ea (`onWindowFocusChanged`). -->
-        <activity android:name=".QuickAddActivity" android:exported="false" android:theme="@style/Hz.Quick"
+        <activity android:name=".QuickAddActivity" android:exported="false" android:theme="@style/Hz.QuickAdd"
             android:excludeFromRecents="true" android:taskAffinity="ro.horizontal.app.quick" android:launchMode="singleTask"
             android:windowSoftInputMode="stateAlwaysVisible|adjustNothing" />
 

@@ -96,12 +96,14 @@ class QuickAddActivity : AppCompatActivity() {
         findViewById<View>(R.id.q_send).setOnClickListener { submit() }
         findViewById<View>(R.id.q_due).setOnClickListener { pickDue() }
         findViewById<View>(R.id.q_project).setOnClickListener { pickProject() }
-        findViewById<View>(R.id.q_person).setOnClickListener { pickPerson() }
         findViewById<View>(R.id.q_urgent).setOnClickListener {
             manual = manual.copy(urgent = !(draft?.urgent ?: false)); recompute()
         }
         findViewById<View>(R.id.q_attach).setOnClickListener { pickFile() }
 
+        // Iconițele jetoanelor cu text din primul cadru; `apply` le repictează după starea ciornei.
+        chipIcon(findViewById(R.id.q_due), R.drawable.ic_q_calendar, R.color.q_faint, 15)
+        chipIcon(findViewById(R.id.q_project), R.drawable.ic_q_project, R.color.q_dim, 15)
         if (data == null) {
             showNote("Deschide aplicația o dată, ca fereastra să știe proiectele.")
             findViewById<View>(R.id.q_send).isEnabled = false
@@ -140,9 +142,9 @@ class QuickAddActivity : AppCompatActivity() {
         findViewById<View>(R.id.q_sugg_scroll).visibility = if (list.isEmpty()) View.GONE else View.VISIBLE
         for (s in list) {
             val chip = TextView(this, null, 0, R.style.Hz_Quick_Chip)
-            chip.layoutParams = android.widget.LinearLayout.LayoutParams(android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, dp(36)).apply { marginEnd = dp(6) }
+            chip.layoutParams = android.widget.LinearLayout.LayoutParams(android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, dp(34)).apply { marginEnd = dp(5) }
             chip.text = "${s.sigil}${s.label}"
-            chip.typeface = android.graphics.Typeface.SERIF
+            chip.setTextColor(color(R.color.q_txt))
             chip.setOnClickListener {
                 title.setText(s.text)
                 title.setSelection(s.caret.coerceAtMost(title.text.length))
@@ -167,19 +169,23 @@ class QuickAddActivity : AppCompatActivity() {
         draft = d
         if (fromEngine && !d.raw) { rejected.clear(); rejected.addAll(d.live) }
         paintMarks(d.spans)
-        val chipText = { id: Int, s: String -> findViewById<TextView>(id).text = s }
-        chipText(R.id.q_due, d.label ?: "Fără dată")
+        // Ziua (`.qs-due`): cu dată = accent pe accent-soft; o recurență își arată iconița de repetare.
+        val due = findViewById<TextView>(R.id.q_due)
+        due.text = d.label ?: "Fără dată"
+        val dueOn = d.dueAt != null
+        due.setBackgroundResource(if (dueOn) R.drawable.bg_q_chip_accent else R.drawable.bg_q_chip)
+        due.setTextColor(color(if (dueOn) R.color.q_accent else R.color.q_faint))
+        chipIcon(due, if (d.rrule != null) R.drawable.ic_widget_repeat else R.drawable.ic_q_calendar, if (dueOn) R.color.q_accent else R.color.q_faint, 15)
         val proj = data?.projects?.firstOrNull { it.id == d.projectId }
-        chipText(R.id.q_project, proj?.name ?: "Proiect")
+        val project = findViewById<TextView>(R.id.q_project)
+        project.text = proj?.name ?: "Proiect"
         // Inbox își poartă iconița în locul celei generice, ca în pagină (`ProjectMark`).
-        findViewById<TextView>(R.id.q_project).setCompoundDrawablesRelativeWithIntrinsicBounds(
-            if (proj != null && isInboxProject(proj)) R.drawable.ic_q_inbox else R.drawable.ic_q_project, 0, 0, 0)
-        val person = data?.people?.firstOrNull { it.id == d.assigneeId }?.name
-        chipText(R.id.q_person, person ?: "")
-        findViewById<TextView>(R.id.q_person).compoundDrawablePadding = if (person == null) 0 else dp(6)
-        val urgent = findViewById<TextView>(R.id.q_urgent)
-        urgent.setBackgroundResource(if (d.urgent) R.drawable.bg_chip_on else R.drawable.bg_chip)
-        urgent.compoundDrawableTintList = android.content.res.ColorStateList.valueOf(color(if (d.urgent) R.color.hz_accent else R.color.hz_muted))
+        chipIcon(project, if (proj != null && isInboxProject(proj)) R.drawable.ic_q_inbox else R.drawable.ic_q_project, R.color.q_dim, 15)
+        // Urgent pornit = chihlimbar pe chihlimbar-pal (`.qs-urgent.on`), nu roșu.
+        val urgent = findViewById<android.widget.ImageView>(R.id.q_urgent)
+        urgent.setBackgroundResource(if (d.urgent) R.drawable.bg_q_chip_urgent else R.drawable.bg_q_chip)
+        urgent.imageTintList = android.content.res.ColorStateList.valueOf(color(if (d.urgent) R.color.q_urgent else R.color.q_dim))
+        urgent.isSelected = d.urgent
         when {
             data == null -> {}
             d.raw -> showNote("Recunoașterea datei e indisponibilă acum: alege data din jeton.")
@@ -202,8 +208,8 @@ class QuickAddActivity : AppCompatActivity() {
         t.getSpans(0, t.length, DateInk::class.java).forEach { t.removeSpan(it) }
         for (r in spans) {
             if (r.first < 0 || r.last + 1 > t.length) continue
-            t.setSpan(DateMark(color(R.color.hz_mark)), r.first, r.last + 1, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-            t.setSpan(DateInk(color(R.color.hz_accent)), r.first, r.last + 1, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            t.setSpan(DateMark(color(R.color.q_mark)), r.first, r.last + 1, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            t.setSpan(DateInk(color(R.color.q_accent)), r.first, r.last + 1, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
     }
 
@@ -254,13 +260,6 @@ class QuickAddActivity : AppCompatActivity() {
         }.show()
     }
 
-    private fun pickPerson() {
-        val people = data?.people ?: return
-        AlertDialog.Builder(this).setTitle("Al cui e").setItems((listOf("Al meu") + people.map { it.name }).toTypedArray()) { _, i ->
-            manual = manual.copy(assigneeSet = true, assigneeId = if (i == 0) null else people[i - 1].id); recompute()
-        }.show()
-    }
-
     private fun pickFile() {
         AlertDialog.Builder(this).setItems(arrayOf("Fă o poză", "Alege fișier")) { _, i ->
             if (i == 0) {
@@ -292,15 +291,22 @@ class QuickAddActivity : AppCompatActivity() {
         val row = findViewById<android.widget.LinearLayout>(R.id.q_files)
         row.removeAllViews()
         findViewById<View>(R.id.q_files_scroll).visibility = if (files.isEmpty()) View.GONE else View.VISIBLE
+        // Agrafa cu fișiere alese = accent pe accent-soft (`.qs-attach.on`).
+        val attach = findViewById<android.widget.ImageView>(R.id.q_attach)
+        attach.setBackgroundResource(if (files.isEmpty()) R.drawable.bg_q_chip else R.drawable.bg_q_chip_accent)
+        attach.imageTintList = android.content.res.ColorStateList.valueOf(color(if (files.isEmpty()) R.color.q_dim else R.color.q_accent))
         for (f in files.toList()) {
             val iv = android.widget.ImageView(this)
             iv.layoutParams = android.widget.LinearLayout.LayoutParams(dp(48), dp(48)).apply { marginEnd = dp(6) }
             iv.scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
-            iv.setBackgroundResource(R.drawable.bg_chip)
+            iv.setBackgroundResource(R.drawable.bg_q_chip)
             iv.clipToOutline = true
             val thumb = if (f.contentType.startsWith("image/"))
                 BitmapFactory.decodeFile(f.path, BitmapFactory.Options().apply { inSampleSize = 16 }) else null
-            if (thumb != null) iv.setImageBitmap(thumb) else { iv.setImageResource(R.drawable.ic_q_attach); iv.setPadding(dp(12), dp(12), dp(12), dp(12)) }
+            if (thumb != null) iv.setImageBitmap(thumb) else {
+                iv.setImageResource(R.drawable.ic_q_attach); iv.setPadding(dp(14), dp(14), dp(14), dp(14))
+                iv.imageTintList = android.content.res.ColorStateList.valueOf(color(R.color.q_dim))
+            }
             iv.contentDescription = f.filename
             iv.setOnClickListener {
                 AlertDialog.Builder(this).setMessage("Scoți „${f.filename}”?").setPositiveButton("Scoate") { _, _ ->
@@ -397,6 +403,14 @@ class QuickAddActivity : AppCompatActivity() {
     }
 
     private fun color(id: Int) = ContextCompat.getColor(this, id)
+
+    /** Iconița jetonului cu text, la mărimea din pagină (15px), nu cele 24dp ale desenului. */
+    private fun chipIcon(v: TextView, res: Int, tint: Int, size: Int) {
+        val dr = ContextCompat.getDrawable(this, res)?.mutate() ?: return
+        dr.setBounds(0, 0, dp(size), dp(size))
+        dr.setTint(color(tint))
+        v.setCompoundDrawablesRelative(dr, null, null, null)
+    }
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
     private fun watcher(f: () -> Unit) = object : TextWatcher {
         override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}

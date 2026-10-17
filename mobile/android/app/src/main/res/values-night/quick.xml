@@ -1,7 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="hz_chip">#26262C</color>
-    <color name="hz_mark">#33818CF8</color>
     <color name="hz_on_accent">#0B0B0E</color>
     <color name="hz_danger">#DF8B84</color>
+
+    <!-- `:root` întunecat din src/styles.css. -->
+    <color name="q_surface">#1B1C1F</color>
+    <color name="q_surface_2">#232428</color>
+    <color name="q_txt">#EEEFF1</color>
+    <color name="q_dim">#A6ABB3</color>
+    <color name="q_faint">#757A83</color>
+    <color name="q_placeholder">#757A83</color>
+    <color name="q_accent">#5B8DFF</color>
+    <color name="q_accent_soft">#265B8DFF</color>
+    <color name="q_urgent">#FF9548</color>
+    <color name="q_urgent_soft">#26FF9548</color>
+    <color name="q_on_accent">#FFFFFF</color>
+    <color name="q_mark">#405B8DFF</color>
+    <color name="q_ripple">#265B8DFF</color>
 </resources>
