@@ -26,8 +26,8 @@ interface Props {
    *  rând — cu 300 de sarcini, o atingere pe telefon costa o secundă. */
   docked?: boolean
   /**
-   * Grupul „Fixate" din „Azi": rândurile vin din orice zi, deci o scadență
-   * care nu e azi își spune ziua („Mâine", „20 oct"), nu doar ora — altfel
+   * Grupul „Fixate" („Azi", „7 zile"): rândurile vin din zile diferite (restanțe
+   * și azi, sau +1..+7), deci o scadență își spune ziua („Mâine", „20 oct"), nu doar ora — altfel
    * „10:00" ar părea azi.
    */
   day?: boolean

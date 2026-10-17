@@ -331,38 +331,58 @@ describe('dueChipDay', () => {
 })
 
 // Sarcini fixate (docs/superpowers/specs/2026-10-17-sarcini-fixate-design.md).
-describe('buildSmartLists — fixate', () => {
+describe('buildSmartLists — fixate (fixarea doar ordonează, ca Pin din TickTick)', () => {
   const pin = (iso: string) => ({ pinnedAt: iso })
+  const ids = (xs: { id: string }[]) => xs.map((i) => i.id)
 
-  it('o fixată fără scadență intră în „Azi", în grupul ei, deasupra a tot', () => {
+  it('o fixată fără scadență nu intră nicăieri (stă doar în proiectul ei)', () => {
     const L = buildSmartLists([
       task('ANAF', pin('2026-08-24T05:00:00.000Z')),
-      task('URG', { ...at(-1), urgent: true }),
       task('AZI', at(0, 9)),
     ], NOW)
-    expect(L.pinned.map((i) => i.id)).toEqual(['ANAF'])
-    expect(L.overdue.map((i) => i.id)).toEqual(['URG'])
-    expect(L.today.map((i) => i.id)).toEqual(['AZI'])
+    expect(L.pinned).toEqual([])
+    expect(L.weekPinned).toEqual([])
+    expect(ids(L.today)).toEqual(['AZI'])
   })
 
-  it('o fixată restantă, de azi sau dintr-o zi din „7 zile" stă NUMAI în „Fixate"', () => {
+  it('restanța și azi fixate urcă în „Fixate" din „Azi"; ziua din „7 zile" în „Fixate" din „7 zile"', () => {
     const L = buildSmartLists([
       task('VECHE', { ...at(-3), ...pin('2026-08-24T05:00:00.000Z') }),
       task('AZI', { ...at(0, 10), ...pin('2026-08-24T05:01:00.000Z') }),
       task('JOI', { ...at(3, 9), ...pin('2026-08-24T05:02:00.000Z') }),
+      task('ALTA', at(0, 9)),
     ], NOW)
-    expect(L.pinned.map((i) => i.id)).toEqual(['JOI', 'AZI', 'VECHE'])
-    expect(L.overdue).toEqual([])
+    expect(ids(L.pinned)).toEqual(['AZI', 'VECHE'])
+    expect(ids(L.weekPinned)).toEqual(['JOI'])
+  })
+
+  it('apartenența și numerele sunt exact cele fără fixare (grupul zilei le scoate doar la afișare)', () => {
+    const items = [
+      task('VECHE', { ...at(-3), ...pin('2026-08-24T05:00:00.000Z') }),
+      task('AZI', { ...at(0, 10), ...pin('2026-08-24T05:01:00.000Z') }),
+      task('JOI', { ...at(3, 9), ...pin('2026-08-24T05:02:00.000Z') }),
+      task('ALTA', at(0, 9)),
+    ]
+    const L = buildSmartLists(items, NOW)
+    const U = buildSmartLists(items.map((i) => ({ ...i, pinnedAt: null })), NOW)
+    expect(ids(L.overdue)).toEqual(ids(U.overdue))
+    expect(ids(L.today)).toEqual(ids(U.today))
+    expect(L.week.map((d) => ids(d.issues))).toEqual(U.week.map((d) => ids(d.issues)))
+  })
+
+  it('mutată pe mâine, o fixată iese din „Azi" și urcă în „7 zile"', () => {
+    const L = buildSmartLists([task('P', { ...at(1, 9), ...pin('2026-08-24T05:00:00.000Z') })], NOW)
+    expect(L.pinned).toEqual([])
     expect(L.today).toEqual([])
-    expect(L.week.flatMap((d) => d.issues)).toEqual([])
+    expect(ids(L.weekPinned)).toEqual(['P'])
   })
 
   it('ordinea între fixate: cea fixată ultima e prima, la egalitate după ID', () => {
     const t = '2026-08-24T05:00:00.000Z'
     const L = buildSmartLists([
-      task('B', pin(t)), task('A', pin(t)), task('C', pin('2026-08-24T06:00:00.000Z')),
+      task('B', { ...at(0), ...pin(t) }), task('A', { ...at(0), ...pin(t) }), task('C', { ...at(-1), ...pin('2026-08-24T06:00:00.000Z') }),
     ], NOW)
-    expect(L.pinned.map((i) => i.id)).toEqual(['C', 'A', 'B'])
+    expect(ids(L.pinned)).toEqual(['C', 'A', 'B'])
   })
 
   it('bifată iese din „Fixate"; cu scadență azi cade în „Terminate azi"', () => {
@@ -371,13 +391,15 @@ describe('buildSmartLists — fixate', () => {
       task('GATA-FARA', { done: true, ...pin('2026-08-24T05:00:00.000Z') }),
     ], NOW)
     expect(L.pinned).toEqual([])
-    expect(L.doneToday.map((i) => i.id)).toEqual(['GATA'])
+    expect(ids(L.doneToday)).toEqual(['GATA'])
   })
 
-  it('fixarea bate rutina adormită (gest explicit al omului)', () => {
+  it('fixarea NU bate rutina adormită: ascunsă până sună, ca oricare', () => {
     const L = buildSmartLists([
       task('RUT', { projectId: 'rut', ...at(0, 18), remindAt: at(0, 18).dueAt, ...pin('2026-08-24T05:00:00.000Z') }),
     ], NOW, new Set(['rut']))
-    expect(L.pinned.map((i) => i.id)).toEqual(['RUT'])
+    expect(L.pinned).toEqual([])
+    expect(L.today).toEqual([])
   })
 })
+

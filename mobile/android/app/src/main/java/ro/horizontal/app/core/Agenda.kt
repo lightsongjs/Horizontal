@@ -12,12 +12,12 @@ import java.time.temporal.ChronoUnit
 import java.util.Locale
 
 /**
- * Widget-ul de agendă: fixatele, restanțele și zilele 0..6. Regula e `buildSmartLists`
+ * Widget-ul de agendă: restanțele și zilele 0..6, cu fixatele lor sus. Regula e `buildSmartLists`
  * din `src/lib/schedule.ts`, scrisă a doua oară; fixtures comune în
  * `src/lib/agenda.fixtures.json`. Un caz nou se adaugă acolo.
  */
 data class AgendaItem(
-    /** `dueAt` e `null` numai pe o fixată: una fără scadență stă oricum sus, în „Fixate". */
+    /** `dueAt` `null` (o pagină din versionCode 14 trimitea fixatele fără dată): rândul nu intră în agendă. */
     val id: String, val title: String, val project: String?, val dueAt: String?, val allDay: Boolean,
     val hasReminder: Boolean, val recurring: Boolean, val urgent: Boolean,
     /** Rutină (proiect „doar mementouri"): ascunsă până atunci = `remind_at ?: due_at`. `src/lib/routines.ts`. */
@@ -25,14 +25,17 @@ data class AgendaItem(
     /** Culoarea proiectului (`projects.accent`, hex al omului) — inelul bifei. `null`: inel gri (o pagină veche n-o trimite). */
     val projectAccent: String? = null,
     /**
-     * Fixată („Fixează sus", `issues.pinned_at`): când. Urcă în grupul „Fixate", cu sau fără
-     * scadență, și nu mai stă în ziua ei — `src/lib/pinned.ts`. O pagină veche n-o trimite.
+     * Fixată („Fixează sus", `issues.pinned_at`): când. Urcă în grupul „Fixate" și nu mai stă
+     * în ziua ei — DOAR dacă e oricum în agendă: fixarea ordonează, nu aduce (`src/lib/pinned.ts`).
      */
     val pinnedAt: String? = null,
 )
 /** `readAt` = PORNIREA citirii (ca `NativeList`); al paginii, 0 offline. */
 data class AgendaList(val items: List<AgendaItem>, val readAt: Long)
-/** `pinned`: grupul „Fixate", primul (`offset` 0, `date` null, `overdue` false). */
+/**
+ * `pinned`: grupul „Fixate", primul (`offset` 0, `date` null, `overdue` false) — rândurile
+ * fixate ale agendei, din orice zi a ei; numărul lor de azi îl spune `todayCount`.
+ */
 data class AgendaSection(val overdue: Boolean, val offset: Int, val date: LocalDate?, val items: List<AgendaItem>, val pinned: Boolean = false)
 
 sealed interface AgendaState {
@@ -56,7 +59,7 @@ private fun order(zone: ZoneId) = compareBy<Pair<AgendaItem, Long>>(
 )
 
 /** `comparePinned` din `src/lib/pinned.ts`: fixat cel mai recent primul, la egalitate id-ul. */
-private val pinnedOrder = compareByDescending<AgendaItem> { parseIso(it.pinnedAt) ?: 0L }.thenBy { it.id }
+internal val pinnedOrder = compareByDescending<AgendaItem> { parseIso(it.pinnedAt) ?: 0L }.thenBy { it.id }
 
 /** Fixată = are `pinnedAt` (agenda e numai cu nebifate, deci „deschisă" e de la sine). */
 fun isPinned(item: AgendaItem) = item.pinnedAt != null
@@ -66,16 +69,13 @@ fun isOverdueItem(item: AgendaItem, now: Long, zone: ZoneId): Boolean =
     parseIso(item.dueAt)?.let { overdue(item, it, now, zone) } ?: false
 
 /**
- * `buildSmartLists`: fixatele ies primele, înaintea oricărei alte reguli — chiar fără
- * scadență, chiar restante, chiar rutine adormite (fixarea e un gest explicit al omului).
- * O fixată nu mai apare în ziua ei: ar fi numărată de două ori.
+ * `buildSmartLists`, fără fixări: restanțele, apoi zilele 0..6. Rutinele adormite, rândurile
+ * fără scadență și cele de dincolo de fereastră lipsesc. Asta e APARTENENȚA la agendă.
  */
-fun buildAgenda(items: List<AgendaItem>, now: Long, zone: ZoneId): List<AgendaSection> {
-    val pinned = items.filter(::isPinned).sortedWith(pinnedOrder)
-    val timed = items.filter { !isPinned(it) && (it.hiddenUntil ?: 0) <= now }.mapNotNull { i -> parseIso(i.dueAt)?.let { i to it } }.sortedWith(order(zone))
+fun daySections(items: List<AgendaItem>, now: Long, zone: ZoneId): List<AgendaSection> {
+    val timed = items.filter { (it.hiddenUntil ?: 0) <= now }.mapNotNull { i -> parseIso(i.dueAt)?.let { i to it } }.sortedWith(order(zone))
     val late = timed.filter { (i, at) -> overdue(i, at, now, zone) }
     val out = mutableListOf<AgendaSection>()
-    if (pinned.isNotEmpty()) out += AgendaSection(false, 0, null, pinned, pinned = true)
     if (late.isNotEmpty()) out += AgendaSection(true, 0, null, late.map { it.first })
     val today = localDate(now, zone)
     for (d in 0 until AGENDA_DAYS) {
@@ -84,6 +84,24 @@ fun buildAgenda(items: List<AgendaItem>, now: Long, zone: ZoneId): List<AgendaSe
     }
     return out
 }
+
+/**
+ * Ca Pin din TickTick (decizia omului, 2026-10-17, a doua versiune): fixarea doar
+ * ORDONEAZĂ. Agenda e `daySections`; fixatele ei urcă într-un grup „Fixate", primul
+ * (widget-ul e o singură listă), și nu se mai arată în ziua lor. O fixată fără
+ * scadență, dincolo de fereastră sau rutină adormită nu e în agendă, deci nici sus.
+ */
+fun buildAgenda(items: List<AgendaItem>, now: Long, zone: ZoneId): List<AgendaSection> {
+    val days = daySections(items, now, zone)
+    val pinned = days.flatMap { it.items }.filter(::isPinned).sortedWith(pinnedOrder)
+    if (pinned.isEmpty()) return days
+    val rest = days.map { s -> s.copy(items = s.items.filterNot(::isPinned)) }.filter { it.items.isNotEmpty() }
+    return listOf(AgendaSection(false, 0, null, pinned, pinned = true)) + rest
+}
+
+/** Înapoi la apartenență (fără grupul „Fixate"): numărul și notificarea din bară nu țin cont de fixări. */
+private fun unpinnedSections(sections: List<AgendaSection>, now: Long, zone: ZoneId) =
+    daySections(sections.flatMap { it.items }, now, zone)
 
 /**
  * Lista citită mai recent (la egalitate, a paginii); fără niciuna, `null`.
@@ -122,8 +140,8 @@ fun agendaState(page: AgendaList?, native: AgendaList?, queue: List<NativeAction
     return AgendaState.Ready(sections, sections.sumOf { it.items.size })
 }
 
-/** Când iese din ascunzătoare cea mai apropiată rutină — widget-ul se redesenează atunci. O fixată nu se ascunde. */
-fun nextReveal(items: List<AgendaItem>, now: Long): Long? = items.filterNot(::isPinned).mapNotNull { it.hiddenUntil }.filter { it > now }.minOrNull()
+/** Când iese din ascunzătoare cea mai apropiată rutină — widget-ul se redesenează atunci. Fixată sau nu. */
+fun nextReveal(items: List<AgendaItem>, now: Long): Long? = items.mapNotNull { it.hiddenUntil }.filter { it > now }.minOrNull()
 
 private val ZILE = listOf("lun", "mar", "mie", "joi", "vin", "sâm", "dum")
 private val ZILE_LUNGI = listOf("luni", "marți", "miercuri", "joi", "vineri", "sâmbătă", "duminică")
@@ -153,13 +171,20 @@ fun sectionHead(s: AgendaSection): SectionHead {
 fun showsHead(index: Int, s: AgendaSection) = !(index == 0 && !s.pinned && !s.overdue && s.offset == 0)
 
 /**
- * Numărul din antet: ce e de făcut azi — fixatele, restanțele și azi, ca numărul „Azi"
- * din aplicație (`listCount` din `App.tsx`). Grupul „Fixate" are `offset` 0, deci intră.
+ * Rândurile de azi, restanțele întâi — fără fixări (`unpinnedSections`). Fixatele sunt
+ * numărate aici numai dacă sunt restante sau de azi, ca în „Azi" din aplicație.
  */
-fun todayCount(sections: List<AgendaSection>) = sections.filter { it.pinned || it.overdue || it.offset == 0 }.sumOf { it.items.size }
+fun todayItems(sections: List<AgendaSection>, now: Long, zone: ZoneId): List<AgendaItem> =
+    unpinnedSections(sections, now, zone).filter { it.overdue || it.offset == 0 }.flatMap { it.items }
 
-/** Rândul „Nimic pe azi": nimic fixat, nimic restant, nimic azi, dar urmează ceva (altfel e starea goală a widget-ului). */
-fun freeToday(sections: List<AgendaSection>) = sections.isNotEmpty() && sections.none { it.pinned || it.overdue || it.offset == 0 }
+/** Numărul din antet: restanțele și azi, ca numărul „Azi" din aplicație (`listCount` din `App.tsx`). Fixarea nu-l schimbă. */
+fun todayCount(sections: List<AgendaSection>, now: Long, zone: ZoneId) = todayItems(sections, now, zone).size
+
+/**
+ * Rândul „Nimic pe azi": nimic restant, nimic azi, dar urmează ceva (altfel e starea goală
+ * a widget-ului). O fixată de mâine stă sus, dar nu ține ziua de azi ocupată.
+ */
+fun freeToday(sections: List<AgendaSection>, now: Long, zone: ZoneId) = sections.isNotEmpty() && todayCount(sections, now, zone) == 0
 
 /** Linia de sub „Azi": „miercuri, 14 octombrie". */
 fun todayLine(now: Long, zone: ZoneId): String {
@@ -209,17 +234,15 @@ fun rowMeta(item: AgendaItem, overdue: Boolean, now: Long, zone: ZoneId, pinned:
 }
 
 /**
- * Fără limită inferioară: o restanță de luna trecută e tot restanță. Plus fixatele,
- * cu sau fără scadență (`or`). Fixatele întâi, apoi crescător după scadență, deci
- * plafonul taie din viitor, nu din fixate sau din restanțe. Condiția „ale mele" intră
- * în același `and`, nu ca a doua cheie `or=` în aceeași cerere.
+ * Fără limită inferioară: o restanță de luna trecută e tot restanță. Ordonat
+ * crescător, deci plafonul taie din viitor, nu din restanțe. `pinned_at` vine doar ca
+ * ORDINE: o fixată fără scadență nu e în agendă, deci nu se cere.
  */
 fun agendaQuery(now: Long, zone: ZoneId, me: Me = Me.UNKNOWN): String {
     val e = { s: String -> URLEncoder.encode(s, "UTF-8") }
     val end = localDate(now, zone).plusDays(AGENDA_DAYS.toLong()).atStartOfDay(zone).toInstant().toEpochMilli()
-    val cond = listOfNotNull("or(due_at.lt.\"${isoJs(end)}\",pinned_at.not.is.null)", mineCond(me)).joinToString(",")
     return "issues?select=id,title,due_at,all_day,remind_at,rrule,urgent,pinned_at,assignee_id,created_by,projects(name,accent,reminders_only)" +
-        "&done=is.false&and=${e("($cond)")}&order=pinned_at.desc.nullslast,due_at.asc&limit=$AGENDA_LIMIT"
+        "&done=is.false&due_at=lt.${e(isoJs(end))}" + mineFilter(me) + "&order=due_at.asc&limit=$AGENDA_LIMIT"
 }
 
 /** Un rând stricat e sărit, nu aruncă (ca `parseIssues`), la fel ce nu e al meu. `isNull` înainte de `optString`: vezi acolo. */
@@ -231,14 +254,13 @@ fun parseAgenda(json: String, me: Me = Me.UNKNOWN): List<AgendaItem> {
         val id = o.str("id")?.ifEmpty { null } ?: return@mapNotNull null
         if (!isMine(o.str("assignee_id"), o.str("created_by"), me)) return@mapNotNull null
         val pinned = parseIso(o.str("pinned_at"))
-        val due = parseIso(o.str("due_at"))
-        if (due == null && pinned == null) return@mapNotNull null
+        val due = parseIso(o.str("due_at")) ?: return@mapNotNull null
         val routine = o.optJSONObject("projects")?.optBoolean("reminders_only", false) == true
         AgendaItem(
             id, o.str("title")?.ifBlank { null } ?: "Sarcină fără titlu", o.optJSONObject("projects")?.str("name"),
-            due?.let { isoJs(it) }, if (o.isNull("all_day")) false else o.optBoolean("all_day", false),
+            isoJs(due), if (o.isNull("all_day")) false else o.optBoolean("all_day", false),
             o.str("remind_at") != null, o.str("rrule") != null, if (o.isNull("urgent")) false else o.optBoolean("urgent", false),
-            if (routine && due != null) parseIso(o.str("remind_at")) ?: due else null,
+            if (routine) parseIso(o.str("remind_at")) ?: due else null,
             o.optJSONObject("projects")?.str("accent")?.ifBlank { null },
             pinned?.let { isoJs(it) },
         )

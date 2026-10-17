@@ -39,17 +39,17 @@ class AgendaTest {
 
     @Test fun antetul_numărăAziCuRestanțe_iarAziPrimulNuAreCap() {
         val today = LocalDate.of(2026, 10, 6)
-        val late = AgendaSection(true, 0, null, listOf(item("A", "x"), item("B", "x")))
-        val azi = AgendaSection(false, 0, today, listOf(item("C", "x")))
-        val maine = AgendaSection(false, 1, today.plusDays(1), listOf(item("D", "x")))
-        assertEquals(3, todayCount(listOf(late, azi, maine)))
+        val late = AgendaSection(true, 0, null, listOf(item("A", "2026-10-03T21:00:00.000Z"), item("B", "2026-10-02T21:00:00.000Z")))
+        val azi = AgendaSection(false, 0, today, listOf(item("C", "2026-10-05T21:00:00.000Z")))
+        val maine = AgendaSection(false, 1, today.plusDays(1), listOf(item("D", "2026-10-06T21:00:00.000Z")))
+        assertEquals(3, todayCount(listOf(late, azi, maine), now, zone))
         assertEquals(false, showsHead(0, azi))
         assertEquals(true, showsHead(1, azi))
         assertEquals(true, showsHead(0, late))
         assertEquals(true, showsHead(0, maine))
-        assertEquals(true, freeToday(listOf(maine)))
-        assertEquals(false, freeToday(listOf(late, maine)))
-        assertEquals(false, freeToday(emptyList()))
+        assertEquals(true, freeToday(listOf(maine), now, zone))
+        assertEquals(false, freeToday(listOf(late, maine), now, zone))
+        assertEquals(false, freeToday(emptyList(), now, zone))
     }
 
     @Test fun culoareaProiectului_hexScrisDeOm() {
@@ -81,10 +81,10 @@ class AgendaTest {
     @Test fun interogareaÎncepeDeLaOriceRestanțăȘiSeOpreșteLaZiua7() {
         val q = agendaQuery(now, zone)
         assertTrue(q, q.contains("done=is.false"))
-        // Fereastra ȘI fixatele (cu sau fără scadență), într-un singur `and`; fixatele întâi, ca plafonul să nu le taie.
-        assertTrue(q, java.net.URLDecoder.decode(q, "UTF-8").contains("and=(or(due_at.lt.\"2026-10-12T21:00:00.000Z\",pinned_at.not.is.null))"))
+        assertTrue(q, q.contains("due_at=lt.2026-10-12T21%3A00%3A00.000Z"))
+        // `pinned_at` doar ca ordine: fixatele fără scadență nu se mai cer (fixarea nu aduce în agendă).
         assertTrue(q, q.contains("pinned_at,"))
-        assertTrue(q, q.contains("order=pinned_at.desc.nullslast,due_at.asc"))
+        assertTrue(q, !q.contains("pinned_at.not.is.null") && q.contains("order=due_at.asc"))
         assertTrue(q, q.contains("limit=$AGENDA_LIMIT"))
         assertTrue(q, !q.contains("due_at=gte"))
     }
@@ -152,34 +152,40 @@ class AgendaTest {
         assertEquals(mapOf("R-1" to parseIso("2026-10-06T17:50:00.000Z"), "HZ-2" to null), parseAgenda(json, me).associate { it.id to it.hiddenUntil })
         assertEquals(3, parseAgenda(json).size)
         val q = agendaQuery(now, zone, me)
-        // „Ale mele" stă în același `and` cu fereastra (nu a doua cheie `or=`), deci se aplică și fixatelor.
-        assertTrue(q, q.contains("assignee_id,created_by") && !q.contains("&or="))
-        assertTrue(q, java.net.URLDecoder.decode(q, "UTF-8").contains(
-            "and=(or(due_at.lt.\"2026-10-12T21:00:00.000Z\",pinned_at.not.is.null),or(assignee_id.eq.a-me,and(assignee_id.is.null,or(created_by.eq.u-me,created_by.is.null))))"))
+        assertTrue(q, q.contains("assignee_id,created_by") && q.contains("&or=%28assignee_id.eq.a-me"))
     }
 
     private fun pin(id: String, at: String, dueAt: String? = null, allDay: Boolean = true) =
         AgendaItem(id, id, null, dueAt, allDay, false, false, false, pinnedAt = at)
 
-    @Test fun fixatele_primulGrup_cuCapȘiNumărate_nuȘiÎnZiuaLor() {
+    @Test fun fixatele_suntSusDoarDintreRândurileAgendei_numărulCaFărăFixare() {
         val sections = buildAgenda(listOf(
             item("A", "2026-10-05T21:00:00.000Z"),                                       // azi
-            pin("P1", "2026-10-06T07:00:00.000Z"),                                       // fără scadență
+            pin("P0", "2026-10-06T07:45:00.000Z"),                                       // fără scadență: nu e în agendă
+            pin("P1", "2026-10-06T07:00:00.000Z", "2026-10-05T21:00:00.000Z"),           // azi
             pin("P2", "2026-10-06T07:30:00.000Z", "2026-10-07T07:00:00.000Z", false),    // mâine: NU și în „Mâine"
+            pin("P3", "2026-10-06T07:50:00.000Z", "2026-10-20T21:00:00.000Z"),           // dincolo de fereastră
         ), now, zone)
         assertEquals(listOf(true, false), sections.map { it.pinned })
         assertEquals(listOf("P2", "P1"), sections[0].items.map { it.id })                // cel fixat cel mai recent primul
+        assertEquals(listOf("A"), sections[1].items.map { it.id })
         assertEquals(SectionHead("Fixate", null), sectionHead(sections[0]))
         assertTrue(showsHead(0, sections[0]))
         assertTrue(showsHead(1, sections[1]))                                             // „Azi" după „Fixate" are cap
-        assertEquals(3, todayCount(sections))
-        assertEquals(false, freeToday(sections))                                          // o fixată ține ziua ocupată
+        assertEquals(2, todayCount(sections, now, zone))                                  // A + P1; P2 e de mâine
     }
 
-    @Test fun fixata_bateRutinaAdormită() {
+    @Test fun oFixatăDeMâine_nuȚineZiuaOcupată() {
+        val sections = buildAgenda(listOf(pin("P", "2026-10-06T07:00:00.000Z", "2026-10-07T07:00:00.000Z", false)), now, zone)
+        assertEquals(listOf("P"), sections.single { it.pinned }.items.map { it.id })
+        assertEquals(0, todayCount(sections, now, zone))
+        assertEquals(true, freeToday(sections, now, zone))
+    }
+
+    @Test fun fixata_nuBateRutinaAdormită() {
         val r = item("R", "2026-10-06T18:00:00.000Z").copy(hiddenUntil = parseIso("2026-10-06T17:00:00.000Z"), pinnedAt = "2026-10-06T07:00:00.000Z")
-        assertEquals(listOf("R"), buildAgenda(listOf(r), now, zone).single { it.pinned }.items.map { it.id })
-        assertEquals(null, nextReveal(listOf(r), now))
+        assertEquals(emptyList<AgendaSection>(), buildAgenda(listOf(r), now, zone))
+        assertEquals(parseIso("2026-10-06T17:00:00.000Z"), nextReveal(listOf(r), now))
     }
 
     @Test fun rândulFixat_îșiSpuneZiua() {
@@ -190,14 +196,18 @@ class AgendaTest {
         assertEquals(false, isOverdueItem(pin("P", "x"), now, zone))
     }
 
-    @Test fun parsareaȘiPuntea_fixataFărăScadență() {
+    @Test fun parsareaȘiPuntea_fixataFărăScadențăNuEÎnAgendă() {
         val json = """[
           {"id":"P-1","title":"Credențiale ANAF","due_at":null,"pinned_at":"2026-10-06T07:00:00+00:00","all_day":true,"projects":{"name":"Rutine","reminders_only":true}},
+          {"id":"P-2","title":"Taxe","due_at":"2026-10-06T07:00:00+00:00","pinned_at":"2026-10-06T07:00:00+00:00","all_day":true},
           {"id":"HZ-9","title":"Fără nimic","due_at":null,"pinned_at":null}
         ]"""
         val got = parseAgenda(json)
-        assertEquals(listOf(AgendaItem("P-1", "Credențiale ANAF", "Rutine", null, true, false, false, false, null, null, "2026-10-06T07:00:00.000Z")), got)
+        assertEquals(listOf(AgendaItem("P-2", "Taxe", null, "2026-10-06T07:00:00.000Z", true, false, false, false, null, null, "2026-10-06T07:00:00.000Z")), got)
         assertEquals(got[0], Json.agendaItemFromJson(Json.agendaItemToJson(got[0])))
+        // O pagină din versionCode 14 trimite și fixatele fără dată: puntea le primește, agenda nu le arată.
+        val old = Json.agendaItemFromJson(org.json.JSONObject("""{"id":"P","title":"x","dueAt":null,"pinnedAt":"2026-10-06T07:00:00.000Z"}"""))!!
+        assertEquals(emptyList<AgendaSection>(), buildAgenda(listOf(old), now, zone))
         // Pe punte, un rând fără scadență și nefixat n-are unde sta.
         assertEquals(null, Json.agendaItemFromJson(org.json.JSONObject("""{"id":"X","title":"x","dueAt":null}""")))
     }

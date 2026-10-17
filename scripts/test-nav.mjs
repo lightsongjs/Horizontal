@@ -821,9 +821,10 @@ try {
 
   // ── Sarcini fixate (`pinnedAt`) ─────────────────────────────────────────
   // Piuneza de pe rândul ID-ului din foaia de tichet fixează imediat; „Azi"
-  // capătă grupul „Fixate" primul, cu sarcina în el (și numai acolo). Un
-  // tichet FĂRĂ scadență fixat intră și el (vine din `openIssues`). Apoi totul
-  // se desface, ca testele de mai jos să vadă „Azi" ca înainte.
+  // capătă grupul „Fixate" primul, cu sarcina în el (și numai acolo). Fixarea
+  // doar ORDONEAZĂ (ca Pin din TickTick): un tichet FĂRĂ scadență fixat nu
+  // intră în „Azi", iar o fixată mutată pe mâine iese din „Azi" și urcă în
+  // „7 zile". Apoi totul se desface, ca testele de mai jos să vadă „Azi" ca înainte.
   const pinGroup = () => tel.evaluate(() => {
     const g = document.querySelector('.smart-list .list-group')
     return g ? { label: g.querySelector('.list-group-label')?.textContent, rows: [...g.querySelectorAll('.list-title')].map((t) => t.textContent) } : null
@@ -850,14 +851,36 @@ try {
   await tel.reload({ waitUntil: 'networkidle' })
   await tel.waitForTimeout(1600)
   const pg2 = await pinGroup()
-  check('fixare: un tichet fără dată fixat intră în „Fixate", primul (cel mai recent)', pg2?.label === 'Fixate' && pg2.rows[0] === undated && pg2.rows.includes(pinTitle), JSON.stringify(pg2))
-  await tel.evaluate(() => {
+  check('fixare: un tichet fără dată fixat NU intră în „Azi"', pg2?.label === 'Fixate' && !pg2.rows.includes(undated) && pg2.rows.includes(pinTitle)
+    && (await tel.locator('.smart-list .list-title', { hasText: undated }).count()) === 0, JSON.stringify(pg2))
+  // Mutată pe mâine: iese din „Azi", urcă în „Fixate" din „7 zile".
+  await tel.evaluate((t) => {
     const db = JSON.parse(localStorage.getItem('horizontal:v2'))
-    for (const i of db.issues) i.pinnedAt = null
+    const i = db.issues.find((x) => x.title === t)
+    const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + 1)
+    i.dueAt = d.toISOString(); i.allDay = true
     localStorage.setItem('horizontal:v2', JSON.stringify(db))
-  })
+  }, pinTitle)
   await tel.reload({ waitUntil: 'networkidle' })
   await tel.waitForTimeout(1600)
+  check('fixare: mutată pe mâine, iese din „Azi"', (await tel.locator('.smart-list .list-title', { hasText: pinTitle }).count()) === 0, JSON.stringify(await pinGroup()))
+  await tel.locator('.tabbar button').filter({ hasText: /7 zile/ }).first().click()
+  await tel.waitForTimeout(800)
+  const pg3 = await pinGroup()
+  check('…și urcă în „Fixate" din „7 zile", o singură dată', pg3?.label === 'Fixate' && pg3.rows.includes(pinTitle)
+    && (await tel.locator('.smart-list .list-title', { hasText: pinTitle }).count()) === 1, JSON.stringify(pg3))
+  await tel.evaluate((t) => {
+    const db = JSON.parse(localStorage.getItem('horizontal:v2'))
+    for (const i of db.issues) i.pinnedAt = null
+    const i = db.issues.find((x) => x.title === t)
+    const d = new Date(); d.setHours(0, 0, 0, 0)
+    i.dueAt = d.toISOString(); i.allDay = true
+    localStorage.setItem('horizontal:v2', JSON.stringify(db))
+  }, pinTitle)
+  await tel.reload({ waitUntil: 'networkidle' })
+  await tel.waitForTimeout(1600)
+  await tel.locator('.tabbar button').filter({ hasText: /^Azi/ }).first().click()
+  await tel.waitForTimeout(600)
   check('fixare scoasă: grupul dispare', (await pinGroup())?.label !== 'Fixate', JSON.stringify(await pinGroup()))
 
   // ── Data din titlul foii de tichet ──────────────────────────────────────

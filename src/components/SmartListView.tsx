@@ -5,6 +5,7 @@ import { PushToggle } from './PushToggle'
 import { QuickAdd } from './QuickAdd'
 import { TaskRow } from './TaskRow'
 import { useRowPinKey } from './RowPin'
+import { unpinned } from '../lib/pinned'
 import { addDays, isOverdue, startOfLocalDay, toShortDate, WEEK_FIRST_OFFSET } from '../lib/schedule'
 import type { Issue } from '../lib/types'
 import { Icon, type IconName } from './Icon'
@@ -146,10 +147,14 @@ export function SmartListView({ kind, onOpenTask, focusSignal = 0 }: Props) {
   const narrow = useMediaQuery('(max-width: 899px)')
   const ta = useTaskActions()
 
+  // Fixatele stau în grupul „Fixate" de sus, deci grupurile zilelor le arată fără ele
+  // (`unpinned`); numerele din antet, sertar și sidebar numără lista întreagă.
+  const overdueRows = unpinned(smartLists.overdue)
+  const todayRows = unpinned(smartLists.today)
   // Rândurile de pe ecran, pentru „Toate" din antetul selecției.
   const visible = kind === 'today'
-    ? [...smartLists.pinned, ...smartLists.overdue, ...smartLists.today, ...(showDone ? smartLists.doneToday : [])]
-    : smartLists.week.flatMap((d) => d.issues)
+    ? [...smartLists.pinned, ...overdueRows, ...todayRows, ...(showDone ? smartLists.doneToday : [])]
+    : [...smartLists.weekPinned, ...smartLists.week.flatMap((d) => unpinned(d.issues))]
   const visibleKey = visible.map((i) => i.id).join(',')
   const { setVisible, exitSelectMode } = ta
   useEffect(() => { setVisible(visibleKey ? visibleKey.split(',') : []) }, [visibleKey, setVisible])
@@ -166,8 +171,8 @@ export function SmartListView({ kind, onOpenTask, focusSignal = 0 }: Props) {
 
         {kind === 'today' && (
           <>
-            {/* Fixatele: primul grup, deasupra restanțelor și a urgentelor, cu
-                sau fără scadență (`buildSmartLists`, `lib/pinned.ts`). */}
+            {/* Fixatele: primul grup, deasupra restanțelor și a urgentelor — numai
+                cele care sunt oricum în „Azi" (`buildSmartLists`, `lib/pinned.ts`). */}
             <Group
               label="Fixate"
               issues={smartLists.pinned}
@@ -178,23 +183,24 @@ export function SmartListView({ kind, onOpenTask, focusSignal = 0 }: Props) {
             />
             <Group
               label="Restanțe"
-              issues={smartLists.overdue}
+              issues={overdueRows}
               color="var(--blocked)"
               icon="overdue"
               onOpen={onOpenTask}
               late
               action={{
                 label: 'Mută restanțele pe azi',
-                onClick: () => void ta.run({ kind: 'date', preset: { kind: 'today' } }, smartLists.overdue.map((i) => i.id)),
+                onClick: () => void ta.run({ kind: 'date', preset: { kind: 'today' } }, overdueRows.map((i) => i.id)),
               }}
             />
             <Group
               label="Azi"
-              issues={smartLists.today}
+              issues={todayRows}
               color="var(--txt)"
               icon="today"
               onOpen={onOpenTask}
-              empty="Nimic pe azi. Frumos."
+              // Ziua nu e liberă dacă ce are e fixat sus.
+              empty={todayRows.length < smartLists.today.length ? undefined : 'Nimic pe azi. Frumos.'}
               events={eventsFor(today)}
             />
             {smartLists.doneToday.length > 0 && (
@@ -210,17 +216,31 @@ export function SmartListView({ kind, onOpenTask, focusSignal = 0 }: Props) {
           </>
         )}
 
-        {kind === 'week' && smartLists.week.map(({ offset, date, issues }) => (
+        {kind === 'week' && (
           <Group
-            key={offset}
-            label={offset === 1 ? 'Mâine' : cap(DAYS_FULL[date.getDay()])}
-            date={toShortDate(date)}
-            issues={issues}
+            label="Fixate"
+            issues={smartLists.weekPinned}
+            color="var(--accent)"
+            icon="pin"
             onOpen={onOpenTask}
-            empty="—"
-            events={eventsFor(date)}
+            pinned
           />
-        ))}
+        )}
+        {kind === 'week' && smartLists.week.map(({ offset, date, issues }) => {
+          const rows = unpinned(issues)
+          return (
+            <Group
+              key={offset}
+              label={offset === 1 ? 'Mâine' : cap(DAYS_FULL[date.getDay()])}
+              date={toShortDate(date)}
+              issues={rows}
+              onOpen={onOpenTask}
+              // O zi al cărei singur rând e fixat sus nu e „—".
+              empty={rows.length < issues.length ? undefined : '—'}
+              events={eventsFor(date)}
+            />
+          )
+        })}
       </div>
     </SplitView>
   )

@@ -6,6 +6,10 @@
 // (proiecte, liste, filtre — ale contului, în `pinned_items`). Aici e un câmp
 // al tichetului, `issues.pinned_at`, deci un patch de tichet ca oricare altul
 // (merge offline prin coadă, ca bifa sau urgentul).
+//
+// Regula (ca Pin din TickTick, decizia omului 2026-10-17, a doua versiune):
+// fixarea doar ORDONEAZĂ — urcă tichetul în vârful unei liste din care face
+// oricum parte. Nu aduce niciodată un tichet într-o listă.
 
 import type { Issue } from './types'
 
@@ -48,13 +52,10 @@ export function pinnedFirst<T extends Pick<Issue, 'pinnedAt' | 'done' | 'id'>>(i
 }
 
 /**
- * Intrarea lui `buildSmartLists`: tichetele cu scadență (fereastra
- * `listDueIssues`) plus fixatele deschise din `openIssues`, care pot fi FĂRĂ
- * scadență — exact cazul „credențialele pentru ANAF". Fără dubluri: un tichet
- * prezent în ambele surse intră o singură dată (varianta din `due`).
+ * Grupul unei zile (Restanțe, Azi, ziua din „7 zile") fără fixatele lui: ele
+ * stau deja în grupul „Fixate" de deasupra (`SmartLists.pinned`/`weekPinned`).
+ * Numai ce se ARATĂ — numerele numără lista întreagă, ca fără fixare.
  */
-export function withPinned(due: Issue[], open: Issue[]): Issue[] {
-  const seen = new Set(due.map((i) => i.id))
-  const extra = open.filter((i) => isPinnedOpen(i) && !seen.has(i.id))
-  return extra.length ? [...due, ...extra] : due
+export function unpinned<T extends Pick<Issue, 'pinnedAt' | 'done'>>(issues: T[]): T[] {
+  return issues.some(isPinnedOpen) ? issues.filter((i) => !isPinnedOpen(i)) : issues
 }

@@ -9,6 +9,7 @@
 import { compareDue, dayOffset, isOverdue, SMART_LIST_DAYS } from './schedule'
 import { isDormant } from './routines'
 import type { Assignee, Issue, Project } from './types'
+import { comparePinned, isPinnedOpen } from './pinned'
 
 /** Scadența, în aceleași găleți ca listele inteligente. */
 export type DueBucket = 'overdue' | 'today' | 'week' | 'none'
@@ -109,8 +110,16 @@ export function matchesFilter(issue: Issue, rules: FilterRules, ctx: MatchContex
   return true
 }
 
-/** Cu dată întâi (ca în liste), apoi cele fără dată: urgentele sus, apoi după număr. */
+/**
+ * Fixatele întâi (`comparePinned`, ca Pin din TickTick: urcă în lista din care
+ * fac oricum parte — `groupByProject` păstrează ordinea, deci sus în grupul
+ * proiectului lor), apoi cu dată (ca în liste), apoi cele fără dată: urgentele
+ * sus, apoi după număr.
+ */
 export function compareFilterRows(a: Issue, b: Issue): number {
+  const ap = isPinnedOpen(a), bp = isPinnedOpen(b)
+  if (ap !== bp) return ap ? -1 : 1
+  if (ap && bp) return comparePinned(a, b)
   if (!!a.dueAt !== !!b.dueAt) return a.dueAt ? -1 : 1
   if (a.dueAt && b.dueAt) return compareDue(a, b)
   if (a.urgent !== b.urgent) return a.urgent ? -1 : 1
