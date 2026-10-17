@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Fereastra de quick add (`QuickAddActivity`): titlu, descriere, jetoane, Trimite. Serif pe limbă, mono pe cifre; fără chenare. -->
+<!-- Fereastra de quick add (`QuickAddActivity`), „Senin" ca foaia rapidă din pagină (`QuickSheet.tsx`, `.qs-*`):
+     Inter, `surface` cu raza de foaie sus, fără chenare. Rândul: [zi] [proiect] ··· [⚡] [📎] (↑) —
+     jetoanele cu text la stânga (se taie primele cu „…"), comutatoarele grupate lângă Trimite. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/root"
     android:layout_width="match_parent"
@@ -16,62 +18,70 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
-        android:background="@drawable/bg_sheet"
+        android:background="@drawable/bg_q_sheet"
         android:clickable="true"
-        android:elevation="8dp"
+        android:elevation="12dp"
         android:orientation="vertical"
         android:paddingStart="16dp"
-        android:paddingTop="14dp"
-        android:paddingEnd="12dp"
+        android:paddingTop="16dp"
+        android:paddingEnd="16dp"
         android:paddingBottom="10dp">
 
+        <!-- `.quick-sheet .qa-input`: 17px, rând de 28px, `txt`; indiciul pe `placeholder`. -->
         <EditText
             android:id="@+id/q_title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="@null"
-            android:fontFamily="serif"
+            android:fontFamily="@font/inter_regular"
             android:hint="Ce ai de făcut?"
             android:imeOptions="actionSend"
+            android:includeFontPadding="false"
             android:inputType="textCapSentences|textMultiLine"
+            android:lineSpacingExtra="7sp"
             android:maxLines="5"
             android:paddingTop="4dp"
             android:paddingBottom="4dp"
-            android:textColor="@color/hz_text"
-            android:textColorHint="@color/hz_muted"
-            android:textSize="18sp" />
+            android:textColor="@color/q_txt"
+            android:textColorHint="@color/q_placeholder"
+            android:textSize="17sp" />
 
+        <!-- `.quick-sheet .qa-desc`: 15px, `txt-dim`. -->
         <EditText
             android:id="@+id/q_desc"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
             android:background="@null"
-            android:fontFamily="serif"
+            android:fontFamily="@font/inter_regular"
             android:hint="Descriere"
+            android:includeFontPadding="false"
             android:inputType="textCapSentences|textMultiLine"
+            android:lineSpacingExtra="5sp"
             android:maxLines="6"
             android:paddingTop="2dp"
-            android:paddingBottom="6dp"
-            android:textColor="@color/hz_muted"
-            android:textColorHint="@color/hz_muted"
+            android:paddingBottom="4dp"
+            android:textColor="@color/q_dim"
+            android:textColorHint="@color/q_placeholder"
             android:textSize="15sp" />
 
+        <!-- `.qs-status`: 12.5px, `txt-faint`. -->
         <TextView
             android:id="@+id/q_note"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:fontFamily="monospace"
-            android:paddingBottom="6dp"
-            android:textColor="@color/hz_muted"
-            android:textSize="12sp"
+            android:layout_marginTop="6dp"
+            android:fontFamily="@font/inter_regular"
+            android:textColor="@color/q_faint"
+            android:textSize="12.5sp"
             android:visibility="gone" />
 
-        <!-- Sugestiile la #proiect / @om: o bandă de jetoane chiar deasupra tastaturii, unde ajunge degetul. -->
+        <!-- Sugestiile la #proiect / @om: o bandă de jetoane chiar deasupra rândului, unde ajunge degetul. -->
         <HorizontalScrollView
             android:id="@+id/q_sugg_scroll"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:paddingBottom="8dp"
+            android:layout_marginTop="10dp"
             android:scrollbars="none"
             android:visibility="gone">
             <LinearLayout
@@ -85,50 +95,79 @@
             android:id="@+id/q_files_scroll"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
             android:scrollbars="none"
             android:visibility="gone">
             <LinearLayout
                 android:id="@+id/q_files"
                 android:layout_width="wrap_content"
-                android:layout_height="56dp"
-                android:orientation="horizontal"
-                android:paddingBottom="8dp" />
+                android:layout_height="48dp"
+                android:orientation="horizontal" />
         </HorizontalScrollView>
 
+        <!-- `.qs-bar`: 12dp deasupra, 5dp între elemente. -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
-            <HorizontalScrollView
+            <!-- Jetoanele cu text: ocupă ce rămâne; proiectul (al doilea) cedează primul, apoi ziua. -->
+            <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:scrollbars="none">
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal">
-                    <TextView android:id="@+id/q_due" style="@style/Hz.Quick.Chip" android:drawableStart="@drawable/ic_q_calendar" />
-                    <TextView android:id="@+id/q_project" style="@style/Hz.Quick.Chip" android:fontFamily="serif" android:drawableStart="@drawable/ic_q_project" />
-                    <TextView android:id="@+id/q_person" style="@style/Hz.Quick.Chip" android:fontFamily="serif" android:drawableStart="@drawable/ic_q_person" />
-                    <TextView android:id="@+id/q_urgent" style="@style/Hz.Quick.Chip" android:drawableStart="@drawable/ic_q_urgent" android:contentDescription="Urgent" />
-                    <TextView android:id="@+id/q_attach" style="@style/Hz.Quick.Chip" android:drawableStart="@drawable/ic_q_attach" android:contentDescription="Atașează" />
-                </LinearLayout>
-            </HorizontalScrollView>
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+                <!-- `.qs-due`: 12px/600, `txt-faint`; cu dată = `accent` pe `accent-soft`. -->
+                <TextView
+                    android:id="@+id/q_due"
+                    style="@style/Hz.Quick.Chip"
+                    android:drawablePadding="4dp"
+                    android:fontFamily="@font/inter_semibold"
+                    android:maxWidth="170dp"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
+                    android:textColor="@color/q_faint"
+                    android:textSize="12sp" />
+                <!-- `.qs-proj`: 13px, `txt-dim`, cel mult 150px. -->
+                <TextView
+                    android:id="@+id/q_project"
+                    style="@style/Hz.Quick.Chip"
+                    android:layout_marginEnd="0dp"
+                    android:maxWidth="150dp" />
+            </LinearLayout>
+
+            <!-- `.qs-tools`: comutatoarele, lângă Trimite, în arcul degetului mare. -->
+            <ImageView
+                android:id="@+id/q_urgent"
+                style="@style/Hz.Quick.Ico"
+                android:layout_marginStart="5dp"
+                android:clickable="true"
+                android:contentDescription="Urgent"
+                android:src="@drawable/ic_q_urgent"
+                android:tint="@color/q_dim" />
+            <ImageView
+                android:id="@+id/q_attach"
+                style="@style/Hz.Quick.Ico"
+                android:layout_marginStart="5dp"
+                android:clickable="true"
+                android:contentDescription="Atașează"
+                android:src="@drawable/ic_q_attach"
+                android:tint="@color/q_dim" />
 
             <ImageButton
                 android:id="@+id/q_send"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_marginStart="6dp"
-                android:background="@drawable/bg_send"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:layout_marginStart="5dp"
+                android:background="@drawable/bg_q_send"
                 android:contentDescription="Trimite"
-                android:padding="9dp"
+                android:padding="10dp"
                 android:scaleType="fitCenter"
                 android:src="@drawable/ic_q_send"
-                android:tint="@color/hz_on_accent" />
+                android:tint="@color/q_on_accent" />
         </LinearLayout>
     </LinearLayout>
 </FrameLayout>

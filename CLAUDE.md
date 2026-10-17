@@ -1716,6 +1716,13 @@ Pro (HyperOS 3, Android 16).
   Proiectul implicit e Inbox după id (`inboxProjectId`, din `versionCode 8`); un APK
   mai vechi îl caută după numele „Daily" și cade pe primul personal — de-aia
   `captureData` trimite Inbox primul, ca redenumirea să nu strice telefoanele vechi.
+  **Arată ca foaia rapidă din pagină** (D-205, din `versionCode 13`): Inter din
+  `res/font/` (o activitate, spre deosebire de `RemoteViews`, îl poate folosi;
+  licența OFL în `app/Inter-OFL.txt`), culorile `q_*` copiate din `:root`
+  (`values`/`values-night`, după tema sistemului), rândul `[zi] [proiect] ···
+  [⚡] [📎] (↑)` ca în „Ordinea rândului" — fără persoană: `@nume` în text merge
+  în continuare. Tema `Hz.QuickAdd` e numai a ei; „Amână…" și `TicketActivity`
+  au rămas pe culorile vechi `hz_*`.
 
 - **Foaia tichetului din widget** (`TicketActivity`): atingerea pe un rând o
   deschide nativ, peste ecranul de start (fără sesiune nativă → aplicația). Titlul

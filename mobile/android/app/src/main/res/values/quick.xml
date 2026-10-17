@@ -1,27 +1,60 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Fereastra de quick add (`QuickAddActivity`): aceleași jetoane ca foaia „Amână…". -->
+<!-- Fereastra de quick add (`QuickAddActivity`): „Senin", ca foaia rapidă din pagină (`.qs-*`).
+     Culorile `q_*` sunt jetoanele din `:root` (src/styles.css), tema luminoasă; cele întunecate în values-night.
+     `hz_*` de mai jos rămân ale foilor „Amână…" și ale tichetului (`TicketActivity`). -->
 <resources>
     <color name="hz_chip">#F0F4F8</color>
-    <!-- Fragmentul de dată recunoscut: accentul, cu alfa — ca `<mark>` din pagină. -->
-    <color name="hz_mark">#261A237E</color>
     <color name="hz_on_accent">#F7F9FC</color>
     <color name="hz_danger">#A0333F</color>
+
+    <color name="q_surface">#FFFFFF</color>       <!-- surface -->
+    <color name="q_surface_2">#F6F7F9</color>     <!-- surface-2 -->
+    <color name="q_txt">#1A1C20</color>           <!-- txt -->
+    <color name="q_dim">#565C66</color>           <!-- txt-dim -->
+    <color name="q_faint">#868C96</color>         <!-- txt-faint -->
+    <color name="q_placeholder">#A0A6AF</color>   <!-- placeholder -->
+    <color name="q_accent">#2F6BFF</color>        <!-- accent -->
+    <color name="q_accent_soft">#EBF1FF</color>   <!-- accent-soft -->
+    <color name="q_urgent">#D05A00</color>        <!-- urgent -->
+    <color name="q_urgent_soft">#FFF0E3</color>   <!-- urgent-soft -->
+    <color name="q_on_accent">#FFFFFF</color>     <!-- on-accent -->
+    <!-- Fragmentul de dată din titlu: fundalul `<mark>` (accent-soft), puțin mai plin — inelul de 1px din pagină nu se desenează într-un span. -->
+    <color name="q_mark">#2E2F6BFF</color>
+    <color name="q_ripple">#1F2F6BFF</color>
+
     <style name="Hz.Quick" parent="Hz.Snooze" />
+    <!-- Numai fereastra de quick add: cursorul, mânerele și selectoarele de dată/proiect pe `accent`. -->
+    <style name="Hz.QuickAdd" parent="Hz.Quick">
+        <item name="colorAccent">@color/q_accent</item>
+        <item name="colorPrimary">@color/q_accent</item>
+        <item name="colorControlActivated">@color/q_accent</item>
+    </style>
+    <!-- Jetonul cu text (`.qs-sel`): 34dp, raza `r-s` (8dp), `surface-2`, fără chenar; se taie cu „…". -->
     <style name="Hz.Quick.Chip">
         <item name="android:layout_width">wrap_content</item>
-        <item name="android:layout_height">36dp</item>
-        <item name="android:layout_marginEnd">6dp</item>
+        <item name="android:layout_height">34dp</item>
+        <item name="android:layout_marginEnd">5dp</item>
         <item name="android:gravity">center_vertical</item>
         <item name="android:paddingStart">10dp</item>
         <item name="android:paddingEnd">10dp</item>
         <item name="android:drawablePadding">6dp</item>
-        <item name="android:drawableTint">@color/hz_muted</item>
-        <item name="android:background">@drawable/bg_chip</item>
-        <item name="android:fontFamily">monospace</item>
+        <item name="android:background">@drawable/bg_q_chip</item>
+        <item name="android:fontFamily">@font/inter_regular</item>
         <item name="android:textSize">13sp</item>
-        <item name="android:textColor">@color/hz_text</item>
+        <item name="android:textColor">@color/q_dim</item>
         <item name="android:maxLines">1</item>
+        <item name="android:ellipsize">end</item>
+        <item name="android:includeFontPadding">false</item>
         <item name="android:clickable">true</item>
+        <item name="android:focusable">false</item>
+    </style>
+    <!-- Comutatorul-iconiță (`.qs-ico`): pătrat de 34dp, iconița de 16dp. -->
+    <style name="Hz.Quick.Ico">
+        <item name="android:layout_width">34dp</item>
+        <item name="android:layout_height">34dp</item>
+        <item name="android:padding">9dp</item>
+        <item name="android:scaleType">fitCenter</item>
+        <item name="android:background">@drawable/bg_q_chip</item>
         <item name="android:focusable">false</item>
     </style>
 </resources>
