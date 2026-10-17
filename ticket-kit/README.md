@@ -94,6 +94,24 @@ node ticket-kit/ai-client.mjs --update --id KATA-03 --scenarios '[{"given":"..."
 # output: updated: KATA-03   (sau duplicate: KATA-07 / not_found)
 ```
 
+### Markdown în descrieri
+
+Câmpul `desc` (`--desc`) e markdown; aplicația îl desenează, iar bifele se
+pot apăsa. Subsetul suportat:
+
+- titluri `#`, `##`, `###` (H4–H6 se afișează ca `###`) și paragrafe
+- liste `-` / `*` și `1.`, cu indentare
+- căsuțe `- [ ]` / `- [x]` (în „Ordine" și „Listă" apare progresul, ex. `2/5`)
+- `**îngroșat**`, `*cursiv*`, `~~tăiat~~`
+- `` `cod` `` și blocuri ```` ``` ````
+- `> citat`
+- `[text](url)` și URL-uri goale (doar `http:`, `https:`, `mailto:`)
+- `---`
+- `HZ-12` (id de tichet, cu prefixul unui proiect existent) devine legătură
+
+Nu se desenează: tabele, imagini în text, HTML brut (rămâne text), note de
+subsol. Textul se salvează exact cum e scris — nu se „curăță" nimic.
+
 ### Asignarea unui tichet unui om
 
 ```bash

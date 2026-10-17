@@ -196,7 +196,7 @@ function EditBody({ issue }: { issue: Issue }) {
             className={`es-pin ${d.pinnedAt ? 'on' : ''}`}
             aria-pressed={!!d.pinnedAt}
             aria-label={d.pinnedAt ? 'Scoate de sus' : 'Fixează sus'}
-            title={d.pinnedAt ? 'Fixat sus în „Azi" — atinge ca să scoți' : 'Fixează sus în „Azi"'}
+            title={d.pinnedAt ? 'Fixat sus în liste — atinge ca să scoți' : 'Fixează sus în liste'}
             disabled={!canWrite}
             onPointerDown={keepFocus}
             onClick={() => void a.commit(pinPatch(d, new Date()))}
