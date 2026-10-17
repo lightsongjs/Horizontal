@@ -37,6 +37,18 @@ export function foldState(content: number, cap: number, line: number): { folds: 
 }
 
 /**
+ * Înălțimea editorului fără golul de umplere: `outer` = editorul, `scroller` =
+ * scroller-ul lui (întins de CSS cât să umple foaia), `text` = rândurile +
+ * padding-ul conținutului. Ce are scroller-ul peste text e umplutură, nu text
+ * — iar `foldState` trebuie să vadă textul: umplutura depinde de pliere, deci
+ * plierea ar decide după propriul efect și ar oscila (vezi `DescFold`).
+ * Rotunjit, ca subpixelii să nu schimbe măsura între două citiri identice.
+ */
+export function stretchedOut(outer: number, scroller: number, text: number): number {
+  return Math.round(outer - Math.max(0, scroller - text))
+}
+
+/**
  * „încă 21 de rânduri", „încă 4 rânduri", „încă un rând". În română „de" vine
  * după 20 și peste (și după sutele rotunde), nu și după 1–19 sau 101–119.
  */

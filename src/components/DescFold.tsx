@@ -1,7 +1,7 @@
 import { forwardRef, useImperativeHandle, useLayoutEffect, useRef, useState, type CSSProperties, type MouseEvent } from 'react'
 import { DescField } from './DescField'
 import type { EditorHandle, MarkdownEditorProps } from './MarkdownEditor'
-import { DESC_CONTROLS, descCap, foldState, moreLinesLabel, tapRevealsOnly } from '../lib/descFold'
+import { DESC_CONTROLS, descCap, foldState, moreLinesLabel, stretchedOut, tapRevealsOnly } from '../lib/descFold'
 import { Icon } from './Icon'
 
 type Props = MarkdownEditorProps & {
@@ -16,6 +16,30 @@ type Props = MarkdownEditorProps & {
 
 type Measure = { content: number; cap: number; line: number }
 const ZERO: Measure = { content: 0, cap: 0, line: 0 }
+
+/**
+ * Înălțimea textului din editor, fără golul cu care îl întinde CSS-ul.
+ *
+ * În foaia de tichet editorul umple foaia (`.edit-sheet .es-desc > .md-editor`,
+ * `flex: 1 0 auto`), deci `offsetHeight` lui e a foii, nu a textului — și
+ * depinde de pliere: pliată, cutia are plafon și editorul scade cu ea. Măsurat
+ * așa, o descriere GOALĂ într-o foaie mai înaltă decât plafonul + 4 rânduri se
+ * plia (întinsă), se despliea (plafonată), iar fiecare buton „Arată tot" pus
+ * sau scos chema din nou `measure` prin `MutationObserver`. În mijlocul unei
+ * tastări, React golește actualizarea sincron, în microtask, deci bucla nu mai
+ * ceda firul niciodată: foaia îngheța la primul spațiu (ROUTIN-09, 2026-10-17).
+ * Rândurile din `.cm-content` nu se întind, așa că golul e scroller minus ele.
+ */
+function naturalHeight(c: HTMLElement): number {
+  const content = c.querySelector<HTMLElement>('.cm-content')
+  const scroller = c.querySelector<HTMLElement>('.cm-scroller')
+  const first = content?.firstElementChild
+  const last = content?.lastElementChild
+  if (!content || !scroller || !first || !last) return c.offsetHeight
+  const cs = getComputedStyle(content)
+  const lines = last.getBoundingClientRect().bottom - first.getBoundingClientRect().top
+  return stretchedOut(c.offsetHeight, scroller.clientHeight, lines + parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom))
+}
 
 /**
  * Descrierea cu înălțimea textului (macheta `design/panel-thread/index.html`):
@@ -58,7 +82,7 @@ export const DescFold = forwardRef<EditorHandle, Props>(function DescFold({ clas
       const pad = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom)
       // Înălțimea NATURALĂ a textului: copilul (editorul sau textarea-ul de
       // rezervă) nu se micșorează sub plafon, doar e tăiat de cutie.
-      const content = (c ? c.offsetHeight : el.scrollHeight) + pad
+      const content = (c ? naturalHeight(c) : el.scrollHeight) + pad
       const lineEl = el.querySelector('.cm-content') ?? c ?? el
       const ls = getComputedStyle(lineEl)
       const line = parseFloat(ls.lineHeight) || parseFloat(ls.fontSize) * 1.2 || 0

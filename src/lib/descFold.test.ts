@@ -1,5 +1,27 @@
 import { describe, expect, it } from 'vitest'
-import { MIN_HIDDEN_LINES, PANE_CAP_PX, descCap, foldState, moreLinesLabel, tapRevealsOnly } from './descFold'
+import { MIN_HIDDEN_LINES, PANE_CAP_PX, descCap, foldState, moreLinesLabel, stretchedOut, tapRevealsOnly } from './descFold'
+
+describe('stretchedOut (ROUTIN-09: foaia înghețată la primul spațiu)', () => {
+  it('scoate umplutura cu care CSS-ul întinde editorul', () => {
+    // Editor 671px întins de foaie, scroller 663px, două rânduri goale = 55px.
+    expect(stretchedOut(671, 663, 55)).toBe(63)
+  })
+  it('neîntins (panoul), măsura rămâne a editorului', () => {
+    expect(stretchedOut(63, 55, 55)).toBe(63)
+    expect(stretchedOut(63, 54.6, 55)).toBe(63)
+  })
+  it('plierea nu mai depinde de propriul efect: întinsă sau plafonată, aceeași decizie', () => {
+    const cap = 393
+    const line = 24
+    // Descrierea goală: întinsă la 671px sau tăiată la plafon, textul are tot 63px.
+    const stretched = stretchedOut(671, 663, 55) + 12
+    const capped = stretchedOut(381, 373, 55) + 12
+    expect(stretched).toBe(capped)
+    expect(foldState(stretched, cap, line).folds).toBe(false)
+    // Măsura veche (editorul întreg) dădea două răspunsuri, deci bucla.
+    expect(foldState(671 + 12, cap, line).folds).not.toBe(foldState(381 + 12, cap, line).folds)
+  })
+})
 
 describe('tapRevealsOnly (D-196)', () => {
   it('pe telefon, pliată: atingerea pe text doar arată tot', () => {
