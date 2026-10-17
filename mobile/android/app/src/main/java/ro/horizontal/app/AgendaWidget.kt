@@ -17,7 +17,7 @@ import ro.horizontal.app.core.*
 import java.time.ZoneId
 
 /**
- * Agenda: restanțe + 7 zile, în „Senin" (`design/android-widget/index.html`).
+ * Agenda: fixate + restanțe + 7 zile, în „Senin" (`design/android-widget/index.html`).
  * Desenul e o funcție de `PlanStore` — nicio stare proprie. Două forme, alese de
  * launcher după mărime (API 31, fără rundă prin aplicație): 4×4 și compactul 4×2.
  */
@@ -112,7 +112,7 @@ class AgendaWidget : AppWidgetProvider() {
                 sec.items.forEachIndexed { j, it ->
                     if (n >= limit) return@forEachIndexed
                     // Linia de păr doar ÎNTRE rânduri: primul dintr-un grup (sau primul din listă) n-o are.
-                    items.addItem(it.id.hashCode().toLong() shl 8, row(ctx, it, sec.overdue, j > 0, now, zone, compact, c)); n++
+                    items.addItem(it.id.hashCode().toLong() shl 8, row(ctx, it, sec.overdue, sec.pinned, j > 0, now, zone, compact, c)); n++
                 }
             }
             v.setRemoteAdapter(R.id.w_list, items.build())
@@ -139,7 +139,10 @@ class AgendaWidget : AppWidgetProvider() {
             h.setTextViewText(R.id.s_label, sh.label)
             // Explicit la fiecare legare: capetele se refolosesc și ele.
             h.setTextColor(R.id.s_label, if (sec.overdue) c.danger else c.ink)
-            h.setViewVisibility(R.id.s_icon, if (sec.overdue) View.VISIBLE else View.GONE)
+            // Iconița: ceasul roșu al restanțelor sau piuneza fixatelor — tot explicit, capul e refolosit.
+            h.setImageViewResource(R.id.s_icon, if (sec.pinned) R.drawable.ic_widget_pin else R.drawable.ic_widget_clock)
+            h.setInt(R.id.s_icon, "setColorFilter", if (sec.pinned) c.ink2 else c.danger)
+            h.setViewVisibility(R.id.s_icon, if (sec.overdue || sec.pinned) View.VISIBLE else View.GONE)
             h.setTextViewText(R.id.s_count, if (sh.date == null) sec.items.size.toString() else "")
             h.setTextColor(R.id.s_count, if (sec.overdue) fade(c.danger, 0.7f) else c.ink3)
             h.setViewVisibility(R.id.s_count, if (sh.date == null) View.VISIBLE else View.GONE)
@@ -149,11 +152,14 @@ class AgendaWidget : AppWidgetProvider() {
         }
 
         @RequiresApi(31)
-        private fun row(ctx: Context, it: AgendaItem, overdue: Boolean, separated: Boolean, now: Long, zone: ZoneId,
+        private fun row(ctx: Context, it: AgendaItem, sectionOverdue: Boolean, pinned: Boolean, separated: Boolean, now: Long, zone: ZoneId,
                         compact: Boolean, c: Colors): RemoteViews {
             val r = RemoteViews(ctx.packageName, if (compact) R.layout.widget_agenda_row_compact else R.layout.widget_agenda_row)
             r.setTextViewText(R.id.r_title, it.title)
-            val meta = rowMeta(it, overdue, now, zone)
+            // O fixată își spune ziua („Mâine 10:00") și e roșie dacă e restantă, ca `day` de pe `TaskRow`.
+            val overdue = if (pinned) isOverdueItem(it, now, zone) else sectionOverdue
+            val meta = rowMeta(it, overdue, now, zone, pinned)
+            r.setViewVisibility(R.id.r_pin, if (pinned) View.VISIBLE else View.GONE)
             r.setTextViewText(R.id.r_meta, meta)
             r.setViewVisibility(R.id.r_meta, if (meta.isEmpty()) View.GONE else View.VISIBLE)
             // Tot ce urmează e explicit pe FIECARE rând: lista refolosește rândurile la derulare, iar o

@@ -42,6 +42,10 @@ fun parseMe(json: String): String? {
  */
 fun mineFilter(me: Me): String {
     if (!me.known) return ""
-    val v = "(assignee_id.eq.${me.assigneeId},and(assignee_id.is.null,or(created_by.eq.${me.userId},created_by.is.null)))"
-    return "&or=" + URLEncoder.encode(v, "UTF-8")
+    return "&or=" + URLEncoder.encode(mineCond(me)!!.removePrefix("or"), "UTF-8")
 }
+
+/** Aceeași condiție, ca termen într-un `and=(…)` (agenda o combină cu fereastra ei). Necunoscut → `null`, nu taie. */
+fun mineCond(me: Me): String? = if (!me.known) null else
+    "or(assignee_id.eq.${me.assigneeId},and(assignee_id.is.null,or(created_by.eq.${me.userId},created_by.is.null)))"
+

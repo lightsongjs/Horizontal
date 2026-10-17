@@ -40,6 +40,10 @@
                     android:contentDescription="Memento" />
             </LinearLayout>
         </LinearLayout>
+        <!-- Piuneza unei sarcini fixate (grupul „Fixate"), în coada rândului, ca pe web. -->
+        <ImageView android:id="@+id/r_pin" android:layout_width="13dp" android:layout_height="13dp" android:layout_marginStart="8dp"
+            android:src="@drawable/ic_widget_pin" android:tint="@color/w_ink3" android:visibility="gone"
+            android:contentDescription="Fixată" />
         <TextView android:id="@+id/r_meta" android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:layout_marginStart="10dp" android:fontFamily="sans-serif-medium" android:fontFeatureSettings="tnum"
             android:textSize="13sp" android:textColor="@color/w_ink2" android:maxLines="1" />

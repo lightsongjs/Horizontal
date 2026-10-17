@@ -81,7 +81,10 @@ class AgendaTest {
     @Test fun interogareaÎncepeDeLaOriceRestanțăȘiSeOpreșteLaZiua7() {
         val q = agendaQuery(now, zone)
         assertTrue(q, q.contains("done=is.false"))
-        assertTrue(q, q.contains("due_at=lt.2026-10-12T21%3A00%3A00.000Z"))
+        // Fereastra ȘI fixatele (cu sau fără scadență), într-un singur `and`; fixatele întâi, ca plafonul să nu le taie.
+        assertTrue(q, java.net.URLDecoder.decode(q, "UTF-8").contains("and=(or(due_at.lt.\"2026-10-12T21:00:00.000Z\",pinned_at.not.is.null))"))
+        assertTrue(q, q.contains("pinned_at,"))
+        assertTrue(q, q.contains("order=pinned_at.desc.nullslast,due_at.asc"))
         assertTrue(q, q.contains("limit=$AGENDA_LIMIT"))
         assertTrue(q, !q.contains("due_at=gte"))
     }
@@ -149,6 +152,53 @@ class AgendaTest {
         assertEquals(mapOf("R-1" to parseIso("2026-10-06T17:50:00.000Z"), "HZ-2" to null), parseAgenda(json, me).associate { it.id to it.hiddenUntil })
         assertEquals(3, parseAgenda(json).size)
         val q = agendaQuery(now, zone, me)
-        assertTrue(q, q.contains("assignee_id,created_by") && q.contains("&or=%28assignee_id.eq.a-me"))
+        // „Ale mele" stă în același `and` cu fereastra (nu a doua cheie `or=`), deci se aplică și fixatelor.
+        assertTrue(q, q.contains("assignee_id,created_by") && !q.contains("&or="))
+        assertTrue(q, java.net.URLDecoder.decode(q, "UTF-8").contains(
+            "and=(or(due_at.lt.\"2026-10-12T21:00:00.000Z\",pinned_at.not.is.null),or(assignee_id.eq.a-me,and(assignee_id.is.null,or(created_by.eq.u-me,created_by.is.null))))"))
+    }
+
+    private fun pin(id: String, at: String, dueAt: String? = null, allDay: Boolean = true) =
+        AgendaItem(id, id, null, dueAt, allDay, false, false, false, pinnedAt = at)
+
+    @Test fun fixatele_primulGrup_cuCapȘiNumărate_nuȘiÎnZiuaLor() {
+        val sections = buildAgenda(listOf(
+            item("A", "2026-10-05T21:00:00.000Z"),                                       // azi
+            pin("P1", "2026-10-06T07:00:00.000Z"),                                       // fără scadență
+            pin("P2", "2026-10-06T07:30:00.000Z", "2026-10-07T07:00:00.000Z", false),    // mâine: NU și în „Mâine"
+        ), now, zone)
+        assertEquals(listOf(true, false), sections.map { it.pinned })
+        assertEquals(listOf("P2", "P1"), sections[0].items.map { it.id })                // cel fixat cel mai recent primul
+        assertEquals(SectionHead("Fixate", null), sectionHead(sections[0]))
+        assertTrue(showsHead(0, sections[0]))
+        assertTrue(showsHead(1, sections[1]))                                             // „Azi" după „Fixate" are cap
+        assertEquals(3, todayCount(sections))
+        assertEquals(false, freeToday(sections))                                          // o fixată ține ziua ocupată
+    }
+
+    @Test fun fixata_bateRutinaAdormită() {
+        val r = item("R", "2026-10-06T18:00:00.000Z").copy(hiddenUntil = parseIso("2026-10-06T17:00:00.000Z"), pinnedAt = "2026-10-06T07:00:00.000Z")
+        assertEquals(listOf("R"), buildAgenda(listOf(r), now, zone).single { it.pinned }.items.map { it.id })
+        assertEquals(null, nextReveal(listOf(r), now))
+    }
+
+    @Test fun rândulFixat_îșiSpuneZiua() {
+        assertEquals("Mâine 10:00", rowMeta(pin("P", "x", "2026-10-07T07:00:00.000Z", allDay = false), false, now, zone, pinned = true))
+        assertEquals("Ieri", rowMeta(pin("P", "x", "2026-10-04T21:00:00.000Z"), true, now, zone, pinned = true))
+        assertEquals("", rowMeta(pin("P", "x"), false, now, zone, pinned = true))
+        assertTrue(isOverdueItem(pin("P", "x", "2026-10-04T21:00:00.000Z"), now, zone))
+        assertEquals(false, isOverdueItem(pin("P", "x"), now, zone))
+    }
+
+    @Test fun parsareaȘiPuntea_fixataFărăScadență() {
+        val json = """[
+          {"id":"P-1","title":"Credențiale ANAF","due_at":null,"pinned_at":"2026-10-06T07:00:00+00:00","all_day":true,"projects":{"name":"Rutine","reminders_only":true}},
+          {"id":"HZ-9","title":"Fără nimic","due_at":null,"pinned_at":null}
+        ]"""
+        val got = parseAgenda(json)
+        assertEquals(listOf(AgendaItem("P-1", "Credențiale ANAF", "Rutine", null, true, false, false, false, null, null, "2026-10-06T07:00:00.000Z")), got)
+        assertEquals(got[0], Json.agendaItemFromJson(Json.agendaItemToJson(got[0])))
+        // Pe punte, un rând fără scadență și nefixat n-are unde sta.
+        assertEquals(null, Json.agendaItemFromJson(org.json.JSONObject("""{"id":"X","title":"x","dueAt":null}""")))
     }
 }

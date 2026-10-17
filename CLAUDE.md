@@ -964,9 +964,11 @@ fără scadență). Coloana `issues.pinned_at` (`null` = nefixat, altfel când),
   mult" al selecției (acțiunea `pin` din `bulkActions`), antetul `IssueForm`
   (`.sh-pin`, imediat, nu prin Salvează; ascuns sub 900px — antetul e plin și
   jetonul de proiect s-ar strivi) și tasta **F** cu un card deschis.
-- **Widget-ul, notificarea din bară și fereastra nativă de pe Android NU știu
-  de fixări** (cer APK nou): pe widget o fixată fără dată lipsește, iar una
-  datată stă în ziua ei.
+- **Widget-ul și notificarea din bară știu de fixări din `versionCode 14`**
+  (vezi „Aplicația de Android"): grupul „Fixate" primul, aceeași regulă și
+  același număr. Un APK mai vechi ignoră `pinnedAt` (și sare rândul fără
+  scadență): acolo o fixată fără dată lipsește, iar una datată stă în ziua ei.
+  Fereastra nativă de quick add și foaia nativă a tichetului nu fixează.
 - Teste: `src/lib/pinned.test.ts`, „fixate" în `schedule.test.ts` și
   `bulkActions.test.ts`, repo-urile; `test:layout` (grupul, semnul, `.es-pin`
   la 320–430px); `test:nav` (piuneza din foaie → grupul primul, fără dublură,
@@ -1695,7 +1697,7 @@ Pro (HyperOS 3, Android 16).
   `src/lib/androidBridge.ts` și `HorizontalAndroidPlugin.kt`. Se schimbă împreună.
 
 - **Widget-urile** (spec: `docs/superpowers/specs/2026-10-06-widget-android-design.md`):
-  `AgendaWidget` (restanțe + 7 zile, cu bifă; doar Android 12+, `@bool/widget_agenda_enabled`)
+  `AgendaWidget` (fixate + restanțe + 7 zile, cu bifă; doar Android 12+, `@bool/widget_agenda_enabled`)
   și `QuickWidget` (1×1). Gruparea e `buildSmartLists` scrisă a doua oară în
   `core/Agenda.kt`; fixtures comune `src/lib/agenda.fixtures.json`. Două surse ca la
   mementouri: pagina (`setAgenda`, API 2) și a doua citire din `SyncWorker` pe
@@ -1707,6 +1709,18 @@ Pro (HyperOS 3, Android 16).
   la miezul nopții (gruparea se schimbă fără date noi). Întoarcerea pe ecranul de
   start o decide pagina (`NativeBridge`): primul `popstate` care nu e tichet sau
   foaie după o atingere din widget → `leave()` (`moveTaskToBack`).
+  **Fixatele** (din `versionCode 14`, „Sarcini fixate"): `pinnedAt` în
+  `AgendaItem` (`dueAt` poate fi `null` numai pe o fixată), grupul „Fixate" primul
+  în `buildAgenda` (cel fixat cel mai recent primul, nu și în ziua lui, bate rutina
+  adormită), numărat în `todayCount` ca numărul „Azi" (fixate + restanțe + azi).
+  Rândul are piuneza în coadă (`r_pin`, `ic_widget_pin`) și își spune ziua
+  (`rowMeta(…, pinned)`, roșie dacă e restantă); capul are piuneza în locul
+  ceasului. Pagina adaugă fixatele din `openIssues` (`withPinned` în
+  `NativeBridge`); citirea nativă cere `and=(or(due_at.lt.…,pinned_at.not.is.null),
+  <ale mele>)` cu `order=pinned_at.desc.nullslast,due_at.asc`, ca plafonul să nu
+  taie fixatele (`mineCond`, aceeași condiție ca `mineFilter`, în același `and`).
+  Fără `API` nou: un APK vechi ignoră câmpul. Fixtures: `agenda.fixtures.json`
+  (`pinnedAt`, secțiunea `pinned`, `todayCount`).
   **Desenul e „Senin"** (din `versionCode 10`, macheta `design/android-widget/index.html`):
   antet cu steaua, „Azi" și numărul de azi (restanțele incluse, `todayCount`), rânduri
   cu inelul în culoarea proiectului (urgent = inelul roșu — încă, `w_ck_urgent.xml`; chihlimbarul paginii cere un APK nou —, a doua `CheckBox` comutată
@@ -1726,7 +1740,8 @@ Pro (HyperOS 3, Android 16).
   de azi (`todayCount`, același cu al widget-ului — e aceeași agendă,
   `AgendaWidget.stateOf`), prima sarcină și ziua ei (`dueChipDay`, cuvintele
   aplicației; fixtures comune `src/lib/dueChipDay.fixtures.json`), sau „Nimic pe
-  azi" + ce urmează. Textul e pur, în `core/Shade.kt`. „+" = `QuickAddActivity`
+  azi" + ce urmează. Cu o fixată, prima e fixata cea mai recentă: „Fixată ·
+  Mâine 10:00 · încă 2" (fără scadență: „Fixată · încă 2"; `ShadeTest`). Textul e pur, în `core/Shade.kt`. „+" = `QuickAddActivity`
   (`Widgets.quick`); atingerea = aplicația pe „Azi" (evenimentul `shade`, separat
   de `widget`, pe care o pagină veche l-ar fi luat drept „quick" → `GO_TODAY_EVENT`
   în `App.tsx`). Se redesenează din `Widgets.refresh`, deci la orice listă, acțiune,

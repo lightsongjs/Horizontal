@@ -30,15 +30,19 @@ object Json {
         NativeAction.Kind.UNTIL -> JSONObject().put("action", "until").put("id", a.id).put("at", isoJs(a.remindAt ?: 0)).also { o -> a.dueAt?.let { o.put("dueAt", it) } }
     }
     fun agendaItemToJson(i: AgendaItem) = JSONObject().put("id", i.id).put("title", i.title).put("project", i.project ?: JSONObject.NULL)
-        .put("dueAt", i.dueAt).put("allDay", i.allDay).put("hasReminder", i.hasReminder).put("recurring", i.recurring).put("urgent", i.urgent)
+        .put("dueAt", i.dueAt ?: JSONObject.NULL).put("allDay", i.allDay).put("hasReminder", i.hasReminder).put("recurring", i.recurring).put("urgent", i.urgent)
         .put("hiddenUntil", i.hiddenUntil?.let { isoJs(it) } ?: JSONObject.NULL).put("accent", i.projectAccent ?: JSONObject.NULL)
+        .put("pinnedAt", i.pinnedAt ?: JSONObject.NULL)
     /** Și forma de pe punte (`AgendaItem` din `src/lib/agenda.ts`). */
     fun agendaItemFromJson(o: JSONObject): AgendaItem? {
         val id = o.str("id") ?: return null
-        val due = parseIso(o.str("dueAt")) ?: return null
-        return AgendaItem(id, o.str("title") ?: return null, o.str("project"), isoJs(due), o.optBoolean("allDay", false),
+        // Fără scadență doar o fixată (grupul „Fixate"); altfel rândul n-ar avea unde sta.
+        val pinned = parseIso(o.str("pinnedAt"))
+        val due = parseIso(o.str("dueAt"))
+        if (due == null && pinned == null) return null
+        return AgendaItem(id, o.str("title") ?: return null, o.str("project"), due?.let { isoJs(it) }, o.optBoolean("allDay", false),
             o.optBoolean("hasReminder", false), o.optBoolean("recurring", false), o.optBoolean("urgent", false),
-            parseIso(o.str("hiddenUntil")), o.str("accent")?.ifBlank { null })
+            parseIso(o.str("hiddenUntil")), o.str("accent")?.ifBlank { null }, pinned?.let { isoJs(it) })
     }
     fun agendaToJson(l: AgendaList) = JSONObject().put("readAt", l.readAt)
         .put("items", org.json.JSONArray().also { a -> l.items.forEach { a.put(agendaItemToJson(it)) } })
