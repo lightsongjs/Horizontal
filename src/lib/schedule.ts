@@ -300,16 +300,14 @@ export function reminderKindOf(dueAt: string | null, remindAt: string | null): R
 // Un browser în engleză arată `mm/dd/yyyy`, ceea ce pentru o dată românească e
 // ambiguu până la periculos — 03/04 e 3 aprilie sau 4 martie?
 //
-// De asta câmpul de dată e un text mascat, iar conversia stă aici.
+// De asta data se ARATĂ în cuvintele noastre („Azi", „Lun 20 oct", `zz/ll/aaaa`),
+// iar calendarul nativ doar o alege (`aaaa-ll-zz`, neutru). Conversia stă aici.
 
 /** ISO → `zz/ll/aaaa`, în ziua locală. */
 export function toDisplayDate(iso: string): string {
   const d = new Date(iso)
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`
 }
-
-/** Ce scrie în câmpul gol. Literele sunt cele românești: zi, lună, an. */
-export const DATE_PLACEHOLDER = 'zz/ll/aaaa'
 
 /**
  * `zz/ll/aaaa` → `aaaa-ll-zz` (forma pe care o consumă `fromInputs`), sau null
@@ -331,24 +329,6 @@ export function fromDisplayDate(text: string): string | null {
   const d = new Date(year, month - 1, day)
   if (d.getDate() !== day || d.getMonth() !== month - 1 || d.getFullYear() !== year) return null
   return `${yyyy}-${mm}-${dd}`
-}
-
-/**
- * Ce se vede în câmp după fiecare tastă: cifrele primite, cu cratimele puse
- * automat. Nimic altceva nu trece — o literă tastată din greșeală nu are ce să
- * caute într-o dată, iar șase cifre nu pot deveni o dată de patru cifre pe an.
- *
- * Nu completează și nu ghicește: `4` rămâne `4`, nu devine `04`. Altfel n-ai
- * putea scrie ziua 14, fiindcă primul `1` s-ar transforma în `01`.
- */
-export function maskDateInput(raw: string): string {
-  const digits = raw.replace(/\D/g, '').slice(0, 8)
-  const parts = [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4, 8)].filter((p) => p !== '')
-  // Bara se pune doar DUPĂ ce grupul e complet, ca ștergerea să funcționeze
-  // firesc: un backspace peste „24/" lasă „24", nu „24/" din nou.
-  let out = parts.join('/')
-  if (digits.length === 2 || digits.length === 4) out += '/'
-  return out
 }
 
 /**
@@ -383,6 +363,32 @@ export function dueChipDay(iso: string, now: Date): string {
   return d.getFullYear() === now.getFullYear() ? toDayMonth(d) : `${toDayMonth(d)} ${d.getFullYear()}`
 }
 
+const WD_SHORT = ['Dum', 'Lun', 'Mar', 'Mie', 'Joi', 'Vin', 'Sâm']
+/**
+ * Butonul de zi din panoul datei (`DuePanel`), pentru `aaaa-ll-zz`: „Azi",
+ * „Mâine", „Ieri" cu ziua calendaristică dedesubt („vin 17 oct" — ca să se
+ * vadă că „Azi" e chiar azi), altfel „Lun 20 oct" (anul doar când nu e cel
+ * curent), fără `sub`.
+ */
+export function pickDayLabel(date: string, now: Date): { day: string; sub: string } {
+  const [y, m, d] = date.split('-').map(Number)
+  const at = new Date(y, m - 1, d)
+  const off = dayOffset(at.toISOString(), now)
+  const wd = WD_SHORT[at.getDay()]
+  const dm = toDayMonth(at)
+  const year = at.getFullYear() === now.getFullYear() ? '' : ` ${at.getFullYear()}`
+  const rel = off === 0 ? 'Azi' : off === 1 ? 'Mâine' : off === -1 ? 'Ieri' : ''
+  return rel ? { day: rel, sub: `${wd.toLowerCase()} ${dm}${year}` } : { day: `${wd} ${dm}${year}`, sub: '' }
+}
+
+/**
+ * Valoarea unui `<input type="date">` (`aaaa-ll-zz`), validată prin dus-întors
+ * (o zi care nu există în calendar e `null`), ca `fromTimeText` pentru oră.
+ */
+export function fromInputDate(value: string): string | null {
+  return fromDisplayDate(displayFromInputDate(value))
+}
+
 /**
  * Subtitlul listei „7 zile": „Următoarele 7 zile · 15–21 oct", sau
  * „… · 28 oct – 3 noi" peste o graniță de lună. Zilele sunt cele din
@@ -408,15 +414,6 @@ export function displayFromInputDate(value: string): string {
 // Același motiv ca la dată: un `<input type="time">` nativ afișează 12 sau 24 de
 // ore după locale-ul browserului. „3:30 PM" într-o interfață românească e la fel
 // de nelalocul lui ca „08/24/2026", și încape mai greu.
-
-export const TIME_PLACEHOLDER = 'hh:mm'
-
-/** Ce se vede în câmp după fiecare tastă. Ca `maskDateInput`: nu ghicește. */
-export function maskTimeInput(raw: string): string {
-  const digits = raw.replace(/\D/g, '').slice(0, 4)
-  if (digits.length <= 2) return digits.length === 2 ? `${digits}:` : digits
-  return `${digits.slice(0, 2)}:${digits.slice(2)}`
-}
 
 /**
  * `hh:mm` → aceeași valoare normalizată, sau null dacă nu e o oră.

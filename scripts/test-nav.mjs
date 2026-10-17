@@ -1612,8 +1612,8 @@ try {
 
   // ── D-197: data din foaia de tichet ─────────────────────────────────────
   // Jetonul de dată deschide același panou ca formularul complet (presetări,
-  // câmpul `zz/ll/aaaa` + `hh:mm`), ca foaie de jos — nu inputurile native
-  // goale, care pe un telefon en-US arătau `10/16/2026` și `--:-- --`.
+  // butoanele de zi și de oră = calendarul / ceasul sistemului sub deget), ca
+  // foaie de jos — fără câmp de scris și fără textul nativ (`10/16/2026`).
   // „Mâine" scrie pe loc (autosave), verificat în baza locală.
   {
     const SHOTS = process.env.NAV_SHOTS
@@ -1637,13 +1637,14 @@ try {
     check('D-197: jetonul de dată deschide panoul ca foaie de jos', (await pop.count()) === 1, `${await pop.count()} panouri`)
     const shown = await pop.evaluate((el) => ({
       text: el.innerText,
-      fields: [...el.querySelectorAll('input.due-input')].map((i) => i.value),
+      typed: el.querySelectorAll('input:not([type=date]):not([type=time])').length,
+      day: el.querySelector('.fc-pick-date .fc-pick-t')?.textContent ?? null,
       nativeVisible: [...el.querySelectorAll('input[type=date], input[type=time]')].filter((i) => getComputedStyle(i).opacity !== '0').length,
       presets: [...el.querySelectorAll('.fc-pre')].map((b) => b.firstChild.textContent),
     })).catch(() => null)
     check('D-197: presetările Azi · Mâine · Luni · +1 săpt.', shown?.presets.join('|') === 'Azi|Mâine|Luni|+1 săpt.', JSON.stringify(shown?.presets))
-    check('D-197: fără text în formatul nativ', !!shown && shown.nativeVisible === 0 && !/--:--|\b(AM|PM)\b|\d{2}\/\d{2}\/\d{4}/.test(shown.text) && /^\d{2}\/\d{2}\/\d{4}$/.test(shown.fields[0] ?? ''),
-      JSON.stringify(shown?.fields))
+    check('D-197: fără câmp de scris și fără text nativ — butonul spune ziua', !!shown && shown.typed === 0 && shown.nativeVisible === 0 && !/--:--|\b(AM|PM)\b|\d{2}\/\d{2}\/\d{4}/.test(shown.text) && shown.day === 'Azi',
+      JSON.stringify({ day: shown?.day, typed: shown?.typed }))
     if (SHOTS) for (const theme of ['dark', 'light']) {
       await tp.evaluate((t) => document.documentElement.setAttribute('data-theme', t), theme)
       await tp.waitForTimeout(300)
@@ -1660,24 +1661,55 @@ try {
       return { day: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`, allDay: i.allDay }
     })
     check('D-197: „Mâine" din foaie scrie data pe loc', stored?.day === want, `${JSON.stringify(stored)} vs ${want}`)
-    const field = await pop.locator('input.due-input-date').inputValue().catch(() => null)
-    check('…și câmpul o arată zz/ll/aaaa', field === `${want.slice(8, 10)}/${want.slice(5, 7)}/${want.slice(0, 4)}`, JSON.stringify(field))
+    const dayBtn = await pop.locator('.fc-pick-date .fc-pick-t').textContent().catch(() => null)
+    check('…și butonul de zi spune „Mâine"', dayBtn === 'Mâine', JSON.stringify(dayBtn))
     const chipText = (await tp.locator('.edit-sheet .qs-due').textContent().catch(() => '')) ?? ''
     check('…iar jetonul spune „Mâine"', /Mâine/.test(chipText), JSON.stringify(chipText))
-    // Ora scrisă (24h) pleacă imediat ce e întreagă.
-    await pop.locator('input.due-input-time').fill('17:30')
+    // Ceasul (inputul nativ sub butonul de oră) pleacă imediat. Ce trimite
+    // selectorul la OK: valoarea + `change`, ca la „Oră" din bandă. (Nu
+    // `fill`: Chromium refuză o valoare pusă din script pe un input de oră
+    // focusat a cărui valoare s-a pus în `focusin` — `prime` —, deși
+    // selectorul și tastele merg.)
+    const choose = (sel, v) => pop.locator(sel).evaluate((el, val) => {
+      el.blur()
+      el.value = val
+      el.dispatchEvent(new Event('change', { bubbles: true }))
+    }, v)
+    await choose('.fc-pick-time input[type=time]', '17:30')
     await tp.waitForTimeout(800)
     const t = await tp.evaluate(() => {
       const i = JSON.parse(localStorage.getItem('horizontal:v2')).issues.find((x) => x.title === 'Sarcină pentru panoul de dată')
       const d = new Date(i.dueAt)
       return `${d.getHours()}:${d.getMinutes()} allDay=${i.allDay}`
     })
-    check('D-197: ora scrisă în câmp se salvează (24h)', t === '17:30 allDay=false', t)
+    check('D-197: ora aleasă din ceas se salvează (24h)', t === '17:30 allDay=false', t)
+    const timeBtn = await pop.locator('.fc-pick-time .fc-pick-t').textContent().catch(() => null)
+    check('…și butonul de oră spune 17:30', timeBtn === '17:30', JSON.stringify(timeBtn))
     if (SHOTS) for (const theme of ['dark', 'light']) {
       await tp.evaluate((th) => document.documentElement.setAttribute('data-theme', th), theme)
       await tp.waitForTimeout(300)
       await tp.screenshot({ path: `${SHOTS}/sheet-date-panel-time-390-${theme}.png` })
     }
+    // ✕ de lângă oră = toată ziua, ziua rămâne.
+    const x = await center(pop.locator('.fc-pick-x'))
+    await tap(x.x, x.y)
+    await tp.waitForTimeout(800)
+    const cleared = await tp.evaluate(() => {
+      const i = JSON.parse(localStorage.getItem('horizontal:v2')).issues.find((x) => x.title === 'Sarcină pentru panoul de dată')
+      const d = new Date(i.dueAt)
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} allDay=${i.allDay}`
+    })
+    check('D-197: ✕ de lângă oră lasă ziua, toată ziua', cleared === `${want} allDay=true`, cleared)
+    // Calendarul (inputul nativ sub butonul de zi) scrie ziua aleasă.
+    const pick = await tp.evaluate(() => { const d = new Date(); d.setDate(d.getDate() + 10); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` })
+    await choose('.fc-pick-date input[type=date]', pick)
+    await tp.waitForTimeout(800)
+    const picked = await tp.evaluate(() => {
+      const i = JSON.parse(localStorage.getItem('horizontal:v2')).issues.find((x) => x.title === 'Sarcină pentru panoul de dată')
+      const d = new Date(i.dueAt)
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    })
+    check('D-197: ziua aleasă din calendar se salvează', picked === pick, `${picked} vs ${pick}`)
     await ctx.close()
   }
 
@@ -1702,14 +1734,15 @@ try {
     const pan = qp.locator('.quick-sheet .qs-when')
     const shown = await pan.evaluate((el) => ({
       text: el.innerText,
-      fields: [...el.querySelectorAll('input.due-input')].map((i) => i.value),
+      typed: el.querySelectorAll('input:not([type=date]):not([type=time])').length,
+      day: el.querySelector('.fc-pick-date .fc-pick-t')?.textContent ?? null,
       nativeVisible: [...el.querySelectorAll('input[type=date], input[type=time]')].filter((i) => getComputedStyle(i).opacity !== '0').length,
       presets: [...el.querySelectorAll('.fc-pre')].map((b) => b.firstChild.textContent),
       reminder: !!el.querySelector('.fc-seg'),
     })).catch(() => null)
     check('foaia rapidă: jetonul de dată deschide panoul (Azi · Mâine · Luni · +1 săpt.)', shown?.presets.join('|') === 'Azi|Mâine|Luni|+1 săpt.', JSON.stringify(shown?.presets))
-    check('…fără text în formatul nativ și fără memento', !!shown && shown.nativeVisible === 0 && !shown.reminder && !/--:--|\b(AM|PM)\b/.test(shown.text) && /^\d{2}\/\d{2}\/\d{4}$/.test(shown.fields[0] ?? ''),
-      JSON.stringify(shown?.fields))
+    check('…fără câmp de scris, fără text nativ și fără memento', !!shown && shown.typed === 0 && shown.nativeVisible === 0 && !shown.reminder && !/--:--|\b(AM|PM)\b/.test(shown.text) && !!shown.day,
+      JSON.stringify({ day: shown?.day, typed: shown?.typed }))
     const want = await qp.evaluate(() => { const d = new Date(); d.setDate(d.getDate() + 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` })
     const mBtn = await center(pan.locator('.fc-pre', { hasText: 'Mâine' }))
     await tap(mBtn.x, mBtn.y)

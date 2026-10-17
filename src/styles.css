@@ -3942,21 +3942,54 @@ button.we-del:hover { color: var(--blocked); background: var(--blocked-soft); }
 /* Cu textul mărit (peste „Normal"), patru presetări pe un rând de 320px nu
    mai încap întregi — trec pe două coloane. */
 html[data-text-large] .fc-presets { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-html[data-text-large] .fc-fields > .due-inputs { flex-basis: 100%; }
-.fc-fields > .due-inputs { flex: 1 1 220px; min-width: 0; }
-/* În popover data e un câmp de scris, deci se citește ca un câmp: contur,
-   text în culoarea normală (regula 1 din „Senin"). */
-.fc-fields > .due-inputs {
-  background: transparent;
-  box-shadow: none;
-  border: 1px solid var(--line);
-  border-radius: var(--r-m);
+/* Ziua și ora: două butoane, nu câmpuri de scris (decizia omului,
+   2026-10-17). Fiecare E un `NativePick` — inputul nativ transparent stă
+   peste tot butonul, deci atingerea / clicul deschide direct calendarul sau
+   ceasul sistemului. Salt de fundal (`--surface-3`, ca presetările de deasupra), fără chenar. */
+.fc-pick {
+  height: 40px;
+  min-width: 0;
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 0 12px;
+  border-radius: var(--r-s);
+  background: var(--surface-3);
+  color: var(--txt);
+  font-size: calc(14px * var(--text-scale));
+  font-weight: 600;
+  white-space: nowrap;
 }
-.fc-fields > .due-inputs:focus-within { border-color: var(--accent); }
-.fc-fields .due-input-date, .fc-fields .due-input-time { color: var(--txt); }
+.fc-pick svg { flex-shrink: 0; color: var(--accent); }
+.fc-pick:hover { background: var(--line); }
+.fc-pick-date { flex: 1 1 auto; }
+.fc-pick-date.unset { color: var(--accent); }
+.fc-pick-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.fc-pick-sub { font-size: calc(12px * var(--text-scale)); font-weight: 500; color: var(--txt-faint); }
+.fc-pick-time .fc-pick-t { font-family: var(--mono); }
+/* Ora fără valoare („Oră") e o invitație, nu o valoare: litere obișnuite. */
+.fc-time:not(.set) .fc-pick-time .fc-pick-t { font-family: inherit; color: var(--txt-dim, var(--txt-faint)); }
+/* Ora + ✕ = un singur jeton, despărțit doar de o linie de păr. */
+.fc-time { display: inline-flex; flex-shrink: 0; border-radius: var(--r-s); background: var(--surface-3); }
+.fc-time .fc-pick-time { background: transparent; }
+.fc-time.set .fc-pick-time { padding-right: 8px; border-radius: var(--r-s) 0 0 var(--r-s); }
+.fc-time:hover:not(:has(.fc-pick-x:hover)) .fc-pick-time { background: var(--line); }
+.fc-pick-x {
+  width: 40px; height: 40px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 0;
+  border-radius: 0 var(--r-s) var(--r-s) 0;
+  box-shadow: inset 1px 0 0 var(--line);
+  background: transparent;
+  color: var(--txt-faint);
+  cursor: pointer;
+}
+.fc-pick-x:hover { color: var(--txt); background: var(--line); }
+.fc-pick-x:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* Pe desktop popoverul e mai dens: 34px. */
+@media (min-width: 900px) {
+  .fc-pick { height: 34px; font-size: calc(13px * var(--text-scale)); }
+  .fc-pick-x { height: 34px; width: 30px; }
+}
 .fc-fields .fc-link, .fc-recur .fc-link { text-decoration: none; }
-.fc-fields .due-input-date { text-align: left; padding-left: 4px; }
-.fc-fields > .due-inputs .due-input-date { flex: 1 1 auto; }
 .fc-note { margin: 7px 2px 0; font-size: calc(12px * var(--text-scale)); color: var(--txt-faint); }
 .fc-note.warn { color: var(--active); font-weight: 600; }
 .fc-seg { display: flex; flex-wrap: wrap; gap: 5px; }
@@ -5381,81 +5414,6 @@ body:has(.kb-sheet) .toast {
   .lb-nav.next { right: 16px; }
 }
 
-/* ── SCADENȚĂ în formularul de tichet ─────────────────────────────
-   Inputuri native (calendarul și ceasul sistemului, gratis pe telefon)
-   îmbrăcate în aceleași jetoane ca restul rândului de meta. */
-/* UN câmp, nu trei jetoane: data, ora și butoanele lor stau într-o singură
-   ramă, fiindcă sunt un singur lucru. Chenarul rămâne — aici chiar se scrie,
-   iar un câmp fără delimitare nu se mai citește ca un câmp (regula 1). */
-.due-inputs {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  min-width: 0;
-  height: 32px;
-  padding: 0 4px 0 8px;
-  border-radius: var(--r-s);
-  background: var(--surface-3);
-  /* Ancora pentru `.due-native`, care e poziționat absolut. */
-  position: relative;
-}
-/* Fără scadență: aceeași afordanță punctată ca jetoanele goale din bară. */
-.due-inputs.unset { background: transparent; box-shadow: none; border: 1px dashed var(--line); }
-.due-input {
-  background: transparent;
-  border: 0;
-  padding: 0 2px;
-  font-size: calc(12px * var(--text-scale));
-  font-weight: 600;
-  font-family: var(--mono);
-  color: var(--txt);
-  min-width: 0;
-  transition: color 0.13s;
-}
-.due-input:focus-visible { outline: none; color: var(--accent); }
-.due-input-date { flex: 0 0 82px; text-align: center; letter-spacing: 0.02em; }
-.due-input-date::placeholder { color: var(--txt-faint); font-weight: 500; letter-spacing: 0; }
-/* Text scris pe jumătate: un semnal, nu o ceartă. Cineva care a apăsat prima
-   cifră nu a greșit încă nimic. */
-.due-input.incomplete { color: var(--active); }
-/* Inputul nativ există doar ca să-i putem cere `showPicker()`. Ascuns, dar în
-   document și în fluxul de layout la lățime zero — `display:none` ar face
-   `showPicker()` să arunce. */
-.due-native {
-  position: absolute;
-  width: 1px; height: 1px;
-  opacity: 0;
-  pointer-events: none;
-  border: 0; padding: 0;
-}
-/* Butoanele stau ÎN câmp acum, deci n-au fundal propriu: un jeton peste un
-   jeton ar fi fost două rame una în alta. */
-.due-pick {
-  width: 24px; height: 24px;
-  border-radius: 4px;
-  color: var(--txt-faint);
-  display: inline-flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-  background: transparent;
-}
-.due-pick:hover:not(:disabled) { color: var(--accent); background: var(--accent-soft); }
-.due-pick:disabled { opacity: 0.4; cursor: not-allowed; }
-.due-input-time { flex: 0 0 46px; text-align: center; letter-spacing: 0.02em; }
-.due-input-time::placeholder { color: var(--txt-faint); font-weight: 500; letter-spacing: 0; }
-/* Fără dată, ora nu poate însemna nimic — inertă, nu ascunsă, ca rândul să nu
-   sară când apare. */
-.due-input:disabled { opacity: 0.4; cursor: not-allowed; }
-/* Un input de dată gol arată `zz.ll.aaaa` în gri de sistem; îl aducem la
-   paleta noastră ca să nu strige mai tare decât o valoare reală. */
-.due-input:invalid,
-.due-input:not(:valid) { color: var(--txt-faint); font-weight: 500; }
-.due-input::-webkit-calendar-picker-indicator {
-  opacity: 0.5;
-  cursor: pointer;
-  filter: var(--cal-icon-filter, invert(1));
-}
-[data-theme='light'] .due-input::-webkit-calendar-picker-indicator { filter: none; }
-.due-input::-webkit-calendar-picker-indicator:hover { opacity: 1; }
 /* ═══════════════════════════════════════════════════════════════════
    MOD TO-DO — liste inteligente (Azi / Mâine / Next 7 days)
    Gramatica de clase e cea din ListView (.list-row, .list-group), ca
@@ -6824,40 +6782,6 @@ body:has(.kb-sheet) .toast {
 .map-head.don { fill: var(--done); opacity: 0.5; }
 .map-strike { stroke: var(--done); stroke-width: 1.2; opacity: 0.8; }
 .map-node { cursor: pointer; }
-
-/* ── TELEFON: scadența, la deget ──────────────────────────────────────
-   Câmpul din popoverul datei. La COADA fișierului: regulile de bază ale
-   `.due-pick` vin mai sus, cu aceeași specificitate.
-   Testat de `npm run test:layout` („calendar/ceas atingibile"). */
-@media (max-width: 899px) {
-
-  /* Degetul, nu cursorul: 24px e o țintă de mouse. Calendarul și ceasul sunt
-     singurul drum către selectorul nativ de pe telefon, iar o ratare acolo
-     înseamnă cursor pus în câmpul de cifre — adică tastatura peste ecran, în
-     loc de calendar. Câmpul crește odată cu ele ca butoanele să nu iasă din
-     ramă. */
-  .due-inputs {
-    height: 38px;
-    gap: 0;
-    padding: 0 2px 0 4px;
-  }
-  .due-input {
-    font-size: calc(14px * var(--text-scale));
-  }
-  /* Data ia golul; ora rămâne pe măsura a cinci cifre — altfel „09:30" ar
-     pluti în mijlocul unei jumătăți de rând. */
-  .due-input-date { flex: 1 1 auto; min-width: 88px; }
-  .due-input-time { flex: 0 0 58px; }
-  .due-pick {
-    width: 40px;
-    height: 34px;
-    border-radius: var(--r-s);
-  }
-  .due-pick svg {
-    width: 18px;
-    height: 18px;
-  }
-}
 
 /* Proveniența, la coada foii: un fapt care se citește o dată nu are ce căuta
    în primul rând de sub titlu. Stinsă și despărțită de restul printr-un salt

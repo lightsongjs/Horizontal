@@ -392,12 +392,8 @@ const datePop = (sheet) => `
     <button class="fc-pre">+1 săpt.<small>21 oct</small></button>
   </div>
   <div class="fc-fields">
-    <div class="due-inputs">
-      <input class="due-input due-input-date" value="17/09/2026">
-      <span class="native-pick due-pick"><svg width="13" height="13"></svg><input class="native-pick-input" type="date"></span>
-      <input class="due-input due-input-time" value="09:30">
-      <span class="native-pick due-pick"><svg width="13" height="13"></svg><input class="native-pick-input" type="time"></span>
-    </div>
+    <span class="native-pick fc-pick fc-pick-date"><svg width="16" height="16"></svg><span class="fc-pick-t">Mâine</span><small class="fc-pick-sub">sâm 18 oct 2027</small><input class="native-pick-input" type="date"></span>
+    <span class="fc-time set"><span class="native-pick fc-pick fc-pick-time"><svg width="16" height="16"></svg><span class="fc-pick-t">09:30</span><input class="native-pick-input" type="time"></span><button class="fc-pick-x"><svg width="14" height="14"></svg></button></span>
     <button class="fc-link">scoate</button>
   </div>
   <h4 class="fc-h">Memento</h4>
@@ -462,7 +458,8 @@ console.log('\nRândul de jetoane în panoul lateral (~500px):')
       paneW: Math.round(r(pane).width),
       popOut: Math.round(r(pop).right - r(pane).right),
       popOverflow: pop.scrollWidth - pop.clientWidth,
-      dueOut: Math.round(r(document.querySelector('.due-inputs')).right - r(pop).right),
+      dueOut: Math.round(Math.max(...[...pop.querySelectorAll('.fc-fields > *')].map((el) => r(el).right)) - r(pop).right),
+      cut: [...pop.querySelectorAll('.fc-pick-t, .fc-pick-sub')].filter((t) => t.scrollWidth > t.clientWidth + 1).length,
     }
   })
   const row = await page.evaluate(measureRow)
@@ -472,7 +469,8 @@ console.log('\nRândul de jetoane în panoul lateral (~500px):')
   check('jetoane nestrivite în panou', row.crushed === 0, `${row.crushed} sub 28px`)
   check('aliniat cu titlul în panou', Math.abs(row.alignGap) <= 1, `${row.alignGap}px`)
   check('popoverul datei încape în panou', m.popOut <= 0 && m.popOverflow <= 0, `${m.popOut}px peste panou, ${m.popOverflow}px în el`)
-  check('câmpul datei încape în popover', m.dueOut <= 0, `${m.dueOut}px peste`)
+  check('butoanele de zi și oră încap în popover', m.dueOut <= 0, `${m.dueOut}px peste`)
+  check('etichetele zilei și orei întregi în popover', m.cut === 0, `${m.cut} tăiate`)
 }
 
 console.log('\nPopoverul datei ca foaie de jos (telefon):')
@@ -481,15 +479,15 @@ for (const width of PHONE_WIDTHS) {
   await page.setContent(`<style>${CSS}</style><div class="sheet on tall" style="position:static;transform:none;width:100%">${formHead()}</div>${datePop(true)}`)
   const m = await page.evaluate(() => {
     const pop = document.querySelector('.fc-sheet')
-    const field = document.querySelector('.fc-sheet .due-inputs')
-    const picks = [...document.querySelectorAll('.fc-sheet .due-pick')]
+    const fields = [...document.querySelectorAll('.fc-sheet .fc-fields > *')]
+    const picks = [...document.querySelectorAll('.fc-sheet .fc-pick, .fc-sheet .fc-pick-x')]
     const pres = [...document.querySelectorAll('.fc-sheet .fc-pre')]
     const r = (el) => el.getBoundingClientRect()
     return {
       popW: Math.round(r(pop).width),
       popOverflow: pop.scrollWidth - pop.clientWidth,
-      fieldOut: Math.round(r(field).right - r(pop).right),
-      fieldOverflow: field.scrollWidth - Math.round(r(field).width),
+      fieldOut: Math.round(Math.max(...fields.map((el) => r(el).right)) - r(pop).right),
+      fieldOverflow: [...document.querySelectorAll('.fc-sheet .fc-pick-t, .fc-sheet .fc-pick-sub')].filter((t) => t.scrollWidth > t.clientWidth + 1).length,
       pick: Math.round(Math.min(...picks.map((p) => Math.min(r(p).width, r(p).height)))),
       preWrapped: pres.some((p) => p.scrollWidth > p.clientWidth + 1),
       docOverflow: document.documentElement.scrollWidth - innerWidth,
@@ -498,8 +496,8 @@ for (const width of PHONE_WIDTHS) {
   await page.close()
   check(`foaia pe toată lățimea @${width}px`, m.popW === width && m.docOverflow <= 0, `${m.popW}px, pagina +${m.docOverflow}px`)
   check(`nimic nu iese din foaie @${width}px`, m.popOverflow <= 0 && m.fieldOut <= 0, `${m.popOverflow}px / câmp +${m.fieldOut}px`)
-  check(`câmp nestrivit @${width}px`, m.fieldOverflow <= 0, `${m.fieldOverflow}px peste câmp`)
-  check(`calendar/ceas atingibile @${width}px`, m.pick >= 32, `cel mai mic ${m.pick}px`)
+  check(`etichetele zilei și orei întregi @${width}px`, m.fieldOverflow === 0, `${m.fieldOverflow} tăiate`)
+  check(`butoanele zi/oră/✕ atingibile @${width}px`, m.pick >= 32, `cel mai mic ${m.pick}px`)
   check(`presetările întregi @${width}px`, !m.preWrapped, m.preWrapped ? 'o presetare iese din casetă' : 'toate încap')
 }
 
@@ -1647,8 +1645,8 @@ const { outputFiles: [dueBundle] } = await esbuild.build({
         return h('div', { className: 'edit-sheet kb-sheet' },
           h('div', { className: 'qs-bar', ref: row }, h('button', { className: 'qs-due on' }, 'Azi 17:30')),
           h(ChipPop, { anchor: null, rowRef: row, sheet: true, role: 'dialog', label: 'Scadența', className: 'fc-pop-date es-due-pop', onClose: noop },
-            h(DuePanel, { now, dueText: '16/10/2026', timeText: '17:30', dueDate: '2026-10-16', dueTime: '17:30',
-              onDueText: noop, onTimeText: noop, onPreset: noop, onPickDate: noop, onPickTime: noop, onClear: noop,
+            h(DuePanel, { now, dueDate: '2026-10-16', dueTime: '17:30',
+              onPreset: noop, onPickDate: noop, onPickTime: noop, onClearTime: noop, onClear: noop,
               reminder: 'm30', onReminder: noop, rrule, onClearRrule: noop })))
       }
       window.__mount = (rrule) => createRoot(document.getElementById('app')).render(h(Harness, { rrule }))
@@ -1671,12 +1669,15 @@ for (const width of PHONE_WIDTHS) {
     const pop = document.querySelector('.fc-sheet')
     const r = (el) => el.getBoundingClientRect()
     const pres = [...pop.querySelectorAll('.fc-pre')]
-    const picks = [...pop.querySelectorAll('.due-pick')]
+    const picks = [...pop.querySelectorAll('.fc-pick, .fc-pick-x')]
+    const cut = [...pop.querySelectorAll('.fc-pick-t, .fc-pick-sub')].filter((t) => t.scrollWidth > t.clientWidth + 1).length
+    const fieldsOut = Math.round(Math.max(...[...pop.querySelectorAll('.fc-fields > *')].map((el) => r(el).right)) - r(pop).right)
     // Ce se VEDE: textul randat plus valorile câmpurilor vizibile. Inputurile
     // native (sub iconițe) trebuie să fie transparente — al lor e formatul
     // locale-ului, nu al nostru.
     const natives = [...pop.querySelectorAll('input[type=date], input[type=time]')]
-    const shown = pop.innerText + ' ' + [...pop.querySelectorAll('input:not([type=date]):not([type=time])')].map((i) => i.value).join(' ')
+    const shown = pop.innerText
+    const typed = pop.querySelectorAll('input:not([type=date]):not([type=time])').length
     return {
       popW: Math.round(r(pop).width),
       popOverflow: pop.scrollWidth - pop.clientWidth,
@@ -1687,17 +1688,19 @@ for (const width of PHONE_WIDTHS) {
       pick: Math.round(Math.min(...picks.map((p) => Math.min(r(p).width, r(p).height)))),
       nativeVisible: natives.filter((i) => getComputedStyle(i).opacity !== '0').length,
       nativeCount: natives.length,
+      cut, fieldsOut, typed,
       shown,
     }
   })
   const usFormat = /\b10\/16\/2026\b|--:--|\b(AM|PM)\b|mm\/dd/i.test(m.shown)
-  const roFormat = m.shown.includes('16/10/2026') && m.shown.includes('17:30')
+  const roFormat = /Azi/.test(m.shown) && m.shown.includes('vin 16 oct') && m.shown.includes('17:30')
   check(`foaia de dată pe toată lățimea @${width}px`, m.popW === width && m.popOverflow <= 0 && m.docOverflow <= 0, `${m.popW}px, +${m.popOverflow}px, pagina +${m.docOverflow}px`)
   // Cu textul mărit presetările trec, prin design, pe două coloane.
   const maxRows = Number(process.env.TEXT_SCALE ?? 1) > 1 ? 2 : 1
   check(`presetările încap întregi (${maxRows === 1 ? 'un rând' : 'max. două rânduri'}) @${width}px`, m.preCount === 4 && m.preWrapped === 0 && m.preRow <= maxRows,`${m.preCount} presetări, ${m.preWrapped} tăiate, ${m.preRow} rând(uri)`)
-  check(`fără text în formatul nativ @${width}px`, !usFormat && roFormat && m.nativeVisible === 0 && m.nativeCount === 2, usFormat ? `găsit: ${m.shown.replace(/\s+/g, ' ').slice(0, 120)}` : `zz/ll/aaaa + 24h, ${m.nativeCount} selectoare native transparente`)
-  check(`calendar/ceas atingibile în foaie @${width}px`, m.pick >= 32, `cel mai mic ${m.pick}px`)
+  check(`fără text în formatul nativ, fără câmp de scris @${width}px`, !usFormat && roFormat && m.nativeVisible === 0 && m.nativeCount === 2 && m.typed === 0, usFormat ? `găsit: ${m.shown.replace(/\s+/g, ' ').slice(0, 120)}` : `„Azi · vin 16 oct" + 24h, ${m.nativeCount} selectoare native transparente, ${m.typed} câmpuri scrise`)
+  check(`butoanele zi/oră/✕ atingibile în foaie @${width}px`, m.pick >= 32, `cel mai mic ${m.pick}px`)
+  check(`butoanele zi/oră încap, etichete întregi @${width}px`, m.fieldsOut <= 0 && m.cut === 0, `+${m.fieldsOut}px, ${m.cut} tăiate`)
   if (DUE_SHOTS && width === 390) for (const theme of ['dark', 'light']) {
     await page.evaluate((t) => document.documentElement.setAttribute('data-theme', t), theme)
     await page.waitForTimeout(300) // culorile câmpurilor au `transition`
@@ -1743,9 +1746,12 @@ for (const width of PHONE_WIDTHS) {
     const pan = document.querySelector('.qs-when')
     const r = (el) => el.getBoundingClientRect()
     const pres = [...pan.querySelectorAll('.fc-pre')]
-    const picks = [...pan.querySelectorAll('.due-pick')]
+    const picks = [...pan.querySelectorAll('.fc-pick, .fc-pick-x')]
+    const cut = [...pan.querySelectorAll('.fc-pick-t, .fc-pick-sub')].filter((t) => t.scrollWidth > t.clientWidth + 1).length
+    const fieldsOut = Math.round(Math.max(...[...pan.querySelectorAll('.fc-fields > *')].map((el) => r(el).right)) - r(pan).right)
     const natives = [...pan.querySelectorAll('input[type=date], input[type=time]')]
-    const shown = pan.innerText + ' ' + [...pan.querySelectorAll('input:not([type=date]):not([type=time])')].map((i) => i.value).join(' ')
+    const shown = pan.innerText
+    const typed = pan.querySelectorAll('input:not([type=date]):not([type=time])').length
     return {
       overflow: Math.max(sheet.scrollWidth - sheet.clientWidth, pan.scrollWidth - pan.clientWidth),
       docOverflow: document.documentElement.scrollWidth - innerWidth,
@@ -1755,18 +1761,20 @@ for (const width of PHONE_WIDTHS) {
       pick: Math.round(Math.min(...picks.map((p) => Math.min(r(p).width, r(p).height)))),
       nativeVisible: natives.filter((i) => getComputedStyle(i).opacity !== '0').length,
       nativeCount: natives.length,
+      cut, fieldsOut, typed,
       reminder: pan.querySelector('.fc-seg') !== null,
       above: r(pan).bottom <= r(document.querySelector('.qs-bar')).top,
       shown,
     }
   })
   const usFormat = /\b10\/16\/2026\b|--:--|\b(AM|PM)\b|mm\/dd/i.test(m.shown)
-  const roFormat = m.shown.includes('16/10/2026') && m.shown.includes('17:30')
+  const roFormat = /Vin 16 oct|Azi|Mâine|Ieri/.test(m.shown) && m.shown.includes('17:30')
   const maxRows = Number(process.env.TEXT_SCALE ?? 1) > 1 ? 2 : 1
   check(`foaia rapidă: panoul nu lățește foaia @${width}px`, m.overflow <= 0 && m.docOverflow <= 0 && m.above, `+${m.overflow}px, pagina +${m.docOverflow}px, deasupra rândului=${m.above}`)
   check(`foaia rapidă: presetările încap întregi @${width}px`, m.preCount === 4 && m.preWrapped === 0 && m.preRow <= maxRows, `${m.preCount} presetări, ${m.preWrapped} tăiate, ${m.preRow} rând(uri)`)
-  check(`foaia rapidă: fără text în formatul nativ, fără memento @${width}px`, !usFormat && roFormat && m.nativeVisible === 0 && m.nativeCount === 2 && !m.reminder, usFormat ? `găsit: ${m.shown.replace(/\s+/g, ' ').slice(0, 120)}` : `zz/ll/aaaa + 24h, memento=${m.reminder}`)
-  check(`foaia rapidă: calendar/ceas atingibile @${width}px`, m.pick >= 32, `cel mai mic ${m.pick}px`)
+  check(`foaia rapidă: fără text în formatul nativ, fără memento, fără câmp de scris @${width}px`, !usFormat && roFormat && m.nativeVisible === 0 && m.nativeCount === 2 && !m.reminder && m.typed === 0, usFormat ? `găsit: ${m.shown.replace(/\s+/g, ' ').slice(0, 120)}` : `zi în cuvinte + 24h, memento=${m.reminder}`)
+  check(`foaia rapidă: butoanele zi/oră/✕ atingibile @${width}px`, m.pick >= 32, `cel mai mic ${m.pick}px`)
+  check(`foaia rapidă: butoanele zi/oră încap, etichete întregi @${width}px`, m.fieldsOut <= 0 && m.cut === 0, `+${m.fieldsOut}px, ${m.cut} tăiate`)
   if (width === 390) {
     const rd = await readable(page)
     check('foaia rapidă cu panoul: „Mâine" și „Exemplu" întregi', rd.day === 'întreg' && rd.proj === 'întreg', `${rd.day}, ${rd.proj}`)

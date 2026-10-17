@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useRef, type KeyboardEvent, type ReactNode } from 'react'
 import type { NativeKind } from '../lib/nativePicker'
 
 interface Props {
@@ -47,6 +47,22 @@ export function NativePick({ type, label, initial, onPick, className = '', tabIn
   // pornește de la ea, iar o alegere identică nu e o schimbare (fără `change`).
   const prime = () => { if (ref.current) ref.current.value = initial() }
 
+  // Tastatura (desktop): Enter / Space deschid selectorul. Aici `showPicker()`
+  // e în regulă — e un gest de tastatură pe desktop, nu drumul atingerii de pe
+  // telefon. Restul tastelor care ar edita inputul sunt oprite: e transparent,
+  // deci segmentele schimbate cu săgeți sau cifre n-ar fi văzute de nimeni.
+  const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      prime()
+      try { ref.current?.showPicker?.() } catch { /* fără selector: rămâne atingerea */ }
+      return
+    }
+    if (e.key.length === 1 || /^(Arrow|Backspace|Delete|Page|Home|End)/.test(e.key)) {
+      if (!e.ctrlKey && !e.metaKey && !e.altKey) e.preventDefault()
+    }
+  }
+
   return (
     <span className={`native-pick ${className}`} data-pick={type}>
       {children}
@@ -58,6 +74,7 @@ export function NativePick({ type, label, initial, onPick, className = '', tabIn
         tabIndex={tabIndex}
         onPointerDown={prime}
         onFocus={prime}
+        onKeyDown={onKeyDown}
       />
     </span>
   )

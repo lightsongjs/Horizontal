@@ -570,8 +570,9 @@ rândul mementoului și fără „Se repetă" (captura pune mementoul implicit,
 repetarea vine din titlu) — `DuePanel` le ascunde fără `onReminder` /
 `onClearRrule`. Butoanele panoului nu iau focusul (`pointerdown` prevenit pe
 container), deci după „Mâine" tastatura rămâne și scrisul în titlu continuă;
-după calendar / ceas focusul revine pe titlu. Rândul din listă și bara de pe
-Linux (`QuickAdd`) au încă inputurile native — sunt pe desktop.
+după calendar / ceas focusul revine pe titlu (✕ de lângă oră e tot buton, deci
+nu ia focusul). Rândul din listă și bara de pe Linux (`QuickAdd`) au încă
+inputurile native — sunt pe desktop.
 
 **Descrierea pe desktop:** Tab peste un titlu început o deschide, Shift+Tab sau
 Backspace pe descriere goală te întorc, Ctrl+Enter salvează din ea (tabelul e
@@ -634,10 +635,22 @@ numai la o expresie de recurență.
 complet), în `ChipPop` ca foaie de jos — nu cele două inputuri native, care pe
 un telefon en-US arătau `10/16/2026` și `--:-- --`. `SheetDue` (`EditSheet.tsx`)
 scrie pe loc, prin `reschedule` (mementoul își ține decalajul, `rrule` neatins):
-presetările și calendarul imediat, textul scris abia când e o dată/oră validă,
-iar o oră golită (= toată ziua) la ieșirea din câmp. Deschiderea aplică întâi o
-dată evidențiată în titlu (gest de încheiere, ca „…"). Textul câmpurilor
-(scris pe jumătate) îl ține `useDueFields`, comun cu foaia rapidă.
+presetările, calendarul, ceasul și ✕ de lângă oră (= toată ziua), imediat.
+Deschiderea aplică întâi o dată evidențiată în titlu (gest de încheiere, ca „…").
+
+**Data nu se scrie de mână** (decizia omului, 2026-10-17: „aleg mereu din
+calendar"). Sub presetări, `DuePanel` are două butoane, nu câmpuri: ziua
+(„Azi" + „sâm 17 oct" dedesubt, altfel „Lun 20 oct"; fără dată „Alege data";
+`pickDayLabel` din `schedule.ts`) și ora („10:30" cu ✕, sau „Oră"). Fiecare
+buton ESTE un `NativePick` — inputul nativ transparent peste tot butonul —,
+deci atingerea / clicul deschide direct calendarul / ceasul sistemului, în
+toate trei gazdele (foaia de tichet, foaia rapidă, popoverul formularului).
+Valoarea întoarsă se validează (`fromInputDate`, `fromTimeText`). Tastatura
+(desktop): butonul e focusabil, Enter/Space cheamă `showPicker()` (acolo e un
+gest de tastatură pe desktop, nu drumul atingerii de pe telefon), iar celelalte
+taste de editare sunt oprite — inputul e transparent, un segment schimbat cu
+săgeata n-ar fi văzut. `useDueFields`, masca `zz/ll/aaaa` și câmpurile scrise
+au ieșit.
 
 **Fără buton de salvare.** `src/lib/autosave.ts` (pur, cu teste) + `useAutosave`
 din `hooks.ts` — gândite să fie reluate de formularul complet când pierde și el
@@ -742,10 +755,11 @@ tăiate de `overflow` al corpului.
   Escape-ul din `SheetHost`/`SplitView` ar fi închis tot formularul. Sub
   900px popoverul e foaie de jos, prin portal în `body` (`.sheet` are
   `transform`).
-- Popoverul datei refolosește câmpul scris (`dueText`/`timeText`, aceeași
-  validare) plus presetări (Azi · Mâine · Luni · +1 săpt.) și mementoul —
-  `DuePanel`, comun cu foaia de tichet. Calendarul și ceasul din câmp sunt
-  `NativePick` (inputul nativ sub deget), nu `showPicker()`.
+- Popoverul datei: presetări (Azi · Mâine · Luni · +1 săpt.), butoanele de
+  zi și de oră (calendarul / ceasul sistemului, `NativePick`, nu câmpuri de
+  scris) și mementoul — `DuePanel`, comun cu foaia de tichet. Formularul își
+  ține în continuare data ca text `zz/ll/aaaa` (`dueText`, de el depinde
+  `fillFromTitle`), dar textul vine numai din alegeri valide.
   Logica de murdărie e neatinsă: deschiderea unui tichet nu-l face „nesalvat”.
 - Bara de fișiere apare numai cu fișiere (`Attachments hideEmpty`); agrafa din
   rând urcă prin același drum (`addRef`). Tragerea peste coloana descrierii
