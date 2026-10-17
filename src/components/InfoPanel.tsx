@@ -124,8 +124,8 @@ const RULES: { title: string; body: string }[] = [
     body: 'O sarcină fixată (piuneza din antetul cardului, de lângă ID în foaia de telefon, piuneza din coada rândului la hover pe desktop, click dreapta pe rând, ⋮ al unui rând sau tasta F) urcă sus în lista din care face oricum parte, ca Pin din TickTick: în Azi (dacă e de azi sau restantă) și în 7 zile, primul grup, Fixate, deasupra restanțelor și a urgentelor; în filtre, prima în proiectul ei. Fixarea nu aduce nimic într-o listă: fără dată stă doar în proiect, iar mutată pe mâine trece din Azi în 7 zile. Nu se arată de două ori, iar numerele rămân aceleași. Bifată iese din grup; debifată revine. O recurentă bifată sare la următoarea dată și rămâne fixată. Între ele, cea fixată ultima e prima. În Listă fixatele urcă primele în grupul lor.',
   },
   {
-    title: 'Fără Inbox',
-    body: 'Fiecare sarcină are un proiect. Rândul de adăugare rapidă ține minte ultima alegere.',
+    title: 'Inbox',
+    body: 'Fiecare sarcină are un proiect. O captură fără proiect ales cade în Inbox (dintr-un proiect deschis, în acela); alegerea nu se ține minte, deliberat — altfel capturile ajungeau nevăzut într-un proiect ascuns.',
   },
   {
     title: 'Cine ține tichetul',
@@ -141,7 +141,7 @@ const RULES: { title: string; body: string }[] = [
   },
   {
     title: 'Mementouri',
-    body: 'O sarcină cu oră sună implicit la scadență. Una de zi întreagă nu sună singură — ar suna la miezul nopții. Notificarea are „Gata" și „Amână 10 min", care se rezolvă fără să deschidă aplicația.',
+    body: 'O sarcină cu oră sună implicit la scadență. Una de zi întreagă nu sună singură — ar suna la miezul nopții. Notificarea are „Gata" și „Amână 5 min" (pe Linux „15 min" / „30 min"), care se rezolvă fără să deschidă aplicația.',
   },
   {
     title: 'Panoul lateral',
