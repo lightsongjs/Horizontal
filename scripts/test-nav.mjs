@@ -636,6 +636,25 @@ try {
   check('…nu formularul complet', (await tel.locator('.sheet.on').count()) === 0, 'fără `.sheet.on`')
   const editFocus = await tel.evaluate(() => !!document.activeElement?.closest('.edit-sheet'))
   check('foaia de tichet nu ia focusul (fără tastatură)', !editFocus, editFocus ? `activ=${await tel.evaluate(() => document.activeElement?.className)}` : 'focusul e în afara foii')
+  // ROUTIN-09 (2026-10-17): descrierea GOALĂ, întinsă de foaie peste plafon +
+  // 4 rânduri, se plia (întinsă), se despliea (plafonată) și iar — iar la
+  // primul spațiu din titlu bucla devenea sincronă și pagina îngheța. Pe
+  // telefon geometria o dădea tastatura; aici foaia e înălțată cu un stil.
+  {
+    const style = await tel.addStyleTag({ content: '.edit-sheet { min-height: 820px !important; max-height: none !important }' })
+    await tel.waitForTimeout(200)
+    const flips = await tel.evaluate(() => new Promise((res) => {
+      const box = document.querySelector('.edit-sheet .es-desc')
+      let n = 0
+      const mo = new MutationObserver(() => n++)
+      mo.observe(box, { childList: true, attributes: true, attributeFilter: ['class'] })
+      setTimeout(() => { mo.disconnect(); res(n) }, 600)
+    }))
+    const folded = await tel.locator('.edit-sheet .es-desc .desc-more').count()
+    check('descrierea goală, întinsă de foaie, nu oscilează între pliat și întreg', flips === 0 && folded === 0, `${flips} schimbări în 600ms, „Arată tot"=${folded}`)
+    await style.evaluate((el) => el.remove())
+    await tel.waitForTimeout(200)
+  }
   // Mânerul de sus: o tragere scurtă și lentă lasă foaia; una lungă o închide.
   {
     const { drag, center } = await touchApi(tel)
