@@ -44,23 +44,29 @@ class FixturesTest {
             val f = all.getJSONObject(i)
             val items = f.getJSONArray("items").let { a -> (0 until a.length()).map { a.getJSONObject(it) }.map { o ->
                 // `routine`: ascunsă până la `remindAt ?: dueAt`, ca `revealAt` din `src/lib/routines.ts`.
-                val hidden = if (o.optBoolean("routine", false)) parseIso(if (o.has("remindAt")) o.getString("remindAt") else o.getString("dueAt")) else null
-                AgendaItem(o.getString("id"), o.getString("id"), null, o.getString("dueAt"), o.getBoolean("allDay"), false, false, o.getBoolean("urgent"), hidden,
-                    if (o.has("accent")) o.getString("accent") else null)
+                val due = if (o.has("dueAt")) o.getString("dueAt") else null
+                val hidden = if (o.optBoolean("routine", false)) parseIso(if (o.has("remindAt")) o.getString("remindAt") else due) else null
+                // `pinnedAt`: fixată („Fixate", primul grup), cu sau fără `dueAt`.
+                AgendaItem(o.getString("id"), o.getString("id"), null, due, o.optBoolean("allDay", false), false, false, o.optBoolean("urgent", false), hidden,
+                    if (o.has("accent")) o.getString("accent") else null, if (o.has("pinnedAt")) o.getString("pinnedAt") else null)
             } }
             // `accent`: culoarea proiectului trece neatinsă (vitest verifică același lucru în `agendaItems`) și se citește ca culoare.
             for (it in items) {
-                assertEquals(f.getString("name"), it.projectAccent, Json.agendaItemFromJson(Json.agendaItemToJson(it))!!.projectAccent)
+                assertEquals(f.getString("name"), it, Json.agendaItemFromJson(Json.agendaItemToJson(it)))
                 if (it.projectAccent != null) assertNotNull(f.getString("name"), accentArgb(it.projectAccent))
             }
-            val got = buildAgenda(items, parseIso(f.getString("now"))!!, zone).map { s ->
-                if (s.overdue) "overdue:${s.items.joinToString(",") { it.id }}" else "day${s.offset}:${s.items.joinToString(",") { it.id }}"
+            val sections = buildAgenda(items, parseIso(f.getString("now"))!!, zone)
+            val got = sections.map { s ->
+                if (s.pinned) "pinned:${s.items.joinToString(",") { it.id }}"
+                else if (s.overdue) "overdue:${s.items.joinToString(",") { it.id }}" else "day${s.offset}:${s.items.joinToString(",") { it.id }}"
             }
             val want = f.getJSONArray("want").let { a -> (0 until a.length()).map { a.getJSONObject(it) }.map { w ->
                 val ids = w.getJSONArray("ids").let { x -> (0 until x.length()).joinToString(",") { x.getString(it) } }
-                if (w.getString("section") == "overdue") "overdue:$ids" else "day${w.getInt("offset")}:$ids"
+                when (w.getString("section")) { "pinned" -> "pinned:$ids"; "overdue" -> "overdue:$ids"; else -> "day${w.getInt("offset")}:$ids" }
             } }
             assertEquals(f.getString("name"), want, got)
+            // Numărul „Azi" (antetul widget-ului, notificarea din bară) = `listCount` din `App.tsx`.
+            if (f.has("todayCount")) assertEquals(f.getString("name"), f.getInt("todayCount"), todayCount(sections))
         }
     }
 
