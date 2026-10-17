@@ -22,8 +22,9 @@ import java.time.ZoneId
  * deconectării (`PlanStore.clear` nu o atinge).
  *
  * Pe canal propriu, LOW: fără sunet, fără vibrație, fără să urce peste mementouri.
- * „Ongoing": pe Android 14+ omul o poate totuși da la o parte; revine la următoarea
- * redesenare, ca la TickTick. Cine n-o vrea o oprește din setări.
+ * „Ongoing" nu mai ajunge: pe Android 14+ omul o poate da la o parte. De-aia
+ * `deleteIntent` o pune la loc pe loc (`RefreshReceiver` cu `REPOST`), ca la
+ * TickTick. Cine n-o vrea o oprește din setări, nu din glisare.
  */
 object Shade {
     const val CHANNEL = "bara-azi"
@@ -31,6 +32,7 @@ object Shade {
     private const val ID = 3
     private const val PREFS = "hz-shade"
     const val EXTRA_TODAY = "hz-shade-today"
+    const val REPOST = "ro.horizontal.app.SHADE_REPOST"
 
     fun enabled(ctx: Context) = ctx.getSharedPreferences(PREFS, 0).getBoolean("on", true)
 
@@ -75,6 +77,7 @@ object Shade {
                 .setStyle(NotificationCompat.DecoratedCustomViewStyle())
                 .setCustomContentView(v)
                 .setContentIntent(today(ctx))
+                .setDeleteIntent(repost(ctx))
                 .addAction(0, "Adaugă", Widgets.quick(ctx))
                 .setOngoing(true).setSilent(true).setOnlyAlertOnce(true).setShowWhen(false).setLocalOnly(true)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -86,6 +89,13 @@ object Shade {
             android.util.Log.w("hz-shade", "notificarea din bară a eșuat", e)
         }
     }
+
+    /** Glisată la o parte: `last` se uită, deci redesenarea o pune din nou. */
+    fun dismissed(ctx: Context) { last = null; Widgets.refresh(ctx) }
+
+    private fun repost(ctx: Context): PendingIntent = PendingIntent.getBroadcast(ctx, 12,
+        Intent(ctx, RefreshReceiver::class.java).setAction(REPOST),
+        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
 
     /** Atingerea pe notificare: aplicația, pe „Azi" (pagina ascultă `shade`). */
     private fun today(ctx: Context): PendingIntent = PendingIntent.getActivity(ctx, 11,
@@ -100,5 +110,7 @@ object Shade {
  * bară trebuie redesenată și fără widget.
  */
 class RefreshReceiver : BroadcastReceiver() {
-    override fun onReceive(ctx: Context, intent: Intent) { Widgets.refresh(ctx) }
+    override fun onReceive(ctx: Context, intent: Intent) {
+        if (intent.action == Shade.REPOST) Shade.dismissed(ctx) else Widgets.refresh(ctx)
+    }
 }

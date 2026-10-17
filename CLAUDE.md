@@ -1695,8 +1695,10 @@ Pro (HyperOS 3, Android 16).
   agendă (instalare proaspătă, deconectat) nu apare. Comutatorul e al TELEFONULUI
   (`hz-shade` în SharedPreferences, pornit implicit, supraviețuiește logout-ului):
   `getShade`/`setShade`, în rotița de setări (`AndroidShadeSetting.tsx`, doar la
-  `api >= ANDROID_API_SHADE`). Pe Android 14+ omul o poate da la o parte; revine la
-  următoarea redesenare.
+  `api >= ANDROID_API_SHADE`). Pe Android 14+ sistemul lasă orice
+  notificare „ongoing" să fie glisată; `deleteIntent` (`REPOST` →
+  `RefreshReceiver` → `Shade.dismissed`) o pune la loc pe loc, ca TickTick
+  (din `versionCode 12`). Oprirea e numai din setări.
 
 - **Fereastra de quick add** (spec: `docs/superpowers/specs/2026-10-06-quick-add-nativ-design.md`):
   butonul widget-ului deschide `QuickAddActivity` — nativă, fără WebView. Regulile
