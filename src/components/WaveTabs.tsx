@@ -2,6 +2,7 @@ import { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type
 import { createPortal } from 'react-dom'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
+import { useTheme } from '../theme'
 import { useCanWrite, useLongPress, useMediaQuery, shouldIgnoreKey } from '../hooks'
 import {
   deliveryWaves, fitPills, openCounts, pillText, showWaveBand, stepWave, totalCounts, waveLabel, waveTitle, SCRATCH,
@@ -70,7 +71,25 @@ export function WaveTabs({ onWaveChange, modes }: { onWaveChange?: () => void; m
 
   // `,` / `.` = valul anterior / următor, `V` = foaia „Valuri". Libere (vezi
   // `InfoPanel`); aceleași gărzi ca T și hjkl: nu în câmpuri, nu peste un modal.
+  // Cu modul Vim pornit, valurile sunt `[` `]` / `gt` `gT` și foaia e `gv` —
+  // le cere dispecerul (`src/vim.tsx`) prin `hz:wave`; `.` repetă, `V` e selecția.
+  const { vim } = useTheme()
   useEffect(() => {
+    if (!vim) return
+    const onWave = (e: Event) => {
+      const d = (e as CustomEvent<{ dir?: 1 | -1; manage?: boolean; handled: boolean }>).detail
+      d.handled = true
+      if (d.manage) { if (canWrite) openWaveManage(); return }
+      if (!d.dir) return
+      const next = stepWave(waves, activeWave, d.dir)
+      if (next !== null) chooseRef.current(next)
+    }
+    window.addEventListener('hz:wave', onWave)
+    return () => window.removeEventListener('hz:wave', onWave)
+  }, [vim, waves, activeWave, canWrite, openWaveManage])
+
+  useEffect(() => {
+    if (vim) return
     const onKey = (e: KeyboardEvent) => {
       if (shouldIgnoreKey(e, modalOpen)) return
       if (e.key === ',' || e.key === '.') {
@@ -84,7 +103,7 @@ export function WaveTabs({ onWaveChange, modes }: { onWaveChange?: () => void; m
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [waves, activeWave, modalOpen, canWrite, openWaveManage])
+  }, [waves, activeWave, modalOpen, canWrite, openWaveManage, vim])
 
   const chips = <ModeChips modes={modes} />
   const more = <MoreMenu modes={modes} band={band} narrow={narrow} canWrite={canWrite} />

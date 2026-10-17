@@ -203,6 +203,8 @@ interface HorizontalState {
    */
   hideIssues(ids: string[]): void
   unhideIssues(ids: string[]): void
+  /** Ce stă ascuns cât ține fereastra de anulare — și „Listă" / „Cards" îl sar (`useOrderedLayers`). */
+  hiddenIds: ReadonlySet<string>
   /**
    * Toastul cu „Anulează" al unei acțiuni din listă. Unul singur: o acțiune
    * nouă îl închide pe cel vechi ca expirat (o ștergere amânată pleacă atunci).
@@ -1500,6 +1502,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     applyWrites,
     hideIssues,
     unhideIssues,
+    hiddenIds,
     undoEntry,
     offerUndo,
     takeUndo,

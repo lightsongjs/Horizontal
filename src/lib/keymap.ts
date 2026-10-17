@@ -19,9 +19,19 @@ export type KeyCtx = 'list' | 'panel' | 'sidebar' | 'any'
 /** Ce face o tastă. Dispecerul are câte un handler pentru fiecare. */
 export type ActionId =
   | 'goToday' | 'goWeek' | 'goMine' | 'goTo' | 'search' | 'help' | 'toggleSidebar' | 'settings'
-  | 'historyBack' | 'historyForward'
+  | 'historyBack' | 'historyForward' | 'undo' | 'wavePrev' | 'waveNext' | 'waveManage'
+  // listă: mișcări, panouri
   | 'down' | 'up' | 'groupDown' | 'groupUp' | 'first' | 'last' | 'open' | 'toPanel' | 'toSidebar'
-  | 'toList' | 'sbDown' | 'sbUp' | 'sbFirst' | 'sbLast' | 'sbOpen'
+  // listă: acțiuni pe rânduri (ținte: intervalul vizual > selecția > rândul cursorului)
+  | 'done' | 'delete' | 'tomorrow' | 'date' | 'urgent' | 'pin' | 'move' | 'rename'
+  | 'yankLink' | 'yankTitle' | 'repeat' | 'find' | 'filter' | 'nextMatch' | 'prevMatch'
+  | 'mark' | 'visual' | 'newTask'
+  // panou: cursorul de câmp și scurtăturile pe tichetul deschis
+  | 'toList' | 'fieldDown' | 'fieldUp' | 'fieldFirst' | 'fieldLast' | 'activate'
+  | 'pTitle' | 'pDesc' | 'pComment' | 'pHandoff' | 'pRename' | 'pDate' | 'pWave'
+  | 'pDone' | 'pUrgent' | 'pPin' | 'pMove' | 'pDelete' | 'pYankLink' | 'pYankTitle'
+  // bara laterală
+  | 'sbDown' | 'sbUp' | 'sbFirst' | 'sbLast' | 'sbOpen'
 
 export interface Binding {
   /** Tokenii secvenței, în ordine: `['g', 'g']`, `['Enter']`. */
@@ -45,9 +55,9 @@ export function splitSeq(s: string): string[] {
 }
 
 /**
- * Faza 2: navigarea (cursorul, panourile, ecranele). Acțiunile pe rând (x, dd,
- * t, F…), câmpurile panoului și selecția vizuală vin în fazele următoare —
- * până atunci tastele lor rămân ale ascultătorilor vechi.
+ * Toată harta: navigarea (cursorul, panourile, ecranele), acțiunile pe rând,
+ * cursorul de câmp din panou și valurile. Ce nu e aici rămâne al
+ * ascultătorilor vechi (C în „Cards", T, S, 1–4, Ctrl+S…).
  */
 export const KEYMAP: Binding[] = [
   // oriunde
@@ -63,7 +73,13 @@ export const KEYMAP: Binding[] = [
   b('g,', 'any', 'settings', 'Setări (mod Vim, panoul urmează cursorul)'),
   b('H', 'any', 'historyBack', 'Înapoi în istoric'),
   b('L', 'any', 'historyForward', 'Înainte în istoric'),
-  // listă
+  b('u', 'any', 'undo', 'Anulează ultima acțiune (ce oferă toastul)'),
+  b('[', 'any', 'wavePrev', 'Valul anterior (pe RO: tasta ă)'),
+  b(']', 'any', 'waveNext', 'Valul următor (pe RO: tasta î)'),
+  b('gT', 'any', 'wavePrev', 'Valul anterior (ca [)'),
+  b('gt', 'any', 'waveNext', 'Valul următor (ca ])'),
+  b('gv', 'any', 'waveManage', 'Foaia „Valuri”: redenumește, mută, adaugă'),
+  // listă: mișcări
   b('j', 'list', 'down', 'Rândul următor (5j = 5 rânduri)', { motion: true }),
   b('k', 'list', 'up', 'Rândul anterior', { motion: true }),
   b('ArrowDown', 'list', 'down', 'Rândul următor', { motion: true, hidden: true }),
@@ -76,8 +92,58 @@ export const KEYMAP: Binding[] = [
   b('o', 'list', 'open', 'Deschide în panou (ca Enter)'),
   b('l', 'list', 'toPanel', 'Intră în panou'),
   b('h', 'list', 'toSidebar', 'Intră în bara laterală'),
-  // panou
+  // listă: acțiuni
+  b('x', 'list', 'done', 'Gata / redeschide'),
+  b('dd', 'list', 'delete', 'Șterge (fără întrebare; u anulează)'),
+  b('D', 'list', 'tomorrow', 'Mută pe mâine'),
+  b('t', 'list', 'date', 'Alege data'),
+  b('!', 'list', 'urgent', 'Urgent'),
+  b('F', 'list', 'pin', 'Fixează sus / scoate de sus'),
+  b('M', 'list', 'move', 'Mută în alt proiect (un tichet)'),
+  b('r', 'list', 'rename', 'Redenumește (în panou, titlul selectat)'),
+  b('cc', 'list', 'rename', 'Redenumește (ca r)'),
+  b('yy', 'list', 'yankLink', 'Copiază linkul'),
+  b('yt', 'list', 'yankTitle', 'Copiază titlul'),
+  b('.', 'list', 'repeat', 'Repetă ultima acțiune pe rândurile de acum'),
+  b('/', 'list', 'find', 'Caută în listă (n / N sar între potriviri)'),
+  b('f', 'list', 'filter', 'Filtrează lista (ascunde restul)'),
+  b('n', 'list', 'nextMatch', 'Potrivirea următoare', { motion: true }),
+  b('N', 'list', 'prevMatch', 'Potrivirea anterioară', { motion: true }),
+  b('Space', 'list', 'mark', 'Pune / scoate rândul din selecție și coboară'),
+  b('v', 'list', 'visual', 'Selecție pe interval (j / k o întind)'),
+  b('V', 'list', 'visual', 'Selecție pe interval (ca v)'),
+  b('a', 'list', 'newTask', 'Sarcină nouă în grupul cursorului (aceeași zi / valul activ)'),
+  b('C', 'list', 'newTask', 'Sarcină nouă (ca a)'),
+  // `c` mic, tasta de dinainte: e și începutul lui `cc`, deci pleacă la timeout.
+  b('c', 'list', 'newTask', 'Sarcină nouă (după o secundă; cc redenumește)', { hidden: true }),
+  // panou: cursorul de câmp
+  b('j', 'panel', 'fieldDown', 'Câmpul următor: titlu → dată → val → urgent → fixare → pasare → proiect → descriere → dependențe → comentariu', { motion: true }),
+  b('k', 'panel', 'fieldUp', 'Câmpul anterior', { motion: true }),
+  b('ArrowDown', 'panel', 'fieldDown', 'Câmpul următor', { motion: true, hidden: true }),
+  b('ArrowUp', 'panel', 'fieldUp', 'Câmpul anterior', { motion: true, hidden: true }),
+  b('gg', 'panel', 'fieldFirst', 'Primul câmp (titlul)'),
+  b('G', 'panel', 'fieldLast', 'Ultimul câmp (comentariul)'),
+  b('Enter', 'panel', 'activate', 'Activează câmpul: scrie / alege / comută / deschide dependența'),
+  b('l', 'panel', 'activate', 'Activează câmpul (ca Enter)'),
+  b('Space', 'panel', 'activate', 'Activează câmpul (comută urgent / fixare)'),
   b('h', 'panel', 'toList', 'Înapoi în listă'),
+  b('ArrowLeft', 'panel', 'toList', 'Înapoi în listă', { hidden: true }),
+  // panou: scurtături
+  b('i', 'panel', 'pTitle', 'Scrie în titlu'),
+  b('a', 'panel', 'pDesc', 'Scrie în descriere, la final'),
+  b('m', 'panel', 'pComment', 'Scrie un comentariu'),
+  b('@', 'panel', 'pHandoff', 'Pasează (comentariu „către…”)'),
+  b('r', 'panel', 'pRename', 'Rescrie titlul (selectat)'),
+  b('cc', 'panel', 'pRename', 'Rescrie titlul (ca r)'),
+  b('t', 'panel', 'pDate', 'Data'),
+  b('w', 'panel', 'pWave', 'Valul'),
+  b('x', 'panel', 'pDone', 'Gata / redeschide'),
+  b('!', 'panel', 'pUrgent', 'Urgent (în formular; salvezi cu Ctrl+S)'),
+  b('F', 'panel', 'pPin', 'Fixează sus'),
+  b('M', 'panel', 'pMove', 'Mută în alt proiect'),
+  b('dd', 'panel', 'pDelete', 'Șterge tichetul (u anulează)'),
+  b('yy', 'panel', 'pYankLink', 'Copiază linkul'),
+  b('yt', 'panel', 'pYankTitle', 'Copiază titlul'),
   // bara laterală
   b('j', 'sidebar', 'sbDown', 'Următorul', { motion: true }),
   b('k', 'sidebar', 'sbUp', 'Anteriorul', { motion: true }),
@@ -89,6 +155,9 @@ export const KEYMAP: Binding[] = [
   b('l', 'sidebar', 'sbOpen', 'Deschide și treci în listă'),
   b('h', 'sidebar', 'toList', 'Înapoi în listă'),
 ]
+
+/** Acțiunile care se pot repeta cu `.` (cele care schimbă rândurile). */
+export const REPEATABLE: ReadonlySet<ActionId> = new Set(['done', 'delete', 'tomorrow', 'urgent', 'pin'])
 
 /** Cât așteaptă o secvență începută (`g…`) continuarea. */
 export const SEQ_TIMEOUT_MS = 1000

@@ -69,7 +69,7 @@ export function useTaskActions(): TaskActions {
  * logica lor e în `lib/bulkActions`, aici doar se leagă de store și de toast.
  */
 export function TaskActionsProvider({ children }: { children: ReactNode }) {
-  const { dueIssues, openIssues, applyWrites, hideIssues, unhideIssues, deleteIssues, offerUndo, reportError } = useHorizontal()
+  const { dueIssues, openIssues, issues: projectIssues, applyWrites, hideIssues, unhideIssues, deleteIssues, offerUndo, reportError } = useHorizontal()
   const { showToast } = useUI()
   const canWrite = useCanWriteFn()
   const narrow = useMediaQuery('(max-width: 899px)')
@@ -85,8 +85,12 @@ export function TaskActionsProvider({ children }: { children: ReactNode }) {
   // Și cele fără scadență: un filtru salvat arată tichete deschise oricare.
   const openRef = useRef(openIssues)
   openRef.current = openIssues
+  // Și ale proiectului încărcat, inclusiv cele bifate: „Listă" le arată, iar
+  // `x` din modul Vim redeschide unul bifat. Ultima sursă câștigă (cea mai proaspătă).
+  const projectRef = useRef(projectIssues)
+  projectRef.current = projectIssues
   const issuesOf = useCallback((ids: string[]): Issue[] => {
-    const by = new Map([...openRef.current, ...dueRef.current].map((i) => [i.id, i]))
+    const by = new Map([...openRef.current, ...dueRef.current, ...projectRef.current].map((i) => [i.id, i]))
     return ids.map((id) => by.get(id)).filter((i): i is Issue => !!i)
   }, [])
 

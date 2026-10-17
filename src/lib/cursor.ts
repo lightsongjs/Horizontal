@@ -82,3 +82,43 @@ export function neighborAfterRemove(before: CursorRow[], after: CursorRow[], cur
   for (let k = ix - 1; k >= 0; k--) if (alive.has(before[k].id)) return before[k].id
   return after[0].id
 }
+
+/** Intervalul vizual (`v`): rândurile dintre ancoră și cursor, inclusiv, în ordinea de pe ecran. */
+export function rangeBetween(rows: CursorRow[], anchor: string | null, cur: string | null): string[] {
+  const a = anchor ? rows.findIndex((r) => r.id === anchor) : -1
+  const b = cur ? rows.findIndex((r) => r.id === cur) : -1
+  if (a < 0 && b < 0) return []
+  if (a < 0 || b < 0) return [rows[Math.max(a, b)].id]
+  return rows.slice(Math.min(a, b), Math.max(a, b) + 1).map((r) => r.id)
+}
+
+/** Fără diacritice și fără majuscule: „sedinta" găsește „Ședința". */
+export function foldText(s: string): string {
+  return s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
+}
+
+/** Rândurile al căror titlu conține textul căutat (`/`, `f`). Text gol = niciunul. */
+export function matching(rows: (CursorRow & { title: string })[], query: string): string[] {
+  const q = foldText(query.trim())
+  if (!q) return []
+  return rows.filter((r) => foldText(r.title).includes(q)).map((r) => r.id)
+}
+
+/**
+ * Potrivirea următoare (`n`) / anterioară (`N`) față de cursor, cu ocolire la
+ * capăt — ca în Vim, unde căutarea se reia de sus. Fără cursor, prima / ultima.
+ */
+export function nextMatch(rows: CursorRow[], matches: string[], cur: string | null, d: 1 | -1, n = 1): string | null {
+  const set = new Set(matches)
+  const hits = rows.filter((r) => set.has(r.id)).map((r) => r.id)
+  if (!hits.length) return null
+  let at = cur ? rows.findIndex((r) => r.id === cur) : -1
+  let pick: string | null = null
+  for (let k = 0; k < Math.max(1, n); k++) {
+    const after = rows.slice(at + 1).find((r) => set.has(r.id))?.id
+    const before = [...rows.slice(0, Math.max(0, at))].reverse().find((r) => set.has(r.id))?.id
+    pick = d > 0 ? (after ?? hits[0]) : (at < 0 ? hits[hits.length - 1] : (before ?? hits[hits.length - 1]))
+    at = rows.findIndex((r) => r.id === pick)
+  }
+  return pick
+}

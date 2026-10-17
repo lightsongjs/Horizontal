@@ -286,10 +286,37 @@ Setare de DISPOZITIV în rotiță („Tastatură”: Mod Vim, Panoul urmează cu
   fiecare `j` ar randa toată lista (vezi „Listele lungi”). Panoul urmează
   cursorul după 120 ms numai cu formularul curat; murdar, cursorul merge și
   panoul stă.
-- **Ce urmează** (secțiunea „În lucru” din `InfoPanel.tsx`): acțiunile pe rând,
-  selecția `v`/`V`, câmpurile panoului cu `j`/`k`, `[` `]` pentru valuri. O
-  tastă implementată se mută din `PLANNED` în `SHORTCUTS`.
-
+- **Acțiunile pe rând** (`x dd D t ! F M r yy yt . u`) au ținte în ordinea:
+  intervalul `v` > selecția > rândul cursorului, și trec TOATE prin
+  `TaskActions` (`run`/`remove`) — aceeași coadă (`enqueueWrite`), aceeași poză
+  pentru anulare (și saltul recurenței) ca bara de selecție. `u` = „ANULEAZĂ”
+  din toastul de pe ecran, nu o istorie proprie. `dd` întârzie ca glisarea
+  (`hideIssues`, ascuns acum și din „Listă”/„Cards” prin `useOrderedLayers`).
+  O acțiune care schimbă câmpurile formularului (dată, urgent, ștergere,
+  mutare) pe tichetul docat **murdar** e refuzată cu `nudgeSave`: cheia
+  panoului poartă `dueAt`, deci scrierea l-ar remonta și s-ar pierde ce scrii.
+  Pe formularul **curat**, o scriere din afară (listă, click dreapta, alt
+  dispozitiv) îl remontează (`formPrint` + `gen` în cheia din `SplitView`):
+  altfel ar fi arătat valoarea veche, s-ar fi crezut „nesalvat” și Salvează ar
+  fi scris-o înapoi.
+- **Două selecții, rutate, nu una nouă:** în „Listă” `Space`/`Ctrl+A` aleg în
+  selecția lui `useWaveActions` (`useVimSelection`, cu bara ei); în listele
+  inteligente pe desktop nu există alta (cea din `TaskActions` e a telefonului),
+  deci acolo e a dispecerului, desenată ca regulă CSS.
+- **Panoul are un cursor de câmp**: ordinea și „activează” le dă formularul
+  docat (`useVimPanel`), fiindcă numai el îi știe starea locală (urgentul
+  nesalvat, popoverul, editorul). În panou `!` comută urgentul ÎN formular
+  (salvezi cu Ctrl+S), nu în bază — altfel salvarea l-ar fi scris înapoi.
+  Urgentul și pasarea goale au jeton-fantomă doar cât stă cursorul pe ele.
+- **Valurile** sunt `[` `]` / `gt` `gT` și foaia `gv`, prin evenimentul
+  `hz:wave` ascultat de `WaveTabs`; cu modul pornit `,` `.` `V` nu mai sunt ale
+  valurilor (`.` repetă, `V` e selecția), iar `[` nu mai ascunde bara (`gs`).
+- **Esc face un singur pas**: secvența → popoverul (al lui, în captură) →
+  câmpul → panoul → lista → selecția → închide panoul (garda de close rămâne)
+  → căutarea/filtrul → cursorul. Primul Esc într-un câmp din panou NU mai
+  închide panoul, doar iese din câmp.
+- **Ajutorul** (`?`) se generează din `KEYMAP` cât modul e pornit; tabelul scris
+  rămâne doar pentru modul oprit. O tastă nouă se adaugă în hartă, nu în panou.
 ## Mockups — fișier local, nu Artifact
 
 Pentru orice mockup/design vizual (comparații before/after, explorare de layout):

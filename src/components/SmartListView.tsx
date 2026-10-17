@@ -111,6 +111,9 @@ interface Props {
   onOpenTask(id: string): void
   /** Se schimbă la fiecare cerere de focus pe quick add (butonul „+" din bara de jos). */
   focusSignal?: number
+  /** `a` / `C` din modul Vim: ziua rândului de sub cursor, peste cea a listei. */
+  captureDueAt?: string | null
+  onCaptured?(): void
 }
 
 /**
@@ -120,7 +123,7 @@ interface Props {
  * Restanțele apar NUMAI în „Azi", deasupra sarcinilor zilei: o restanță e o
  * problemă de azi, dar „Next 7 days" e o listă despre ce urmează.
  */
-export function SmartListView({ kind, onOpenTask, focusSignal = 0 }: Props) {
+export function SmartListView({ kind, onOpenTask, focusSignal = 0, captureDueAt = null, onCaptured }: Props) {
   const { smartLists, dueLoaded } = useHorizontal()
   const { dockedIssueId } = useUI()
   // F pe rândul cu focusul de tastatură (Tab), fără tichet deschis.
@@ -166,7 +169,7 @@ export function SmartListView({ kind, onOpenTask, focusSignal = 0 }: Props) {
   return (
     <SplitView>
       <div className="panel smart-list">
-        {!narrow && <QuickAdd defaultDueAt={defaultDueAt} focusSignal={focusSignal} />}
+        {!narrow && <QuickAdd defaultDueAt={captureDueAt ?? defaultDueAt} focusSignal={focusSignal} onAdded={onCaptured} />}
         {kind === 'today' && <PushToggle />}
 
         {kind === 'today' && (

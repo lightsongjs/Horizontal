@@ -70,20 +70,27 @@ describe('feed', () => {
     ['O = căutarea', ['O'], {}, ['search']],
     ['h în listă → bara laterală', ['h'], {}, ['toSidebar']],
     ['h în panou → lista (localul bate)', ['h'], { ctx: 'panel' }, ['toList']],
-    ['j în panou nu e (încă) al nostru', ['j'], { ctx: 'panel' }, []],
+    ['j în panou = câmpul următor', ['j'], { ctx: 'panel' }, ['fieldDown']],
+    ['dd în listă = ștergere, D = mâine', ['d', 'd', 'D'], {}, ['delete', 'tomorrow']],
+    ['] = valul următor, și din listă', [']'], {}, ['waveNext']],
+    ['gt / gT = valuri', ['g', 't', 'g', 'T'], {}, ['waveNext', 'wavePrev']],
+    ['gv = foaia valurilor', ['g', 'v'], {}, ['waveManage']],
+    ['i în panou = titlul, în listă nu e al nostru', ['i'], { ctx: 'panel' }, ['pTitle']],
+    ['Space în listă = selecție', ['Space'], {}, ['mark']],
     ['fără context: doar globalele', ['g', 'w', 'j'], { ctx: null }, ['goWeek']],
     ['secvența expiră după timeout', ['g', { t: 'g', at: 1010 + SEQ_TIMEOUT_MS + 1 }], {}, []],
   ]
   for (const [name, toks, opts, want] of cases) it(name, () => expect(run(toks, opts).fired).toEqual(want))
 
   it('o tastă necunoscută cu secvența goală nu e a noastră', () => {
-    expect(run(['x']).results).toEqual(['none'])
+    expect(run(['q']).results).toEqual(['none'])
+    expect(run(['i']).results).toEqual(['none'])
   })
   it('o secvență ruptă se înghite', () => {
-    expect(run(['g', 'x']).results).toEqual(['pending', 'broken'])
+    expect(run(['g', 'q']).results).toEqual(['pending', 'broken'])
   })
   it('o numărătoare urmată de o tastă străină o lasă să treacă', () => {
-    const r = run(['5', 'x'])
+    const r = run(['5', 'q'])
     expect(r.results).toEqual(['pending', 'none'])
     expect(r.s).toEqual(EMPTY_SEQ)
   })
@@ -169,5 +176,16 @@ describe('isTypingTarget', () => {
     expect(isTypingTarget(el('INPUT', { type: 'checkbox' }))).toBe(false)
     expect(isTypingTarget(el('BUTTON'))).toBe(false)
     expect(isTypingTarget(null)).toBe(false)
+  })
+})
+
+describe('c mic vs. cc', () => {
+  it('c singur pleacă la timeout (sarcină nouă), cc redenumește imediat', () => {
+    const a = feed(EMPTY_SEQ, 'c', { ctx: 'list', now: 1, allowCount: true })
+    expect(a.result.kind).toBe('pending')
+    const e = expire(a.state, { ctx: 'list' })
+    expect(e.result.kind === 'fire' && e.result.binding.id).toBe('newTask')
+    const b = feed(a.state, 'c', { ctx: 'list', now: 2, allowCount: true })
+    expect(b.result.kind === 'fire' && b.result.binding.id).toBe('rename')
   })
 })

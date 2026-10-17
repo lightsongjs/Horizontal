@@ -7645,7 +7645,7 @@ body:has(.qab) { overflow-y: auto; }
     background: var(--accent-soft); padding: 1px 6px; border-radius: var(--r-s);
     font-size: calc(12.5px * var(--text-scale));
   }
-  .vim-pill-hint { color: var(--urgent); font-weight: 600; }
+  .vim-pill-hint { color: var(--txt); font-weight: 600; }
   /* Continuările unui prefix, după 400ms de ezitare. */
   .vim-wk {
     display: block;
@@ -7668,6 +7668,39 @@ body:has(.qab) { overflow-y: auto; }
     font-size: calc(12px * var(--text-scale)); padding: 1px 4px;
   }
 }
+
+/* Modul în care e lista (intervalul vizual, selecția), în pastilă. */
+@media (pointer: fine) {
+  .vim-pill { gap: 8px; }
+  .vim-pill.above-find { bottom: 64px; }
+  .vim-pill-mode {
+    font-family: var(--mono); font-weight: 600; color: #fff; background: var(--accent);
+    padding: 1px 6px; border-radius: var(--r-s); font-size: calc(11.5px * var(--text-scale));
+  }
+}
+/* Căutarea în listă (`/`) și filtrul (`f`): jos, ca linia de comandă din Vim. */
+.vim-find { display: none; }
+@media (pointer: fine) {
+  .vim-find {
+    display: flex; align-items: center; gap: 8px;
+    position: fixed; right: 16px; bottom: 16px; z-index: 140;
+    width: min(420px, calc(100vw - 32px));
+    padding: 6px 10px; border-radius: var(--r-m);
+    background: var(--surface); box-shadow: var(--amb-lg);
+  }
+  .vim-find-k { font-family: var(--mono); font-weight: 700; color: var(--accent); font-size: calc(14px * var(--text-scale)); }
+  .vim-find-input {
+    flex: 1; min-width: 0; border: 0; outline: none; background: transparent; color: var(--txt);
+    font: inherit; font-size: calc(14px * var(--text-scale));
+  }
+  .vim-find-n { flex: none; color: var(--txt-faint); font-size: calc(12px * var(--text-scale)); font-family: var(--mono); }
+}
+/* Popoverul unui rând (`t`, `M`): o cutie fixă peste rând ține locul rândului
+   pentru `ChipPop` (rândul e un buton, nu poate conține popoverul). */
+.vim-row-frame { position: fixed; z-index: 135; pointer-events: none; }
+.vim-row-frame > .fc-pop { pointer-events: auto; }
+/* „Către…" din fir, ales cu săgețile (modul Vim): opțiunea marcată. */
+.thread-to-menu .dep-dd-item[data-vim-hl] { background: var(--accent-soft); color: var(--accent); }
 
 /* „Mergi la…": cochilia căutării, cu „:" în locul lupei. */
 .goto-colon {

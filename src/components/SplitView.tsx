@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react'
+import type { Issue } from '../lib/types'
 import { useUI } from '../ui'
 import { useHorizontal } from '../store'
 import { useMediaQuery } from '../hooks'
@@ -24,7 +25,7 @@ const SPLIT_QUERY = '(min-width: 1200px)'
  */
 export function SplitView({ children }: { children: ReactNode }) {
   const wide = useMediaQuery(SPLIT_QUERY)
-  const { registerSplitHost, dockedIssueId, dockedKeyId, closeSheet } = useUI()
+  const { registerSplitHost, dockedIssueId, dockedKeyId, closeSheet, isDockedDirty } = useUI()
   const { byId } = useHorizontal()
   const paneRef = useRef<HTMLElement>(null)
 
@@ -56,6 +57,27 @@ export function SplitView({ children }: { children: ReactNode }) {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [dockedIssueId, closeSheet])
+
+  /*
+   * O scriere din AFARA formularului pe tichetul docat (din listă: `!`, `t`,
+   * `D` din modul Vim, meniul de click dreapta; alt dispozitiv) — formularul
+   * își copiază câmpurile la montare, deci ar fi rămas pe valoarea veche, s-ar
+   * fi crezut „nesalvat", iar Salvează ar fi scris valoarea veche înapoi.
+   * Același leac ca `dueAt` din cheie: o remontare, dar NUMAI cu formularul
+   * curat — murdar, remontarea ar arunca ce scrii (iar dispecerul oricum
+   * refuză acolo acțiunile pe rând). Amprenta se mută și când e murdar (după
+   * propria salvare, store-ul vine cu valorile lui), ca o salvare să nu
+   * remonteze. Se citește la randare: atunci starea murdară e încă cea de
+   * dinaintea scrierii, deci o scriere din afară nu se poate deghiza în editare.
+   */
+  const remount = useRef<{ id: string | null; fp: string; gen: number }>({ id: null, fp: '', gen: 0 })
+  const docked = dockedIssueId ? byId[dockedIssueId] : undefined
+  if (docked) {
+    const fp = formPrint(docked)
+    const r = remount.current
+    if (r.id !== docked.id) remount.current = { id: docked.id, fp, gen: 0 }
+    else if (r.fp !== fp) remount.current = { id: r.id, fp, gen: isDockedDirty() ? r.gen : r.gen + 1 }
+  }
 
   if (!wide) return <>{children}</>
 
@@ -93,7 +115,7 @@ export function SplitView({ children }: { children: ReactNode }) {
           // apărea ca „MS-256", iar o salvare ar fi creat alt tichet.
           byId[dockedIssueId] ? (
             <IssueForm
-              key={`${dockedKeyId}:${byId[dockedIssueId]?.dueAt ?? ''}`}
+              key={`${dockedKeyId}:${byId[dockedIssueId]?.dueAt ?? ''}:${remount.current.gen}`}
               issueId={dockedIssueId}
               docked
             />
@@ -109,4 +131,9 @@ export function SplitView({ children }: { children: ReactNode }) {
       </aside>
     </div>
   )
+}
+
+/** Câmpurile pe care formularul le copiază la montare (vezi remontarea din `SplitView`). */
+function formPrint(i: Issue): string {
+  return JSON.stringify([i.title, i.desc, i.theme, i.wave, i.assigneeId, i.deps, i.urgent, i.dueAt, i.allDay, i.remindAt, i.rrule])
 }

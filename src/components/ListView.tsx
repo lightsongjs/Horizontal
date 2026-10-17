@@ -16,7 +16,7 @@ import { isPinnedOpen, pinnedFirst } from '../lib/pinned'
 import { useTaskActions } from './TaskActions'
 import { PinMark, RowPin, useRowPinKey } from './RowPin'
 import { useTheme } from '../theme'
-import { useVimListBusy } from '../vim'
+import { useVimListBusy, useVimSelection } from '../vim'
 
 export function ListView() {
   const { waves, activeWave, byId, stateOf, themeOf, toggleDone, blockedByObstacle, assignees, assigneeShort, project } = useHorizontal()
@@ -102,8 +102,16 @@ export function ListView() {
   // merg rând cu rând prin layere, nu din layer în layer. Oprit, h j k l de azi.
   const { vim } = useTheme()
   const { focusedId } = useVimNav(flatLayers, !vim)
-  // Selecția și arborele își țin Escape-ul.
-  useVimListBusy(wa.selectMode || wa.treeViewActive || wa.confirmDel)
+  // Arborele, confirmarea ștergerii și selecția goală își țin Escape-ul.
+  useVimListBusy(wa.treeViewActive || wa.confirmDel || (wa.selectMode && wa.selectedIds.size === 0))
+  // Space / Ctrl+A din modul Vim aleg în selecția „Listei" (cu bara ei de jos),
+  // nu într-una paralelă; acțiunile (x, dd, D…) o folosesc ca ținte.
+  useVimSelection({
+    ids: () => (wa.selectMode ? [...wa.selectedIds] : []),
+    toggle: (id) => { if (!wa.selectMode) { wa.exitTreeView(); wa.enterSelectMode() } wa.toggleSelected(id) },
+    setAll: (ids) => { wa.exitTreeView(); wa.enterSelectMode(); for (const id of ids) if (!wa.selectedIds.has(id)) wa.toggleSelected(id) },
+    clear: () => { if (wa.selectMode) wa.exitSelectMode() },
+  })
   // F pe rândul ales cu H J K L sau cu focusul de tastatură (fără tichet deschis).
   useRowPinKey(focusedId)
   const ta = useTaskActions()

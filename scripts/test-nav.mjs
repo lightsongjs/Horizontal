@@ -209,7 +209,8 @@ try {
 
   await page.locator('.tabs').click()
   await page.waitForTimeout(150)
-  await page.keyboard.press('c')
+  // `C` mare: cu modul Vim, `c` începe `cc` (redenumirea).
+  await page.keyboard.press('Shift+C')
   await page.waitForTimeout(800)
   const newFormOpen = await modalOpen()
   const firstVal = await page.locator('.sheet.on .sh-title-input').first().inputValue().catch(() => null)
@@ -232,7 +233,8 @@ try {
   await page.waitForTimeout(500)
   await page.locator('.tabs').click()
   await page.waitForTimeout(150)
-  await page.keyboard.press('c')
+  // `C` mare: cu modul Vim, `c` începe `cc` (redenumirea).
+  await page.keyboard.press('Shift+C')
   await page.waitForTimeout(700)
   const stillThere = await page.locator('.sh-title-input').first().inputValue().catch(() => '')
   check(
@@ -314,7 +316,8 @@ try {
   if (onSmart > 0) {
     await page.locator('h1').first().click().catch(() => {})
     await page.waitForTimeout(200)
-    await page.keyboard.press('c')
+    // `C` mare: cu modul Vim, `c` începe `cc` (redenumirea).
+    await page.keyboard.press('Shift+C')
     await page.waitForTimeout(600)
     const focused = await page.evaluate(() => document.activeElement?.classList.contains('qa-input') ?? false)
     check('C focusează quick add pe „Azi"', focused, focused ? 'cursorul e în câmp' : 'nu s-a întâmplat nimic')
@@ -423,11 +426,13 @@ try {
     check('…și scoate fixarea', !(await pinnedInDb()) && (await firstGroup())?.label !== 'Fixate', JSON.stringify(await firstGroup()))
 
     await row().focus()
-    await dp.keyboard.press('f')
+    // `F` mare: cu modul Vim, `f` e filtrul listei.
+    await dp.keyboard.press('Shift+F')
     await dp.waitForTimeout(700)
     check('F pe rândul cu focus îl fixează', await pinnedInDb(), 'pinnedAt pus')
     await row().focus()
-    await dp.keyboard.press('f')
+    // `F` mare: cu modul Vim, `f` e filtrul listei.
+    await dp.keyboard.press('Shift+F')
     await dp.waitForTimeout(700)
     check('…a doua oară îl scoate', !(await pinnedInDb()), 'pinnedAt null')
 
@@ -1989,6 +1994,200 @@ try {
     const sbFocus = await lp.evaluate(() => !!document.activeElement?.closest('.sidebar'))
     check('vim: h j Enter din „Azi" deschide „7 zile" din bara laterală', /7 zile/.test(sb ?? '') && !sbFocus, `ecran=${sb}, focus în bară=${sbFocus}`)
     await lp.close()
+
+    // ── Faza 3: acțiunile pe rânduri, pe „Azi" ───────────────────────────────
+    {
+      const ap = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+      let dialogs = 0
+      ap.on('dialog', (d) => { dialogs++; void d.dismiss() })
+      await ap.goto(BASE, { waitUntil: 'networkidle' })
+      await ap.waitForTimeout(700)
+      const names = ['Vim A', 'Vim B', 'Vim C', 'Vim D', 'Vim E']
+      for (const t of names) {
+        await ap.locator('.qa-input').first().fill(t)
+        await ap.keyboard.press('Enter')
+        await ap.waitForTimeout(400)
+      }
+      await ap.locator('h1').first().click()
+      await ap.waitForTimeout(200)
+      const db = (t) => ap.evaluate((t) => JSON.parse(localStorage.getItem('horizontal:v2')).issues.find((i) => i.title === t), t)
+      const titles = () => ap.evaluate(() => [...document.querySelectorAll('main .list-row[data-issue-id]')]
+        .filter((el) => !el.closest('.split-pane') && el.getClientRects().length).map((el) => el.querySelector('.list-title')?.textContent))
+      const t0 = await titles()
+
+      // j x → gata; u → înapoi.
+      await keys(ap, 'g', 'g', 'x')
+      await ap.waitForTimeout(700)
+      const xDone = (await db(t0[0]))?.done
+      await keys(ap, 'u')
+      await ap.waitForTimeout(700)
+      check('vim: x bifează rândul, u îl redeschide', xDone === true && (await db(t0[0]))?.done === false && (await titles()).includes(t0[0]), `după x=${xDone}, după u=${(await db(t0[0]))?.done}`)
+
+      // dd → rândul dispare, toast, fără dialog; u → revine.
+      await keys(ap, 'g', 'g', 'd', 'd')
+      await ap.waitForTimeout(500)
+      const afterDd = await titles()
+      const toastTxt = (await ap.locator('.toast.on').textContent().catch(() => '')) ?? ''
+      check('vim: dd ascunde rândul, cu toast și fără dialog', !afterDd.includes(t0[0]) && /Șters/.test(toastTxt) && dialogs === 0, `rânduri=${afterDd.length}/${t0.length}, toast=${JSON.stringify(toastTxt)}, dialoguri=${dialogs}`)
+      await keys(ap, 'u')
+      await ap.waitForTimeout(600)
+      check('…iar u îl aduce înapoi', (await titles()).includes(t0[0]) && !!(await db(t0[0])), JSON.stringify(await titles()))
+
+      // v j j D → trei pe mâine; un singur u le întoarce pe toate.
+      const start = await titles()
+      await keys(ap, 'g', 'g', 'v', 'j', 'j', 'D')
+      await ap.waitForTimeout(900)
+      const moved = start.slice(0, 3)
+      const left = await titles()
+      check('vim: v j j D mută trei rânduri pe mâine', moved.every((t) => !left.includes(t)), `rămase=${JSON.stringify(left)}`)
+      await keys(ap, 'u')
+      await ap.waitForTimeout(900)
+      const back = await titles()
+      check('…și un singur u le întoarce pe toate', moved.every((t) => back.includes(t)), `înapoi=${JSON.stringify(back)}`)
+
+      // D, apoi . repetă pe rândul de acum (vecinul celui mutat).
+      await keys(ap, 'g', 'g', 'D')
+      await ap.waitForTimeout(900)
+      await keys(ap, '.')
+      await ap.waitForTimeout(900)
+      const afterDot = await titles()
+      check('vim: . repetă D pe rândul următor', !afterDot.includes(back[0]) && !afterDot.includes(back[1]), `rămase=${JSON.stringify(afterDot)}`)
+      await keys(ap, 'u')
+      await ap.waitForTimeout(700)
+
+      // Space: rândul intră în selecție și cursorul coboară.
+      const rowsNow = await listRows(ap)
+      await keys(ap, 'g', 'g', 'Space')
+      const selCss = await ap.evaluate(() => [...document.querySelectorAll('style')].some((s) => /list-row:is\(/.test(s.textContent)))
+      check('vim: Space pune rândul în selecție și coboară', (await cursorOf(ap)) === rowsNow[1]?.id && selCss, `cursor=${await cursorOf(ap)}, selecție desenată=${selCss}`)
+      await keys(ap, 'Escape')
+
+      // / „Vim" Enter → prima potrivire de sub cursor; n → următoarea.
+      await keys(ap, 'g', 'g')
+      const firstId = await cursorOf(ap)
+      await keys(ap, '/')
+      await ap.keyboard.type('Vim')
+      await ap.keyboard.press('Enter')
+      await ap.waitForTimeout(200)
+      const m1 = await cursorOf(ap)
+      await keys(ap, 'n')
+      const m2 = await cursorOf(ap)
+      const vimRowIds = (await listRows(ap)).map((r) => r.id)
+      check('vim: / caută, Enter sare, n trece la următoarea', m1 !== firstId && !!m1 && m2 !== m1 && vimRowIds.indexOf(m2) === vimRowIds.indexOf(m1) + 1, `${firstId} → ${m1} → ${m2}`)
+      await keys(ap, 'Escape', 'Escape')
+      await ap.close()
+    }
+
+    // ── Faza 4: câmpurile panoului ───────────────────────────────────────────
+    {
+      const pp = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+      await pp.goto(BASE, { waitUntil: 'networkidle' })
+      await pp.waitForTimeout(700)
+      await pp.locator('.qa-input').first().fill('Vim panou')
+      await pp.keyboard.press('Enter')
+      await pp.waitForTimeout(500)
+      await pp.locator('h1').first().click()
+      const target = (await listRows(pp)).find(Boolean)
+      await keys(pp, 'g', 'g', 'l')
+      await pp.waitForTimeout(900)
+      const inPane = await pp.evaluate(() => document.activeElement?.classList.contains('split-pane'))
+      const hasWave = (await pp.locator('.split-pane [data-vf="wave"]').count()) > 0
+      await keys(pp, 'j', 'j', 'Enter')
+      await pp.waitForTimeout(500)
+      if (hasWave) {
+        const pop = await pp.locator('.split-pane .fc-pop-wave').count()
+        check('vim: panou l j j Enter deschide valul', !!inPane && pop === 1, `în panou=${inPane}, popover=${pop}`)
+        await keys(pp, 'Escape')
+      } else {
+        const urg = await pp.locator('.split-pane .fc-chip.urgent').count()
+        check('vim: panou l j j Enter comută urgentul', !!inPane && urg === 1, `în panou=${inPane}, urgent=${urg}`)
+      }
+      await pp.close()
+
+      // Esc din descriere → panoul (normal) → lista → panoul se închide. Pagină nouă: formular curat.
+      const ep = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+      await ep.goto(BASE, { waitUntil: 'networkidle' })
+      await ep.waitForTimeout(700)
+      await ep.locator('.qa-input').first().fill('Vim descriere')
+      await ep.keyboard.press('Enter')
+      await ep.waitForTimeout(500)
+      await ep.locator('h1').first().click()
+      await keys(ep, 'g', 'g', 'l')
+      await ep.waitForTimeout(900)
+      await keys(ep, 'a')
+      await ep.waitForTimeout(400)
+      const inDesc = await ep.evaluate(() => !!document.activeElement?.closest('.split-pane .cm-editor, .split-pane textarea'))
+      await keys(ep, 'Escape')
+      const s1 = await ep.evaluate(() => document.activeElement?.classList.contains('split-pane'))
+      await keys(ep, 'Escape')
+      const s2 = await ep.evaluate(() => !document.activeElement?.closest('.split-pane'))
+      await keys(ep, 'Escape')
+      await ep.waitForTimeout(400)
+      const closed = await ep.locator('.split-pane:not([hidden])').count()
+      check('vim: Esc din descriere → panou → listă → închis', inDesc && !!s1 && s2 && closed === 0, `în descriere=${inDesc}, panou=${s1}, listă=${s2}, panouri deschise=${closed}`)
+      void target
+      await ep.close()
+    }
+
+    // ── O scriere din listă pe tichetul docat (curat): panoul o arată, iar o
+    // salvare ulterioară NU scrie valoarea veche înapoi (remontarea din SplitView).
+    {
+      const up = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+      await up.goto(BASE, { waitUntil: 'networkidle' })
+      await up.waitForTimeout(700)
+      await up.locator('.qa-input').first().fill('Vim urgent din listă')
+      await up.keyboard.press('Enter')
+      await up.waitForTimeout(500)
+      await up.locator('h1').first().click()
+      const id = (await listRows(up))[0]?.id
+      const inDb = () => up.evaluate((id) => JSON.parse(localStorage.getItem('horizontal:v2')).issues.find((i) => i.id === id), id)
+      await keys(up, 'g', 'g', 'l')
+      await up.waitForTimeout(900)
+      await keys(up, 'h', '!')
+      await up.waitForTimeout(800)
+      const chip = await up.locator('.split-pane .fc-chip.urgent').count()
+      const saveDirty = await up.locator('.split-pane .sh-save.dirty').count()
+      check('docat curat: ! din listă se vede în panou, fără „nesalvat"', chip === 1 && saveDirty === 0 && (await inDb())?.urgent === true, `jeton=${chip}, nesalvat=${saveDirty}`)
+      const t = up.locator('.split-pane .sh-title-input').first()
+      await t.fill('Vim urgent din listă, redenumit')
+      await up.keyboard.press('Control+s')
+      await up.waitForTimeout(900)
+      const after = await inDb()
+      check('…iar o salvare din formular păstrează urgentul', after?.urgent === true && after?.title === 'Vim urgent din listă, redenumit', `urgent=${after?.urgent}, titlu=${after?.title}`)
+      // Meniul de click dreapta pe același rând (fără Vim): același drum.
+      await up.locator(`main .list-row[data-issue-id="${id}"]`).click({ button: 'right' })
+      await up.waitForTimeout(300)
+      await up.locator('.ctx-menu [role="menuitem"]', { hasText: /urgent/i }).first().click()
+      await up.waitForTimeout(800)
+      check('…și click dreapta → Urgent se vede în panou', (await up.locator('.split-pane .fc-chip.urgent').count()) === 0 && (await inDb())?.urgent === false, `urgent=${(await inDb())?.urgent}`)
+      await up.close()
+    }
+
+    // ── Faza 5: ] schimbă valul cu modul Vim pornit ──────────────────────────
+    {
+      const wp = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+      await wp.goto(BASE, { waitUntil: 'networkidle' })
+      await wp.waitForTimeout(700)
+      await wp.locator('.sidebar-proj-btn', { hasText: 'Exemplu' }).first().click()
+      await wp.waitForTimeout(800)
+      await wp.locator('.tab', { hasText: /^List/ }).first().click()
+      await wp.waitForTimeout(500)
+      await wp.locator('h1').first().click().catch(() => {})
+      const aw = () => wp.locator('.wb-pills [aria-selected="true"]').first().textContent().catch(() => null)
+      const a0 = await aw()
+      await wp.keyboard.press(']')
+      await wp.waitForTimeout(400)
+      const a1 = await aw()
+      await wp.keyboard.press('[')
+      await wp.waitForTimeout(400)
+      const a2 = await aw()
+      check('vim: ] / [ schimbă valul', a0 !== null && a1 !== a0 && a2 === a0, `${a0} → ${a1} → ${a2}`)
+      // `.` nu mai schimbă valul cu modul Vim (repetă).
+      await wp.keyboard.press('.')
+      await wp.waitForTimeout(400)
+      check('…iar . nu mai e valul', (await aw()) === a0, `${await aw()}`)
+      await wp.close()
+    }
 
     // Modul Vim oprit: `,` / `.` schimbă valul, ca înainte.
     const op = await browser.newPage({ viewport: { width: 1440, height: 900 } })

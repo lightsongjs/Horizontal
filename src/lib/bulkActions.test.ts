@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  bulkNotice, canClearDate, countRecurring, datePatch, deleteNotice, nextMonday, pinTarget, planBulk, snapshot, urgentTarget,
+  bulkNotice, canClearDate, doneTarget, countRecurring, datePatch, deleteNotice, nextMonday, pinTarget, planBulk, snapshot, urgentTarget,
 } from './bulkActions'
 import { applyIssuePatch } from './issuePatch'
 import type { Issue } from './types'
@@ -136,6 +136,15 @@ describe('planBulk', () => {
     expect(plan.readOnly).toBe(1)
     expect(plan.writes.map((w) => w.id)).toEqual(['HZ-02'])
     expect(plan.writes[0]).toEqual({ id: 'HZ-02', patch: { done: true }, prev: { done: false } })
+  })
+  it('redeschiderea (x pe rânduri bifate): doar cele bifate, cu anulare', () => {
+    const plan = planBulk([timed, { ...base, id: 'HZ-09', done: true }], { kind: 'done', value: false }, () => true, NOW)
+    expect(plan.writes).toEqual([{ id: 'HZ-09', patch: { done: false }, prev: { done: true } }])
+    expect(bulkNotice({ kind: 'done', value: false }, 2, 0)).toBe('2 redeschise')
+  })
+  it('bifa pe selecție: toate bifate → se redeschid', () => {
+    expect(doneTarget([{ done: true }, { done: false }])).toBe(true)
+    expect(doneTarget([{ done: true }])).toBe(false)
   })
   it('urgent: se pune dacă măcar una nu e', () => {
     expect(urgentTarget([timed, { ...allDay, urgent: true }])).toBe(true)

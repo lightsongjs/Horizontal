@@ -166,12 +166,15 @@ export function useSidebarCollapsed(): [boolean, () => void] {
 
 /** Layer groups for the active wave, urgent-first, optionally hiding done. */
 export function useOrderedLayers(hideDone: boolean): OrderedLayer[] {
-  const { layers, byId, blockedByObstacle } = useHorizontal()
+  const { layers, byId, blockedByObstacle, hiddenIds } = useHorizontal()
   const blockedIds = useMemo(() => new Set(Object.keys(blockedByObstacle)), [blockedByObstacle])
-  return useMemo(
-    () => buildOrderedLayers(layers, byId, hideDone, blockedIds),
-    [layers, byId, hideDone, blockedIds],
-  )
+  return useMemo(() => {
+    const ordered = buildOrderedLayers(layers, byId, hideDone, blockedIds)
+    // Ștergerea amânată (`dd`, cu „Anulează"): rândul dispare acum și din proiect,
+    // nu doar din listele inteligente — ca în „Azi".
+    if (hiddenIds.size === 0) return ordered
+    return ordered.map((g) => ({ ...g, ids: g.ids.filter((id) => !hiddenIds.has(id)) })).filter((g) => g.ids.length > 0)
+  }, [layers, byId, hideDone, blockedIds, hiddenIds])
 }
 
 export interface WaveActions {

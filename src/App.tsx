@@ -33,7 +33,8 @@ import { FILTER_DELETED_EVENT, OPEN_FILTER_EVENT } from './components/FilterForm
 import { OPEN_USERS_EVENT } from './components/AppSettings'
 import { GO_TODAY_EVENT } from './lib/androidBridge'
 import { describeRules } from './lib/savedFilters'
-import { weekCrumb } from './lib/schedule'
+import { dayOffset, startOfLocalDay, weekCrumb } from './lib/schedule'
+import { useTheme } from './theme'
 import type { NavTarget } from './components/NavMenu'
 import { TaskActionsProvider, useTaskActions } from './components/TaskActions'
 import { SelectionBar, SelectionHeader } from './components/SelectionChrome'
@@ -289,7 +290,8 @@ function Shell() {
   // Pentru `onPop`, care se atașează rar: stratul de închis e cel de ACUM.
   const taRef = useRef(ta)
   taRef.current = ta
-  const { openNewIssue, openNewProject, openProjectSettings, openAppSettings, openFilterForm, openIssue, closeSheet, pushSheet, sheet, ticketId, dockedIssueId, toast, clearToast } = useUI()
+  const { openNewIssue, openNewProject, openProjectSettings, openAppSettings, openFilterForm, openIssue, closeSheet, pushSheet, sheet, ticketId, dockedIssueId, toast, clearToast, showToast } = useUI()
+  const { vim: vimOn } = useTheme()
   // Stabil peste randări nelegate de toast: `recurrenceUndo` (din store, un
   // `useState`) nu-și schimbă identitatea decât când SE SCHIMBĂ toast-ul, deci
   // memoizarea aici ține `toastAction` la același obiect exact atunci când
@@ -338,6 +340,9 @@ function Shell() {
   // Contor, nu boolean: fiecare apăsare pe „+" trebuie să refocuseze inputul,
   // chiar dacă lista era deja deschisă. Un boolean ar fi „true" a doua oară.
   const [focusQuickAdd, setFocusQuickAdd] = useState(0)
+  // `a` / `C` din modul Vim în „7 zile": captura cade în ziua rândului de sub
+  // cursor, nu pe mâine. Se uită la prima captură și la schimbarea ecranului.
+  const [captureDue, setCaptureDue] = useState<string | null>(null)
   // Același prag ca bara de jos și FAB-ul: sub el, captura e foaia rapidă.
   const narrow = useMediaQuery('(max-width: 899px)')
   /**
@@ -1290,7 +1295,8 @@ function Shell() {
       else if (e.key === 'o' || e.key === 'O') { e.preventDefault(); if (!leaveDocked()) return; setShowSearch(true) }
       else if (e.key === 'p' || e.key === 'P') { e.preventDefault(); if (!isAdmin) return; if (!leaveDocked()) return; openNewProject() }
       else if (e.key === '?') { e.preventDefault(); setShowInfo(v => !v) }
-      else if (e.key === '[') { e.preventDefault(); toggleSidebar() }
+      // Cu modul Vim, `[` e valul anterior (dispecerul), bara laterală e `gs`.
+      else if (e.key === '[' && !vimOn) { e.preventDefault(); toggleSidebar() }
       else if (!offProject && e.key === '1' && project) { e.preventDefault(); changeTab('list') }
       else if (!offProject && e.key === '2' && project) { e.preventDefault(); changeTab('ordine') }
       else if (!offProject && e.key === '3' && project) { e.preventDefault(); changeTab('graf') }
@@ -1298,12 +1304,12 @@ function Shell() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [project, openNewIssue, openNewProject, modalOpen, showInfo, showSearch, showUsers, canWrite, isAdmin, toggleSidebar, changeTab, leaveDocked, smartList, writableProjects, offProject, narrow, activeWave]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [project, openNewIssue, openNewProject, modalOpen, showInfo, showSearch, showUsers, canWrite, isAdmin, toggleSidebar, changeTab, leaveDocked, smartList, writableProjects, offProject, narrow, activeWave, vimOn]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Modul Vim: un singur dispecer de taste (`src/vim.tsx`) ───────────────
   // Ce știe doar Shell-ul îi dă prin funcții citite LA APĂSARE, nu la montare.
   const vim = useVim()
-  useKeyDispatcher({
+  const resetVimLocal = useKeyDispatcher({
     blocked: () => modalOpen || showSearch || showInfo || showGoTo || drawerEntry.current,
     digitTabs: () => !offProject && !smartList && !!project && !showUsers,
     goTop: (t) => goTopRef.current(t),
@@ -1314,9 +1320,31 @@ function Shell() {
     sidebarCollapsed: () => sidebarCollapsed,
     // Foaia setărilor înlocuiește stiva: un tichet docat cu modificări trece prin gardă.
     openSettings: () => { if (leaveDocked()) openAppSettings() },
+    // `u`: exact ce ar face „ANULEAZĂ" din toastul de pe ecran.
+    undo: () => {
+      if (undoEntry) { takeUndo(); return true }
+      if (recurrenceUndo) { void undoRecurrence(); return true }
+      return false
+    },
+    newTask: (near) => {
+      if (offProject) { showToast('Aici nu se creează: un filtru și „Ale mele" n-au o zi sau un proiect'); return }
+      if (smartList) {
+        if (!writableProjects.length) return
+        // În „7 zile", ziua rândului de sub cursor; în „Azi" (și din restanțe) azi.
+        const day = smartList === 'week' && near?.dueAt && dayOffset(near.dueAt, new Date()) >= 1
+          ? startOfLocalDay(new Date(near.dueAt)).toISOString()
+          : null
+        if (narrow) openQuick({ mode: 'list', defaultDueAt: day ?? smartListDueAt(smartList) })
+        else { setCaptureDue(day); setFocusQuickAdd((n) => n + 1) }
+        return
+      }
+      // Într-un proiect: formularul de tichet nou, în valul activ (ca C).
+      if (!project || !canWrite || !leaveDocked()) return
+      openNewIssue()
+    },
   })
-  // Alt ecran, alt proiect, alt tab, alt val: cursorul de dinainte nu mai înseamnă nimic.
-  useEffect(() => { vim.setCursor(null) }, [vim, screen, project?.id, tab, activeWave, showUsers])
+  // Alt ecran, alt proiect, alt tab, alt val: cursorul și selecția de dinainte nu mai înseamnă nimic.
+  useEffect(() => { vim.setCursor(null); resetVimLocal(); setCaptureDue(null) }, [vim, screen, project?.id, tab, activeWave, showUsers]) // eslint-disable-line react-hooks/exhaustive-deps
   const goTo = (t: GoTarget) => {
     if (t.kind === 'top') goTopRef.current(t.screen)
     else if (t.kind === 'filter') goTopRef.current(filterScreen(t.id))
@@ -1439,7 +1467,7 @@ function Shell() {
           ) : filterId ? (
             <FilterView filterId={filterId} onOpenTask={openTaskAnywhere} />
           ) : smartList ? (
-            <SmartListView kind={smartList} onOpenTask={openTaskAnywhere} focusSignal={focusQuickAdd} />
+            <SmartListView kind={smartList} onOpenTask={openTaskAnywhere} focusSignal={focusQuickAdd} captureDueAt={captureDue} onCaptured={() => setCaptureDue(null)} />
           ) : showUsers && isAdmin ? (
             <UsersView />
           ) : project ? (

@@ -1037,6 +1037,17 @@ CONTROALE = ''.join([
       '<span class="qa-hint"><kbd>↵</kbd> adaugă</span>'
       '<div class="qs-footer"><kbd>↑↓</kbd> navighează <kbd>↵</kbd> deschide</div>'),
 
+    # Modul Vim (src/vim.tsx): pastila cu modul și tastele, bara de căutare,
+    # jetonul-fantomă sub cursorul de câmp (inelul e regula pe id din `VimStatus`,
+    # copiată aici inline). În aplicație stau `position: fixed`; aici în rând.
+    g('Mod Vim',
+      '<div class="vim-pill" style="position:static"><span class="vim-pill-mode">VIZUAL 3</span><kbd class="vim-pill-keys">g…</kbd></div>'
+      '<div class="vim-pill" style="position:static"><span class="vim-pill-hint">Panoul rămâne pe HZ-12 — nesalvat · Ctrl+S</span></div>'
+      '<div class="vim-find" style="position:static;width:360px"><span class="vim-find-k">/</span>'
+      '<input class="vim-find-input" value="ofert"><span class="vim-find-n">2 potriviri</span></div>'
+      '<button class="fc-chip ghost" style="box-shadow:0 0 0 2px var(--accent);background-color:var(--accent-soft);border-radius:var(--r-s)">'
+      + ic('zap', 14) + 'Urgent</button>'),
+
     # CARRY-FORWARD (Task 9 → Task 12): `.seg`/`.seg.on`/`.srow`/`.skey`/`.sval`
     # nu erau pe „Controale" — regresia „control fără fundal ȘI fără chenar"
     # nu se putea vedea cu ochii pentru foaia obstacolului. Grupul de mai jos

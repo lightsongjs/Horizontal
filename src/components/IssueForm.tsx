@@ -21,6 +21,7 @@ import {
 import { Attachments } from './Attachments'
 import { Thread } from './Thread'
 import { DescFold } from './DescFold'
+import { useVimField, useVimPanel, type PanelAdapter } from '../vim'
 import { SheetThreadRow } from './SheetThreadRow'
 import type { EditorHandle } from './MarkdownEditor'
 import { ChipPop } from './ChipPop'
@@ -640,6 +641,12 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
      `if (!project) return null` ar fi fost un hook condiționat, deci numărul
      lor s-ar fi schimbat de la o randare la alta. */
   const narrow = useMediaQuery('(max-width: 899px)')
+  // Modul Vim: formularul docat își anunță câmpurile (`useVimPanel`); adaptorul
+  // se completează mai jos, după ce există jetoanele și popoverele.
+  const vimPanel = useRef<PanelAdapter | null>(null)
+  useVimPanel(vimPanel, docked && isEdit)
+  const vimField = useVimField()
+  const vimAt = docked ? vimField : null
   /**
    * Panoul și telefonul: descrierea are înălțimea textului (`DescFold`), iar
    * sus stă rândul de fir. Modalul de 94% rămâne cum era — acolo descrierea e
@@ -1049,6 +1056,68 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
     urgent,
   })
   const addItems = addMenuItems({ hasTheme: !!theme, hasAssignee: !!assigneeId })
+
+  // Cursorul de câmp al modului Vim (`src/vim.tsx`), pe tichetul docat. Ordinea
+  // e a machetei, nu a DOM-ului (antetul ține fixarea și proiectul înaintea
+  // titlului). Urgentul și pasarea sunt câmpuri și când sunt goale: atunci
+  // jetonul-fantomă apare doar cât stă cursorul pe ele.
+  const paneEl = (sel: string) => document.querySelector<HTMLElement>(`.split-pane ${sel}`)
+  const focusComposer = (handoff: boolean) => {
+    const box = paneEl('.thread-textarea') as HTMLTextAreaElement | null
+    if (!box) return
+    box.focus()
+    box.setSelectionRange(box.value.length, box.value.length)
+    // „către…" apare abia cu caseta deschisă (după focus), deci după randare.
+    if (handoff) window.setTimeout(() => paneEl('.thread-to-btn')?.click(), 50)
+  }
+  vimPanel.current = docked && existing ? {
+    issueId: existing.id,
+    fields: () => {
+      const f = ['title', 'date']
+      if (chips.includes('wave')) f.push('wave')
+      if (canWrite) f.push('urgent', 'pin')
+      if (paneEl('.thread')) f.push('who')
+      if (canWrite && !isTempIssueId(existing.id)) f.push('project')
+      f.push('desc')
+      document.querySelectorAll<HTMLElement>('.split-pane [data-vf^="dep:"]').forEach((el) => f.push(el.dataset.vf!))
+      if (paneEl('.thread-textarea')) f.push('comment')
+      return f
+    },
+    activate: (field) => {
+      const p = vimPanel.current!
+      if (field === 'title') p.focusTitle(false)
+      else if (field === 'date' || field === 'wave') p.openPop(field)
+      else if (field === 'urgent') p.toggleUrgent()
+      else if (field === 'pin') p.togglePin()
+      else if (field === 'who') p.focusComposer(true)
+      else if (field === 'project') p.openMove()
+      else if (field === 'desc') p.focusDesc()
+      else if (field === 'comment') p.focusComposer(false)
+      else if (field.startsWith('dep:')) paneEl(`[data-vf="${CSS.escape(field)}"] .dep-card-body`)?.click()
+    },
+    focusTitle: (selectAll) => {
+      const el = titleInputRef.current
+      if (!el) return
+      el.focus()
+      if (selectAll) el.select()
+      else el.setSelectionRange(el.value.length, el.value.length)
+    },
+    focusDesc: () => descRef.current?.focusEnd(),
+    focusComposer,
+    openPop: (kind) => {
+      if (kind === 'wave' && !chips.includes('wave')) return false
+      const chip = paneEl(`[data-vf="${kind}"]`)
+      if (!chip || !canWrite) return false
+      if (openPop !== kind) togglePop(kind, chip)
+      return true
+    },
+    toggleUrgent: () => { if (canWrite) setUrgent((v) => !v) },
+    togglePin: () => togglePinRef.current(),
+    toggleDone: () => { if (canWrite) void toggleDone(existing.id) },
+    openMove: () => paneEl('.sh-move-btn')?.click(),
+    title: () => title,
+    dirty: () => isDirty,
+  } : null
   const dueParts = schedule.dueAt ? dueLabelParts(schedule.dueAt, schedule.allDay, now) : null
   const late = !!schedule.dueAt && isOverdue({ dueAt: schedule.dueAt, allDay: schedule.allDay, done: existing?.done ?? false }, now)
   const reminderLabel = schedule.kind === 'none' ? '' : REMINDER_CHIP[schedule.kind]
@@ -1254,6 +1323,7 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
             <button
               key={kind}
               {...chipProps('date', first)}
+              data-vf="date"
               disabled={!canWrite}
               className={`fc-chip due${dueParts ? '' : ' ghost'}${late ? ' late' : ''}${titleDate.active ? ' pending' : ''}${isOpen('date')}`}
               aria-label={label}
@@ -1291,6 +1361,7 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
             <button
               key={kind}
               {...chipProps('wave', first)}
+              data-vf="wave"
               disabled={!canWrite}
               className={`fc-chip${isOpen('wave')}`}
               aria-label={`Val: ${waveObj?.name ?? wave}`}
@@ -1322,6 +1393,7 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
             <button
               key={kind}
               {...chipProps('who', first)}
+              data-vf="who"
               disabled={!canWrite}
               className={`fc-chip who${isOpen('who') && !plusOpen ? ' open' : ''}`}
               aria-label={`Pasat lui ${name}`}
@@ -1338,6 +1410,7 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
               key={kind}
               type="button"
               data-chip=""
+              data-vf="urgent"
               tabIndex={first ? 0 : -1}
               disabled={!canWrite}
               className="fc-chip urgent"
@@ -1353,6 +1426,20 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
         }
         return null
       })}
+      {/* Modul Vim: urgentul și pasarea sunt câmpuri și goale — jetonul-fantomă
+          stă pe rând doar cât e cursorul de câmp pe el. */}
+      {vimAt === 'urgent' && !urgent && canWrite && (
+        <button type="button" data-chip="" data-vf="urgent" tabIndex={-1} className="fc-chip ghost" onClick={() => setUrgent(true)}>
+          <Icon name="urgent" size={14} />
+          Urgent
+        </button>
+      )}
+      {vimAt === 'who' && !assigneeId && (
+        <button type="button" data-chip="" data-vf="who" tabIndex={-1} className="fc-chip ghost" onClick={() => vimPanel.current?.focusComposer(true)}>
+          <Icon name="people" size={14} />
+          Pasează
+        </button>
+      )}
       {/* Data venită din titlu, cu cele două ieșiri: curăță textul rămas în
           titlu, sau refuză de tot. Fără ele, recunoașterea ar fi o ghicire pe
           care n-o poți contrazice. */}
@@ -1718,7 +1805,7 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
                       const obstacle = obstacles.find((o) => o.id === id)
                       if (!obstacle) return null
                       return (
-                        <div key={id} className="dep-card">
+                        <div key={id} className="dep-card" data-vf={`dep:${id}`}>
                           {/* Un obstacol scris chiar acum e gol — titlu și nimic altceva — deci
                               corpul jetonului deschide direct foaia, ca „owner"/„stare" să fie o atingere. */}
                           <button className="dep-card-body" onClick={() => pushSheet({ kind: 'obstacle-form', obstacleId: id })}>
@@ -1732,7 +1819,7 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
                     const issue = byId[id]
                     if (!issue) return null
                     return (
-                      <div key={id} className="dep-card">
+                      <div key={id} className="dep-card" data-vf={`dep:${id}`}>
                         <button className="dep-card-body" onClick={() => pushSheet({ kind: 'issue', issueId: id })}>
                           <span className="dep-card-id">{displayIssueId(id)}</span>
                           <span className="dep-card-title">{issue.title}</span>

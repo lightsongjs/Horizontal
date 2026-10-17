@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { first, last, neighborAfterRemove, step, stepGroup, type CursorRow } from './cursor'
+import { first, last, matching, neighborAfterRemove, nextMatch, rangeBetween, step, stepGroup, type CursorRow } from './cursor'
 
 // Ca „Azi": Fixate (1), Restanțe (2), Azi (3).
 const ROWS: CursorRow[] = [
@@ -60,4 +60,37 @@ describe('neighborAfterRemove', () => {
     ['tot a ieșit → null', [], 'A1', null],
   ]
   for (const [name, after, cur, want] of cases) it(name, () => expect(neighborAfterRemove(ROWS, after, cur)).toBe(want))
+})
+
+describe('rangeBetween', () => {
+  it('în ambele sensuri, inclusiv capetele', () => {
+    expect(rangeBetween(ROWS, 'R1', 'A1')).toEqual(['R1', 'R2', 'A1'])
+    expect(rangeBetween(ROWS, 'A1', 'R1')).toEqual(['R1', 'R2', 'A1'])
+    expect(rangeBetween(ROWS, 'A2', 'A2')).toEqual(['A2'])
+  })
+  it('o ancoră ieșită din listă → doar cursorul', () => {
+    expect(rangeBetween(ROWS, 'XX', 'A2')).toEqual(['A2'])
+    expect(rangeBetween(ROWS, null, null)).toEqual([])
+  })
+})
+
+describe('matching / nextMatch', () => {
+  const T = ROWS.map((r, i) => ({ ...r, title: ['Ședință', 'Sună la bancă', 'Plătește', 'Ședința de luni', 'Bancă', 'Altceva'][i] }))
+  it('fără diacritice, fără majuscule', () => {
+    expect(matching(T, 'sedint')).toEqual(['P1', 'A1'])
+    expect(matching(T, 'BANCA')).toEqual(['R1', 'A2'])
+    expect(matching(T, '  ')).toEqual([])
+  })
+  const hits = ['R1', 'A2']
+  const cases: [string, string | null, 1 | -1, number, string | null][] = [
+    ['n de pe primul rând → prima potrivire de dedesubt', 'P1', 1, 1, 'R1'],
+    ['n de pe o potrivire → următoarea', 'R1', 1, 1, 'A2'],
+    ['n de pe ultima → se reia de sus', 'A2', 1, 1, 'R1'],
+    ['N de jos → cea de deasupra', 'A3', -1, 1, 'A2'],
+    ['N de pe prima → se reia de jos', 'R1', -1, 1, 'A2'],
+    ['fără cursor, n → prima', null, 1, 1, 'R1'],
+    ['2n sare peste una', 'P1', 1, 2, 'A2'],
+  ]
+  for (const [name, cur, d, n, want] of cases) it(name, () => expect(nextMatch(ROWS, hits, cur, d, n)).toBe(want))
+  it('fără potriviri → null', () => expect(nextMatch(ROWS, [], 'P1', 1)).toBeNull())
 })

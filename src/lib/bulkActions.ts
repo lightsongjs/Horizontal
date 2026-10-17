@@ -29,7 +29,8 @@ export type DatePreset =
 export type BulkAction =
   | { kind: 'date'; preset: DatePreset }
   | { kind: 'urgent'; value: boolean }
-  | { kind: 'done' }
+  /** `value: false` redeschide (`x` din modul Vim, pe rânduri deja bifate). Lipsă = bifează. */
+  | { kind: 'done'; value?: boolean }
   | { kind: 'assign'; assigneeId: string | null }
   /** Fixează sus / scoate fixarea (`pinnedAt`). Vezi `lib/pinned.ts`. */
   | { kind: 'pin'; value: boolean }
@@ -138,7 +139,7 @@ export function actionPatch(issue: Issue, action: BulkAction, now: Date): Fields
   switch (action.kind) {
     case 'date': return datePatch(issue, action.preset, now)
     case 'urgent': return issue.urgent === action.value ? {} : { urgent: action.value }
-    case 'done': return issue.done ? {} : { done: true }
+    case 'done': return action.value === false ? (issue.done ? { done: false } : {}) : (issue.done ? {} : { done: true })
     case 'assign': return (issue.assigneeId ?? null) === action.assigneeId ? {} : { assigneeId: action.assigneeId }
     // Unul deja fixat își păstrează ora fixării (deci și locul între fixate).
     case 'pin': return action.value === !!issue.pinnedAt ? {} : { pinnedAt: action.value ? now.toISOString() : null }
@@ -205,6 +206,11 @@ export function pinTarget(issues: Pick<Issue, 'pinnedAt'>[]): boolean {
   return !(issues.length > 0 && issues.every((i) => !!i.pinnedAt))
 }
 
+/** Bifa pe selecție (`x`): dacă toate sunt deja bifate, se redeschid; altfel se bifează. */
+export function doneTarget(issues: Pick<Issue, 'done'>[]): boolean {
+  return !(issues.length > 0 && issues.every((i) => i.done))
+}
+
 /** Urgent pe selecție: dacă toate sunt deja urgente, se scoate; altfel se pune. */
 export function urgentTarget(issues: Issue[]): boolean {
   return !(issues.length > 0 && issues.every((i) => i.urgent))
@@ -245,7 +251,7 @@ export function bulkNotice(action: BulkAction, written: number, readOnly: number
       head = action.value ? plural(written, 'Marcat urgent', 'marcate urgent') : plural(written, 'Urgent scos', 'fără urgent')
       break
     case 'done':
-      head = plural(written, 'Gata', 'gata')
+      head = action.value === false ? plural(written, 'Redeschis', 'redeschise') : plural(written, 'Gata', 'gata')
       if (jumped > 0) head += ` · ${jumped} ${jumped === 1 ? 'a sărit' : 'au sărit'} la următoarea dată`
       break
     case 'pin':
