@@ -17,7 +17,7 @@ import ro.horizontal.app.core.*
 import java.time.ZoneId
 
 /**
- * Agenda: fixate + restanțe + 7 zile, în „Senin" (`design/android-widget/index.html`).
+ * Agenda: restanțe + 7 zile (fixatele lor sus), în „Senin" (`design/android-widget/index.html`).
  * Desenul e o funcție de `PlanStore` — nicio stare proprie. Două forme, alese de
  * launcher după mărime (API 31, fără rundă prin aplicație): 4×4 și compactul 4×2.
  */
@@ -71,7 +71,7 @@ class AgendaWidget : AppWidgetProvider() {
             }
 
             val sections = (state as? AgendaState.Ready)?.sections.orEmpty()
-            v.setTextViewText(R.id.w_count, todayCount(sections).takeIf { it > 0 }?.toString() ?: "")
+            v.setTextViewText(R.id.w_count, todayCount(sections, now, zone).takeIf { it > 0 }?.toString() ?: "")
 
             // Stările goale: fără date încă (instalare proaspătă) ≠ nimic de făcut.
             val empty: Pair<String, String>? = when {
@@ -101,7 +101,7 @@ class AgendaWidget : AppWidgetProvider() {
             val c = Colors(ctx)
             var n = 0
             val limit = if (compact) COMPACT_LIMIT else Int.MAX_VALUE
-            if (freeToday(sections)) {
+            if (freeToday(sections, now, zone)) {
                 items.addItem(FREE_ID, RemoteViews(ctx.packageName, if (compact) R.layout.widget_agenda_free_compact else R.layout.widget_agenda_free))
                 n++
             }

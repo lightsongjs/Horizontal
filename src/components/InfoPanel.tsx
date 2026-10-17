@@ -84,7 +84,7 @@ const RULES: { title: string; body: string }[] = [
   },
   {
     title: 'Fixate sus',
-    body: 'O sarcină fixată (piuneza din antetul cardului, de lângă ID în foaia de telefon, piuneza din coada rândului la hover pe desktop, click dreapta pe rând, ⋮ al unui rând sau tasta F) stă primul grup din Azi, deasupra restanțelor și a urgentelor — cu sau fără dată, toată ziua. Nu se mai arată și în ziua ei din 7 zile, deci nu se numără de două ori. Bifată iese din grup; debifată revine. O recurentă bifată sare la următoarea dată și rămâne fixată. Între ele, cea fixată ultima e prima. În Listă fixatele urcă primele în grupul lor.',
+    body: 'O sarcină fixată (piuneza din antetul cardului, de lângă ID în foaia de telefon, piuneza din coada rândului la hover pe desktop, click dreapta pe rând, ⋮ al unui rând sau tasta F) urcă sus în lista din care face oricum parte, ca Pin din TickTick: în Azi (dacă e de azi sau restantă) și în 7 zile, primul grup, Fixate, deasupra restanțelor și a urgentelor; în filtre, prima în proiectul ei. Fixarea nu aduce nimic într-o listă: fără dată stă doar în proiect, iar mutată pe mâine trece din Azi în 7 zile. Nu se arată de două ori, iar numerele rămân aceleași. Bifată iese din grup; debifată revine. O recurentă bifată sare la următoarea dată și rămâne fixată. Între ele, cea fixată ultima e prima. În Listă fixatele urcă primele în grupul lor.',
   },
   {
     title: 'Fără Inbox',

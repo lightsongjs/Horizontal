@@ -128,19 +128,24 @@ export function compareDue(a: Issue, b: Issue): number {
 
 export interface SmartLists {
   /**
-   * Fixatele deschise — primul grup din „Azi", deasupra restanțelor și a
-   * urgentelor, cu sau fără scadență. Cel fixat cel mai recent primul.
-   * O fixată NU mai apare în `overdue`/`today`/`week`: e în „Azi" toată ziua,
-   * deci nicio altă listă nu o mai arată și nimic nu o numără de două ori.
+   * Fixatele deschise care sunt oricum în „Azi" (restanțe sau azi) — grupul
+   * „Fixate", primul, deasupra restanțelor și a urgentelor. Cel fixat cel mai
+   * recent primul. E o ORDINE peste `overdue`/`today`, nu o listă în plus:
+   * aceleași tichete sunt și acolo (deci numerele rămân exact cele fără
+   * fixare), iar ecranul le scoate din grupul zilei (`unpinned`) ca să nu le
+   * arate de două ori. Ca Pin din TickTick: fixarea nu aduce nimic într-o listă.
    */
   pinned: Issue[]
-  /** Nefinalizate, scadență trecută. Cel mai vechi primul. */
+  /** La fel pentru „7 zile": fixatele din zilele +1..+7, grupul „Fixate" de sus. */
+  weekPinned: Issue[]
+  /** Nefinalizate, scadență trecută. Cel mai vechi primul. Fixatele incluse. */
   overdue: Issue[]
-  /** Nefinalizate cu scadență azi. */
+  /** Nefinalizate cu scadență azi. Fixatele incluse. */
   today: Issue[]
   /**
    * Zilele +1..+7 (de mâine, șapte zile), fiecare cu sarcinile ei
    * nefinalizate. Nici azi, nici restanțele nu intră: ele sunt în „Azi".
+   * Fixatele incluse (vezi `weekPinned`).
    */
   week: { offset: number; date: Date; issues: Issue[] }[]
   /** Bifate azi — pentru secțiunea colapsată din lista de azi. */
@@ -157,23 +162,19 @@ export interface SmartLists {
  *
  * Rutinele (`routines` = proiecte „doar mementouri") lipsesc până sună.
  *
- * Fixatele deschise (`pinnedAt`) ies înaintea oricărei alte reguli: merg în
- * `pinned`, chiar fără scadență, chiar restante, chiar dintr-o zi din „7 zile"
- * și chiar adormite (fixarea e un gest explicit al omului, bate regula
- * proiectului de rutine). O fixată bifată azi cade în `doneToday`, ca oricare.
+ * Fixatele (`pinnedAt`) NU schimbă nimic din regula de mai sus — ca Pin din
+ * TickTick, fixarea doar ORDONEAZĂ o listă din care tichetul face oricum parte
+ * (decizia omului, 2026-10-17, a doua versiune). `pinned`/`weekPinned` sunt
+ * extrase din listele gata făcute: fără scadență, dincolo de fereastră sau
+ * rutină adormită = nicăieri, ca orice tichet.
  * Spec: docs/superpowers/specs/2026-10-17-sarcini-fixate-design.md.
  */
 export function buildSmartLists(issues: Issue[], now: Date, routines: Set<string> = new Set()): SmartLists {
   const overdue: Issue[] = []
   const byOffset = new Map<number, Issue[]>()
   const doneToday: Issue[] = []
-  const pinned: Issue[] = []
 
   for (const it of issues) {
-    if (isPinnedOpen(it)) {
-      pinned.push(it)
-      continue
-    }
     if (!it.dueAt) continue
     const off = dayOffset(it.dueAt, now)
     if (it.done) {
@@ -200,8 +201,16 @@ export function buildSmartLists(issues: Issue[], now: Date, routines: Set<string
     return { offset, date: addDays(today, offset), issues: (byOffset.get(offset) ?? []).sort(compareDue) }
   })
 
-  pinned.sort(comparePinned)
-  return { pinned, overdue, today: (byOffset.get(0) ?? []).sort(compareDue), week, doneToday }
+  const todayList = (byOffset.get(0) ?? []).sort(compareDue)
+  const pinnedOf = (list: Issue[]) => list.filter(isPinnedOpen).sort(comparePinned)
+  return {
+    pinned: pinnedOf([...overdue, ...todayList]),
+    weekPinned: pinnedOf(week.flatMap((d) => d.issues)),
+    overdue,
+    today: todayList,
+    week,
+    doneToday,
+  }
 }
 
 // ── Punte către <input type="date"> și <input type="time"> ──────────────────

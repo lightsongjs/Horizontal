@@ -46,7 +46,7 @@ class FixturesTest {
                 // `routine`: ascunsă până la `remindAt ?: dueAt`, ca `revealAt` din `src/lib/routines.ts`.
                 val due = if (o.has("dueAt")) o.getString("dueAt") else null
                 val hidden = if (o.optBoolean("routine", false)) parseIso(if (o.has("remindAt")) o.getString("remindAt") else due) else null
-                // `pinnedAt`: fixată („Fixate", primul grup), cu sau fără `dueAt`.
+                // `pinnedAt`: fixată (urcă în „Fixate" dacă e în agendă); fără `dueAt` nu e.
                 AgendaItem(o.getString("id"), o.getString("id"), null, due, o.optBoolean("allDay", false), false, false, o.optBoolean("urgent", false), hidden,
                     if (o.has("accent")) o.getString("accent") else null, if (o.has("pinnedAt")) o.getString("pinnedAt") else null)
             } }
@@ -66,7 +66,7 @@ class FixturesTest {
             } }
             assertEquals(f.getString("name"), want, got)
             // Numărul „Azi" (antetul widget-ului, notificarea din bară) = `listCount` din `App.tsx`.
-            if (f.has("todayCount")) assertEquals(f.getString("name"), f.getInt("todayCount"), todayCount(sections))
+            if (f.has("todayCount")) assertEquals(f.getString("name"), f.getInt("todayCount"), todayCount(sections, parseIso(f.getString("now"))!!, zone))
         }
     }
 

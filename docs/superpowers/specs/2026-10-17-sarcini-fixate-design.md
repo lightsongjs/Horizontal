@@ -20,7 +20,40 @@ toată ziua, deși n-are scadență. Ca „Pin" din TickTick.
 Surse: help.ticktick.com („List View", „Task Details"), makeuseof.com („A
 Complete Guide to Organizing Tasks in TickTick"), App Store (Mac story).
 
-## Ce facem noi — și de ce diferă de TickTick
+## Versiunea a doua (2026-10-17): regula TickTick, întocmai
+
+Prima versiune (punctele 2–4 de mai jos, păstrate ca istoric) făcea din fixare
+o declarație „e a zilei de azi": o fixată stătea în „Azi" cu sau fără dată,
+dintr-o zi din „7 zile" sau peste rutina adormită. Omul a refuzat-o: **„să
+respectăm întru totul, să nu tot facem excepții"**. Exemplele lui: fixată în
+Inbox → mereu sus în lista Inbox-ului, dar NU în „Azi" decât dacă e de azi;
+o fixată mutată pe mâine dispare din „Azi" și se vede în „7 zile".
+
+Regula de acum: **fixarea doar ORDONEAZĂ — urcă un tichet în vârful unei
+liste din care face oricum parte; nu aduce niciodată un tichet într-o listă.**
+
+- **„Azi":** grupul „Fixate", primul, numai cu fixatele restante sau de azi
+  (ale mele, rutina adormită ascunsă ca oricare). **„7 zile":** un grup
+  „Fixate" sus, cu fixatele din zilele +1..+7. În grupul zilei nu se repetă.
+- **Apartenența și numerele nu se schimbă deloc**: `buildSmartLists` face
+  `overdue`/`today`/`week` exact ca fără fixări, iar `pinned`/`weekPinned`
+  sunt extrase din ele. Ecranul scoate fixatele din grupurile zilelor
+  (`unpinned`); numerele numără listele întregi — deci sunt, prin
+  construcție, cele de fără fixare. De aici a dispărut și `withPinned`
+  (store-ul nu mai adaugă fixatele fără dată din `openIssues`).
+- **Fără dată:** fixata stă sus doar în proiectul ei („Listă", în layerul ei)
+  și în filtrele salvate care o prind.
+- **Filtrele salvate:** fixatele primele (`compareFilterRows`), deci sus în
+  grupul proiectului lor — nu un grup „Fixate" separat, care ar fi rupt
+  gruparea pe proiect.
+- **Restanța fixată** stă în „Fixate" din „Azi", cu ziua roșie pe rând.
+- **Android (`versionCode 15`):** widget-ul e o singură listă (restanțe +
+  zilele 0..6), deci are un singur grup „Fixate" sus, cu fixatele agendei din
+  orice zi a ei; numărul din antet rămâne restanțe + azi. Notificarea din
+  bară arată întâi fixata cea mai recentă dintre cele de azi/restante. Citirea
+  nativă nu mai cere fixatele fără dată; `pinned_at` rămâne în select, ca ordine.
+
+## Ce făceam în prima versiune — și de ce diferea de TickTick (înlocuit)
 
 1. **Model:** `issues.pinned_at timestamptz null` (`supabase/migration-pinned-tasks.sql`).
    `null` = nefixat; valoarea = când a fost fixat. Un câmp de tichet, nu un rând
@@ -68,15 +101,18 @@ Complete Guide to Organizing Tasks in TickTick"), App Store (Mac story).
      e plin; acolo e foaia de tichet);
    - desktop: tasta **F** cu un card deschis (panou sau modal), lângă `Y`.
      Liberă: Ctrl+F e căutarea, iar modificatorii sunt ignorați.
-10. **Ce nu e încă:** widget-ul de agendă, notificarea fixă din bară și
-    fereastra nativă de pe Android nu știu de fixări (cer APK nou); web push
-    și Linux nu au nevoie.
+10. **Ce nu e încă:** fereastra nativă de quick add și foaia nativă a
+    tichetului de pe Android nu fixează; web push și Linux nu au nevoie.
+    (Widget-ul și notificarea din bară: din `versionCode 14`, regula a doua
+    din `versionCode 15`.)
 
 ## Fișiere
 
 - Reguli pure: `src/lib/pinned.ts` (+ test), `buildSmartLists` în `src/lib/schedule.ts`,
   acțiunea `pin` în `src/lib/bulkActions.ts`.
 - Date: `src/lib/types.ts` (`pinnedAt`), `supabaseRepository`, `localRepository`,
-  ecoul offline (`ops.ts`), store (`withPinned`).
+  ecoul offline (`ops.ts`).
+- Android: `core/Agenda.kt` (`daySections`, `buildAgenda`, `todayItems`),
+  `core/Shade.kt`, fixtures `src/lib/agenda.fixtures.json`.
 - UI: `SmartListView`, `TaskRow`, `ListView`, `EditSheet`, `IssueForm`,
   `TaskActions`, `InfoPanel`, `Icon` (rolul `pin`).

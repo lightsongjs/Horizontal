@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { comparePinned, isPinned, isPinnedOpen, pinPatch, pinnedFirst, withPinned } from './pinned'
+import { comparePinned, isPinned, isPinnedOpen, pinPatch, pinnedFirst, unpinned } from './pinned'
 import { NO_SCHEDULE } from './schedule'
 import type { Issue } from './types'
 
@@ -39,10 +39,10 @@ describe('pinned', () => {
     expect(pinnedFirst(plain)).toBe(plain)
   })
 
-  it('withPinned: adaugă fixatele fără scadență, fără dubluri', () => {
-    const due = [task('A', { dueAt: T1, pinnedAt: T1 }), task('B', { dueAt: T1 })]
-    const open = [task('A', { dueAt: T1, pinnedAt: T1 }), task('C', { pinnedAt: T2 }), task('D')]
-    expect(withPinned(due, open).map((i) => i.id)).toEqual(['A', 'B', 'C'])
-    expect(withPinned(due, [task('D')])).toBe(due)
+  it('unpinned: scoate fixatele deschise din grupul zilei, bifatele rămân', () => {
+    const xs = [task('A'), task('B', { pinnedAt: T1 }), task('C', { pinnedAt: T2, done: true })]
+    expect(unpinned(xs).map((i) => i.id)).toEqual(['A', 'C'])
+    const plain = [task('A')]
+    expect(unpinned(plain)).toBe(plain)
   })
 })

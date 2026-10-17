@@ -60,24 +60,30 @@ class ShadeTest {
         assertEquals(ShadeText(2, "Server căzut", "Azi 17:00 · încă 1"), shadeText(s, now, zone))
     }
 
-    @Test fun fixataSus_chiarFărăScadență_șiSeNumără() {
+    @Test fun fixataDeAzi_ePrima_numărulCaFărăFixare() {
         val s = state(
             item("A", "Taxe", "2026-10-03T21:00:00.000Z"),                                     // restanță
-            item("P", "Credențiale ANAF", null, pinnedAt = "2026-10-06T07:00:00.000Z"),
+            item("P", "Credențiale ANAF", "2026-10-05T21:00:00.000Z", pinnedAt = "2026-10-06T07:00:00.000Z"),
+            item("N", "Fără dată", null, pinnedAt = "2026-10-06T07:30:00.000Z"),               // nu e în agendă
         )
-        assertEquals(ShadeText(2, "Credențiale ANAF", "Fixată · încă 1"), shadeText(s, now, zone))
+        assertEquals(ShadeText(2, "Credențiale ANAF", "Fixată · Azi · încă 1"), shadeText(s, now, zone))
     }
 
-    @Test fun fixataDeMâine_îșiSpuneZiua_șiȚineZiuaOcupată() {
+    @Test fun fixataDeMâine_nuEPrima_șiNuȚineZiuaOcupată() {
         val s = state(item("P", "Dentist", "2026-10-07T07:00:00.000Z", allDay = false, pinnedAt = "2026-10-06T07:00:00.000Z"))
-        assertEquals(ShadeText(1, "Dentist", "Fixată · Mâine 10:00"), shadeText(s, now, zone))
+        assertEquals(ShadeText(0, "Nimic pe azi", "Urmează: Dentist · Mâine 10:00"), shadeText(s, now, zone))
+        val t = state(
+            item("P", "Dentist", "2026-10-07T07:00:00.000Z", allDay = false, pinnedAt = "2026-10-06T07:00:00.000Z"),
+            item("B", "Ședință", "2026-10-06T12:00:00.000Z", allDay = false),
+        )
+        assertEquals(ShadeText(1, "Ședință", "Azi 15:00"), shadeText(t, now, zone))
     }
 
     @Test fun ceaMaiRecentFixată_ePrima() {
         val s = state(
-            item("P1", "Veche", null, pinnedAt = "2026-10-01T07:00:00.000Z"),
-            item("P2", "Nouă", null, pinnedAt = "2026-10-05T07:00:00.000Z"),
+            item("P1", "Veche", "2026-10-04T21:00:00.000Z", pinnedAt = "2026-10-01T07:00:00.000Z"),
+            item("P2", "Nouă", "2026-10-05T21:00:00.000Z", pinnedAt = "2026-10-05T07:00:00.000Z"),
         )
-        assertEquals(ShadeText(2, "Nouă", "Fixată · încă 1"), shadeText(s, now, zone))
+        assertEquals(ShadeText(2, "Nouă", "Fixată · Azi · încă 1"), shadeText(s, now, zone))
     }
 }

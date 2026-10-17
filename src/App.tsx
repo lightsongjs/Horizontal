@@ -94,7 +94,7 @@ function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, ca
   // La fel pe un filtru: proiectul din store e al tichetului docat.
   const projectChrome = inbox || filterId || smartList ? null : project
   const pct = projectChrome ? Math.round(completion(projectChrome.id) * 100) : 0
-  const listCount = smartList === 'today' ? smartLists.pinned.length + smartLists.overdue.length + smartLists.today.length
+  const listCount = smartList === 'today' ? smartLists.overdue.length + smartLists.today.length
     : smartList === 'week' ? smartLists.week.reduce((n, d) => n + d.issues.length, 0)
     : filter ? filterCounts[filter.id] ?? 0
     : 0

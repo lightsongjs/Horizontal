@@ -45,7 +45,7 @@ fun mineFilter(me: Me): String {
     return "&or=" + URLEncoder.encode(mineCond(me)!!.removePrefix("or"), "UTF-8")
 }
 
-/** Aceeași condiție, ca termen într-un `and=(…)` (agenda o combină cu fereastra ei). Necunoscut → `null`, nu taie. */
+/** Aceeași condiție, ca termen `or(…)` (și pentru un viitor `and=(…)`). Necunoscut → `null`, nu taie. */
 fun mineCond(me: Me): String? = if (!me.known) null else
     "or(assignee_id.eq.${me.assigneeId},and(assignee_id.is.null,or(created_by.eq.${me.userId},created_by.is.null)))"
 

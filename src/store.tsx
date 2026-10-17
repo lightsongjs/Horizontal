@@ -28,7 +28,6 @@ import {
 } from './lib/engine'
 import { buildSmartLists, smartListRange, type SmartLists } from './lib/schedule'
 import { onlyMine } from './lib/ownership'
-import { withPinned } from './lib/pinned'
 import { isDormant, nextReveal, routineProjectIds } from './lib/routines'
 import { didJumpOnComplete, jumpNotice } from './lib/recurrence'
 import { applyIssuePatch } from './lib/issuePatch'
@@ -698,11 +697,11 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     for (const i of allIssues) m.set(i.id, i)
     return [...m.values()].filter((i) => !i.done && !hiddenIds.has(i.id))
   }, [openRaw, allIssues, hiddenIds])
-  // Fixatele deschise intră în „Azi" și FĂRĂ scadență, deci nu le aduce
-  // `listDueIssues` — vin din `openIssues` (`withPinned`, fără dubluri).
+  // Fixatele NU se adaugă aici: fixarea doar ordonează o listă din care
+  // tichetul face oricum parte (`buildSmartLists`, „Sarcini fixate").
   const myDueIssues = useMemo(
-    () => onlyMine(withPinned(dueIssues, openIssues), { assigneeId: myAssigneeId, userId: sessionUserId }),
-    [dueIssues, openIssues, myAssigneeId, sessionUserId],
+    () => onlyMine(dueIssues, { assigneeId: myAssigneeId, userId: sessionUserId }),
+    [dueIssues, myAssigneeId, sessionUserId],
   )
   const smartLists = useMemo(
     () => buildSmartLists(myDueIssues, new Date(), routines),

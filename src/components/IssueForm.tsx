@@ -1440,7 +1440,7 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
             onClick={togglePin}
             aria-pressed={!!existing.pinnedAt}
             aria-label={existing.pinnedAt ? 'Scoate de sus' : 'Fixează sus'}
-            title={existing.pinnedAt ? 'Fixat sus în „Azi" — scoate (F)' : 'Fixează sus în „Azi" (F)'}
+            title={existing.pinnedAt ? 'Fixat sus în liste — scoate (F)' : 'Fixează sus în liste (F)'}
           >
             <Icon name="pin" size={15} />
           </button>

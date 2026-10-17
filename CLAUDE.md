@@ -948,29 +948,40 @@ Setup: `npm run migrate supabase/migration-recurrence.sql`.
 
 ## Sarcini fixate („Fixează sus", ca Pin din TickTick)
 
-Spec: `docs/superpowers/specs/2026-10-17-sarcini-fixate-design.md` (decizia
-omului, 2026-10-17: credențialele pentru ANAF într-un tichet, sus toată ziua,
-fără scadență). Coloana `issues.pinned_at` (`null` = nefixat, altfel când),
+Spec: `docs/superpowers/specs/2026-10-17-sarcini-fixate-design.md`.
+**Regula e cea din TickTick, întocmai** (decizia omului, 2026-10-17, a doua
+versiune: „să respectăm întru totul, să nu tot facem excepții"): **fixarea
+doar ORDONEAZĂ — urcă un tichet în vârful unei liste din care face oricum
+parte; nu aduce niciodată un tichet într-o listă.** Prima versiune (o fixată
+stătea în „Azi" cu sau fără dată, peste rutina adormită) a fost refuzată. Coloana `issues.pinned_at` (`null` = nefixat, altfel când),
 `supabase/migration-pinned-tasks.sql` — **rulată ÎNAINTE de push**: fără ea
 „Fixează sus" trimite `pinned_at` și PostgREST îl refuză (citirile merg).
 
 - **Un câmp de tichet, nu `pinned_items`.** Acelea sunt pătratele din sertar
   (`pins.ts`, ale contului); fixarea unei sarcini e `pinned.ts`. Fiind un
   patch de tichet ca urgentul, merge offline prin coadă, fără cod nou.
-- **„Azi" are primul grup „Fixate"**, deasupra restanțelor și a urgentelor:
-  orice tichet fixat, deschis și `isMine`, CU sau FĂRĂ scadență. Fără scadență
-  nu-l aduce `listDueIssues`, deci store-ul îl ia din `openIssues`
-  (`withPinned`, înainte de `onlyMine`). Regula e în `buildSmartLists`.
-- **O fixată stă numai acolo** — nu și în Restanțe, Azi sau ziua ei din
-  „7 zile": două locuri ar număra-o de două ori. Rândul își spune ziua
-  (`day` pe `TaskRow`: „Mâine 10:00", ora cade sub 380px) și roșul de
-  restanță. Numărul „Azi" o include, badge-ul de restanțe nu.
+- **„Azi" are primul grup „Fixate"**, deasupra restanțelor și a urgentelor,
+  numai cu fixatele care sunt oricum în „Azi" (restante sau de azi, `isMine`,
+  rutina adormită ascunsă ca oricare). **„7 zile" are și ea un grup „Fixate"**
+  sus, cu fixatele din zilele +1..+7. Fixată în Inbox fără dată = sus în
+  Inbox (și în filtrele care o prind), nicăieri altundeva; mutată pe mâine
+  iese din „Azi" și urcă în „7 zile". Regula e în `buildSmartLists`:
+  `pinned`/`weekPinned` sunt extrase din `overdue`/`today`/`week`, care
+  rămân EXACT listele de fără fixare (apartenența).
+- **Fără dublură, fără numere noi.** Ecranul scoate fixatele din grupul zilei
+  (`unpinned`, `lib/pinned.ts`) fiindcă stau deja sus; numerele (antet,
+  sertar, sidebar, widget) numără `overdue`/`today`/`week` întregi — deci
+  sunt exact cele de fără fixare, prin construcție. Rândul din „Fixate" își
+  spune ziua (`day` pe `TaskRow`: „Mâine 10:00", ora cade sub 380px) și roșul
+  de restanță. O zi al cărei singur rând e fixat nu mai arată „—"/„Nimic pe azi".
 - **Bifa nu scoate fixarea**: bifat iese din grup (`isPinnedOpen`), debifat
   revine. Bifa vine pe patru drumuri (interfață, `reminder-action`,
   `functions/api`, Android), deci un „scoate la bifă" ar fi cerut un trigger,
   iar anularea s-ar fi complicat. O recurentă sare și rămâne fixată, gratis.
-- Fixarea bate rutina adormită (gest explicit). Ordinea: fixat cel mai recent
-  primul (`comparePinned`).
+- Ordinea: fixat cel mai recent primul (`comparePinned`).
+- **Filtrele salvate:** fixatele primele (`compareFilterRows`), deci sus în
+  grupul proiectului lor (`groupByProject` păstrează ordinea) — nu un grup
+  „Fixate" separat, care ar fi rupt gruparea pe proiect cerută de om.
 - **„Listă": fixatele urcă primele ÎN layerul lor**, nu peste layere — layerul
   e read-only (dependențe). „Cards" nu arată fixarea.
 - **Unde:** piuneza de pe rândul ID-ului din `EditSheet` (`.es-pin`; iese în
@@ -996,16 +1007,18 @@ fără scadență). Coloana `issues.pinned_at` (`null` = nefixat, altfel când),
   tastatură (Tab) sau cel ales cu H J K L în „Listă", numai fără foaie
   deschisă — cu un tichet deschis (docat sau modal) F e a formularului.
   Toate trei trec prin `ta.run({ kind: 'pin' })`, deci au toastul cu anulare.
-- **Widget-ul și notificarea din bară știu de fixări din `versionCode 14`**
-  (vezi „Aplicația de Android"): grupul „Fixate" primul, aceeași regulă și
-  același număr. Un APK mai vechi ignoră `pinnedAt` (și sare rândul fără
-  scadență): acolo o fixată fără dată lipsește, iar una datată stă în ziua ei.
+- **Widget-ul și notificarea din bară: regula TickTick din `versionCode 15`**
+  (vezi „Aplicația de Android"): agenda e aceeași ca fără fixări, iar
+  fixatele ei urcă într-un grup „Fixate" primul. `versionCode 14` (regula
+  veche) aducea în widget și fixatele fără dată — pagina nu i le mai trimite,
+  dar citirea lui nativă încă le cere până la APK-ul nou.
   Fereastra nativă de quick add și foaia nativă a tichetului nu fixează.
 - Teste: `src/lib/pinned.test.ts`, „fixate" în `schedule.test.ts` și
   `bulkActions.test.ts`, repo-urile; `test:layout` (grupul, semnul, `.es-pin`
   la 320–430px; piuneza de rând la 1100/1400 nu mută titlul la hover, lipsește
   fără mouse la 390); `test:nav` (piuneza din foaie → grupul primul, fără
-  dublură, un tichet fără dată fixat; pe desktop piuneza de rând nu deschide
+  dublură, un tichet fără dată fixat NU intră, mutată pe mâine trece în „Fixate"
+  din „7 zile"; pe desktop piuneza de rând nu deschide
   tichetul, click dreapta o scoate, F o comută). Capturi:
   `design/pinned/desktop-*.png`, `banc-rand-*.png`.
 
@@ -1744,18 +1757,22 @@ Pro (HyperOS 3, Android 16).
   la miezul nopții (gruparea se schimbă fără date noi). Întoarcerea pe ecranul de
   start o decide pagina (`NativeBridge`): primul `popstate` care nu e tichet sau
   foaie după o atingere din widget → `leave()` (`moveTaskToBack`).
-  **Fixatele** (din `versionCode 14`, „Sarcini fixate"): `pinnedAt` în
-  `AgendaItem` (`dueAt` poate fi `null` numai pe o fixată), grupul „Fixate" primul
-  în `buildAgenda` (cel fixat cel mai recent primul, nu și în ziua lui, bate rutina
-  adormită), numărat în `todayCount` ca numărul „Azi" (fixate + restanțe + azi).
+  **Fixatele** („Sarcini fixate", regula TickTick din `versionCode 15`):
+  `pinnedAt` în `AgendaItem`. Apartenența e `daySections` (restanțe + zilele
+  0..6, ca fără fixări); `buildAgenda` urcă fixatele ei într-un grup „Fixate"
+  primul — widget-ul e O listă, deci și cele din zilele +1..+6 — cel fixat cel
+  mai recent primul, nu și în ziua lor. Fără scadență, dincolo de fereastră
+  sau rutină adormită = nu e în agendă, deci nici sus. `todayCount(sections,
+  now, zone)` și `freeToday` recalculează din apartenență (restanțe + azi):
+  o fixată de mâine stă sus, dar nu se numără și nu ține ziua ocupată.
   Rândul are piuneza în coadă (`r_pin`, `ic_widget_pin`) și își spune ziua
   (`rowMeta(…, pinned)`, roșie dacă e restantă); capul are piuneza în locul
-  ceasului. Pagina adaugă fixatele din `openIssues` (`withPinned` în
-  `NativeBridge`); citirea nativă cere `and=(or(due_at.lt.…,pinned_at.not.is.null),
-  <ale mele>)` cu `order=pinned_at.desc.nullslast,due_at.asc`, ca plafonul să nu
-  taie fixatele (`mineCond`, aceeași condiție ca `mineFilter`, în același `and`).
-  Fără `API` nou: un APK vechi ignoră câmpul. Fixtures: `agenda.fixtures.json`
-  (`pinnedAt`, secțiunea `pinned`, `todayCount`).
+  ceasului. Pagina trimite agenda ca înainte (fără fixatele nedatate);
+  citirea nativă cere `pinned_at` doar ca ordine (`due_at=lt.…`,
+  `order=due_at.asc`). O pagină veche poate trimite încă o fixată fără dată
+  (`dueAt` null pe punte): se primește, dar nu intră în agendă. Fără `API`
+  nou. Fixtures: `agenda.fixtures.json` (`pinnedAt`, secțiunea `pinned`,
+  `todayCount`).
   **Desenul e „Senin"** (din `versionCode 10`, macheta `design/android-widget/index.html`):
   antet cu steaua, „Azi" și numărul de azi (restanțele incluse, `todayCount`), rânduri
   cu inelul în culoarea proiectului (urgent = inelul roșu — încă, `w_ck_urgent.xml`; chihlimbarul paginii cere un APK nou —, a doua `CheckBox` comutată
@@ -1775,8 +1792,9 @@ Pro (HyperOS 3, Android 16).
   de azi (`todayCount`, același cu al widget-ului — e aceeași agendă,
   `AgendaWidget.stateOf`), prima sarcină și ziua ei (`dueChipDay`, cuvintele
   aplicației; fixtures comune `src/lib/dueChipDay.fixtures.json`), sau „Nimic pe
-  azi" + ce urmează. Cu o fixată, prima e fixata cea mai recentă: „Fixată ·
-  Mâine 10:00 · încă 2" (fără scadență: „Fixată · încă 2"; `ShadeTest`). Textul e pur, în `core/Shade.kt`. „+" = `QuickAddActivity`
+  azi" + ce urmează. Prima e fixata cea mai recentă dintre cele de azi și
+  restante („Fixată · Azi · încă 2"), altfel prima de azi (restanțele întâi);
+  o fixată de mâine nu e prima și nu ține ziua ocupată (`todayItems`, `ShadeTest`). Textul e pur, în `core/Shade.kt`. „+" = `QuickAddActivity`
   (`Widgets.quick`); atingerea = aplicația pe „Azi" (evenimentul `shade`, separat
   de `widget`, pe care o pagină veche l-ar fi luat drept „quick" → `GO_TODAY_EVENT`
   în `App.tsx`). Se redesenează din `Widgets.refresh`, deci la orice listă, acțiune,

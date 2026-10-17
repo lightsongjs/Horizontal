@@ -105,6 +105,13 @@ describe('ordine și grupare', () => {
     const list = [mk('A-10'), mk('A-2'), mk('A-3', { urgent: true }), mk('A-4', at(12)), mk('A-5', at(9))]
     expect(filterIssues(list, EMPTY_RULES, ctx).map((i) => i.id)).toEqual(['A-5', 'A-4', 'A-3', 'A-2', 'A-10'])
   })
+  it('fixatele primele (cel fixat cel mai recent întâi), apoi ordinea obișnuită; în grupul proiectului lor', () => {
+    const list = [mk('A-2'), mk('A-4', at(12)), mk('A-7', { pinnedAt: '2026-10-10T08:00:00.000Z' }),
+      mk('A-8', { ...at(9), pinnedAt: '2026-10-11T08:00:00.000Z' }), mk('B-1', { projectId: 'b', pinnedAt: '2026-10-12T08:00:00.000Z' }), mk('B-2', { projectId: 'b', ...at(9) })]
+    const got = filterIssues(list, EMPTY_RULES, ctx)
+    expect(got.map((i) => i.id)).toEqual(['B-1', 'A-8', 'A-7', 'B-2', 'A-4', 'A-2'])
+    expect(groupByProject(got, [{ id: 'a' }, { id: 'b' }]).map((g) => g.issues.map((i) => i.id))).toEqual([['A-8', 'A-7', 'A-4', 'A-2'], ['B-1', 'B-2']])
+  })
   it('grupele urmează ordinea proiectelor; necunoscutele la coadă', () => {
     const g = groupByProject([mk('X-1', { projectId: 'x' }), mk('B-1', { projectId: 'b' }), mk('A-1')], [{ id: 'a' }, { id: 'b' }])
     expect(g.map((x) => x.projectId)).toEqual(['a', 'b', 'x'])

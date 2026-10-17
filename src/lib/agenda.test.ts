@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest'
 import fixtures from './agenda.fixtures.json'
 import { buildSmartLists, NO_SCHEDULE, SMART_LIST_DAYS } from './schedule'
 import { agendaItems, AGENDA_LIMIT } from './agenda'
+import { comparePinned, unpinned } from './pinned'
 import type { Issue } from './types'
 
 type FixtureItem = { id: string; dueAt?: string; allDay: boolean; urgent: boolean; remindAt?: string; routine?: boolean; accent?: string; pinnedAt?: string }
@@ -22,25 +23,29 @@ describe('agenda — fixtures comune cu Kotlin', () => {
       const items = f.items.map(({ routine, accent, ...i }: FixtureItem) => issue({ ...i, projectId: routine ? 'rut' : accent ? `p-${i.id}` : 'p1' }))
       const lists = buildSmartLists(items, new Date(f.now), new Set(['rut']))
       const got: unknown[] = []
-      // `pinnedAt`: grupul „Fixate", primul, cu sau fără scadență (`src/lib/pinned.ts`).
-      if (lists.pinned.length) got.push({ section: 'pinned', ids: lists.pinned.map((i) => i.id) })
-      if (lists.overdue.length) got.push({ section: 'overdue', ids: lists.overdue.map((i) => i.id) })
       // Widget-ul arată azi + zilele 1..6 (`SMART_LIST_DAYS`); lista „7 zile" din
       // aplicație începe de mâine și ține până la +7, deci azi vine din `today`,
       // iar ziua +7 nu e a widget-ului.
       const days = [{ offset: 0, issues: lists.today }, ...lists.week.filter((d) => d.offset < SMART_LIST_DAYS)]
-      days.forEach(({ offset, issues }) => { if (issues.length) got.push({ section: 'day', offset, ids: issues.map((i) => i.id) }) })
+      // `pinnedAt`: widget-ul e O listă, deci un singur grup „Fixate", primul — numai
+      // dintre rândurile lui (`pinned` din „Azi" + `weekPinned` din zilele lui).
+      const weekDays = new Set(days.flatMap((d) => d.issues.map((i) => i.id)))
+      const pinned = [...lists.pinned, ...lists.weekPinned.filter((i) => weekDays.has(i.id))].sort(comparePinned)
+      if (pinned.length) got.push({ section: 'pinned', ids: pinned.map((i) => i.id) })
+      if (unpinned(lists.overdue).length) got.push({ section: 'overdue', ids: unpinned(lists.overdue).map((i) => i.id) })
+      days.forEach(({ offset, issues }) => { if (unpinned(issues).length) got.push({ section: 'day', offset, ids: unpinned(issues).map((i) => i.id) }) })
       expect(got).toEqual(f.want)
-      // Numărul „Azi" (`listCount` din `App.tsx`) = antetul widget-ului și notificarea din bară (`todayCount`).
-      if (f.todayCount !== undefined) expect(lists.pinned.length + lists.overdue.length + lists.today.length).toBe(f.todayCount)
+      // Numărul „Azi" (`listCount` din `App.tsx`) = antetul widget-ului și notificarea din bară
+      // (`todayCount`). Fixarea nu-l schimbă: e exact numărul de fără fixare.
+      if (f.todayCount !== undefined) expect(lists.overdue.length + lists.today.length).toBe(f.todayCount)
       // Culoarea ajunge în widget neatinsă (Kotlin o citește în `FixturesTest.agenda`).
       const projects = [{ id: 'p1', name: 'P' }, { id: 'rut', name: 'R', remindersOnly: true },
         ...f.items.filter((i: FixtureItem) => i.accent).map((i: FixtureItem) => ({ id: `p-${i.id}`, name: i.id, accent: i.accent }))]
       const accents = Object.fromEntries(f.items.map((i: FixtureItem) => [i.id, i.accent ?? null]))
       const sent = agendaItems(items, projects, new Date(f.now))
       for (const a of sent) expect([a.id, a.accent]).toEqual([a.id, accents[a.id]])
-      // Ce trimite pagina cutiei conține toate fixatele, cu momentul fixării neatins.
-      for (const p of lists.pinned) expect(sent.find((a) => a.id === p.id)?.pinnedAt).toBe(p.pinnedAt)
+      // Ce trimite pagina cutiei conține fixatele agendei, cu momentul fixării neatins.
+      for (const p of pinned) expect(sent.find((a) => a.id === p.id)?.pinnedAt).toBe(p.pinnedAt)
     })
   }
 })
@@ -72,25 +77,18 @@ describe('agendaItems', () => {
     expect(got.map((i) => [i.id, i.hiddenUntil])).toEqual([['R-1', '2026-10-06T17:50:00.000Z'], ['R-2', '2026-10-06T21:00:00.000Z']])
   })
 
-  it('fixatele intră primele, chiar fără scadență sau dincolo de fereastră; o fixată bifată nu', () => {
+  it('o fixată intră numai dacă ar intra oricum: nu fără scadență, nu dincolo de fereastră, nu bifată', () => {
     const got = agendaItems([
       issue({ id: 'HZ-1', dueAt: '2026-10-05T21:00:00.000Z' }),
       issue({ id: 'P-1', pinnedAt: '2026-10-05T10:00:00.000Z' }),                                   // fără scadență
       issue({ id: 'P-2', dueAt: '2026-10-20T21:00:00.000Z', pinnedAt: '2026-10-06T07:00:00.000Z' }), // peste două săptămâni
-      issue({ id: 'P-3', pinnedAt: '2026-10-06T07:30:00.000Z', done: true }),                        // bifată
+      issue({ id: 'P-3', dueAt: '2026-10-05T21:00:00.000Z', pinnedAt: '2026-10-06T07:30:00.000Z', done: true }), // bifată
+      issue({ id: 'P-4', dueAt: '2026-10-03T21:00:00.000Z', pinnedAt: '2026-10-06T07:40:00.000Z' }), // restantă
     ], projects, now)
-    expect(got.map((i) => [i.id, i.dueAt, i.pinnedAt])).toEqual([
-      ['P-2', '2026-10-20T21:00:00.000Z', '2026-10-06T07:00:00.000Z'],
-      ['P-1', null, '2026-10-05T10:00:00.000Z'],
-      ['HZ-1', '2026-10-05T21:00:00.000Z', null],
+    expect(got.map((i) => [i.id, i.pinnedAt])).toEqual([
+      ['P-4', '2026-10-06T07:40:00.000Z'],
+      ['HZ-1', null],
     ])
-  })
-
-  it('plafonul nu taie fixatele', () => {
-    const many = Array.from({ length: AGENDA_LIMIT + 5 }, (_, i) => issue({ id: `HZ-${i}`, dueAt: '2026-10-05T21:00:00.000Z' }))
-    const got = agendaItems([...many, issue({ id: 'P-1', pinnedAt: '2026-10-05T10:00:00.000Z' })], projects, now)
-    expect(got).toHaveLength(AGENDA_LIMIT)
-    expect(got[0].id).toBe('P-1')
   })
 
   it(`se oprește la ${AGENDA_LIMIT}`, () => {

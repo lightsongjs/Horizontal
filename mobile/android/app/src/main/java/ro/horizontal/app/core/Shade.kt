@@ -8,9 +8,10 @@ import java.time.temporal.ChronoUnit
 /**
  * Notificarea fixă din bara de notificări (D-185, „ca TickTick"): numărul de
  * azi și prima sarcină, plus „+". Aceeași agendă ca widget-ul (`agendaState`):
- * numărul e `todayCount` (fixatele, restanțele și azi, doar ale mele, rutinele
- * ascunse până sună), iar prima sarcină e primul rând al widget-ului — deci o
- * fixată, dacă există (grupul „Fixate" e primul), cu „Fixată" în fața zilei.
+ * numărul e `todayCount` (restanțele și azi, doar ale mele, rutinele ascunse
+ * până sună — fixarea nu-l schimbă), iar prima sarcină e prima fixată dintre
+ * cele de azi și restante, cu „Fixată" în fața zilei, altfel prima de azi
+ * (restanțele întâi). O fixată de mâine nu ține ziua ocupată.
  */
 data class ShadeText(val count: Int, val title: String, val sub: String)
 
@@ -39,12 +40,17 @@ private fun dayMonth(d: LocalDate) = "${d.dayOfMonth} ${LUNI_APP[d.monthValue - 
  */
 fun shadeText(state: AgendaState, now: Long, zone: ZoneId): ShadeText? {
     val sections = (state as? AgendaState.Ready)?.sections ?: return null
-    val count = todayCount(sections)
-    val first = sections.firstOrNull()?.items?.firstOrNull()
-        ?: return ShadeText(0, "Nimic pe azi", "Nici în următoarele 7 zile.")
-    // Ca rândul „Nimic pe azi" din widget (`freeToday`): ziua e liberă, dar urmează ceva.
-    if (count == 0) return ShadeText(0, "Nimic pe azi", "Urmează: ${first.title} · ${dueDayTime(first, now, zone)}")
-    // O fixată poate fi fără scadență: atunci rămâne doar „Fixată" (și „încă N").
-    val parts = listOf(if (sections.first().pinned) "Fixată" else "", dueDayTime(first, now, zone), if (count > 1) "încă ${count - 1}" else "")
+    val today = todayItems(sections, now, zone)
+    val count = today.size
+    // Ca rândul „Nimic pe azi" din widget (`freeToday`): ziua e liberă, dar urmează ceva —
+    // cel mai apropiat, nu o fixată de peste trei zile.
+    if (count == 0) {
+        val next = daySections(sections.flatMap { it.items }, now, zone).firstOrNull()?.items?.firstOrNull()
+            ?: return ShadeText(0, "Nimic pe azi", "Nici în următoarele 7 zile.")
+        return ShadeText(0, "Nimic pe azi", "Urmează: ${next.title} · ${dueDayTime(next, now, zone)}")
+    }
+    val pinned = today.filter(::isPinned).minWithOrNull(pinnedOrder)
+    val first = pinned ?: today.first()
+    val parts = listOf(if (pinned != null) "Fixată" else "", dueDayTime(first, now, zone), if (count > 1) "încă ${count - 1}" else "")
     return ShadeText(count, first.title, parts.filter { it.isNotEmpty() }.joinToString(" · "))
 }

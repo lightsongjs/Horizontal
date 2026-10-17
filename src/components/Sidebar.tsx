@@ -125,8 +125,7 @@ export function Sidebar({ showUsers = false, onNavigate, smartList = null, onSma
     return projects.find((p) => p.id === projectId)?.type === filter
   }
   const counts: Record<SmartListKind, number> = {
-    // Fixatele stau în „Azi" (`buildSmartLists`), deci se numără acolo.
-    today: [...smartLists.pinned, ...smartLists.today].filter((i) => inFilter(i.projectId)).length,
+    today: smartLists.today.filter((i) => inFilter(i.projectId)).length,
     week: smartLists.week.reduce((n, d) => n + d.issues.filter((i) => inFilter(i.projectId)).length, 0),
   }
   const overdueCount = smartLists.overdue.filter((i) => inFilter(i.projectId)).length
