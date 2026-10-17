@@ -63,7 +63,6 @@ const SHORTCUTS: { keys: string; action: string; where?: string }[] = [
   { keys: 'Tab', action: 'Descriere sub titlu', where: 'în quick add' },
   { keys: 'Ctrl+↵', action: 'Adaugă din descriere', where: 'în quick add' },
   { keys: 'O · Ctrl+F', action: 'Caută tichet, cele mai noi întâi (deschise; bifa „și închise" le adaugă pe cele bifate)', where: 'oriunde' },
-  { keys: 'P', action: 'Proiect nou', where: 'admin' },
   { keys: '1 2 3 4', action: 'Taburile List / Cards / Hartă / Teme', where: 'în proiect' },
   { keys: ', .', action: 'Valul anterior / următor (Notițele sunt primul)', where: 'în Cards / List' },
   { keys: 'V', action: 'Foaia „Valuri": redenumește, mută, adaugă', where: 'în Cards / List' },

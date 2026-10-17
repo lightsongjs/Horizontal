@@ -1295,7 +1295,8 @@ function Shell() {
         project && openNewIssue()
       }
       else if (e.key === 'o' || e.key === 'O') { e.preventDefault(); if (!leaveDocked()) return; setShowSearch(true) }
-      else if (e.key === 'p' || e.key === 'P') { e.preventDefault(); if (!isAdmin) return; if (!leaveDocked()) return; openNewProject() }
+      // Fără scurtătură pentru proiect nou (decizia omului, 2026-10-17): un
+      // proiect se creează doar din buton — prea rar ca să merite o tastă.
       else if (e.key === '?') { e.preventDefault(); setShowInfo(v => !v) }
       // Cu modul Vim, `[` e valul anterior (dispecerul), bara laterală e `gs`.
       else if (e.key === '[' && !vimOn) { e.preventDefault(); toggleSidebar() }
