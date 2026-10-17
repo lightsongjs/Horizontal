@@ -37,6 +37,8 @@ import { weekCrumb } from './lib/schedule'
 import type { NavTarget } from './components/NavMenu'
 import { TaskActionsProvider, useTaskActions } from './components/TaskActions'
 import { SelectionBar, SelectionHeader } from './components/SelectionChrome'
+import { GoToPalette, type GoTarget } from './components/GoToPalette'
+import { useKeyDispatcher, useVim, VimProvider, VimStatus } from './vim'
 
 /**
  * Puntea dintre coada offline și ce nu ține de store: foaia deschisă și URL-ul.
@@ -282,7 +284,7 @@ const slugify = (name: string) =>
   name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '')
 
 function Shell() {
-  const { loading, error, project, projects, issuesLoadedFor, issuesLoadFailedFor, byId, dueIssues, selectProject, refresh, toggleDone, updateIssue, inbox, recurrenceUndo, undoRecurrence, clearRecurrenceUndo, activeWave, undoEntry, takeUndo, expireUndo } = useHorizontal()
+  const { loading, error, project, projects, issuesLoadedFor, issuesLoadFailedFor, byId, dueIssues, selectProject, refresh, toggleDone, updateIssue, inbox, recurrenceUndo, undoRecurrence, clearRecurrenceUndo, activeWave, setActiveWave, undoEntry, takeUndo, expireUndo } = useHorizontal()
   const ta = useTaskActions()
   // Pentru `onPop`, care se atașează rar: stratul de închis e cel de ACUM.
   const taRef = useRef(ta)
@@ -374,6 +376,8 @@ function Shell() {
   })
   const [showInfo, setShowInfo] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
+  // „Mergi la…" (z, gp, :) — doar cu modul Vim; vezi `useKeyDispatcher` mai jos.
+  const [showGoTo, setShowGoTo] = useState(false)
   // ─────────────────────────────────────────────────────────────────────────
   // Mașina de stări a URL-ului. Cine deține URL-ul, și când:
   //
@@ -1102,6 +1106,8 @@ function Shell() {
   // Shell-ului ecranul filtrului, iar după ștergere pleacă de pe el, pe „Azi".
   const goTopRef = useRef(goTop)
   goTopRef.current = goTop
+  const goProjectRef = useRef(goProject)
+  goProjectRef.current = goProject
   useEffect(() => {
     // După randare, nu acum: editorul tocmai a cerut `closeSheet()`, iar cu
     // foaia încă în `sheetRef` `goTop` ar sări peste istoric și ar rescrie
@@ -1294,6 +1300,30 @@ function Shell() {
     return () => window.removeEventListener('keydown', onKey)
   }, [project, openNewIssue, openNewProject, modalOpen, showInfo, showSearch, showUsers, canWrite, isAdmin, toggleSidebar, changeTab, leaveDocked, smartList, writableProjects, offProject, narrow, activeWave]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Modul Vim: un singur dispecer de taste (`src/vim.tsx`) ───────────────
+  // Ce știe doar Shell-ul îi dă prin funcții citite LA APĂSARE, nu la montare.
+  const vim = useVim()
+  useKeyDispatcher({
+    blocked: () => modalOpen || showSearch || showInfo || showGoTo || drawerEntry.current,
+    digitTabs: () => !offProject && !smartList && !!project && !showUsers,
+    goTop: (t) => goTopRef.current(t),
+    openGoTo: () => setShowGoTo(true),
+    openSearch: () => { if (leaveDocked()) setShowSearch(true) },
+    toggleHelp: () => setShowInfo((v) => !v),
+    toggleSidebar,
+    sidebarCollapsed: () => sidebarCollapsed,
+    // Foaia setărilor înlocuiește stiva: un tichet docat cu modificări trece prin gardă.
+    openSettings: () => { if (leaveDocked()) openAppSettings() },
+  })
+  // Alt ecran, alt proiect, alt tab, alt val: cursorul de dinainte nu mai înseamnă nimic.
+  useEffect(() => { vim.setCursor(null) }, [vim, screen, project?.id, tab, activeWave, showUsers])
+  const goTo = (t: GoTarget) => {
+    if (t.kind === 'top') goTopRef.current(t.screen)
+    else if (t.kind === 'filter') goTopRef.current(filterScreen(t.id))
+    else if (t.kind === 'project') goProjectRef.current(t.id)
+    else setActiveWave(t.number)
+  }
+
   /**
    * Butoanele notificării („Gata", „Amână"). Cu o filă deschisă, PAGINA e
    * executantul preferat: nu doar poate scrie cu drepturile userului, ci își și
@@ -1471,6 +1501,12 @@ function Shell() {
         onOpen={openTaskAnywhere}
       />}
       {showInfo && <InfoPanel onClose={() => setShowInfo(false)} />}
+      {showGoTo && <GoToPalette
+        onClose={() => setShowGoTo(false)}
+        onGo={goTo}
+        showWaves={!offProject && !smartList && !!project && !showUsers}
+      />}
+      <VimStatus />
     </div>
   )
 }
@@ -1499,7 +1535,9 @@ export function App() {
           <SyncBridge />
           <NativeBridge />
           <TaskActionsProvider>
-            <Shell />
+            <VimProvider>
+              <Shell />
+            </VimProvider>
           </TaskActionsProvider>
         </CalendarProvider>
       </UIProvider>

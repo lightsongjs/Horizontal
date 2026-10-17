@@ -53,7 +53,7 @@ export function InboxView({ onOpen }: { onOpen(issueId: string): void }) {
     (userId && assignees.find((a) => a.userId === userId)?.name) || 'cineva'
 
   const row = (r: InboxRow) => (
-    <button key={r.issueId} className="list-row inbox-row" onClick={() => open(r.issueId)}>
+    <button key={r.issueId} className="list-row inbox-row" onClick={() => open(r.issueId)} data-issue-id={r.issueId}>
       <span className={`inbox-dot${isUnread(r.lastForeignAt, r.seenAt) ? '' : ' read'}`} aria-hidden="true" />
       <span className="origin-avatar">{authorName(r.lastForeignAuthor).slice(0, 2).toUpperCase()}</span>
       <div className="inbox-body">

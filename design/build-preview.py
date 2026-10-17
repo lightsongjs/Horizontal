@@ -458,10 +458,11 @@ AZI = (QA + PUSH + PINNED
 # Singurul ecran al bancului cu două coloane. Se vede doar peste 1200px: sub
 # prag `SplitView` nu randează `.split` deloc, iar formularul se întoarce în
 # foaia de jos — deci o fereastră îngustă aici nu e o regresie, e comportamentul.
-def lrow(tid, title, layer_color, done=False, urgent=False, docked=False, due=None):
+def lrow(tid, title, layer_color, done=False, urgent=False, docked=False, due=None, cur=False):
     # Inelul „Senin" în culoarea proiectului (`--pc` pe panou), chihlimbar pe urgent;
     # ID-ul în coada rândului (pe telefon iese).
-    cls = 'list-row' + (' done' if done else '') + (' docked' if docked else '')
+    # `cur`: cursorul modului Vim (în aplicație e o regulă pe id, `VimStatus`).
+    cls = 'list-row' + (' done' if done else '') + (' docked' if docked else '') + (' vim-cur' if cur else '')
     tail = ''
     if due:
         tail += '<span class="due-chip"><span class="dc-date">%s</span></span>' % due
@@ -492,7 +493,7 @@ LISTA_STANGA = (
              + lrow('TUR-02', 'Schema tabelelor', 'var(--layer-0)', done=True))
     + lgroup(2, 'Layer 2', 3, 'var(--layer-1)',
              lrow('TUR-04', 'Pagină SignUp / Înregistrare', 'var(--layer-1)')
-             + lrow('TUR-05', 'Webhook Supabase → Mailjet', 'var(--layer-1)', due='12 sep')
+             + lrow('TUR-05', 'Webhook Supabase → Mailjet', 'var(--layer-1)', due='12 sep', cur=True)
              + lrow('TUR-06', 'Import bilete din CSV', 'var(--layer-1)'))
     + lgroup(3, 'Layer 3', 1, 'var(--layer-2)',
              lrow('TUR-09', 'Split datorii între participanți', 'var(--layer-2)'))
@@ -585,8 +586,9 @@ LISTA_PANOU = (
       % (ic('arrow-left', 13), ic('arrow-right', 13), ic('x', 12))
 )
 
+# Cursorul Vim (TUR-05) în lista ACTIVĂ aici; în „Listă · gol" apare ca în panoul inactiv.
 LISTA = ('<div class="split has-pane">'
-         '<div class="split-list"><div class="panel" style="--pc:#0E9F8E">' + LISTA_STANGA + '</div></div>'
+         '<div class="split-list" style="--vim-cur-bg:var(--accent-soft);--vim-cur-bar:var(--accent)"><div class="panel" style="--pc:#0E9F8E">' + LISTA_STANGA + '</div></div>'
          '<aside class="split-pane">' + LISTA_PANOU + '</aside></div>')
 
 # Fără tichet deschis panoul nu există: lista ține toată lățimea (2026-10-14).

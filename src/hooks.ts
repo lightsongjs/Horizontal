@@ -117,7 +117,8 @@ export function useMoveIssue(): (id: string, targetProjectId: string, opts?: { o
  */
 export function shouldIgnoreKey(e: KeyboardEvent, modalOpen: boolean): boolean {
   const target = e.target as HTMLElement
-  if (['INPUT', 'TEXTAREA'].includes(target.tagName) || target.isContentEditable) return true
+  // SELECT inclus: o literă sau o săgeată pe un select îi schimbă opțiunea.
+  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable) return true
   if (e.metaKey || e.ctrlKey || e.altKey) return true
   return modalOpen
 }
@@ -365,7 +366,7 @@ export interface VimNav {
  * Vim-style keyboard navigation over the layer grid. `flatLayers` is the array
  * of id-arrays (one per layer) currently rendered. Shared by Cards and List.
  */
-export function useVimNav(flatLayers: string[][]): VimNav {
+export function useVimNav(flatLayers: string[][], enabled = true): VimNav {
   const { activeWave } = useHorizontal()
   const { openEditIssue, sheet, dockedIssueId } = useUI()
   const modalOpen = sheet.kind !== 'none' && !dockedIssueId
@@ -373,6 +374,8 @@ export function useVimNav(flatLayers: string[][]): VimNav {
 
   // reset focus when the wave changes
   useEffect(() => { setFocusedId(null) }, [activeWave])
+  // „Listă" cu modul Vim pornit: cursorul e al dispecerului (`src/vim.tsx`).
+  useEffect(() => { if (!enabled) setFocusedId(null) }, [enabled])
 
   // scroll the focused item into view
   useEffect(() => {
@@ -383,6 +386,7 @@ export function useVimNav(flatLayers: string[][]): VimNav {
   }, [focusedId])
 
   useEffect(() => {
+    if (!enabled) return
     const onKey = (e: KeyboardEvent) => {
       if (shouldIgnoreKey(e, modalOpen)) return
 
@@ -444,7 +448,7 @@ export function useVimNav(flatLayers: string[][]): VimNav {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [focusedId, flatLayers, modalOpen, openEditIssue])
+  }, [focusedId, flatLayers, modalOpen, openEditIssue, enabled])
 
   return { focusedId, setFocusedId }
 }

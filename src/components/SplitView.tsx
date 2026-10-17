@@ -4,6 +4,7 @@ import { useHorizontal } from '../store'
 import { useMediaQuery } from '../hooks'
 import { IssueForm } from './IssueForm'
 import { Icon } from './Icon'
+import { useVimOptional } from '../vim'
 
 /**
  * Sub atât, cele două coloane se strâng amândouă până nu mai e nici listă
@@ -32,10 +33,18 @@ export function SplitView({ children }: { children: ReactNode }) {
     return registerSplitHost()
   }, [wide, registerSplitHost])
 
+  // Orice listă cu panou e și o listă plată pentru cursorul modului Vim
+  // („Listă", „Azi", „7 zile", filtrele, „Ale mele"), la orice lățime:
+  // rândurile le citește dispecerul din DOM, în ordinea desenării.
+  const { registerCursorHost } = useVimOptional()
+  useEffect(() => registerCursorHost(), [registerCursorHost])
+
   useEffect(() => {
     if (!dockedIssueId) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
+      // Cu modul Vim pornit, Escape-ul e al scării din `src/vim.tsx`, care îl
+      // oprește înainte să ajungă aici. Rămâne pentru modul oprit.
       // Escape închide panoul doar dacă ești ÎN el. În listă, Escape are deja
       // trei treburi (iese din navigarea vim, din selecție, din arbore) — un
       // panou care dispare la fiecare Escape ar fi însemnat pierderea
@@ -56,7 +65,7 @@ export function SplitView({ children }: { children: ReactNode }) {
   return (
     <div className={`split${dockedIssueId ? ' has-pane' : ''}`}>
       <div className="split-list">{children}</div>
-      <aside className="split-pane" ref={paneRef} aria-label="Tichetul deschis" hidden={!dockedIssueId}>
+      <aside className="split-pane" ref={paneRef} aria-label="Tichetul deschis" hidden={!dockedIssueId} tabIndex={-1}>
         {dockedIssueId ? (
           /* Cheia poartă și scadența, nu doar id-ul. Formularul își citește
              câmpurile o singură dată, la montare; o scadență care se schimbă

@@ -1874,6 +1874,144 @@ try {
     await rf.close()
   }
 
+  // ── Modul Vim (src/vim.tsx): cursorul, panoul care urmează, „Listă", oprit ──
+  // Cursorul nu e o clasă pe rând: `VimStatus` scrie o regulă CSS pe id. Testul
+  // îl citește de acolo, ca să nu depindă de culori.
+  {
+    const cursorOf = (pg) => pg.evaluate(() => {
+      for (const st of document.querySelectorAll('style')) {
+        const m = st.textContent.match(/list-row\[data-issue-id="([^"]+)"\]/)
+        if (m) return m[1]
+      }
+      return null
+    })
+    const listRows = (pg) => pg.evaluate(() => [...document.querySelectorAll('main .list-row[data-issue-id]')]
+      .filter((el) => !el.closest('.split-pane'))
+      .map((el) => {
+        const g = el.closest('.list-group')
+        return { id: el.getAttribute('data-issue-id'), group: g ? [...document.querySelectorAll('main .list-group')].indexOf(g) : -1 }
+      }))
+    const dockedId = (pg) => pg.evaluate(() => document.querySelector('main .list-row.docked')?.getAttribute('data-issue-id') ?? null)
+    const keys = async (pg, ...ks) => { for (const k of ks) { await pg.keyboard.press(k); await pg.waitForTimeout(40) } }
+
+    const vp = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+    await vp.goto(BASE, { waitUntil: 'networkidle' })
+    await vp.waitForTimeout(700)
+    for (const t of ['Vim unu', 'Vim doi', 'Vim trei']) {
+      await vp.locator('.qa-input').first().fill(t)
+      await vp.keyboard.press('Enter')
+      await vp.waitForTimeout(500)
+    }
+    await vp.locator('h1').first().click()
+    await vp.waitForTimeout(200)
+    const rows = await listRows(vp)
+    await keys(vp, 'j', 'j', 'Enter')
+    await vp.waitForTimeout(900)
+    const d1 = await dockedId(vp)
+    check('vim: pe „Azi" j j Enter dochează al doilea rând', rows.length >= 3 && d1 === rows[1].id, `docat=${d1}, rânduri=${rows.map((r) => r.id).join(',')}`)
+    const focusInList = await vp.evaluate(() => !document.activeElement?.closest('.split-pane'))
+    check('…iar focusul rămâne în listă', focusInList, focusInList ? 'în listă' : 'a sărit în panou')
+
+    await keys(vp, 'j')
+    await vp.waitForTimeout(600)
+    const d2 = await dockedId(vp)
+    check('vim: panoul urmează j (formular curat)', d2 === rows[2].id && (await cursorOf(vp)) === rows[2].id, `docat=${d2}, cursor=${await cursorOf(vp)}`)
+
+    // Murdar: cursorul merge, panoul stă, iar pastila spune de ce.
+    const title = vp.locator('.split-pane .sh-title-input').first()
+    await title.fill(`${await title.inputValue()} MODIFICAT`)
+    await vp.waitForTimeout(300)
+    await keys(vp, 'Escape')
+    const inPane = await vp.evaluate(() => document.activeElement?.classList.contains('split-pane'))
+    check('vim: Esc din câmpul panoului rămâne în panou', !!inPane, `activ=${await vp.evaluate(() => document.activeElement?.className)}`)
+    await keys(vp, 'h', 'k')
+    await vp.waitForTimeout(600)
+    const d3 = await dockedId(vp)
+    const cur3 = await cursorOf(vp)
+    const hint = (await vp.locator('.vim-pill-hint').textContent().catch(() => '')) ?? ''
+    check('vim: cu formularul murdar panoul stă pe loc', d3 === rows[2].id && cur3 === rows[1].id, `docat=${d3}, cursor=${cur3}`)
+    check('…iar pastila spune „nesalvat"', /nesalvat/.test(hint), JSON.stringify(hint))
+    await vp.close()
+
+    // „Listă": j merge exact un rând, în interiorul layerului (nu din layer în layer).
+    const lp = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+    await lp.goto(BASE, { waitUntil: 'networkidle' })
+    await lp.waitForTimeout(700)
+    await lp.locator('.sidebar-proj-btn', { hasText: 'Exemplu' }).first().click()
+    await lp.waitForTimeout(800)
+    await lp.locator('.tab', { hasText: /^List/ }).first().click()
+    await lp.waitForTimeout(500)
+    await lp.locator('h1').first().click().catch(() => {})
+    const lrows = await listRows(lp)
+    const i = lrows.findIndex((r, k) => k + 1 < lrows.length && lrows[k + 1].group === r.group)
+    if (i < 0) check('vim: „Listă" are un layer cu două rânduri', false, JSON.stringify(lrows))
+    else {
+      await keys(lp, 'g', 'g', ...Array(i).fill('j'))
+      const a = await cursorOf(lp)
+      await keys(lp, 'j')
+      const b = await cursorOf(lp)
+      check('vim: în „Listă" j coboară exact un rând, în același layer', a === lrows[i].id && b === lrows[i + 1].id, `înainte=${a} după=${b}, așteptat ${lrows[i].id}→${lrows[i + 1].id}`)
+      // 5j, nu 2j: într-un proiect 1–4 rămân taburile.
+      await keys(lp, 'g', 'g', '5', 'j')
+      check('vim: 5j sare cinci rânduri (oprit la capăt)', (await cursorOf(lp)) === lrows[Math.min(5, lrows.length - 1)].id, `cursor=${await cursorOf(lp)}`)
+    }
+    // g + ezitare: fereastra cu continuările.
+    await keys(lp, 'g')
+    await lp.waitForTimeout(550)
+    const wk = await lp.locator('.vim-wk').count()
+    await lp.waitForTimeout(700)
+    check('vim: g + ezitare arată continuările', wk === 1, `${wk} ferestre`)
+    // ga → „Azi", H → înapoi, L → înainte.
+    await keys(lp, 'g', 'a')
+    await lp.waitForTimeout(700)
+    const onAzi = /Azi/.test((await lp.locator('.sidebar-nav-item.on').first().textContent().catch(() => '')) ?? '')
+    check('vim: ga duce pe „Azi"', onAzi, 'pe Azi')
+    await keys(lp, 'g', 'w')
+    await lp.waitForTimeout(700)
+    await keys(lp, 'H')
+    await lp.waitForTimeout(700)
+    const back = (await lp.locator('.sidebar-nav-item.on').first().textContent().catch(() => ''))?.trim()
+    check('vim: H = înapoi în istoric (7 zile → Azi)', /Azi/.test(back ?? ''), `ecran=${back}`)
+    // z → „Mergi la…", „exe" Enter → proiectul.
+    await keys(lp, 'z')
+    await lp.waitForTimeout(300)
+    await lp.keyboard.type('exe')
+    await lp.keyboard.press('Enter')
+    await lp.waitForTimeout(800)
+    const proj = (await lp.locator('.sidebar-proj-item.on').first().textContent().catch(() => '')) ?? ''
+    check('vim: z „exe" Enter deschide proiectul', /Exemplu/.test(proj), JSON.stringify(proj.trim()))
+    // Bara laterală: h intră (pe ecranul de acum), j coboară, Enter deschide și te lasă în listă.
+    await keys(lp, 'g', 'a')
+    await lp.waitForTimeout(700)
+    await keys(lp, 'h', 'j', 'Enter')
+    await lp.waitForTimeout(700)
+    const sb = (await lp.locator('.sidebar-nav-item.on').first().textContent().catch(() => ''))?.trim()
+    const sbFocus = await lp.evaluate(() => !!document.activeElement?.closest('.sidebar'))
+    check('vim: h j Enter din „Azi" deschide „7 zile" din bara laterală', /7 zile/.test(sb ?? '') && !sbFocus, `ecran=${sb}, focus în bară=${sbFocus}`)
+    await lp.close()
+
+    // Modul Vim oprit: `,` / `.` schimbă valul, ca înainte.
+    const op = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+    await op.addInitScript(() => localStorage.setItem('horizontal-vim', 'off'))
+    await op.goto(BASE, { waitUntil: 'networkidle' })
+    await op.waitForTimeout(700)
+    await op.locator('.sidebar-proj-btn', { hasText: 'Exemplu' }).first().click()
+    await op.waitForTimeout(800)
+    await op.locator('.tab', { hasText: /^List/ }).first().click()
+    await op.waitForTimeout(500)
+    await op.locator('h1').first().click().catch(() => {})
+    const activeWave = () => op.locator('.wb-pills [aria-selected="true"]').first().textContent().catch(() => null)
+    const w0 = await activeWave()
+    await op.keyboard.press('.')
+    await op.waitForTimeout(400)
+    const w1 = await activeWave()
+    await op.keyboard.press(',')
+    await op.waitForTimeout(400)
+    const w2 = await activeWave()
+    check('vim oprit: `,` / `.` schimbă valul', w0 !== null && w1 !== w0 && w2 === w0, `${w0} → ${w1} → ${w2}`)
+    await op.close()
+  }
+
   await page.close()
 } finally {
   if (browser) await browser.close()

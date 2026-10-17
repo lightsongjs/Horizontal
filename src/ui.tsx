@@ -72,6 +72,12 @@ interface UI {
   registerSplitHost(): () => void
   /** Formularul docat își raportează starea „am modificări nesalvate”. */
   setDockedDirty(dirty: boolean): void
+  /** Starea de mai sus, citită acum (dispecerul de taste, la `j` cu panoul deschis). */
+  isDockedDirty(): boolean
+  /** Anunță fiecare schimbare a stării murdare. Întoarce dezabonarea. */
+  subscribeDockedDirty(fn: (dirty: boolean) => void): () => void
+  /** Clipește săgeata de salvare a formularului docat (o comutare refuzată). */
+  nudgeSave(): void
   /**
    * Contor care crește când o comutare a fost oprită de modificări nesalvate.
    * Formularul docat îl folosește ca să clipească săgeata de salvare.
@@ -241,6 +247,7 @@ export function UIProvider({ children }: { children: ReactNode }) {
   const clearToast = useCallback(() => setToast(null), [])
   const closeGuard = useRef<(() => boolean) | null>(null)
   const dockedDirty = useRef(false)
+  const dirtyListeners = useRef(new Set<(dirty: boolean) => void>())
   const pendingSwitch = useRef<{ id: string; timer: ReturnType<typeof setTimeout> } | null>(null)
 
   const sheet = sheets[sheets.length - 1] ?? { kind: 'none' }
@@ -251,9 +258,17 @@ export function UIProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const setDockedDirty = useCallback((dirty: boolean) => {
+    const changed = dockedDirty.current !== dirty
     dockedDirty.current = dirty
     if (!dirty) clearPendingSwitch()
+    if (changed) for (const fn of dirtyListeners.current) fn(dirty)
   }, [clearPendingSwitch])
+  const isDockedDirty = useCallback(() => dockedDirty.current, [])
+  const subscribeDockedDirty = useCallback((fn: (dirty: boolean) => void) => {
+    dirtyListeners.current.add(fn)
+    return () => { dirtyListeners.current.delete(fn) }
+  }, [])
+  const nudgeSave = useCallback(() => setSaveNudge((n) => n + 1), [])
 
   const registerSplitHost = useCallback(() => {
     setSplitHosts((n) => n + 1)
@@ -277,6 +292,9 @@ export function UIProvider({ children }: { children: ReactNode }) {
       dockedKeyId,
       registerSplitHost,
       setDockedDirty,
+      isDockedDirty,
+      subscribeDockedDirty,
+      nudgeSave,
       saveNudge,
       openIssue: (issueId) => setSheets((prev) => [editSheet(prev, issueId)]),
       openNewIssue: () => setSheets([{ kind: 'issue-form' }]),
@@ -343,7 +361,7 @@ export function UIProvider({ children }: { children: ReactNode }) {
       clearToast,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sheet, sheets.length, ticketId, dockedIssueId, dockedKeyId, registerSplitHost, setDockedDirty, saveNudge, clearPendingSwitch, toast, showToast, clearToast],
+    [sheet, sheets.length, ticketId, dockedIssueId, dockedKeyId, registerSplitHost, setDockedDirty, isDockedDirty, subscribeDockedDirty, nudgeSave, saveNudge, clearPendingSwitch, toast, showToast, clearToast],
   )
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

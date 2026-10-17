@@ -18,13 +18,34 @@ const THEMES: { key: Theme; label: string }[] = [
   { key: 'dark', label: 'Întunecat' },
 ]
 
+/** Un comutator Pornit / Oprit, cu aceeași cochilie ca fundalul (`.seg-row`). */
+function OnOff({ label, value, onChange, disabled = false }: { label: string; value: boolean; onChange(v: boolean): void; disabled?: boolean }) {
+  return (
+    <div className="seg-row app-settings-onoff" role="group" aria-label={label}>
+      <span className="app-settings-onoff-label">{label}</span>
+      {([true, false] as const).map((v) => (
+        <button
+          key={String(v)}
+          type="button"
+          className={`seg ${value === v ? 'on' : ''}`}
+          aria-pressed={value === v}
+          disabled={disabled}
+          onClick={() => onChange(v)}
+        >
+          {v ? 'Pornit' : 'Oprit'}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 /**
  * Rotița de setări: fundalul și mărimea textului. Amândouă se țin pe
  * dispozitiv și se aplică pe loc — omul vede efectul în foaia însăși, deci
  * n-are nevoie de un buton de salvare.
  */
 export function AppSettings() {
-  const { theme, setTheme, textScale, setTextScale } = useTheme()
+  const { theme, setTheme, textScale, setTextScale, vim, setVim, follow, setFollow } = useTheme()
   const { isAdmin } = useAuth()
   const { closeSheet } = useUI()
   return (
@@ -65,6 +86,14 @@ export function AppSettings() {
           ))}
         </div>
         <p className="app-settings-sample">Așa arată textul unei sarcini.</p>
+
+        {/* Navigarea din tastatură (`src/vim.tsx`): pe dispozitiv, ca fundalul.
+            Oprită, rămân tastele de dinainte (C, O, `,` `.`, V, h j k l). */}
+        <div className="sheet-section-t">Tastatură</div>
+        <OnOff label="Mod Vim" value={vim} onChange={setVim} />
+        <p className="app-settings-note">j k h l, gg, ga, z, Esc pas cu pas. Oprit: tastele de azi (C, O, F, <kbd>,</kbd> <kbd>.</kbd>).</p>
+        <OnOff label="Panoul urmează cursorul" value={follow} onChange={setFollow} disabled={!vim} />
+        <p className="app-settings-note">Cu un tichet deschis în panou, j / k schimbă și tichetul — dacă n-ai modificări nesalvate.</p>
 
         {/* Doar în cutia de Android (API 5): notificarea fixă din bară e a telefonului. */}
         <AndroidShadeSetting />

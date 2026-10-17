@@ -1,5 +1,6 @@
 import { createContext, useContext, useLayoutEffect, useState, type ReactNode } from 'react'
 import { parseTextScale, TEXT_SCALE_KEY, type TextScale } from './lib/textScale'
+import { FOLLOW_KEY, parseFlag, serializeFlag, VIM_KEY } from './lib/vimSettings'
 
 export type Theme = 'dark' | 'light'
 
@@ -8,6 +9,12 @@ interface ThemeCtx {
   setTheme(t: Theme): void
   textScale: TextScale
   setTextScale(s: TextScale): void
+  /** „Mod Vim": navigarea din tastatură (`src/vim.tsx`). Oprit = tastele de dinainte. */
+  vim: boolean
+  setVim(on: boolean): void
+  /** „Panoul urmează cursorul": cu un tichet docat, j / k schimbă și tichetul din panou. */
+  follow: boolean
+  setFollow(on: boolean): void
 }
 
 const Ctx = createContext<ThemeCtx | null>(null)
@@ -18,9 +25,22 @@ function getInitial(): Theme {
   return 'light'
 }
 
+// Un `localStorage` blocat (fereastră privată, date șterse) nu are voie să
+// oprească pornirea: valoarea lipsă e „pornit".
+function readKey(k: string): string | null {
+  try { return localStorage.getItem(k) } catch { return null }
+}
+function writeKey(k: string, v: string) {
+  try { localStorage.setItem(k, v) } catch { /* rămâne doar pe sesiune */ }
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>(getInitial)
   const [textScale, setTextScale] = useState<TextScale>(() => parseTextScale(localStorage.getItem(TEXT_SCALE_KEY)))
+  const [vim, setVim] = useState(() => parseFlag(readKey(VIM_KEY)))
+  const [follow, setFollow] = useState(() => parseFlag(readKey(FOLLOW_KEY)))
+  useLayoutEffect(() => { writeKey(VIM_KEY, serializeFlag(vim)) }, [vim])
+  useLayoutEffect(() => { writeKey(FOLLOW_KEY, serializeFlag(follow)) }, [follow])
 
   // Layout, nu efect obișnuit: se aplică înainte de primul cadru, altfel pagina
   // clipea o dată mică (sau luminoasă) și abia apoi se mărea.
@@ -40,7 +60,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [textScale])
 
   return (
-    <Ctx.Provider value={{ theme, setTheme, textScale, setTextScale }}>
+    <Ctx.Provider value={{ theme, setTheme, textScale, setTextScale, vim, setVim, follow, setFollow }}>
       {children}
     </Ctx.Provider>
   )

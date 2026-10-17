@@ -265,6 +265,31 @@ Mockup aprobat: `design/wave-bar/index.html`. Un singur rând deasupra listei:
   `.panel`, ca în „Cards"); urgentul e inelul chihlimbar, ID-ul stă în coadă pe
   desktop și iese sub 900px.
 
+## Navigarea din tastatură („Mod Vim”)
+
+Prototipul aprobat (harta de taste, scenariile, scara Esc): `design/vim-nav/index.html`.
+Setare de DISPOZITIV în rotiță („Tastatură”: Mod Vim, Panoul urmează cursorul;
+`src/lib/vimSettings.ts`), pornită implicit. **Oprit = aplicația exact ca înainte**
+(`,` `.` valuri, V, H J K L vechi) — `test:nav` verifică.
+
+- **Un singur dispecer**, `src/vim.tsx`, ascultă pe `document` și ia DOAR tastele
+  pe care le înțelege în contextul curent (`list | panel | sidebar | any`, local
+  bate global); restul trec la ascultătorii vechi. Overlay-urile cu Esc în
+  captură câștigă în continuare. Într-un câmp (`isTypingTarget`) trec numai Esc
+  și combinațiile cu Ctrl.
+- **Harta e DATE**, `src/lib/keymap.ts` (pur, cu teste): litere/ASCII după
+  `e.key`, restul după `e.code` — pe tastatura RO standard `[ ] ;` scriu ă î ș,
+  deci `:` și `[` `]` se recunosc după poziție. Secvențe cu 1000 ms, numărători
+  doar pe mișcări; într-un proiect `1`–`4` rămân taburile.
+- **Cursorul comun** (`src/lib/cursor.ts`): vizualizările se anunță ca gazdă
+  (ca `registerSplitHost`). Inelul e o regulă CSS pe ID, nu un prop — altfel
+  fiecare `j` ar randa toată lista (vezi „Listele lungi”). Panoul urmează
+  cursorul după 120 ms numai cu formularul curat; murdar, cursorul merge și
+  panoul stă.
+- **Ce urmează** (secțiunea „În lucru” din `InfoPanel.tsx`): acțiunile pe rând,
+  selecția `v`/`V`, câmpurile panoului cu `j`/`k`, `[` `]` pentru valuri. O
+  tastă implementată se mută din `PLANNED` în `SHORTCUTS`.
+
 ## Mockups — fișier local, nu Artifact
 
 Pentru orice mockup/design vizual (comparații before/after, explorare de layout):

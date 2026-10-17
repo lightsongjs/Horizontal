@@ -3,6 +3,7 @@ import { shouldIgnoreKey } from '../hooks'
 import { useUI } from '../ui'
 import { Icon } from './Icon'
 import { useTaskActions } from './TaskActions'
+import { useVimOptional } from '../vim'
 
 /**
  * Piuneza din coada unui rând, pe desktop (`TaskRow` și „Listă"). Pe un rând
@@ -42,18 +43,20 @@ export function PinMark() {
  * (Tab) sau, în „Listă", cel ales cu H J K L (`focusedId`). Cu un tichet
  * deschis — docat sau modal — F e a formularului (`IssueForm`), care fixează
  * tichetul acela; de-aia aici orice foaie deschisă oprește tasta.
+ * Cu modul Vim pornit, rândul de sub cursorul dispecerului (`src/vim.tsx`).
  */
 export function useRowPinKey(focusedId: string | null = null) {
   const ta = useTaskActions()
   const { sheet } = useUI()
   const busy = sheet.kind !== 'none'
   const { issuesOf, run } = ta
+  const { getCursor } = useVimOptional()
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'f' && e.key !== 'F') return
       if (shouldIgnoreKey(e, busy)) return
       const active = (document.activeElement as HTMLElement | null)?.closest?.('[data-issue-id]')
-      const id = active?.getAttribute('data-issue-id') ?? focusedId
+      const id = active?.getAttribute('data-issue-id') ?? focusedId ?? getCursor()
       if (!id) return
       const [issue] = issuesOf([id])
       if (!issue) return
@@ -62,5 +65,5 @@ export function useRowPinKey(focusedId: string | null = null) {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [busy, focusedId, issuesOf, run])
+  }, [busy, focusedId, issuesOf, run, getCursor])
 }

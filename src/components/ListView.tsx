@@ -15,6 +15,8 @@ import { displayIssueId } from '../lib/issueId'
 import { isPinnedOpen, pinnedFirst } from '../lib/pinned'
 import { useTaskActions } from './TaskActions'
 import { PinMark, RowPin, useRowPinKey } from './RowPin'
+import { useTheme } from '../theme'
+import { useVimListBusy } from '../vim'
 
 export function ListView() {
   const { waves, activeWave, byId, stateOf, themeOf, toggleDone, blockedByObstacle, assignees, assigneeShort, project } = useHorizontal()
@@ -96,7 +98,12 @@ export function ListView() {
   const flatLayers = useMemo(() => visibleLayers.map((g) => g.ids), [visibleLayers])
 
   const wa = useWaveActions()
-  const { focusedId } = useVimNav(flatLayers)
+  // Cu modul Vim pornit, cursorul e al dispecerului (`src/vim.tsx`): j / k
+  // merg rând cu rând prin layere, nu din layer în layer. Oprit, h j k l de azi.
+  const { vim } = useTheme()
+  const { focusedId } = useVimNav(flatLayers, !vim)
+  // Selecția și arborele își țin Escape-ul.
+  useVimListBusy(wa.selectMode || wa.treeViewActive || wa.confirmDel)
   // F pe rândul ales cu H J K L sau cu focusul de tastatură (fără tichet deschis).
   useRowPinKey(focusedId)
   const ta = useTaskActions()

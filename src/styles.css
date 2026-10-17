@@ -6694,6 +6694,23 @@ body:has(.kb-sheet) .toast {
   color: var(--txt);
 }
 
+/* „Tastatură": eticheta pe rândul comutatorului, nota dedesubt. */
+.app-settings-onoff { align-items: center; }
+.app-settings-onoff-label {
+  flex: 1 1 100%;
+  font-size: calc(14px * var(--text-scale));
+  font-weight: 600;
+  color: var(--txt);
+}
+@media (min-width: 900px) { .app-settings-onoff-label { flex: 1 1 auto; } }
+.app-settings .seg:disabled { opacity: 0.5; cursor: default; }
+.app-settings-note {
+  margin: 2px 0 12px;
+  font-size: calc(12.5px * var(--text-scale));
+  color: var(--txt-dim);
+  line-height: 1.5;
+}
+
 /* .srow/.skey/.sval — rând de setare simplă (etichetă + control). Singura
    linie decorativă e separatorul de rând — permis de regula 1 (separator de
    rând, nu chenar de bloc). */
@@ -7574,4 +7591,86 @@ body:has(.qab) { overflow-y: auto; }
   .t-proj, .list-row .row-tail .list-id { font-size: calc(12px * var(--text-scale)); }
   .htxt h1 { font-size: calc(26px * var(--text-scale)); }
   .split-pane .md, .split-pane .md-editor .cm-content { font-size: calc(14.5px * var(--text-scale)); }
+}
+
+/* ─── MODUL VIM (src/vim.tsx) ──────────────────────────────────────────────
+   Numai cu un mouse / trackpad: pe telefon nimic din toate astea nu există.
+   Cursorul listei: în panoul activ fundal accent-soft + o bară de 2px pe
+   muchie (ca rândul docat, dar cu bara); în panoul inactiv doar un salt de
+   fundal, ca să știi unde te întorci. Regula pe id o scrie `VimStatus`; aici
+   sunt culorile, pe panou. `.vim-cur` e același desen, pentru bancul de probă. */
+#app { --vim-cur-bg: var(--surface-2); --vim-cur-bar: transparent; }
+#app[data-vim-pane="list"] { --vim-cur-bg: var(--accent-soft); --vim-cur-bar: var(--accent); }
+@media (pointer: fine) {
+  .list-row.vim-cur { background: var(--vim-cur-bg, var(--accent-soft)); }
+  .list-row.vim-cur::before {
+    content: ""; position: absolute; left: 0; top: 8px; bottom: 8px;
+    width: 2px; border-radius: 2px; background: var(--vim-cur-bar, var(--accent));
+  }
+  /* Panoul activ: o linie de 2px sus, în accent — singura „ramă" permisă,
+     fiindcă e o stare, nu un decor. Lista o desenează lipită de capul derulării. */
+  #app[data-vim-pane] .sidebar { position: relative; }
+  #app[data-vim-pane="sidebar"] .sidebar::before,
+  #app[data-vim-pane="panel"] .split-pane::before {
+    content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px;
+    background: var(--accent); z-index: 3; pointer-events: none;
+  }
+  #app[data-vim-pane="list"] .split.has-pane > .split-list::before {
+    content: ""; display: block; position: sticky; top: 0; height: 2px; margin-bottom: -2px;
+    background: var(--accent); z-index: 3; pointer-events: none;
+  }
+  /* Bara laterală: elementul cu focus de tastatură (j / k) are un inel. */
+  #app[data-vim-pane="sidebar"] .sidebar :is(.sidebar-nav-item, .sidebar-proj-btn, .sidebar-search):focus {
+    outline: none;
+    box-shadow: inset 0 0 0 1.5px var(--accent);
+  }
+}
+/* Panoul primește focusul (l / Esc din câmp) fără inelul browserului. */
+.split-pane:focus { outline: none; }
+
+/* Pastila de jos: tastele în așteptare („g…", „5") sau un mesaj care
+   rămâne cât ține starea („panoul rămâne pe HZ-12 — nesalvat"). */
+.vim-pill, .vim-wk { display: none; }
+@media (pointer: fine) {
+  .vim-pill {
+    display: flex; align-items: center;
+    position: fixed; right: 16px; bottom: 16px; z-index: 140;
+    padding: 6px 10px; border-radius: var(--r-s);
+    background: var(--surface); box-shadow: var(--amb);
+    font-size: calc(12.5px * var(--text-scale)); color: var(--txt-dim);
+    pointer-events: none;
+  }
+  .vim-pill-keys {
+    font-family: var(--mono); font-weight: 600; color: var(--accent);
+    background: var(--accent-soft); padding: 1px 6px; border-radius: var(--r-s);
+    font-size: calc(12.5px * var(--text-scale));
+  }
+  .vim-pill-hint { color: var(--urgent); font-weight: 600; }
+  /* Continuările unui prefix, după 400ms de ezitare. */
+  .vim-wk {
+    display: block;
+    position: fixed; right: 16px; bottom: 56px; z-index: 140;
+    min-width: 240px; padding: 12px 14px;
+    background: var(--surface); box-shadow: var(--amb-lg); border-radius: var(--r);
+    pointer-events: none;
+  }
+  .vim-wk-head {
+    margin-bottom: 8px; color: var(--txt-faint); font-weight: 650;
+    font-size: calc(12px * var(--text-scale));
+  }
+  .vim-wk-row {
+    display: flex; gap: 10px; align-items: center; padding: 3px 0;
+    font-size: calc(13px * var(--text-scale)); color: var(--txt);
+  }
+  .vim-wk-row kbd {
+    min-width: 28px; text-align: center; font-family: var(--mono);
+    color: var(--accent); background: var(--accent-soft); border-radius: var(--r-s);
+    font-size: calc(12px * var(--text-scale)); padding: 1px 4px;
+  }
+}
+
+/* „Mergi la…": cochilia căutării, cu „:" în locul lupei. */
+.goto-colon {
+  font-family: var(--mono); font-weight: 700; color: var(--accent);
+  font-size: calc(16px * var(--text-scale));
 }

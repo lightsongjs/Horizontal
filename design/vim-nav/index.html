@@ -46,7 +46,7 @@ button{font:inherit;color:inherit}
 .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
 
 /* ---------- cadrul ---------- */
-#app{display:flex;height:calc(100vh - 34px)}
+#app{display:flex;height:calc(100vh - 34px);overflow:clip}
 .pane{position:relative;min-width:0}
 .pane::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:transparent;z-index:3}
 .pane.active::before{background:var(--accent)}
@@ -97,6 +97,17 @@ button{font:inherit;color:inherit}
 .ghead .lnum{font-family:var(--mono);font-weight:600}
 .row{display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:var(--r-m);position:relative;cursor:pointer}
 .row::after{content:"";position:absolute;left:42px;right:10px;bottom:0;height:1px;background:var(--line)}
+[data-f]{border-radius:var(--r-s);transition:box-shadow .08s}
+.p-titlerow[data-f],.dep[data-f],.compose[data-f]{border-radius:var(--r-m);margin-left:-8px;margin-right:-8px;padding-left:8px;padding-right:8px}
+#panel [data-f].fcur{box-shadow:0 0 0 1.5px var(--border-strong)}
+#panel.active [data-f].fcur{box-shadow:0 0 0 2px var(--accent);background-color:var(--accent-soft)}
+#panel.active .desc.fcur{background:var(--surface-2)}
+.chip.off{background:transparent;color:var(--txt-faint);outline:1px dashed var(--border-strong);outline-offset:-1px}
+.set-row{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--r-m)}
+.set-row.cur{background:var(--accent-soft)}
+.set-row .sd{font-size:12.5px;color:var(--txt-faint);margin-top:2px}
+.set-row .sv{margin-left:auto;font-weight:650;font-size:13px;padding:4px 10px;border-radius:var(--r-s);background:var(--surface-3);white-space:nowrap}
+.set-row .sv.on{background:var(--accent);color:#fff}
 .row .ck{width:18px;height:18px;border-radius:50%;box-shadow:inset 0 0 0 1.8px var(--pc);flex:none;display:grid;place-items:center}
 .row .ck.urg{box-shadow:inset 0 0 0 1.8px var(--urgent);background:var(--urgent-soft)}
 .row.done .ck{background:var(--pc);box-shadow:none}
@@ -119,7 +130,7 @@ mark{background:color-mix(in srgb,var(--star) 40%,transparent);color:inherit;bor
 .empty{color:var(--txt-faint);padding:30px 10px}
 
 /* panoul */
-#panel{width:min(520px,42vw);flex:none;display:flex;flex-direction:column;background:var(--bg)}
+#panel{width:min(520px,42vw);flex:none;display:flex;flex-direction:column;background:var(--bg);overflow:clip}
 #panel.hidden{display:none}
 .p-head{display:flex;align-items:center;gap:10px;padding:16px 22px 6px;color:var(--txt-faint);font-size:12.5px}
 .p-head .id{font-family:var(--mono)}
@@ -264,6 +275,7 @@ const ICON = {
   search:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>',
   filter:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16l-6 8v6l-4-2v-4z"/></svg>',
   inbox:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 13l3-8h12l3 8v6H3z"/><path d="M3 13h5l1 2h6l1-2h5"/></svg>',
+  gear:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg>',
   pin:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M15 3l6 6-3 1-4 4 1 5-2 2-4-4-5 5-1-1 5-5-4-4 2-2 5 1 4-4z"/></svg>',
 };
 
@@ -323,7 +335,9 @@ const S = {
   screen:{kind:'today'},          // today | week | mine | project{pid} | filter{fid}
   wave:{hz:'w2'},
   pane:'list',                    // sidebar | list | panel
-  cursor:null, sbCursor:2,
+  cursor:null, sbCursor:2, pf:'title',
+  vim:(()=>{ try { return localStorage.getItem('hz-vim')!=='off'; } catch { return true; } })(),
+  follow:(()=>{ try { return localStorage.getItem('hz-follow')!=='off'; } catch { return true; } })(),
   panelId:null, dirty:false, isNew:false,
   drafts:{},                      // ciorna comentariului, pe tichet — supraviețuiește comutării
   handoffTo:null,
@@ -402,6 +416,8 @@ function sbItems(){
     ...filters.map(f=>({kind:'filter', fid:f.id, label:f.name, icon:ICON.filter, n:L.filter(f.match).length})),
     {sec:'Proiecte'},
     ...projects.map(p=>({kind:'project', pid:p.id, label:p.name, icon: p.icon?ICON[p.icon]:`<i class="dot" style="background:${p.color}"></i>`, n:L.filter(i=>i.project===p.id).length})),
+    {sec:'Aplicație'},
+    {kind:'settings', label:'Setări', icon:ICON.gear, k:'g,'},
   ];
   return it;
 }
@@ -473,13 +489,42 @@ function renderList(){
 function scrollCursor(){ const r=$('#list .row.cur'); if (r) r.scrollIntoView({block:'nearest'}); }
 function chips(i){
   const p=P(i.project); const c=[];
-  c.push(i.due!=null?`<span class="chip ${i.due<0?'red':''}">${dueLabel(i.due)}${i.time?' '+i.time:''} <kbd>t</kbd></span>`:`<span class="chip ghost">Dată <kbd>t</kbd></span>`);
-  if (p.waves) c.push(`<span class="chip">${esc(p.waves.find(w=>w.id===i.wave)?.label||'—')} <kbd>w</kbd></span>`);
-  if (i.urgent) c.push(`<span class="chip urg">⚡ Urgent <kbd>!</kbd></span>`);
-  if (i.pinned) c.push(`<span class="chip pinned">Fixat <kbd>F</kbd></span>`);
-  if (i.assignee) c.push(`<span class="chip">${i.assignee==='me'?'Tu':i.assignee} <kbd>@</kbd></span>`);
-  c.push(`<span class="chip"><i class="dot" style="background:${p.color};margin:0"></i>${p.name} <kbd>M</kbd></span>`);
+  c.push(i.due!=null?`<span data-f="date" class="chip ${i.due<0?'red':''}">${dueLabel(i.due)}${i.time?' '+i.time:''} <kbd>t</kbd></span>`:`<span data-f="date" class="chip off">Dată <kbd>t</kbd></span>`);
+  if (p.waves) c.push(`<span data-f="wave" class="chip">${esc(p.waves.find(w=>w.id===i.wave)?.label||'—')} <kbd>w</kbd></span>`);
+  c.push(`<span data-f="urgent" class="chip ${i.urgent?'urg':'off'}">⚡ Urgent <kbd>!</kbd></span>`);
+  c.push(`<span data-f="pin" class="chip ${i.pinned?'pinned':'off'}">${i.pinned?'Fixat sus':'Fixează'} <kbd>F</kbd></span>`);
+  c.push(`<span data-f="assign" class="chip ${i.assignee?'':'off'}">${i.assignee?(i.assignee==='me'?'Tu':i.assignee):'Pasează'} <kbd>@</kbd></span>`);
+  c.push(`<span data-f="project" class="chip"><i class="dot" style="background:${p.color};margin:0"></i>${p.name} <kbd>M</kbd></span>`);
   return c.join('');
+}
+/* ---- cursorul de câmp din panou: j/k trec prin tot, Enter activează ---- */
+const pfList = () => [...document.querySelectorAll('#panel [data-f]')].map(e=>e.dataset.f);
+function paintPF(){
+  document.querySelectorAll('#panel [data-f]').forEach(e=>e.classList.toggle('fcur', e.dataset.f===S.pf));
+}
+function pfStep(d){
+  const l=pfList(); if(!l.length) return;
+  let ix=l.indexOf(S.pf); ix = ix<0?0:Math.max(0,Math.min(l.length-1,ix+d));
+  pfSet(l[ix]);
+}
+function pfSet(f){
+  S.pf=f; paintPF();
+  const el=document.querySelector(`#panel [data-f="${CSS.escape(f)}"]`); el?.scrollIntoView({block:'nearest'});
+  const name={title:'titlu',date:'data',wave:'val',urgent:'urgent',pin:'fixare',assign:'pasare',project:'proiect',desc:'descriere',comment:'comentariu'}[f]||('dependența '+f.slice(4));
+  msg(name+' · Enter '+(['urgent','pin'].includes(f)?'comută':f.startsWith('dep:')?'deschide':'editează'));
+}
+function pfActivate(){
+  const f=S.pf;
+  if (f==='title') return focusPanel('title');
+  if (f==='desc') return focusPanel('desc');
+  if (f==='comment') return focusPanel('comment');
+  if (f==='date') return openOverlay('date');
+  if (f==='wave') return openOverlay('wave');
+  if (f==='assign') return openOverlay('handoff');
+  if (f==='project') return openOverlay('move');
+  if (f==='urgent') return A.urgent();
+  if (f==='pin') return A.pin();
+  if (f.startsWith('dep:')) { const id=f.slice(4); openPanel(id); S.pane='panel'; paint(); }
 }
 function renderPanel(full){
   const el=$('#panel'), i=I(S.panelId);
@@ -492,14 +537,14 @@ function renderPanel(full){
     const th=THREAD[i.id]||[];
     el.innerHTML=`
       <div class="p-head"><span class="id">${i.id}</span><span class="sp"></span><span class="save" id="psave"></span><kbd>Esc</kbd></div>
-      <div class="p-titlerow" style="--pc:${p.color}"><span class="ck" id="pck"></span><input class="p-title" id="ptitle" value="${esc(i.title)}" placeholder="Titlu"></div>
+      <div class="p-titlerow" data-f="title" style="--pc:${p.color}"><span class="ck" id="pck"></span><input class="p-title" id="ptitle" value="${esc(i.title)}" placeholder="Titlu"></div>
       <div class="p-chips" id="pchips"></div>
       <div class="p-body" id="pbody">
-        <textarea class="desc" id="pdesc" placeholder="Descriere — a">${esc(i.desc)}</textarea>
-        <div class="sec"><h4>Dependențe</h4>${deps.length?deps.map(d=>`<div class="dep ${d.done?'done':''}"><span class="id">${d.id}</span><span class="tt">${esc(d.title)}</span><span class="w">${esc(P(d.project).waves?.find(w=>w.id===d.wave)?.label||'')}</span></div>`).join(''):'<div class="dep" style="color:var(--txt-faint)">—</div>'}</div>
+         <textarea class="desc" data-f="desc" id="pdesc" placeholder="Descriere — a">${esc(i.desc)}</textarea>
+        <div class="sec"><h4>Dependențe</h4>${deps.length?deps.map(d=>`<div class="dep ${d.done?'done':''}" data-f="dep:${d.id}"><span class="id">${d.id}</span><span class="tt">${esc(d.title)}</span><span class="w">${esc(P(d.project).waves?.find(w=>w.id===d.wave)?.label||'')}</span></div>`).join(''):'<div class="dep" style="color:var(--txt-faint)">—</div>'}</div>
         <div class="sec"><h4>Fir</h4><div id="pthread">${th.map(c=>`<div class="cm"><span class="av" style="background:${c.who==='Tu'?'var(--accent)':'#8E4EC6'}">${c.who.slice(0,2).toUpperCase()}</span><div class="b">${c.handoff?`<div class="handoff">${esc(c.handoff)}</div>`:''}<div class="who">${esc(c.who)}<span>${esc(c.when)}</span></div><div class="tx">${esc(c.tx)}</div></div></div>`).join('')}</div>
           <div class="to" id="pto"></div>
-          <div class="compose"><span class="av">IS</span><textarea id="pcomp" placeholder="Scrie un comentariu… — m">${esc(S.drafts[i.id]||'')}</textarea></div></div>
+          <div class="compose" data-f="comment"><span class="av">IS</span><textarea id="pcomp" placeholder="Scrie un comentariu… — m">${esc(S.drafts[i.id]||'')}</textarea></div></div>
       </div>`;
     $('#ptitle').addEventListener('input',()=>{ S.dirty=true; paintSave(); renderList(); });
     $('#pdesc').addEventListener('input',()=>{ S.dirty=true; paintSave(); renderList(); });
@@ -509,7 +554,8 @@ function renderPanel(full){
   $('#pchips').innerHTML=chips(i);
   const ck=$('#pck'); ck.className='ck'+(i.done?' on':'')+(i.urgent&&!i.done?' urg':'');
   $('#pto').textContent=S.handoffTo?('către '+S.handoffTo+' · Ctrl+Enter trimite și pasează'):'';
-  paintSave();
+  if (!pfList().includes(S.pf)) S.pf='title';
+  paintSave(); paintPF();
 }
 function paintSave(){ const s=$('#psave'); if(!s) return; s.className='save '+(S.dirty?'dirty':'clean'); s.textContent=S.dirty?'● nesalvat · Ctrl+S':'salvat'; }
 function mode(){
@@ -517,6 +563,7 @@ function mode(){
   if (S.overlay && ['palette','search'].includes(S.overlay.kind)) return ['-- CĂUTARE --','cmd'];
   if (a && a.id==='finput') return ['/'+S.q,'cmd'];
   if (a && (a.tagName==='INPUT'&&a.type!=='checkbox' || a.tagName==='TEXTAREA')) return ['-- INSERARE --','ins'];
+  if (!S.vim) return ['VIM OPRIT · săgeți, Enter, Esc',''];
   if (S.visual) return [`-- VIZUAL ${visualSet().size} --`,'vis'];
   if (S.selected.size) return [`-- SELECȚIE ${S.selected.size} --`,'vis'];
   return ['-- NORMAL --',''];
@@ -526,6 +573,7 @@ function paint(){
   const [m,c]=mode(); const me=$('#mode'); me.textContent=m; me.className='mode '+c;
   $('#where').textContent={sidebar:'bara laterală',list:'listă',panel:'panou'}[S.pane];
   $('#pending').textContent=(S.count+S.buf.join(''))||'';
+  paintPF();
   renderSidebar();
 }
 function render(){ renderHead(); renderList(); renderPanel(); paint(); }
@@ -607,6 +655,7 @@ function moveCursor(id){
   renderList(); paint();
   if (S.panelId && S.panelId!==id){
     clearTimeout(followT);
+    if (!S.follow) return;
     if (S.dirty) { msg('panoul rămâne pe '+S.panelId+' — nesalvat · Ctrl+S'); return; }
     followT=setTimeout(()=>openPanel(id),120);
   }
@@ -626,7 +675,7 @@ function stepGroup(d){
 function openPanel(id, focusField){
   if (!id) return;
   if (S.panelId && S.panelId!==id && S.dirty){ const s=$('#psave'); s?.classList.remove('flash'); void s?.offsetWidth; s?.classList.add('flash'); msg('ai modificări nesalvate · Ctrl+S'); return; }
-  S.panelId=id; S.dirty=false; S.handoffTo=null; S.isNew=false;
+  S.panelId=id; S.dirty=false; S.handoffTo=null; S.isNew=false; S.pf='title';
   renderPanel(true); renderList(); paint();
   if (focusField) focusPanel(focusField);
 }
@@ -643,7 +692,8 @@ function closePanel(force){
 }
 function focusPanel(f){
   S.pane='panel';
-  const el = f==='title'?$('#ptitle'): f==='desc'?$('#pdesc'): $('#pcomp');
+  const el = f==='title'||f==='titleAll'?$('#ptitle'): f==='desc'?$('#pdesc'): $('#pcomp');
+  S.pf = f==='titleAll'?'title': f==='comment'?'comment': f; paintPF();
   el.focus();
   if (f==='desc' || f==='comment') el.setSelectionRange(el.value.length, el.value.length);
   if (f==='titleAll') el.select();
@@ -694,6 +744,7 @@ function openFind(mode){
 function sbOpen(){
   const x=sbNav()[S.sbCursor]; if(!x) return;
   if (x.kind==='search') return openOverlay('search');
+  if (x.kind==='settings') return openOverlay('settings');
   go(x.kind==='project'?{kind:'project',pid:x.pid}: x.kind==='filter'?{kind:'filter',fid:x.fid}:{kind:x.kind});
 }
 function wave(d){
@@ -720,7 +771,7 @@ function openOverlay(kind, extra={}){
   const ov=$('#ov'); ov.classList.add('show');
   if (kind==='date'||kind==='move'||kind==='handoff'||kind==='wave'){
     const opts=overlayOpts();
-    const anchor = S.pane==='panel' ? $('#pchips') : ($('#list .row.cur')||$('#list'));
+    const anchor = S.pane==='panel' ? (document.querySelector('#panel [data-f].fcur')||$('#pchips')) : ($('#list .row.cur')||$('#list'));
     const r=anchor.getBoundingClientRect();
     ov.innerHTML=`<div class="bg"></div><div class="box pop" style="left:${Math.min(r.left+ (S.pane==='panel'?0:40), innerWidth-280)}px;top:${Math.min(r.bottom+4, innerHeight-320)}px" id="popbox"></div>`;
     paintPop(); return;
@@ -729,6 +780,7 @@ function openOverlay(kind, extra={}){
     ov.innerHTML=`<div class="bg"></div><div class="box center"><div class="inp">${kind==='palette'?'<span class="mono" style="color:var(--accent);font-weight:700">:</span>':ICON.search.replace('<svg','<svg width=18 height=18')}<input id="ovin" placeholder="${kind==='palette'?'Mergi la… (proiect, listă, filtru)':'Caută în toate proiectele — cele mai noi întâi'}"></div><div class="res" id="ovres"></div><div class="foot"><span><kbd>↑</kbd><kbd>↓</kbd> sau <kbd>Ctrl+j</kbd><kbd>Ctrl+k</kbd></span><span><kbd>Enter</kbd> ${kind==='palette'?'mergi':'deschide în panou'}</span><span><kbd>Esc</kbd> închide</span></div></div>`;
     const inp=$('#ovin'); inp.addEventListener('input',()=>{S.overlay.ix=0;paintRes();}); inp.focus(); paintRes(); paint(); return;
   }
+  if (kind==='settings'){ ov.innerHTML=`<div class="bg"></div><div class="box center" style="width:min(480px,92vw)"><div style="padding:16px 18px 6px;display:flex;align-items:center;gap:10px"><span style="width:18px;height:18px;display:inline-flex">${ICON.gear}</span><b style="font-size:16px">Setări</b><span style="margin-left:auto;font-size:12px;color:var(--txt-faint)">pe acest dispozitiv</span></div><div class="res" id="setres"></div><div class="foot"><span><kbd>j</kbd><kbd>k</kbd> · <kbd>↑</kbd><kbd>↓</kbd></span><span><kbd>Enter</kbd> / <kbd>Space</kbd> comută</span><span><kbd>Esc</kbd> închide</span></div></div>`; paintSettings(); paint(); return; }
   if (kind==='help'){ ov.innerHTML=`<div class="bg"></div><div class="box center help" style="top:7vh">${helpHTML()}</div>`; }
 }
 function overlayOpts(){
@@ -748,6 +800,21 @@ function paintPop(){
   $('#popbox').innerHTML=`<div style="font-size:12px;color:var(--txt-faint);font-weight:650;padding:6px 10px">${t} · ${targets().length>1?targets().length+' sarcini':targets()[0]||''}</div>`+
     opts.map((o,ix)=>`<div class="opt ${ix===S.overlay.ix?'cur':''}">${esc(o.label)}<kbd class="k">${o.k}</kbd></div>`).join('')+
     `<div style="font-size:11.5px;color:var(--txt-faint);padding:6px 10px">j/k · Enter · litera · Esc</div>`;
+}
+function themeNow(){ return document.documentElement.dataset.theme || 'auto'; }
+const SETTINGS = [
+  {label:'Mod Vim', desc:'j k h l, dd, gg, v, / … Oprit: rămân săgețile, Enter, Esc și tastele de azi (C, O, F, , .).',
+   val:()=>S.vim?'Pornit':'Oprit', on:()=>S.vim,
+   toggle:()=>{ S.vim=!S.vim; try{localStorage.setItem('hz-vim',S.vim?'on':'off');}catch{} S.visual=null; S.selected.clear(); clearBuf(); render(); toast(S.vim?'Mod Vim pornit':'Mod Vim oprit · săgețile merg în continuare',2500); }},
+  {label:'Panoul urmează cursorul', desc:'Cu un tichet deschis, j / k (sau ↑ ↓) în listă schimbă și tichetul din panou.',
+   val:()=>S.follow?'Pornit':'Oprit', on:()=>S.follow,
+   toggle:()=>{ S.follow=!S.follow; try{localStorage.setItem('hz-follow',S.follow?'on':'off');}catch{} }},
+  {label:'Temă', desc:'Auto urmează sistemul.',
+   val:()=>({auto:'Auto',light:'Luminos',dark:'Întunecat'})[themeNow()], on:()=>false,
+   toggle:()=>{ const order=['auto','light','dark'], nx=order[(order.indexOf(themeNow())+1)%3]; if(nx==='auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme=nx; }},
+];
+function paintSettings(){
+  $('#setres').innerHTML=SETTINGS.map((x,ix)=>`<div class="set-row ${ix===S.overlay.ix?'cur':''}"><div><div style="font-weight:600">${x.label}</div><div class="sd">${x.desc}</div></div><span class="sv ${x.on()?'on':''}">${x.val()}</span></div>`).join('');
 }
 function moveTo(pid){
   const ids=targets(); S._flatBefore=flat(); snapshot(ids,'mutare');
@@ -778,6 +845,13 @@ function closeOverlay(){ S.overlay=null; $('#ov').classList.remove('show'); $('#
 function overlayKey(e,t){
   const o=S.overlay, k=o.kind;
   if (t==='Escape'){ e.preventDefault(); closeOverlay(); return true; }
+  if (k==='settings'){
+    const n=SETTINGS.length;
+    if (t==='j'||t==='ArrowDown'){ o.ix=Math.min(n-1,o.ix+1); paintSettings(); return true; }
+    if (t==='k'||t==='ArrowUp'){ o.ix=Math.max(0,o.ix-1); paintSettings(); return true; }
+    if (['Enter','Space','l','h','ArrowRight','ArrowLeft'].includes(t)){ e.preventDefault(); SETTINGS[o.ix].toggle(); paintSettings(); paint(); return true; }
+    return true;
+  }
   if (k==='help'){ const sc=$('.help .scroll'); if(t==='j') sc.scrollBy(0,80); else if(t==='k') sc.scrollBy(0,-80); else if(t==='?'||t==='q') closeOverlay(); else if (t==='G') sc.scrollTo(0,1e6); return true; }
   if (k==='palette'||k==='search'){
     const it=resItems();
@@ -814,7 +888,8 @@ const KEYMAP = [
   {seq:'L',  ctx:'any', d:'Înainte în istoric', run:()=>histGo(1)},
   {seq:'[',  ctx:'any', d:'Valul anterior (pe RO: tasta ă)', run:()=>wave(-1)},
   {seq:']',  ctx:'any', d:'Valul următor (pe RO: tasta î)', run:()=>wave(1)},
-  {seq:'?',  ctx:'any', d:'Ajutorul ăsta', run:()=>openOverlay('help')},
+  {seq:'?',  ctx:'any', d:'Ajutorul ăsta', run:()=>openOverlay('help'), classic:true},
+  {seq:'g,', ctx:'any', d:'Setări (mod Vim, panoul urmează cursorul, temă)', run:()=>openOverlay('settings')},
   {seq:'u',  ctx:'any', d:'Anulează ultima acțiune', run:()=>A.undo()},
   {seq:'gt', ctx:'any', d:'Valul următor (ca ])', run:()=>wave(1)},
   {seq:'gT', ctx:'any', d:'Valul anterior (ca [)', run:()=>wave(-1)},
@@ -864,10 +939,13 @@ const KEYMAP = [
   {seq:'M',  ctx:'panel', d:'Mută în alt proiect', run:()=>openOverlay('move')},
   {seq:'dd', ctx:'panel', d:'Șterge tichetul', run:()=>A.del()},
   {seq:'yy', ctx:'panel', d:'Copiază linkul', run:()=>A.yank('link')},
-  {seq:'j',  ctx:'panel', d:'Derulează în jos', run:()=>$('#pbody').scrollBy(0,80)},
-  {seq:'k',  ctx:'panel', d:'Derulează în sus', run:()=>$('#pbody').scrollBy(0,-80)},
-  {seq:'gg', ctx:'panel', d:'Sus', run:()=>$('#pbody').scrollTo(0,0)},
-  {seq:'G',  ctx:'panel', d:'Jos', run:()=>$('#pbody').scrollTo(0,1e6)},
+  {seq:'j',  ctx:'panel', d:'Câmpul următor: titlu → dată → val → urgent → fixare → pasare → proiect → descriere → dependențe → comentariu', run:()=>pfStep(1)},
+  {seq:'k',  ctx:'panel', d:'Câmpul anterior', run:()=>pfStep(-1)},
+  {seq:'gg', ctx:'panel', d:'Primul câmp (titlul)', run:()=>{ const l=pfList(); pfSet(l[0]); }},
+  {seq:'G',  ctx:'panel', d:'Ultimul câmp (comentariul)', run:()=>{ const l=pfList(); pfSet(l[l.length-1]); }},
+  {seq:'Enter', ctx:'panel', d:'Activează câmpul: scrie / deschide alegerea / comută / deschide dependența', run:pfActivate},
+  {seq:'l',  ctx:'panel', d:'Activează câmpul (ca Enter)', run:pfActivate},
+  {seq:'Space', ctx:'panel', d:'Activează câmpul (comută urgent / fixare)', run:pfActivate},
   {seq:'h',  ctx:'panel', d:'Înapoi în listă', run:()=>setPane('list')},
   // bara laterală
   {seq:'j',  ctx:'sidebar', d:'Următorul', run:()=>{S.sbCursor=Math.min(sbNav().length-1,S.sbCursor+1); paint();}},
@@ -878,8 +956,26 @@ const KEYMAP = [
   {seq:'l',  ctx:'sidebar', d:'Deschide și treci în listă', run:sbOpen},
 ];
 function toggleVisual(){ if(S.pane!=='list') setPane('list'); if(!S.cursor){const f=flat(); if(!f.length) return; S.cursor=f[0];} S.visual=S.visual?null:{anchor:S.cursor}; renderList(); paint(); msg(S.visual?'j/k extind · x dd D t ! F M se aplică tuturor · Esc iese':''); }
-const VISUAL_OK = new Set(['v','j','k','J','K','gg','G','x','dd','D','t','!','F','M','u','V','.','?']);
-const tokSplit = s => s==='Enter'||s==='Space'?[s]:[...s];
+// Săgețile merg mereu — și cu modul Vim oprit.
+KEYMAP.push(
+  {seq:'ArrowDown', ctx:'list', d:'↓ rândul următor', run:()=>step(1), classic:true, hide:true},
+  {seq:'ArrowUp', ctx:'list', d:'↑ rândul anterior', run:()=>step(-1), classic:true, hide:true},
+  {seq:'ArrowRight', ctx:'list', d:'→ în panou', run:()=>setPane('panel'), classic:true, hide:true},
+  {seq:'ArrowLeft', ctx:'list', d:'← în bara laterală', run:()=>setPane('sidebar'), classic:true, hide:true},
+  {seq:'ArrowDown', ctx:'panel', d:'↓ câmpul următor', run:()=>pfStep(1), classic:true, hide:true},
+  {seq:'ArrowUp', ctx:'panel', d:'↑ câmpul anterior', run:()=>pfStep(-1), classic:true, hide:true},
+  {seq:'ArrowLeft', ctx:'panel', d:'← înapoi în listă', run:()=>setPane('list'), classic:true, hide:true},
+  {seq:'ArrowRight', ctx:'panel', d:'→ activează', run:pfActivate, classic:true, hide:true},
+  {seq:'ArrowDown', ctx:'sidebar', d:'↓', run:()=>{S.sbCursor=Math.min(sbNav().length-1,S.sbCursor+1); paint();}, classic:true, hide:true},
+  {seq:'ArrowUp', ctx:'sidebar', d:'↑', run:()=>{S.sbCursor=Math.max(0,S.sbCursor-1); paint();}, classic:true, hide:true},
+  {seq:'ArrowRight', ctx:'sidebar', d:'→ deschide', run:sbOpen, classic:true, hide:true},
+  // tastele de azi, pentru modul Vim oprit
+  {seq:',', ctx:'any', d:'Valul anterior (azi)', run:()=>wave(-1), onlyClassic:true, hide:true},
+  {seq:'.', ctx:'any', d:'Valul următor (azi)', run:()=>wave(1), onlyClassic:true, hide:true},
+);
+for (const k of KEYMAP) if (['Enter','C','O','F'].includes(k.seq)) k.classic=true;
+const VISUAL_OK = new Set(['ArrowDown','ArrowUp','v','j','k','J','K','gg','G','x','dd','D','t','!','F','M','u','V','.','?']);
+const tokSplit = s => /^(Enter|Space|Arrow[A-Za-z]+)$/.test(s)?[s]:[...s];
 function nextMatch(d){
   if (!S.q){ msg('întâi / și un text'); return; }
   const f=flat(), m=f.filter(id=>matches(I(id))); if(!m.length){ msg('nicio potrivire'); return; }
@@ -895,6 +991,7 @@ function token(e){
   if (e.key==='Enter') return 'Enter';
   if (e.key===' ') return 'Space';
   if (e.key==='Escape') return 'Escape';
+  if (e.key.startsWith('Arrow')) return e.key;
   if (/^[\x21-\x7e]$/.test(e.key)) return e.key;          // ASCII: ce scrie tasta
   if (BY_CODE[e.code]) return BY_CODE[e.code][e.shiftKey?1:0]; // ă ș ț â pe RO: după poziție
   return e.key.length===1?e.key:null;
@@ -905,7 +1002,7 @@ let seqT, wkT;
 function clearBuf(){ S.buf=[]; S.count=''; clearTimeout(seqT); clearTimeout(wkT); $('#wk').classList.remove('show'); paint(); }
 function ctxEntries(){
   const ctx=S.pane;
-  let es=KEYMAP.filter(k=>k.ctx===ctx||k.ctx==='any');
+  let es=KEYMAP.filter(k=>(k.ctx===ctx||k.ctx==='any') && (S.vim ? !k.onlyClassic : (k.classic||k.onlyClassic)));
   // local bate global la aceeași secvență
   es=es.filter(k=>!(k.ctx==='any' && es.some(o=>o.ctx===ctx && o.seq===k.seq)));
   if (S.visual) es=es.filter(k=>VISUAL_OK.has(k.seq));
@@ -1007,6 +1104,8 @@ function helpHTML(){
   const order=[['Listă','list'],['Panou (tichetul deschis)','panel'],['Bara laterală','sidebar']].sort((a,b)=>(b[1]===S.pane)-(a[1]===S.pane));
   return `<div class="top"><h2>Navigare din tastatură</h2><span style="color:var(--txt-faint);font-size:13px"><kbd>j</kbd><kbd>k</kbd> derulează · <kbd>Esc</kbd> închide</span></div><div class="scroll">
   <h3>Scenarii de încercat</h3><ol class="scen">
+    <li><b>Prin tichet, câmp cu câmp:</b> <kbd>Enter</kbd> <kbd>l</kbd>, apoi <kbd>j</kbd> <kbd>j</kbd> <kbd>j</kbd> trec prin dată, val, urgent, fixare, pasare, proiect, descriere, dependențe, comentariu. <kbd>Enter</kbd> pe câmp: scrie / alege / comută / deschide dependența.</li>
+    <li><b>Setări:</b> <kbd>g</kbd><kbd>,</kbd> (sau bara laterală → Setări). Oprește „Mod Vim” și încearcă săgețile + <kbd>Enter</kbd>; <kbd>j</kbd> nu mai face nimic.</li>
     <li><b>Triaj dimineața în Azi:</b> <kbd>j</kbd> <kbd>j</kbd> <kbd>x</kbd> · <kbd>d</kbd><kbd>d</kbd> · <kbd>u</kbd> · <kbd>D</kbd> · <kbd>.</kbd> (repetă „mâine” pe rândul următor)</li>
     <li><b>Interval:</b> <kbd>V</kbd> <kbd>j</kbd> <kbd>j</kbd> <kbd>D</kbd>, apoi <kbd>u</kbd> — toate se întorc deodată.</li>
     <li><b>Panoul urmează cursorul:</b> <kbd>Enter</kbd>, <kbd>j</kbd> <kbd>j</kbd> (panoul vine după). Apoi <kbd>l</kbd> <kbd>a</kbd>, scrie ceva, <kbd>Esc</kbd> <kbd>h</kbd> <kbd>j</kbd> — panoul rămâne, rândul spune „nesalvat”. <kbd>Ctrl+S</kbd> — panoul prinde cursorul.</li>
