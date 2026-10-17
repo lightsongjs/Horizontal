@@ -13,6 +13,8 @@ import { Icon } from './Icon'
 import { SplitView } from './SplitView'
 import { displayIssueId } from '../lib/issueId'
 import { isPinnedOpen, pinnedFirst } from '../lib/pinned'
+import { useTaskActions } from './TaskActions'
+import { PinMark, RowPin, useRowPinKey } from './RowPin'
 
 export function ListView() {
   const { waves, activeWave, byId, stateOf, themeOf, toggleDone, blockedByObstacle, assignees, assigneeShort, project } = useHorizontal()
@@ -95,6 +97,9 @@ export function ListView() {
 
   const wa = useWaveActions()
   const { focusedId } = useVimNav(flatLayers)
+  // F pe rândul ales cu H J K L sau cu focusul de tastatură (fără tichet deschis).
+  useRowPinKey(focusedId)
+  const ta = useTaskActions()
 
   const otherWaves = waves.filter((w) => w.number !== activeWave)
   const selCount = wa.selectedIds.size
@@ -173,8 +178,20 @@ export function ListView() {
                   else openEditIssue(id)
                 }
 
+                const pinned = isPinnedOpen(it)
+                // Piuneza-buton doar pe desktop și în modul obișnuit: în arbore
+                // și în selecție un click pe rând înseamnă altceva.
+                const pinnable = !ta.narrow && canWrite && !it.done && !inSelect && !wa.treeViewActive
+
                 return (
-                  <button type="button" key={id} className={cls} onClick={handleClick} data-issue-id={id}>
+                  <button
+                    type="button"
+                    key={id}
+                    className={cls}
+                    onClick={handleClick}
+                    onContextMenu={pinnable ? (e) => { e.preventDefault(); ta.openRowMenu(id, { x: e.clientX, y: e.clientY }) } : undefined}
+                    data-issue-id={id}
+                  >
                     <span
                       className="list-check"
                       role="checkbox"
@@ -217,7 +234,9 @@ export function ListView() {
                           </>
                         )
                       })()}
-                      {isPinnedOpen(it) && <span className="t-pin" title="Fixat sus"><Icon name="pin" size={13} /></span>}
+                      {pinnable
+                        ? <RowPin pinned={pinned} onToggle={() => void ta.run({ kind: 'pin', value: !pinned }, [id])} />
+                        : pinned && <PinMark />}
                       <TaskProgress desc={it.desc} />
                       <DueChip issue={it} />
                       <ObstacleChip issueId={id} />

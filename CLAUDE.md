@@ -964,13 +964,34 @@ fără scadență). Coloana `issues.pinned_at` (`null` = nefixat, altfel când),
   mult" al selecției (acțiunea `pin` din `bulkActions`), antetul `IssueForm`
   (`.sh-pin`, imediat, nu prin Salvează; ascuns sub 900px — antetul e plin și
   jetonul de proiect s-ar strivi) și tasta **F** cu un card deschis.
+- **Din listă, pe desktop** (decizia omului, 2026-10-17: „pin și pe browser"):
+  `RowPin` (`src/components/RowPin.tsx`) în coada rândurilor din `TaskRow`
+  („Azi", „7 zile", filtre — și în „Fixate", ca să scoți de acolo) și din
+  „Listă". `span role="button"` (rândul e deja buton), `mousedown` prevenit
+  + `stopPropagation`: nu deschide tichetul și nu ia focusul. Pe un rând
+  nefixat e transparentă dar **își ține locul** (22px), deci hover-ul nu mută
+  și nu taie titlul; fixat = accent, capul plin, mereu vizibilă. Poarta:
+  componenta o randează doar `!ta.narrow` + drept de scriere + nebifat (în
+  „Listă" și în afara arborelui/selecției); CSS-ul o arată doar sub
+  `(hover: hover) and (pointer: fine)` — altfel rămâne numai semnul de pe
+  rândurile fixate. **Click dreapta** pe rând: `RowMenu` din
+  `TaskActions.tsx` („Fixează sus"/„Scoate de sus" + Urgent, cutia
+  `.ctx-menu` din sidebar, Esc în captură). Starea meniului stă în provider,
+  în afara `value`, iar `openRowMenu` e stabil — rândurile `memo` nu se
+  randează la deschidere. **F pe rând** (`useRowPinKey`): rândul cu focus de
+  tastatură (Tab) sau cel ales cu H J K L în „Listă", numai fără foaie
+  deschisă — cu un tichet deschis (docat sau modal) F e a formularului.
+  Toate trei trec prin `ta.run({ kind: 'pin' })`, deci au toastul cu anulare.
 - **Widget-ul, notificarea din bară și fereastra nativă de pe Android NU știu
   de fixări** (cer APK nou): pe widget o fixată fără dată lipsește, iar una
   datată stă în ziua ei.
 - Teste: `src/lib/pinned.test.ts`, „fixate" în `schedule.test.ts` și
   `bulkActions.test.ts`, repo-urile; `test:layout` (grupul, semnul, `.es-pin`
-  la 320–430px); `test:nav` (piuneza din foaie → grupul primul, fără dublură,
-  un tichet fără dată fixat).
+  la 320–430px; piuneza de rând la 1100/1400 nu mută titlul la hover, lipsește
+  fără mouse la 390); `test:nav` (piuneza din foaie → grupul primul, fără
+  dublură, un tichet fără dată fixat; pe desktop piuneza de rând nu deschide
+  tichetul, click dreapta o scoate, F o comută). Capturi:
+  `design/pinned/desktop-*.png`, `banc-rand-*.png`.
 
 ## Rutine — proiect „doar mementouri"
 

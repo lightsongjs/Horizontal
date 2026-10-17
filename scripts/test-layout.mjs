@@ -1237,6 +1237,69 @@ for (const width of PHONE_WIDTHS) {
   check(`rândul ID-ului nu crește din cauza butonului @${width}px`, m.metaH <= m.textH + 1, `${m.metaH}px vs text ${m.textH}px`)
 }
 
+/**
+ * Piuneza de rând pe desktop (`RowPin`, `.row-pin`): pe un rând nefixat e
+ * transparentă și își ține locul, deci la hover titlul nu se mișcă și nu se
+ * taie; pe un rând fixat stă mereu, în accent. Fără mouse (telefonul, 390px
+ * cu atingere) piuneza unui rând nefixat lipsește cu totul. Două forme: coada
+ * din listele inteligente (`.t-tail`) și cea din „Listă" (`.row-tail`).
+ */
+const rowPinList = () => `
+<div class="panel smart-list"><div class="list-group">
+  <button class="list-row task-row" id="rp-a"><span class="list-check"><span class="ck"></span></span><span class="list-title">Sună la contabilă</span><span class="t-tail"><span role="button" class="t-pin row-pin" id="rp-a-pin"><svg width="13" height="13"></svg></span><span class="t-time">10:00</span><span class="t-proj"><span class="t-dot" style="background:#0ea5e9"></span><span class="t-proj-name">Inbox</span></span></span></button>
+  <button class="list-row task-row" id="rp-b"><span class="list-check"><span class="ck"></span></span><span class="list-title">Credențiale ANAF</span><span class="t-tail"><span role="button" class="t-pin row-pin on" id="rp-b-pin"><svg width="13" height="13"></svg></span><span class="t-proj"><span class="t-dot" style="background:#0ea5e9"></span><span class="t-proj-name">Inbox</span></span></span></button>
+</div></div>
+<div class="panel"><div class="list-group">
+  <button class="list-row" id="rp-c"><span class="list-check"><span class="ck"></span></span><span class="list-title">Exportă raportul lunar</span><span class="row-tail"><span role="button" class="t-pin row-pin" id="rp-c-pin"><svg width="13" height="13"></svg></span><span class="list-id">TUR-12</span></span></button>
+</div></div>`
+console.log('\nPiuneza de rând pe desktop (hover, fără salt):')
+for (const width of [1100, 1400]) {
+  const page = await browser.newPage({ viewport: { width, height: 800 } })
+  await page.setContent(`<style>${CSS}</style>${rowPinList()}`)
+  const measure = () => page.evaluate(() => {
+    const one = (id) => {
+      const row = document.getElementById(id)
+      const t = row.querySelector('.list-title')
+      const pin = document.getElementById(`${id}-pin`)
+      const r = t.getBoundingClientRect()
+      return {
+        tl: Math.round(r.left), tw: Math.round(r.width), cut: t.scrollWidth > t.clientWidth + 1,
+        h: Math.round(row.getBoundingClientRect().height),
+        pw: Math.round(pin.getBoundingClientRect().width), op: getComputedStyle(pin).opacity,
+        color: getComputedStyle(pin).color,
+      }
+    }
+    return { a: one('rp-a'), b: one('rp-b'), c: one('rp-c') }
+  })
+  const rest = await measure()
+  await page.hover('#rp-a .list-title')
+  await page.waitForTimeout(250) // tranziția de opacitate (0.12s)
+  const hovA = (await measure()).a
+  await page.hover('#rp-c .list-title')
+  await page.waitForTimeout(250)
+  const hovC = (await measure()).c
+  await page.close()
+  for (const [k, before, after] of [['inteligentă', rest.a, hovA], ['„Listă"', rest.c, hovC]]) {
+    check(`hover nu mișcă titlul (${k}) @${width}px`, before.tl === after.tl && before.tw === after.tw && before.h === after.h,
+      `${before.tl}/${before.tw}/${before.h} → ${after.tl}/${after.tw}/${after.h}`)
+    check(`titlul scurt netăiat la hover (${k}) @${width}px`, !after.cut, `tăiat=${after.cut}`)
+    check(`piuneza: ascunsă în repaus, vizibilă la hover (${k}) @${width}px`, before.op === '0' && after.op === '1' && after.pw >= 16,
+      `${before.op} → ${after.op}, ${after.pw}px`)
+  }
+  check(`rândul fixat: piuneza mereu vizibilă, în accent @${width}px`, rest.b.op === '1' && rest.b.color !== rest.a.color, `${rest.b.op}, ${rest.b.color}`)
+}
+{
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
+  const page = await ctx.newPage()
+  await page.setContent(`<style>${CSS}</style>${rowPinList()}`)
+  const m = await page.evaluate(() => ({
+    off: getComputedStyle(document.getElementById('rp-a-pin')).display,
+    on: getComputedStyle(document.getElementById('rp-b-pin')).display,
+  }))
+  await ctx.close()
+  check('fără mouse (390px): piuneza nefixatului lipsește, a fixatului e semn', m.off === 'none' && m.on !== 'none', `${m.off} / ${m.on}`)
+}
+
 // Galeria (Lightbox) — componenta REALĂ, împachetată cu esbuild, montată în
 // interiorul unei `.sheet` (care are `transform`, ca în aplicație). Regresia
 // din 2026-10-15: pe telefon se vedea un sfert din poză, fiindcă `position:

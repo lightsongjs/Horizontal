@@ -14,6 +14,7 @@ import { Icon } from './Icon'
 import { useTaskActions } from './TaskActions'
 import { NativePick } from './NativePick'
 import { ProjectMark } from './ProjectMark'
+import { PinMark, RowPin } from './RowPin'
 
 interface Props {
   issue: Issue
@@ -103,6 +104,10 @@ const TaskRowView = memo(function TaskRowView({ issue, onOpen, late = false, doc
   const otherDay = day && !late && !!issue.dueAt && dayOffset(issue.dueAt, new Date()) !== 0
   const selecting = ta.narrow && ta.selectMode
   const selected = selecting && ta.selectedIds.has(issue.id)
+  const pinned = isPinnedOpen(issue)
+  // Desktop: piuneza e un buton (vizibil la hover, mereu pe un rând fixat).
+  // Pe telefon fixarea stă în ⋮ / selecție, iar aici rămâne doar semnul.
+  const pinnable = !ta.narrow && canWrite && !issue.done
 
   const body = (
     <>
@@ -132,10 +137,13 @@ const TaskRowView = memo(function TaskRowView({ issue, onOpen, late = false, doc
       <span className="list-title">{issue.title}</span>
 
       <span className="t-tail">
-        {/* Fixat sus (`pinnedAt`): semnul stă primul în coadă, ca să se vadă
-            în „Listă"/filtre. În grupul „Fixate" (`day`) lipsește: capul
-            grupului îl spune deja, iar la 320px locul e al titlului. */}
-        {isPinnedOpen(issue) && !day && <span className="t-pin" title="Fixat sus"><Icon name="pin" size={13} /></span>}
+        {/* Fixat sus (`pinnedAt`): piuneza stă prima în coadă. Pe desktop e
+            buton (`RowPin`, și în „Fixate", ca să scoți de acolo); pe telefon
+            e doar semnul, care în „Fixate" (`day`) lipsește: capul grupului îl
+            spune deja, iar la 320px locul e al titlului. */}
+        {pinnable
+          ? <RowPin pinned={pinned} onToggle={() => void ta.run({ kind: 'pin', value: !pinned }, [issue.id])} />
+          : pinned && !day && <PinMark />}
         <TaskProgress desc={issue.desc} />
         {/* O restanță își spune ziua ratată; altfel ora, dacă are una. Fără
             oră nu se scrie nimic — absența e cazul obișnuit. */}
@@ -160,7 +168,14 @@ const TaskRowView = memo(function TaskRowView({ issue, onOpen, late = false, doc
 
   if (!ta.narrow) {
     return (
-      <button className={cls} onClick={() => onOpen(issue.id)} data-issue-id={issue.id}>
+      <button
+        className={cls}
+        onClick={() => onOpen(issue.id)}
+        // Click dreapta: „Fixează sus" / „Urgent" lângă cursor. Doar-citire:
+        // meniul browserului, ca înainte.
+        onContextMenu={canWrite ? (e) => { e.preventDefault(); ta.openRowMenu(issue.id, { x: e.clientX, y: e.clientY }) } : undefined}
+        data-issue-id={issue.id}
+      >
         {body}
       </button>
     )

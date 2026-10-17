@@ -378,6 +378,67 @@ try {
 
   await fresh.close()
 
+  // ── Fixarea din listă, pe desktop: piuneza la hover, click dreapta, F ───
+  // Piuneza din coada rândului (`RowPin`) fixează FĂRĂ să deschidă tichetul
+  // (stopPropagation pe click, `mousedown` prevenit), meniul de click dreapta
+  // o scoate, iar F pe rândul cu focus o pune la loc. Totul se desface la
+  // capăt și sarcina se șterge din bază, ca testele de telefon de mai jos să
+  // vadă „Azi" ca înainte.
+  {
+    const dp = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+    await dp.goto(BASE, { waitUntil: 'networkidle' })
+    await dp.waitForTimeout(700)
+    await dp.locator('.tabbar button, .sidebar-smart-item, .sidebar button')
+      .filter({ hasText: /^Azi/ }).locator('visible=true').first().click()
+    await dp.waitForTimeout(800)
+    const title = 'Sarcină de fixat de pe desktop'
+    await dp.locator('.qa-input').first().fill(title)
+    await dp.keyboard.press('Enter')
+    await dp.waitForTimeout(1200)
+    const row = () => dp.locator('.task-row', { hasText: title }).first()
+    const firstGroup = () => dp.evaluate(() => {
+      const g = document.querySelector('.smart-list .list-group')
+      return g ? { label: g.querySelector('.list-group-label')?.textContent, rows: [...g.querySelectorAll('.list-title')].map((t) => t.textContent) } : null
+    })
+    const pinnedInDb = () => dp.evaluate((t) => !!JSON.parse(localStorage.getItem('horizontal:v2')).issues.find((i) => i.title === t)?.pinnedAt, title)
+    await row().hover()
+    await dp.waitForTimeout(250)
+    const pinOp = await row().locator('.row-pin').evaluate((el) => getComputedStyle(el).opacity)
+    check('desktop: piuneza apare la hover pe rând', pinOp === '1', `opacity=${pinOp}`)
+    await row().locator('.row-pin').click()
+    await dp.waitForTimeout(700)
+    const url = new URL(dp.url()).pathname
+    const docked = await dp.locator('.split-pane:not([hidden]) .sh-header').count()
+    check('…click pe ea NU deschide tichetul', url === '/' && docked === 0 && (await dp.locator('.sheet.on').count()) === 0, `URL=${url}, panou=${docked}`)
+    const g1 = await firstGroup()
+    check('…și sarcina urcă în „Fixate"', (await pinnedInDb()) && g1?.label === 'Fixate' && g1.rows.includes(title), JSON.stringify(g1))
+    check('…cu piuneza plină pe rând', (await row().locator('.row-pin.on').count()) === 1, 'pornită')
+
+    await row().click({ button: 'right' })
+    await dp.waitForTimeout(300)
+    const menu = dp.locator('.ctx-menu [role="menuitem"]', { hasText: 'Scoate de sus' })
+    check('click dreapta: meniul rândului oferă „Scoate de sus"', (await menu.count()) === 1, `${await menu.count()} intrări`)
+    await menu.click()
+    await dp.waitForTimeout(700)
+    check('…și scoate fixarea', !(await pinnedInDb()) && (await firstGroup())?.label !== 'Fixate', JSON.stringify(await firstGroup()))
+
+    await row().focus()
+    await dp.keyboard.press('f')
+    await dp.waitForTimeout(700)
+    check('F pe rândul cu focus îl fixează', await pinnedInDb(), 'pinnedAt pus')
+    await row().focus()
+    await dp.keyboard.press('f')
+    await dp.waitForTimeout(700)
+    check('…a doua oară îl scoate', !(await pinnedInDb()), 'pinnedAt null')
+
+    await dp.evaluate((t) => {
+      const db = JSON.parse(localStorage.getItem('horizontal:v2'))
+      db.issues = db.issues.filter((i) => i.title !== t)
+      localStorage.setItem('horizontal:v2', JSON.stringify(db))
+    }, title)
+    await dp.close()
+  }
+
   // ── Proiectul sarcinii se deschide din sidebar la PRIMUL click ──────────
   // O sarcină deschisă din „Azi" încarcă proiectul ei în store, sub listă. O
   // repornire peste card face ca închiderea să NU treacă prin `back()` →
