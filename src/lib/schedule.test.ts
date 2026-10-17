@@ -329,3 +329,55 @@ describe('dueChipDay', () => {
     expect(dueChipDay(new Date(2027, 0, 3, 9, 0).toISOString(), now)).toBe('3 ian 2027')
   })
 })
+
+// Sarcini fixate (docs/superpowers/specs/2026-10-17-sarcini-fixate-design.md).
+describe('buildSmartLists — fixate', () => {
+  const pin = (iso: string) => ({ pinnedAt: iso })
+
+  it('o fixată fără scadență intră în „Azi", în grupul ei, deasupra a tot', () => {
+    const L = buildSmartLists([
+      task('ANAF', pin('2026-08-24T05:00:00.000Z')),
+      task('URG', { ...at(-1), urgent: true }),
+      task('AZI', at(0, 9)),
+    ], NOW)
+    expect(L.pinned.map((i) => i.id)).toEqual(['ANAF'])
+    expect(L.overdue.map((i) => i.id)).toEqual(['URG'])
+    expect(L.today.map((i) => i.id)).toEqual(['AZI'])
+  })
+
+  it('o fixată restantă, de azi sau dintr-o zi din „7 zile" stă NUMAI în „Fixate"', () => {
+    const L = buildSmartLists([
+      task('VECHE', { ...at(-3), ...pin('2026-08-24T05:00:00.000Z') }),
+      task('AZI', { ...at(0, 10), ...pin('2026-08-24T05:01:00.000Z') }),
+      task('JOI', { ...at(3, 9), ...pin('2026-08-24T05:02:00.000Z') }),
+    ], NOW)
+    expect(L.pinned.map((i) => i.id)).toEqual(['JOI', 'AZI', 'VECHE'])
+    expect(L.overdue).toEqual([])
+    expect(L.today).toEqual([])
+    expect(L.week.flatMap((d) => d.issues)).toEqual([])
+  })
+
+  it('ordinea între fixate: cea fixată ultima e prima, la egalitate după ID', () => {
+    const t = '2026-08-24T05:00:00.000Z'
+    const L = buildSmartLists([
+      task('B', pin(t)), task('A', pin(t)), task('C', pin('2026-08-24T06:00:00.000Z')),
+    ], NOW)
+    expect(L.pinned.map((i) => i.id)).toEqual(['C', 'A', 'B'])
+  })
+
+  it('bifată iese din „Fixate"; cu scadență azi cade în „Terminate azi"', () => {
+    const L = buildSmartLists([
+      task('GATA', { ...at(0, 9), done: true, ...pin('2026-08-24T05:00:00.000Z') }),
+      task('GATA-FARA', { done: true, ...pin('2026-08-24T05:00:00.000Z') }),
+    ], NOW)
+    expect(L.pinned).toEqual([])
+    expect(L.doneToday.map((i) => i.id)).toEqual(['GATA'])
+  })
+
+  it('fixarea bate rutina adormită (gest explicit al omului)', () => {
+    const L = buildSmartLists([
+      task('RUT', { projectId: 'rut', ...at(0, 18), remindAt: at(0, 18).dueAt, ...pin('2026-08-24T05:00:00.000Z') }),
+    ], NOW, new Set(['rut']))
+    expect(L.pinned.map((i) => i.id)).toEqual(['RUT'])
+  })
+})

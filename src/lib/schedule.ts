@@ -8,6 +8,7 @@
 
 import type { Issue } from './types'
 import { isDormant } from './routines'
+import { comparePinned, isPinnedOpen } from './pinned'
 import type { DueRange } from '../data/repository'
 
 /**
@@ -21,7 +22,11 @@ export const NO_SCHEDULE = {
   allDay: true,
   remindAt: null,
   rrule: null,
-} satisfies Pick<Issue, 'dueAt' | 'allDay' | 'remindAt' | 'rrule'>
+  // Nu e o dată de scadență, dar e tot un câmp „de timp" pe care orice tichet
+  // nou îl are gol: stă aici ca literalele (seed, fixtures) să-l primească o
+  // dată, nu în fiecare obiect. Vezi `pinnedAt` în `types.ts`.
+  pinnedAt: null,
+} satisfies Pick<Issue, 'dueAt' | 'allDay' | 'remindAt' | 'rrule' | 'pinnedAt'>
 
 export function startOfLocalDay(d: Date): Date {
   const x = new Date(d)
@@ -122,6 +127,13 @@ export function compareDue(a: Issue, b: Issue): number {
 }
 
 export interface SmartLists {
+  /**
+   * Fixatele deschise — primul grup din „Azi", deasupra restanțelor și a
+   * urgentelor, cu sau fără scadență. Cel fixat cel mai recent primul.
+   * O fixată NU mai apare în `overdue`/`today`/`week`: e în „Azi" toată ziua,
+   * deci nicio altă listă nu o mai arată și nimic nu o numără de două ori.
+   */
+  pinned: Issue[]
   /** Nefinalizate, scadență trecută. Cel mai vechi primul. */
   overdue: Issue[]
   /** Nefinalizate cu scadență azi. */
@@ -144,13 +156,24 @@ export interface SmartLists {
  * Dublarea ar face ca aceeași sarcină să fie numărată de două ori în badge-uri.
  *
  * Rutinele (`routines` = proiecte „doar mementouri") lipsesc până sună.
+ *
+ * Fixatele deschise (`pinnedAt`) ies înaintea oricărei alte reguli: merg în
+ * `pinned`, chiar fără scadență, chiar restante, chiar dintr-o zi din „7 zile"
+ * și chiar adormite (fixarea e un gest explicit al omului, bate regula
+ * proiectului de rutine). O fixată bifată azi cade în `doneToday`, ca oricare.
+ * Spec: docs/superpowers/specs/2026-10-17-sarcini-fixate-design.md.
  */
 export function buildSmartLists(issues: Issue[], now: Date, routines: Set<string> = new Set()): SmartLists {
   const overdue: Issue[] = []
   const byOffset = new Map<number, Issue[]>()
   const doneToday: Issue[] = []
+  const pinned: Issue[] = []
 
   for (const it of issues) {
+    if (isPinnedOpen(it)) {
+      pinned.push(it)
+      continue
+    }
     if (!it.dueAt) continue
     const off = dayOffset(it.dueAt, now)
     if (it.done) {
@@ -177,7 +200,8 @@ export function buildSmartLists(issues: Issue[], now: Date, routines: Set<string
     return { offset, date: addDays(today, offset), issues: (byOffset.get(offset) ?? []).sort(compareDue) }
   })
 
-  return { overdue, today: (byOffset.get(0) ?? []).sort(compareDue), week, doneToday }
+  pinned.sort(comparePinned)
+  return { pinned, overdue, today: (byOffset.get(0) ?? []).sort(compareDue), week, doneToday }
 }
 
 // ── Punte către <input type="date"> și <input type="time"> ──────────────────

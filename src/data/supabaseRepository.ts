@@ -28,6 +28,9 @@ interface IssueRow {
   all_day: boolean
   remind_at: string | null
   rrule: string | null
+  // `migration-pinned-tasks.sql`. Opțional: pe o bază fără migrare `select('*')`
+  // nu-l aduce, iar tichetul e pur și simplu nefixat.
+  pinned_at?: string | null
 }
 
 /**
@@ -61,6 +64,7 @@ function rowToIssue(row: IssueRow, depsByIssue: Record<string, string[]>): Issue
     allDay: row.all_day ?? true,
     remindAt: isoOrNull(row.remind_at),
     rrule: row.rrule ?? null,
+    pinnedAt: isoOrNull(row.pinned_at),
   }
 }
 
@@ -245,6 +249,9 @@ export function createSupabaseRepository(): Repository {
       allDay: input.allDay ?? true,
       remindAt: isoOrNull(input.remindAt),
       rrule: input.rrule ?? null,
+      // Un tichet nou nu se naște fixat; coloana nu intră în insert, deci
+      // crearea merge și pe o bază fără `migration-pinned-tasks.sql`.
+      pinnedAt: null,
     }
     const { error } = await db.from('issues').insert({
       id: issue.id,
@@ -510,6 +517,7 @@ export function createSupabaseRepository(): Repository {
       if ('allDay' in patch) row.all_day = patch.allDay ?? true
       if ('remindAt' in patch) row.remind_at = patch.remindAt ?? null
       if ('rrule' in patch) row.rrule = patch.rrule ?? null
+      if ('pinnedAt' in patch) row.pinned_at = patch.pinnedAt ?? null
       if (Object.keys(row).length) {
         const { error } = await db.from('issues').update(row).eq('id', id)
         if (error) throw error

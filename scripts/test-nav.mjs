@@ -758,6 +758,47 @@ try {
   check('Back închide formularul complet', (await tel.locator('.sheet.on').count()) === 0, 'închis')
   check('…și rămâi pe „Azi"', (await telOnAzi()) && new URL(tel.url()).pathname === '/', `URL=${new URL(tel.url()).pathname}`)
 
+  // ── Sarcini fixate (`pinnedAt`) ─────────────────────────────────────────
+  // Piuneza de pe rândul ID-ului din foaia de tichet fixează imediat; „Azi"
+  // capătă grupul „Fixate" primul, cu sarcina în el (și numai acolo). Un
+  // tichet FĂRĂ scadență fixat intră și el (vine din `openIssues`). Apoi totul
+  // se desface, ca testele de mai jos să vadă „Azi" ca înainte.
+  const pinGroup = () => tel.evaluate(() => {
+    const g = document.querySelector('.smart-list .list-group')
+    return g ? { label: g.querySelector('.list-group-label')?.textContent, rows: [...g.querySelectorAll('.list-title')].map((t) => t.textContent) } : null
+  })
+  const pinTitle = 'Sarcină pentru foaia de tichet'
+  await openTask()
+  await tel.locator('.edit-sheet .es-pin').click()
+  await tel.waitForTimeout(500)
+  const pinnedAt = await tel.evaluate((t) => JSON.parse(localStorage.getItem('horizontal:v2')).issues.find((i) => i.title === t)?.pinnedAt, pinTitle)
+  check('fixare: piuneza din foaie scrie `pinnedAt`', typeof pinnedAt === 'string', JSON.stringify(pinnedAt))
+  check('…butonul arată starea', (await tel.locator('.edit-sheet .es-pin.on').count()) === 1, 'pornit')
+  await tel.keyboard.press('Escape')
+  await tel.waitForTimeout(600)
+  const pg = await pinGroup()
+  check('fixare: „Fixate" e primul grup din „Azi"', pg?.label === 'Fixate' && pg.rows.includes(pinTitle), JSON.stringify(pg))
+  check('…și sarcina nu apare a doua oară', (await tel.locator('.smart-list .list-title', { hasText: pinTitle }).count()) === 1, `${await tel.locator('.smart-list .list-title', { hasText: pinTitle }).count()} rânduri`)
+  const undated = await tel.evaluate(() => {
+    const db = JSON.parse(localStorage.getItem('horizontal:v2'))
+    const i = db.issues.find((x) => !x.done && !x.dueAt)
+    i.pinnedAt = new Date().toISOString()
+    localStorage.setItem('horizontal:v2', JSON.stringify(db))
+    return i.title
+  })
+  await tel.reload({ waitUntil: 'networkidle' })
+  await tel.waitForTimeout(1600)
+  const pg2 = await pinGroup()
+  check('fixare: un tichet fără dată fixat intră în „Fixate", primul (cel mai recent)', pg2?.label === 'Fixate' && pg2.rows[0] === undated && pg2.rows.includes(pinTitle), JSON.stringify(pg2))
+  await tel.evaluate(() => {
+    const db = JSON.parse(localStorage.getItem('horizontal:v2'))
+    for (const i of db.issues) i.pinnedAt = null
+    localStorage.setItem('horizontal:v2', JSON.stringify(db))
+  })
+  await tel.reload({ waitUntil: 'networkidle' })
+  await tel.waitForTimeout(1600)
+  check('fixare scoasă: grupul dispare', (await pinGroup())?.label !== 'Fixate', JSON.stringify(await pinGroup()))
+
   // ── Data din titlul foii de tichet ──────────────────────────────────────
   // Sarcina are scadență (azi, toată ziua, din „Azi"). „… la 17" scris în
   // titlu se evidențiază, iar jetonul arată dinainte rezultatul; abia blurul

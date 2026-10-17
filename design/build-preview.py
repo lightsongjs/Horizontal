@@ -418,7 +418,26 @@ def eband(*items):
         % (c, t, '<span class="ev-day">%s</span>' % d if d else '') for (t, c, d) in items)
 
 
-AZI = (QA + PUSH
+# Grupul „Fixate" (`SmartListView`, `pinned`): primul în „Azi", piuneza în
+# accent, rândurile cu ziua în cuvinte când scadența nu e azi (`.t-day`) și
+# fără semnul din coadă — capul grupului îl spune deja.
+def prow(title, proj, dot, day=None):
+    tail = ('<span class="t-time t-day">%s</span>' % day) if day else ''
+    tail += ('<span class="t-proj"><span class="t-dot" style="background:%s"></span>'
+             '<span class="t-proj-name">%s</span></span>' % (dot, proj))
+    return ('<button class="list-row task-row"><span class="list-check" role="checkbox" aria-checked="false" '
+            'style="--pc:%s"><span class="ck"></span></span><span class="list-title">%s</span>'
+            '<span class="t-tail">%s</span></button>' % (dot, title, tail))
+
+
+PINNED = ('<div class="list-group" style="--gc: var(--accent)"><div class="list-group-head">'
+          '<span class="list-group-ico pin">%s</span><span class="list-group-label">Fixate</span>'
+          '<span class="list-group-num">2</span></div>%s%s</div>'
+          % (ic('pin', 15),
+             prow('Credențiale ANAF (user, parolă, cod SMS)', 'Inbox', '#0E9F8E'),
+             prow('Depune declarația unică', 'Acte', '#e8590c', 'Mâine<span class="t-day-h"> 10:00</span>')))
+
+AZI = (QA + PUSH + PINNED
        + group(2, 'Restanțe', None,
                trow('8 sep', 'Webhook Supabase → Mailjet', 'TUR', '#6e7bff', late=True, allday=True, bell=True)
                + trow('7 sep', 'Deploy funcția reminder-action', 'HZ', '#3ecf8e', late=True, allday=True),
@@ -974,6 +993,17 @@ CONTROALE = ''.join([
       '<input class="dep-search-input" placeholder="Caută un tichet…" />'
       '<div class="due-input"><span class="due-native">9 sep 2026</span></div>'
       '<div class="dep-search-field"><input class="dep-search-input-sm" placeholder="Caută…" /></div>'),
+
+    # Fixarea (`pinnedAt`): butonul de pe rândul ID-ului din foaia de tichet
+    # (`.es-pin`) și cel din antetul formularului (`.sh-pin`, ascuns sub 900px),
+    # oprit și pornit; semnul din coada unui rând fixat (`.t-pin`).
+    g('Fixare (sarcini fixate sus)',
+      '<div class="es-meta" style="width:150px"><span>TUR-12</span><button class="es-pin">%s</button></div>'
+      '<div class="es-meta" style="width:150px"><span>TUR-12</span><button class="es-pin on">%s</button></div>'
+      '<div class="sh-header" style="width:auto;padding:0"><button class="sh-pin">%s</button>'
+      '<button class="sh-pin on">%s</button></div>'
+      '<span class="t-tail"><span class="t-pin">%s</span><span class="t-time">09:30</span></span>'
+      % (ic('pin', 15), ic('pin', 15), ic('pin', 15), ic('pin', 15), ic('pin', 13))),
 
     g('Rânduri de listă',
       lrow('TUR-04', 'Rând normal', 'var(--layer-1)')

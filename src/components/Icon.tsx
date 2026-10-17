@@ -188,6 +188,7 @@ const ICONS = {
   menu: EllipsisVertical,
   /** ☰ din antetul de telefon: deschide sertarul de navigare. */
   drawer: Menu,
+  /** Fixarea: un pătrat în sertar (`pins.ts`) ȘI o sarcină fixată sus (`pinnedAt`, `pinned.ts`) — semnul din coada rândului și capul grupului „Fixate". */
   pin: Pin,
   unpin: PinOff,
   /** Un filtru salvat, și iconița lui implicită. */

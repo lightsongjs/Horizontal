@@ -932,6 +932,46 @@ nu pornește în paralel cu ea.
 
 Setup: `npm run migrate supabase/migration-recurrence.sql`.
 
+## Sarcini fixate („Fixează sus", ca Pin din TickTick)
+
+Spec: `docs/superpowers/specs/2026-10-17-sarcini-fixate-design.md` (decizia
+omului, 2026-10-17: credențialele pentru ANAF într-un tichet, sus toată ziua,
+fără scadență). Coloana `issues.pinned_at` (`null` = nefixat, altfel când),
+`supabase/migration-pinned-tasks.sql` — **rulată ÎNAINTE de push**: fără ea
+„Fixează sus" trimite `pinned_at` și PostgREST îl refuză (citirile merg).
+
+- **Un câmp de tichet, nu `pinned_items`.** Acelea sunt pătratele din sertar
+  (`pins.ts`, ale contului); fixarea unei sarcini e `pinned.ts`. Fiind un
+  patch de tichet ca urgentul, merge offline prin coadă, fără cod nou.
+- **„Azi" are primul grup „Fixate"**, deasupra restanțelor și a urgentelor:
+  orice tichet fixat, deschis și `isMine`, CU sau FĂRĂ scadență. Fără scadență
+  nu-l aduce `listDueIssues`, deci store-ul îl ia din `openIssues`
+  (`withPinned`, înainte de `onlyMine`). Regula e în `buildSmartLists`.
+- **O fixată stă numai acolo** — nu și în Restanțe, Azi sau ziua ei din
+  „7 zile": două locuri ar număra-o de două ori. Rândul își spune ziua
+  (`day` pe `TaskRow`: „Mâine 10:00", ora cade sub 380px) și roșul de
+  restanță. Numărul „Azi" o include, badge-ul de restanțe nu.
+- **Bifa nu scoate fixarea**: bifat iese din grup (`isPinnedOpen`), debifat
+  revine. Bifa vine pe patru drumuri (interfață, `reminder-action`,
+  `functions/api`, Android), deci un „scoate la bifă" ar fi cerut un trigger,
+  iar anularea s-ar fi complicat. O recurentă sare și rămâne fixată, gratis.
+- Fixarea bate rutina adormită (gest explicit). Ordinea: fixat cel mai recent
+  primul (`comparePinned`).
+- **„Listă": fixatele urcă primele ÎN layerul lor**, nu peste layere — layerul
+  e read-only (dependențe). „Cards" nu arată fixarea.
+- **Unde:** piuneza de pe rândul ID-ului din `EditSheet` (`.es-pin`; iese în
+  jos, fiindcă `.kb-grab` sticky acoperă 4px de sus), ⋮ al rândului și „Mai
+  mult" al selecției (acțiunea `pin` din `bulkActions`), antetul `IssueForm`
+  (`.sh-pin`, imediat, nu prin Salvează; ascuns sub 900px — antetul e plin și
+  jetonul de proiect s-ar strivi) și tasta **F** cu un card deschis.
+- **Widget-ul, notificarea din bară și fereastra nativă de pe Android NU știu
+  de fixări** (cer APK nou): pe widget o fixată fără dată lipsește, iar una
+  datată stă în ziua ei.
+- Teste: `src/lib/pinned.test.ts`, „fixate" în `schedule.test.ts` și
+  `bulkActions.test.ts`, repo-urile; `test:layout` (grupul, semnul, `.es-pin`
+  la 320–430px); `test:nav` (piuneza din foaie → grupul primul, fără dublură,
+  un tichet fără dată fixat).
+
 ## Rutine — proiect „doar mementouri"
 
 Bifa din setările proiectului (`projects.reminders_only`) face tichetele lui

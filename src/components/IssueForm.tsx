@@ -28,6 +28,7 @@ import { DuePanel } from './DuePanel'
 import { MoveChip } from './MoveProject'
 import { attachBlocked } from './SheetFiles'
 import type { Issue, TestScenario } from '../lib/types'
+import { pinPatch } from '../lib/pinned'
 import { Icon } from './Icon'
 import { waveLabel } from '../lib/waveBar'
 import { displayIssueId, isTempIssueId } from '../lib/issueId'
@@ -316,6 +317,18 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
     copyResetTimer.current = setTimeout(() => setCopyState('idle'), ok ? 1600 : 4000)
   }, [])
 
+  /**
+   * Fixează sus / scoate fixarea — IMEDIAT, nu prin Salvează: e locul
+   * tichetului în listă, nu conținutul lui (ca bifa din antet). `ticketFields`
+   * nu poartă `pinnedAt`, deci o salvare ulterioară a formularului nu-l calcă.
+   */
+  const togglePin = () => {
+    if (!existing || !canWrite) return
+    void updateIssue(existing.id, pinPatch(existing, new Date())).catch((err) => reportError(errorMessage(err)))
+  }
+  const togglePinRef = useRef(togglePin)
+  togglePinRef.current = togglePin
+
   // Tasta `y` (convenția GitHub/Linear). Handler-ul global de shortcuts din
   // App.tsx nu se aplică aici — iese devreme când un sheet e deschis.
   useEffect(() => {
@@ -327,6 +340,11 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
       if (e.key === 'y' || e.key === 'Y') {
         e.preventDefault()
         void copyLink(existing?.id)
+      } else if (e.key === 'f' || e.key === 'F') {
+        // F = „fixează sus" (TickTick n-are tastă; `F` e liberă: Ctrl+F e
+        // căutarea, iar `shouldIgnoreKey`-ul de aici sare peste modificatori).
+        e.preventDefault()
+        togglePinRef.current()
       }
     }
     window.addEventListener('keydown', onKey)
@@ -894,7 +912,7 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
         return i
       })
       if (!snap.find((i) => i.id === targetId)) {
-        snap = [...snap, { id: targetId, projectId: project.id, title: saveTitle, desc: desc.trim() === '' ? '' : desc, theme, wave, deps: realDeps, done: false, selectors: selectors.filter(Boolean), scenarios, assigneeId, createdBy: null, createdAt: new Date().toISOString(), urgent, dueAt: schedule.dueAt, allDay: schedule.allDay, remindAt: schedule.remindAt, rrule: rruleOut }]
+        snap = [...snap, { id: targetId, projectId: project.id, title: saveTitle, desc: desc.trim() === '' ? '' : desc, theme, wave, deps: realDeps, done: false, selectors: selectors.filter(Boolean), scenarios, assigneeId, createdBy: null, createdAt: new Date().toISOString(), urgent, dueAt: schedule.dueAt, allDay: schedule.allDay, remindAt: schedule.remindAt, rrule: rruleOut, pinnedAt: null }]
       }
       const cascadeQueue = [...realDeps]
       const cascadeSeen = new Set<string>()
@@ -1423,6 +1441,18 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
           <MoveChip issue={existing} dirty={isDirty} narrow={narrow} />
         )}
         <button className="sh-close" onClick={closeSheet} aria-label="Închide"><Icon name="close" size={16} /></button>
+        {isEdit && existing && canWrite && (
+          <button
+            tabIndex={-1}
+            className={`sh-pin${existing.pinnedAt ? ' on' : ''}`}
+            onClick={togglePin}
+            aria-pressed={!!existing.pinnedAt}
+            aria-label={existing.pinnedAt ? 'Scoate de sus' : 'Fixează sus'}
+            title={existing.pinnedAt ? 'Fixat sus în „Azi" — scoate (F)' : 'Fixează sus în „Azi" (F)'}
+          >
+            <Icon name="pin" size={15} />
+          </button>
+        )}
         {docked && isEdit && (
           <button
             tabIndex={-1}

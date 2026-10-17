@@ -89,7 +89,7 @@ describe('groupInbox', () => {
 const issue = (patch: Partial<Issue>): Issue => ({
   id: 'T-1', projectId: 'p', title: 'T', desc: '', theme: '', wave: 1, deps: [], done: false,
   selectors: [], scenarios: [], assigneeId: null, createdBy: null, createdAt: '2026-09-17T09:00:00Z',
-  urgent: false, dueAt: null, allDay: true, remindAt: null, rrule: null, ...patch,
+  urgent: false, dueAt: null, allDay: true, remindAt: null, rrule: null, pinnedAt: null, ...patch,
 })
 
 describe('reconcileInbox', () => {

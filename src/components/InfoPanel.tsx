@@ -70,6 +70,7 @@ const SHORTCUTS: { keys: string; action: string; where?: string }[] = [
   { keys: 'H J K L', action: 'Navighează între tichete', where: 'în Cards / List' },
   { keys: '↵', action: 'Deschide tichetul focusat', where: 'în navigare' },
   { keys: 'Y', action: 'Copiază linkul tichetului', where: 'card deschis' },
+  { keys: 'F', action: 'Fixează sus / scoate de sus (primul în Azi)', where: 'card deschis' },
   { keys: 'Ctrl+S', action: 'Salvează, cardul rămâne deschis', where: 'card deschis' },
   { keys: 'Ctrl+↵', action: 'Salvează și închide', where: 'card deschis' },
   { keys: '[', action: 'Ascunde / arată bara laterală', where: 'desktop' },
@@ -80,6 +81,10 @@ const RULES: { title: string; body: string }[] = [
   {
     title: 'Listele',
     body: 'Azi și 7 zile taie transversal toate proiectele. „7 zile" începe de MÂINE și ține șapte zile (mâine e primul ei grup); azi și restanțele stau numai în Azi — restanțele deasupra sarcinilor zilei și ca badge roșu în sidebar. O sarcină adăugată din „7 zile" primește ziua de mâine, din Azi pe cea de azi.',
+  },
+  {
+    title: 'Fixate sus',
+    body: 'O sarcină fixată (piuneza din antetul cardului, de lângă ID în foaia de telefon, ⋮ al unui rând sau tasta F) stă primul grup din Azi, deasupra restanțelor și a urgentelor — cu sau fără dată, toată ziua. Nu se mai arată și în ziua ei din 7 zile, deci nu se numără de două ori. Bifată iese din grup; debifată revine. O recurentă bifată sare la următoarea dată și rămâne fixată. Între ele, cea fixată ultima e prima. În Listă fixatele urcă primele în grupul lor.',
   },
   {
     title: 'Fără Inbox',

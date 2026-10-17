@@ -12,6 +12,7 @@ import { ObstacleChip } from './ObstacleChip'
 import { Icon } from './Icon'
 import { SplitView } from './SplitView'
 import { displayIssueId } from '../lib/issueId'
+import { isPinnedOpen, pinnedFirst } from '../lib/pinned'
 
 export function ListView() {
   const { waves, activeWave, byId, stateOf, themeOf, toggleDone, blockedByObstacle, assignees, assigneeShort, project } = useHorizontal()
@@ -80,8 +81,14 @@ export function ListView() {
       if (personFilter === 'none') return !aid
       return aid === personFilter
     }
+    // Fixatele urcă primele ÎN layerul lor, nu peste layere: layerul e
+    // calculat din dependențe („ce pot începe acum") și nu se negociază.
+    const pinnedTop = (ids: string[]) => {
+      const issues = ids.map((id) => byId[id]).filter((i) => !!i)
+      return issues.some(isPinnedOpen) ? pinnedFirst(issues).map((i) => i.id) : ids
+    }
     return orderedLayers
-      .map((g) => ({ ...g, ids: g.ids.filter(matches) }))
+      .map((g) => ({ ...g, ids: pinnedTop(g.ids.filter(matches)) }))
       .filter((g) => g.ids.length > 0)
   }, [orderedLayers, personFilter, byId])
   const flatLayers = useMemo(() => visibleLayers.map((g) => g.ids), [visibleLayers])
@@ -210,6 +217,7 @@ export function ListView() {
                           </>
                         )
                       })()}
+                      {isPinnedOpen(it) && <span className="t-pin" title="Fixat sus"><Icon name="pin" size={13} /></span>}
                       <TaskProgress desc={it.desc} />
                       <DueChip issue={it} />
                       <ObstacleChip issueId={id} />

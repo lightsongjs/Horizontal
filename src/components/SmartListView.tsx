@@ -4,7 +4,7 @@ import { useUI } from '../ui'
 import { PushToggle } from './PushToggle'
 import { QuickAdd } from './QuickAdd'
 import { TaskRow } from './TaskRow'
-import { addDays, startOfLocalDay, toShortDate, WEEK_FIRST_OFFSET } from '../lib/schedule'
+import { addDays, isOverdue, startOfLocalDay, toShortDate, WEEK_FIRST_OFFSET } from '../lib/schedule'
 import type { Issue } from '../lib/types'
 import { Icon, type IconName } from './Icon'
 import { SplitView } from './SplitView'
@@ -41,6 +41,7 @@ export function smartListDueAt(kind: SmartListKind, now = new Date()): string {
 const DAYS_FULL = ['duminică', 'luni', 'marți', 'miercuri', 'joi', 'vineri', 'sâmbătă']
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
+const now = () => new Date()
 
 interface GroupProps {
   label: string
@@ -61,9 +62,15 @@ interface GroupProps {
   events?: DayEvents
   /** Iconița din fața etichetei (restanțe: ceas, azi: stea). */
   icon?: IconName
+  /**
+   * Grupul „Fixate": ordinea vine gata (`comparePinned`, nu `mergeDay`, care
+   * ar reordona după urgent și oră), iar fiecare rând își spune singur ziua
+   * și dacă e restant — rândurile vin din zile diferite.
+   */
+  pinned?: boolean
 }
 
-function Group({ label, date, issues, color, onOpen, late, empty, action, events, icon }: GroupProps) {
+function Group({ label, date, issues, color, onOpen, late, empty, action, events, icon, pinned }: GroupProps) {
   const ta = useTaskActions()
   const { dockedIssueId } = useUI()
   const hasEvents = !!events && (events.band.length > 0 || events.timed.length > 0)
@@ -86,7 +93,9 @@ function Group({ label, date, issues, color, onOpen, late, empty, action, events
         )}
       </div>
       {events && <EventBand items={events.band} />}
-      {issues.length > 0 || (events && events.timed.length > 0)
+      {pinned ? issues.map((it) => (
+        <TaskRow key={it.id} issue={it} onOpen={onOpen} late={isOverdue(it, now())} day docked={it.id === dockedIssueId} />
+      )) : issues.length > 0 || (events && events.timed.length > 0)
         ? mergeDay(issues, events?.timed ?? []).map((r) => r.kind === 'issue'
           ? <TaskRow key={r.issue.id} issue={r.issue} onOpen={onOpen} late={late} docked={r.issue.id === dockedIssueId} />
           : <EventRow key={r.occ.key} occ={r.occ} />)
@@ -136,7 +145,7 @@ export function SmartListView({ kind, onOpenTask, focusSignal = 0 }: Props) {
 
   // Rândurile de pe ecran, pentru „Toate" din antetul selecției.
   const visible = kind === 'today'
-    ? [...smartLists.overdue, ...smartLists.today, ...(showDone ? smartLists.doneToday : [])]
+    ? [...smartLists.pinned, ...smartLists.overdue, ...smartLists.today, ...(showDone ? smartLists.doneToday : [])]
     : smartLists.week.flatMap((d) => d.issues)
   const visibleKey = visible.map((i) => i.id).join(',')
   const { setVisible, exitSelectMode } = ta
@@ -154,6 +163,16 @@ export function SmartListView({ kind, onOpenTask, focusSignal = 0 }: Props) {
 
         {kind === 'today' && (
           <>
+            {/* Fixatele: primul grup, deasupra restanțelor și a urgentelor, cu
+                sau fără scadență (`buildSmartLists`, `lib/pinned.ts`). */}
+            <Group
+              label="Fixate"
+              issues={smartLists.pinned}
+              color="var(--accent)"
+              icon="pin"
+              onOpen={onOpenTask}
+              pinned
+            />
             <Group
               label="Restanțe"
               issues={smartLists.overdue}

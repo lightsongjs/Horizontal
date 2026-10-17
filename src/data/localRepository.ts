@@ -68,6 +68,7 @@ function load(): DB {
           allDay: i.allDay ?? true,
           remindAt: i.remindAt ?? null,
           rrule: i.rrule ?? null,
+          pinnedAt: i.pinnedAt ?? null,
           createdBy: i.createdBy ?? null,
           createdAt: i.createdAt ?? LEGACY_CREATED_AT,
         })),
@@ -312,6 +313,7 @@ export function createLocalRepository(): Repository {
         allDay: input.allDay ?? true,
         remindAt: input.remindAt ?? null,
         rrule: input.rrule ?? null,
+        pinnedAt: null,
       }
       db.issues.push(issue)
       save(db)

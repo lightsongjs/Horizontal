@@ -28,6 +28,7 @@ import {
 } from './lib/engine'
 import { buildSmartLists, smartListRange, type SmartLists } from './lib/schedule'
 import { onlyMine } from './lib/ownership'
+import { withPinned } from './lib/pinned'
 import { isDormant, nextReveal, routineProjectIds } from './lib/routines'
 import { didJumpOnComplete, jumpNotice } from './lib/recurrence'
 import { applyIssuePatch } from './lib/issuePatch'
@@ -690,9 +691,18 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
   // și creat de mine / fără autor). Proiectele și filtrele salvate văd tot —
   // ele au regulile lor. Fără identitate completă `onlyMine` nu taie nimic.
   const sessionUserId = session?.user.id ?? null
+  /** Ca `dueIssues`: o singură sursă pe tichet, `allIssues` câștigă. */
+  const openIssues = useMemo(() => {
+    const m = new Map<string, Issue>()
+    for (const i of openRaw) m.set(i.id, i)
+    for (const i of allIssues) m.set(i.id, i)
+    return [...m.values()].filter((i) => !i.done && !hiddenIds.has(i.id))
+  }, [openRaw, allIssues, hiddenIds])
+  // Fixatele deschise intră în „Azi" și FĂRĂ scadență, deci nu le aduce
+  // `listDueIssues` — vin din `openIssues` (`withPinned`, fără dubluri).
   const myDueIssues = useMemo(
-    () => onlyMine(dueIssues, { assigneeId: myAssigneeId, userId: sessionUserId }),
-    [dueIssues, myAssigneeId, sessionUserId],
+    () => onlyMine(withPinned(dueIssues, openIssues), { assigneeId: myAssigneeId, userId: sessionUserId }),
+    [dueIssues, openIssues, myAssigneeId, sessionUserId],
   )
   const smartLists = useMemo(
     () => buildSmartLists(myDueIssues, new Date(), routines),
@@ -708,13 +718,6 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
   const dueIssuesRef = useRef<Issue[]>([])
   dueIssuesRef.current = dueIssues
 
-  /** Ca `dueIssues`: o singură sursă pe tichet, `allIssues` câștigă. */
-  const openIssues = useMemo(() => {
-    const m = new Map<string, Issue>()
-    for (const i of openRaw) m.set(i.id, i)
-    for (const i of allIssues) m.set(i.id, i)
-    return [...m.values()].filter((i) => !i.done && !hiddenIds.has(i.id))
-  }, [openRaw, allIssues, hiddenIds])
   const openIssuesRef = useRef<Issue[]>([])
   openIssuesRef.current = openIssues
   const openCountByProject = useMemo(() => {

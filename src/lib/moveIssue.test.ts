@@ -6,7 +6,7 @@ import type { Issue } from './types'
 const issue = (id: string, extra: Partial<Issue> = {}): Issue => ({
   id, projectId: 'hz', title: id, desc: '', theme: 'ui', wave: 2, deps: [], done: false, selectors: [], scenarios: [],
   assigneeId: 'a1', createdBy: 'u1', createdAt: '2026-10-01T00:00:00.000Z', urgent: true,
-  dueAt: '2026-10-20T07:00:00.000Z', allDay: false, remindAt: null, rrule: 'FREQ=WEEKLY', ...extra,
+  dueAt: '2026-10-20T07:00:00.000Z', allDay: false, remindAt: null, rrule: 'FREQ=WEEKLY', pinnedAt: null, ...extra,
 })
 
 describe('moveBlock', () => {
