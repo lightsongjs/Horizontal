@@ -77,6 +77,84 @@ const SHORTCUTS: { keys: string; action: string; where?: string }[] = [
   { keys: 'Esc', action: 'Închide ce e deasupra' },
 ]
 
+/**
+ * Navigarea din tastatură (Vim + yazi) — ÎNCĂ NEIMPLEMENTATĂ. Harta aprobată
+ * în prototipul `design/vim-nav/index.html`. Pe măsură ce o tastă chiar merge,
+ * se mută de aici în `SHORTCUTS`: panoul ăsta nu are voie să promită ce nu e.
+ */
+const PLANNED: { title: string; keys: { keys: string; action: string }[] }[] = [
+  {
+    title: 'Oriunde',
+    keys: [
+      { keys: 'g a', action: 'Mergi la Azi' },
+      { keys: 'g w', action: 'Mergi la 7 zile' },
+      { keys: 'g i', action: 'Mergi la Ale mele' },
+      { keys: 'z · g p · :', action: '„Mergi la…”: proiect, filtru, val' },
+      { keys: 'O · Ctrl+F', action: 'Caută tichet în toate proiectele' },
+      { keys: 'a · C', action: 'Sarcină nouă în grupul cursorului (aceeași zi / layer)' },
+      { keys: 'H L', action: 'Înapoi / înainte în istoric (ecranul de dinainte)' },
+      { keys: '[ ] · g T g t', action: 'Valul anterior / următor (pe RO: tastele ă / î)' },
+      { keys: 'g s', action: 'Ascunde / arată bara laterală' },
+      { keys: 'u', action: 'Anulează ultima acțiune' },
+      { keys: 'v · V', action: 'Selecție pe interval' },
+      { keys: '?', action: 'Ajutorul' },
+    ],
+  },
+  {
+    title: 'Listă',
+    keys: [
+      { keys: 'j k · 5j', action: 'Rândul următor / anterior (cu număr)' },
+      { keys: 'J K', action: 'Grupul următor / anterior (zi, layer)' },
+      { keys: 'g g · G', action: 'Primul / ultimul rând' },
+      { keys: '↵ · o', action: 'Deschide în panou; focusul rămâne în listă, panoul urmează cursorul' },
+      { keys: 'l · h', action: 'Intră în panou / în bara laterală' },
+      { keys: 'x', action: 'Gata / redeschide' },
+      { keys: 'd d', action: 'Șterge (toast, u anulează)' },
+      { keys: 'D', action: 'Mută pe mâine' },
+      { keys: 't', action: 'Alege data' },
+      { keys: '!', action: 'Urgent' },
+      { keys: 'F', action: 'Fixează sus' },
+      { keys: 'M', action: 'Mută în alt proiect' },
+      { keys: 'r · c c', action: 'Redenumește' },
+      { keys: 'y y · y t', action: 'Copiază linkul / titlul' },
+      { keys: '.', action: 'Repetă ultima acțiune' },
+      { keys: '/ · n N', action: 'Caută în listă, sari la potrivirea următoare / anterioară' },
+      { keys: 'f', action: 'Filtrează lista (ascunde restul)' },
+      { keys: 'Space', action: 'Bifează rândul în selecție și coboară' },
+      { keys: 'Ctrl+A', action: 'Selectează tot' },
+    ],
+  },
+  {
+    title: 'Panou (tichetul deschis)',
+    keys: [
+      { keys: 'i', action: 'Scrie în titlu' },
+      { keys: 'a', action: 'Scrie în descriere, la final' },
+      { keys: 'm', action: 'Scrie un comentariu' },
+      { keys: '@', action: 'Pasează (comentariu „către…”)' },
+      { keys: 'r · c c', action: 'Rescrie titlul' },
+      { keys: 't · w', action: 'Data / valul' },
+      { keys: 'x ! F M d d y y', action: 'Ca în listă, pe tichetul deschis' },
+      { keys: 'j k · g g G', action: 'Derulează' },
+      { keys: 'h', action: 'Înapoi în listă' },
+    ],
+  },
+  {
+    title: 'Bara laterală',
+    keys: [
+      { keys: 'j k · g g G', action: 'Următorul / anteriorul / primul / ultimul' },
+      { keys: '↵ · l', action: 'Deschide și treci în listă' },
+    ],
+  },
+  {
+    title: 'Esc și câmpurile',
+    keys: [
+      { keys: 'Esc', action: 'Un singur pas: secvența → popoverul → câmpul → selecția → panoul → lista → închide panoul' },
+      { keys: 'Ctrl+S', action: 'Salvează tichetul' },
+      { keys: 'Ctrl+↵', action: 'În comentariu: trimite (și pasează); în titlu / descriere: salvează și ieși' },
+    ],
+  },
+]
+
 const RULES: { title: string; body: string }[] = [
   {
     title: 'Listele',
@@ -201,6 +279,37 @@ export function InfoPanel({ onClose }: { onClose: () => void }) {
                 ))}
               </tbody>
             </table>
+          </section>
+
+          <section className="info-sec">
+            <h3>În lucru: navigare din tastatură</h3>
+            <p className="info-lead">
+              Încă nu merg. Harta aprobată, ca la Vim și yazi; fiecare tastă trece în lista de mai sus
+              când e gata. Se schimbă față de azi: valurile trec de pe <kbd>,</kbd> <kbd>.</kbd> pe{' '}
+              <kbd>[</kbd> <kbd>]</kbd> (ca <kbd>.</kbd> să repete), <kbd>V</kbd> devine selecția
+              (foaia „Valuri” pe <kbd>g</kbd><kbd>v</kbd>), iar primul <kbd>Esc</kbd> într-un câmp
+              din panou doar iese din câmp. Amânat: <kbd>X</kbd> taie + <kbd>p</kbd> lipește în
+              ziua / valul cursorului.
+            </p>
+            {PLANNED.map((g) => (
+              <div key={g.title} className="info-grp">
+                <div className="info-grp-head">
+                  <span className="info-grp-title">{g.title}</span>
+                </div>
+                <table className="info-keys">
+                  <tbody>
+                    {g.keys.map((s, i) => (
+                      <tr key={i}>
+                        <td className="info-kbd">
+                          {s.keys.split(' ').map((k, j) => (k === '·' ? <span key={j} className="info-where"> · </span> : <kbd key={j}>{k}</kbd>))}
+                        </td>
+                        <td>{s.action}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))}
           </section>
 
           <section className="info-sec">

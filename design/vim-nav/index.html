@@ -1,0 +1,1036 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Navigare Vim</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..800&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ---------- jetoanele „Senin" (copiate din src/styles.css) ---------- */
+:root{
+  --bg:#FFFFFF;--surface:#FFFFFF;--surface-2:#F6F7F9;--surface-3:#EEF0F3;
+  --line:#E6E8EC;--txt:#1A1C20;--txt-dim:#565C66;--txt-faint:#868C96;
+  --accent:#2F6BFF;--accent-soft:#EBF1FF;--done:#1F9D60;--blocked:#E5484D;--blocked-soft:#FDEEEE;
+  --urgent:#D05A00;--urgent-soft:#FFF0E3;--star:#F5B000;--border-strong:#D5D9DF;
+  --amb:0 1px 2px rgba(16,24,40,.05),0 6px 20px rgba(16,24,40,.07);
+  --amb-lg:0 2px 6px rgba(16,24,40,.06),0 18px 44px rgba(16,24,40,.12);
+  --layer-0:#2F6BFF;--layer-1:#1F7FD6;--layer-2:#0E8FB0;--layer-3:#0E9F8E;--layer-4:#1F9D60;
+  --r:20px;--r-m:12px;--r-s:8px;
+  --mono:'Geist Mono',ui-monospace,monospace;--display:'Inter',system-ui,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141517;--surface:#1B1C1F;--surface-2:#232428;--surface-3:#2B2D32;--line:#2A2C31;
+  --txt:#EEEFF1;--txt-dim:#A6ABB3;--txt-faint:#757A83;--accent:#5B8DFF;--accent-soft:rgba(91,141,255,.15);
+  --done:#3DBF85;--blocked:#FF6369;--blocked-soft:rgba(255,99,105,.13);--urgent:#FF9548;--urgent-soft:rgba(255,149,72,.15);
+  --star:#FFC53D;--border-strong:#3A3D44;
+  --amb:inset 0 1px 0 rgba(255,255,255,.04),0 6px 22px rgba(0,0,0,.4);--amb-lg:inset 0 1px 0 rgba(255,255,255,.05),0 16px 44px rgba(0,0,0,.5);
+  --layer-0:#5B8DFF;--layer-1:#4FA3F0;--layer-2:#3FB5D6;--layer-3:#2EC4B0;--layer-4:#4CC98A;
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#141517;--surface:#1B1C1F;--surface-2:#232428;--surface-3:#2B2D32;--line:#2A2C31;
+  --txt:#EEEFF1;--txt-dim:#A6ABB3;--txt-faint:#757A83;--accent:#5B8DFF;--accent-soft:rgba(91,141,255,.15);
+  --done:#3DBF85;--blocked:#FF6369;--blocked-soft:rgba(255,99,105,.13);--urgent:#FF9548;--urgent-soft:rgba(255,149,72,.15);
+  --star:#FFC53D;--border-strong:#3A3D44;
+  --amb:inset 0 1px 0 rgba(255,255,255,.04),0 6px 22px rgba(0,0,0,.4);--amb-lg:inset 0 1px 0 rgba(255,255,255,.05),0 16px 44px rgba(0,0,0,.5);
+  --layer-0:#5B8DFF;--layer-1:#4FA3F0;--layer-2:#3FB5D6;--layer-3:#2EC4B0;--layer-4:#4CC98A;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--txt);font-family:var(--display);font-size:14px;overflow:hidden}
+button{font:inherit;color:inherit}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* ---------- cadrul ---------- */
+#app{display:flex;height:calc(100vh - 34px)}
+.pane{position:relative;min-width:0}
+.pane::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:transparent;z-index:3}
+.pane.active::before{background:var(--accent)}
+
+/* sidebar */
+#sidebar{width:240px;flex:none;background:var(--surface-2);padding:14px 10px;overflow:auto}
+#sidebar.hidden{display:none}
+.sb-me{display:flex;align-items:center;gap:8px;padding:4px 8px 12px;font-weight:650}
+.av{width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:11px;font-weight:700;flex:none}
+.sb-sec{font-size:12px;font-weight:650;color:var(--txt-faint);padding:12px 8px 4px}
+.sb-item{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:var(--r-s);color:var(--txt-dim);cursor:pointer;position:relative}
+.sb-item .n kbd{font-family:var(--display)}
+.sb-item .n{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--txt-faint)}
+.sb-item .n.red{color:var(--blocked)}
+.sb-item.on{background:var(--surface-3);color:var(--txt);font-weight:600}
+.sb-item.cur{box-shadow:inset 0 0 0 1.5px var(--accent)}
+#sidebar:not(.active) .sb-item.cur{box-shadow:inset 0 0 0 1px var(--border-strong)}
+.sb-item svg{width:16px;height:16px;flex:none}
+.dot{width:10px;height:10px;border-radius:50%;flex:none;margin:0 3px}
+
+/* lista */
+#main{flex:1;display:flex;flex-direction:column;min-width:0;border-right:1px solid var(--line)}
+#main.full{border-right:0}
+.m-head{padding:18px 28px 6px;display:flex;align-items:baseline;gap:12px}
+.m-head h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.01em}
+.m-head .sub{color:var(--txt-faint);font-size:13px}
+.tabs{display:flex;gap:4px;padding:2px 28px 6px}
+.tab{padding:5px 10px;border-radius:var(--r-s);color:var(--txt-faint);font-weight:600;font-size:13px}
+.tab.on{background:var(--surface-3);color:var(--txt)}
+.waves{display:flex;gap:6px;padding:4px 28px 8px;flex-wrap:wrap}
+.pill{padding:5px 11px;border-radius:var(--r-s);background:var(--surface-2);color:var(--txt-dim);font-size:13px;font-weight:600;display:flex;gap:6px;align-items:center}
+.pill .c{font-family:var(--mono);font-size:11px;color:var(--txt-faint)}
+.pill.on{background:var(--accent-soft);color:var(--accent)}
+.pill.on .c{color:var(--accent)}
+.pill kbd{margin-left:4px}
+#filterbar{padding:0 28px 6px;display:none}
+#filterbar.show{display:block}
+#filterbar .f{display:flex;align-items:center;gap:8px;background:var(--surface-2);border-radius:var(--r-m);padding:6px 10px;box-shadow:inset 0 0 0 1px var(--line)}
+#filterbar input{flex:1;border:0;background:transparent;font:inherit;color:var(--txt);outline:none}
+#filterbar .f:focus-within{box-shadow:inset 0 0 0 1.5px var(--accent),0 0 0 3px var(--accent-soft)}
+#filterbar .slash{font-family:var(--mono);color:var(--accent);font-weight:600}
+#filterbar .cnt{font-size:12px;color:var(--txt-faint)}
+#list{flex:1;overflow:auto;padding:4px 20px 80px}
+.ghead{display:flex;align-items:center;gap:8px;padding:16px 8px 6px;font-size:12px;font-weight:650;color:var(--txt-dim)}
+.ghead .n{font-family:var(--mono);color:var(--txt-faint);font-weight:500}
+.ghead.red{color:var(--blocked)}
+.ghead .lbar{width:3px;height:14px;border-radius:2px}
+.ghead .lnum{font-family:var(--mono);font-weight:600}
+.row{display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:var(--r-m);position:relative;cursor:pointer}
+.row::after{content:"";position:absolute;left:42px;right:10px;bottom:0;height:1px;background:var(--line)}
+.row .ck{width:18px;height:18px;border-radius:50%;box-shadow:inset 0 0 0 1.8px var(--pc);flex:none;display:grid;place-items:center}
+.row .ck.urg{box-shadow:inset 0 0 0 1.8px var(--urgent);background:var(--urgent-soft)}
+.row.done .ck{background:var(--pc);box-shadow:none}
+.row.done .ck::after{content:"";width:8px;height:4px;border:2px solid #fff;border-top:0;border-right:0;transform:translateY(-1px) rotate(-45deg)}
+.row.done .t{color:var(--txt-faint);text-decoration:line-through}
+.row .t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .tail{display:flex;gap:10px;align-items:center;color:var(--txt-faint);font-size:12.5px;flex:none}
+.row .tail .red{color:var(--blocked)}
+.row .tail .proj{display:flex;gap:5px;align-items:center}
+.row .tail .proj i{width:7px;height:7px;border-radius:50%}
+.row .pin{width:14px;height:14px;color:var(--accent);flex:none}
+.row.cur{background:var(--surface-2)}
+#main.active .row.cur{background:var(--accent-soft)}
+#main.active .row.cur::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:2px;border-radius:2px;background:var(--accent)}
+.row.sel{background:var(--accent-soft)}
+.row.sel .ck{outline:2px solid var(--accent);outline-offset:2px}
+.row.docked .t{font-weight:600}
+.row .dirty{font-size:11px;color:var(--urgent);font-weight:650}
+mark{background:color-mix(in srgb,var(--star) 40%,transparent);color:inherit;border-radius:3px;padding:0 1px}
+.empty{color:var(--txt-faint);padding:30px 10px}
+
+/* panoul */
+#panel{width:min(520px,42vw);flex:none;display:flex;flex-direction:column;background:var(--bg)}
+#panel.hidden{display:none}
+.p-head{display:flex;align-items:center;gap:10px;padding:16px 22px 6px;color:var(--txt-faint);font-size:12.5px}
+.p-head .id{font-family:var(--mono)}
+.p-head .sp{flex:1}
+.p-head .save{font-weight:650}
+.p-head .save.dirty{color:var(--urgent)}
+.p-head .save.clean{color:var(--txt-faint)}
+.p-head .save.flash{animation:flash .5s 2}
+@keyframes flash{50%{background:var(--urgent-soft)}}
+.p-titlerow{display:flex;gap:12px;align-items:flex-start;padding:4px 22px 8px}
+.p-titlerow .ck{width:20px;height:20px;border-radius:50%;box-shadow:inset 0 0 0 1.8px var(--pc);flex:none;margin-top:5px}
+.p-titlerow .ck.urg{box-shadow:inset 0 0 0 1.8px var(--urgent);background:var(--urgent-soft)}
+.p-titlerow .ck.on{background:var(--pc);box-shadow:none}
+.p-title{flex:1;font:inherit;font-size:19px;font-weight:650;border:0;background:transparent;color:var(--txt);outline:none;padding:2px 6px;border-radius:var(--r-s);margin-left:-6px}
+.p-title:focus{background:var(--surface-2);box-shadow:inset 0 0 0 1.5px var(--accent)}
+.p-chips{display:flex;gap:6px;flex-wrap:wrap;padding:0 22px 12px}
+.chip{display:flex;gap:6px;align-items:center;padding:5px 10px;border-radius:var(--r-s);background:var(--surface-2);font-size:12.5px;font-weight:600;color:var(--txt-dim)}
+.chip.ghost{background:transparent;box-shadow:inset 0 0 0 1px dashed var(--line);color:var(--txt-faint);outline:1px dashed var(--border-strong);outline-offset:-1px}
+.chip.urg{background:var(--urgent-soft);color:var(--urgent)}
+.chip.pinned{background:var(--accent-soft);color:var(--accent)}
+.chip.red{background:var(--blocked-soft);color:var(--blocked)}
+.chip kbd{opacity:.8}
+.p-body{flex:1;overflow:auto;padding:0 22px 40px}
+.desc{width:100%;min-height:96px;resize:vertical;font:inherit;line-height:1.5;color:var(--txt);background:var(--surface-2);border:0;border-radius:var(--r-m);padding:10px 12px;outline:none;box-shadow:inset 0 0 0 1px var(--line)}
+.desc:focus{background:var(--bg);box-shadow:inset 0 0 0 1.5px var(--accent),0 0 0 3px var(--accent-soft)}
+.sec{margin-top:18px}
+.sec h4{margin:0 0 6px;font-size:12px;font-weight:650;color:var(--txt-faint)}
+.dep{display:flex;gap:8px;align-items:center;padding:6px 0;font-size:13px}
+.dep .w{font-size:11px;color:var(--txt-faint);background:var(--surface-2);border-radius:6px;padding:1px 6px}
+.dep .id{font-family:var(--mono);color:var(--txt-faint);font-size:12px}
+.dep.done .tt{text-decoration:line-through;color:var(--txt-faint)}
+.cm{display:flex;gap:10px;padding:8px 0}
+.cm .b{flex:1}
+.cm .who{font-size:12.5px;font-weight:650}
+.cm .who span{font-weight:400;color:var(--txt-faint);margin-left:6px}
+.cm .tx{margin-top:2px;line-height:1.45}
+.cm .handoff{font-size:12px;color:var(--accent);font-weight:600}
+.compose{display:flex;gap:10px;align-items:flex-start;margin-top:6px}
+.compose textarea{flex:1;font:inherit;resize:none;min-height:40px;border:0;background:transparent;color:var(--txt);outline:none;padding:9px 10px;border-radius:var(--r-m)}
+.compose textarea:focus{background:var(--surface-2);box-shadow:inset 0 0 0 1.5px var(--accent);min-height:80px}
+.compose .to{font-size:12px;color:var(--accent);font-weight:600;margin:0 0 4px 44px}
+
+/* bara de stare */
+#status{position:fixed;left:0;right:0;bottom:0;height:34px;display:flex;align-items:center;gap:14px;padding:0 14px;background:var(--surface-2);font-size:12.5px;color:var(--txt-dim);border-top:1px solid var(--line)}
+.mode{font-family:var(--mono);font-weight:600;font-size:12px;padding:3px 8px;border-radius:6px;background:var(--surface-3);color:var(--txt)}
+.mode.ins{background:var(--done);color:#fff}
+.mode.vis{background:var(--accent);color:#fff}
+.mode.cmd{background:var(--star);color:#1A1C20}
+#pending{font-family:var(--mono);font-weight:600;color:var(--accent);min-width:40px}
+#lastkey{font-family:var(--mono);color:var(--txt-faint)}
+#status .sp{flex:1}
+#status label{display:flex;gap:6px;align-items:center;cursor:pointer}
+#status .tb{background:transparent;border:0;cursor:pointer;color:var(--txt-dim);padding:3px 6px;border-radius:6px}
+#status .tb:hover{background:var(--surface-3)}
+#msg{color:var(--txt)}
+kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:5px;background:var(--surface-3);color:var(--txt-dim);font-weight:500}
+
+/* toast */
+#toast{position:fixed;left:50%;bottom:52px;transform:translateX(-50%);background:var(--txt);color:var(--bg);border-radius:var(--r-m);padding:10px 14px;display:none;gap:14px;align-items:center;box-shadow:var(--amb-lg);font-size:13.5px;overflow:hidden;z-index:30}
+#toast.show{display:flex}
+#toast b{color:var(--star);font-weight:700}
+#toast .bar{position:absolute;left:0;bottom:0;height:3px;background:var(--star)}
+
+/* which-key */
+#wk{position:fixed;right:14px;bottom:44px;background:var(--surface);box-shadow:var(--amb-lg);border-radius:var(--r);padding:12px 14px;display:none;min-width:230px;z-index:25}
+#wk.show{display:block}
+#wk h5{margin:0 0 8px;font-size:12px;color:var(--txt-faint);font-weight:650}
+#wk .it{display:flex;gap:10px;padding:3px 0;font-size:13px}
+#wk .it kbd{min-width:28px;text-align:center;color:var(--accent);background:var(--accent-soft)}
+
+/* popover / overlay */
+#ov{position:fixed;inset:0;display:none;z-index:40}
+#ov.show{display:block}
+#ov .bg{position:absolute;inset:0;background:rgba(20,22,28,.28)}
+.box{position:absolute;background:var(--surface);border-radius:var(--r);box-shadow:var(--amb-lg);overflow:hidden}
+.box.center{left:50%;top:14vh;transform:translateX(-50%);width:min(560px,92vw)}
+.box.pop{width:260px;padding:6px}
+.box .inp{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.box .inp input{flex:1;border:0;background:transparent;font:inherit;font-size:16px;color:var(--txt);outline:none}
+.box .res{max-height:50vh;overflow:auto;padding:6px}
+.opt{display:flex;gap:10px;align-items:center;padding:8px 10px;border-radius:var(--r-s);font-size:13.5px}
+.opt.cur{background:var(--accent-soft);color:var(--accent)}
+.opt .k{margin-left:auto}
+.opt .id{font-family:var(--mono);color:var(--txt-faint);font-size:12px}
+.box .foot{padding:8px 14px;font-size:12px;color:var(--txt-faint);border-top:1px solid var(--line);display:flex;gap:14px}
+.help{width:min(880px,94vw);max-height:84vh;display:flex;flex-direction:column}
+.help .scroll{overflow:auto;padding:6px 24px 24px}
+.help h3{margin:18px 0 6px;font-size:13px;font-weight:700}
+.help h3 .here{font-size:11px;color:var(--accent);background:var(--accent-soft);padding:2px 6px;border-radius:5px;margin-left:6px;font-weight:650}
+.help table{width:100%;border-collapse:collapse}
+.help td{padding:4px 6px;font-size:13px;vertical-align:top;border-bottom:1px solid var(--line)}
+.help td:first-child{width:150px;white-space:nowrap}
+.help .scen li{margin:6px 0;line-height:1.5}
+.help .note{font-size:12.5px;color:var(--txt-dim);line-height:1.5;background:var(--surface-2);border-radius:var(--r-m);padding:10px 14px;margin-top:10px}
+.help .top{display:flex;align-items:center;gap:12px;padding:16px 24px 6px}
+.help .top h2{margin:0;font-size:18px}
+</style>
+</head>
+<body>
+<div id="app">
+  <nav id="sidebar" class="pane"></nav>
+  <main id="main" class="pane">
+    <div id="mhead"></div>
+    <div id="filterbar"><div class="f"><span class="slash">/</span><input id="finput" placeholder="caută în lista asta — Enter sare la prima, n / N următoarea"><span class="cnt" id="fcnt"></span></div></div>
+    <div id="list"></div>
+  </main>
+  <aside id="panel" class="pane hidden"></aside>
+</div>
+<div id="status">
+  <span class="mode" id="mode">-- NORMAL --</span>
+  <span id="where"></span>
+  <span id="pending"></span>
+  <span id="msg"></span>
+  <span class="sp"></span>
+  <span id="lastkey"></span>
+  <label title="Pe tastatura RO standard [ ; ' \ dau ă ș ț â. Bifat: așa arată e.key, dar comanda se recunoaște după poziția tastei."><input type="checkbox" id="ro"> tastatură RO</label>
+  <button class="tb" id="theme">temă</button>
+  <span><kbd>?</kbd> ajutor</span>
+</div>
+<div id="toast"></div>
+<div id="wk"></div>
+<div id="ov"></div>
+
+<script>
+/* =====================================================================
+   Prototip: navigare doar din tastatură (Vim). Date în memorie.
+   ===================================================================== */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const TODAY = new Date(); TODAY.setHours(0,0,0,0);
+const ZILE = ['Duminică','Luni','Marți','Miercuri','Joi','Vineri','Sâmbătă'];
+const LUNI = ['ian','feb','mar','apr','mai','iun','iul','aug','sep','oct','nov','dec'];
+const dayDate = o => { const d = new Date(TODAY); d.setDate(d.getDate()+o); return d; };
+const dayShort = o => { const d = dayDate(o); return `${d.getDate()} ${LUNI[d.getMonth()]}`; };
+const dueLabel = o => o==null ? '' : o===0 ? 'Azi' : o===1 ? 'Mâine' : o===-1 ? 'ieri' : o<0 ? dayShort(o) : o<7 ? ZILE[dayDate(o).getDay()].slice(0,3)+' '+dayShort(o) : dayShort(o);
+const nextMondayOff = () => { const d = TODAY.getDay(); return ((8-d)%7)||7; };
+
+const ICON = {
+  star:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>',
+  cal:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
+  at:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 006 0v-1a10 10 0 10-4 8"/></svg>',
+  search:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>',
+  filter:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16l-6 8v6l-4-2v-4z"/></svg>',
+  inbox:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 13l3-8h12l3 8v6H3z"/><path d="M3 13h5l1 2h6l1-2h5"/></svg>',
+  pin:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M15 3l6 6-3 1-4 4 1 5-2 2-4-4-5 5-1-1 5-5-4-4 2-2 5 1 4-4z"/></svg>',
+};
+
+/* ---------------- date ---------------- */
+const PEOPLE = ['Ana','Mihai','Bogdan'];
+const projects = [
+  {id:'d',   name:'Inbox',      prefix:'IN',  color:'#868C96', icon:'inbox'},
+  {id:'hz',  name:'Horizontal', prefix:'HZ',  color:'#2F6BFF', waves:[
+    {id:'n', label:'Notițe'}, {id:'w1', label:'Fundație'}, {id:'w2', label:'Sync offline'}, {id:'w3', label:'Widget'}]},
+  {id:'apo', name:'Apollo',     prefix:'APO', color:'#8E4EC6'},
+  {id:'ca',  name:'Casă',       prefix:'CA',  color:'#0E9F8E'},
+];
+let seq = 0;
+const mk = (id, project, title, o={}) => ({id, project, title, due:null, time:'', done:false, urgent:false, pinned:false,
+  wave:null, layer:0, desc:'', deleted:false, assignee:null, created:++seq, ...o});
+const issues = [
+  mk('IN-1','d','Sună la bancă pentru cardul nou',{due:0,time:'10:00'}),
+  mk('IN-2','d','Scrie lui Alex despre ofertă',{due:-1,urgent:true,desc:'Trimite-i varianta cu discountul de 10%.'}),
+  mk('IN-3','d','Cumpără baterii AA',{due:0}),
+  mk('IN-4','d','Programează revizia mașinii',{due:1,time:'09:00'}),
+  mk('IN-5','d','Citește articolul despre CRDT',{pinned:true}),
+  mk('IN-6','d','Răspunde la mailul de la contabilă',{due:-3}),
+  mk('HZ-12','hz','Coada offline: reîncercare la 60s',{due:0,time:'14:00',pinned:true,wave:'w2',layer:0,desc:'Ceasul de reîncercare: 5s, 15s, apoi la 60s.\nCoada goală îl oprește.'}),
+  mk('HZ-13','hz','Remapare ID provizoriu la sincronizare',{wave:'w2',layer:1}),
+  mk('HZ-14','hz','Indicator „N în așteptare” în header',{wave:'w2',layer:1,due:2}),
+  mk('HZ-15','hz','Test fake-indexeddb pentru generație',{wave:'w2',layer:2}),
+  mk('HZ-16','hz','Golire cu Web Locks între file',{wave:'w2',layer:0,urgent:true,due:-2}),
+  mk('HZ-17','hz','Deconectare cu coadă netrimisă',{wave:'w2',layer:2,assignee:'me'}),
+  mk('HZ-18','hz','Documentează offline în CLAUDE.md',{wave:'w2',layer:3}),
+  mk('HZ-19','hz','Citire depășită de golire',{wave:'w2',layer:1,pinned:true}),
+  mk('HZ-20','hz','Schema IndexedDB',{wave:'w1',layer:0,done:true}),
+  mk('HZ-21','hz','Repository offline (învelișul)',{wave:'w1',layer:1}),
+  mk('HZ-22','hz','Clasificarea erorilor de rețea',{wave:'w1',layer:1}),
+  mk('HZ-30','hz','Widget 4×2 compact',{wave:'w3',layer:0,due:3}),
+  mk('HZ-31','hz','Piuneza în rândul widget-ului',{wave:'w3',layer:1}),
+  mk('HZ-40','hz','Idee: mod Vim în descriere',{wave:'n'}),
+  mk('HZ-41','hz','Idee: paletă de comenzi cu „:”',{wave:'n'}),
+  mk('APO-3','apo','Ofertă client Apollo',{due:0,time:'16:30',urgent:true}),
+  mk('APO-4','apo','Revizie contract cadru',{due:1}),
+  mk('APO-5','apo','Factura pe octombrie',{due:4}),
+  mk('APO-6','apo','Call cu echipa de integrare',{due:-1,time:'09:30',assignee:'me'}),
+  mk('APO-7','apo','Pregătește demo pentru joi',{due:5,urgent:true}),
+  mk('CA-1','ca','Plătește întreținerea',{due:0}),
+  mk('CA-2','ca','Schimbă filtrul de apă',{due:3}),
+  mk('CA-3','ca','Piața de duminică',{due:1,time:'08:00'}),
+];
+const DEPS = {'HZ-13':['HZ-12','HZ-21'],'HZ-15':['HZ-13'],'HZ-17':['HZ-13','HZ-16'],'HZ-18':['HZ-15','HZ-17'],'HZ-14':['HZ-12'],'HZ-31':['HZ-30'],'HZ-22':['HZ-20']};
+const THREAD = {
+  'HZ-17':[{who:'Ana',when:'ieri 18:02',tx:'Ți l-am pasat — tu ai scris coada.',handoff:'Ți l-a pasat Ana'}],
+  'APO-6':[{who:'Mihai',when:'joi 11:40',tx:'Poți să ții tu call-ul? Eu sunt la client.',handoff:'Ți l-a pasat Mihai'}],
+  'HZ-12':[{who:'Tu',when:'azi 09:12',tx:'Pragul de 60s pare ok pe semnal slab.'}],
+};
+const filters = [{id:'urg', name:'Urgente', match:i=>i.urgent}];
+
+/* ---------------- stare ---------------- */
+const S = {
+  screen:{kind:'today'},          // today | week | mine | project{pid} | filter{fid}
+  wave:{hz:'w2'},
+  pane:'list',                    // sidebar | list | panel
+  cursor:null, sbCursor:2,
+  panelId:null, dirty:false, isNew:false,
+  drafts:{},                      // ciorna comentariului, pe tichet — supraviețuiește comutării
+  handoffTo:null,
+  visual:null, selected:new Set(),
+  q:'', fmode:'find', sidebar:true, hist:[], fwd:[],
+  buf:[], count:'', last:null,
+  undo:[], overlay:null, escArm:0,
+};
+const P = id => projects.find(p=>p.id===id);
+const I = id => issues.find(i=>i.id===id);
+const live = () => issues.filter(i=>!i.deleted);
+
+/* ---------------- grupuri ---------------- */
+function groups(){
+  const g=groupsRaw();
+  if (S.fmode==='filter' && S.q) return g.map(x=>({...x,rows:x.rows.filter(matches)})).filter(x=>x.rows.length);
+  return g;
+}
+function groupsRaw(){
+  const sc = S.screen, L = live();
+  const byPin = (a,b)=> (b.pinned-a.pinned);
+  const byTime = (a,b)=> (b.urgent-a.urgent) || ((a.time?0:1)-(b.time?0:1)) || a.time.localeCompare(b.time) || a.created-b.created;
+  if (sc.kind==='today'){
+    const inToday = L.filter(i=>i.due!=null && i.due<=0);
+    const pin = inToday.filter(i=>i.pinned);
+    return [
+      {key:'pin', name:'Fixate', rows:pin},
+      {key:'over', name:'Restanțe', red:true, rows:inToday.filter(i=>!i.pinned&&i.due<0).sort((a,b)=>(b.urgent-a.urgent)||a.due-b.due)},
+      {key:'today', name:'Azi', rows:inToday.filter(i=>!i.pinned&&i.due===0).sort(byTime)},
+    ].filter(g=>g.rows.length || g.key==='today');
+  }
+  if (sc.kind==='week'){
+    const gs = [{key:'pin', name:'Fixate', rows:L.filter(i=>i.pinned&&i.due>=1&&i.due<=7)}];
+    for (let o=1;o<=7;o++) gs.push({key:'d'+o, day:o, name: o===1?'Mâine':ZILE[dayDate(o).getDay()]+' '+dayShort(o),
+      rows:L.filter(i=>!i.pinned&&i.due===o).sort(byTime)});
+    return gs.filter(g=>g.rows.length);
+  }
+  if (sc.kind==='mine') return [{key:'mine', name:'Pasate ție', rows:L.filter(i=>i.assignee==='me')}];
+  if (sc.kind==='filter'){
+    const f = filters.find(f=>f.id===sc.fid);
+    return projects.map(p=>({key:p.id, name:p.name, rows:L.filter(i=>i.project===p.id&&!i.done&&f.match(i)).sort(byPin)})).filter(g=>g.rows.length);
+  }
+  if (sc.kind==='project'){
+    const p = P(sc.pid), rows = L.filter(i=>i.project===p.id);
+    if (!p.waves) return [{key:'all', name:'Deschise', rows:rows.sort(byPin)}];
+    const w = S.wave[p.id], inWave = rows.filter(i=>i.wave===w);
+    if (w==='n') return [{key:'notes', name:'Notițe', rows:inWave}];
+    const gs=[]; for (let l=0;l<5;l++){ const r=inWave.filter(i=>i.layer===l).sort(byPin); if(r.length) gs.push({key:'L'+l, layer:l, name:'Layer '+l, rows:r}); }
+    return gs;
+  }
+  return [];
+}
+const flat = () => groups().flatMap(g=>g.rows.map(r=>r.id));
+const groupOf = id => groups().find(g=>g.rows.some(r=>r.id===id));
+const matches = i => S.q && i.title.toLowerCase().includes(S.q.toLowerCase());
+
+/* ---------------- randare ---------------- */
+function screenTitle(){
+  const sc=S.screen;
+  if (sc.kind==='today') return ['Azi', ZILE[TODAY.getDay()]+' '+dayShort(0)];
+  if (sc.kind==='week') return ['7 zile','de mâine'];
+  if (sc.kind==='mine') return ['Ale mele','ce ți s-a pasat'];
+  if (sc.kind==='filter') return [filters.find(f=>f.id===sc.fid).name,'filtru salvat'];
+  return [P(sc.pid).name, P(sc.pid).prefix];
+}
+function sbItems(){
+  const L = live().filter(i=>!i.done);
+  const todayN = L.filter(i=>i.due!=null&&i.due<=0).length, overN = L.filter(i=>i.due<0).length;
+  const it = [
+    {kind:'search', label:'Caută', icon:ICON.search, k:'⇧O'},
+    {sec:'Liste'},
+    {kind:'today', label:'Azi', icon:`<span style="color:var(--star)">${ICON.star}</span>`, n:todayN, red:overN?overN:0},
+    {kind:'week', label:'7 zile', icon:ICON.cal, n:L.filter(i=>i.due>=1&&i.due<=7).length},
+    {kind:'mine', label:'Ale mele', icon:ICON.at, n:L.filter(i=>i.assignee==='me').length},
+    {sec:'Filtre'},
+    ...filters.map(f=>({kind:'filter', fid:f.id, label:f.name, icon:ICON.filter, n:L.filter(f.match).length})),
+    {sec:'Proiecte'},
+    ...projects.map(p=>({kind:'project', pid:p.id, label:p.name, icon: p.icon?ICON[p.icon]:`<i class="dot" style="background:${p.color}"></i>`, n:L.filter(i=>i.project===p.id).length})),
+  ];
+  return it;
+}
+const sbNav = () => sbItems().filter(x=>!x.sec);
+function isOn(x){ const sc=S.screen; return x.kind===sc.kind && (x.pid==null||x.pid===sc.pid) && (x.fid==null||x.fid===sc.fid); }
+function renderSidebar(){
+  const el=$('#sidebar'); el.classList.toggle('hidden',!S.sidebar);
+  let k=0;
+  el.innerHTML = `<div class="sb-me"><span class="av">IS</span>Ionuț</div>` + sbItems().map(x=>{
+    if (x.sec) return `<div class="sb-sec">${x.sec}</div>`;
+    const idx=k++;
+    return `<div class="sb-item ${isOn(x)?'on':''} ${S.pane==='sidebar'&&idx===S.sbCursor?'cur':''}" data-sb="${idx}">${x.icon}<span>${x.label}</span>${
+      x.k?`<span class="n"><kbd>${x.k}</kbd></span>`: x.red?`<span class="n red">${x.n}</span>`:x.n!=null?`<span class="n">${x.n}</span>`:''}</div>`;
+  }).join('');
+}
+function renderHead(){
+  const [t,sub]=screenTitle(), sc=S.screen;
+  let h=`<div class="m-head"><h1>${esc(t)}</h1><span class="sub">${esc(sub)}</span></div>`;
+  if (sc.kind==='project'){
+    h+=`<div class="tabs"><span class="tab on">Listă</span><span class="tab">Cards</span><span class="tab">Hartă</span><span class="tab">Teme</span></div>`;
+    const p=P(sc.pid);
+    if (p.waves) h+=`<div class="waves">${p.waves.map(w=>{
+      const n=live().filter(i=>i.project===p.id&&i.wave===w.id&&!i.done).length;
+      return `<span class="pill ${S.wave[p.id]===w.id?'on':''}">${esc(w.label)} <span class="c">${n}</span></span>`;}).join('')}
+      <span class="pill" style="background:transparent;color:var(--txt-faint)"><kbd>[</kbd><kbd>]</kbd> val</span></div>`;
+  }
+  $('#mhead').innerHTML=h;
+}
+function rowTail(i){
+  const sc=S.screen, bits=[];
+  if (i.id===S.panelId && S.dirty) bits.push(`<span class="dirty">nesalvat</span>`);
+  if (sc.kind==='project'){
+    if (i.due!=null) bits.push(`<span class="${i.due<0?'red':''}">${dueLabel(i.due)}${i.time?' '+i.time:''}</span>`);
+    bits.push(`<span class="mono">${i.id}</span>`);
+  } else {
+    if (i.due!=null && (i.due<0 || (sc.kind==='today'&&groupOf(i.id)?.key==='pin') || sc.kind!=='today' && sc.kind!=='week' || groupOf(i.id)?.key==='pin'))
+      bits.push(`<span class="${i.due<0?'red':''}">${dueLabel(i.due)}${i.time?' '+i.time:''}</span>`);
+    else if (i.time) bits.push(`<span class="mono">${i.time}</span>`);
+    const p=P(i.project); bits.push(`<span class="proj"><i style="background:${p.color}"></i>${p.name}</span>`);
+  }
+  return bits.join('');
+}
+function hl(t){
+  if (!S.q) return esc(t);
+  const ix=t.toLowerCase().indexOf(S.q.toLowerCase()); if (ix<0) return esc(t);
+  return esc(t.slice(0,ix))+'<mark>'+esc(t.slice(ix,ix+S.q.length))+'</mark>'+esc(t.slice(ix+S.q.length));
+}
+function renderList(){
+  const gs=groups(), vis=visualSet();
+  let h='';
+  if (!gs.some(g=>g.rows.length)) h=`<div class="empty">${S.screen.kind==='mine'?'Nimic pasat ție. Golul e vestea bună.':'Nimic aici.'}</div>`;
+  for (const g of gs){
+    const head = g.layer!=null
+      ? `<span class="lbar" style="background:var(--layer-${g.layer})"></span><span class="lnum" style="color:var(--layer-${g.layer})">${g.layer}</span> Layer`
+      : esc(g.name);
+    h+=`<div class="ghead ${g.red?'red':''}">${head}<span class="n">${g.rows.length}</span></div>`;
+    if (!g.rows.length && g.key==='today') h+=`<div class="empty" style="padding:6px 10px">Nimic pe azi. Frumos.</div>`;
+    for (const i of g.rows){
+      const p=P(i.project);
+      h+=`<div class="row ${i.id===S.cursor?'cur':''} ${vis.has(i.id)||S.selected.has(i.id)?'sel':''} ${i.done?'done':''} ${i.id===S.panelId?'docked':''}" data-id="${i.id}" style="--pc:${p.color}">
+        <span class="ck ${i.urgent&&!i.done?'urg':''}"></span><span class="t">${hl(i.title)}</span>
+        ${i.pinned?`<span class="pin">${ICON.pin}</span>`:''}<span class="tail">${rowTail(i)}</span></div>`;
+    }
+  }
+  $('#list').innerHTML=h;
+  if (S.q){ const n=live().filter(i=>flat().includes(i.id)&&matches(i)).length; $('#fcnt').textContent=n+' potriviri'; }
+  scrollCursor();
+}
+function scrollCursor(){ const r=$('#list .row.cur'); if (r) r.scrollIntoView({block:'nearest'}); }
+function chips(i){
+  const p=P(i.project); const c=[];
+  c.push(i.due!=null?`<span class="chip ${i.due<0?'red':''}">${dueLabel(i.due)}${i.time?' '+i.time:''} <kbd>t</kbd></span>`:`<span class="chip ghost">Dată <kbd>t</kbd></span>`);
+  if (p.waves) c.push(`<span class="chip">${esc(p.waves.find(w=>w.id===i.wave)?.label||'—')} <kbd>w</kbd></span>`);
+  if (i.urgent) c.push(`<span class="chip urg">⚡ Urgent <kbd>!</kbd></span>`);
+  if (i.pinned) c.push(`<span class="chip pinned">Fixat <kbd>F</kbd></span>`);
+  if (i.assignee) c.push(`<span class="chip">${i.assignee==='me'?'Tu':i.assignee} <kbd>@</kbd></span>`);
+  c.push(`<span class="chip"><i class="dot" style="background:${p.color};margin:0"></i>${p.name} <kbd>M</kbd></span>`);
+  return c.join('');
+}
+function renderPanel(full){
+  const el=$('#panel'), i=I(S.panelId);
+  el.classList.toggle('hidden',!i); $('#main').classList.toggle('full',!i);
+  if (!i){ el.innerHTML=''; return; }
+  const p=P(i.project);
+  if (full || !el.dataset.id || el.dataset.id!==i.id){
+    el.dataset.id=i.id;
+    const deps=(DEPS[i.id]||[]).map(I).filter(Boolean);
+    const th=THREAD[i.id]||[];
+    el.innerHTML=`
+      <div class="p-head"><span class="id">${i.id}</span><span class="sp"></span><span class="save" id="psave"></span><kbd>Esc</kbd></div>
+      <div class="p-titlerow" style="--pc:${p.color}"><span class="ck" id="pck"></span><input class="p-title" id="ptitle" value="${esc(i.title)}" placeholder="Titlu"></div>
+      <div class="p-chips" id="pchips"></div>
+      <div class="p-body" id="pbody">
+        <textarea class="desc" id="pdesc" placeholder="Descriere — a">${esc(i.desc)}</textarea>
+        <div class="sec"><h4>Dependențe</h4>${deps.length?deps.map(d=>`<div class="dep ${d.done?'done':''}"><span class="id">${d.id}</span><span class="tt">${esc(d.title)}</span><span class="w">${esc(P(d.project).waves?.find(w=>w.id===d.wave)?.label||'')}</span></div>`).join(''):'<div class="dep" style="color:var(--txt-faint)">—</div>'}</div>
+        <div class="sec"><h4>Fir</h4><div id="pthread">${th.map(c=>`<div class="cm"><span class="av" style="background:${c.who==='Tu'?'var(--accent)':'#8E4EC6'}">${c.who.slice(0,2).toUpperCase()}</span><div class="b">${c.handoff?`<div class="handoff">${esc(c.handoff)}</div>`:''}<div class="who">${esc(c.who)}<span>${esc(c.when)}</span></div><div class="tx">${esc(c.tx)}</div></div></div>`).join('')}</div>
+          <div class="to" id="pto"></div>
+          <div class="compose"><span class="av">IS</span><textarea id="pcomp" placeholder="Scrie un comentariu… — m">${esc(S.drafts[i.id]||'')}</textarea></div></div>
+      </div>`;
+    $('#ptitle').addEventListener('input',()=>{ S.dirty=true; paintSave(); renderList(); });
+    $('#pdesc').addEventListener('input',()=>{ S.dirty=true; paintSave(); renderList(); });
+    $('#pcomp').addEventListener('input',e=>{ S.drafts[i.id]=e.target.value; });
+    el.querySelectorAll('input,textarea').forEach(x=>{ x.addEventListener('focus',()=>{S.pane='panel';paint();}); x.addEventListener('blur',()=>setTimeout(paint)); });
+  }
+  $('#pchips').innerHTML=chips(i);
+  const ck=$('#pck'); ck.className='ck'+(i.done?' on':'')+(i.urgent&&!i.done?' urg':'');
+  $('#pto').textContent=S.handoffTo?('către '+S.handoffTo+' · Ctrl+Enter trimite și pasează'):'';
+  paintSave();
+}
+function paintSave(){ const s=$('#psave'); if(!s) return; s.className='save '+(S.dirty?'dirty':'clean'); s.textContent=S.dirty?'● nesalvat · Ctrl+S':'salvat'; }
+function mode(){
+  const a=document.activeElement;
+  if (S.overlay && ['palette','search'].includes(S.overlay.kind)) return ['-- CĂUTARE --','cmd'];
+  if (a && a.id==='finput') return ['/'+S.q,'cmd'];
+  if (a && (a.tagName==='INPUT'&&a.type!=='checkbox' || a.tagName==='TEXTAREA')) return ['-- INSERARE --','ins'];
+  if (S.visual) return [`-- VIZUAL ${visualSet().size} --`,'vis'];
+  if (S.selected.size) return [`-- SELECȚIE ${S.selected.size} --`,'vis'];
+  return ['-- NORMAL --',''];
+}
+function paint(){
+  ['sidebar','main','panel'].forEach(id=>$('#'+id).classList.toggle('active', S.pane===({main:'list'}[id]||id)));
+  const [m,c]=mode(); const me=$('#mode'); me.textContent=m; me.className='mode '+c;
+  $('#where').textContent={sidebar:'bara laterală',list:'listă',panel:'panou'}[S.pane];
+  $('#pending').textContent=(S.count+S.buf.join(''))||'';
+  renderSidebar();
+}
+function render(){ renderHead(); renderList(); renderPanel(); paint(); }
+
+/* ---------------- mesaje ---------------- */
+let msgT; function msg(t){ $('#msg').textContent=t; clearTimeout(msgT); msgT=setTimeout(()=>$('#msg').textContent='',2500); }
+let toastT, toastAnim;
+function toast(html, ms=6000){
+  const el=$('#toast'); el.innerHTML=html+'<span class="bar" id="tbar"></span>'; el.classList.add('show');
+  clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove('show'),ms);
+  const b=$('#tbar'); b.style.width='100%'; b.animate([{width:'100%'},{width:'0%'}],{duration:ms,easing:'linear'});
+}
+
+/* ---------------- acțiuni ---------------- */
+function visualSet(){
+  if (!S.visual) return new Set();
+  const f=flat(), a=f.indexOf(S.visual.anchor), b=f.indexOf(S.cursor);
+  if (a<0||b<0) return new Set();
+  return new Set(f.slice(Math.min(a,b),Math.max(a,b)+1));
+}
+function targets(){
+  if (S.pane==='panel') return S.panelId?[S.panelId]:[];
+  if (S.visual) return [...visualSet()];
+  if (S.selected.size) return [...S.selected];
+  return S.cursor?[S.cursor]:[];
+}
+function snapshot(ids,label){ S.undo.push({label, items:ids.map(id=>({id, f:{...I(id)}}))}); }
+function afterMutate(ids){
+  // cursorul pe vecinul cel mai apropiat dacă rândul a ieșit din listă
+  const f=flat();
+  if (S.cursor && !f.includes(S.cursor)){
+    const before=S._flatBefore||[]; let ix=before.indexOf(S.cursor);
+    let pick=null; for (let k=ix+1;k<before.length;k++) if (f.includes(before[k])){pick=before[k];break;}
+    if (!pick) for (let k=ix-1;k>=0;k--) if (f.includes(before[k])){pick=before[k];break;}
+    S.cursor=pick;
+  }
+  if (S.panelId && I(S.panelId)?.deleted) closePanel(true);
+  S.visual=null; S.selected.clear();
+  render();
+}
+function mutate(label, fn, toastText, repeatable){
+  const ids=targets(); if (!ids.length){ msg('niciun rând sub cursor'); return; }
+  S._flatBefore=flat();
+  snapshot(ids,label);
+  ids.forEach(id=>fn(I(id)));
+  if (repeatable) S.last={label, fn, toastText};
+  toast(`${toastText(ids)} <span><b>u</b> anulează</span>`);
+  if (S.panelId && ids.includes(S.panelId)) renderPanel();
+  afterMutate(ids);
+}
+const plural = (ids,one) => ids.length===1?`${one} · <span class="mono">${ids[0]}</span>`:`${one} · ${ids.length} sarcini`;
+const A = {
+  done:()=>mutate('bifă', i=>i.done=!i.done, ids=>plural(ids, I(ids[0]).done?'Gata':'Redeschis'), true),
+  del:()=>mutate('ștergere', i=>i.deleted=true, ids=>plural(ids,'Șters'), true),
+  tomorrow:()=>mutate('mâine', i=>i.due=1, ids=>plural(ids,'Mutat pe mâine'), true),
+  urgent:()=>mutate('urgent', i=>i.urgent=!i.urgent, ids=>plural(ids, I(ids[0]).urgent?'Urgent':'Nu mai e urgent'), true),
+  pin:()=>mutate('fixare', i=>i.pinned=!i.pinned, ids=>plural(ids, I(ids[0]).pinned?'Fixat sus':'Scos de sus'), true),
+  setDue:(o,lab)=>mutate('dată', i=>{i.due=o; if(o==null) i.time='';}, ids=>plural(ids, lab), true),
+  repeat:()=>{ if(!S.last){msg('nimic de repetat');return;} mutate(S.last.label,S.last.fn,S.last.toastText,true); },
+  undo:()=>{
+    const u=S.undo.pop(); if(!u){ msg('nimic de anulat'); return; }
+    u.items.forEach(({id,f})=>{ const cur=issues.find(i=>i.id===id||i._oldId===id) ; if(cur) Object.assign(cur,f); });
+    S.cursor=u.items[0].id; toast(`Anulat: ${u.label}${u.items.length>1?' · '+u.items.length:''}`,2500); render(); renderPanel(true);
+  },
+  yank:(what)=>{
+    const id=targets()[0]; if(!id) return;
+    const txt= what==='title'? I(id).title : 'https://horizontal-dyx.pages.dev/'+id;
+    navigator.clipboard?.writeText(txt).catch(()=>{});
+    toast(what==='title'?`Titlu copiat · <span class="mono">${id}</span>`:`Link copiat · <span class="mono">${id}</span>`,2500);
+  },
+};
+
+/* ---------------- cursor & panouri ---------------- */
+let followT;
+function moveCursor(id){
+  if (!id) return;
+  S.cursor=id;
+  if (S.visual) { renderList(); paint(); return; }
+  renderList(); paint();
+  if (S.panelId && S.panelId!==id){
+    clearTimeout(followT);
+    if (S.dirty) { msg('panoul rămâne pe '+S.panelId+' — nesalvat · Ctrl+S'); return; }
+    followT=setTimeout(()=>openPanel(id),120);
+  }
+}
+function step(d){
+  const f=flat(); if(!f.length) return;
+  const n=Math.max(1,parseInt(S.count||'1'));
+  let ix=f.indexOf(S.cursor); if(ix<0){ moveCursor(f[0]); return; }
+  moveCursor(f[Math.max(0,Math.min(f.length-1,ix+d*n))]);
+}
+function stepGroup(d){
+  const gs=groups().filter(g=>g.rows.length); if(!gs.length) return;
+  let gi=gs.findIndex(g=>g.rows.some(r=>r.id===S.cursor));
+  if (gi<0){ moveCursor(gs[0].rows[0].id); return; }
+  gi=Math.max(0,Math.min(gs.length-1,gi+d)); moveCursor(gs[gi].rows[0].id);
+}
+function openPanel(id, focusField){
+  if (!id) return;
+  if (S.panelId && S.panelId!==id && S.dirty){ const s=$('#psave'); s?.classList.remove('flash'); void s?.offsetWidth; s?.classList.add('flash'); msg('ai modificări nesalvate · Ctrl+S'); return; }
+  S.panelId=id; S.dirty=false; S.handoffTo=null; S.isNew=false;
+  renderPanel(true); renderList(); paint();
+  if (focusField) focusPanel(focusField);
+}
+function closePanel(force){
+  if (S.dirty && !force){
+    if (Date.now()-S.escArm<3000){ /* al doilea Esc: aruncă */ }
+    else { S.escArm=Date.now(); msg('nesalvat · Ctrl+S salvează · Esc încă o dată renunță'); const s=$('#psave'); s?.classList.add('flash'); return false; }
+  }
+  if (S.isNew && I(S.panelId) && !I(S.panelId).title.trim()) I(S.panelId).deleted=true;
+  const id=S.panelId; S.panelId=null; S.dirty=false; S.isNew=false; S.handoffTo=null;
+  if (S.pane==='panel') S.pane='list';
+  if (id && flat().includes(id)) S.cursor=id;
+  render(); return true;
+}
+function focusPanel(f){
+  S.pane='panel';
+  const el = f==='title'?$('#ptitle'): f==='desc'?$('#pdesc'): $('#pcomp');
+  el.focus();
+  if (f==='desc' || f==='comment') el.setSelectionRange(el.value.length, el.value.length);
+  if (f==='titleAll') el.select();
+  paint();
+}
+function savePanel(){
+  const i=I(S.panelId); if(!i) return;
+  if (!S.dirty){ msg('nimic de salvat'); return; }
+  snapshot([i.id],'editare');
+  i.title=$('#ptitle').value.trim()||i.title; i.desc=$('#pdesc').value; S.dirty=false; S.isNew=false;
+  toast(`Salvat · <span class="mono">${i.id}</span>`,2000);
+  render();
+  if (S.cursor && S.cursor!==S.panelId && S.pane==='list') openPanel(S.cursor);   // panoul prinde cursorul din urmă
+}
+function setPane(p){
+  if (p==='sidebar' && !S.sidebar){ S.sidebar=true; }
+  if (p==='panel' && !S.panelId){ if(S.cursor) openPanel(S.cursor); else { msg('niciun tichet deschis'); return; } }
+  if (document.activeElement && document.activeElement!==document.body) document.activeElement.blur();
+  if (p==='sidebar'){ const ix=sbNav().findIndex(isOn); if(ix>=0) S.sbCursor=ix; }
+  if (p==='list' && !S.cursor){ const f=flat(); if (f.length) S.cursor=f[0]; }
+  S.pane=p; renderList(); paint();
+}
+function paneStep(d){
+  const order=['sidebar','list','panel'].filter(p=>(p!=='sidebar'||S.sidebar)&&(p!=='panel'||S.panelId));
+  let ix=order.indexOf(S.pane); ix=Math.max(0,Math.min(order.length-1,ix+d));
+  if (order[ix]===S.pane){ if(d>0 && !S.panelId && S.cursor) setPane('panel'); else if (d<0 && !S.sidebar) setPane('sidebar'); return; }
+  setPane(order[ix]);
+}
+function go(screen, fromHist){
+  if (S.dirty && S.panelId){ msg('ai modificări nesalvate · Ctrl+S'); return; }
+  if (!fromHist && JSON.stringify(screen)!==JSON.stringify(S.screen)){ S.hist.push(S.screen); S.fwd=[]; }
+  S.screen=screen; S.visual=null; S.selected.clear(); S.q=''; $('#finput').value=''; $('#filterbar').classList.remove('show');
+  const f=flat(); S.cursor=f[0]||null; S.pane='list';
+  if (S.panelId && !f.includes(S.panelId)) { S.panelId=null; }
+  render();
+}
+function histGo(d){
+  const from = d<0?S.hist:S.fwd, to = d<0?S.fwd:S.hist;
+  if (!from.length){ msg(d<0?'nimic în spate':'nimic în față'); return; }
+  to.push(S.screen); go(from.pop(), true); msg(d<0?'înapoi':'înainte');
+}
+function openFind(mode){
+  S.fmode=mode; const fb=$('#filterbar'); fb.classList.add('show');
+  fb.querySelector('.slash').textContent = mode==='filter'?'f':'/';
+  $('#finput').placeholder = mode==='filter' ? 'filtrează — ascunde ce nu se potrivește · Enter înapoi în listă' : 'caută în lista asta — Enter sare la prima, n / N următoarea';
+  $('#finput').focus(); renderList(); paint();
+}
+function sbOpen(){
+  const x=sbNav()[S.sbCursor]; if(!x) return;
+  if (x.kind==='search') return openOverlay('search');
+  go(x.kind==='project'?{kind:'project',pid:x.pid}: x.kind==='filter'?{kind:'filter',fid:x.fid}:{kind:x.kind});
+}
+function wave(d){
+  const sc=S.screen; if (sc.kind!=='project' || !P(sc.pid).waves){ msg('gt / gT merg într-un proiect cu valuri'); return; }
+  const ws=P(sc.pid).waves; let ix=ws.findIndex(w=>w.id===S.wave[sc.pid]);
+  ix=Math.max(0,Math.min(ws.length-1,ix+d)); S.wave[sc.pid]=ws[ix].id; S.cursor=flat()[0]||null; render();
+}
+function newTask(){
+  const sc=S.screen; const g=S.cursor?groupOf(S.cursor):null;
+  let pid='d', o={};
+  if (sc.kind==='project'){ pid=sc.pid; o.wave=S.wave[pid]||null; o.layer=0; }
+  else if (sc.kind==='today') o.due=0;
+  else if (sc.kind==='week') o.due=g?.day||1;
+  const p=P(pid); const n=Math.max(...issues.filter(i=>i.project===pid).map(i=>+i.id.split('-')[1]))+1;
+  const it=mk(p.prefix+'-'+n,pid,'',o); issues.push(it);
+  S.cursor=it.id; S.panelId=it.id; S.dirty=false; S.isNew=true;
+  render(); renderPanel(true); focusPanel('title');
+  msg('sarcină nouă în grupul cursorului · Enter salvează · Esc pe titlu gol renunță');
+}
+
+/* ---------------- overlay-uri: dată, mută, pasează, paletă, căutare, ajutor ---------------- */
+function openOverlay(kind, extra={}){
+  S.overlay={kind, ix:0, ...extra};
+  const ov=$('#ov'); ov.classList.add('show');
+  if (kind==='date'||kind==='move'||kind==='handoff'||kind==='wave'){
+    const opts=overlayOpts();
+    const anchor = S.pane==='panel' ? $('#pchips') : ($('#list .row.cur')||$('#list'));
+    const r=anchor.getBoundingClientRect();
+    ov.innerHTML=`<div class="bg"></div><div class="box pop" style="left:${Math.min(r.left+ (S.pane==='panel'?0:40), innerWidth-280)}px;top:${Math.min(r.bottom+4, innerHeight-320)}px" id="popbox"></div>`;
+    paintPop(); return;
+  }
+  if (kind==='palette'||kind==='search'){
+    ov.innerHTML=`<div class="bg"></div><div class="box center"><div class="inp">${kind==='palette'?'<span class="mono" style="color:var(--accent);font-weight:700">:</span>':ICON.search.replace('<svg','<svg width=18 height=18')}<input id="ovin" placeholder="${kind==='palette'?'Mergi la… (proiect, listă, filtru)':'Caută în toate proiectele — cele mai noi întâi'}"></div><div class="res" id="ovres"></div><div class="foot"><span><kbd>↑</kbd><kbd>↓</kbd> sau <kbd>Ctrl+j</kbd><kbd>Ctrl+k</kbd></span><span><kbd>Enter</kbd> ${kind==='palette'?'mergi':'deschide în panou'}</span><span><kbd>Esc</kbd> închide</span></div></div>`;
+    const inp=$('#ovin'); inp.addEventListener('input',()=>{S.overlay.ix=0;paintRes();}); inp.focus(); paintRes(); paint(); return;
+  }
+  if (kind==='help'){ ov.innerHTML=`<div class="bg"></div><div class="box center help" style="top:7vh">${helpHTML()}</div>`; }
+}
+function overlayOpts(){
+  const k=S.overlay.kind;
+  if (k==='date') return [
+    {k:'a',label:'Azi',run:()=>A.setDue(0,'Azi')},{k:'m',label:'Mâine',run:()=>A.setDue(1,'Mâine')},
+    {k:'l',label:'Luni',run:()=>A.setDue(nextMondayOff(),'Luni')},{k:'s',label:'+1 săptămână',run:()=>A.setDue(7,'+1 săptămână')},
+    {k:'c',label:'Alege din calendar…',run:()=>msg('aici se deschide calendarul sistemului (NativePick)')},
+    {k:'f',label:'Fără dată',run:()=>A.setDue(null,'Fără dată')}];
+  if (k==='move') return projects.map((p,ix)=>({k:String(ix+1),label:p.name,run:()=>moveTo(p.id)}));
+  if (k==='wave'){ const i=I(S.panelId), p=P(i.project); return (p.waves||[]).map((w,ix)=>({k:String(ix+1),label:w.label,run:()=>{snapshot([i.id],'val'); i.wave=w.id; renderPanel(); render(); toast(`Val: ${w.label} <span><b>u</b> anulează</span>`);}})); }
+  if (k==='handoff') return PEOPLE.map((n,ix)=>({k:String(ix+1),label:n,run:()=>{ S.handoffTo=n; renderPanel(); focusPanel('comment'); }}));
+  return [];
+}
+function paintPop(){
+  const opts=overlayOpts(), t={date:'Data',move:'Mută în proiect',handoff:'Pasează (prin fir)',wave:'Val'}[S.overlay.kind];
+  $('#popbox').innerHTML=`<div style="font-size:12px;color:var(--txt-faint);font-weight:650;padding:6px 10px">${t} · ${targets().length>1?targets().length+' sarcini':targets()[0]||''}</div>`+
+    opts.map((o,ix)=>`<div class="opt ${ix===S.overlay.ix?'cur':''}">${esc(o.label)}<kbd class="k">${o.k}</kbd></div>`).join('')+
+    `<div style="font-size:11.5px;color:var(--txt-faint);padding:6px 10px">j/k · Enter · litera · Esc</div>`;
+}
+function moveTo(pid){
+  const ids=targets(); S._flatBefore=flat(); snapshot(ids,'mutare');
+  ids.forEach(id=>{ const i=I(id); if(i.project===pid) return; const p=P(pid);
+    const n=Math.max(0,...issues.filter(x=>x.project===pid).map(x=>+x.id.split('-')[1]))+1;
+    i._oldId=i.id; i.project=pid; i.id=p.prefix+'-'+n; i.wave=p.waves?p.waves[1].id:null;
+    if (S.panelId===id) S.panelId=i.id; if (S.cursor===id) S.cursor=i.id; });
+  toast(`Mutat în ${P(pid).name} · număr nou <span class="mono">${I(S.cursor)?.id||''}</span>`,3500);
+  S.visual=null; S.selected.clear(); render(); renderPanel(true);
+}
+function resItems(){
+  const q=($('#ovin')?.value||'').toLowerCase();
+  if (S.overlay.kind==='palette'){
+    const all=[{label:'Azi',sub:'listă',s:{kind:'today'}},{label:'7 zile',sub:'listă',s:{kind:'week'}},{label:'Ale mele',sub:'listă',s:{kind:'mine'}},
+      ...filters.map(f=>({label:f.name,sub:'filtru',s:{kind:'filter',fid:f.id}})),
+      ...projects.map(p=>({label:p.name,sub:'proiect · '+p.prefix,s:{kind:'project',pid:p.id}})),
+      ...(P('hz').waves.map(w=>({label:'Horizontal › '+w.label,sub:'val',s:{kind:'project',pid:'hz'},wave:w.id})))];
+    return all.filter(x=>!q || (x.label+' '+x.sub).toLowerCase().includes(q));
+  }
+  return live().filter(i=>!q || i.title.toLowerCase().includes(q) || i.id.toLowerCase().includes(q))
+    .sort((a,b)=>b.created-a.created).slice(0,12).map(i=>({label:i.title,id:i.id,issue:i}));
+}
+function paintRes(){
+  const it=resItems(); S.overlay.ix=Math.min(S.overlay.ix,Math.max(0,it.length-1));
+  $('#ovres').innerHTML=it.map((x,ix)=>`<div class="opt ${ix===S.overlay.ix?'cur':''}">${x.id?`<span class="id">${x.id}</span>`:''}${esc(x.label)}<span class="k" style="font-size:12px;color:var(--txt-faint)">${esc(x.sub||P(x.issue.project).name)}</span></div>`).join('')||'<div class="opt" style="color:var(--txt-faint)">nimic</div>';
+}
+function closeOverlay(){ S.overlay=null; $('#ov').classList.remove('show'); $('#ov').innerHTML=''; paint(); }
+function overlayKey(e,t){
+  const o=S.overlay, k=o.kind;
+  if (t==='Escape'){ e.preventDefault(); closeOverlay(); return true; }
+  if (k==='help'){ const sc=$('.help .scroll'); if(t==='j') sc.scrollBy(0,80); else if(t==='k') sc.scrollBy(0,-80); else if(t==='?'||t==='q') closeOverlay(); else if (t==='G') sc.scrollTo(0,1e6); return true; }
+  if (k==='palette'||k==='search'){
+    const it=resItems();
+    const down = e.key==='ArrowDown' || (e.ctrlKey && (e.key==='j'||e.key==='n'));
+    const up = e.key==='ArrowUp' || (e.ctrlKey && (e.key==='k'||e.key==='p'));
+    if (down||up){ e.preventDefault(); o.ix=Math.max(0,Math.min(it.length-1,o.ix+(down?1:-1))); paintRes(); return true; }
+    if (e.key==='Enter'){ e.preventDefault(); const x=it[o.ix]; closeOverlay(); if(!x) return true;
+      if (k==='palette'){ if (x.wave) S.wave.hz=x.wave; go(x.s); }
+      else { const f=flat(); if (f.includes(x.issue.id)) S.cursor=x.issue.id; openPanel(x.issue.id); }
+      return true; }
+    return false;   // tastele normale scriu în câmp
+  }
+  const opts=overlayOpts();
+  if (t==='j'||e.key==='ArrowDown'){ o.ix=Math.min(opts.length-1,o.ix+1); paintPop(); return true; }
+  if (t==='k'||e.key==='ArrowUp'){ o.ix=Math.max(0,o.ix-1); paintPop(); return true; }
+  const byKey=opts.find(x=>x.k===t);
+  if (e.key==='Enter'||byKey){ const x=byKey||opts[o.ix]; closeOverlay(); x.run(); return true; }
+  return true;
+}
+
+/* ---------------- harta de taste (o singură sursă: dispecerul + ajutorul) ---------------- */
+const KEYMAP = [
+  // global
+  {seq:'ga', ctx:'any', d:'Mergi la Azi', run:()=>go({kind:'today'})},
+  {seq:'gw', ctx:'any', d:'Mergi la 7 zile', run:()=>go({kind:'week'})},
+  {seq:'gi', ctx:'any', d:'Mergi la Ale mele', run:()=>go({kind:'mine'})},
+  {seq:'gp', ctx:'any', d:'„Mergi la…” (proiect, filtru, val)', run:()=>openOverlay('palette')},
+  {seq:':',  ctx:'any', d:'„Mergi la…” (pe RO: Shift + tasta ș)', run:()=>openOverlay('palette')},
+  {seq:'O',  ctx:'any', d:'Caută tichet în toate proiectele (și Ctrl+F)', run:()=>openOverlay('search')},
+  {seq:'C',  ctx:'any', d:'Sarcină nouă (dublură pentru a)', run:newTask},
+  {seq:'z',  ctx:'any', d:'„Mergi la…” (ca zoxide în yazi)', run:()=>openOverlay('palette')},
+  {seq:'gs', ctx:'any', d:'Ascunde / arată bara laterală', run:()=>{S.sidebar=!S.sidebar; if(!S.sidebar&&S.pane==='sidebar') S.pane='list'; paint();}},
+  {seq:'H',  ctx:'any', d:'Înapoi în istoric (ecranul de dinainte)', run:()=>histGo(-1)},
+  {seq:'L',  ctx:'any', d:'Înainte în istoric', run:()=>histGo(1)},
+  {seq:'[',  ctx:'any', d:'Valul anterior (pe RO: tasta ă)', run:()=>wave(-1)},
+  {seq:']',  ctx:'any', d:'Valul următor (pe RO: tasta î)', run:()=>wave(1)},
+  {seq:'?',  ctx:'any', d:'Ajutorul ăsta', run:()=>openOverlay('help')},
+  {seq:'u',  ctx:'any', d:'Anulează ultima acțiune', run:()=>A.undo()},
+  {seq:'gt', ctx:'any', d:'Valul următor (ca ])', run:()=>wave(1)},
+  {seq:'gT', ctx:'any', d:'Valul anterior (ca [)', run:()=>wave(-1)},
+  // listă
+  {seq:'j',  ctx:'list', d:'Rândul următor (5j = 5 rânduri)', run:()=>step(1)},
+  {seq:'k',  ctx:'list', d:'Rândul anterior', run:()=>step(-1)},
+  {seq:'J',  ctx:'list', d:'Grupul următor (zi, layer)', run:()=>stepGroup(1)},
+  {seq:'K',  ctx:'list', d:'Grupul anterior', run:()=>stepGroup(-1)},
+  {seq:'gg', ctx:'list', d:'Primul rând', run:()=>{const f=flat(); moveCursor(f[0]);}},
+  {seq:'G',  ctx:'list', d:'Ultimul rând', run:()=>{const f=flat(); moveCursor(f[f.length-1]);}},
+  {seq:'Enter', ctx:'list', d:'Deschide în panou (focusul rămâne în listă)', run:()=>openPanel(S.cursor)},
+  {seq:'o',  ctx:'list', d:'Deschide în panou (ca Enter)', run:()=>openPanel(S.cursor)},
+  {seq:'l',  ctx:'list', d:'Intră în panou', run:()=>setPane('panel')},
+  {seq:'h',  ctx:'list', d:'Intră în bara laterală', run:()=>setPane('sidebar')},
+  {seq:'x',  ctx:'list', d:'Gata / redeschide', run:()=>A.done()},
+  {seq:'dd', ctx:'list', d:'Șterge (toast 6s, u anulează)', run:()=>A.del()},
+  {seq:'D',  ctx:'list', d:'Mută pe mâine', run:()=>A.tomorrow()},
+  {seq:'t',  ctx:'list', d:'Alege data', run:()=>openOverlay('date')},
+  {seq:'!',  ctx:'list', d:'Urgent', run:()=>A.urgent()},
+  {seq:'F',  ctx:'list', d:'Fixează sus', run:()=>A.pin()},
+  {seq:'M',  ctx:'list', d:'Mută în alt proiect', run:()=>openOverlay('move')},
+  {seq:'cc', ctx:'list', d:'Redenumește (panou + titlul selectat)', run:()=>{ openPanel(S.cursor,'titleAll'); }},
+  {seq:'yy', ctx:'list', d:'Copiază linkul', run:()=>A.yank('link')},
+  {seq:'yt', ctx:'list', d:'Copiază titlul', run:()=>A.yank('title')},
+  {seq:'.',  ctx:'list', d:'Repetă ultima acțiune', run:()=>A.repeat()},
+  {seq:'/',  ctx:'list', d:'Caută în lista asta (sari, n / N)', run:()=>openFind('find')},
+  {seq:'f',  ctx:'list', d:'Filtrează lista (ascunde restul)', run:()=>openFind('filter')},
+  {seq:'a',  ctx:'list', d:'Sarcină nouă în grupul cursorului (ca în yazi)', run:newTask},
+  {seq:'r',  ctx:'list', d:'Redenumește (ca în yazi; și cc)', run:()=>openPanel(S.cursor,'titleAll')},
+  {seq:'n',  ctx:'list', d:'Potrivirea următoare', run:()=>nextMatch(1)},
+  {seq:'N',  ctx:'list', d:'Potrivirea anterioară', run:()=>nextMatch(-1)},
+  {seq:'V',  ctx:'any', d:'Selecție pe interval (vizual)', run:toggleVisual},
+  {seq:'v',  ctx:'any', d:'Selecție pe interval (ca V)', run:toggleVisual},
+  {seq:'Space', ctx:'list', d:'Bifează rândul în selecție și coboară (ca în yazi)', run:()=>{ if(!S.cursor) return; S.selected.has(S.cursor)?S.selected.delete(S.cursor):S.selected.add(S.cursor); const f=flat(), ix=f.indexOf(S.cursor); if (ix<f.length-1) S.cursor=f[ix+1]; renderList(); paint(); }},
+  // panou
+  {seq:'i',  ctx:'panel', d:'Scrie în titlu', run:()=>focusPanel('title')},
+  {seq:'a',  ctx:'panel', d:'Scrie în descriere (la final)', run:()=>focusPanel('desc')},
+  {seq:'m',  ctx:'panel', d:'Scrie un comentariu', run:()=>focusPanel('comment')},
+  {seq:'@',  ctx:'panel', d:'Pasează (comentariu „către…”)', run:()=>openOverlay('handoff')},
+  {seq:'r',  ctx:'panel', d:'Rescrie titlul (și cc)', run:()=>focusPanel('titleAll')},
+  {seq:'cc', ctx:'panel', d:'Rescrie titlul', run:()=>focusPanel('titleAll')},
+  {seq:'t',  ctx:'panel', d:'Data', run:()=>openOverlay('date')},
+  {seq:'w',  ctx:'panel', d:'Valul', run:()=>{ if(!P(I(S.panelId).project).waves){msg('proiectul n-are valuri');return;} openOverlay('wave'); }},
+  {seq:'x',  ctx:'panel', d:'Gata / redeschide', run:()=>A.done()},
+  {seq:'!',  ctx:'panel', d:'Urgent', run:()=>A.urgent()},
+  {seq:'F',  ctx:'panel', d:'Fixează sus', run:()=>A.pin()},
+  {seq:'M',  ctx:'panel', d:'Mută în alt proiect', run:()=>openOverlay('move')},
+  {seq:'dd', ctx:'panel', d:'Șterge tichetul', run:()=>A.del()},
+  {seq:'yy', ctx:'panel', d:'Copiază linkul', run:()=>A.yank('link')},
+  {seq:'j',  ctx:'panel', d:'Derulează în jos', run:()=>$('#pbody').scrollBy(0,80)},
+  {seq:'k',  ctx:'panel', d:'Derulează în sus', run:()=>$('#pbody').scrollBy(0,-80)},
+  {seq:'gg', ctx:'panel', d:'Sus', run:()=>$('#pbody').scrollTo(0,0)},
+  {seq:'G',  ctx:'panel', d:'Jos', run:()=>$('#pbody').scrollTo(0,1e6)},
+  {seq:'h',  ctx:'panel', d:'Înapoi în listă', run:()=>setPane('list')},
+  // bara laterală
+  {seq:'j',  ctx:'sidebar', d:'Următorul', run:()=>{S.sbCursor=Math.min(sbNav().length-1,S.sbCursor+1); paint();}},
+  {seq:'k',  ctx:'sidebar', d:'Anteriorul', run:()=>{S.sbCursor=Math.max(0,S.sbCursor-1); paint();}},
+  {seq:'gg', ctx:'sidebar', d:'Primul', run:()=>{S.sbCursor=0; paint();}},
+  {seq:'G',  ctx:'sidebar', d:'Ultimul', run:()=>{S.sbCursor=sbNav().length-1; paint();}},
+  {seq:'Enter', ctx:'sidebar', d:'Deschide', run:sbOpen},
+  {seq:'l',  ctx:'sidebar', d:'Deschide și treci în listă', run:sbOpen},
+];
+function toggleVisual(){ if(S.pane!=='list') setPane('list'); if(!S.cursor){const f=flat(); if(!f.length) return; S.cursor=f[0];} S.visual=S.visual?null:{anchor:S.cursor}; renderList(); paint(); msg(S.visual?'j/k extind · x dd D t ! F M se aplică tuturor · Esc iese':''); }
+const VISUAL_OK = new Set(['v','j','k','J','K','gg','G','x','dd','D','t','!','F','M','u','V','.','?']);
+const tokSplit = s => s==='Enter'||s==='Space'?[s]:[...s];
+function nextMatch(d){
+  if (!S.q){ msg('întâi / și un text'); return; }
+  const f=flat(), m=f.filter(id=>matches(I(id))); if(!m.length){ msg('nicio potrivire'); return; }
+  const ix=f.indexOf(S.cursor);
+  const pick = d>0 ? (m.find(id=>f.indexOf(id)>ix)||m[0]) : ([...m].reverse().find(id=>f.indexOf(id)<ix)||m[m.length-1]);
+  moveCursor(pick);
+}
+
+/* ---------------- tasta → token (litere după e.key, punctuația după poziție) ---------------- */
+const RO_SIM = {BracketLeft:['ă','Ă'], BracketRight:['î','Î'], Semicolon:['ș','Ș'], Quote:['ț','Ț'], Backslash:['â','Â']};
+const BY_CODE = {Semicolon:[';',':'], BracketLeft:['[','{'], BracketRight:[']','}'], Slash:['/','?'], Period:['.','>'], Comma:[',','<'], Quote:["'",'"']};
+function token(e){
+  if (e.key==='Enter') return 'Enter';
+  if (e.key===' ') return 'Space';
+  if (e.key==='Escape') return 'Escape';
+  if (/^[\x21-\x7e]$/.test(e.key)) return e.key;          // ASCII: ce scrie tasta
+  if (BY_CODE[e.code]) return BY_CODE[e.code][e.shiftKey?1:0]; // ă ș ț â pe RO: după poziție
+  return e.key.length===1?e.key:null;
+}
+
+/* ---------------- dispecerul ---------------- */
+let seqT, wkT;
+function clearBuf(){ S.buf=[]; S.count=''; clearTimeout(seqT); clearTimeout(wkT); $('#wk').classList.remove('show'); paint(); }
+function ctxEntries(){
+  const ctx=S.pane;
+  let es=KEYMAP.filter(k=>k.ctx===ctx||k.ctx==='any');
+  // local bate global la aceeași secvență
+  es=es.filter(k=>!(k.ctx==='any' && es.some(o=>o.ctx===ctx && o.seq===k.seq)));
+  if (S.visual) es=es.filter(k=>VISUAL_OK.has(k.seq));
+  return es;
+}
+function showWK(){
+  const pre=S.buf.join(''); const es=ctxEntries().filter(k=>k.seq.startsWith(pre)&&k.seq!==pre&&!k.hide);
+  if (!es.length) return;
+  $('#wk').innerHTML=`<h5>${esc(pre)} …</h5>`+es.map(k=>`<div class="it"><kbd>${esc(k.seq.slice(pre.length))}</kbd>${esc(k.d)}</div>`).join('');
+  $('#wk').classList.add('show');
+}
+function ladderEsc(){
+  // fiecare Esc face un singur pas
+  if (S.buf.length||S.count){ clearBuf(); msg('secvență anulată'); return; }
+  const a=document.activeElement;
+  if (a && a.id==='finput'){ a.blur(); if(!S.q) $('#filterbar').classList.remove('show'); S.pane='list'; paint(); return; }
+  if (a && (a.tagName==='INPUT'&&a.type!=='checkbox' || a.tagName==='TEXTAREA')){
+    if (S.isNew && a.id==='ptitle' && !a.value.trim()){ S.dirty=false; closePanel(true); msg('sarcina goală n-a fost creată'); return; }
+    a.blur(); S.pane='panel'; paint(); msg('ieșit din câmp — încă un Esc: înapoi în listă'); return; }
+  if (S.visual||S.selected.size){ S.visual=null; S.selected.clear(); renderList(); paint(); msg('ieșit din selecție'); return; }
+  if (S.pane==='panel'){ S.pane='list'; renderList(); paint(); msg('în listă — încă un Esc închide panoul'); return; }
+  if (S.pane==='sidebar'){ S.pane='list'; paint(); return; }
+  if (S.panelId){ closePanel(); return; }
+  if (S.q){ S.q=''; $('#finput').value=''; $('#filterbar').classList.remove('show'); renderList(); return; }
+  if (S.cursor){ S.cursor=null; renderList(); paint(); }
+}
+window.addEventListener('keydown', e=>{
+  if (e.isComposing) return;
+  const t=token(e);
+  // ce s-a apăsat, pentru verificare
+  const shown = ($('#ro').checked && RO_SIM[e.code]) ? RO_SIM[e.code][e.shiftKey?1:0] : e.key;
+  if (!['Shift','Control','Alt','Meta'].includes(e.key)) $('#lastkey').textContent = `tasta „${shown==' '?'␣':shown}” → ${t||'—'}`;
+
+  if (S.overlay){ if (overlayKey(e,t)) return; return; }
+
+  // combinații cu Ctrl
+  if ((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='s'){ e.preventDefault(); savePanel(); return; }
+  if ((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='f'){ e.preventDefault(); openOverlay('search'); return; }
+  if ((e.ctrlKey||e.metaKey) && e.key==='Enter'){
+    const a=document.activeElement;
+    if (a?.id==='pcomp' && a.value.trim()){ e.preventDefault();
+      const i=I(S.panelId); (THREAD[i.id] ||= []).push({who:'Tu',when:'acum',tx:a.value.trim(),handoff:S.handoffTo?('Pasat lui '+S.handoffTo):null});
+      if (S.handoffTo){ snapshot([i.id],'pasare'); i.assignee=S.handoffTo; toast(`Pasat lui ${S.handoffTo} · <span class="mono">${i.id}</span>`,3000); } else toast('Comentariu trimis',2000);
+      S.drafts[i.id]=''; S.handoffTo=null; renderPanel(true); render(); focusPanel('comment'); return; }
+    if (a?.id==='pdesc'||a?.id==='ptitle'){ e.preventDefault(); savePanel(); a.blur(); S.pane='panel'; paint(); return; }
+  }
+  if ((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='a' && S.pane==='list' && !['INPUT','TEXTAREA'].includes(document.activeElement?.tagName)){
+    e.preventDefault(); S.visual=null; flat().forEach(id=>S.selected.add(id)); renderList(); paint(); msg('tot selectat · x dd D t ! F M · Esc iese'); return; }
+  if (e.ctrlKey||e.metaKey||e.altKey) return;
+
+  if (t==='Escape'){ e.preventDefault(); ladderEsc(); return; }
+
+  // în câmp: tastele scriu
+  const a=document.activeElement;
+  if (a && a.id==='finput'){
+    if (e.key==='Enter'){ e.preventDefault(); a.blur(); S.pane='list'; if (S.fmode==='filter'){ S.cursor=flat()[0]||null; renderList(); } else nextMatch(1); paint(); }
+    return;
+  }
+  if (a && (a.tagName==='INPUT'&&a.type!=='checkbox' || a.tagName==='TEXTAREA' || a.tagName==='SELECT')){
+    if (a.id==='ptitle' && e.key==='Enter'){ e.preventDefault(); if (S.dirty) savePanel(); a.blur(); S.pane='panel'; paint(); }
+    return;
+  }
+  if (!t) return;
+
+  // numărătoare (doar pe mișcări)
+  if (/^[1-9]$/.test(t) || (t==='0' && S.count)){ if (!S.buf.length){ S.count+=t; paint(); clearTimeout(seqT); seqT=setTimeout(clearBuf,1500); e.preventDefault(); return; } }
+
+  S.buf.push(t);
+  const cur=S.buf.join('');
+  const es=ctxEntries();
+  const cand=es.filter(k=>{ const s=tokSplit(k.seq); return s.length>=S.buf.length && S.buf.every((x,ix)=>s[ix]===x); });
+  const exact=cand.find(k=>tokSplit(k.seq).length===S.buf.length);
+  const longer=cand.filter(k=>tokSplit(k.seq).length>S.buf.length);
+  e.preventDefault();
+  clearTimeout(seqT); clearTimeout(wkT);
+  if (exact && !longer.length){
+    $('#wk').classList.remove('show');
+    const cnt=S.count; S.buf=[];
+    exact.run(); S.count=''; void cnt; paint(); return;
+  }
+  if (!cand.length){ msg(`„${cur}” nu înseamnă nimic aici`); clearBuf(); return; }
+  paint();
+  wkT=setTimeout(showWK,400);
+  seqT=setTimeout(()=>{ if (exact){ S.buf=[]; exact.run(); } clearBuf(); },1000);
+});
+
+/* ---------------- mouse (doar ca să nu blocheze) ---------------- */
+$('#list').addEventListener('click',e=>{ const r=e.target.closest('.row'); if(!r) return; S.pane='list'; S.cursor=r.dataset.id; openPanel(r.dataset.id); });
+$('#sidebar').addEventListener('click',e=>{ const r=e.target.closest('.sb-item'); if(!r) return; S.sbCursor=+r.dataset.sb; sbOpen(); });
+$('#finput').addEventListener('input',e=>{ S.q=e.target.value; if (S.fmode==='filter'){ const f=flat(); if(!f.includes(S.cursor)) S.cursor=f[0]||null; } renderList(); paint(); });
+$('#finput').addEventListener('focus',()=>paint());
+$('#theme').addEventListener('click',()=>{ const r=document.documentElement; const dark = r.dataset.theme==='dark' || (!r.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches); r.dataset.theme=dark?'light':'dark'; $('#theme').blur(); });
+$('#ro').addEventListener('change',()=>$('#ro').blur());
+
+/* ---------------- ajutorul (generat din KEYMAP) ---------------- */
+function helpHTML(){
+  const sec=(title,ctx)=>{ const rows=KEYMAP.filter(k=>k.ctx===ctx&&!k.hide);
+    return `<h3>${title}${S.pane===ctx?'<span class="here">ești aici</span>':''}</h3><table>${rows.map(k=>`<tr><td>${tokSplit(k.seq).map(x=>`<kbd>${esc(x)}</kbd>`).join(' ')}</td><td>${esc(k.d)}</td></tr>`).join('')}</table>`; };
+  const order=[['Listă','list'],['Panou (tichetul deschis)','panel'],['Bara laterală','sidebar']].sort((a,b)=>(b[1]===S.pane)-(a[1]===S.pane));
+  return `<div class="top"><h2>Navigare din tastatură</h2><span style="color:var(--txt-faint);font-size:13px"><kbd>j</kbd><kbd>k</kbd> derulează · <kbd>Esc</kbd> închide</span></div><div class="scroll">
+  <h3>Scenarii de încercat</h3><ol class="scen">
+    <li><b>Triaj dimineața în Azi:</b> <kbd>j</kbd> <kbd>j</kbd> <kbd>x</kbd> · <kbd>d</kbd><kbd>d</kbd> · <kbd>u</kbd> · <kbd>D</kbd> · <kbd>.</kbd> (repetă „mâine” pe rândul următor)</li>
+    <li><b>Interval:</b> <kbd>V</kbd> <kbd>j</kbd> <kbd>j</kbd> <kbd>D</kbd>, apoi <kbd>u</kbd> — toate se întorc deodată.</li>
+    <li><b>Panoul urmează cursorul:</b> <kbd>Enter</kbd>, <kbd>j</kbd> <kbd>j</kbd> (panoul vine după). Apoi <kbd>l</kbd> <kbd>a</kbd>, scrie ceva, <kbd>Esc</kbd> <kbd>h</kbd> <kbd>j</kbd> — panoul rămâne, rândul spune „nesalvat”. <kbd>Ctrl+S</kbd> — panoul prinde cursorul.</li>
+    <li><b>Scara Esc:</b> deschide un tichet, <kbd>a</kbd>, scrie, apoi <kbd>Esc</kbd> de patru ori și urmărește bara de jos.</li>
+    <li><b>Proiecte și valuri:</b> <kbd>g</kbd><kbd>p</kbd> „hor” <kbd>Enter</kbd>, <kbd>g</kbd><kbd>t</kbd> / <kbd>g</kbd><kbd>T</kbd>, <kbd>J</kbd> sare pe layer, <kbd>C</kbd> pune o sarcină în layerul cursorului.</li>
+    <li><b>Căutare:</b> <kbd>/</kbd> „off” <kbd>Enter</kbd> <kbd>n</kbd> <kbd>n</kbd> (în listă) — apoi <kbd>O</kbd> pentru toate proiectele.</li>
+    <li><b>Pasare:</b> <kbd>g</kbd><kbd>i</kbd>, <kbd>Enter</kbd>, <kbd>l</kbd>, <kbd>@</kbd> <kbd>1</kbd>, scrie, <kbd>Ctrl+Enter</kbd>.</li>
+    <li><b>Descoperire:</b> apasă <kbd>g</kbd> și așteaptă — apare lista continuărilor. Bifează „tastatură RO” jos și încearcă <kbd>:</kbd> și <kbd>[</kbd>.</li>
+    <li><b>Bara laterală:</b> <kbd>h</kbd>, <kbd>j</kbd> <kbd>j</kbd>, <kbd>l</kbd> — ești în lista aleasă.</li>
+    <li><b>Ca în yazi:</b> <kbd>g</kbd><kbd>w</kbd> (7 zile), <kbd>Space</kbd> <kbd>Space</kbd> <kbd>Space</kbd> <kbd>D</kbd> — trei rânduri pe mâine. Apoi <kbd>z</kbd> „hor” <kbd>Enter</kbd>, <kbd>]</kbd> <kbd>]</kbd>, <kbd>a</kbd> (sarcină nouă), <kbd>Esc</kbd>, <kbd>H</kbd> — înapoi în 7 zile, <kbd>L</kbd> — iar în proiect.</li>
+    <li><b>Filtru vs. căutare:</b> <kbd>f</kbd> „off” ascunde restul; <kbd>/</kbd> „off” doar sare cu <kbd>n</kbd>. <kbd>r</kbd> redenumește, <kbd>Ctrl+A</kbd> selectează tot.</li>
+  </ol>
+  <h3>Oriunde</h3><table>${KEYMAP.filter(k=>k.ctx==='any'&&!k.hide).map(k=>`<tr><td>${tokSplit(k.seq).map(x=>`<kbd>${esc(x)}</kbd>`).join(' ')}</td><td>${esc(k.d)}</td></tr>`).join('')}
+    <tr><td><kbd>Esc</kbd></td><td>Un pas înapoi: secvența → câmpul → selecția → panoul → lista → închide panoul</td></tr>
+    <tr><td><kbd>Ctrl+S</kbd></td><td>Salvează tichetul</td></tr><tr><td><kbd>Ctrl+Enter</kbd></td><td>În comentariu: trimite (și pasează). În titlu / descriere: salvează și ieși.</td></tr></table>
+  ${order.map(([t,c])=>sec(t,c)).join('')}
+  <div class="note"><b>Din yazi:</b> <kbd>a</kbd> creează, <kbd>r</kbd> redenumește, <kbd>Space</kbd> bifează și coboară, <kbd>H</kbd>/<kbd>L</kbd> = istoric înapoi/înainte (panourile doar cu <kbd>h</kbd>/<kbd>l</kbd>), <kbd>[</kbd> <kbd>]</kbd> = valuri (după poziție: ă/î pe RO), <kbd>f</kbd> filtrează, <kbd>z</kbd> = „Mergi la”. Amânat: <kbd>X</kbd> taie + <kbd>p</kbd> lipește în ziua/valul cursorului. <kbd>x</kbd> rămâne „gata”, <kbd>.</kbd> rămâne „repetă”.<br><br><b>Ce s-a schimbat față de azi, de decis:</b> <kbd>,</kbd> <kbd>.</kbd> pentru valuri devin <kbd>[</kbd> <kbd>]</kbd> / <kbd>g</kbd><kbd>t</kbd> <kbd>g</kbd><kbd>T</kbd>, ca <kbd>.</kbd> să repete. <kbd>V</kbd> e selecția pe interval; foaia „Valuri” s-ar muta pe <kbd>g</kbd><kbd>v</kbd>. <kbd>o</kbd> deschide (cum ai cerut), deci căutarea rămâne pe <kbd>O</kbd> și <kbd>Ctrl+F</kbd>. Primul <kbd>Esc</kbd> într-un câmp din panou nu mai închide panoul. Numerele (<kbd>5</kbd><kbd>j</kbd>) merg doar pe mișcări, nu pe <kbd>3</kbd><kbd>d</kbd><kbd>d</kbd>; în proiect, <kbd>1</kbd>–<kbd>4</kbd> rămân taburile (aici nu sunt simulate).</div>
+  </div>`;
+}
+
+/* ---------------- start ---------------- */
+S.cursor=flat()[0];
+render();
+setTimeout(()=>toast('Prototip · apasă <b>?</b> pentru taste și scenarii',4000),300);
+</script>
+</body>
+</html>
