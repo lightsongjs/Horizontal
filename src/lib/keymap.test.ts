@@ -61,7 +61,9 @@ describe('feed', () => {
   const cases: [string, (string | { t: string; at: number })[], Partial<FeedOptions>, string[]][] = [
     ['j pleacă imediat', ['j'], {}, ['down']],
     ['gg = primul rând', ['g', 'g'], {}, ['first']],
-    ['ga = Azi (global, din listă)', ['g', 'a'], {}, ['goToday']],
+    ['gt = Azi (today, global, din listă)', ['g', 't'], {}, ['goToday']],
+    ['gm = Ale mele (mine)', ['g', 'm'], {}, ['goMine']],
+    ['/ = căutarea globală', ['/'], {}, ['search']],
     ['5j = numărătoare pe mișcare', ['5', 'j'], {}, ['down×5']],
     ['12j = numărătoare de două cifre', ['1', '2', 'j'], {}, ['down×12']],
     ['numărătoarea nu se aplică unei non-mișcări', ['3', 'G'], {}, ['last']],
@@ -73,7 +75,6 @@ describe('feed', () => {
     ['j în panou = câmpul următor', ['j'], { ctx: 'panel' }, ['fieldDown']],
     ['dd în listă = ștergere, D = mâine', ['d', 'd', 'D'], {}, ['delete', 'tomorrow']],
     ['] = valul următor, și din listă', [']'], {}, ['waveNext']],
-    ['gt / gT = valuri', ['g', 't', 'g', 'T'], {}, ['waveNext', 'wavePrev']],
     ['gv = foaia valurilor', ['g', 'v'], {}, ['waveManage']],
     ['i în panou = titlul, în listă nu e al nostru', ['i'], { ctx: 'panel' }, ['pTitle']],
     ['Space în listă = selecție', ['Space'], {}, ['mark']],
@@ -144,7 +145,7 @@ describe('activeBindings / continuations', () => {
   it('which-key: continuările lui g în listă, fără dubluri ascunse', () => {
     const s = feed(EMPTY_SEQ, 'g', { ctx: 'list', now: 1, allowCount: true }).state
     const rest = continuations(s, 'list').map((c) => c.rest)
-    expect(rest).toEqual(expect.arrayContaining(['a', 'w', 'i', 'p', 's', ',', 'g']))
+    expect(rest).toEqual(expect.arrayContaining(['t', 'w', 'm', 'p', 's', ',', 'g']))
   })
   it('fiecare intrare are descriere și un context cunoscut', () => {
     for (const x of KEYMAP) {
@@ -180,12 +181,16 @@ describe('isTypingTarget', () => {
 })
 
 describe('c mic vs. cc', () => {
-  it('c singur pleacă la timeout (sarcină nouă), cc redenumește imediat', () => {
+  it('c singur nu mai creează (crearea e a); cc redenumește', () => {
     const a = feed(EMPTY_SEQ, 'c', { ctx: 'list', now: 1, allowCount: true })
     expect(a.result.kind).toBe('pending')
     const e = expire(a.state, { ctx: 'list' })
-    expect(e.result.kind === 'fire' && e.result.binding.id).toBe('newTask')
+    expect(e.result.kind).not.toBe('fire')
     const b = feed(a.state, 'c', { ctx: 'list', now: 2, allowCount: true })
     expect(b.result.kind === 'fire' && b.result.binding.id).toBe('rename')
+  })
+  it('a creează', () => {
+    const r = feed(EMPTY_SEQ, 'a', { ctx: 'list', now: 1, allowCount: true })
+    expect(r.result.kind === 'fire' && r.result.binding.id).toBe('newTask')
   })
 })

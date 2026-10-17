@@ -875,13 +875,13 @@ function overlayKey(e,t){
 /* ---------------- harta de taste (o singură sursă: dispecerul + ajutorul) ---------------- */
 const KEYMAP = [
   // global
-  {seq:'ga', ctx:'any', d:'Mergi la Azi', run:()=>go({kind:'today'})},
-  {seq:'gw', ctx:'any', d:'Mergi la 7 zile', run:()=>go({kind:'week'})},
-  {seq:'gi', ctx:'any', d:'Mergi la Ale mele', run:()=>go({kind:'mine'})},
+  {seq:'gt', ctx:'any', d:'Mergi la Azi (today)', run:()=>go({kind:'today'})},
+  {seq:'gw', ctx:'any', d:'Mergi la 7 zile (week)', run:()=>go({kind:'week'})},
+  {seq:'gm', ctx:'any', d:'Mergi la Ale mele (mine)', run:()=>go({kind:'mine'})},
   {seq:'gp', ctx:'any', d:'„Mergi la…” (proiect, filtru, val)', run:()=>openOverlay('palette')},
   {seq:':',  ctx:'any', d:'„Mergi la…” (pe RO: Shift + tasta ș)', run:()=>openOverlay('palette')},
-  {seq:'O',  ctx:'any', d:'Caută tichet în toate proiectele (și Ctrl+F)', run:()=>openOverlay('search')},
-  {seq:'C',  ctx:'any', d:'Sarcină nouă (dublură pentru a)', run:newTask},
+  {seq:'/',  ctx:'any', d:'Caută tichet în toate proiectele (și O, Ctrl+F)', run:()=>openOverlay('search')},
+  {seq:'O',  ctx:'any', d:'Caută tichet în toate proiectele (ca /)', run:()=>openOverlay('search')},
   {seq:'z',  ctx:'any', d:'„Mergi la…” (ca zoxide în yazi)', run:()=>openOverlay('palette')},
   {seq:'gs', ctx:'any', d:'Ascunde / arată bara laterală', run:()=>{S.sidebar=!S.sidebar; if(!S.sidebar&&S.pane==='sidebar') S.pane='list'; paint();}},
   {seq:'H',  ctx:'any', d:'Înapoi în istoric (ecranul de dinainte)', run:()=>histGo(-1)},
@@ -891,8 +891,6 @@ const KEYMAP = [
   {seq:'?',  ctx:'any', d:'Ajutorul ăsta', run:()=>openOverlay('help'), classic:true},
   {seq:'g,', ctx:'any', d:'Setări (mod Vim, panoul urmează cursorul, temă)', run:()=>openOverlay('settings')},
   {seq:'u',  ctx:'any', d:'Anulează ultima acțiune', run:()=>A.undo()},
-  {seq:'gt', ctx:'any', d:'Valul următor (ca ])', run:()=>wave(1)},
-  {seq:'gT', ctx:'any', d:'Valul anterior (ca [)', run:()=>wave(-1)},
   // listă
   {seq:'j',  ctx:'list', d:'Rândul următor (5j = 5 rânduri)', run:()=>step(1)},
   {seq:'k',  ctx:'list', d:'Rândul anterior', run:()=>step(-1)},
@@ -915,12 +913,9 @@ const KEYMAP = [
   {seq:'yy', ctx:'list', d:'Copiază linkul', run:()=>A.yank('link')},
   {seq:'yt', ctx:'list', d:'Copiază titlul', run:()=>A.yank('title')},
   {seq:'.',  ctx:'list', d:'Repetă ultima acțiune', run:()=>A.repeat()},
-  {seq:'/',  ctx:'list', d:'Caută în lista asta (sari, n / N)', run:()=>openFind('find')},
   {seq:'f',  ctx:'list', d:'Filtrează lista (ascunde restul)', run:()=>openFind('filter')},
   {seq:'a',  ctx:'list', d:'Sarcină nouă în grupul cursorului (ca în yazi)', run:newTask},
   {seq:'r',  ctx:'list', d:'Redenumește (ca în yazi; și cc)', run:()=>openPanel(S.cursor,'titleAll')},
-  {seq:'n',  ctx:'list', d:'Potrivirea următoare', run:()=>nextMatch(1)},
-  {seq:'N',  ctx:'list', d:'Potrivirea anterioară', run:()=>nextMatch(-1)},
   {seq:'V',  ctx:'any', d:'Selecție pe interval (vizual)', run:toggleVisual},
   {seq:'v',  ctx:'any', d:'Selecție pe interval (ca V)', run:toggleVisual},
   {seq:'Space', ctx:'list', d:'Bifează rândul în selecție și coboară (ca în yazi)', run:()=>{ if(!S.cursor) return; S.selected.has(S.cursor)?S.selected.delete(S.cursor):S.selected.add(S.cursor); const f=flat(), ix=f.indexOf(S.cursor); if (ix<f.length-1) S.cursor=f[ix+1]; renderList(); paint(); }},
@@ -1110,9 +1105,9 @@ function helpHTML(){
     <li><b>Interval:</b> <kbd>V</kbd> <kbd>j</kbd> <kbd>j</kbd> <kbd>D</kbd>, apoi <kbd>u</kbd> — toate se întorc deodată.</li>
     <li><b>Panoul urmează cursorul:</b> <kbd>Enter</kbd>, <kbd>j</kbd> <kbd>j</kbd> (panoul vine după). Apoi <kbd>l</kbd> <kbd>a</kbd>, scrie ceva, <kbd>Esc</kbd> <kbd>h</kbd> <kbd>j</kbd> — panoul rămâne, rândul spune „nesalvat”. <kbd>Ctrl+S</kbd> — panoul prinde cursorul.</li>
     <li><b>Scara Esc:</b> deschide un tichet, <kbd>a</kbd>, scrie, apoi <kbd>Esc</kbd> de patru ori și urmărește bara de jos.</li>
-    <li><b>Proiecte și valuri:</b> <kbd>g</kbd><kbd>p</kbd> „hor” <kbd>Enter</kbd>, <kbd>g</kbd><kbd>t</kbd> / <kbd>g</kbd><kbd>T</kbd>, <kbd>J</kbd> sare pe layer, <kbd>C</kbd> pune o sarcină în layerul cursorului.</li>
-    <li><b>Căutare:</b> <kbd>/</kbd> „off” <kbd>Enter</kbd> <kbd>n</kbd> <kbd>n</kbd> (în listă) — apoi <kbd>O</kbd> pentru toate proiectele.</li>
-    <li><b>Pasare:</b> <kbd>g</kbd><kbd>i</kbd>, <kbd>Enter</kbd>, <kbd>l</kbd>, <kbd>@</kbd> <kbd>1</kbd>, scrie, <kbd>Ctrl+Enter</kbd>.</li>
+    <li><b>Proiecte și valuri:</b> <kbd>g</kbd><kbd>p</kbd> „hor” <kbd>Enter</kbd>, <kbd>[</kbd> <kbd>]</kbd>, <kbd>J</kbd> sare pe layer, <kbd>C</kbd> pune o sarcină în layerul cursorului.</li>
+    <li><b>Căutare:</b> <kbd>f</kbd> „off” filtrează lista; <kbd>/</kbd> caută în toate proiectele.</li>
+    <li><b>Pasare:</b> <kbd>g</kbd><kbd>m</kbd>, <kbd>Enter</kbd>, <kbd>l</kbd>, <kbd>@</kbd> <kbd>1</kbd>, scrie, <kbd>Ctrl+Enter</kbd>.</li>
     <li><b>Descoperire:</b> apasă <kbd>g</kbd> și așteaptă — apare lista continuărilor. Bifează „tastatură RO” jos și încearcă <kbd>:</kbd> și <kbd>[</kbd>.</li>
     <li><b>Bara laterală:</b> <kbd>h</kbd>, <kbd>j</kbd> <kbd>j</kbd>, <kbd>l</kbd> — ești în lista aleasă.</li>
     <li><b>Ca în yazi:</b> <kbd>g</kbd><kbd>w</kbd> (7 zile), <kbd>Space</kbd> <kbd>Space</kbd> <kbd>Space</kbd> <kbd>D</kbd> — trei rânduri pe mâine. Apoi <kbd>z</kbd> „hor” <kbd>Enter</kbd>, <kbd>]</kbd> <kbd>]</kbd>, <kbd>a</kbd> (sarcină nouă), <kbd>Esc</kbd>, <kbd>H</kbd> — înapoi în 7 zile, <kbd>L</kbd> — iar în proiect.</li>

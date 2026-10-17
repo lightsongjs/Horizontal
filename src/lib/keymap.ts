@@ -61,13 +61,15 @@ export function splitSeq(s: string): string[] {
  */
 export const KEYMAP: Binding[] = [
   // oriunde
-  b('ga', 'any', 'goToday', 'Mergi la Azi'),
-  b('gw', 'any', 'goWeek', 'Mergi la 7 zile'),
-  b('gi', 'any', 'goMine', 'Mergi la Ale mele'),
+  // Mnemonice în engleză, consecvent: today / week / mine.
+  b('gt', 'any', 'goToday', 'Mergi la Azi (today)'),
+  b('gw', 'any', 'goWeek', 'Mergi la 7 zile (week)'),
+  b('gm', 'any', 'goMine', 'Mergi la Ale mele (mine)'),
   b('gp', 'any', 'goTo', '„Mergi la…” (proiect, filtru, listă, val)'),
   b('z', 'any', 'goTo', '„Mergi la…” (ca zoxide în yazi)'),
   b(':', 'any', 'goTo', '„Mergi la…” (pe RO: Shift + ș)'),
-  b('O', 'any', 'search', 'Caută tichet în toate proiectele (și Ctrl+F)'),
+  b('/', 'any', 'search', 'Caută tichet în toate proiectele (și O, Ctrl+F)'),
+  b('O', 'any', 'search', 'Caută tichet în toate proiectele (ca /)'),
   b('?', 'any', 'help', 'Ajutorul cu tastele'),
   b('gs', 'any', 'toggleSidebar', 'Ascunde / arată bara laterală'),
   b('g,', 'any', 'settings', 'Setări (mod Vim, panoul urmează cursorul)'),
@@ -76,8 +78,6 @@ export const KEYMAP: Binding[] = [
   b('u', 'any', 'undo', 'Anulează ultima acțiune (ce oferă toastul)'),
   b('[', 'any', 'wavePrev', 'Valul anterior (pe RO: tasta ă)'),
   b(']', 'any', 'waveNext', 'Valul următor (pe RO: tasta î)'),
-  b('gT', 'any', 'wavePrev', 'Valul anterior (ca [)'),
-  b('gt', 'any', 'waveNext', 'Valul următor (ca ])'),
   b('gv', 'any', 'waveManage', 'Foaia „Valuri”: redenumește, mută, adaugă'),
   // listă: mișcări
   b('j', 'list', 'down', 'Rândul următor (5j = 5 rânduri)', { motion: true }),
@@ -105,17 +105,12 @@ export const KEYMAP: Binding[] = [
   b('yy', 'list', 'yankLink', 'Copiază linkul'),
   b('yt', 'list', 'yankTitle', 'Copiază titlul'),
   b('.', 'list', 'repeat', 'Repetă ultima acțiune pe rândurile de acum'),
-  b('/', 'list', 'find', 'Caută în listă (n / N sar între potriviri)'),
   b('f', 'list', 'filter', 'Filtrează lista (ascunde restul)'),
-  b('n', 'list', 'nextMatch', 'Potrivirea următoare', { motion: true }),
-  b('N', 'list', 'prevMatch', 'Potrivirea anterioară', { motion: true }),
   b('Space', 'list', 'mark', 'Pune / scoate rândul din selecție și coboară'),
   b('v', 'list', 'visual', 'Selecție pe interval (j / k o întind)'),
   b('V', 'list', 'visual', 'Selecție pe interval (ca v)'),
+  // `a` ca în yazi (append / create). C nu mai creează cu modul Vim pornit.
   b('a', 'list', 'newTask', 'Sarcină nouă în grupul cursorului (aceeași zi / valul activ)'),
-  b('C', 'list', 'newTask', 'Sarcină nouă (ca a)'),
-  // `c` mic, tasta de dinainte: e și începutul lui `cc`, deci pleacă la timeout.
-  b('c', 'list', 'newTask', 'Sarcină nouă (după o secundă; cc redenumește)', { hidden: true }),
   // panou: cursorul de câmp
   b('j', 'panel', 'fieldDown', 'Câmpul următor: titlu → dată → val → urgent → fixare → pasare → proiect → descriere → dependențe → comentariu', { motion: true }),
   b('k', 'panel', 'fieldUp', 'Câmpul anterior', { motion: true }),

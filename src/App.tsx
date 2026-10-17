@@ -1278,7 +1278,9 @@ function Shell() {
       // deschidea un tichet nou ÎN PROIECTUL STRĂIN peste panou, O deschidea
       // căutarea limitată la el, iar 1-4 schimbau un tab de proiect care nici
       // nu se vede — exact scurgerea reparată la FAB, acum în ambele locuri.
-      if (e.key === 'c' || e.key === 'C') {
+      // Cu modul Vim, crearea e `a` (ca în yazi); în liste o ia dispecerul,
+      // aici ajunge doar unde n-are gazdă de cursor (Cards, Hartă).
+      if (vimOn ? e.key === 'a' : (e.key === 'c' || e.key === 'C')) {
         e.preventDefault()
         if (offProject) return
         if (smartList) {

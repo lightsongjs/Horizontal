@@ -308,7 +308,13 @@ Setare de DISPOZITIV în rotiță („Tastatură”: Mod Vim, Panoul urmează cu
   nesalvat, popoverul, editorul). În panou `!` comută urgentul ÎN formular
   (salvezi cu Ctrl+S), nu în bază — altfel salvarea l-ar fi scris înapoi.
   Urgentul și pasarea goale au jeton-fantomă doar cât stă cursorul pe ele.
-- **Valurile** sunt `[` `]` / `gt` `gT` și foaia `gv`, prin evenimentul
+- **Mnemonice în engleză, consecvent** (decizia omului, 2026-10-17): `gt`
+  today, `gw` week, `gm` mine — nu `ga` „azi” lângă `gw` „week”. De-aia `gt`
+  NU mai e valul următor (ca filele din Vim): valurile stau doar pe `[` `]`.
+  Ca în yazi: `a` creează (`C` nu mai creează cu modul Vim; `cc` rămâne
+  redenumirea), iar `/` e căutarea din toate proiectele (ca `O`); pentru lista
+  curentă e `f` (filtru).
+- **Valurile** sunt `[` `]` și foaia `gv`, prin evenimentul
   `hz:wave` ascultat de `WaveTabs`; cu modul pornit `,` `.` `V` nu mai sunt ale
   valurilor (`.` repetă, `V` e selecția), iar `[` nu mai ascunde bara (`gs`).
 - **Esc face un singur pas**: secvența → popoverul (al lui, în captură) →

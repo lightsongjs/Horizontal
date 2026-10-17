@@ -209,12 +209,12 @@ try {
 
   await page.locator('.tabs').click()
   await page.waitForTimeout(150)
-  // `C` mare: cu modul Vim, `c` începe `cc` (redenumirea).
-  await page.keyboard.press('Shift+C')
+  // Cu modul Vim, crearea e `a` (ca în yazi).
+  await page.keyboard.press('a')
   await page.waitForTimeout(800)
   const newFormOpen = await modalOpen()
   const firstVal = await page.locator('.sheet.on .sh-title-input').first().inputValue().catch(() => null)
-  check('C deschide un tichet nou peste panou', newFormOpen, newFormOpen ? 'formular deschis' : 'nu s-a întâmplat nimic')
+  check('a deschide un tichet nou peste panou', newFormOpen, newFormOpen ? 'formular deschis' : 'nu s-a întâmplat nimic')
   check('formularul e GOL (tichet nou, nu cel docat)', firstVal === '', `titlu="${firstVal ?? '(niciun input)'}"`)
 
   // ── …dar nu aruncă în tăcere ce ai scris ────────────────────────────────
@@ -233,12 +233,12 @@ try {
   await page.waitForTimeout(500)
   await page.locator('.tabs').click()
   await page.waitForTimeout(150)
-  // `C` mare: cu modul Vim, `c` începe `cc` (redenumirea).
-  await page.keyboard.press('Shift+C')
+  // Cu modul Vim, crearea e `a` (ca în yazi).
+  await page.keyboard.press('a')
   await page.waitForTimeout(700)
   const stillThere = await page.locator('.sh-title-input').first().inputValue().catch(() => '')
   check(
-    'C nu aruncă modificările nesalvate',
+    'a nu aruncă modificările nesalvate',
     stillThere.includes('MODIFICAT'),
     stillThere.includes('MODIFICAT') ? 'formularul murdar e încă pe ecran' : `s-a pierdut: "${stillThere}"`,
   )
@@ -316,11 +316,11 @@ try {
   if (onSmart > 0) {
     await page.locator('h1').first().click().catch(() => {})
     await page.waitForTimeout(200)
-    // `C` mare: cu modul Vim, `c` începe `cc` (redenumirea).
-    await page.keyboard.press('Shift+C')
+    // Cu modul Vim, crearea e `a` (ca în yazi).
+    await page.keyboard.press('a')
     await page.waitForTimeout(600)
     const focused = await page.evaluate(() => document.activeElement?.classList.contains('qa-input') ?? false)
-    check('C focusează quick add pe „Azi"', focused, focused ? 'cursorul e în câmp' : 'nu s-a întâmplat nimic')
+    check('a focusează quick add pe „Azi"', focused, focused ? 'cursorul e în câmp' : 'nu s-a întâmplat nimic')
   }
 
   // ── O sarcină deschisă din „Azi" nu te mută pe boardul proiectului ──────
@@ -1966,8 +1966,8 @@ try {
     const wk = await lp.locator('.vim-wk').count()
     await lp.waitForTimeout(700)
     check('vim: g + ezitare arată continuările', wk === 1, `${wk} ferestre`)
-    // ga → „Azi", H → înapoi, L → înainte.
-    await keys(lp, 'g', 'a')
+    // gt → „Azi" (today), H → înapoi, L → înainte.
+    await keys(lp, 'g', 't')
     await lp.waitForTimeout(700)
     const onAzi = /Azi/.test((await lp.locator('.sidebar-nav-item.on').first().textContent().catch(() => '')) ?? '')
     check('vim: ga duce pe „Azi"', onAzi, 'pe Azi')
@@ -1986,7 +1986,7 @@ try {
     const proj = (await lp.locator('.sidebar-proj-item.on').first().textContent().catch(() => '')) ?? ''
     check('vim: z „exe" Enter deschide proiectul', /Exemplu/.test(proj), JSON.stringify(proj.trim()))
     // Bara laterală: h intră (pe ecranul de acum), j coboară, Enter deschide și te lasă în listă.
-    await keys(lp, 'g', 'a')
+    await keys(lp, 'g', 't')
     await lp.waitForTimeout(700)
     await keys(lp, 'h', 'j', 'Enter')
     await lp.waitForTimeout(700)
@@ -2062,18 +2062,11 @@ try {
       check('vim: Space pune rândul în selecție și coboară', (await cursorOf(ap)) === rowsNow[1]?.id && selCss, `cursor=${await cursorOf(ap)}, selecție desenată=${selCss}`)
       await keys(ap, 'Escape')
 
-      // / „Vim" Enter → prima potrivire de sub cursor; n → următoarea.
-      await keys(ap, 'g', 'g')
-      const firstId = await cursorOf(ap)
+      // `/` = căutarea din toate proiectele (ca O), nu căutarea în listă.
       await keys(ap, '/')
-      await ap.keyboard.type('Vim')
-      await ap.keyboard.press('Enter')
       await ap.waitForTimeout(200)
-      const m1 = await cursorOf(ap)
-      await keys(ap, 'n')
-      const m2 = await cursorOf(ap)
-      const vimRowIds = (await listRows(ap)).map((r) => r.id)
-      check('vim: / caută, Enter sare, n trece la următoarea', m1 !== firstId && !!m1 && m2 !== m1 && vimRowIds.indexOf(m2) === vimRowIds.indexOf(m1) + 1, `${firstId} → ${m1} → ${m2}`)
+      const qsOpen = (await ap.locator('.qs-overlay').count()) === 1
+      check('vim: / deschide căutarea', qsOpen, qsOpen ? 'deschisă' : 'nu s-a deschis')
       await keys(ap, 'Escape', 'Escape')
       await ap.close()
     }
