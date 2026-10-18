@@ -122,3 +122,26 @@ export function nextMatch(rows: CursorRow[], matches: string[], cur: string | nu
   }
   return pick
 }
+
+/**
+ * Secțiunile panoului (`J` / `K`): titlu → jetoane → descriere → dependențe →
+ * fir. Dependențele sunt UNA, deși `j` / `k` se opresc pe fiecare. În jos:
+ * primul câmp al secțiunii următoare; în sus: primul câmp al secțiunii
+ * anterioare (dintr-o dependență din mijloc, în sus duce la descriere, nu la
+ * prima dependență — ca `{` în Vim, o secțiune întreagă).
+ */
+export function sectionStep(fields: string[], cur: string | null, d: 1 | -1): string | null {
+  if (!fields.length) return null
+  const sec = (f: string) => (f.startsWith('dep:') ? 'deps' : f)
+  let ix = cur ? fields.indexOf(cur) : -1
+  if (ix < 0) return fields[0]
+  const here = sec(fields[ix])
+  if (d > 0) {
+    while (ix < fields.length - 1 && sec(fields[ix]) === here) ix++
+    return fields[ix]
+  }
+  while (ix > 0 && sec(fields[ix]) === here) ix--
+  const prev = sec(fields[ix])
+  while (ix > 0 && sec(fields[ix - 1]) === prev) ix--
+  return fields[ix]
+}

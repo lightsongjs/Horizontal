@@ -142,6 +142,17 @@ describe('planBulk', () => {
     expect(plan.writes).toEqual([{ id: 'HZ-09', patch: { done: false }, prev: { done: true } }])
     expect(bulkNotice({ kind: 'done', value: false }, 2, 0)).toBe('2 redeschise')
   })
+  it('zi întreagă: scoate ora și mementoul, ziua rămâne; fără dată nimic', () => {
+    const plan = planBulk([timed, allDay, base], { kind: 'date', preset: { kind: 'allDay' } }, () => true, NOW)
+    expect(plan.writes.map((w) => w.id)).toEqual([timed.id])
+    expect(plan.writes[0].patch.allDay).toBe(true)
+    expect(new Date(plan.writes[0].patch.dueAt!).getHours()).toBe(0)
+    expect(bulkNotice({ kind: 'date', preset: { kind: 'allDay' } }, 1, 0)).toBe('Zi întreagă')
+  })
+  it('valul: doar cele din alt val, cu anulare', () => {
+    const plan = planBulk([{ ...timed, wave: 1 }, { ...allDay, wave: 2 }], { kind: 'wave', value: 2 }, () => true, NOW)
+    expect(plan.writes).toEqual([{ id: timed.id, patch: { wave: 2 }, prev: { wave: 1 } }])
+  })
   it('bifa pe selecție: toate bifate → se redeschid', () => {
     expect(doneTarget([{ done: true }, { done: false }])).toBe(true)
     expect(doneTarget([{ done: true }])).toBe(false)

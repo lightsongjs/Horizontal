@@ -2084,17 +2084,18 @@ try {
       await keys(pp, 'g', 'g', 'l')
       await pp.waitForTimeout(900)
       const inPane = await pp.evaluate(() => document.activeElement?.classList.contains('split-pane'))
-      const hasWave = (await pp.locator('.split-pane [data-vf="wave"]').count()) > 0
-      await keys(pp, 'j', 'j', 'Enter')
-      await pp.waitForTimeout(500)
-      if (hasWave) {
-        const pop = await pp.locator('.split-pane .fc-pop-wave').count()
-        check('vim: panou l j j Enter deschide valul', !!inPane && pop === 1, `în panou=${inPane}, popover=${pop}`)
-        await keys(pp, 'Escape')
-      } else {
-        const urg = await pp.locator('.split-pane .fc-chip.urgent').count()
-        check('vim: panou l j j Enter comută urgentul', !!inPane && urg === 1, `în panou=${inPane}, urgent=${urg}`)
-      }
+      // Inelul: titlu → jetoane (un popas) → descriere. J J de pe titlu = descrierea.
+      const fieldRule = () => pp.evaluate(() => [...document.querySelectorAll('style')].map((s) => s.textContent).find((t) => t.startsWith('@media (pointer: fine) {') && t.includes('#app[data-vim-pane="panel"]')) ?? '')
+      await keys(pp, 'J', 'J')
+      check('vim: panou J J ajunge pe descriere', !!inPane && /data-vim-pane="panel"\] \.split-pane \.form-col-desc \.desc-box/.test(await fieldRule()), (await fieldRule()).match(/#app\[data-vim-pane="panel"\][^{]*/)?.[0] ?? '(niciun câmp)')
+      await keys(pp, 'K', 'Enter')
+      await pp.waitForTimeout(300)
+      const menuOn = await pp.locator('.am-menu').count()
+      const menuTitle = (await pp.locator('.am-menu .am-title').textContent().catch(() => '')) ?? ''
+      check('vim: Enter pe jetoane deschide meniul de acțiuni', menuOn === 1 && /Acțiuni/.test(menuTitle), `meniu=${menuOn}, titlu=${menuTitle}`)
+      await keys(pp, 'Escape')
+      await pp.waitForTimeout(200)
+      check('…iar Esc îl închide, panoul rămâne', (await pp.locator('.am-menu').count()) === 0 && (await pp.locator('.split-pane:not([hidden])').count()) === 1, 'închis')
       await pp.close()
 
       // Esc din descriere → panoul (normal) → lista → panoul se închide. Pagină nouă: formular curat.
@@ -2154,6 +2155,57 @@ try {
       await up.waitForTimeout(800)
       check('…și click dreapta → Urgent se vede în panou', (await up.locator('.split-pane .fc-chip.urgent').count()) === 0 && (await inDb())?.urgent === false, `urgent=${(await inDb())?.urgent}`)
       await up.close()
+    }
+
+    // ── Meniul de acțiuni (m) ────────────────────────────────────────────────
+    {
+      const mp = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+      await mp.goto(BASE, { waitUntil: 'networkidle' })
+      await mp.waitForTimeout(700)
+      const names = ['Meniu unu mâine', 'Meniu doi mâine', 'Meniu trei mâine']
+      for (const t of names) {
+        await mp.locator('.qa-input').first().fill(t)
+        await mp.keyboard.press('Enter')
+        await mp.waitForTimeout(400)
+      }
+      await mp.locator('h1').first().click()
+      await keys(mp, 'g', 'w')
+      await mp.waitForTimeout(800)
+      const weekTitles = () => mp.evaluate(() => [...document.querySelectorAll('main .list-row[data-issue-id]')]
+        .filter((el) => !el.closest('.split-pane')).map((el) => el.querySelector('.list-title')?.textContent))
+      const due = (t) => mp.evaluate((t) => JSON.parse(localStorage.getItem('horizontal:v2')).issues.find((i) => i.title === t)?.dueAt, t)
+      const before = await due('Meniu unu')
+      // Trei rânduri în selecție (Space), apoi m t a: toate pe azi; un u le întoarce.
+      await keys(mp, 'g', 'g', 'Space', 'Space', 'Space', 'm')
+      await mp.waitForTimeout(200)
+      const root = await mp.locator('.am-menu .am-item').count()
+      await keys(mp, 't')
+      const crumb = (await mp.locator('.am-menu .am-head').textContent().catch(() => '')) ?? ''
+      await keys(mp, 'a')
+      await mp.waitForTimeout(900)
+      const left = await weekTitles()
+      check('vim: m t a pe trei rânduri le mută pe azi', root === 12 && /Acțiuni ›\s*Dată și oră/.test(crumb) && names.every((n) => !left.includes(n.replace(' mâine', ''))), `rânduri meniu=${root}, crumb=${JSON.stringify(crumb)}, rămase=${JSON.stringify(left)}`)
+      await keys(mp, 'u')
+      await mp.waitForTimeout(900)
+      const back = await weekTitles()
+      check('…iar un u le întoarce pe toate', names.every((n) => back.includes(n.replace(' mâine', ''))) && (await due('Meniu unu')) === before, JSON.stringify(back))
+      // Cu un interval (v j), „Mută în proiect" e stins, cu motivul.
+      await keys(mp, 'g', 'g', 'v', 'j', 'm')
+      await mp.waitForTimeout(200)
+      const mv = mp.locator('.am-menu .am-item', { hasText: 'Mută în proiect' })
+      const mvCls = (await mv.getAttribute('class').catch(() => '')) ?? ''
+      const mvWhy = (await mv.locator('.am-why').textContent().catch(() => '')) ?? ''
+      check('vim: m pe interval stinge „Mută", cu motivul', /\boff\b/.test(mvCls) && /doar pe un tichet/.test(mvWhy), `${mvCls} · ${mvWhy}`)
+      await keys(mp, 'M')
+      check('…și M nu deschide sub-meniul', (await mp.locator('.am-menu .am-title').textContent()) === 'Acțiuni', await mp.locator('.am-menu .am-title').textContent())
+      await keys(mp, 'Escape', 'Escape', 'Escape')
+      // t direct: sub-meniul datei, ora din cifre.
+      await keys(mp, 'g', 'g', 't', '1', '5', '3', '0', 'Enter')
+      await mp.waitForTimeout(900)
+      const firstTitle = (await weekTitles())[0]
+      const d = new Date(await due(firstTitle + ' mâine') ?? await due(firstTitle))
+      check('vim: t 1530 Enter pune ora 15:30, pe ziua sarcinii', d.getHours() === 15 && d.getMinutes() === 30, `${firstTitle} → ${d.toString()}`)
+      await mp.close()
     }
 
     // ── Faza 5: ] schimbă valul cu modul Vim pornit ──────────────────────────

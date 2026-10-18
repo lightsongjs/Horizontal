@@ -21,7 +21,7 @@ import {
 import { Attachments } from './Attachments'
 import { Thread } from './Thread'
 import { DescFold } from './DescFold'
-import { useVimField, useVimPanel, type PanelAdapter } from '../vim'
+import { useVimPanel, type PanelAdapter } from '../vim'
 import { SheetThreadRow } from './SheetThreadRow'
 import type { EditorHandle } from './MarkdownEditor'
 import { ChipPop } from './ChipPop'
@@ -645,8 +645,6 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
   // se completează mai jos, după ce există jetoanele și popoverele.
   const vimPanel = useRef<PanelAdapter | null>(null)
   useVimPanel(vimPanel, docked && isEdit)
-  const vimField = useVimField()
-  const vimAt = docked ? vimField : null
   /**
    * Panoul și telefonul: descrierea are înălțimea textului (`DescFold`), iar
    * sus stă rândul de fir. Modalul de 94% rămâne cum era — acolo descrierea e
@@ -1057,10 +1055,10 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
   })
   const addItems = addMenuItems({ hasTheme: !!theme, hasAssignee: !!assigneeId })
 
-  // Cursorul de câmp al modului Vim (`src/vim.tsx`), pe tichetul docat. Ordinea
-  // e a machetei, nu a DOM-ului (antetul ține fixarea și proiectul înaintea
-  // titlului). Urgentul și pasarea sunt câmpuri și când sunt goale: atunci
-  // jetonul-fantomă apare doar cât stă cursorul pe ele.
+  // Inelul modului Vim (`src/vim.tsx`) pe tichetul docat: titlu → jetoane (un
+  // singur popas; Enter acolo = meniul de acțiuni, deschis de dispecer) →
+  // descriere → fiecare dependență → fir. Fixarea și jetonul de proiect din
+  // antet nu sunt în inel — au literele lor (`F`, `M`) și meniul.
   const paneEl = (sel: string) => document.querySelector<HTMLElement>(`.split-pane ${sel}`)
   const focusComposer = (handoff: boolean) => {
     const box = paneEl('.thread-textarea') as HTMLTextAreaElement | null
@@ -1073,12 +1071,7 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
   vimPanel.current = docked && existing ? {
     issueId: existing.id,
     fields: () => {
-      const f = ['title', 'date']
-      if (chips.includes('wave')) f.push('wave')
-      if (canWrite) f.push('urgent', 'pin')
-      if (paneEl('.thread')) f.push('who')
-      if (canWrite && !isTempIssueId(existing.id)) f.push('project')
-      f.push('desc')
+      const f = ['title', 'chips', 'desc']
       document.querySelectorAll<HTMLElement>('.split-pane [data-vf^="dep:"]').forEach((el) => f.push(el.dataset.vf!))
       if (paneEl('.thread-textarea')) f.push('comment')
       return f
@@ -1086,11 +1079,6 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
     activate: (field) => {
       const p = vimPanel.current!
       if (field === 'title') p.focusTitle(false)
-      else if (field === 'date' || field === 'wave') p.openPop(field)
-      else if (field === 'urgent') p.toggleUrgent()
-      else if (field === 'pin') p.togglePin()
-      else if (field === 'who') p.focusComposer(true)
-      else if (field === 'project') p.openMove()
       else if (field === 'desc') p.focusDesc()
       else if (field === 'comment') p.focusComposer(false)
       else if (field.startsWith('dep:')) paneEl(`[data-vf="${CSS.escape(field)}"] .dep-card-body`)?.click()
@@ -1104,17 +1092,6 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
     },
     focusDesc: () => descRef.current?.focusEnd(),
     focusComposer,
-    openPop: (kind) => {
-      if (kind === 'wave' && !chips.includes('wave')) return false
-      const chip = paneEl(`[data-vf="${kind}"]`)
-      if (!chip || !canWrite) return false
-      if (openPop !== kind) togglePop(kind, chip)
-      return true
-    },
-    toggleUrgent: () => { if (canWrite) setUrgent((v) => !v) },
-    togglePin: () => togglePinRef.current(),
-    toggleDone: () => { if (canWrite) void toggleDone(existing.id) },
-    openMove: () => paneEl('.sh-move-btn')?.click(),
     title: () => title,
     dirty: () => isDirty,
   } : null
@@ -1323,7 +1300,6 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
             <button
               key={kind}
               {...chipProps('date', first)}
-              data-vf="date"
               disabled={!canWrite}
               className={`fc-chip due${dueParts ? '' : ' ghost'}${late ? ' late' : ''}${titleDate.active ? ' pending' : ''}${isOpen('date')}`}
               aria-label={label}
@@ -1361,7 +1337,6 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
             <button
               key={kind}
               {...chipProps('wave', first)}
-              data-vf="wave"
               disabled={!canWrite}
               className={`fc-chip${isOpen('wave')}`}
               aria-label={`Val: ${waveObj?.name ?? wave}`}
@@ -1393,7 +1368,6 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
             <button
               key={kind}
               {...chipProps('who', first)}
-              data-vf="who"
               disabled={!canWrite}
               className={`fc-chip who${isOpen('who') && !plusOpen ? ' open' : ''}`}
               aria-label={`Pasat lui ${name}`}
@@ -1410,7 +1384,6 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
               key={kind}
               type="button"
               data-chip=""
-              data-vf="urgent"
               tabIndex={first ? 0 : -1}
               disabled={!canWrite}
               className="fc-chip urgent"
@@ -1426,20 +1399,6 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
         }
         return null
       })}
-      {/* Modul Vim: urgentul și pasarea sunt câmpuri și goale — jetonul-fantomă
-          stă pe rând doar cât e cursorul de câmp pe el. */}
-      {vimAt === 'urgent' && !urgent && canWrite && (
-        <button type="button" data-chip="" data-vf="urgent" tabIndex={-1} className="fc-chip ghost" onClick={() => setUrgent(true)}>
-          <Icon name="urgent" size={14} />
-          Urgent
-        </button>
-      )}
-      {vimAt === 'who' && !assigneeId && (
-        <button type="button" data-chip="" data-vf="who" tabIndex={-1} className="fc-chip ghost" onClick={() => vimPanel.current?.focusComposer(true)}>
-          <Icon name="people" size={14} />
-          Pasează
-        </button>
-      )}
       {/* Data venită din titlu, cu cele două ieșiri: curăță textul rămas în
           titlu, sau refuză de tot. Fără ele, recunoașterea ar fi o ghicire pe
           care n-o poți contrazice. */}

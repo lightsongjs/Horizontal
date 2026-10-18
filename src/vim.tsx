@@ -36,7 +36,7 @@ import { createPortal } from 'react-dom'
 import { useTheme } from './theme'
 import { useUI } from './ui'
 import { useTaskActions } from './components/TaskActions'
-import { VimRowPop } from './components/VimRowPop'
+import { ActionMenu } from './components/ActionMenu'
 import {
   continuations, EMPTY_SEQ, expire, feed, isTypingTarget, pendingLabel, REPEATABLE, SEQ_TIMEOUT_MS, token,
   WHICH_KEY_DELAY_MS, type ActionId, type FeedResult, type KeyCtx, type SeqState,
@@ -46,6 +46,9 @@ import { doneTarget, pinTarget, urgentTarget } from './lib/bulkActions'
 import { ticketUrl } from './lib/deepLink'
 import { isTempIssueId } from './lib/issueId'
 import type { Issue } from './lib/types'
+import type { MenuAction, MenuLevel } from './lib/actionMenu'
+import { useMoveIssue } from './hooks'
+import { errorMessage } from './lib/errorMessage'
 
 export type Pane = 'sidebar' | 'list' | 'panel'
 
@@ -74,24 +77,28 @@ export interface SelectionAdapter {
  */
 export interface PanelAdapter {
   issueId: string
-  /** Câmpurile, în ordinea cursorului: titlu → dată → val → urgent → fixare → pasare → proiect → descriere → dependențe → comentariu. */
+  /**
+   * Inelul, în ordine: titlu → jetoane (UN popas; Enter = meniul de acțiuni)
+   * → descriere → fiecare dependență → fir. Controalele din antet (fixarea,
+   * jetonul de proiect) nu sunt în inel: au literele lor (`F`, `M`) și meniul.
+   */
   fields(): string[]
+  /** Titlul, descrierea, firul, o dependență. Jetoanele le deschide dispecerul (meniul). */
   activate(field: string): void
   focusTitle(selectAll: boolean): void
   focusDesc(): void
   focusComposer(handoff: boolean): void
-  /** Popoverul datei / valului. `false` = câmpul nu există (un singur val). */
-  openPop(kind: 'date' | 'wave'): boolean
-  toggleUrgent(): void
-  togglePin(): void
-  toggleDone(): void
-  openMove(): void
   title(): string
   dirty(): boolean
 }
 
-/** Popoverul unui rând (`t`, `M`): pe ce rânduri și sub care. */
-export type RowPop = { kind: 'date' | 'move'; ids: string[]; anchorId: string }
+/**
+ * Meniul de acțiuni (`m`), deschis pe ținte fixate la deschidere. `anchor`:
+ * rândul sub care stă (listă) sau null = sub jetoanele panoului. `fromRoot`:
+ * deschis pe primul nivel (`m`), deci Esc dintr-un sub-meniu urcă; deschis
+ * direct pe un sub-meniu (`t`, `M`, `w`), Esc închide.
+ */
+export interface MenuState { level: MenuLevel; ids: string[]; anchor: string | null; fromRoot: boolean }
 
 /** Căutarea în listă (`/`) sau filtrul (`f`). */
 export interface FindState { mode: 'find' | 'filter'; query: string; open: boolean }
@@ -124,7 +131,7 @@ interface VimState {
   find: FindState | null
   /** Potrivirile căutării / filtrului de acum. */
   matches: string[]
-  rowPop: RowPop | null
+  menu: MenuState | null
 }
 
 const ApiCtx = createContext<VimApi | null>(null)
@@ -149,7 +156,9 @@ interface Internal {
   setSel(ids: string[], visual: boolean): void
   setFind(f: FindState | null): void
   setMatches(ids: string[]): void
-  setRowPop(p: RowPop | null): void
+  setMenu(m: MenuState | null): void
+  /** Execută un rând ales din meniu — îl pune dispecerul, îl cheamă `ActionMenu`. */
+  menuExec: React.MutableRefObject<((a: MenuAction, ids: string[]) => void) | null>
 }
 const InternalCtx = createContext<Internal | null>(null)
 
@@ -164,7 +173,8 @@ export function VimProvider({ children }: { children: ReactNode }) {
   const [sel, setSelState] = useState<{ ids: string[]; visual: boolean }>({ ids: [], visual: false })
   const [find, setFindState] = useState<FindState | null>(null)
   const [matches, setMatches] = useState<string[]>([])
-  const [rowPop, setRowPop] = useState<RowPop | null>(null)
+  const [menu, setMenu] = useState<MenuState | null>(null)
+  const menuExec = useRef<((a: MenuAction, ids: string[]) => void) | null>(null)
   const hostCount = useRef(0)
   const listBusy = useRef<(() => boolean) | null>(null)
   const selAdapter = useRef<SelectionAdapter | null>(null)
@@ -192,13 +202,13 @@ export function VimProvider({ children }: { children: ReactNode }) {
   }), [])
 
   const internal = useMemo<Internal>(() => ({
-    hostCount, listBusy, selAdapter, panel, cursorRef, fieldRef, findRef,
+    hostCount, listBusy, selAdapter, panel, cursorRef, fieldRef, findRef, menuExec,
     setCursorId: (id) => { cursorRef.current = id; setCursorId(id) },
     setField: (f) => { fieldRef.current = f; setFieldState(f) },
     setPane, setPending, setWhichKey, setHint,
     setSel: (ids, visual) => setSelState({ ids, visual }),
     setFind: (f) => { findRef.current = f; setFindState(f) },
-    setMatches, setRowPop,
+    setMatches, setMenu,
   }), [])
 
   // Oprit în timpul lucrului: nimic nu rămâne agățat (inel, pastilă, mesaj).
@@ -209,15 +219,15 @@ export function VimProvider({ children }: { children: ReactNode }) {
     internal.setSel([], false)
     internal.setFind(null)
     setMatches([])
-    setRowPop(null)
+    setMenu(null)
     setPending('')
     setWhichKey(null)
     setHint(null)
   }, [vim, internal])
 
   const state = useMemo<VimState>(
-    () => ({ enabled: vim, cursorId, pane, pending, whichKey, hint, selIds: sel.ids, visual: sel.visual, find, matches, rowPop }),
-    [vim, cursorId, pane, pending, whichKey, hint, sel, find, matches, rowPop],
+    () => ({ enabled: vim, cursorId, pane, pending, whichKey, hint, selIds: sel.ids, visual: sel.visual, find, matches, menu }),
+    [vim, cursorId, pane, pending, whichKey, hint, sel, find, matches, menu],
   )
 
   return (
@@ -251,10 +261,6 @@ export function useVimOptional(): VimApi {
   return useContext(ApiCtx) ?? NOOP_API
 }
 
-/** Câmpul de sub cursorul panoului (sau null): formularul docat arată jetonul-fantomă al unui câmp gol. */
-export function useVimField(): string | null {
-  return useContext(FieldCtx)
-}
 
 /** „Listă": arborele și confirmarea ștergerii păstrează Escape-ul pentru ele. */
 export function useVimListBusy(busy: boolean) {
@@ -328,8 +334,7 @@ function paneOf(el: Element | null): Pane {
 /** Unde e un câmp al panoului pe ecran: inelul și derularea îl caută aici. */
 export function fieldSelector(f: string): string {
   if (f === 'title') return '.split-pane .sh-title-wrap'
-  if (f === 'pin') return '.split-pane .sh-pin'
-  if (f === 'project') return '.split-pane .sh-move-btn'
+  if (f === 'chips') return '.split-pane .fc-row'
   if (f === 'desc') return '.split-pane .form-col-desc .desc-box'
   if (f === 'comment') return '.split-pane .thread-compose'
   return `.split-pane [data-vf="${CSS.escape(f)}"]`
@@ -343,7 +348,7 @@ function sidebarItems(): HTMLElement[] {
 
 /** O suprapunere deschisă (popover de jeton, meniu de rând, galerie, confirmarea închiderii) își ține tastele. */
 function overlayOpen(): boolean {
-  return !!document.querySelector('.fc-pop, .ctx-menu, .lb-back, .ccm-overlay, .qs-overlay, .kb-sheet')
+  return !!document.querySelector('.am-menu, .fc-pop, .ctx-menu, .lb-back, .ccm-overlay, .qs-overlay, .kb-sheet')
 }
 
 /** Ce se poate focusa într-un popover, în ordine: j / k trec prin ele. */
@@ -417,6 +422,9 @@ export function useKeyDispatcher(actions: DispatchActions) {
   uiRef.current = ui
   const taRef = useRef(ta)
   taRef.current = ta
+  const move = useMoveIssue()
+  const moveRef = useRef(move)
+  moveRef.current = move
   const followRef = useRef(follow)
   followRef.current = follow
 
@@ -693,10 +701,54 @@ export function useKeyDispatcher(actions: DispatchActions) {
       )
     }
 
-    /** O acțiune pe rânduri. Întoarce dacă a făcut ceva (pentru `.`). */
-    const rowAction = (id: ActionId, rows: Row[]): boolean => {
+    const openMenu = (level: MenuLevel, ids: string[], anchor: string | null, fromRoot: boolean) => {
+      if (!ids.length) { internal.setHint('Niciun rând sub cursor'); return }
+      internal.setMenu({ level, ids, anchor, fromRoot })
+    }
+
+    /** Pasarea: tichetul în panou, caseta firului cu „către…" deschis. */
+    const handoff = (id: string) => {
+      if (!openRow(id)) return
+      waitFor(() => (panel()?.issueId === id ? panel() : null), (p) => { internal.setField('comment'); p.focusComposer(true) })
+    }
+
+    /**
+     * Un rând ales din meniul de acțiuni, pe țintele de la deschidere. Aceleași
+     * drumuri ca tastele directe: `TaskActions` (anulare, coadă), refuzul pe
+     * formularul docat murdar, ieșirea din selecție, cursorul pe vecin.
+     */
+    internal.menuExec.current = (a: MenuAction, ids: string[]) => {
       const t = taRef.current
-      const ids = targets(rows)
+      const rows = readRows()
+      const done = () => { clearSel(); settleAfter(rows) }
+      const formField = a.kind === 'date' || a.kind === 'urgent' || a.kind === 'delete' || a.kind === 'wave' || a.kind === 'move'
+      if (formField && dirtyBlocks(ids)) return
+      switch (a.kind) {
+        case 'urgent': case 'pin': case 'done': case 'delete':
+          if (rowAction(a.kind, rows, ids)) lastAction.current = a.kind
+          return
+        case 'date':
+          if (a.preset.kind === 'tomorrow') { if (rowAction('tomorrow', rows, ids)) lastAction.current = 'tomorrow'; return }
+          void t.run({ kind: 'date', preset: a.preset }, ids); done(); return
+        case 'wave': void t.run({ kind: 'wave', value: a.value }, ids); done(); return
+        case 'move': {
+          const id = ids[0]
+          const docked = uiRef.current.dockedIssueId === id
+          clearSel()
+          moveRef.current(id, a.projectId, { open: docked, remount: docked }).catch((e) => toast(errorMessage(e)))
+          return
+        }
+        case 'rename': clearSel(); rename(ids[0]); return
+        case 'yank': void yank(ids[0], 'link'); return
+        case 'handoff': clearSel(); handoff(ids[0]); return
+        case 'sub': case 'calendar': return
+      }
+    }
+
+    /** O acțiune pe rânduri. Întoarce dacă a făcut ceva (pentru `.`). */
+    const rowAction = (id: ActionId, rows: Row[], explicit?: string[]): boolean => {
+      const t = taRef.current
+      const ids = explicit ?? targets(rows)
       if (!ids.length) { internal.setHint('Niciun rând sub cursor'); return false }
       const issues = t.issuesOf(ids)
       const before = rows
@@ -721,12 +773,12 @@ export function useKeyDispatcher(actions: DispatchActions) {
         }
         case 'date':
           if (dirtyBlocks(ids)) return false
-          internal.setRowPop({ kind: 'date', ids, anchorId: current(rows) ?? ids[0] })
+          openMenu('date', ids, explicit ? null : current(rows) ?? ids[0], false)
           return false
         case 'move':
           if (ids.length !== 1) { toast('Se mută câte un tichet — alege unul singur'); return false }
           if (dirtyBlocks(ids)) return false
-          internal.setRowPop({ kind: 'move', ids, anchorId: ids[0] })
+          openMenu('move', ids, explicit ? null : ids[0], false)
           return false
         default:
           return false
@@ -794,6 +846,17 @@ export function useKeyDispatcher(actions: DispatchActions) {
           rowAction(lastAction.current, rows)
           return
         case 'rename': { const c = current(rows); if (c) rename(c); return }
+        case 'menu': {
+          // Din panou: tichetul deschis. Din listă: intervalul > selecția > rândul.
+          if (paneOf(document.activeElement) === 'panel') {
+            const p = panel()
+            if (p) openMenu('root', [p.issueId], null, true)
+            return
+          }
+          const ids = targets(rows)
+          openMenu('root', ids, current(rows) ?? ids[0] ?? null, true)
+          return
+        }
         case 'yankLink': case 'yankTitle': {
           const c = current(rows) ?? targets(rows)[0]
           if (!c) return
@@ -856,30 +919,38 @@ export function useKeyDispatcher(actions: DispatchActions) {
           setField(fs[next])
           return
         }
+        case 'sectionDown': case 'sectionUp': {
+          const p = panel()
+          if (!p) return
+          setField(cur.sectionStep(p.fields(), internal.fieldRef.current ?? 'title', id === 'sectionDown' ? 1 : -1))
+          return
+        }
         case 'activate': {
           const p = panel()
           if (!p) return
           const f = internal.fieldRef.current ?? 'title'
           setField(f)
-          p.activate(f)
+          if (f === 'chips') openMenu('root', [p.issueId], null, true)
+          else p.activate(f)
           return
         }
         case 'pTitle': case 'pRename': { const p = panel(); if (!p) return; setField('title'); p.focusTitle(id === 'pRename'); return }
         case 'pDesc': { const p = panel(); if (!p) return; setField('desc'); p.focusDesc(); return }
         case 'pComment': { const p = panel(); if (!p) return; setField('comment'); p.focusComposer(false); return }
-        case 'pHandoff': { const p = panel(); if (!p) return; setField('who'); p.focusComposer(true); return }
-        case 'pDate': { const p = panel(); if (!p) return; setField('date'); p.openPop('date'); return }
-        case 'pWave': {
+        case 'pHandoff': { const p = panel(); if (!p) return; setField('comment'); p.focusComposer(true); return }
+        // Pe tichetul docat, prin aceleași drumuri ca din listă (TaskActions):
+        // o scriere pe formularul curat îl remontează (`SplitView`), pe cel
+        // murdar e refuzată — nimic nu mai trăiește doar în starea formularului.
+        case 'pDate': { const p = panel(); if (p && !dirtyBlocks([p.issueId])) openMenu('date', [p.issueId], null, false); return }
+        case 'pWave': { const p = panel(); if (p && !dirtyBlocks([p.issueId])) openMenu('wave', [p.issueId], null, false); return }
+        case 'pMove': { const p = panel(); if (p && !dirtyBlocks([p.issueId])) openMenu('move', [p.issueId], null, false); return }
+        case 'pDone': case 'pUrgent': case 'pPin': {
           const p = panel()
           if (!p) return
-          if (p.openPop('wave')) setField('wave')
-          else toast('Proiectul are un singur val')
+          const k = id === 'pDone' ? 'done' : id === 'pUrgent' ? 'urgent' : 'pin'
+          rowAction(k, rows, [p.issueId])
           return
         }
-        case 'pDone': panel()?.toggleDone(); return
-        case 'pUrgent': { const p = panel(); if (!p) return; setField('urgent'); p.toggleUrgent(); return }
-        case 'pPin': panel()?.togglePin(); return
-        case 'pMove': { const p = panel(); if (!p) return; setField('project'); p.openMove(); return }
         case 'pDelete': {
           const p = panel()
           if (!p) return
@@ -1043,7 +1114,7 @@ export function useKeyDispatcher(actions: DispatchActions) {
     internal.setSel([], false)
     internal.setFind(null)
     internal.setMatches([])
-    internal.setRowPop(null)
+    internal.setMenu(null)
   }, [internal])
   return resetLocal
 }
@@ -1167,8 +1238,13 @@ export function VimStatus() {
           ))}
         </div>
       )}
-      {st.rowPop && internal && createPortal(
-        <VimRowPop pop={st.rowPop} onClose={() => internal.setRowPop(null)} />,
+      {st.menu && internal && createPortal(
+        <ActionMenu
+          menu={st.menu}
+          onLevel={(level) => internal.setMenu(st.menu && { ...st.menu, level })}
+          onClose={() => internal.setMenu(null)}
+          exec={(a, ids) => internal.menuExec.current?.(a, ids)}
+        />,
         document.body,
       )}
     </>

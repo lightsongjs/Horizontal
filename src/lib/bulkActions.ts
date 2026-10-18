@@ -25,6 +25,8 @@ export type DatePreset =
   | { kind: 'none' }
   | { kind: 'pick'; date: Date; time: string | null }
   | { kind: 'time'; time: string }
+  /** Zi întreagă: scoate ora (și mementoul), ziua rămâne. Fără dată nu face nimic. */
+  | { kind: 'allDay' }
 
 export type BulkAction =
   | { kind: 'date'; preset: DatePreset }
@@ -34,8 +36,10 @@ export type BulkAction =
   | { kind: 'assign'; assigneeId: string | null }
   /** Fixează sus / scoate fixarea (`pinnedAt`). Vezi `lib/pinned.ts`. */
   | { kind: 'pin'; value: boolean }
+  /** Valul (meniul de acțiuni din modul Vim, pe tichetele aceluiași proiect). */
+  | { kind: 'wave'; value: number }
 
-type Fields = Partial<Pick<Issue, 'dueAt' | 'allDay' | 'remindAt' | 'urgent' | 'done' | 'assigneeId' | 'pinnedAt'>>
+type Fields = Partial<Pick<Issue, 'dueAt' | 'allDay' | 'remindAt' | 'urgent' | 'done' | 'assigneeId' | 'pinnedAt' | 'wave'>>
 
 export interface Write {
   id: string
@@ -77,6 +81,12 @@ function onDay(day: Date, iso: string | null): Date {
  * Recurența (`rrule`) nu se atinge: se mută doar apariția curentă.
  */
 export function datePatch(issue: Issue, preset: DatePreset, now: Date): Fields {
+  if (preset.kind === 'allDay') {
+    if (!issue.dueAt || issue.allDay) return {}
+    const out: Fields = { dueAt: startOfLocalDay(new Date(issue.dueAt)).toISOString(), allDay: true }
+    if (issue.remindAt !== null) out.remindAt = null
+    return out
+  }
   const today = startOfLocalDay(now)
   let target: Date | null
   let allDay = issue.allDay
@@ -143,6 +153,7 @@ export function actionPatch(issue: Issue, action: BulkAction, now: Date): Fields
     case 'assign': return (issue.assigneeId ?? null) === action.assigneeId ? {} : { assigneeId: action.assigneeId }
     // Unul deja fixat își păstrează ora fixării (deci și locul între fixate).
     case 'pin': return action.value === !!issue.pinnedAt ? {} : { pinnedAt: action.value ? now.toISOString() : null }
+    case 'wave': return issue.wave === action.value ? {} : { wave: action.value }
   }
 }
 
@@ -227,6 +238,7 @@ function dateWords(preset: DatePreset): string {
     case 'none': return 'fără dată'
     case 'pick': return `pe ${toShortDate(preset.date)}`
     case 'time': return `la ${preset.time}`
+    case 'allDay': return 'zi întreagă'
   }
 }
 
@@ -245,6 +257,7 @@ export function bulkNotice(action: BulkAction, written: number, readOnly: number
     case 'date':
       head = action.preset.kind === 'none'
         ? plural(written, 'Fără dată', 'fără dată')
+        : action.preset.kind === 'allDay' ? plural(written, 'Zi întreagă', 'zi întreagă')
         : `${plural(written, 'Mutat', 'mutate')} ${dateWords(action.preset)}`
       break
     case 'urgent':
@@ -256,6 +269,9 @@ export function bulkNotice(action: BulkAction, written: number, readOnly: number
       break
     case 'pin':
       head = action.value ? plural(written, 'Fixat sus', 'fixate sus') : plural(written, 'Fixare scoasă', 'scoase de sus')
+      break
+    case 'wave':
+      head = plural(written, 'Mutat în alt val', 'mutate în alt val')
       break
     case 'assign':
       head = action.assigneeId

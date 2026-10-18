@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { first, last, matching, neighborAfterRemove, nextMatch, rangeBetween, step, stepGroup, type CursorRow } from './cursor'
+import { first, last, matching, neighborAfterRemove, nextMatch, rangeBetween, sectionStep, step, stepGroup, type CursorRow } from './cursor'
 
 // Ca „Azi": Fixate (1), Restanțe (2), Azi (3).
 const ROWS: CursorRow[] = [
@@ -93,4 +93,21 @@ describe('matching / nextMatch', () => {
   ]
   for (const [name, cur, d, n, want] of cases) it(name, () => expect(nextMatch(ROWS, hits, cur, d, n)).toBe(want))
   it('fără potriviri → null', () => expect(nextMatch(ROWS, [], 'P1', 1)).toBeNull())
+})
+
+describe('sectionStep (J / K în panou)', () => {
+  const F = ['title', 'chips', 'desc', 'dep:A', 'dep:B', 'dep:C', 'comment']
+  const cases: [string, string | null, 1 | -1, string | null][] = [
+    ['J J de pe titlu ajunge la descriere (pas 1)', 'title', 1, 'chips'],
+    ['J de pe jetoane → descriere', 'chips', 1, 'desc'],
+    ['J de pe descriere → prima dependență', 'desc', 1, 'dep:A'],
+    ['J din mijlocul dependențelor → firul', 'dep:B', 1, 'comment'],
+    ['J pe fir rămâne', 'comment', 1, 'comment'],
+    ['K de pe fir → prima dependență', 'comment', -1, 'dep:A'],
+    ['K dintr-o dependență → descrierea', 'dep:C', -1, 'desc'],
+    ['K de pe titlu rămâne', 'title', -1, 'title'],
+    ['fără câmp → primul', null, 1, 'title'],
+  ]
+  for (const [name, cur, d, want] of cases) it(name, () => expect(sectionStep(F, cur, d)).toBe(want))
+  it('fără dependențe, descrierea → firul', () => expect(sectionStep(['title', 'chips', 'desc', 'comment'], 'desc', 1)).toBe('comment'))
 })

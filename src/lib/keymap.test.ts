@@ -78,6 +78,11 @@ describe('feed', () => {
     ['gv = foaia valurilor', ['g', 'v'], {}, ['waveManage']],
     ['i în panou = titlul, în listă nu e al nostru', ['i'], { ctx: 'panel' }, ['pTitle']],
     ['Space în listă = selecție', ['Space'], {}, ['mark']],
+    ['m = meniul de acțiuni, în listă și în panou', ['m'], {}, ['menu']],
+    ['m în panou = meniul (nu mai e comentariul)', ['m'], { ctx: 'panel' }, ['menu']],
+    ['gc în panou = comentariul', ['g', 'c'], { ctx: 'panel' }, ['pComment']],
+    ['J / K în panou = secțiunile', ['J', 'K'], { ctx: 'panel' }, ['sectionDown', 'sectionUp']],
+    ['t în listă = sub-meniul datei', ['t'], {}, ['date']],
     ['fără context: doar globalele', ['g', 'w', 'j'], { ctx: null }, ['goWeek']],
     ['secvența expiră după timeout', ['g', { t: 'g', at: 1010 + SEQ_TIMEOUT_MS + 1 }], {}, []],
   ]

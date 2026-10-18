@@ -1787,6 +1787,47 @@ for (const width of PHONE_WIDTHS) {
   await page.close()
 }
 
+// Meniul de acțiuni al modului Vim (`ActionMenu.tsx`): același markup, rândurile
+// stinse cu motivul lângă (cazul cel mai lat: trei ținte), apoi sub-meniul datei.
+const amItem = (label, key, { off = null, danger = false, sub = false, cur = false } = {}) =>
+  `<button class="am-item${cur ? ' cur' : ''}${off ? ' off' : ''}${danger ? ' danger' : ''}" role="menuitem">` +
+  `<span class="am-label">${label}${sub ? '<span class="am-more"> ›</span>' : ''}</span>` +
+  (off ? `<span class="am-why">${off}</span>` : '') + `<kbd class="am-key">${key}</kbd></button>`
+const actionMenu = (level) => `<div class="am-menu" role="menu" style="left:8px;top:8px">` +
+  `<div class="am-head">${level === 'date' ? '<span class="am-crumb">Acțiuni ›</span>' : ''}<span class="am-title">${level === 'date' ? 'Dată și oră' : 'Acțiuni'}</span></div>` +
+  `<div class="am-subject">3 tichete</div>` +
+  (level === 'date'
+    ? [['Azi', 'a'], ['Mâine', 'm'], ['Luni', 'l'], ['+1 săptămână', 's'], ['Alege din calendar…', 'c'], ['Zi întreagă (scoate ora)', 'z'], ['Fără dată', '-']].map(([l, k], i) => amItem(l, k, { cur: i === 0 })).join('') +
+      `<div class="am-time">Oră: scrie cifrele (<kbd>1530</kbd>, <kbd>9</kbd>) + <kbd>Enter</kbd><b class="am-time-v">15:30</b></div>`
+    : amItem('Dată și oră', 't', { sub: true, cur: true }) + amItem('Mâine', 'D') + amItem('Fără dată (scoate data, ora, mementoul)', '-') +
+      amItem('Urgent', '!') + amItem('Fixează sus', 'F') + amItem('Val', 'w', { sub: true }) +
+      amItem('Mută în proiect', 'M', { sub: true, off: 'doar pe un tichet' }) + amItem('Pasează', '@', { off: 'doar pe un tichet' }) +
+      amItem('Redenumește', 'r', { off: 'doar pe un tichet' }) + amItem('Gata', 'x') + amItem('Copiază linkul', 'y', { off: 'doar pe un tichet' }) +
+      amItem('Șterge (u anulează)', 'Del', { danger: true })) +
+  `<div class="am-foot">litera sau j / k + Enter · Esc închide</div></div>`
+
+console.log('\nMeniul de acțiuni (m) — 390px și 1400px:')
+for (const width of [390, 1400]) {
+  for (const level of ['root', 'date']) {
+    const page = await browser.newPage({ viewport: { width, height: 900 } })
+    await page.setContent(`<style>${CSS}</style>${actionMenu(level)}`)
+    const m = await page.evaluate(() => {
+      const box = document.querySelector('.am-menu').getBoundingClientRect()
+      const items = [...document.querySelectorAll('.am-item')]
+      const keyMin = Math.min(...items.map((i) => i.querySelector('.am-key').getBoundingClientRect().width))
+      const out = items.filter((i) => i.getBoundingClientRect().right > box.right + 0.5).length
+      // Eticheta poate ceda cu „…" doar când rândul are și motivul; cea cu motivul trebuie să rămână întreagă.
+      const whyCut = [...document.querySelectorAll('.am-why')].filter((w) => w.scrollWidth > w.clientWidth + 1).length
+      const cut = items.filter((i) => !i.querySelector('.am-why')).filter((i) => { const l = i.querySelector('.am-label'); return l.scrollWidth > l.clientWidth + 1 }).length
+      const minH = Math.min(...items.map((i) => i.getBoundingClientRect().height))
+      return { left: box.left, right: box.right, height: box.height, out, keyMin, whyCut, cut, minH, docOver: document.documentElement.scrollWidth - innerWidth }
+    })
+    check(`meniul (${level}) încape în fereastră @${width}px`, m.left >= 8 && m.right <= width - 8 + 0.5 && m.docOver <= 0 && m.height <= 900 - 16, `${m.left}…${m.right}px, înalt ${Math.round(m.height)}px`)
+    check(`meniul (${level}): rânduri întregi, literele vizibile @${width}px`, m.out === 0 && m.keyMin >= 20 && m.whyCut === 0 && m.cut === 0 && m.minH >= 30, `ies=${m.out}, literă ${m.keyMin}px, motive tăiate=${m.whyCut}, etichete tăiate=${m.cut}, rând min ${m.minH}px`)
+    await page.close()
+  }
+}
+
 await browser.close()
 
 if (failures.length) {

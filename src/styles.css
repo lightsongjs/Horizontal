@@ -7695,10 +7695,53 @@ body:has(.qab) { overflow-y: auto; }
   }
   .vim-find-n { flex: none; color: var(--txt-faint); font-size: calc(12px * var(--text-scale)); font-family: var(--mono); }
 }
-/* Popoverul unui rând (`t`, `M`): o cutie fixă peste rând ține locul rândului
-   pentru `ChipPop` (rândul e un buton, nu poate conține popoverul). */
-.vim-row-frame { position: fixed; z-index: 135; pointer-events: none; }
-.vim-row-frame > .fc-pop { pointer-events: auto; }
+/* Meniul de acțiuni (`m`, `t`, `M`, `w` — `ActionMenu.tsx`): ca fereastra
+   „which-key", dar se alege din el. Fără chenar: umbra (`--amb-lg`) îl
+   desparte de listă, ca popoverele jetoanelor. Stins = estompat + motivul. */
+.am-menu {
+  position: fixed; z-index: 150;
+  width: min(340px, calc(100vw - 16px));
+  max-height: calc(100dvh - 16px); overflow-y: auto;
+  padding: 6px; border-radius: var(--r-m);
+  background: var(--surface); box-shadow: var(--amb-lg); color: var(--txt);
+}
+.am-head { display: flex; gap: 6px; align-items: baseline; padding: 6px 8px 0; font-size: calc(12px * var(--text-scale)); font-weight: 650; color: var(--txt-dim); }
+.am-crumb { color: var(--txt-faint); }
+.am-subject {
+  padding: 2px 8px 6px; font-size: calc(12px * var(--text-scale)); color: var(--txt-faint);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.am-item {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  min-height: 34px; padding: 6px 8px; border: 0; border-radius: var(--r-s);
+  background: transparent; color: var(--txt); text-align: left; cursor: pointer;
+  font: inherit; font-size: calc(14px * var(--text-scale));
+}
+.am-item.cur { background: var(--accent-soft); color: var(--accent); }
+.am-item.off { opacity: 0.45; cursor: default; }
+.am-item.danger { color: var(--blocked); }
+.am-label { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.am-more { color: var(--txt-faint); }
+/* Text mărit: eticheta se rupe pe două rânduri în loc să taie cu „…". */
+[data-text-large] .am-label { white-space: normal; }
+.am-why { flex: none; font-size: calc(11px * var(--text-scale)); color: var(--txt-faint); }
+.am-key {
+  flex: none; min-width: 26px; text-align: center; font-family: var(--mono);
+  font-size: calc(12px * var(--text-scale)); color: var(--txt-dim);
+  background: var(--surface-2); border-radius: var(--r-s); padding: 1px 5px;
+}
+.am-item.cur .am-key { background: var(--surface); color: var(--accent); }
+.am-time, .am-foot, .am-flash, .am-empty { padding: 6px 8px; font-size: calc(12px * var(--text-scale)); }
+.am-time { color: var(--txt-dim); display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+.am-time kbd { font-family: var(--mono); font-size: calc(11.5px * var(--text-scale)); background: var(--surface-2); border-radius: var(--r-s); padding: 0 4px; }
+.am-time-v { margin-left: auto; font-family: var(--mono); color: var(--accent); }
+.am-time-v.bad { color: var(--blocked); }
+.am-foot { color: var(--txt-faint); }
+.am-flash { color: var(--txt); font-weight: 600; }
+.am-empty { color: var(--txt-dim); margin: 0; line-height: 1.5; }
+/* Rândul calendarului e un `NativePick`: inputul transparent stă peste el. */
+.am-menu .native-pick.am-item { position: relative; }
+
 /* „Către…" din fir, ales cu săgețile (modul Vim): opțiunea marcată. */
 .thread-to-menu .dep-dd-item[data-vim-hl] { background: var(--accent-soft); color: var(--accent); }
 

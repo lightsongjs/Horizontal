@@ -303,11 +303,22 @@ Setare de DISPOZITIV în rotiță („Tastatură”: Mod Vim, Panoul urmează cu
   selecția lui `useWaveActions` (`useVimSelection`, cu bara ei); în listele
   inteligente pe desktop nu există alta (cea din `TaskActions` e a telefonului),
   deci acolo e a dispecerului, desenată ca regulă CSS.
-- **Panoul are un cursor de câmp**: ordinea și „activează” le dă formularul
-  docat (`useVimPanel`), fiindcă numai el îi știe starea locală (urgentul
-  nesalvat, popoverul, editorul). În panou `!` comută urgentul ÎN formular
-  (salvezi cu Ctrl+S), nu în bază — altfel salvarea l-ar fi scris înapoi.
-  Urgentul și pasarea goale au jeton-fantomă doar cât stă cursorul pe ele.
+- **Meniul de acțiuni `m`** (listă, panou, interval) — `ActionMenu.tsx`,
+  modelul pur în `src/lib/actionMenu.ts`: rânduri cu litera tastei directe
+  (`t D - ! F w M @ r x y Del`), stinse cu motivul („doar pe un tichet”). Se
+  execută tot prin dispecer → `TaskActions`, deci aceeași anulare și același
+  refuz pe formularul murdar. `t` deschide direct sub-meniul datei (`a m l s c
+  z -`; cifrele scriu ora, `1530` Enter = 15:30 pe ziua sarcinii — presetarea
+  `time`), `M` / `w` direct pe ale lor. Tastele meniului sunt ascultate în
+  captură și oprite acolo: cât e deschis, nimic din spate nu primește o literă.
+- **Panoul e un inel scurt**: titlu → jetoane (UN popas; Enter = meniul) →
+  descriere → fiecare dependență → fir; `J`/`K` sar pe secțiuni
+  (`sectionStep`), `j`/`k` se opresc doar pe dependențe în plus. Ordinea o dă
+  formularul docat (`useVimPanel`). Antetul (fixare, proiect) nu e în inel.
+  Comentariul e `gc` (`m` e meniul). Tastele de pe tichetul docat (`! x F t w
+  M`) scriu prin `TaskActions` ca din listă, nu în starea formularului:
+  remontarea pe formularul curat (mai sus) le face vizibile, murdar sunt
+  refuzate — un singur drum, fără excepția „în formular”.
 - **Mnemonice în engleză, consecvent** (decizia omului, 2026-10-17): `gt`
   today, `gw` week, `gm` mine — nu `ga` „azi” lângă `gw` „week”. De-aia `gt`
   NU mai e valul următor (ca filele din Vim): valurile stau doar pe `[` `]`.

@@ -25,9 +25,9 @@ export type ActionId =
   // listă: acțiuni pe rânduri (ținte: intervalul vizual > selecția > rândul cursorului)
   | 'done' | 'delete' | 'tomorrow' | 'date' | 'urgent' | 'pin' | 'move' | 'rename'
   | 'yankLink' | 'yankTitle' | 'repeat' | 'find' | 'filter' | 'nextMatch' | 'prevMatch'
-  | 'mark' | 'visual' | 'newTask'
+  | 'mark' | 'visual' | 'newTask' | 'menu'
   // panou: cursorul de câmp și scurtăturile pe tichetul deschis
-  | 'toList' | 'fieldDown' | 'fieldUp' | 'fieldFirst' | 'fieldLast' | 'activate'
+  | 'toList' | 'fieldDown' | 'fieldUp' | 'fieldFirst' | 'fieldLast' | 'sectionDown' | 'sectionUp' | 'activate'
   | 'pTitle' | 'pDesc' | 'pComment' | 'pHandoff' | 'pRename' | 'pDate' | 'pWave'
   | 'pDone' | 'pUrgent' | 'pPin' | 'pMove' | 'pDelete' | 'pYankLink' | 'pYankTitle'
   // bara laterală
@@ -96,7 +96,8 @@ export const KEYMAP: Binding[] = [
   b('x', 'list', 'done', 'Gata / redeschide'),
   b('dd', 'list', 'delete', 'Șterge (fără întrebare; u anulează)'),
   b('D', 'list', 'tomorrow', 'Mută pe mâine'),
-  b('t', 'list', 'date', 'Alege data'),
+  b('t', 'list', 'date', 'Dată și oră (direct în sub-meniu; cifrele scriu ora)'),
+  b('m', 'list', 'menu', 'Meniul de acțiuni (dată, urgent, mută, …) — și pe selecție'),
   b('!', 'list', 'urgent', 'Urgent'),
   b('F', 'list', 'pin', 'Fixează sus / scoate de sus'),
   b('M', 'list', 'move', 'Mută în alt proiect (un tichet)'),
@@ -112,28 +113,31 @@ export const KEYMAP: Binding[] = [
   // `a` ca în yazi (append / create). C nu mai creează cu modul Vim pornit.
   b('a', 'list', 'newTask', 'Sarcină nouă în grupul cursorului (aceeași zi / valul activ)'),
   // panou: cursorul de câmp
-  b('j', 'panel', 'fieldDown', 'Câmpul următor: titlu → dată → val → urgent → fixare → pasare → proiect → descriere → dependențe → comentariu', { motion: true }),
+  b('j', 'panel', 'fieldDown', 'Următorul: titlu → jetoane → descriere → fiecare dependență → fir', { motion: true }),
   b('k', 'panel', 'fieldUp', 'Câmpul anterior', { motion: true }),
   b('ArrowDown', 'panel', 'fieldDown', 'Câmpul următor', { motion: true, hidden: true }),
   b('ArrowUp', 'panel', 'fieldUp', 'Câmpul anterior', { motion: true, hidden: true }),
   b('gg', 'panel', 'fieldFirst', 'Primul câmp (titlul)'),
   b('G', 'panel', 'fieldLast', 'Ultimul câmp (comentariul)'),
-  b('Enter', 'panel', 'activate', 'Activează câmpul: scrie / alege / comută / deschide dependența'),
+  b('J', 'panel', 'sectionDown', 'Secțiunea următoare: titlu → jetoane → descriere → dependențe → fir'),
+  b('K', 'panel', 'sectionUp', 'Secțiunea anterioară'),
+  b('Enter', 'panel', 'activate', 'Activează: scrie / meniul (pe jetoane) / deschide dependența'),
   b('l', 'panel', 'activate', 'Activează câmpul (ca Enter)'),
-  b('Space', 'panel', 'activate', 'Activează câmpul (comută urgent / fixare)'),
+  b('Space', 'panel', 'activate', 'Activează câmpul (ca Enter)'),
   b('h', 'panel', 'toList', 'Înapoi în listă'),
   b('ArrowLeft', 'panel', 'toList', 'Înapoi în listă', { hidden: true }),
   // panou: scurtături
   b('i', 'panel', 'pTitle', 'Scrie în titlu'),
   b('a', 'panel', 'pDesc', 'Scrie în descriere, la final'),
-  b('m', 'panel', 'pComment', 'Scrie un comentariu'),
+  b('m', 'panel', 'menu', 'Meniul de acțiuni, pe tichetul deschis'),
+  b('gc', 'panel', 'pComment', 'Scrie un comentariu'),
   b('@', 'panel', 'pHandoff', 'Pasează (comentariu „către…”)'),
   b('r', 'panel', 'pRename', 'Rescrie titlul (selectat)'),
   b('cc', 'panel', 'pRename', 'Rescrie titlul (ca r)'),
-  b('t', 'panel', 'pDate', 'Data'),
+  b('t', 'panel', 'pDate', 'Dată și oră (sub-meniul)'),
   b('w', 'panel', 'pWave', 'Valul'),
   b('x', 'panel', 'pDone', 'Gata / redeschide'),
-  b('!', 'panel', 'pUrgent', 'Urgent (în formular; salvezi cu Ctrl+S)'),
+  b('!', 'panel', 'pUrgent', 'Urgent'),
   b('F', 'panel', 'pPin', 'Fixează sus'),
   b('M', 'panel', 'pMove', 'Mută în alt proiect'),
   b('dd', 'panel', 'pDelete', 'Șterge tichetul (u anulează)'),
