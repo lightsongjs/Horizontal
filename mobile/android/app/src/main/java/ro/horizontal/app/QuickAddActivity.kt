@@ -69,7 +69,8 @@ class QuickAddActivity : AppCompatActivity() {
         super.onCreate(b)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         setContentView(R.layout.activity_quick)
-        CaptureEngine.warm(this)
+        // Motorul gata (și după o reîncercare): ciorna se recalculează, iar nota pleacă.
+        CaptureEngine.warm(this) { if (!isFinishing) recompute() }
         title = findViewById(R.id.q_title)
         desc = findViewById(R.id.q_desc)
         note = findViewById(R.id.q_note)
@@ -160,7 +161,12 @@ class QuickAddActivity : AppCompatActivity() {
         val input = engineInput(text, desc.text.toString(), rejected, manual, d, inboxProjectId(d.projects), System.currentTimeMillis())
         CaptureEngine.compute(this, input) { r ->
             if (my != seq || isFinishing) return@compute
-            apply(r ?: rawDraft(text, manual, d, System.currentTimeMillis(), zone))
+            when {
+                r != null -> apply(r)
+                // Motorul încă pornește: draftul brut, fără notă — `onReady` recalculează.
+                !CaptureEngine.down -> apply(rawDraft(text, manual, d, System.currentTimeMillis(), zone).copy(raw = false), fromEngine = false)
+                else -> apply(rawDraft(text, manual, d, System.currentTimeMillis(), zone))
+            }
         }
     }
 
@@ -323,7 +329,8 @@ class QuickAddActivity : AppCompatActivity() {
         val text = title.text.toString()
         // Rezultatul final pe textul de ACUM (ultima tastă poate fi încă la motor).
         val my = ++seq
-        CaptureEngine.compute(this, engineInput(text, desc.text.toString(), rejected, manual, d, inboxProjectId(d.projects), System.currentTimeMillis())) { r ->
+        // Cu motorul încă pornind, trimiterea îl mai așteaptă puțin: altfel „la 815" ar pleca în titlu, fără dată.
+        CaptureEngine.compute(this, engineInput(text, desc.text.toString(), rejected, manual, d, inboxProjectId(d.projects), System.currentTimeMillis()), waitMs = 3_000) { r ->
             if (my != seq || sent || isFinishing) return@compute
             val f = r ?: rawDraft(text, manual, d, System.currentTimeMillis(), zone)
             apply(f)

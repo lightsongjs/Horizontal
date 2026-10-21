@@ -1885,7 +1885,11 @@ Pro (HyperOS 3, Android 16).
   pentru `CaptureEngine` (`androidx.javascriptengine`, minSdk 26). **O schimbare în
   parser ajunge în fereastră doar cu un APK nou.** Testul `src/capture/engine.test.ts`
   rulează pachetul în `node:vm` pe `capture.fixtures.json`. Fără motor → modul brut
-  (`rawDraft`). Creările stau în `PlanStore.creates` (coadă separată de acțiuni —
+  (`rawDraft`). Un eșec al motorului NU mai ține fereastra pe modul brut până la
+  închidere (D-227, din `versionCode 16`): pornirea are firul ei și 10 s, apoi se
+  reîncearcă (`core/EngineRetry.kt`), iar la reușită fereastra recalculează (`onReady`).
+  Nota „indisponibilă” apare doar cu motorul chiar căzut (`down`), nu cât pornește;
+  trimiterea așteaptă o pornire în curs până la 3 s. Creările stau în `PlanStore.creates` (coadă separată de acțiuni —
   `take` nu le dă paginii); `DrainWorker` le trimite întâi, cu ID-ul (`attemptId`)
   salvat ÎNAINTE de POST: 409 + rând al nostru = gata, al altcuiva = ID nou (max 5).
   Pagina reîncearcă și ea la 23505. Fișierele: cale și ID fixe, urcate după creare,
