@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { useTheme } from '../theme'
-import { useCanWrite, useLongPress, useMediaQuery, shouldIgnoreKey } from '../hooks'
+import { useCanWrite, useLongPress, shouldIgnoreKey, useNarrow } from '../hooks'
 import {
   deliveryWaves, fitPills, openCounts, pillText, showWaveBand, stepWave, totalCounts, waveLabel, waveTitle, SCRATCH,
 } from '../lib/waveBar'
@@ -51,7 +51,7 @@ export function WaveTabs({ onWaveChange, modes }: { onWaveChange?: () => void; m
   const { waves, issues, activeWave, setActiveWave } = useHorizontal()
   const { openWaveManage, sheet, dockedIssueId } = useUI()
   const canWrite = useCanWrite()
-  const narrow = useMediaQuery('(max-width: 899px)')
+  const narrow = useNarrow()
   const slot = useContext(TabsSlot)
   const modalOpen = sheet.kind !== 'none' && !dockedIssueId
 

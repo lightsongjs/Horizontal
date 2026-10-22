@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { flushSync } from 'react-dom'
 import { useAuth } from './auth'
-import { useCanWrite, useMediaQuery, useSidebarCollapsed, useWritableProjects } from './hooks'
+import { useCanWrite, useSidebarCollapsed, useWritableProjects, useNarrow } from './hooks'
 import { HorizontalProvider, useHorizontal } from './store'
 import { UIProvider, useUI } from './ui'
 import { CalendarProvider } from './calendar'
@@ -345,7 +345,7 @@ function Shell() {
   // cursor, nu pe mâine. Se uită la prima captură și la schimbarea ecranului.
   const [captureDue, setCaptureDue] = useState<string | null>(null)
   // Același prag ca bara de jos și FAB-ul: sub el, captura e foaia rapidă.
-  const narrow = useMediaQuery('(max-width: 899px)')
+  const narrow = useNarrow()
   /**
    * Foaia rapidă, din FAB (sau din C pe telefon). `flushSync` + focus în
    * ACELAȘI handler: Android și iOS ridică tastatura doar la un focus dat

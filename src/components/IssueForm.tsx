@@ -4,7 +4,7 @@ import { buildAssigneeOptions, type AssigneeOption } from '../lib/assigneeOption
 import { useAuth } from '../auth'
 import { useHorizontal } from '../store'
 import { useUI, type IssueDraft } from '../ui'
-import { useCanWrite, useCoarsePointer, useMediaQuery, useTitleDate } from '../hooks'
+import { useCanWrite, useCoarsePointer, useTitleDate, useNarrow } from '../hooks'
 import { ticketUrl } from '../lib/deepLink'
 import { stripSpans } from '../lib/parseDue'
 import { fold } from '../lib/text'
@@ -640,7 +640,7 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
      popoverele jetoanelor devin foi de jos. Sus, cu celelalte hook-uri: sub
      `if (!project) return null` ar fi fost un hook condiționat, deci numărul
      lor s-ar fi schimbat de la o randare la alta. */
-  const narrow = useMediaQuery('(max-width: 899px)')
+  const narrow = useNarrow()
   // Modul Vim: formularul docat își anunță câmpurile (`useVimPanel`); adaptorul
   // se completează mai jos, după ce există jetoanele și popoverele.
   const vimPanel = useRef<PanelAdapter | null>(null)

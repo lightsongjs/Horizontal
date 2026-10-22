@@ -1305,6 +1305,15 @@ SHELL = """<!doctype html>
 <!-- CSS-ul REAL al aplicației. Generat de design/build-preview.py; nu edita
      acest fișier de mână, se rescrie. -->
 <link rel="stylesheet" href="../src/styles.css" />
+<script>
+  // Ca `installNarrow` din src/lib/narrow.ts, înainte de conținut: CSS-ul de
+  // telefon atârnă de `<html data-narrow>`, nu de un @media.
+  (function () {
+    var mq = matchMedia('(max-width: 899px)');
+    var sync = function () { document.documentElement.toggleAttribute('data-narrow', mq.matches); };
+    sync(); mq.addEventListener('change', sync);
+  })();
+</script>
 <style>
   /* Numai schela bancului. Nimic de aici nu ajunge în aplicație. */
   body { overflow: auto; background: #08080a; }

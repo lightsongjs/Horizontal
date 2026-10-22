@@ -66,6 +66,34 @@ const depsBar = () => `
 </div></div></div>`
 
 const browser = await chromium.launch()
+// CSS-ul de telefon atârnă de `<html data-narrow>` (src/lib/narrow.ts), nu de un
+// @media. Îl punem dintr-un script AL PAGINII, înaintea conținutului — ca
+// `installNarrow` înainte de prima randare. Pus după `setContent`, regulile de
+// desktop s-ar fi aplicat întâi, iar tranzițiile (`.sheet { transition:
+// transform }`) ar fi fost prinse la jumătate de măsurători.
+const NARROW_BOOT = `<script>(() => {
+  const mq = matchMedia('(max-width: 899px)')
+  const sync = () => document.documentElement.toggleAttribute('data-narrow', mq.matches)
+  sync(); mq.addEventListener('change', sync)
+})()</script>`
+const syncNarrow = (page) => {
+  if (page.__narrow) return page
+  page.__narrow = true
+  const setContent = page.setContent.bind(page)
+  page.setContent = (html, ...rest) => setContent(NARROW_BOOT + html, ...rest)
+  return page
+}
+{
+  const newPage = browser.newPage.bind(browser)
+  browser.newPage = async (opts) => syncNarrow(await newPage(opts))
+  const newContext = browser.newContext.bind(browser)
+  browser.newContext = async (opts) => {
+    const ctx = await newContext(opts)
+    const ctxPage = ctx.newPage.bind(ctx)
+    ctx.newPage = async () => syncNarrow(await ctxPage())
+    return ctx
+  }
+}
 // Cu text mărit, `theme.tsx` pune și `data-text-large` pe <html> — regulile care
 // rup rândurile pe două linii depind de el, deci îl punem după fiecare setContent.
 if (process.env.TEXT_SCALE) {

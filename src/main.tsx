@@ -6,7 +6,11 @@ import { ThemeProvider } from './theme'
 import { QuickAddPage } from './QuickAddPage'
 import { isQuickAddPath } from './lib/deepLink'
 import { registerPWA } from './pwa'
+import { installNarrow } from './lib/narrow'
 import './styles.css'
+
+// Înainte de prima randare: CSS-ul de telefon atârnă de `<html data-narrow>`.
+installNarrow()
 
 const root = createRoot(document.getElementById('root')!)
 // Bara de captură nu trece prin `App`: efectul de boot ar fi luat calea drept

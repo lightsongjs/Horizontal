@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { compactIssueIdFrom, sheetKey, useUI } from '../ui'
 import { useHorizontal } from '../store'
-import { useMediaQuery } from '../hooks'
+import { useNarrow } from '../hooks'
 import { EditSheet } from './EditSheet'
 import { IssueSheet } from './IssueSheet'
 import { IssueForm } from './IssueForm'
@@ -28,7 +28,7 @@ export function SheetHost() {
   const quick = sheet.kind === 'quick-add'
   // Pe telefon, un tichet existent se deschide în foaia scurtă, nu în
   // formular — vezi `compactIssueIdFrom`. Același prag ca FAB-ul.
-  const narrow = useMediaQuery('(max-width: 899px)')
+  const narrow = useNarrow()
   const compactId = dockedIssueId ? null : compactIssueIdFrom(sheet, canGoBack ? 2 : 1, narrow)
   const open = sheet.kind !== 'none' && !dockedIssueId && !quick && !compactId
   const tall =

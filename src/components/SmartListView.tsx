@@ -10,7 +10,7 @@ import { addDays, isOverdue, startOfLocalDay, toShortDate, WEEK_FIRST_OFFSET } f
 import type { Issue } from '../lib/types'
 import { Icon, type IconName } from './Icon'
 import { SplitView } from './SplitView'
-import { useMediaQuery } from '../hooks'
+import { useNarrow } from '../hooks'
 import { useTaskActions } from './TaskActions'
 import { useCalendar } from '../calendar'
 import { eventsOn, mergeDay, type DayEvents } from '../lib/calendarEvents'
@@ -147,7 +147,7 @@ export function SmartListView({ kind, onOpenTask, focusSignal = 0, captureDueAt 
   // Pe telefon captura e foaia rapidă din FAB. Rândul ar fi un al doilea punct
   // de intrare, ar ocupa capul listei și ar ridica tastatura în mijlocul unei
   // liste care derulează — exact experiența pe care foaia o înlocuiește.
-  const narrow = useMediaQuery('(max-width: 899px)')
+  const narrow = useNarrow()
   const ta = useTaskActions()
 
   // Fixatele stau în grupul „Fixate" de sus, deci grupurile zilelor le arată fără ele

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type React from 'react'
 import { useHorizontal } from './store'
 import { useUI } from './ui'
@@ -15,6 +15,7 @@ import { LONG_PRESS_MS, movedBeyondTap } from './lib/swipe'
 import { ticketPath } from './lib/deepLink'
 import { movedNotice } from './lib/moveIssue'
 import { appHistory } from './lib/historyPort'
+import { narrowNow, subscribeNarrow } from './lib/narrow'
 
 const HIDE_DONE_KEY = 'horizontal:hide-done'
 const SIDEBAR_KEY = 'horizontal:sidebar-collapsed'
@@ -483,6 +484,15 @@ export function useCoarsePointer(): boolean {
   }, [])
 
   return coarse
+}
+
+/**
+ * Layoutul de telefon (`<html data-narrow>`, `src/lib/narrow.ts`) ca stare
+ * React. NU `useMediaQuery('(max-width: 899px)')`: un panou al panoului dublu
+ * e îngust ca viewport, dar nu e telefon.
+ */
+export function useNarrow(): boolean {
+  return useSyncExternalStore(subscribeNarrow, narrowNow, () => false)
 }
 
 /**

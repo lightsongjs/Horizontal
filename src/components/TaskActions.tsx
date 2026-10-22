@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
-import { useCanWriteFn, useMediaQuery, useSelection, type Selection } from '../hooks'
+import { useCanWriteFn, useSelection, type Selection, useNarrow } from '../hooks'
 import {
   bulkNotice, canClearDate, countRecurring, deleteNotice, nextMonday, pinTarget, planBulk, urgentTarget,
   type BulkAction, type DatePreset,
@@ -72,7 +72,7 @@ export function TaskActionsProvider({ children }: { children: ReactNode }) {
   const { dueIssues, openIssues, issues: projectIssues, applyWrites, hideIssues, unhideIssues, deleteIssues, offerUndo, reportError } = useHorizontal()
   const { showToast } = useUI()
   const canWrite = useCanWriteFn()
-  const narrow = useMediaQuery('(max-width: 899px)')
+  const narrow = useNarrow()
   const sel = useSelection()
   const [openRow, setOpenRow] = useState<string | null>(null)
   const [sheet, setSheet] = useState<ActionSheet | null>(null)
