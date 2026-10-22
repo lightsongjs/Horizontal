@@ -217,6 +217,60 @@ corpul la „nou"/Fir (`scrollTo` pe `.if-body`, nu `scrollIntoView`) și pune
 focusul pe `.thread` (`tabIndex=-1`), nu în casetă. Rândul gol punctat al
 dependențelor (`.dep-empty-row`) a ieșit.
 
+## Panoul dublu (split pane, două aplicații alăturate)
+
+Spec + plan + deciziile omului: `docs/superpowers/specs/2026-10-22-split-pane-design.md`;
+macheta `design/dual-pane-v2/index.html`, varianta A. De la 1200px: ▯▯ în
+antetul tichetului docat (tichetul trece în stânga, în dreapta ecranul unde
+erai) sau jos în bara laterală. Fiecare panou e aplicația ÎNTREAGĂ, complet
+separată; fără operații între panouri, nicio scurtătură veche schimbată.
+
+- **Două `<iframe src="/?pane=L|R">`, nu două `Shell`-uri.** Starea de navigare
+  e globală prin construcție (store-ul ține UN proiect pe ecran, ~50 de
+  ascultători pe `document`, `window.history`, pragurile pe fereastră); un
+  iframe le separă pe toate gratis. Documentul de sus devine **gazda**
+  (`SplitHost.tsx`): bara laterală + cele două cadre. Panoul: `isPane()`
+  (`lib/pane.ts`, numai într-un cadru), fără bară laterală, cu `PaneBar`.
+- **Istoricul trece prin `appHistory`** (`lib/historyPort.ts`). Al unui iframe
+  e comun cu al filei: un `go(-n)` din `goTop` ar fi desfăcut pașii celuilalt
+  panou. În panou portul e o stivă în memorie (`sessionStorage`
+  `horizontal:pane:L|R`). Un test `?raw` pică pe orice `window.history` direct.
+- **Back-ul browserului = Back-ul panoului cu focus.** Gazda ține o
+  intrare-santinelă (`hzSplit`); Back o părăsește, gazda o pune la loc și
+  trimite `back` panoului. Pe rădăcina panoului nu face nimic (decizia omului).
+  URL-ul de sus = ruta panoului cu focus.
+- **„Îngust" e `<html data-narrow>`, nu `@media`** (`lib/narrow.ts`): un cadru
+  de 567px ar fi primit altfel layoutul de telefon. CSS-ul de telefon e
+  `:where(html[data-narrow]) …`, cel de desktop `:where(html:not([data-narrow])) …`
+  (`:where`, ca specificitatea să nu se schimbe); în JS `useNarrow()`. Un test
+  pică pe un `@media` 899/900 nou. Bancul și `test:layout` pun atributul
+  dintr-un script AL PAGINII, înaintea conținutului — pus după, tranzițiile
+  (`.sheet`) erau prinse la jumătate de măsurători.
+- **Un singur executant pe filă**: PWA (`registerPWA`), punțile native,
+  mesajele service worker-ului (`ServiceWorkerBridge`) și clopoțelul sunt ale
+  gazdei; `sw.ts` ignoră clienții `nested`, altfel o bifă din notificare s-ar fi
+  executat o dată pe cadru.
+- **Datele între panouri**: tichetele circulau deja (`horizontal-sync`); orice
+  altă scriere (`netWrite`) trimite `stale`, iar celelalte realm-uri se
+  reîncarcă la 1s după rafală. În modul local, evenimentul `storage`. Coerență
+  eventuală, ca între două file.
+- **Reîncărcarea reface ambele panouri** (`horizontal:split`, ținut numai cu
+  DOUĂ panouri); pornirea rece = un panou pe „Azi". Panourile nu scriu
+  `LAST_VIEW_KEY`/ultimul proiect în `localStorage`: `viewStore` le ține pe ale
+  lor în `sessionStorage`.
+- **✕ (decizia omului):** garda de azi se aplică NUMAI panoului care se închide;
+  celălalt nu se reîncarcă — iframe-ul lui se lărgește și rămâne aplicația,
+  cu ce avea nesalvat, până la reîncărcare, care pornește aplicația normală din
+  ruta lui (gazda îi scrie `LAST_VIEW_KEY`).
+- **Focusul**: linia accent de 2px. Ctrl+Shift+[ / ] (după `e.code`; pe RO
+  tastele scriu ă/î) e ascultat în captură pe `window` în TOATE realm-urile,
+  deci merge și dintr-un câmp. Un `focus()` din cod într-un cadru fără focus
+  (titlul formularului la pornire) trage tastatura acolo — Chromium o face —,
+  de-aia panoul o cedează (`yield`) dacă n-a fost un gest.
+- Teste: `historyPort`, `narrow`, `pane`, `paneProtocol`, `splitState`
+  (vitest); `test:nav` „Panoul dublu" cap-coadă; `test:layout` (gazda la
+  1200/1366/1920, bara panoului la 420–844).
+
 ## Banda de valuri („Listă" și „Cards")
 
 Mockup aprobat: `design/wave-bar/index.html`. Un singur rând deasupra listei:

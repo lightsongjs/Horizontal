@@ -1507,7 +1507,7 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
         {docked && isEdit && (
           <button
             tabIndex={-1}
-            className="sh-copy"
+            className="sh-copy sh-popout"
             onClick={popOutIssue}
             aria-label="Deschide mare"
             title="Deschide mare, peste listă"

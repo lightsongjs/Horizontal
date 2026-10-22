@@ -7801,6 +7801,11 @@ body:has(.qab) { overflow-y: auto; }
   flex-shrink: 0;
 }
 .sidebar-split-btn.on { background: var(--accent-soft); color: var(--accent); }
+/* În colțul din dreapta (macheta), cu înălțimea lui: fără „Tichet nou" lângă
+   el, rândul nu-l mai întinde, iar fundalul se turtea într-o elipsă. */
+.sidebar-split-btn { margin-left: auto; height: 34px; }
+/* Indicatorul panoului fără focus se vedea abia, în tema luminoasă. */
+[data-theme='light'] .sidebar-mini i:not(.on) { background: var(--txt-faint); opacity: .35; }
 
 /* Într-un panou: o singură coloană, fără comutatorul barei laterale. */
 html[data-pane] #app,
@@ -7829,6 +7834,7 @@ html[data-pane] .header-sidebar-btn { display: none; }
 .pane-crumb-label { overflow: hidden; text-overflow: ellipsis; }
 .pane-crumb-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--pc); flex-shrink: 0; }
 .pane-crumb-star { display: inline-flex; color: var(--star); }
+.pane-crumb-star svg { fill: currentColor; }
 .pane-crumb-sl { color: var(--txt-faint); }
 .pane-crumb-id { font-family: var(--mono); font-size: calc(12.5px * var(--text-scale)); }
 .pane-twin {
@@ -7861,6 +7867,13 @@ html[data-pane] .split.has-pane { grid-template-columns: minmax(0, 1fr); gap: 0;
 html[data-pane] .split.has-pane > .split-list { display: none; }
 html[data-pane] main:has(.split.has-pane) > .split { padding: 0; }
 html[data-pane] .split.has-pane > .split-pane { box-shadow: none; animation: none; }
+/* Bara panoului spune deja ID-ul și are ← (închide tichetul) și ✕ (închide
+   panoul): în antetul formularului ar fi fost a doua oară ID-ul și un al doilea
+   ✕, unul sub altul. „Deschide mare" n-are loc într-un panou. Proiectul (jetonul
+   de mutare), fixarea, linkul, ștergerea și salvarea rămân. */
+html[data-pane] .split-pane .sh-header > .sh-id,
+html[data-pane] .split-pane .sh-header > .sh-close,
+html[data-pane] .split-pane .sh-header > .sh-popout { display: none; }
 html[data-pane] .app-body:has(.split.has-pane) > header,
 html[data-pane] main:has(.split.has-pane) > .view > :not(.split) { display: none; }
 html[data-pane] main:has(.split.has-pane) > .view { padding-bottom: 0; }

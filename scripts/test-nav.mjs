@@ -2256,6 +2256,132 @@ try {
     await op.close()
   }
 
+  // ── Panoul dublu (spec 2026-10-22-split-pane): două iframe-uri, fiecare
+  // aplicația întreagă. Context propriu: `sessionStorage` e al filei, iar o
+  // pagină nouă în același context e o pornire rece.
+  {
+    console.log('\nPanoul dublu:')
+    const sctx = await browser.newContext({ viewport: { width: 1366, height: 768 } })
+    const sp = await sctx.newPage()
+    const pane = (id) => sp.frames().find((f) => new URL(f.url()).search === `?pane=${id}`)
+    const crumb = async (id) => (await pane(id)?.locator('.pane-crumb').innerText().catch(() => '?'))?.replace(/\s+/g, ' ').trim()
+    const focused = () => sp.evaluate(() => document.querySelector('.split-pane-frame.focus')?.getAttribute('data-pane') ?? null)
+    const activeFrame = () => sp.evaluate(() => {
+      const a = document.activeElement
+      return a?.tagName === 'IFRAME' ? new URL(a.src).search.slice(6) : a?.tagName ?? null
+    })
+    await sp.goto(BASE, { waitUntil: 'networkidle' })
+    await sp.waitForTimeout(700)
+    await sp.locator('.qa-input').first().fill('Sarcină pentru panoul dublu')
+    await sp.keyboard.press('Enter')
+    await sp.waitForTimeout(900)
+    await sp.locator('.task-row', { hasText: 'Sarcină pentru panoul dublu' }).first().click()
+    await sp.waitForTimeout(900)
+    const id = new URL(sp.url()).pathname.slice(1)
+    const hist0 = await sp.evaluate(() => history.length)
+    check('split: butonul din antetul tichetului docat, de la 1200px', (await sp.locator('.split-pane .sh-split').count()) === 1, `${await sp.locator('.split-pane .sh-split').count()} buton(e)`)
+    await sp.locator('.split-pane .sh-split').click()
+    await sp.waitForTimeout(2500)
+    check('split: pornirea din tichet — stânga tichetul, dreapta lista unde erai',
+      (await sp.locator('.split-pane-frame iframe').count()) === 2 && (await crumb('L'))?.endsWith(id) && (await crumb('R')) === 'Azi',
+      `L=${await crumb('L')}, R=${await crumb('R')}`)
+    check('split: focusul pe stânga, cu linia accent', (await focused()) === 'L' && (await activeFrame()) === 'L', `focus=${await focused()}, tastatura=${await activeFrame()}`)
+
+    // Ctrl+Shift+] / [ dintr-un câmp de text (titlul tichetului din stânga).
+    await pane('L').locator('.sh-title-input').first().click()
+    await sp.waitForTimeout(200)
+    await sp.keyboard.press('Control+Shift+BracketRight')
+    await sp.waitForTimeout(400)
+    const afterR = [await focused(), await activeFrame()]
+    await sp.keyboard.press('Control+Shift+BracketLeft')
+    await sp.waitForTimeout(400)
+    const afterL = [await focused(), await activeFrame()]
+    const titleKept = await pane('L').evaluate(() => document.activeElement?.closest('.sh-title, .sh-title-wrap') !== null || document.activeElement?.className)
+    check('split: Ctrl+Shift+] / [ mută focusul, și dintr-un câmp', afterR.join() === 'R,R' && afterL.join() === 'L,L', `] → ${afterR}, [ → ${afterL}, înapoi în titlu: ${titleKept}`)
+    const titleVal = await pane('L').locator('.sh-title-input').first().inputValue().catch(() => null)
+    check('split: tasta de comutare nu scrie nimic în câmp', titleVal === 'Sarcină pentru panoul dublu', `titlu=${titleVal}`)
+
+    // Bara laterală navighează panoul cu focus; Back = Back-ul panoului cu focus.
+    await pane('R').locator('main').click({ position: { x: 60, y: 400 } })
+    await sp.waitForTimeout(300)
+    await sp.locator('.sidebar .sidebar-proj-btn', { hasText: 'Exemplu' }).first().click()
+    await sp.waitForTimeout(900)
+    check('split: bara laterală navighează panoul cu focus', (await crumb('R')) === 'Exemplu' && (await crumb('L'))?.endsWith(id), `L=${await crumb('L')}, R=${await crumb('R')}, URL=${new URL(sp.url()).pathname}`)
+    check('split: URL-ul de sus = ruta panoului cu focus', new URL(sp.url()).pathname === '/project/exemplu', new URL(sp.url()).pathname)
+    await sp.goBack()
+    await sp.waitForTimeout(900)
+    check('split: Back lucrează pe panoul cu focus, celălalt neatins', (await crumb('R')) === 'Azi' && (await crumb('L'))?.endsWith(id), `L=${await crumb('L')}, R=${await crumb('R')}`)
+    await sp.goBack()
+    await sp.waitForTimeout(900)
+    const stillHere = new URL(sp.url()).origin === BASE && (await sp.locator('.split-pane-frame iframe').count()) === 2
+    check('split: Back pe rădăcina panoului nu face nimic', stillHere && (await crumb('R')) === 'Azi' && (await crumb('L'))?.endsWith(id), `URL=${sp.url()}, R=${await crumb('R')}`)
+    const hist1 = await sp.evaluate(() => history.length)
+    check('split: navigarea din panouri nu umple istoricul filei', hist1 <= hist0 + 1, `${hist0} → ${hist1}`)
+
+    // O scriere într-un panou se vede în celălalt (bifa din „Azi" → formularul din stânga).
+    await pane('R').locator('.task-row', { hasText: 'Sarcină pentru panoul dublu' }).first().locator('.ck').click()
+    await sp.waitForTimeout(2500)
+    const doneL = await pane('L').locator('.sh-check .ck').first().getAttribute('class').catch(() => '')
+    check('split: o scriere într-un panou se vede în celălalt', /\bon\b|done/.test(doneL ?? ''), `bifa din stânga: ${doneL}`)
+    await pane('R').locator('.task-row', { hasText: 'Sarcină pentru panoul dublu' }).first().locator('.ck').click().catch(() => {})
+    await sp.waitForTimeout(800)
+
+    // Reîncărcarea reface ambele panouri și focusul.
+    await pane('R').locator('main').click({ position: { x: 60, y: 400 } })
+    await sp.waitForTimeout(300)
+    await sp.reload({ waitUntil: 'networkidle' })
+    await sp.waitForTimeout(2500)
+    check('split: reîncărcarea reface ambele panouri și focusul',
+      (await sp.locator('.split-pane-frame iframe').count()) === 2 && (await crumb('L'))?.endsWith(id) && (await crumb('R')) === 'Azi' && (await focused()) === 'R',
+      `L=${await crumb('L')}, R=${await crumb('R')}, focus=${await focused()}`)
+
+    // Pornirea rece (filă nouă = `sessionStorage` gol): un singur panou, pe „Azi".
+    const cold = await sctx.newPage()
+    await cold.goto(BASE, { waitUntil: 'networkidle' })
+    await cold.waitForTimeout(1200)
+    check('split: pornirea rece dă un singur panou, pe „Azi"', (await cold.locator('iframe').count()) === 0 && /Azi/.test(await cold.locator('.hd-title').first().innerText().catch(() => '')), `${await cold.locator('iframe').count()} iframe-uri`)
+    check('split: butonul din bara laterală apare la 1366', (await cold.locator('.sidebar-split-btn').count()) === 1, `${await cold.locator('.sidebar-split-btn').count()}`)
+    await cold.close()
+
+    // Garda de murdărie pe panoul care se închide.
+    await pane('L').locator('.sh-title-input').first().fill('Sarcină pentru panoul dublu — schimbată')
+    await sp.waitForTimeout(300)
+    await pane('L').locator('.pane-close').click()
+    await sp.waitForTimeout(600)
+    check('split: ✕ cu modificări nesalvate e refuzat (garda de azi)',
+      (await sp.locator('.split-pane-frame iframe').count()) === 2 && (await pane('L').locator('.ccm-overlay').count()) === 1,
+      `${await sp.locator('.split-pane-frame iframe').count()} panouri, dialog=${await pane('L').locator('.ccm-overlay').count()}`)
+    await pane('L').locator('.ccm-exit').click()
+    await sp.waitForTimeout(400)
+
+    // ✕ curat: celălalt NU se reîncarcă — iframe-ul lui se lărgește, cu tot cu ce avea.
+    await pane('R').locator('.qa-input').first().fill('ciornă nesalvată')
+    const marker = await pane('R').evaluate(() => { (window).__alive = 'da'; return true })
+    await pane('L').locator('.pane-close').click()
+    await sp.waitForTimeout(800)
+    const r = pane('R')
+    const kept = r ? await r.evaluate(() => [(window).__alive, document.querySelector('.qa-input')?.value]) : null
+    const width = await sp.evaluate(() => document.querySelector('.split-pane-frame')?.getBoundingClientRect().width ?? 0)
+    check('split: ✕ închide fără reîncărcarea celuilalt, care se lărgește', marker && kept?.[0] === 'da' && kept?.[1] === 'ciornă nesalvată' && width > 1000 && (await sp.locator('.split-pane-frame iframe').count()) === 1,
+      `rămas=${JSON.stringify(kept)}, lățime=${Math.round(width)}px`)
+    await sp.reload({ waitUntil: 'networkidle' })
+    await sp.waitForTimeout(1600)
+    check('split: după ✕, reîncărcarea dă aplicația normală, din ruta rămasă', (await sp.locator('iframe').count()) === 0 && /Azi/.test(await sp.locator('.hd-title').first().innerText().catch(() => '')), `${await sp.locator('iframe').count()} iframe-uri`)
+
+    // Pornirea din bara laterală (fără tichet).
+    await sp.locator('.sidebar-split-btn').click()
+    await sp.waitForTimeout(2500)
+    check('split: pornirea din bara laterală', (await sp.locator('.split-pane-frame iframe').count()) === 2 && (await crumb('L')) === 'Azi' && (await crumb('R')) === 'Azi', `L=${await crumb('L')}, R=${await crumb('R')}`)
+    await sctx.close()
+
+    // Sub 1200px butonul nu apare.
+    const narrowSp = await browser.newPage({ viewport: { width: 1199, height: 800 } })
+    await narrowSp.goto(BASE, { waitUntil: 'networkidle' })
+    await narrowSp.waitForTimeout(800)
+    check('split: sub 1200px butonul din bara laterală lipsește', (await narrowSp.locator('.sidebar-split-btn').count()) === 0, `${await narrowSp.locator('.sidebar-split-btn').count()}`)
+    await narrowSp.close()
+  }
+
   await page.close()
 } finally {
   if (browser) await browser.close()

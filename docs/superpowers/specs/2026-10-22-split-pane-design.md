@@ -244,3 +244,20 @@ Ordinea contează: pașii 1–3 nu schimbă nimic vizibil și se pot publica sep
    pe motiv că e murdar: iframe-ul lui se lărgește pe toată lățimea până la
    următoarea reîncărcare / pornire rece, care dă un singur panou normal.
    Garda de murdărie se aplică doar panoului care se închide.
+
+## 6. Implementat (2026-10-22) — ce s-a schimbat față de plan
+
+- `appHistory` e un singur port pe realm (modul), nu un context React.
+- Pe lângă `data-narrow` a intrat și `data-wide` (fostul `@media (min-width:
+  1200px)` al panoului lateral): un panou e mereu „lat", deci tichetul se
+  deschide DOCAT și ia tot panoul (lista ascunsă, nu demontată) — „lista SAU
+  tichetul" din machetă, cu descrierea pe înălțimea textului. Modalul rămâne
+  pentru vizualizările fără panou („Cards", „Ordine"), întins pe tot panoul.
+- În antetul formularului din panou lipsesc ID-ul, ✕ și „Deschide mare" (sunt
+  deja în bara panoului / n-au loc); proiectul, fixarea, linkul, ștergerea și
+  salvarea rămân. Abatere asumată față de machetă (care n-are antet deloc),
+  după verificarea designerului.
+- Modul local: vestea între documente e evenimentul `storage` (baza e chiar
+  `localStorage`). Temă, text, Vim: tot `storage`.
+- Un `focus()` din cod într-un cadru fără focus e cedat înapoi (`yield`).
+- Capturi: `design/dual-pane-v2/capturi/` (1366/1920, ambele teme, plus macheta).
