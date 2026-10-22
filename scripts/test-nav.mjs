@@ -2256,6 +2256,27 @@ try {
     await op.close()
   }
 
+  // Aceeași regresie în aplicația obișnuită: tichet docat în „Listă", apoi
+  // „Azi" din bara laterală — formularul rămânea pe „Se încarcă tichetul…".
+  {
+    const dk = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+    await dk.goto(BASE, { waitUntil: 'networkidle' })
+    await dk.waitForTimeout(700)
+    await dk.locator('.sidebar-proj-btn', { hasText: 'Exemplu' }).first().click()
+    await dk.waitForTimeout(800)
+    await dk.locator('.tab', { hasText: /^List/ }).first().click()
+    await dk.waitForTimeout(500)
+    await dk.locator('.list-row').first().click()
+    await dk.waitForTimeout(800)
+    const before = new URL(dk.url()).pathname
+    await dk.locator('.sidebar .sidebar-nav-item', { hasText: 'Azi' }).first().click()
+    await dk.waitForTimeout(1500)
+    const loadingStuck = await dk.locator('.split-pane:not([hidden]) .split-empty').count()
+    const form = await dk.locator('.split-pane:not([hidden]) .sh-title-input').count()
+    check('tichet docat, apoi „Azi" din bara laterală: formularul rămâne încărcat', loadingStuck === 0 && form === 1, `${before}: gol=${loadingStuck}, formular=${form}`)
+    await dk.close()
+  }
+
   // ── Panoul dublu (spec 2026-10-22-split-pane): două iframe-uri, fiecare
   // aplicația întreagă. Context propriu: `sessionStorage` e al filei, iar o
   // pagină nouă în același context e o pornire rece.
@@ -2300,6 +2321,19 @@ try {
     check('split: Ctrl+Shift+] / [ mută focusul, și dintr-un câmp', afterR.join() === 'R,R' && afterL.join() === 'L,L', `] → ${afterR}, [ → ${afterL}, înapoi în titlu: ${titleKept}`)
     const titleVal = await pane('L').locator('.sh-title-input').first().inputValue().catch(() => null)
     check('split: tasta de comutare nu scrie nimic în câmp', titleVal === 'Sarcină pentru panoul dublu', `titlu=${titleVal}`)
+
+    // Regresia din producție (2026-10-22): o listă aleasă din bara laterală cu
+    // tichetul deschis îi descărca proiectul (`selectProject(null)`), iar
+    // formularul docat rămânea pe „Se încarcă tichetul…" la nesfârșit.
+    await pane('L').locator('main').click({ position: { x: 60, y: 300 } }).catch(() => {})
+    await sp.waitForTimeout(300)
+    await sp.locator('.sidebar .sidebar-nav-item', { hasText: '7 zile' }).first().click()
+    await sp.waitForTimeout(1500)
+    check('split: o listă din bara laterală, cu tichetul deschis în panou, nu-l lasă pe „Se încarcă"',
+      (await pane('L').locator('.split-empty').count()) === 0 && (await pane('L').locator('.sh-title-input').count()) === 1 && (await crumb('L'))?.endsWith(id),
+      `L=${await crumb('L')}, gol=${await pane('L').locator('.split-empty').count()}`)
+    await sp.locator('.sidebar .sidebar-nav-item', { hasText: 'Azi' }).first().click()
+    await sp.waitForTimeout(800)
 
     // Bara laterală navighează panoul cu focus; Back = Back-ul panoului cu focus.
     await pane('R').locator('main').click({ position: { x: 60, y: 400 } })

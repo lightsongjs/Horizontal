@@ -615,10 +615,25 @@ function Shell({ onSplit }: { onSplit?: (s: SplitState) => void }) {
     else if (project) viewStore.remove(LAST_VIEW_KEY)
   }, [screen, project])
 
+  /**
+   * Proiectul de sub o listă: al tichetului deschis, altfel niciunul. Un tichet
+   * deschis (docat sau modal) PESTE o listă își are proiectul în store
+   * (`openTaskAnywhere`); o comutare pe altă listă cu tichetul încă deschis
+   * (bara laterală, Ctrl+G, „Azi" din notificare, panoul dublu) nu are voie
+   * să-l descarce. Cu `selectProject(null)`, formularul docat rămânea pe „Se
+   * încarcă tichetul…" la nesfârșit — `byId` e al proiectului selectat.
+   */
+  const listProject = (): string | null => {
+    const t = ticketIdRef.current
+    return t ? resolveTicketProject(projectsRef.current, t)?.id ?? null : null
+  }
+  const listProjectRef = useRef(listProject)
+  listProjectRef.current = listProject
+
   const openScreen = useCallback((s: Screen) => {
     setShowUsers(false)
     setScreen(s)
-    selectProject(null)
+    selectProject(listProjectRef.current())
   }, [selectProject])
 
   const exitSmartList = useCallback(() => {
@@ -970,7 +985,7 @@ function Shell({ onSplit }: { onSplit?: (s: SplitState) => void }) {
   const applyTop = (t: TopScreen) => {
     setShowUsers(t === 'users')
     setScreen(t === 'users' ? null : t)
-    selectProject(null)
+    selectProject(listProjectRef.current())
   }
   /** Așază stiva canonică de pe rădăcină: `[Azi]`, sau `[Azi, t]`. */
   const settleTop = (t: TopScreen) => {
@@ -1130,7 +1145,7 @@ function Shell({ onSplit }: { onSplit?: (s: SplitState) => void }) {
       if (!id) return
       later(() => {
         if (narrow) goTopRef.current(filterScreen(id))
-        else { setShowUsers(false); setScreen(filterScreen(id)); selectProject(null) }
+        else { setShowUsers(false); setScreen(filterScreen(id)); selectProject(listProjectRef.current()) }
       })
     }
     const onDeleted = (e: Event) => {
@@ -1143,12 +1158,12 @@ function Shell({ onSplit }: { onSplit?: (s: SplitState) => void }) {
     // „Utilizatori” din rotița de setări: același tipar, foaia abia s-a închis.
     const onUsers = () => later(() => {
       if (narrow) goTopRef.current('users')
-      else { setShowUsers(true); setScreen(null); selectProject(null) }
+      else { setShowUsers(true); setScreen(null); selectProject(listProjectRef.current()) }
     })
     // Atingerea pe notificarea fixă din bară (Android, `NativeBridge`): „Azi".
     const onToday = () => later(() => {
       if (narrow) goTopRef.current('today')
-      else { setShowUsers(false); setScreen('today'); selectProject(null) }
+      else { setShowUsers(false); setScreen('today'); selectProject(listProjectRef.current()) }
     })
     window.addEventListener(GO_TODAY_EVENT, onToday)
     window.addEventListener(OPEN_FILTER_EVENT, onOpen)
