@@ -49,6 +49,7 @@ import type { Issue } from './lib/types'
 import type { MenuAction, MenuLevel } from './lib/actionMenu'
 import { useMoveIssue } from './hooks'
 import { errorMessage } from './lib/errorMessage'
+import { appHistory } from './lib/historyPort'
 
 export type Pane = 'sidebar' | 'list' | 'panel'
 
@@ -800,8 +801,8 @@ export function useKeyDispatcher(actions: DispatchActions) {
           if (!a.sidebarCollapsed() && paneOf(document.activeElement) === 'sidebar') blurActive()
           a.toggleSidebar()
           return
-        case 'historyBack': window.history.back(); return
-        case 'historyForward': window.history.forward(); return
+        case 'historyBack': appHistory.back(); return
+        case 'historyForward': appHistory.forward(); return
         case 'undo': if (!a.undo()) toast('Nimic de anulat'); else settleAfter(rows); return
         case 'wavePrev': wave({ dir: -1 }); return
         case 'waveNext': wave({ dir: 1 }); return

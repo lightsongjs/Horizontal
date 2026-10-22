@@ -12,6 +12,7 @@ import { useCalendar } from '../calendar'
 import { upcomingEventReminders } from '../lib/calendarEvents'
 import { eventIdFromReminderId } from '../../supabase/functions/_shared/eventReminders.ts'
 import { onlyMine } from '../lib/ownership'
+import { appHistory } from '../lib/historyPort'
 
 /** Cât de des se retrimite lista chiar fără nicio schimbare: fereastra alunecă. */
 const RESEND_MS = 15 * 60_000
@@ -87,7 +88,7 @@ export function NativeBridge() {
     find: (id) => byIdRef.current[id] ?? dueRef.current.find((i) => i.id === id),
     toggleDone, updateIssue,
     // Același drum ca un deep link, prin `popstate`-ul din App.tsx — nu un al doilea mod de a deschide un tichet.
-    open: (id) => { history.pushState(null, '', `/${id}`); window.dispatchEvent(new PopStateEvent('popstate')) },
+    open: (id) => { appHistory.pushState(null, `/${id}`); appHistory.dispatchPop() },
     now: () => new Date(),
     resolveId: (id) => repository.sync?.resolveId(id) ?? id,
   })
@@ -201,17 +202,17 @@ export function NativeBridge() {
     })
     const onPop = () => {
       if (!fromWidget.current) return
-      const st = history.state as { hzSheet?: unknown } | null
-      if (parseTicketPath(location.pathname) || st?.hzSheet) return
+      const st = appHistory.state as { hzSheet?: unknown } | null
+      if (parseTicketPath(appHistory.pathname) || st?.hzSheet) return
       fromWidget.current = false
       void android.leave().catch(() => {})
     }
     const onVis = () => { if (document.visibilityState === 'hidden') fromWidget.current = false }
-    window.addEventListener('popstate', onPop)
+    const offPop = appHistory.onPop(onPop)
     document.addEventListener('visibilitychange', onVis)
     return () => {
       void sub.then((l) => l.remove()).catch(() => {})
-      window.removeEventListener('popstate', onPop)
+      offPop()
       document.removeEventListener('visibilitychange', onVis)
     }
   }, [android, widgets, dueLoaded])

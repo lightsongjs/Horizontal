@@ -40,6 +40,7 @@ import { TaskActionsProvider, useTaskActions } from './components/TaskActions'
 import { SelectionBar, SelectionHeader } from './components/SelectionChrome'
 import { GoToPalette, type GoTarget } from './components/GoToPalette'
 import { useKeyDispatcher, useVim, VimProvider, VimStatus } from './vim'
+import { appHistory } from './lib/historyPort'
 
 /**
  * Puntea dintre coada offline și ce nu ține de store: foaia deschisă și URL-ul.
@@ -53,8 +54,8 @@ function SyncBridge() {
     return repository.sync?.subscribe((e) => {
       if (e.type !== 'remap') return
       renameIssueId(e.from, e.to)
-      if (window.location.pathname === ticketPath(e.from)) {
-        window.history.replaceState(window.history.state, '', ticketPath(e.to))
+      if (appHistory.pathname === ticketPath(e.from)) {
+        appHistory.replaceState(appHistory.state, ticketPath(e.to))
       }
     })
   }, [renameIssueId])
@@ -222,7 +223,7 @@ function TabBar({ screen, onScreen }: {
 }
 
 /** Adâncimea intrării curente din istoric, din history.state. */
-const readDepth = () => (window.history.state as { hzDepth?: number } | null)?.hzDepth ?? 0
+const readDepth = () => (appHistory.state as { hzDepth?: number } | null)?.hzDepth ?? 0
 
 const LAST_VIEW_KEY = 'horizontal:last-view'
 /**
@@ -271,7 +272,7 @@ const toScreen = (v: string | null | undefined): Screen | null =>
  */
 type TopScreen = Screen | 'users'
 const readTopScreen = (): TopScreen | null => {
-  const v = (window.history.state as { hzScreen?: string } | null)?.hzScreen
+  const v = (appHistory.state as { hzScreen?: string } | null)?.hzScreen
   return v === 'users' ? v : v === 'projects' ? 'today' : toScreen(v)
 }
 
@@ -521,10 +522,10 @@ function Shell() {
     : { hzDepth: historyDepth.current })
   const pushPath = (path: string) => {
     historyDepth.current += 1
-    window.history.pushState(entryState(path), '', path)
+    appHistory.pushState(entryState(path), path)
   }
   const replacePath = (path: string) => {
-    window.history.replaceState(entryState(path), '', path)
+    appHistory.replaceState(entryState(path), path)
   }
   const projectPath = (p: Project | null) => (p ? `/project/${slugify(p.name)}` : '/')
   /**
@@ -539,7 +540,7 @@ function Shell() {
    */
   const settleUrl = (p: Project | null) => {
     const path = projectPath(screenRef.current ? null : p)
-    if (window.location.pathname !== path) replacePath(path)
+    if (appHistory.pathname !== path) replacePath(path)
   }
   /**
    * Un Back a fost refuzat (formular cu modificări nesalvate) → punem URL-ul
@@ -553,7 +554,7 @@ function Shell() {
     // Cu o listă pe ecran, destinația e `/` (aceeași regulă ca `settleUrl`):
     // formularul deschis din „…" al foii rapide încarcă proiectul doar în store.
     const path = open ? ticketPath(open) : projectPath(screenRef.current ? null : projectRef.current)
-    if (window.location.pathname !== path) pushPath(path)
+    if (appHistory.pathname !== path) pushPath(path)
   }
   const mainRef = useRef<HTMLElement>(null)
   const [pullY, setPullY] = useState(0)
@@ -706,7 +707,7 @@ function Shell() {
     // Și un `/HZ-~…` e un path de tichet: o repornire offline peste foaia unei
     // sarcini nesincronizate o redeschide (sarcina trăiește în coadă, deci e în
     // `byId`). Dacă între timp a primit număr, `resolveIssueId` îl traduce.
-    const target = parseTicketPath(window.location.pathname, resolveIssueId)
+    const target = parseTicketPath(appHistory.pathname, resolveIssueId)
     if (target) {
       // Un path de tichet spune CE e deschis, nu PE CE ecran. În aplicație, un
       // card dintr-o listă inteligentă se deschide PESTE listă (vezi
@@ -732,7 +733,7 @@ function Shell() {
         else settleUrl(selectLastUsedProject())
       }
     } else {
-      const match = window.location.pathname.match(/^\/project\/(.+)$/)
+      const match = appHistory.pathname.match(/^\/project\/(.+)$/)
       if (match) {
         const found = findBySlug(match[1])
         if (found) selectProject(found.id)
@@ -828,12 +829,12 @@ function Shell() {
     // sub listă (al sarcinii deschise din „Azi") schimbă doar ecranul, nu și
     // `project.id` — fără el URL-ul rămânea `/` peste boardul proiectului.
     const path = slug && !screen ? `/project/${slug}` : '/'
-    if (window.location.pathname !== path) pushPath(path)
+    if (appHistory.pathname !== path) pushPath(path)
     // Pe același `/` doar se schimbă ecranul (sidebar-ul nu trece prin
     // `goTop`): intrarea curentă își rescrie marcajul, ca un Back care se
     // întoarce aici să găsească ecranul de acum, nu pe cel de la împingere.
     // O intrare de foaie (`hzSheet`) nu se atinge — și-ar pierde marcajul.
-    else if (path === '/' && !(window.history.state as { hzSheet?: string } | null)?.hzSheet
+    else if (path === '/' && !(appHistory.state as { hzSheet?: string } | null)?.hzSheet
       && readTopScreen() !== (screen ?? (showUsers ? 'users' : 'today'))) replacePath(path)
   }, [project?.id, screen, showUsers]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -844,17 +845,17 @@ function Shell() {
     if (!urlSyncReady.current) return
     // Tradus: bara pe `/HZ-~…` și foaia deschisă pe `HZ-13` (remapat) sunt
     // același tichet — doar se canonizează, fără intrare nouă.
-    const onTicketUrl = parseTicketPath(window.location.pathname, resolveIssueId)
+    const onTicketUrl = parseTicketPath(appHistory.pathname, resolveIssueId)
 
     if (ticketId) {
       const path = ticketPath(ticketId)
-      if (window.location.pathname === path) return
+      if (appHistory.pathname === path) return
       // URL-ul e deja al acestui ticket (alt caps, după un deep link) → doar îl
       // canonizăm, fără intrare nouă.
       if (onTicketUrl === ticketId) replacePath(path)
       else {
         // Ce era în bară înainte de intrarea asta. Vezi `behindTicket`.
-        behindTicket.current = window.location.pathname
+        behindTicket.current = appHistory.pathname
         behindScreen.current = screenKey()
         pushPath(path)
       }
@@ -873,7 +874,7 @@ function Shell() {
       // spate e ecranul pe care erai, dar acolo poate sta alt tichet — iar
       // `onPop` își face datoria și îl deschide. Ștergeai o sarcină din „Azi"
       // și îți sărea în panou un tichet din alt proiect.
-      else if (historyDepth.current > 0 && !backLandsOnTicket()) window.history.back()
+      else if (historyDepth.current > 0 && !backLandsOnTicket()) appHistory.back()
       // Deep link rece: intrarea de ticket e prima din sesiune, un back ar
       // scoate userul din aplicație. Rescriem în loc să navigăm.
       else settleUrl(projectRef.current)
@@ -899,19 +900,19 @@ function Shell() {
   const quickPop = useRef(false)
   useEffect(() => {
     if (!urlSyncReady.current) return
-    const marked = (window.history.state as { hzSheet?: string } | null)?.hzSheet === 'quick'
+    const marked = (appHistory.state as { hzSheet?: string } | null)?.hzSheet === 'quick'
     if (sheet.kind === 'quick-add') {
       if (quickEntry.current) return
       quickEntry.current = true
       historyDepth.current += 1
-      window.history.pushState({ hzDepth: historyDepth.current, hzSheet: 'quick' }, '', window.location.pathname)
+      appHistory.pushState({ hzDepth: historyDepth.current, hzSheet: 'quick' }, appHistory.pathname)
       return
     }
     if (!quickEntry.current) return
     quickEntry.current = false
     if (!marked) return
-    if (sheet.kind === 'none') { quickPop.current = true; window.history.back() }
-    else replacePath(window.location.pathname)
+    if (sheet.kind === 'none') { quickPop.current = true; appHistory.back() }
+    else replacePath(appHistory.pathname)
   }, [sheet.kind]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
@@ -929,13 +930,13 @@ function Shell() {
     if (want > have) {
       for (let i = have; i < want; i++) {
         historyDepth.current += 1
-        window.history.pushState({ hzDepth: historyDepth.current, hzSheet: 'layer' }, '', window.location.pathname)
+        appHistory.pushState({ hzDepth: historyDepth.current, hzSheet: 'layer' }, appHistory.pathname)
       }
       layerEntries.current = want
     } else if (want < have) {
       layerEntries.current = want
       layerPop.current = true
-      window.history.go(want - have)
+      appHistory.go(want - have)
     }
   }, [ta.layers])
 
@@ -968,13 +969,13 @@ function Shell() {
   /** Așază stiva canonică de pe rădăcină: `[Azi]`, sau `[Azi, t]`. */
   const settleTop = (t: TopScreen) => {
     if (historyDepth.current !== 0) {
-      window.history.replaceState({ hzDepth: historyDepth.current, hzScreen: t }, '', '/')
+      appHistory.replaceState({ hzDepth: historyDepth.current, hzScreen: t }, '/')
       return
     }
-    window.history.replaceState({ hzDepth: 0, hzScreen: 'today' }, '', '/')
+    appHistory.replaceState({ hzDepth: 0, hzScreen: 'today' }, '/')
     if (t === 'today') return
     historyDepth.current = 1
-    window.history.pushState({ hzDepth: 1, hzScreen: t }, '', '/')
+    appHistory.pushState({ hzDepth: 1, hzScreen: t }, '/')
   }
   const goTop = (t: TopScreen) => {
     applyTop(t)
@@ -982,14 +983,14 @@ function Shell() {
     if (historyDepth.current === 0) settleTop(t)
     else {
       tabPop.current = t
-      window.history.go(-historyDepth.current)
+      appHistory.go(-historyDepth.current)
       // Plasă: dacă adâncimea ținută ar minți și `go` n-ar avea unde merge,
       // `popstate` nu vine — iar fără asta efectul proiect → URL ar tăcea
       // toată sesiunea. Atunci doar marcăm intrarea curentă.
       window.setTimeout(() => {
         if (tabPop.current !== t) return
         tabPop.current = null
-        window.history.replaceState({ hzDepth: historyDepth.current, hzScreen: t }, '', '/')
+        appHistory.replaceState({ hzDepth: historyDepth.current, hzScreen: t }, '/')
       }, 1000)
     }
   }
@@ -1003,12 +1004,12 @@ function Shell() {
   const settleProject = (id: string) => {
     const path = projectPath(projectsRef.current.find((p) => p.id === id) ?? null)
     if (historyDepth.current !== 0) {
-      window.history.replaceState({ hzDepth: historyDepth.current }, '', path)
+      appHistory.replaceState({ hzDepth: historyDepth.current }, path)
       return
     }
-    window.history.replaceState({ hzDepth: 0, hzScreen: 'today' }, '', '/')
+    appHistory.replaceState({ hzDepth: 0, hzScreen: 'today' }, '/')
     historyDepth.current = 1
-    window.history.pushState({ hzDepth: 1 }, '', path)
+    appHistory.pushState({ hzDepth: 1 }, path)
   }
   const goProject = (id: string) => {
     setShowUsers(false)
@@ -1020,12 +1021,12 @@ function Shell() {
     else {
       const t = { project: id }
       tabPop.current = t
-      window.history.go(-historyDepth.current)
+      appHistory.go(-historyDepth.current)
       // Aceeași plasă ca în `goTop`.
       window.setTimeout(() => {
         if (tabPop.current !== t) return
         tabPop.current = null
-        window.history.replaceState({ hzDepth: historyDepth.current }, '', projectPath(projectsRef.current.find((p) => p.id === id) ?? null))
+        appHistory.replaceState({ hzDepth: historyDepth.current }, projectPath(projectsRef.current.find((p) => p.id === id) ?? null))
       }, 1000)
     }
   }
@@ -1046,15 +1047,15 @@ function Shell() {
     setDrawer(true)
     drawerEntry.current = true
     historyDepth.current += 1
-    window.history.pushState({ hzDepth: historyDepth.current, hzSheet: 'drawer' }, '', window.location.pathname)
+    appHistory.pushState({ hzDepth: historyDepth.current, hzSheet: 'drawer' }, appHistory.pathname)
   }
   const closeDrawer = () => {
     setDrawer(false)
     if (!drawerEntry.current) return
     drawerEntry.current = false
-    if ((window.history.state as { hzSheet?: string } | null)?.hzSheet === 'drawer') {
+    if ((appHistory.state as { hzSheet?: string } | null)?.hzSheet === 'drawer') {
       drawerPop.current = true
-      window.history.back()
+      appHistory.back()
     }
   }
   const pickFromDrawer = (t: NavTarget) => {
@@ -1190,7 +1191,7 @@ function Shell() {
         closeSheet()
         return
       }
-      const target = parseTicketPath(window.location.pathname, resolveIssueId)
+      const target = parseTicketPath(appHistory.pathname, resolveIssueId)
       // Ticketul cerut e deja cel deschis (ex. un card de dependență peste el)
       // → nu resetăm stiva și nu deranjăm garda de close.
       if (target && ticketIdRef.current === target) return
@@ -1211,15 +1212,14 @@ function Shell() {
       }
       // Pe `/`, intrarea spune ce tab arată (vezi `goTop`). Fără marcaj (o
       // intrare dinainte de el) rămâne vechiul comportament: doar iese din proiect.
-      const top = window.location.pathname === '/' ? readTopScreen() : null
+      const top = appHistory.pathname === '/' ? readTopScreen() : null
       if (top) { applyTop(top); return }
-      const match = window.location.pathname.match(/^\/project\/(.+)$/)
+      const match = appHistory.pathname.match(/^\/project\/(.+)$/)
       const found = match ? findBySlug(match[1]) : null
       if (found) setScreen(null)
       selectProject(found?.id ?? null)
     }
-    window.addEventListener('popstate', onPop)
-    return () => window.removeEventListener('popstate', onPop)
+    return appHistory.onPop(onPop)
   }, [selectProject, projects, openIssue, closeSheet]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {

@@ -14,6 +14,7 @@ import type { NewIssue } from './data/repository'
 import { LONG_PRESS_MS, movedBeyondTap } from './lib/swipe'
 import { ticketPath } from './lib/deepLink'
 import { movedNotice } from './lib/moveIssue'
+import { appHistory } from './lib/historyPort'
 
 const HIDE_DONE_KEY = 'horizontal:hide-done'
 const SIDEBAR_KEY = 'horizontal:sidebar-collapsed'
@@ -96,8 +97,8 @@ export function useMoveIssue(): (id: string, targetProjectId: string, opts?: { o
   projectsRef.current = projects
   return useCallback(async (id, targetProjectId, opts) => {
     const moved = await moveIssue(id, targetProjectId)
-    if (window.location.pathname === ticketPath(id)) {
-      window.history.replaceState(window.history.state, '', ticketPath(moved.id))
+    if (appHistory.pathname === ticketPath(id)) {
+      appHistory.replaceState(appHistory.state, ticketPath(moved.id))
     }
     renameIssueId(id, moved.id, { remount: opts?.remount })
     if (opts?.open) selectProject(targetProjectId)
