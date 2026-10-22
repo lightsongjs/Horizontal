@@ -3397,130 +3397,130 @@ background: var(--accent-soft);
    Cele două coloane își derulează propriul conținut, iar `main` nu se mai
    derulează deloc: altfel panoul ar fi urcat afară din ecran în timp ce
    citeai lista, exact lucrul pe care split-ul îl repară. */
-@media (min-width: 1200px) {
-  main:has(.split) {
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-  }
-  main:has(.split) > .view {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    padding-bottom: 20px;
-  }
-  main:has(.split) > .view > .tabs {
-    flex: 0 0 auto;
-  }
-  main:has(.split) > .view > .split,
-  main:has(.split) > .split {
-    flex: 1;
-    min-height: 0;
-  }
-  /* Listele inteligente nu trec prin `.view`, deci nici prin padding-ul lui. */
-  main:has(.split) > .split {
-    padding: 0 0 0 24px;
-  }
+/* Pragul panoului lateral: `<html data-wide>` (src/lib/narrow.ts), nu un
+   @media — într-un panou al panoului dublu e mereu lat. */
+:where(html[data-wide]) main:has(.split) {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+:where(html[data-wide]) main:has(.split) > .view {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 20px;
+}
+:where(html[data-wide]) main:has(.split) > .view > .tabs {
+  flex: 0 0 auto;
+}
+:where(html[data-wide]) main:has(.split) > .view > .split,
+:where(html[data-wide]) main:has(.split) > .split {
+  flex: 1;
+  min-height: 0;
+}
+/* Listele inteligente nu trec prin `.view`, deci nici prin padding-ul lui. */
+:where(html[data-wide]) main:has(.split) > .split {
+  padding: 0 0 0 24px;
+}
 
-  .split {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 22px;
-    align-items: stretch;
-  }
-  .split.has-pane {
-    grid-template-columns: minmax(340px, 1fr) minmax(460px, 1.05fr);
-  }
-  .split-pane[hidden] { display: none; }
-  /* Fără panou lista unui proiect păstrează o lățime de citit, ca listele inteligente. */
-  .split:not(.has-pane) > .split-list > .panel { max-width: 900px; }
-  /* Tichetul intră din dreapta, scurt; lista se reașază odată cu el. */
-  .split.has-pane > .split-pane { animation: split-pane-in 0.2s cubic-bezier(0.2, 0.8, 0.2, 1); }
-  @keyframes split-pane-in {
-    from { transform: translateX(24px); opacity: 0; }
-    to { transform: none; opacity: 1; }
-  }
-  .split-list {
-    min-width: 0;
-    overflow-y: auto;
-    overflow-x: hidden;
-    padding-right: 2px;
-  }
-  /* Plafonul de 760px al listelor („o lățime de citit") e pentru ecranul
-     întreg. În panoul lateral, coloana ÎNSĂȘI e măsura — cu plafon peste ea,
-     rândurile se opreau înainte de panou și rămânea o bandă goală între
-     listă și tichetul deschis. */
-  .split.has-pane > .split-list > .smart-list,
-  .split.has-pane > .split-list > .inbox-pad,
-  .split.has-pane > .split-list > .panel.inbox-pad { max-width: none; }
-  .split-pane {
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    /* `relative`, nu decor: caseta de confirmare a închiderii (`.ccm-overlay`)
-       e `absolute; inset: 0` și se aștepta la `.sheet`. Fără asta ar acoperi
-       toată fereastra. */
-    position: relative;
-    /* „Senin": o coloană lipită de listă, despărțită de o linie de păr — nu
-       un card care plutește peste pagină. */
-    background: var(--bg);
-    border-radius: 0;
-    box-shadow: -1px 0 0 var(--line-soft);
-    padding-left: 0;
-  }
-  .split-pane .sh-header { background: var(--bg); }
-  .split-pane .sh-header,
-  .split-pane .if-body { padding-left: 28px; padding-right: 28px; }
+:where(html[data-wide]) .split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 22px;
+  align-items: stretch;
+}
+:where(html[data-wide]) .split.has-pane {
+  grid-template-columns: minmax(340px, 1fr) minmax(460px, 1.05fr);
+}
+:where(html[data-wide]) .split-pane[hidden] { display: none; }
+/* Fără panou lista unui proiect păstrează o lățime de citit, ca listele inteligente. */
+:where(html[data-wide]) .split:not(.has-pane) > .split-list > .panel { max-width: 900px; }
+/* Tichetul intră din dreapta, scurt; lista se reașază odată cu el. */
+:where(html[data-wide]) .split.has-pane > .split-pane { animation: split-pane-in 0.2s cubic-bezier(0.2, 0.8, 0.2, 1); }
+@keyframes split-pane-in {
+  from { transform: translateX(24px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+:where(html[data-wide]) .split-list {
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 2px;
+}
+/* Plafonul de 760px al listelor („o lățime de citit") e pentru ecranul
+   întreg. În panoul lateral, coloana ÎNSĂȘI e măsura — cu plafon peste ea,
+   rândurile se opreau înainte de panou și rămânea o bandă goală între
+   listă și tichetul deschis. */
+:where(html[data-wide]) .split.has-pane > .split-list > .smart-list,
+:where(html[data-wide]) .split.has-pane > .split-list > .inbox-pad,
+:where(html[data-wide]) .split.has-pane > .split-list > .panel.inbox-pad { max-width: none; }
+:where(html[data-wide]) .split-pane {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* `relative`, nu decor: caseta de confirmare a închiderii (`.ccm-overlay`)
+     e `absolute; inset: 0` și se aștepta la `.sheet`. Fără asta ar acoperi
+     toată fereastra. */
+  position: relative;
+  /* „Senin": o coloană lipită de listă, despărțită de o linie de păr — nu
+     un card care plutește peste pagină. */
+  background: var(--bg);
+  border-radius: 0;
+  box-shadow: -1px 0 0 var(--line-soft);
+  padding-left: 0;
+}
+:where(html[data-wide]) .split-pane .sh-header { background: var(--bg); }
+:where(html[data-wide]) .split-pane .sh-header,
+:where(html[data-wide]) .split-pane .if-body { padding-left: 28px; padding-right: 28px; }
 
-  /* Formularul, în panou, e o singură coloană care se derulează ca un tot.
-     Gridul 55/45 de la modal e croit pentru 94vw; la 500px ar fi dat două
-     coloane de 250, adică nici descriere, nici dependențe. */
-  .split-pane .sheet-scroll.if-body {
-    display: block;
-    overflow-y: auto;
-    padding-bottom: 20px;
-  }
-  .split-pane .form-cols {
-    display: block;
-  }
-  .split-pane .form-col-right {
-    overflow: visible;
-  }
-  /* Înălțime dată, nu `flex: 1`: aici nu mai există o coloană care să împartă
-     restul înălțimii — panoul se derulează. */
-  /* O singură coloană: spațiul dintre coloane (20px) n-are ce despărți. */
-  .split-pane .form-col-desc { padding-right: 0; }
-  .split-pane .deps-zone, .split-pane .thread { padding-left: 0; }
-  /* Înălțimea e a textului (`DescFold`, `.desc-fit` mai jos): minim 3 rânduri,
-     2 când e goală, plafon `min(340px, 45% din panou)`. Înainte ținea 420px
-     chiar goală, iar Firul cădea sub pliu (macheta `design/panel-thread`).
-     Desenul de câmp e `.desc-box` (macheta `design/desc-box`), ca peste tot. */
-  .split-pane .form-col-desc .desc-fixed { flex: 0 0 auto; }
-  /* Rândul de fir, primul în corp. Bulina necititului are inel pe fundalul
-     panoului (`--bg`), nu pe al foii. */
-  .split-pane .es-thread { margin: 2px 0 12px; }
-  .split-pane .es-thread.unread .es-thread-av::after { box-shadow: 0 0 0 2px var(--bg); }
-  .split-pane .es-thread + .form-cols .form-col-desc { padding-top: 0; }
-  /* Dependențele urcă lângă text: 14px ai lor, fără încă 16 de la coloană. */
-  .split-pane .form-col-desc { padding-top: 4px; padding-bottom: 0; }
+/* Formularul, în panou, e o singură coloană care se derulează ca un tot.
+   Gridul 55/45 de la modal e croit pentru 94vw; la 500px ar fi dat două
+   coloane de 250, adică nici descriere, nici dependențe. */
+:where(html[data-wide]) .split-pane .sheet-scroll.if-body {
+  display: block;
+  overflow-y: auto;
+  padding-bottom: 20px;
+}
+:where(html[data-wide]) .split-pane .form-cols {
+  display: block;
+}
+:where(html[data-wide]) .split-pane .form-col-right {
+  overflow: visible;
+}
+/* Înălțime dată, nu `flex: 1`: aici nu mai există o coloană care să împartă
+   restul înălțimii — panoul se derulează. */
+/* O singură coloană: spațiul dintre coloane (20px) n-are ce despărți. */
+:where(html[data-wide]) .split-pane .form-col-desc { padding-right: 0; }
+:where(html[data-wide]) .split-pane .deps-zone, :where(html[data-wide]) .split-pane .thread { padding-left: 0; }
+/* Înălțimea e a textului (`DescFold`, `.desc-fit` mai jos): minim 3 rânduri,
+   2 când e goală, plafon `min(340px, 45% din panou)`. Înainte ținea 420px
+   chiar goală, iar Firul cădea sub pliu (macheta `design/panel-thread`).
+   Desenul de câmp e `.desc-box` (macheta `design/desc-box`), ca peste tot. */
+:where(html[data-wide]) .split-pane .form-col-desc .desc-fixed { flex: 0 0 auto; }
+/* Rândul de fir, primul în corp. Bulina necititului are inel pe fundalul
+   panoului (`--bg`), nu pe al foii. */
+:where(html[data-wide]) .split-pane .es-thread { margin: 2px 0 12px; }
+:where(html[data-wide]) .split-pane .es-thread.unread .es-thread-av::after { box-shadow: 0 0 0 2px var(--bg); }
+:where(html[data-wide]) .split-pane .es-thread + .form-cols .form-col-desc { padding-top: 0; }
+/* Dependențele urcă lângă text: 14px ai lor, fără încă 16 de la coloană. */
+:where(html[data-wide]) .split-pane .form-col-desc { padding-top: 4px; padding-bottom: 0; }
 
-  .split-empty {
-    margin: auto;
-    padding: 32px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    text-align: center;
-    color: var(--txt-faint);
-    max-width: 260px;
-  }
-  .split-empty p {
-    font-size: calc(13px * var(--text-scale));
-    line-height: 1.6;
-  }
+:where(html[data-wide]) .split-empty {
+  margin: auto;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+  color: var(--txt-faint);
+  max-width: 260px;
+}
+:where(html[data-wide]) .split-empty p {
+  font-size: calc(13px * var(--text-scale));
+  line-height: 1.6;
 }
 
 /* Rândul al cărui tichet e deschis în panou. O linie de 2px pe muchie plus un
@@ -7733,4 +7733,161 @@ body:has(.qab) { overflow-y: auto; }
 .goto-colon {
   font-family: var(--mono); font-weight: 700; color: var(--accent);
   font-size: calc(16px * var(--text-scale));
+}
+
+/* ─── PANOUL DUBLU (split pane, 2026-10-22) ─────────────────────────────
+   Macheta: design/dual-pane-v2/index.html, varianta A. Gazda (documentul de
+   sus) = bara laterală + două iframe-uri; fiecare panou e aplicația întreagă
+   (`html[data-pane]`), fără bară laterală proprie, cu bara panoului sus. */
+:where(html:not([data-narrow])) #app.split-host {
+  /* Gazda n-are `.app-body`: fără asta ar prinde regula ecranului de login
+     (`#app:not(:has(.app-body))`, flex centrat). */
+  display: grid;
+  align-items: stretch;
+  justify-content: stretch;
+  grid-template-columns: 240px minmax(0, 1fr);
+}
+.split-panes {
+  display: flex;
+  min-width: 0;
+  height: 100dvh;
+  grid-column: 2;
+  grid-row: 1;
+}
+.split-pane-frame {
+  flex: 1 1 0;
+  min-width: 420px;
+  position: relative;
+  background: var(--bg);
+}
+.split-pane-frame + .split-pane-frame { box-shadow: -1px 0 0 var(--line); }
+/* Panoul cu focus: linia accent de 2px sus. Celălalt nu se estompează. */
+.split-pane-frame.focus::before {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  height: 2px;
+  background: var(--accent);
+  z-index: 2;
+  pointer-events: none;
+}
+.split-pane-frame iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: var(--bg);
+}
+
+/* Bara laterală a gazdei: pe care panou îl conduci, punctul celuilalt panou. */
+.sidebar-who {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px 8px;
+  font-size: calc(12px * var(--text-scale));
+  font-weight: 650;
+  color: var(--txt-faint);
+}
+.sidebar-mini { display: inline-flex; gap: 2px; }
+.sidebar-mini i { width: 10px; height: 12px; border-radius: 3px; background: var(--surface-3); }
+.sidebar-mini i.on { background: var(--accent); }
+.sidebar-other {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--txt-faint);
+  margin-left: 6px;
+  flex-shrink: 0;
+}
+.sidebar-split-btn.on { background: var(--accent-soft); color: var(--accent); }
+
+/* Într-un panou: o singură coloană, fără comutatorul barei laterale. */
+html[data-pane] #app,
+html[data-pane] #app.sidebar-collapsed { grid-template-columns: minmax(0, 1fr); }
+html[data-pane] .header-sidebar-btn { display: none; }
+.pane-bar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 44px;
+  padding: 0 10px 0 14px;
+  flex-shrink: 0;
+  box-shadow: inset 0 -1px 0 var(--line-soft);
+}
+.pane-crumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  font-size: calc(13.5px * var(--text-scale));
+  font-weight: 600;
+  color: var(--txt-dim);
+}
+.pane-crumb-label { overflow: hidden; text-overflow: ellipsis; }
+.pane-crumb-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--pc); flex-shrink: 0; }
+.pane-crumb-star { display: inline-flex; color: var(--star); }
+.pane-crumb-sl { color: var(--txt-faint); }
+.pane-crumb-id { font-family: var(--mono); font-size: calc(12.5px * var(--text-scale)); }
+.pane-twin {
+  margin-left: 8px;
+  white-space: nowrap;
+  font-size: calc(12px * var(--text-scale));
+  font-weight: 650;
+  color: var(--txt-faint);
+}
+.pane-bar-sp { flex: 1; }
+.pane-bar-btn {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  border-radius: var(--r-s);
+  background: transparent;
+  color: var(--txt-dim);
+}
+.pane-bar-btn:hover { background: var(--surface-3); }
+html[data-pane] .app-body { grid-column: 1; }
+/* Peste fundalul unei foi: ✕ și ← rămân de atins cu orice foaie deschisă. */
+html[data-pane] .pane-bar { position: relative; z-index: 42; background: var(--bg); }
+/* Tichetul în panou: „lista SAU tichetul" (macheta, varianta A). Panoul e
+   mereu `data-wide`, deci tichetul se deschide DOCAT — `.split-pane`, o coloană,
+   descrierea cu înălțimea textului — și ia toată lățimea, cu lista ascunsă (nu
+   demontată: `SplitView` o ține în DOM). ← din bara panoului îl închide. */
+html[data-pane] .split.has-pane { grid-template-columns: minmax(0, 1fr); gap: 0; }
+html[data-pane] .split.has-pane > .split-list { display: none; }
+html[data-pane] main:has(.split.has-pane) > .split { padding: 0; }
+html[data-pane] .split.has-pane > .split-pane { box-shadow: none; animation: none; }
+html[data-pane] .app-body:has(.split.has-pane) > header,
+html[data-pane] main:has(.split.has-pane) > .view > :not(.split) { display: none; }
+html[data-pane] main:has(.split.has-pane) > .view { padding-bottom: 0; }
+/* Un tichet deschis dintr-o vizualizare fără panou („Cards", „Ordine"): modalul
+   acoperă panoul sub bara lui, fără rază și fără umbră. */
+html[data-pane] .sheet:has(.form-cols),
+html[data-pane] .sheet.on:has(.form-cols) {
+  top: 44px;
+  left: 0;
+  width: 100%;
+  max-width: none;
+  height: calc(100dvh - 44px);
+  max-height: none;
+  border-radius: 0;
+  box-shadow: none;
+  transform: none;
+  background: var(--bg);
+}
+html[data-pane] .sheet:has(.form-cols) .sh-header { background: var(--bg); }
+/* Modalul de mai sus, sub ~760px (1366: panouri de 563px): o coloană, ca în
+   panoul lateral (`.split-pane`); la 1920 (844px) rămân două. */
+@media (max-width: 760px) {
+  html[data-pane] .sheet .sheet-scroll.if-body { display: block; overflow-y: auto; padding-bottom: 20px; }
+  html[data-pane] .sheet .form-cols { display: block; }
+  html[data-pane] .sheet .form-col-right { overflow: visible; }
+  html[data-pane] .sheet .form-col-desc { padding-right: 0; }
+  html[data-pane] .sheet .deps-zone,
+  html[data-pane] .sheet .thread { padding-left: 0; }
+  html[data-pane] .sheet .form-col-desc .desc-fixed { flex: 0 0 auto; height: min(340px, 45dvh); }
 }

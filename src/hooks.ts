@@ -15,7 +15,7 @@ import { LONG_PRESS_MS, movedBeyondTap } from './lib/swipe'
 import { ticketPath } from './lib/deepLink'
 import { movedNotice } from './lib/moveIssue'
 import { appHistory } from './lib/historyPort'
-import { narrowNow, subscribeNarrow } from './lib/narrow'
+import { narrowNow, subscribeNarrow, wideNow } from './lib/narrow'
 
 const HIDE_DONE_KEY = 'horizontal:hide-done'
 const SIDEBAR_KEY = 'horizontal:sidebar-collapsed'
@@ -493,6 +493,11 @@ export function useCoarsePointer(): boolean {
  */
 export function useNarrow(): boolean {
   return useSyncExternalStore(subscribeNarrow, narrowNow, () => false)
+}
+
+/** Peste pragul panoului lateral (`<html data-wide>`) — mereu, într-un panou al panoului dublu. */
+export function useWide(): boolean {
+  return useSyncExternalStore(subscribeNarrow, wideNow, () => false)
 }
 
 /**

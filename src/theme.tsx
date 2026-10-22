@@ -1,4 +1,4 @@
-import { createContext, useContext, useLayoutEffect, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useLayoutEffect, useState, type ReactNode } from 'react'
 import { parseTextScale, TEXT_SCALE_KEY, type TextScale } from './lib/textScale'
 import { FOLLOW_KEY, parseFlag, serializeFlag, VIM_KEY } from './lib/vimSettings'
 
@@ -58,6 +58,20 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     document.documentElement.toggleAttribute('data-text-large', textScale > 1)
     localStorage.setItem(TEXT_SCALE_KEY, String(textScale))
   }, [textScale])
+
+  // Setările sunt ale DISPOZITIVULUI: schimbate în altă filă — sau în celălalt
+  // panou al panoului dublu, ori în gazda lui — se văd și aici, fără reîncărcare.
+  // `storage` vine numai în celelalte documente, deci fără buclă.
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'horizontal-theme' && (e.newValue === 'dark' || e.newValue === 'light')) setTheme(e.newValue)
+      else if (e.key === TEXT_SCALE_KEY) setTextScale(parseTextScale(e.newValue))
+      else if (e.key === VIM_KEY) setVim(parseFlag(e.newValue))
+      else if (e.key === FOLLOW_KEY) setFollow(parseFlag(e.newValue))
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
 
   return (
     <Ctx.Provider value={{ theme, setTheme, textScale, setTextScale, vim, setVim, follow, setFollow }}>

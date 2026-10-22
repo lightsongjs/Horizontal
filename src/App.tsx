@@ -17,9 +17,6 @@ import { InboxView } from './components/InboxView'
 import { InfoPanel } from './components/InfoPanel'
 import { Toast } from './components/Toast'
 import { deepLinkNotice, parseTicketPath, resolveTicketProject, ticketPath } from './lib/deepLink'
-import { isReminderAction, isReminderArrived } from './lib/pushPayload'
-import { reminderMutation } from './lib/reminderAction'
-import { announceChime, playChime, unlockChime } from './lib/chime'
 import type { Project } from './lib/types'
 import { Icon } from './components/Icon'
 import { NativeBridge } from './components/NativeBridge'
@@ -41,6 +38,10 @@ import { SelectionBar, SelectionHeader } from './components/SelectionChrome'
 import { GoToPalette, type GoTarget } from './components/GoToPalette'
 import { useKeyDispatcher, useVim, VimProvider, VimStatus } from './vim'
 import { appHistory } from './lib/historyPort'
+import { isPane, viewStore } from './lib/pane'
+import { ServiceWorkerBridge } from './components/ServiceWorkerBridge'
+import { PaneBar, postPaneClose, usePaneLink } from './components/PaneLink'
+import type { NavAction, PaneRoute } from './lib/paneProtocol'
 
 /**
  * Puntea dintre coada offline și ce nu ține de store: foaia deschisă și URL-ul.
@@ -286,7 +287,7 @@ const slugify = (name: string) =>
   name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '')
 
 function Shell() {
-  const { loading, error, project, projects, issuesLoadedFor, issuesLoadFailedFor, byId, dueIssues, selectProject, refresh, toggleDone, updateIssue, inbox, recurrenceUndo, undoRecurrence, clearRecurrenceUndo, activeWave, setActiveWave, undoEntry, takeUndo, expireUndo } = useHorizontal()
+  const { loading, error, project, projects, issuesLoadedFor, issuesLoadFailedFor, byId, dueIssues, selectProject, refresh, inbox, recurrenceUndo, undoRecurrence, clearRecurrenceUndo, activeWave, setActiveWave, undoEntry, takeUndo, expireUndo } = useHorizontal()
   const ta = useTaskActions()
   // Pentru `onPop`, care se atașează rar: stratul de închis e cel de ACUM.
   const taRef = useRef(ta)
@@ -377,7 +378,7 @@ function Shell() {
     return () => window.removeEventListener('hz:widget-quick', on)
   }, [])
   const [tab, setTab] = useState<Tab>(() => {
-    const saved = localStorage.getItem('horizontal:last-tab')
+    const saved = viewStore.get('horizontal:last-tab')
     return saved === 'ordine' || saved === 'list' || saved === 'graf' || saved === 'teme' ? saved : 'list'
   })
   const [showInfo, setShowInfo] = useState(false)
@@ -608,8 +609,8 @@ function Shell() {
   // ecranul de start ar ateriza mereu în proiecte, nu în lista de azi (sau, cu
   // „Ale mele" restaurat, într-un proiect la întâmplare).
   useEffect(() => {
-    if (screen) localStorage.setItem(LAST_VIEW_KEY, `smart:${screen}`)
-    else if (project) localStorage.removeItem(LAST_VIEW_KEY)
+    if (screen) viewStore.set(LAST_VIEW_KEY, `smart:${screen}`)
+    else if (project) viewStore.remove(LAST_VIEW_KEY)
   }, [screen, project])
 
   const openScreen = useCallback((s: Screen) => {
@@ -620,7 +621,7 @@ function Shell() {
 
   const exitSmartList = useCallback(() => {
     setScreen(null)
-    localStorage.removeItem(LAST_VIEW_KEY)
+    viewStore.remove(LAST_VIEW_KEY)
     // Deschiderea unei sarcini încarcă proiectul ei în store, fără să schimbe
     // ecranul. Fără curățenia asta, un Back din „Azi" (sau dintr-o pasă
     // deschisă din „Ale mele") ar ateriza pe boardul ultimei sarcini deschise —
@@ -630,14 +631,14 @@ function Shell() {
 
   // Remember the active tab globally — persists across refreshes AND across
   // project switches. The chosen view stays until the user changes it.
-  useEffect(() => { localStorage.setItem('horizontal:last-tab', tab) }, [tab])
+  useEffect(() => { viewStore.set('horizontal:last-tab', tab) }, [tab])
 
   const findBySlug = (slug: string) => projects.find((p) => slugify(p.name) === slug)
 
   // Fallback: selectează ultimul proiect folosit (dacă există), din localStorage.
   // Întoarce proiectul pe care am aterizat, ca apelantul să poată așeza URL-ul.
   const selectLastUsedProject = (): Project | null => {
-    const lastSlug = localStorage.getItem('horizontal:last-project')
+    const lastSlug = viewStore.get('horizontal:last-project')
     const found = lastSlug ? findBySlug(lastSlug) : null
     if (found) selectProject(found.id)
     return found ?? null
@@ -717,7 +718,7 @@ function Shell() {
       // loc pe care nu-l ceruseși. Și repornirea nu e ipotetică: `pwa.ts`
       // aplică un build nou la revenirea în tab, adică reîncarcă pagina exact
       // peste un card deschis.
-      const lastView = parseLastView(localStorage.getItem(LAST_VIEW_KEY))
+      const lastView = parseLastView(viewStore.get(LAST_VIEW_KEY))
       if (lastView) setScreen(lastView)
       const owner = resolveTicketProject(projects, target)
       if (owner) {
@@ -749,7 +750,10 @@ function Shell() {
         } catch {
           // Fereastră privată / stocare blocată: tratăm ca pornire proaspătă.
         }
-        const lastView = parseLastView(localStorage.getItem(LAST_VIEW_KEY))
+        // Un panou al panoului dublu nu „pornește" niciodată: gazda i-a scris
+        // ecranul (`seedPane`), iar o reîncărcare a filei îl reface de acolo.
+        if (isPane()) firstRun = false
+        const lastView = parseLastView(viewStore.get(LAST_VIEW_KEY))
         if (firstRun) setScreen('today')
         else if (lastView) setScreen(lastView)
         else selectLastUsedProject()
@@ -809,8 +813,8 @@ function Shell() {
   useEffect(() => {
     if (!urlSyncReady.current) return
     const slug = project ? slugify(project.name) : null
-    if (slug) localStorage.setItem('horizontal:last-project', slug)
-    else localStorage.removeItem('horizontal:last-project')
+    if (slug) viewStore.set('horizontal:last-project', slug)
+    else viewStore.remove('horizontal:last-project')
 
     // URL-ul aparține unui ticket doar dacă un deep link se rezolvă sau un sheet
     // de ticket e deschis — nu doar pentru că pathname-ul *arată* ca un ticket.
@@ -1014,7 +1018,7 @@ function Shell() {
   const goProject = (id: string) => {
     setShowUsers(false)
     setScreen(null)
-    localStorage.removeItem(LAST_VIEW_KEY)
+    viewStore.remove(LAST_VIEW_KEY)
     selectProject(id)
     if (sheetRef.current.kind !== 'none' || layerEntries.current > 0 || quickEntry.current) return
     if (historyDepth.current === 0) settleProject(id)
@@ -1355,59 +1359,6 @@ function Shell() {
     else setActiveWave(t.number)
   }
 
-  /**
-   * Butoanele notificării („Gata", „Amână"). Cu o filă deschisă, PAGINA e
-   * executantul preferat: nu doar poate scrie cu drepturile userului, ci își și
-   * actualizează interfața pe loc. Fără nicio filă, workerul se descurcă singur
-   * cu un token semnat (vezi `resolveAction` din `src/sw.ts`) — deci ăsta nu mai
-   * e singurul drum, doar cel mai bun când e disponibil.
-   */
-  useEffect(() => {
-    if (!('serviceWorker' in navigator)) return
-    const onMessage = (e: MessageEvent) => {
-      // Mementoul a sosit și anunțaserăm că putem cânta, deci notificarea a
-      // plecat `silent` și sunetul e treaba noastră. Vezi `src/lib/chime.ts`.
-      if (isReminderArrived(e.data)) { playChime(); return }
-      if (!isReminderAction(e.data)) return
-      const { action, id } = e.data
-      const m = reminderMutation(action, byIdRef.current[id] ?? dueRef.current.find((i) => i.id === id), new Date())
-      if (m.kind === 'toggle') void toggleDone(id)
-      else if (m.kind === 'patch') void updateIssue(id, m.patch)
-    }
-    navigator.serviceWorker.addEventListener('message', onMessage)
-    return () => navigator.serviceWorker.removeEventListener('message', onMessage)
-  }, [toggleDone, updateIssue])
-
-  // Contextul audio se deblochează la PRIMA atingere a paginii, nu la primul
-  // memento: politica de autoplay cere un gest al utilizatorului, iar mesajul
-  // service worker-ului nu e un gest — `resume()` ar fi refuzat în silență, și
-  // primul memento ar veni mut. `once: true`, fiindcă o dată e de ajuns.
-  useEffect(() => {
-    // La pornire ȘTERGEM anunțul: audio nu e deblocat încă, iar un anunț rămas
-    // din sesiunea de dinaintea unui refresh ar face workerul să tacă degeaba.
-    // Asta e ce ține minciuna imposibilă, nu un termen de expirare.
-    void announceChime()
-
-    const unlock = () => { unlockChime(); void announceChime() }
-    // `capture: true` nu e decorativ: în faza de bubble, orice `stopPropagation`
-    // dintr-un handler al aplicației ar înghiți gestul, contextul audio n-ar fi
-    // deblocat niciodată, și mementourile ar veni mute pentru totdeauna. Captura
-    // pe document rulează înaintea oricui ar putea opri propagarea.
-    const opts = { once: true, capture: true } as const
-    document.addEventListener('pointerdown', unlock, opts)
-    document.addEventListener('keydown', unlock, opts)
-    // Browserul poate suspenda contextul cât fila e ascunsă. La revenire se
-    // reanunță starea REALĂ — altfel anunțul ar rămâne un „da" învechit.
-    const onVis = () => { void announceChime() }
-    document.addEventListener('visibilitychange', onVis)
-    return () => {
-      // `capture` trebuie repetat la scoatere, altfel nu se potrivește ascultătorul.
-      document.removeEventListener('pointerdown', unlock, { capture: true })
-      document.removeEventListener('keydown', unlock, { capture: true })
-      document.removeEventListener('visibilitychange', onVis)
-    }
-  }, [])
-
   // Un drop care aterizează în afara zonei de fișiere lovește comportamentul
   // implicit al browserului și scoate utilizatorul din SPA — deschide fișierul
   // ca pagină, pierzând starea nesalvată. O pereche inertă la nivel de document
@@ -1425,6 +1376,41 @@ function Shell() {
     }
   }, [])
 
+  // ── Panoul dublu: partea de PANOU (spec 2026-10-22-split-pane). Într-un
+  // panou bara laterală e a gazdei; ce se apasă acolo ajunge aici ca `nav` și
+  // trece pe aceleași drumuri ca un clic în bara proprie.
+  const paneMode = isPane()
+  const { savedFilters: paneFilters } = useHorizontal()
+  const paneRoute: PaneRoute = {
+    screen: showUsers ? 'users' : screen,
+    projectId: project?.id ?? null,
+    ticketId,
+    path: appHistory.pathname,
+    state: appHistory.state,
+    // Cu un tichet deschis firimitura e a TICHETULUI (proiectul lui / ID-ul),
+    // ca în machetă; altfel a ecranului.
+    label: ticketId ? project?.name ?? ''
+      : showUsers ? 'Utilizatori'
+      : screen === 'today' ? 'Azi' : screen === 'week' ? '7 zile' : screen === 'inbox' ? 'Ale mele'
+      : filterId ? paneFilters.find((f) => f.id === filterId)?.name ?? 'Filtru'
+      : project?.name ?? '',
+    accent: (ticketId || !screen) && !showUsers ? project?.accent ?? null : null,
+  }
+  const paneNav = (a: NavAction) => {
+    if (a.type === 'screen') {
+      if (isScreen(a.screen)) openScreen(a.screen)
+    } else if (a.type === 'project') { setShowUsers(false); exitSmartList(); selectProject(a.id) }
+    else if (a.type === 'filter-form') { if (leaveDocked()) openFilterForm(a.id) }
+    else if (a.type === 'search') { if (leaveDocked()) setShowSearch(true) }
+    else if (a.type === 'new-issue') openNewIssue()
+    else if (a.type === 'new-project') openNewProject()
+    else if (a.type === 'settings') openAppSettings()
+  }
+  // Garda de închidere a panoului e garda de închidere a foii: un formular cu
+  // modificări nesalvate cere confirmarea de azi (și refuză până atunci).
+  const paneTryClose = () => sheet.kind === 'none' || closeSheet() !== false
+  const panePeer = usePaneLink(paneMode, paneRoute, paneNav, paneTryClose)
+
   // Rândul marcat în sertar: ecranul de acum.
   const drawerCurrent: NavTarget | null = screen === 'today' || screen === 'week' || screen === 'inbox'
     ? { kind: 'screen', screen }
@@ -1433,7 +1419,7 @@ function Shell() {
 
   return (
     <div id="app" className={sidebarCollapsed ? 'sidebar-collapsed' : undefined}>
-      <Sidebar
+      {!paneMode && <Sidebar
         showUsers={showUsers && isAdmin}
         onNavigate={() => { setShowUsers(false); exitSmartList() }}
         smartList={smartList}
@@ -1446,8 +1432,9 @@ function Shell() {
         onFilter={(id) => openScreen(filterScreen(id))}
         onFilterForm={(id) => { if (leaveDocked()) openFilterForm(id) }}
         onSearch={() => { if (leaveDocked()) setShowSearch(true) }}
-      />
+      />}
       <div className="app-body">
+        {paneMode && <PaneBar route={paneRoute} peer={panePeer} onBack={() => closeSheet()} onClose={() => { if (paneTryClose()) postPaneClose() }} />}
         {ta.selectMode && ta.narrow && taskList ? <SelectionHeader /> : <Header onNewIssue={openNewIssue} onSearch={() => {
           // Focus în gestul atingerii, ca la foaia rapidă: altfel telefonul nu ridică tastatura.
           if (!leaveDocked()) return
@@ -1498,7 +1485,7 @@ function Shell() {
           <TabBar screen={screen} onScreen={goTop} />
         )}
       </div>
-      {drawer && narrow && (
+      {drawer && narrow && !paneMode && (
         <Drawer
           current={drawerCurrent}
           onPick={pickFromDrawer}
@@ -1544,7 +1531,6 @@ function Shell() {
 
 export function App() {
   const { enabled, session, loading } = useAuth()
-
   if (loading) {
     return (
       <div id="app">
@@ -1564,7 +1550,9 @@ export function App() {
       <UIProvider>
         <CalendarProvider>
           <SyncBridge />
-          <NativeBridge />
+          {/* Un singur executant pe filă: în panoul dublu, gazda (vezi `ServiceWorkerBridge`). */}
+          {!isPane() && <NativeBridge />}
+          {!isPane() && <ServiceWorkerBridge />}
           <TaskActionsProvider>
             <VimProvider>
               <Shell />

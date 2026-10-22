@@ -17,7 +17,9 @@ import {
   type Repository,
 } from './repository'
 
-const KEY = 'horizontal:v2'
+/** Exportată: o altă filă / alt panou își reîncarcă datele la evenimentul `storage` pe ea (store.tsx). */
+export const LOCAL_DB_KEY = 'horizontal:v2'
+const KEY = LOCAL_DB_KEY
 
 /**
  * Un tichet local salvat înainte de `createdAt` n-are de unde să știe când a

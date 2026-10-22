@@ -108,6 +108,19 @@ async function pageAnnouncedChime(): Promise<boolean> {
 }
 
 /**
+ * Filele aplicației: `includeUncontrolled`, fiindcă imediat după un build nou
+ * fila încă nu e revendicată de workerul activat, dar e pe ecran. Și numai
+ * documentele de SUS (`top-level`): în panoul dublu fiecare panou e un iframe
+ * — tot un client `window`, `frameType: 'nested'` — iar o bifă din notificare
+ * s-ar fi executat o dată pe cadru, un clic ar fi navigat un panou în loc de
+ * filă. Mesajele le ascultă numai gazda (`ServiceWorkerBridge`).
+ */
+async function windows(): Promise<readonly WindowClient[]> {
+  const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+  return all.filter((c) => c.frameType !== 'nested')
+}
+
+/**
  * Arată notificarea și, dacă aplicația e în față ȘI poate cânta, îi dă ei
  * sunetul.
  *
@@ -125,7 +138,7 @@ async function pageAnnouncedChime(): Promise<boolean> {
 async function show(plan: ReturnType<typeof planNotification>, id: string): Promise<void> {
   // `includeUncontrolled`, ca și în restul fișierului: imediat după un build nou
   // fila încă nu e revendicată de workerul activat, dar e pe ecran.
-  const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+  const clients = await windows()
   const visible = clients.filter((c) => c.visibilityState === 'visible')
 
   // Ambele condiții, și fiecare acoperă altceva: anunțul spune că EXISTĂ o
@@ -187,7 +200,7 @@ self.addEventListener('notificationclick', (event) => {
   const url = data.url ?? '/'
   event.waitUntil(
     (async () => {
-      const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      const clients = await windows()
       // O filă deja deschisă e refolosită: a doua fereastră cu aceeași aplicație
       // ar rupe starea (formulare nesalvate) și e ce nimeni nu vrea de la un click.
       for (const c of clients) {
@@ -230,7 +243,7 @@ async function resolveAction(
   // Cu o filă deschisă, PAGINA rămâne executantul preferat — nu din
   // constrângere, ci fiindcă ea își actualizează și interfața pe loc. O cerere
   // de aici ar reuși, dar ar lăsa ecranul arătând starea veche.
-  const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+  const clients = await windows()
   if (clients.length > 0) {
     for (const c of clients) c.postMessage({ type: 'reminder-action', action, id })
     return

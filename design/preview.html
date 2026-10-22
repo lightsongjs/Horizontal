@@ -9,11 +9,14 @@
 <link rel="stylesheet" href="../src/styles.css" />
 <script>
   // Ca `installNarrow` din src/lib/narrow.ts, înainte de conținut: CSS-ul de
-  // telefon atârnă de `<html data-narrow>`, nu de un @media.
+  // telefon atârnă de `<html data-narrow>`, panoul lateral de `<html data-wide>`.
   (function () {
-    var mq = matchMedia('(max-width: 899px)');
-    var sync = function () { document.documentElement.toggleAttribute('data-narrow', mq.matches); };
-    sync(); mq.addEventListener('change', sync);
+    var mq = matchMedia('(max-width: 899px)'), wq = matchMedia('(min-width: 1200px)');
+    var sync = function () {
+      document.documentElement.toggleAttribute('data-narrow', mq.matches);
+      document.documentElement.toggleAttribute('data-wide', wq.matches);
+    };
+    sync(); mq.addEventListener('change', sync); wq.addEventListener('change', sync);
   })();
 </script>
 <style>

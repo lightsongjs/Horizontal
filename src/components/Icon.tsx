@@ -1,5 +1,6 @@
 import {
   Maximize2,
+  Columns2,
   FolderInput,
   MessageCircle,
   ArrowLeft,
@@ -127,6 +128,8 @@ const ICONS = {
   edit: Pencil,
   expand: ChevronRight,
   popOut: Maximize2,
+  /** Panoul dublu: „Deschide în panou nou” (antetul tichetului docat, bara laterală). */
+  split: Columns2,
   external: ExternalLink,
   fileArchive: FileArchive,
   fileAudio: Music,

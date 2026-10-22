@@ -37,6 +37,7 @@ import { withPin, withoutPin, type Pin, type PinKind } from './lib/pins'
 import { shortLabels } from './lib/initials'
 import type { Assignee, InboxRow, Issue, IssueState, Layers, Obstacle, ObstacleLink, Project, ProjectMember, Theme, Wave } from './lib/types'
 import { errorMessage } from './lib/errorMessage'
+import { LOCAL_DB_KEY } from './data/localRepository'
 import { debounce, shouldRefreshOnVisible, STALE_REFRESH_MS, syncRefreshStep } from './lib/refreshGate'
 import type { ProjectBundle, SyncEvent, SyncStatus } from './data/offline/types'
 
@@ -945,6 +946,18 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     })
     return () => { stale.cancel(); off() }
   }, [upsertIssue, refreshAfterSync])
+
+  // Modul local (fără strat offline, deci fără canal): baza e chiar
+  // `localStorage`, iar `storage` vine în CELELALTE documente ale originii —
+  // altă filă sau celălalt panou al panoului dublu. Aceeași reîncărcare cu
+  // debounce ca la `stale`.
+  useEffect(() => {
+    if (repository.sync) return
+    const stale = debounce(refreshAfterSync, STALE_REFRESH_MS)
+    const onStorage = (e: StorageEvent) => { if (e.key === LOCAL_DB_KEY) stale() }
+    window.addEventListener('storage', onStorage)
+    return () => { stale.cancel(); window.removeEventListener('storage', onStorage) }
+  }, [refreshAfterSync])
 
   const reorderProjects = useCallback((ids: string[]) => {
     setProjectOrder(ids)

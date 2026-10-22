@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isNarrow, NARROW_QUERY } from './narrow'
+import { isNarrow, isWide, NARROW_QUERY, WIDE_QUERY } from './narrow'
 import css from '../styles.css?raw'
 
 describe('isNarrow', () => {
@@ -10,13 +10,19 @@ describe('isNarrow', () => {
     expect(isNarrow(false, true)).toBe(false)
   })
   it('pragul e cel de dinainte', () => expect(NARROW_QUERY).toBe('(max-width: 899px)'))
+  it('lat: peste 1200px, și mereu într-un panou (tichetul se deschide docat)', () => {
+    expect(WIDE_QUERY).toBe('(min-width: 1200px)')
+    expect(isWide(true, false)).toBe(true)
+    expect(isWide(false, false)).toBe(false)
+    expect(isWide(false, true)).toBe(true)
+  })
 })
 
 describe('styles.css nu mai întreabă viewportul pentru telefon/desktop', () => {
   // În panoul dublu un iframe de ~570px ar fi „telefon" pentru un @media.
   // Regulile noi: `:where(html[data-narrow]) …` / `:where(html:not([data-narrow])) …`.
-  it('niciun @media cu 899px / 900px', () => {
-    const bad = css.split('\n').filter((l) => /@media[^{]*\b(899|900)px/.test(l))
+  it('niciun @media cu 899px / 900px / 1200px', () => {
+    const bad = css.split('\n').filter((l) => /@media[^{]*\b(899|900|1200)px/.test(l))
     expect(bad).toEqual([])
   })
 })

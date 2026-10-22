@@ -67,14 +67,20 @@ const depsBar = () => `
 
 const browser = await chromium.launch()
 // CSS-ul de telefon atârnă de `<html data-narrow>` (src/lib/narrow.ts), nu de un
-// @media. Îl punem dintr-un script AL PAGINII, înaintea conținutului — ca
+// @media; panoul lateral (1200px) de `<html data-wide>`. Îl punem dintr-un script AL PAGINII, înaintea conținutului — ca
 // `installNarrow` înainte de prima randare. Pus după `setContent`, regulile de
 // desktop s-ar fi aplicat întâi, iar tranzițiile (`.sheet { transition:
 // transform }`) ar fi fost prinse la jumătate de măsurători.
 const NARROW_BOOT = `<script>(() => {
   const mq = matchMedia('(max-width: 899px)')
-  const sync = () => document.documentElement.toggleAttribute('data-narrow', mq.matches)
-  sync(); mq.addEventListener('change', sync)
+  const wq = matchMedia('(min-width: 1200px)')
+  const sync = () => {
+    const pane = document.documentElement.hasAttribute('data-pane')
+    document.documentElement.toggleAttribute('data-narrow', mq.matches && !pane)
+    document.documentElement.toggleAttribute('data-wide', wq.matches || pane)
+  }
+  sync(); mq.addEventListener('change', sync); wq.addEventListener('change', sync)
+  new MutationObserver(sync).observe(document.documentElement, { attributes: true, attributeFilter: ['data-pane'] })
 })()</script>`
 const syncNarrow = (page) => {
   if (page.__narrow) return page
@@ -1854,6 +1860,42 @@ for (const width of [390, 1400]) {
     check(`meniul (${level}): rânduri întregi, literele vizibile @${width}px`, m.out === 0 && m.keyMin >= 20 && m.whyCut === 0 && m.cut === 0 && m.minH >= 30, `ies=${m.out}, literă ${m.keyMin}px, motive tăiate=${m.whyCut}, etichete tăiate=${m.cut}, rând min ${m.minH}px`)
     await page.close()
   }
+}
+
+// ── Panoul dublu (spec 2026-10-22-split-pane): gazda = bara laterală + două
+// iframe-uri; la 1200 (cel mai îngust la care apare butonul), 1366 și 1920.
+console.log('\nPanoul dublu — gazda și bara panoului:')
+for (const width of [1200, 1366, 1920]) {
+  const page = await browser.newPage({ viewport: { width, height: 800 } })
+  await page.setContent(`<style>${CSS}</style><div id="app" class="split-host"><aside class="sidebar"></aside>
+    <div class="split-panes"><div class="split-pane-frame focus"><iframe></iframe></div><div class="split-pane-frame"><iframe></iframe></div></div></div>`)
+  const m = await page.evaluate(() => {
+    const f = [...document.querySelectorAll('.split-pane-frame')].map((e) => e.getBoundingClientRect())
+    const line = getComputedStyle(document.querySelector('.split-pane-frame.focus'), '::before')
+    return { a: Math.round(f[0].width), b: Math.round(f[1].width), right: Math.round(f[1].right), doc: document.documentElement.scrollWidth, line: line.height, bg: line.backgroundColor }
+  })
+  await page.close()
+  check(`două panouri egale, fără derulare orizontală @${width}px`, Math.abs(m.a - m.b) <= 1 && m.a >= 420 && m.doc <= width && m.right <= width, `${m.a} + ${m.b}px, doc ${m.doc}px`)
+  check(`linia accent de 2px pe panoul cu focus @${width}px`, m.line === '2px' && m.bg !== 'rgba(0, 0, 0, 0)', `${m.line}, ${m.bg}`)
+}
+for (const width of [420, 484, 567, 844]) {
+  const page = await browser.newPage({ viewport: { width, height: 700 } })
+  await page.setContent(`<script>document.documentElement.setAttribute('data-pane','L')</script><style>${CSS}</style>
+    <div id="app"><div class="app-body"><div class="pane-bar">
+      <button class="pane-bar-btn"><svg width="16" height="16"></svg></button>
+      <span class="pane-crumb"><i class="pane-crumb-dot" style="--pc:#2F6BFF"></i><span class="pane-crumb-label">Un proiect cu un nume foarte, foarte lung de tot</span><span class="pane-crumb-sl">/</span><span class="pane-crumb-id">HORIZ-128</span></span>
+      <span class="pane-twin">deschis și în celălalt panou</span><span class="pane-bar-sp"></span>
+      <button class="pane-bar-btn pane-close"><svg width="16" height="16"></svg></button>
+    </div><main></main></div></div>`)
+  const m = await page.evaluate(() => {
+    const bar = document.querySelector('.pane-bar').getBoundingClientRect()
+    const x = document.querySelector('.pane-close').getBoundingClientRect()
+    const app = document.getElementById('app')
+    return { barW: Math.round(bar.width), xIn: x.right <= bar.right + 0.5 && x.width >= 31, h: Math.round(bar.height), cols: getComputedStyle(app).gridTemplateColumns, narrow: document.documentElement.hasAttribute('data-narrow') }
+  })
+  await page.close()
+  check(`bara panoului: ✕ întreg, pe un rând @${width}px`, m.xIn && m.h === 44 && m.barW <= width, `bară ${m.barW}×${m.h}px`)
+  check(`panoul e desktop (o coloană, fără layoutul de telefon) @${width}px`, !m.narrow && !/\s/.test(m.cols.trim()), `coloane: ${m.cols}`)
 }
 
 await browser.close()

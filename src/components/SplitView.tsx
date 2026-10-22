@@ -2,7 +2,7 @@ import { useEffect, useRef, type ReactNode } from 'react'
 import type { Issue } from '../lib/types'
 import { useUI } from '../ui'
 import { useHorizontal } from '../store'
-import { useMediaQuery } from '../hooks'
+import { useWide } from '../hooks'
 import { IssueForm } from './IssueForm'
 import { Icon } from './Icon'
 import { useVimOptional } from '../vim'
@@ -13,7 +13,8 @@ import { useVimOptional } from '../vim'
  * conținut) pornește la 900px; aici mai trebuie loc pentru încă o coloană de
  * formular pe lângă el, deci pragul e mai sus.
  */
-const SPLIT_QUERY = '(min-width: 1200px)'
+// Pragul (1200px) e `WIDE_QUERY` din `lib/narrow.ts`: `<html data-wide>`, ca un
+// panou al panoului dublu să-l treacă la orice lățime („lista SAU tichetul").
 
 /**
  * Lista în stânga, tichetul deschis în dreapta.
@@ -24,7 +25,7 @@ const SPLIT_QUERY = '(min-width: 1200px)'
  * și atât, iar formularul se întoarce în foaia de jos.
  */
 export function SplitView({ children }: { children: ReactNode }) {
-  const wide = useMediaQuery(SPLIT_QUERY)
+  const wide = useWide()
   const { registerSplitHost, dockedIssueId, dockedKeyId, closeSheet, isDockedDirty } = useUI()
   const { byId } = useHorizontal()
   const paneRef = useRef<HTMLElement>(null)
