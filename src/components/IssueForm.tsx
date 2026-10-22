@@ -5,6 +5,8 @@ import { useAuth } from '../auth'
 import { useHorizontal } from '../store'
 import { useUI, type IssueDraft } from '../ui'
 import { useCanWrite, useCoarsePointer, useTitleDate, useNarrow } from '../hooks'
+import { isPane } from '../lib/pane'
+import { OPEN_SPLIT_EVENT } from '../lib/splitState'
 import { ticketUrl } from '../lib/deepLink'
 import { stripSpans } from '../lib/parseDue'
 import { fold } from '../lib/text'
@@ -1489,6 +1491,17 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
             title={existing.pinnedAt ? 'Fixat sus în liste — scoate (F)' : 'Fixează sus în liste (F)'}
           >
             <Icon name="pin" size={15} />
+          </button>
+        )}
+        {docked && isEdit && !isPane() && (
+          <button
+            tabIndex={-1}
+            className="sh-copy sh-split"
+            onClick={() => window.dispatchEvent(new Event(OPEN_SPLIT_EVENT))}
+            aria-label="Deschide în panou nou"
+            title="Deschide în panou nou: tichetul în stânga, lista în dreapta"
+          >
+            <Icon name="split" size={15} />
           </button>
         )}
         {docked && isEdit && (

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { flushSync } from 'react-dom'
 import { useAuth } from './auth'
-import { useCanWrite, useSidebarCollapsed, useWritableProjects, useNarrow } from './hooks'
+import { useCanWrite, useSidebarCollapsed, useWritableProjects, useNarrow, useMediaQuery } from './hooks'
 import { HorizontalProvider, useHorizontal } from './store'
 import { UIProvider, useUI } from './ui'
 import { CalendarProvider } from './calendar'
@@ -38,7 +38,9 @@ import { SelectionBar, SelectionHeader } from './components/SelectionChrome'
 import { GoToPalette, type GoTarget } from './components/GoToPalette'
 import { useKeyDispatcher, useVim, VimProvider, VimStatus } from './vim'
 import { appHistory } from './lib/historyPort'
-import { isPane, viewStore } from './lib/pane'
+import { isPane, seedPane, viewStore } from './lib/pane'
+import { clearSplit, loadSplit, OPEN_SPLIT_EVENT, saveSplit, seedFor, SPLIT_MIN_QUERY, type SplitState } from './lib/splitState'
+import { SplitHost } from './components/SplitHost'
 import { ServiceWorkerBridge } from './components/ServiceWorkerBridge'
 import { PaneBar, postPaneClose, usePaneLink } from './components/PaneLink'
 import type { NavAction, PaneRoute } from './lib/paneProtocol'
@@ -286,13 +288,13 @@ function parseLastView(raw: string | null): Screen | null {
 const slugify = (name: string) =>
   name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '')
 
-function Shell() {
+function Shell({ onSplit }: { onSplit?: (s: SplitState) => void }) {
   const { loading, error, project, projects, issuesLoadedFor, issuesLoadFailedFor, byId, dueIssues, selectProject, refresh, inbox, recurrenceUndo, undoRecurrence, clearRecurrenceUndo, activeWave, setActiveWave, undoEntry, takeUndo, expireUndo } = useHorizontal()
   const ta = useTaskActions()
   // Pentru `onPop`, care se atașează rar: stratul de închis e cel de ACUM.
   const taRef = useRef(ta)
   taRef.current = ta
-  const { openNewIssue, openNewProject, openProjectSettings, openAppSettings, openFilterForm, openIssue, closeSheet, pushSheet, sheet, ticketId, dockedIssueId, toast, clearToast, showToast } = useUI()
+  const { openNewIssue, openNewProject, openProjectSettings, openAppSettings, openFilterForm, openIssue, closeSheet, pushSheet, sheet, ticketId, dockedIssueId, toast, clearToast, showToast, isDockedDirty, nudgeSave } = useUI()
   const { vim: vimOn } = useTheme()
   // Stabil peste randări nelegate de toast: `recurrenceUndo` (din store, un
   // `useState`) nu-și schimbă identitatea decât când SE SCHIMBĂ toast-ul, deci
@@ -1411,6 +1413,31 @@ function Shell() {
   const paneTryClose = () => sheet.kind === 'none' || closeSheet() !== false
   const panePeer = usePaneLink(paneMode, paneRoute, paneNav, paneTryClose)
 
+  // ── Panoul dublu: pornirea (documentul de sus, de la 1200px). Stânga =
+  // unde erai, cu tichetul; dreapta = același ecran, fără tichet.
+  const splitWide = useMediaQuery(SPLIT_MIN_QUERY)
+  const canSplit = !paneMode && splitWide && !!onSplit
+  const startSplit = () => {
+    if (!canSplit) return
+    // Tichetul trece într-un alt formular (al panoului) — o remontare, ca la
+    // „Deschide mare": cu modificări nesalvate refuză și clipește săgeata.
+    if (dockedIssueId && isDockedDirty()) { nudgeSave(); return }
+    if (sheet.kind !== 'none' && !dockedIssueId && closeSheet() === false) return
+    const here = { screen: showUsers ? 'users' : screen, projectSlug: project ? slugify(project.name) : null, ticketId }
+    seedPane('L', seedFor(here, true))
+    seedPane('R', seedFor(here, false))
+    const st: SplitState = { panes: ['L', 'R'], focus: 'L' }
+    saveSplit(st)
+    onSplit?.(st)
+  }
+  const startSplitRef = useRef(startSplit)
+  startSplitRef.current = startSplit
+  useEffect(() => {
+    const on = () => startSplitRef.current()
+    window.addEventListener(OPEN_SPLIT_EVENT, on)
+    return () => window.removeEventListener(OPEN_SPLIT_EVENT, on)
+  }, [])
+
   // Rândul marcat în sertar: ecranul de acum.
   const drawerCurrent: NavTarget | null = screen === 'today' || screen === 'week' || screen === 'inbox'
     ? { kind: 'screen', screen }
@@ -1432,6 +1459,7 @@ function Shell() {
         onFilter={(id) => openScreen(filterScreen(id))}
         onFilterForm={(id) => { if (leaveDocked()) openFilterForm(id) }}
         onSearch={() => { if (leaveDocked()) setShowSearch(true) }}
+        onSplit={canSplit ? startSplit : undefined}
       />}
       <div className="app-body">
         {paneMode && <PaneBar route={paneRoute} peer={panePeer} onBack={() => closeSheet()} onClose={() => { if (paneTryClose()) postPaneClose() }} />}
@@ -1531,6 +1559,17 @@ function Shell() {
 
 export function App() {
   const { enabled, session, loading } = useAuth()
+  // Panoul dublu: gazda pornește direct în split la o reîncărcare cu două
+  // panouri vii (`horizontal:split`); o pornire rece, sau un panou rămas după
+  // ✕, pornește aplicația normală. Un panou nu e niciodată gazdă.
+  const [hosting, setHosting] = useState<{ state: SplitState; boot: boolean } | null>(() => {
+    if (isPane()) return null
+    const st = loadSplit()
+    return st ? { state: st, boot: true } : null
+  })
+  // Deconectat: split-ul nu supraviețuiește loginului următor.
+  useEffect(() => { if (enabled && !session && !loading) { clearSplit(); setHosting(null) } }, [enabled, session, loading])
+
   if (loading) {
     return (
       <div id="app">
@@ -1555,7 +1594,7 @@ export function App() {
           {!isPane() && <ServiceWorkerBridge />}
           <TaskActionsProvider>
             <VimProvider>
-              <Shell />
+              {hosting ? <SplitHost initial={hosting.state} boot={hosting.boot} /> : <Shell onSplit={(st) => setHosting({ state: st, boot: false })} />}
             </VimProvider>
           </TaskActionsProvider>
         </CalendarProvider>

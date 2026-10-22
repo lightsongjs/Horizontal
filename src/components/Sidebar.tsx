@@ -3,7 +3,7 @@ import type React from 'react'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { useAuth } from '../auth'
-import { useCanWrite } from '../hooks'
+import { useCanWrite, useCanWriteFn } from '../hooks'
 import { SMART_LISTS, type SmartListKind } from './SmartListView'
 import { Icon } from './Icon'
 import { repository } from '../data'
@@ -15,6 +15,7 @@ import { PinGlyph, PinMenu, pinLabel, pinTarget, type MenuTarget } from './NavMe
 import { initialsOf } from './Drawer'
 import { inboxProjectId } from '../lib/captureTokens'
 import { inboxFirst, reorderWithInboxFirst } from '../lib/projectOrder'
+import type { NavAction, SidebarMarks } from '../lib/paneProtocol'
 
 function getBuildAgo(): string {
   const diff = Math.floor((Date.now() - new Date(__BUILD_TIME__).getTime()) / 1000)
@@ -44,24 +45,50 @@ interface SidebarProps {
   onFilterForm?: (id?: string) => void
   /** Câmpul „Caută” din capul barei (aceeași căutare ca O / Ctrl+F). */
   onSearch?: () => void
+  /** „Împarte ecranul" (panoul dublu), jos în bară; doar de la 1200px. */
+  onSplit?: () => void
+  /**
+   * Panoul dublu: bara e a GAZDEI și conduce panoul cu focus. Locul „pe ecran"
+   * vine din ruta panoului (`marks`), nu din store-ul gazdei (care n-are
+   * niciun proiect deschis), iar ce cere bara pleacă la panou (`onNav`).
+   */
+  split?: {
+    marks: SidebarMarks
+    /** 0 = stânga, 1 = dreapta; null cu un singur panou rămas. */
+    focusIx: 0 | 1 | null
+    onNav: (a: NavAction) => void
+    /** Butonul de jos: cu două panouri îl închide pe cel fără focus; cu unul, îl redeschide pe al doilea. */
+    onToggle: () => void
+  }
 }
 
-export function Sidebar({ showUsers = false, onNavigate, smartList = null, onSmartList, inboxActive = false, inboxUnread = 0, inboxTotal = 0, onInbox, filterId = null, onFilter, onFilterForm, onSearch }: SidebarProps = {}) {
-  const { projects, project, openCountByProject, selectProject, reorderProjects, smartLists, reportError, pins, savedFilters, filterCounts, assignees, myAssigneeId } = useHorizontal()
+export function Sidebar({ showUsers = false, onNavigate, smartList = null, onSmartList, inboxActive = false, inboxUnread = 0, inboxTotal = 0, onInbox, filterId = null, onFilter, onFilterForm, onSearch, onSplit, split }: SidebarProps = {}) {
+  const { projects, project: storeProject, openCountByProject, selectProject, reorderProjects, smartLists, reportError, pins, savedFilters, filterCounts, assignees, myAssigneeId } = useHorizontal()
   // Meniul de fixare: click dreapta pe un rând, sau ⋮ pe rândul de proiect.
   const [menu, setMenu] = useState<MenuTarget | null>(null)
   const menuAt = (kind: PinKind, ref: string, label: string) => (e: React.MouseEvent) => {
     e.preventDefault()
     setMenu({ kind, ref, label, at: { x: e.clientX, y: e.clientY } })
   }
+  // În gazda panoului dublu proiectul „pe ecran" e al panoului cu focus.
+  const project = split ? projects.find((p) => p.id === split.marks.projectId) ?? null : storeProject
+  const other = split?.marks
+  /** Punctul gri: locul panoului celălalt (macheta: „Deschis în celălalt panou"). */
+  const otherDot = (on: boolean) => (on ? <span className="sidebar-other" title="Deschis în celălalt panou" /> : null)
   const pinned = livePins(pins, { projects: projects.map((p) => p.id), filters: savedFilters.map((f) => f.id) })
   // Pe un ecran-listă (Ale mele, un filtru) proiectul din store e doar al
   // tichetului deschis, nu ecranul — aceeași gardă ca `projectChrome`.
   const offProject = inboxActive || filterId !== null
 
   // Pleacă de pe orice strat (ex. Utilizatori), apoi deschide proiectul.
-  const goToProject = (id: string) => { onNavigate?.(); selectProject(id) }
-  const { openNewProject, openNewIssue, openAppSettings } = useUI()
+  const goToProject = (id: string) => {
+    if (split) return split.onNav({ type: 'project', id })
+    onNavigate?.(); selectProject(id)
+  }
+  const ui = useUI()
+  const openNewProject = split ? () => split.onNav({ type: 'new-project' }) : ui.openNewProject
+  const openNewIssue = split ? () => split.onNav({ type: 'new-issue' }) : ui.openNewIssue
+  const openAppSettings = split ? () => split.onNav({ type: 'settings' }) : ui.openAppSettings
   const { enabled, signOut, session, isAdmin } = useAuth()
   const who = assignees.find((a) => a.id === myAssigneeId)?.name ?? session?.user.email ?? 'Local'
   const onSignOut = async () => {
@@ -100,7 +127,9 @@ export function Sidebar({ showUsers = false, onNavigate, smartList = null, onSma
     // ar suna mai departe mementourile contului vechi. Tot DUPĂ signOut-ul reușit.
     await android?.signOut().catch(() => {})
   }
-  const canWrite = useCanWrite()
+  const canWriteStore = useCanWrite()
+  const canWriteFn = useCanWriteFn()
+  const canWrite = split ? (project ? canWriteFn(project.id) : false) : canWriteStore
   // Cromul de proiect al piciorului de sidebar e legat de proiectul DESCHIS ca
   // ecran, nu de orice proiect încărcat în store — o pasă docată deschisă din
   // „Ale mele" încarcă proiectul ei ca formularul să funcționeze, fără să te
@@ -148,6 +177,12 @@ export function Sidebar({ showUsers = false, onNavigate, smartList = null, onSma
           <kbd>Ctrl F</kbd>
         </button>
       )}
+      {split && split.focusIx !== null && (
+        <div className="sidebar-who" title="Ctrl+Shift+[ / Ctrl+Shift+] mută focusul între panouri">
+          <span className="sidebar-mini" aria-hidden="true"><i className={split.focusIx === 0 ? 'on' : ''} /><i className={split.focusIx === 1 ? 'on' : ''} /></span>
+          Navighezi panoul din {split.focusIx === 0 ? 'stânga' : 'dreapta'}
+        </div>
+      )}
 
       {/* Fixatele: pe telefon sunt pătratele din sertar, aici rânduri
           obișnuite într-un grup sus — aceeași ordine, aceeași țintă. */}
@@ -191,6 +226,7 @@ export function Sidebar({ showUsers = false, onNavigate, smartList = null, onSma
         >
           <span className={`sidebar-nav-icon ${icon}`}><Icon name={icon} size={17} /></span>
           <span>{label}</span>
+          {otherDot(!!other && other.otherScreen === kind)}
           {/* Restanțele nu au rând propriu: ar fi un rând gol în ziua bună.
               Trăiesc ca badge pe „Azi", fiindcă sunt o problemă de azi. */}
           {kind === 'today' && overdueCount > 0 && (
@@ -209,6 +245,7 @@ export function Sidebar({ showUsers = false, onNavigate, smartList = null, onSma
       >
         <span className="sidebar-nav-icon"><Icon name="people" size={17} /></span>
         <span>Ale mele</span>
+        {otherDot(!!other && other.otherScreen === 'inbox')}
         {/* Două numere, ca pe „Azi" (restanțe + total): necititele sunt o
             chemare, totalul e mărimea listei. Necititele dispar când le-ai
             văzut; totalul rămâne cât timp tichetele sunt ale tale. */}
@@ -236,6 +273,7 @@ export function Sidebar({ showUsers = false, onNavigate, smartList = null, onSma
         >
           <span className="sidebar-nav-icon"><Icon name={f.icon} size={17} /></span>
           <span className="sidebar-pinned-name">{f.name}</span>
+          {otherDot(!!other && other.otherScreen === `filter:${f.id}`)}
           {filterCounts[f.id] > 0 && <span className="sl-count">{filterCounts[f.id]}</span>}
         </button>
       ))}
@@ -287,6 +325,7 @@ export function Sidebar({ showUsers = false, onNavigate, smartList = null, onSma
               <button className="sidebar-proj-btn" onClick={() => goToProject(p.id)}>
                 <ProjectMark project={p} dot="sidebar-proj-dot" size={14} />
                 <span className="sidebar-proj-name">{p.name}</span>
+                {otherDot(!!other && other.otherProjectId === p.id)}
                 {/* Câte sarcini deschise are — procentul de gata nu ajuta la nimic aici. */}
                 {open > 0 && <span className="sidebar-proj-pct">{open}</span>}
               </button>
@@ -317,6 +356,17 @@ export function Sidebar({ showUsers = false, onNavigate, smartList = null, onSma
           >
             <span className="sidebar-new-plus">+</span>
             {projectChrome ? 'Tichet nou' : 'Proiect nou'}
+          </button>
+        )}
+        {(split || onSplit) && (
+          <button
+            className={`sidebar-theme-btn sidebar-split-btn${split?.focusIx !== null && split ? ' on' : ''}`}
+            onClick={split ? split.onToggle : onSplit}
+            aria-pressed={!!split && split.focusIx !== null}
+            aria-label={split && split.focusIx !== null ? 'Un singur panou' : 'Împarte ecranul'}
+            title={split && split.focusIx !== null ? 'Un singur panou' : 'Împarte ecranul'}
+          >
+            <Icon name="split" size={15} />
           </button>
         )}
         {enabled && (
