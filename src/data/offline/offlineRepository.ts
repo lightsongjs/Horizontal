@@ -107,6 +107,10 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
   opts.channel?.onMessage((e) => {
     if (e.type === 'remap') void recordRemap(e.from, e.to)
     emitLocal(e)
+    // Orice veste din altă filă / alt panou: pe lângă tichetul trimis, ce s-a
+    // mai schimbat odată cu el (numerele din bara laterală, o captură nouă pe
+    // care `dueRaw`/`openRaw` nu o au) vine din reîncărcarea cerută de `stale`.
+    if (e.type !== 'stale') emitLocal({ type: 'stale' })
     void refreshPending()
   })
 
@@ -275,6 +279,19 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
       setStatus({ offline: true })
       throw new OfflineError()
     }
+  }
+
+  /**
+   * O scriere care nu e de tichet (proiecte, valuri, teme, obstacole, oameni,
+   * firul, fixările, filtrele): trece prin `net()` ca înainte, iar la reușită
+   * spune celorlalte file/panouri că datele lor sunt vechi (`stale`). Tichetele
+   * își trimit chiar varianta nouă (`issue`); restul n-au un `overlay`, deci
+   * ceilalți își reîncarcă singuri (store-ul, cu debounce).
+   */
+  async function netWrite<T>(f: () => Promise<T>): Promise<T> {
+    const v = await net(f)
+    opts.channel?.post({ type: 'stale' })
+    return v
   }
 
   async function allCachedIssues(kv: Kv): Promise<Issue[]> {
@@ -719,34 +736,34 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
     },
 
     // ── Cer rețea ────────────────────────────────────────────────────────────
-    createProject: (input) => net(() => remote.createProject(input)),
-    updateProject: (id, patch) => net(() => remote.updateProject(id, patch)),
-    deleteProject: (id) => net(() => remote.deleteProject(id)),
-    createWave: (pid, name, label) => net(() => remote.createWave(pid, name, label)),
-    updateWave: (pid, num, patch) => net(() => remote.updateWave(pid, num, patch)),
-    deleteWave: (pid, num) => net(() => remote.deleteWave(pid, num)),
-    createTheme: (pid, name, color) => net(() => remote.createTheme(pid, name, color)),
-    updateTheme: (pid, key, patch) => net(() => remote.updateTheme(pid, key, patch)),
-    deleteTheme: (pid, key) => net(() => remote.deleteTheme(pid, key)),
-    createObstacle: (input) => net(() => remote.createObstacle(input)),
-    updateObstacle: (id, patch) => net(() => remote.updateObstacle(id, patch)),
-    deleteObstacle: (id) => net(() => remote.deleteObstacle(id)),
-    setObstacleIssues: (oid, ids) => net(() => remote.setObstacleIssues(oid, ids)),
-    setIssueObstacles: (iid, ids) => net(() => remote.setIssueObstacles(iid, ids)),
-    createAssignee: (name) => net(() => remote.createAssignee(name)),
-    ensureAssigneeForMember: (pid, uid) => net(() => remote.ensureAssigneeForMember(pid, uid)),
+    createProject: (input) => netWrite(() => remote.createProject(input)),
+    updateProject: (id, patch) => netWrite(() => remote.updateProject(id, patch)),
+    deleteProject: (id) => netWrite(() => remote.deleteProject(id)),
+    createWave: (pid, name, label) => netWrite(() => remote.createWave(pid, name, label)),
+    updateWave: (pid, num, patch) => netWrite(() => remote.updateWave(pid, num, patch)),
+    deleteWave: (pid, num) => netWrite(() => remote.deleteWave(pid, num)),
+    createTheme: (pid, name, color) => netWrite(() => remote.createTheme(pid, name, color)),
+    updateTheme: (pid, key, patch) => netWrite(() => remote.updateTheme(pid, key, patch)),
+    deleteTheme: (pid, key) => netWrite(() => remote.deleteTheme(pid, key)),
+    createObstacle: (input) => netWrite(() => remote.createObstacle(input)),
+    updateObstacle: (id, patch) => netWrite(() => remote.updateObstacle(id, patch)),
+    deleteObstacle: (id) => netWrite(() => remote.deleteObstacle(id)),
+    setObstacleIssues: (oid, ids) => netWrite(() => remote.setObstacleIssues(oid, ids)),
+    setIssueObstacles: (iid, ids) => netWrite(() => remote.setIssueObstacles(iid, ids)),
+    createAssignee: (name) => netWrite(() => remote.createAssignee(name)),
+    ensureAssigneeForMember: (pid, uid) => netWrite(() => remote.ensureAssigneeForMember(pid, uid)),
     listEvents: (iid) => net(() => remote.listEvents(iid)),
     // Un tichet provizoriu n-are fir pe server; nu merită o cerere. Altfel ca
     // firul: rețea, iar offline rândul din foaie lipsește (nu minte).
     threadSummary: (iid) => isTempIssueId(iid)
       ? Promise.resolve({ count: 0, recent: [], seenAt: null })
       : net(() => remote.threadSummary(resolveId(iid))),
-    postToThread: (input) => net(() => remote.postToThread(input)),
-    updateComment: (id, body) => net(() => remote.updateComment(id, body)),
+    postToThread: (input) => netWrite(() => remote.postToThread(input)),
+    updateComment: (id, body) => netWrite(() => remote.updateComment(id, body)),
     // Fixările: rețea pentru scriere (ca proiectele), iar baza se ține la zi
     // doar ca primul cadru de după să le arate — nu e o coadă.
     async addPin(kind, ref) {
-      const pin = await net(() => remote.addPin(kind, ref))
+      const pin = await netWrite(() => remote.addPin(kind, ref))
       const kv = await kvReady
       const cur = (await kv?.get<Pin[]>(K.pins).catch(() => undefined)) ?? null
       if (kv && cur) await kv.set(K.pins, [...cur.filter((p) => !(p.kind === kind && p.ref === ref)), pin]).catch(() => {})
@@ -755,22 +772,22 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
     // Filtrele: ca fixările — rețea pentru scriere, baza ținută la zi pentru
     // primul cadru și pentru citirea offline.
     async createSavedFilter(input) {
-      const f = await net(() => remote.createSavedFilter(input))
+      const f = await netWrite(() => remote.createSavedFilter(input))
       await patchCached<SavedFilter>(K.filters, (xs) => [...xs, f])
       return f
     },
     async updateSavedFilter(id, patch) {
-      const f = await net(() => remote.updateSavedFilter(id, patch))
+      const f = await netWrite(() => remote.updateSavedFilter(id, patch))
       await patchCached<SavedFilter>(K.filters, (xs) => xs.map((x) => (x.id === id ? f : x)))
       return f
     },
     async deleteSavedFilter(id) {
-      await net(() => remote.deleteSavedFilter(id))
+      await netWrite(() => remote.deleteSavedFilter(id))
       await patchCached<SavedFilter>(K.filters, (xs) => xs.filter((x) => x.id !== id))
       await patchCached<Pin>(K.pins, (xs) => xs.filter((p) => !(p.kind === 'filter' && p.ref === id)))
     },
     async removePin(kind, ref) {
-      await net(() => remote.removePin(kind, ref))
+      await netWrite(() => remote.removePin(kind, ref))
       const kv = await kvReady
       const cur = (await kv?.get<Pin[]>(K.pins).catch(() => undefined)) ?? null
       if (kv && cur) await kv.set(K.pins, cur.filter((p) => !(p.kind === kind && p.ref === ref))).catch(() => {})
@@ -865,7 +882,7 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
       const id = resolveId(rawId)
       if (isTempIssueId(id)) throw new Error(moveBlockMessage(id, { kind: 'temp' }))
       if ((await pendingOps()).some((op) => opIssueIds(op).includes(id))) throw new Error(MOVE_SYNCING)
-      const issue = await net(() => remote.moveIssue(id, targetProjectId))
+      const issue = await netWrite(() => remote.moveIssue(id, targetProjectId))
       moved.set(id, issue.id)
       forgetMoved(issue.id)
       const kv = await kvReady

@@ -910,3 +910,35 @@ describe('mutarea în alt proiect', () => {
     expect(remote.updateIssue).toHaveBeenLastCalledWith('HZ-02', { title: 'a captura nouă' })
   })
 })
+
+describe('vestea „stale" între file / panouri', () => {
+  const fakeChannel = () => {
+    const posted: SyncEvent[] = []
+    let deliver: (e: SyncEvent) => void = () => {}
+    return { posted, receive: (e: SyncEvent) => deliver(e), ch: { post: (e: SyncEvent) => { posted.push(e) }, onMessage: (fn: (e: SyncEvent) => void) => { deliver = fn } } }
+  }
+  it('o scriere ne-tichet reușită anunță celelalte file; una căzută, nu', async () => {
+    const { remote, net } = fakeRemote()
+    const c = fakeChannel()
+    const repo = createOfflineRepository(remote, Promise.resolve(kv), { now: () => new Date('2026-10-02T09:00:00Z'), userId: () => 'u1', channel: c.ch })
+    await repo.addPin('list', 'week')
+    await repo.createSavedFilter({ name: 'x' } as never)
+    await repo.postToThread({} as never)
+    expect(c.posted.filter((e) => e.type === 'stale')).toHaveLength(3)
+    net.down = true
+    await expect(repo.createProject({} as never)).rejects.toBeInstanceOf(OfflineError)
+    expect(c.posted.filter((e) => e.type === 'stale')).toHaveLength(3)
+  })
+  it('orice veste primită se anunță local și ca „stale", o singură dată', async () => {
+    const { remote, server } = fakeRemote()
+    const c = fakeChannel()
+    const repo = createOfflineRepository(remote, Promise.resolve(kv), { now: () => new Date('2026-10-02T09:00:00Z'), userId: () => 'u1', channel: c.ch })
+    const seen: string[] = []
+    repo.sync!.subscribe((e) => { if (e.type !== 'status') seen.push(e.type) })
+    c.receive({ type: 'issue', issue: server.issues[0] })
+    c.receive({ type: 'stale' })
+    expect(seen).toEqual(['issue', 'stale', 'stale'])
+    // Vestea primită nu se retrimite: fără ping-pong între două file.
+    expect(c.posted).toEqual([])
+  })
+})

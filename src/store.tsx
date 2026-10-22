@@ -37,7 +37,7 @@ import { withPin, withoutPin, type Pin, type PinKind } from './lib/pins'
 import { shortLabels } from './lib/initials'
 import type { Assignee, InboxRow, Issue, IssueState, Layers, Obstacle, ObstacleLink, Project, ProjectMember, Theme, Wave } from './lib/types'
 import { errorMessage } from './lib/errorMessage'
-import { shouldRefreshOnVisible, syncRefreshStep } from './lib/refreshGate'
+import { debounce, shouldRefreshOnVisible, STALE_REFRESH_MS, syncRefreshStep } from './lib/refreshGate'
 import type { ProjectBundle, SyncEvent, SyncStatus } from './data/offline/types'
 
 interface HorizontalState {
@@ -914,8 +914,12 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     }
     let prev = s.status()
     let owed = false
-    return s.subscribe((e: SyncEvent) => {
-      if (e.type === 'status') {
+    // Altă filă / alt panou a scris ceva: reîncărcare completă, o singură dată
+    // după rafală, fără `loading` (deci fără clipire) — vezi `netWrite`.
+    const stale = debounce(refreshAfterSync, STALE_REFRESH_MS)
+    const off = s.subscribe((e: SyncEvent) => {
+      if (e.type === 'stale') stale()
+      else if (e.type === 'status') {
         setSyncStatus(e.status)
         const step = syncRefreshStep(owed, prev, e.status)
         owed = step.owed
@@ -939,6 +943,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
         else if (e.issueId) forget([e.issueId])
       }
     })
+    return () => { stale.cancel(); off() }
   }, [upsertIssue, refreshAfterSync])
 
   const reorderProjects = useCallback((ids: string[]) => {

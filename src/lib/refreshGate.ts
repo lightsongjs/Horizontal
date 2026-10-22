@@ -50,3 +50,30 @@ export function syncRefreshStep(owed: boolean, prev: QueueState, next: QueueStat
   if (owed && next.pending === 0) return { owed: false, refresh: true }
   return { owed, refresh: false }
 }
+
+/**
+ * Cât așteaptă o filă / un panou după ultima veste `stale` din altă filă
+ * înainte de a se reîncărca: o rafală (redenumești trei valuri, scrii un
+ * comentariu cu două fișiere) dă o singură reîncărcare.
+ */
+export const STALE_REFRESH_MS = 1000
+
+export interface Debounced { (): void; cancel(): void }
+
+/** Pur, cu ceasul injectabil: `fn` rulează o dată, la `ms` după ULTIMUL apel. */
+export function debounce(
+  fn: () => void,
+  ms: number,
+  timer: { set(f: () => void, ms: number): unknown; clear(h: unknown): void } = {
+    set: (f, d) => setTimeout(f, d),
+    clear: (h) => clearTimeout(h as ReturnType<typeof setTimeout>),
+  },
+): Debounced {
+  let h: unknown = null
+  const call = (() => {
+    if (h !== null) timer.clear(h)
+    h = timer.set(() => { h = null; fn() }, ms)
+  }) as Debounced
+  call.cancel = () => { if (h !== null) timer.clear(h); h = null }
+  return call
+}

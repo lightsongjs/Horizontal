@@ -19,6 +19,8 @@ export type SyncEvent =
   | { type: 'remap'; from: string; to: string }
   /** Serverul a refuzat o scriere. `revert` = valoarea lui de acum, sau null dacă tichetul nu mai există. */
   | { type: 'failed'; message: string; issueId: string | null; revert: Issue | null }
+  /** Altă filă / alt panou a schimbat ceva: datele de aici pot fi vechi (vezi `netWrite`). */
+  | { type: 'stale' }
 
 export interface ProjectBundle {
   waves: Wave[]
