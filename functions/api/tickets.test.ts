@@ -65,10 +65,13 @@ describe('wave 0 is a real wave', () => {
     const calls = mockFetch([
       projectRoute,
       route('/rest/v1/issues?project_id=eq.horizontal', [{ id: 'MS-161', title: 'Nota', wave: 0, done: false }]),
+      route('/rest/v1/dependencies?', []),
     ])
     const res = await onRequestGet(getCtx('project=MS&wave=0'))
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual([{ id: 'MS-161', title: 'Nota', wave: 0, done: false }])
+    expect(await res.json()).toEqual([
+      { id: 'MS-161', title: 'Nota', wave: 0, done: false, theme: null, deps: [], dueAt: null, allDay: true, urgent: false },
+    ])
     expect(calls.some(c => c.url.includes('wave=eq.0'))).toBe(true)
   })
 

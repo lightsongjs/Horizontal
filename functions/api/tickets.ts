@@ -13,13 +13,21 @@ interface SupabaseIssue {
   done: boolean
 }
 
-import { sbHeaders, resolveProject, nextIssueId, resolveAssignee } from './_tickets-lib'
+interface ListRow extends SupabaseIssue, DueRow {
+  theme: string | null
+}
+
+import { sbHeaders, resolveProject, nextIssueId, resolveAssignee, themeExists } from './_tickets-lib'
+import { dueOut, normalizeTheme, parseDue, type DueRow } from './_api-lib'
+
 
 export const onRequestGet: PagesFunction<Env> = async (context) => {
   const url = new URL(context.request.url)
   const projectParam = url.searchParams.get('project')
   const title = url.searchParams.get('title')
   const waveParam = url.searchParams.get('wave')
+  // `theme=<cheie>` filtrează lista; `theme=` (gol) = tichetele fără temă.
+  const themeParam = url.searchParams.get('theme')
 
   if (!projectParam) {
     return Response.json({ error: 'missing_params', required: ['project'] }, { status: 400 })
@@ -34,7 +42,8 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   }
   const project = proj.id
 
-  // LIST mode: no title param — return all tickets for project, optionally filtered by wave
+  // LIST mode: no title param — return all tickets for project, optionally filtered by wave / theme.
+  // Fiecare rând are și tema, dependențele și scadența, ca să nu fie nevoie de un GET pe tichet.
   if (!title) {
     let filter = `project_id=eq.${project}`
     if (waveParam) {
@@ -44,15 +53,42 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       }
       filter += `&wave=eq.${waveNum}`
     }
+    if (themeParam !== null) {
+      filter += themeParam === '' ? '&or=(theme.is.null,theme.eq.)' : `&theme=eq.${encodeURIComponent(themeParam)}`
+    }
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/issues?${filter}&select=id,title,wave,done&order=id.asc`,
+      `${SUPABASE_URL}/rest/v1/issues?${filter}&select=id,title,wave,done,theme,due_at,all_day,urgent&order=id.asc`,
       { headers }
     )
     if (!res.ok) {
       return Response.json({ error: 'db_error' }, { status: 502 })
     }
-    const data = await res.json() as SupabaseIssue[]
-    return Response.json(data)
+    const data = await res.json() as ListRow[]
+    // Dependențele rândurilor întoarse, pe bucăți de câte 100 de ID-uri: un URL
+    // rămâne scurt, iar fiecare bucată stă sub plafonul de rânduri al PostgREST.
+    const depRows: Array<{ issue_id: string; depends_on_id: string }> = []
+    for (let i = 0; i < data.length; i += 100) {
+      const ids = data.slice(i, i + 100).map((x) => encodeURIComponent(`"${x.id}"`)).join(',')
+      const depsRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/dependencies?issue_id=in.(${ids})&select=issue_id,depends_on_id&order=issue_id.asc`,
+        { headers }
+      )
+      if (!depsRes.ok) {
+        return Response.json({ error: 'db_error' }, { status: 502 })
+      }
+      depRows.push(...await depsRes.json() as Array<{ issue_id: string; depends_on_id: string }>)
+    }
+    const depsOf = new Map<string, string[]>()
+    for (const d of depRows) depsOf.set(d.issue_id, [...(depsOf.get(d.issue_id) ?? []), d.depends_on_id])
+    return Response.json(data.map((i) => ({
+      id: i.id,
+      title: i.title,
+      wave: i.wave,
+      done: i.done,
+      theme: i.theme || null,
+      deps: depsOf.get(i.id) ?? [],
+      ...dueOut(i),
+    })))
   }
 
   // LOOKUP mode: title provided — return single ticket or 404
@@ -89,6 +125,9 @@ interface CreateBody {
   desc?: string
   notes?: string
   assigneeId?: string | null
+  /** `"2026-10-24"` (toată ziua) sau `"2026-10-24 15:30"`, ora României. */
+  due?: string | null
+  urgent?: boolean
 }
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
@@ -111,6 +150,14 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     return Response.json({ error: 'invalid_wave' }, { status: 400 })
   }
 
+  const themeIn = normalizeTheme(body.theme)
+  if ('error' in themeIn) return Response.json(themeIn, { status: 400 })
+  const due = body.due === undefined ? null : parseDue(body.due)
+  if (due && 'error' in due) return Response.json({ ...due, expected: 'YYYY-MM-DD sau YYYY-MM-DD HH:MM' }, { status: 400 })
+  if (body.urgent !== undefined && typeof body.urgent !== 'boolean') {
+    return Response.json({ error: 'invalid_urgent' }, { status: 400 })
+  }
+
   const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = context.env
   const headers = sbHeaders(SUPABASE_SERVICE_ROLE_KEY)
 
@@ -128,6 +175,14 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       return Response.json({ error: 'assignee_not_found' }, { status: 422 })
     }
     assigneeId = who.id
+  }
+
+  // 0b. Tema trebuie să existe în proiect. Înainte, o cheie greșită crea tichetul
+  // tăcut, iar el cădea în „Fără temă” — ca la mutarea în alt proiect, refuz.
+  if (themeIn.theme !== null) {
+    const ok = await themeExists(pid, themeIn.theme, SUPABASE_URL, headers)
+    if (ok === null) return Response.json({ error: 'db_error' }, { status: 502 })
+    if (!ok) return Response.json({ error: 'theme_not_found', theme: themeIn.theme }, { status: 422 })
   }
 
   // 1. Validate deps exist
@@ -176,13 +231,15 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       project_id: pid,
       title,
       details: body.desc ?? '',
-      theme: body.theme ?? null,
+      theme: themeIn.theme,
       wave: waveNum,
       done: false,
       selectors: [],
       scenarios: [],
       notes: body.notes ?? '',
       assignee_id: assigneeId,
+      ...(due ? due : {}),
+      ...(body.urgent !== undefined ? { urgent: body.urgent } : {}),
     }),
   })
   if (!insertRes.ok) {
@@ -203,5 +260,9 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     }
   }
 
-  return Response.json({ id: newId, title, wave: waveNum, deps }, { status: 201 })
+  return Response.json({
+    id: newId, title, wave: waveNum, deps, theme: themeIn.theme,
+    ...(due ? { dueAt: due.due_at, allDay: due.all_day } : {}),
+    ...(body.urgent !== undefined ? { urgent: body.urgent } : {}),
+  }, { status: 201 })
 }

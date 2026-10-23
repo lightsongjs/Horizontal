@@ -2144,7 +2144,12 @@ cd ticket-kit && git add -A && git commit -m "..." && git push origin master
 ```
 
 Vezi și `ticket-kit/CLAUDE.md`. Endpoint-urile API pe care le lovește `ai-client.mjs`
-sunt în `functions/api/` (tickets + projects).
+sunt în `functions/api/`: tichete (cu scadență, urgent, ștergere), proiecte, oameni,
+teme, valuri. Regulile comune cu aplicația se IMPORTĂ din `src/` (`themeKey`,
+`nextWaveName`, `naturalCompare`), nu se rescriu. API-ul scrie cu cheia de serviciu,
+deci ce nu se poate anula se refuză: o temă necunoscută la tichet, scadența pe o
+recurentă, ștergerea unui tichet cu dependenți, comentarii sau fișiere. O oră de
+scadență deja trecută nu primește memento (ar suna pe loc pe toate dispozitivele).
 
 # context-mode — MANDATORY routing rules
 

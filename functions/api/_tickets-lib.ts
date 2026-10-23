@@ -1,6 +1,8 @@
 // functions/api/_tickets-lib.ts
 // Shared Supabase REST helpers for the tickets endpoints.
 
+import { naturalCompare } from '../../src/lib/waveGrid'
+
 export interface Project {
   id: string
   prefix: string
@@ -83,4 +85,29 @@ export async function resolveAssignee(
   if (!res.ok) return null
   const rows = await res.json() as Assignee[]
   return rows[0] ?? null
+}
+
+/** Tema există în proiect? `null` = eroare de bază. Cheile sunt per proiect. */
+export async function themeExists(projectId: string, key: string, supabaseUrl: string, headers: Record<string, string>): Promise<boolean | null> {
+  const res = await fetch(
+    `${supabaseUrl}/rest/v1/themes?project_id=eq.${encodeURIComponent(projectId)}&key=eq.${encodeURIComponent(key)}&select=key&limit=1`,
+    { headers }
+  )
+  if (!res.ok) return null
+  return (await res.json() as unknown[]).length > 0
+}
+
+export interface ThemeRow {
+  key: string
+  name: string
+  color: string
+}
+
+export async function listThemes(projectId: string, supabaseUrl: string, headers: Record<string, string>): Promise<ThemeRow[] | null> {
+  const res = await fetch(
+    `${supabaseUrl}/rest/v1/themes?project_id=eq.${encodeURIComponent(projectId)}&select=key,name,color`,
+    { headers }
+  )
+  if (!res.ok) return null
+  return (await res.json() as ThemeRow[]).sort((a, b) => naturalCompare(a.name, b.name))
 }

@@ -6,7 +6,8 @@ interface Env {
   SUPABASE_SERVICE_ROLE_KEY: string
 }
 
-import { sbHeaders, resolveProject, nextIssueId, resolveAssignee } from '../_tickets-lib'
+import { sbHeaders, resolveProject, nextIssueId, resolveAssignee, themeExists } from '../_tickets-lib'
+import { dueOut, normalizeTheme, parseDue, type DueRow } from '../_api-lib'
 
 const FIELD_MAP: Record<string, string> = {
   title: 'title',
@@ -14,6 +15,7 @@ const FIELD_MAP: Record<string, string> = {
   theme: 'theme',
   wave: 'wave',
   done: 'done',
+  urgent: 'urgent',
   notes: 'notes',
   selectors: 'selectors',
   scenarios: 'scenarios',
@@ -86,7 +88,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   const headers = sbHeaders(SUPABASE_SERVICE_ROLE_KEY)
 
   const issueRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/issues?id=eq.${encodeURIComponent(id)}&select=id,title,details,theme,wave,done,notes,assignee_id,selectors,scenarios&limit=1`,
+    `${SUPABASE_URL}/rest/v1/issues?id=eq.${encodeURIComponent(id)}&select=id,title,details,theme,wave,done,notes,assignee_id,selectors,scenarios,due_at,all_day,urgent&limit=1`,
     { headers }
   )
   if (!issueRes.ok) {
@@ -145,6 +147,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     selectors: row.selectors ?? [],
     scenarios: row.scenarios ?? [],
     deps: depsRows.map(r => r.depends_on_id),
+    ...dueOut(row as unknown as DueRow),
     attachments: attachmentsPayload(attRows, signed, `${SUPABASE_URL}/storage/v1`),
   })
 }
@@ -181,21 +184,44 @@ export const onRequestPatch: PagesFunction<Env> = async (context) => {
     return Response.json({ error: 'invalid_assignee' }, { status: 400 })
   }
 
+  if ('urgent' in body && typeof body.urgent !== 'boolean') {
+    return Response.json({ error: 'invalid_urgent' }, { status: 400 })
+  }
+  if ('theme' in issueUpdate) {
+    const t = normalizeTheme(issueUpdate.theme)
+    if ('error' in t) return Response.json(t, { status: 400 })
+    issueUpdate.theme = t.theme
+  }
+  // Scadența: `due` → due_at / all_day / remind_at, ca în `POST /api/tickets`.
+  const wantsDue = 'due' in body
+  if (wantsDue) {
+    const due = parseDue(body.due)
+    if ('error' in due) return Response.json({ ...due, expected: 'YYYY-MM-DD sau YYYY-MM-DD HH:MM' }, { status: 400 })
+    Object.assign(issueUpdate, due)
+  }
+
   if (Object.keys(issueUpdate).length === 0 && !hasDeps && !wantsMove && !wantsAssignee) {
     return Response.json({ error: 'no_updatable_fields' }, { status: 400 })
   }
 
   // Load the ticket once: the dup-check and the move both need its current state.
   const currentRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/issues?id=eq.${encodeURIComponent(id)}&select=id,project_id,title,wave&limit=1`,
+    `${SUPABASE_URL}/rest/v1/issues?id=eq.${encodeURIComponent(id)}&select=id,project_id,title,wave,rrule&limit=1`,
     { headers }
   )
   if (!currentRes.ok) return Response.json({ error: 'db_error' }, { status: 502 })
   const currentRows = await currentRes.json() as Array<{
-    id: string; project_id: string; title: string; wave: number
+    id: string; project_id: string; title: string; wave: number; rrule?: string | null
   }>
   if (!currentRows.length) return Response.json({ error: 'not_found' }, { status: 404 })
   const current = currentRows[0]
+
+  // O recurentă își mută scadența singură (triggerul din baza de date) și își
+  // ține mementoul cu decalajul lui; o dată scrisă de aici le-ar strica pe
+  // amândouă. Se schimbă din aplicație.
+  if (wantsDue && current.rrule) {
+    return Response.json({ error: 'recurring', detail: 'Tichetul se repetă; scadența se schimbă din aplicație.' }, { status: 409 })
+  }
 
   if (wantsAssignee) {
     const raw = body.assigneeId as string | null
@@ -268,7 +294,8 @@ export const onRequestPatch: PagesFunction<Env> = async (context) => {
       issueUpdate.wave = wave
 
       // Theme: cleared by default, because theme keys are per-project.
-      const theme = (body.theme as string | null | undefined) ?? null
+      // Normalizată mai sus: `""` înseamnă „fără temă”, nu cheia goală.
+      const theme = (issueUpdate.theme as string | null | undefined) ?? null
       if (theme !== null) {
         const themeRes = await fetch(
           `${SUPABASE_URL}/rest/v1/themes?project_id=eq.${encodeURIComponent(target.id)}&key=eq.${encodeURIComponent(theme)}&select=key&limit=1`,
@@ -286,6 +313,13 @@ export const onRequestPatch: PagesFunction<Env> = async (context) => {
       movedFrom = id
       dupProjectId = target.id
     }
+  }
+
+  // Tema trebuie să existe în proiectul tichetului (la mutare s-a verificat mai sus, în țintă).
+  if (!movedFrom && typeof issueUpdate.theme === 'string') {
+    const ok = await themeExists(current.project_id, issueUpdate.theme, SUPABASE_URL, headers)
+    if (ok === null) return Response.json({ error: 'db_error' }, { status: 502 })
+    if (!ok) return Response.json({ error: 'theme_not_found', theme: issueUpdate.theme }, { status: 422 })
   }
 
   // Dup-check the effective title. A move must check against the target project
@@ -365,10 +399,11 @@ export const onRequestPatch: PagesFunction<Env> = async (context) => {
   }
   const updatedFields = [
     ...Object.keys(issueUpdate)
-      .filter(k => k !== 'id' && k !== 'project_id')
+      .filter(k => k !== 'id' && k !== 'project_id' && k !== 'due_at' && k !== 'all_day' && k !== 'remind_at')
       .map(k => dbToClient[k] ?? k),
     ...(movedFrom ? ['projectId'] : []),
     ...(hasDeps ? ['deps'] : []),
+    ...(wantsDue ? ['due'] : []),
   ]
   const finalId = (issueUpdate.id as string | undefined) ?? id
   return Response.json({
@@ -376,4 +411,47 @@ export const onRequestPatch: PagesFunction<Env> = async (context) => {
     ...(movedFrom ? { movedFrom } : {}),
     updated: updatedFields,
   })
+}
+
+// DELETE /api/tickets/<id> — repară o încărcare greșită. API-ul scrie cu cheia de
+// serviciu, deci o ștergere nu se poate anula: se refuză tot ce ar pierde muncă
+// sau ar rupe alt tichet — tichete care depind de el, comentarii / pase,
+// fișiere (ar rămâne orfane în Storage). Dependențele LUI, vizitele și
+// legăturile cu obstacole pleacă odată cu el (`on delete cascade`).
+// Asumat: verificările și ștergerea nu sunt o tranzacție. Un comentariu scris
+// exact între ele ar pleca odată cu tichetul — fereastra e de milisecunde, iar
+// ruta e pentru tichete abia încărcate, pe care nu scrie nimeni.
+export const onRequestDelete: PagesFunction<Env> = async (context) => {
+  const id = context.params.id as string
+  const enc = encodeURIComponent(id)
+  const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = context.env
+  const headers = sbHeaders(SUPABASE_SERVICE_ROLE_KEY)
+
+  const get = async <T>(path: string): Promise<T[] | null> => {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers })
+    return res.ok ? await res.json() as T[] : null
+  }
+  const [issue, dependents, events, files] = await Promise.all([
+    get<{ id: string }>(`issues?id=eq.${enc}&select=id&limit=1`),
+    get<{ issue_id: string }>(`dependencies?depends_on_id=eq.${enc}&select=issue_id`),
+    get<{ id: string }>(`issue_events?issue_id=eq.${enc}&select=id&limit=1`),
+    get<{ id: string }>(`attachments?issue_id=eq.${enc}&select=id&limit=1`),
+  ])
+  if (!issue || !dependents || !events || !files) return Response.json({ error: 'db_error' }, { status: 502 })
+  if (!issue.length) return Response.json({ error: 'not_found' }, { status: 404 })
+  if (dependents.length) {
+    return Response.json({ error: 'has_dependents', dependedOnBy: dependents.map((d) => d.issue_id) }, { status: 409 })
+  }
+  if (events.length || files.length) {
+    return Response.json({
+      error: 'has_activity',
+      detail: 'Tichetul are comentarii sau fișiere; se șterge din aplicație.',
+    }, { status: 409 })
+  }
+
+  const del = await fetch(`${SUPABASE_URL}/rest/v1/issues?id=eq.${enc}`, { method: 'DELETE', headers })
+  if (!del.ok) return Response.json({ error: 'db_error' }, { status: 502 })
+  const gone = await del.json().catch(() => []) as unknown[]
+  if (!gone.length) return Response.json({ error: 'not_found' }, { status: 404 })
+  return Response.json({ id, deleted: true })
 }

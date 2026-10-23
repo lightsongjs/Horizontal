@@ -29,18 +29,18 @@ describe('GET /api/waves', () => {
       if (url.includes('/rest/v1/projects?')) return { body: [{ id: 'horizontal', prefix: 'MS', current_wave: 1 }] }
       return {
         body: [
-          { number: 0, name: 'Scratchpad', label: null },
-          { number: 1, name: 'Val 1', label: 'MVP' },
+          { number: 0, name: 'Scratchpad', label: null, position: 0 },
+          { number: 1, name: 'Val 1', label: 'MVP', position: null },
         ],
       }
     })
     const res = await onRequestGet(ctx('project=MS'))
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual([
-      { number: 0, name: 'Scratchpad', label: '' },
-      { number: 1, name: 'Val 1', label: 'MVP' },
+      { number: 0, name: 'Scratchpad', label: '', position: 0 },
+      { number: 1, name: 'Val 1', label: 'MVP', position: 1 },
     ])
-    expect(urls.some(u => u.includes('/rest/v1/waves?project_id=eq.horizontal'))).toBe(true)
+    expect(urls.some(u => u.includes('/rest/v1/waves?project_id=eq.horizontal') && u.includes('order=position.asc'))).toBe(true)
   })
 
   it('requires a project param', async () => {
