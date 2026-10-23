@@ -3434,6 +3434,22 @@ background: var(--accent-soft);
   grid-template-columns: minmax(340px, 1fr) minmax(460px, 1.05fr);
 }
 :where(html[data-wide]) .split-pane[hidden] { display: none; }
+/* Panoul tras de mână (`resizeKey` pe SplitView): lățimea lui vine din `--pane-w`. */
+:where(html[data-wide]) .split.resizable { position: relative; }
+:where(html[data-wide]) .split.resizable.has-pane { grid-template-columns: minmax(340px, 1fr) var(--pane-w); }
+:where(html[data-wide]) .split-resize {
+  position: absolute; top: 0; bottom: 0; z-index: 5;
+  right: calc(var(--pane-w) + 6px); width: 10px;
+  cursor: col-resize; touch-action: none;
+}
+:where(html[data-wide]) .split-resize::after {
+  content: ""; position: absolute; top: 0; bottom: 0; left: 4px; width: 2px;
+  background: transparent; transition: background 0.12s;
+}
+:where(html[data-wide]) .split-resize:hover::after,
+:where(html[data-resizing]) .split-resize::after { background: var(--accent); }
+/* Cât se trage, cursorul e al liniei (pointer capture), iar textul nu se selectează. */
+html[data-resizing] { user-select: none; }
 /* Fără panou lista unui proiect păstrează o lățime de citit, ca listele inteligente. */
 :where(html[data-wide]) .split:not(.has-pane) > .split-list > .panel { max-width: 900px; }
 /* Tichetul intră din dreapta, scurt; lista se reașază odată cu el. */
@@ -7924,17 +7940,15 @@ html[data-pane] .sheet:has(.form-cols) .sh-header { background: var(--bg); }
 .wg { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .wg-scroll { flex: 1; min-height: 0; overflow: auto; }
 :where(html:not([data-wide])) .wg-scroll { max-height: calc(var(--vvh, 100vh) - 210px); }
-/* Titlul are un plafon: pe un ecran lat, cu două valuri, punctele ar fi stat
-   la un metru de titlu. Ce rămâne în dreapta e gol, nu întins. */
+/* Titlul ia tot ce rămâne, deci valurile stau lipite de marginea din dreapta
+   (cerut de om, 2026-10-23: „să ne folosim de tot spațiul"). */
 .wg-in {
-  --wg-tmax: 640px;
   min-width: calc(var(--wg-tmin) + var(--wg-n) * var(--wg-col) + 24px);
-  max-width: calc(var(--wg-tmax) + var(--wg-n) * var(--wg-col) + 24px);
   padding-bottom: 32px;
 }
 .wg-r {
   display: grid;
-  grid-template-columns: minmax(var(--wg-tmin), var(--wg-tmax)) repeat(var(--wg-n), var(--wg-col)) 24px;
+  grid-template-columns: minmax(var(--wg-tmin), 1fr) repeat(var(--wg-n), var(--wg-col)) 24px;
   position: relative;
 }
 .wg-r > .wg-t { position: sticky; left: 0; z-index: 2; display: flex; align-items: center; gap: 12px; min-width: 0; background: inherit; }

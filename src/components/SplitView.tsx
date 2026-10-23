@@ -24,7 +24,7 @@ import { useVimOptional } from '../vim'
  * `dockedIssueId`). Pe ecran îngust componenta e transparentă — randează lista
  * și atât, iar formularul se întoarce în foaia de jos.
  */
-export function SplitView({ children, dockMinWidth }: {
+export function SplitView({ children, dockMinWidth, resizeKey }: {
   children: ReactNode
   /**
    * Lățimea minimă a LISTEI de lângă panou. Sub ea vizualizarea nu se anunță
@@ -32,6 +32,12 @@ export function SplitView({ children, dockMinWidth }: {
    * pe un laptop, rămânea doar cu coloana titlului.
    */
   dockMinWidth?: number
+  /**
+   * Panoul se lățește / îngustează trăgând linia dintre listă și el (cerut de
+   * om pentru „Teme × Valuri”, 2026-10-23). Lățimea se ține pe dispozitiv,
+   * sub cheia asta; dublu-clic pe linie o readuce la implicit.
+   */
+  resizeKey?: string
 }) {
   const wide = useWide()
   const { registerSplitHost, dockedIssueId, dockedKeyId, closeSheet, isDockedDirty } = useUI()
@@ -45,14 +51,28 @@ export function SplitView({ children, dockMinWidth }: {
   const [splitW, setSplitW] = useState<number | null>(null)
   useLayoutEffect(() => {
     const el = splitRef.current
-    if (!wide || !dockMinWidth || !el) return
+    if (!wide || (!dockMinWidth && !resizeKey) || !el) return
     const measure = () => setSplitW(el.getBoundingClientRect().width)
     measure()
     const ro = new ResizeObserver(measure)
     ro.observe(el)
     return () => ro.disconnect()
-  }, [wide, dockMinWidth])
-  const roomy = !dockMinWidth || (splitW !== null && (splitW - 22) / 2.05 >= dockMinWidth)
+  }, [wide, dockMinWidth, resizeKey])
+  const [paneW, setPaneW] = useState<number | null>(() => {
+    if (!resizeKey) return null
+    try { const v = Number(localStorage.getItem(resizeKey)); return v > 0 ? v : null } catch { return null }
+  })
+  const minList = Math.max(340, dockMinWidth ?? 0)
+  // Panoul tras nu îngustează lista sub minimul ei: altfel vizualizarea ar
+  // înceta să fie gazdă și tichetul ar sări ca modal sub degetul care trage.
+  const clampPane = (w: number, total: number) => Math.round(Math.max(PANE_MIN, Math.min(w, total - SPLIT_GAP - minList)))
+  // Netras încă: lățimea implicită din CSS (`1fr` / `1.05fr`), ca linia să pornească de unde e panoul.
+  const effPane = resizeKey && splitW !== null
+    ? clampPane(paneW ?? ((splitW - SPLIT_GAP) * 1.05) / 2.05, splitW)
+    : null
+  const roomy = !dockMinWidth || (splitW !== null && (effPane !== null
+    ? splitW - SPLIT_GAP - effPane >= dockMinWidth
+    : (splitW - SPLIT_GAP) / 2.05 >= dockMinWidth))
 
   useEffect(() => {
     if (!wide || !roomy) return
@@ -106,12 +126,57 @@ export function SplitView({ children, dockMinWidth }: {
 
   if (!wide) return <>{children}</>
 
+  const startResize = (e: React.PointerEvent<HTMLDivElement>) => {
+    const el = splitRef.current
+    if (!el || e.button !== 0) return
+    e.preventDefault()
+    const handle = e.currentTarget
+    handle.setPointerCapture(e.pointerId)
+    let last = paneW
+    const move = (ev: PointerEvent) => {
+      const rect = el.getBoundingClientRect()
+      last = clampPane(rect.right - ev.clientX - SPLIT_GAP / 2, rect.width)
+      setPaneW(last)
+    }
+    const up = () => {
+      handle.removeEventListener('pointermove', move)
+      handle.removeEventListener('pointerup', up)
+      handle.removeEventListener('pointercancel', up)
+      document.documentElement.removeAttribute('data-resizing')
+      if (resizeKey && last !== null) { try { localStorage.setItem(resizeKey, String(last)) } catch { /* doar sesiunea */ } }
+    }
+    document.documentElement.setAttribute('data-resizing', '')
+    handle.addEventListener('pointermove', move)
+    handle.addEventListener('pointerup', up)
+    handle.addEventListener('pointercancel', up)
+  }
+  const resetResize = () => {
+    setPaneW(null)
+    if (resizeKey) { try { localStorage.removeItem(resizeKey) } catch { /* doar sesiunea */ } }
+  }
+  const resizable = !!resizeKey && !!dockedIssueId
+
   // Panoul apare doar cu un tichet deschis (decizia omului, 2026-10-14): gol,
   // ocupa jumătate din ecran și strângea lista (și banda de valuri) degeaba.
   // `<aside>` rămâne în DOM, doar ascuns — lista nu se remontează la deschidere.
   return (
-    <div className={`split${dockedIssueId ? ' has-pane' : ''}`} ref={splitRef}>
+    <div
+      className={`split${dockedIssueId ? ' has-pane' : ''}${resizable ? ' resizable' : ''}`}
+      ref={splitRef}
+      style={resizable && effPane !== null ? ({ '--pane-w': `${effPane}px` } as React.CSSProperties) : undefined}
+    >
       <div className="split-list">{children}</div>
+      {resizable && (
+        <div
+          className="split-resize"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Lățimea panoului"
+          title="Trage ca să lățești sau să îngustezi panoul · dublu-clic: lățimea implicită"
+          onPointerDown={startResize}
+          onDoubleClick={resetResize}
+        />
+      )}
       <aside className="split-pane" ref={paneRef} aria-label="Tichetul deschis" hidden={!dockedIssueId} tabIndex={-1}>
         {dockedIssueId ? (
           /* Cheia poartă și scadența, nu doar id-ul. Formularul își citește
@@ -157,6 +222,10 @@ export function SplitView({ children, dockMinWidth }: {
     </div>
   )
 }
+
+/** Panoul nu se îngustează sub atât (formularul are nevoie de el), iar golul dintre coloane e cel din CSS. */
+const PANE_MIN = 460
+const SPLIT_GAP = 22
 
 /** Câmpurile pe care formularul le copiază la montare (vezi remontarea din `SplitView`). */
 function formPrint(i: Issue): string {

@@ -85,7 +85,7 @@ export function ThemesView() {
     return (
       // Panoul numai dacă lângă el încap titlul și măcar patru coloane de val
       // (`--wg-tmin` docat + 4 × `--wg-col`); altfel tichetul se deschide modal.
-      <SplitView dockMinWidth={260 + 4 * 64}>
+      <SplitView dockMinWidth={260 + 4 * 64} resizeKey="horizontal:themes-pane-w">
         <div className="panel wg-panel" style={project?.accent ? ({ ['--pc' as string]: project.accent }) : undefined}>
           {bar}
           <WaveGrid

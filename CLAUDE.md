@@ -420,7 +420,13 @@ să nu-l piardă. Panoul dublu (iframe-urile) nu e luat în calcul aici.
   Notițe / ultimul. Ale lui bat lista, lista bate globalele. **Fără
   numărătoare** (`2l`): cifrele 1–4 rămân taburile, pe loc (decizia omului).
 - Ecran lat: `.split-list` nu se mai derulează, ci `.wg-scroll` — antetul
-  valurilor stă sus, coloana titlului în stânga (plafon 640px).
+  valurilor stă sus, coloana titlului în stânga. Titlul ia tot ce rămâne, deci
+  valurile stau lipite de marginea din dreapta (decizia omului, 2026-10-23).
+- **Panoul se trage** (numai aici, prin `resizeKey` pe `SplitView`): linia
+  dintre listă și panou lățește / îngustează panoul, ținut pe dispozitiv
+  (`horizontal:themes-pane-w`), dublu-clic = implicit. Panoul nu scade sub
+  460px, iar lista nu scade sub `dockMinWidth` — altfel tabelul ar înceta să
+  fie gazdă și tichetul ar sări ca modal sub mouse.
 - Teste: `waveGrid.test.ts`, `keymap.test.ts` (grid), `test:nav` „Teme ×
   Valuri” (clic pe cerc, `u`, panoul docat, `l`, cifra 1).
 
