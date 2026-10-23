@@ -7904,3 +7904,127 @@ html[data-pane] .sheet:has(.form-cols) .sh-header { background: var(--bg); }
   html[data-pane] .sheet .thread { padding-left: 0; }
   html[data-pane] .sheet .form-col-desc .desc-fixed { flex: 0 0 auto; height: min(340px, 45dvh); }
 }
+
+/* ─── Teme × Valuri (H-13, macheta design/valuri/index.html) ───────────────
+   Tichetele pe rânduri, grupate pe teme; valurile pe coloane. Rândurile sunt
+   `.list-row` (cursorul Vim, `f`, selecția le citesc de acolo), dar așezate pe
+   o grilă: coloana titlului lipită în stânga, valurile derulează orizontal.
+   Fără grilă de chenare („Senin” 3): numai linia de păr de sub titlu. Valurile
+   n-au culoare — coloana spune deja valul; punctul e neutru. */
+.wg-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+.wg-bar > .chips { flex: 1; min-width: 0; margin: 0; padding: 0 0 2px; }
+.chip.wg-toggle { background: transparent; color: var(--txt-dim); gap: 6px; }
+.chip.wg-toggle:hover { background: var(--surface-2); color: var(--txt); }
+.wg-bar .wb-mode .x { margin-left: -2px; }
+
+/* Pe ecran lat tabelul își derulează singur conținutul, ca antetul valurilor
+   să stea sus și coloana titlului în stânga. */
+:where(html[data-wide]) .split-list:has(> .wg-panel) { overflow: hidden; display: flex; flex-direction: column; }
+:where(html[data-wide]) .split > .split-list > .panel.wg-panel { max-width: none; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.wg { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.wg-scroll { flex: 1; min-height: 0; overflow: auto; }
+:where(html:not([data-wide])) .wg-scroll { max-height: calc(var(--vvh, 100vh) - 210px); }
+/* Titlul are un plafon: pe un ecran lat, cu două valuri, punctele ar fi stat
+   la un metru de titlu. Ce rămâne în dreapta e gol, nu întins. */
+.wg-in {
+  --wg-tmax: 640px;
+  min-width: calc(var(--wg-tmin) + var(--wg-n) * var(--wg-col) + 24px);
+  max-width: calc(var(--wg-tmax) + var(--wg-n) * var(--wg-col) + 24px);
+  padding-bottom: 32px;
+}
+.wg-r {
+  display: grid;
+  grid-template-columns: minmax(var(--wg-tmin), var(--wg-tmax)) repeat(var(--wg-n), var(--wg-col)) 24px;
+  position: relative;
+}
+.wg-r > .wg-t { position: sticky; left: 0; z-index: 2; display: flex; align-items: center; gap: 12px; min-width: 0; background: inherit; }
+
+/* Antetul de coloane: lipit sus. */
+.wg-head { position: sticky; top: 0; z-index: 4; background: var(--bg); box-shadow: inset 0 -1px 0 var(--line); }
+.wg-head > .wg-t {
+  align-items: flex-end; padding: 0 16px 10px 41px;
+  font-size: calc(12px * var(--text-scale)); font-weight: 650; color: var(--txt-faint);
+}
+.wg-wh { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 1px; padding: 10px 3px 9px; min-width: 0; text-align: center; }
+.wg-wn { font-size: calc(13px * var(--text-scale)); font-weight: 700; color: var(--txt); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wg-wl { font-size: calc(11.5px * var(--text-scale)); font-weight: 550; color: var(--txt-dim); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wg-wc { font-family: var(--mono); font-size: calc(11.5px * var(--text-scale)); color: var(--txt-faint); margin-top: 2px; }
+.wg-wh.notes .wg-wn { color: var(--txt-dim); font-weight: 650; }
+
+/* Capul de grup (tema). */
+.wg-group { margin: 0; }
+.wg-ghead { min-height: 46px; margin-top: 6px; background: var(--bg); }
+.wg-ghead > .wg-t { gap: 8px; padding: 0 12px 0 6px; }
+.wg-chev {
+  width: 26px; height: 26px; border-radius: var(--r-s);
+  display: grid; place-items: center; color: var(--txt-faint);
+  transition: transform 0.15s;
+}
+.wg-chev:hover { background: var(--surface-2); color: var(--txt); }
+.wg-group.closed .wg-chev { transform: rotate(-90deg); }
+.wg-tdot { width: 10px; height: 10px; border-radius: 50%; background: var(--tc); flex-shrink: 0; }
+.wg-ghead h4 { font-size: calc(14px * var(--text-scale)); font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wg-tot { font-family: var(--mono); font-size: calc(12px * var(--text-scale)); color: var(--txt-faint); }
+.wg-gc { display: grid; place-items: center; font-family: var(--mono); font-size: calc(12px * var(--text-scale)); color: var(--txt-dim); }
+.wg-gc.z { color: transparent; }
+
+/* Rândul: grila în locul flex-ului din `.list-row`. */
+.list-row.wg-row { display: grid; padding: 0; gap: 0; min-height: 40px; border-radius: 0; cursor: pointer; }
+.list-row.wg-row::after { left: 41px; z-index: 3; }
+.list-row.wg-row::before { z-index: 3; }
+.list-row.wg-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* Bifa stă sub chevronul temei, ca în machetă. */
+.wg-row > .wg-t { padding: 0 12px 0 9px; }
+/* Panoul are culoarea lui solidă: coloana lipită o moștenește, iar valurile
+   derulate pe dedesubt nu se văd prin ea. */
+.list-row.wg-row.docked:not(.selected) { background: color-mix(in srgb, var(--accent) 10%, var(--bg)); }
+.wg-tx { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 5px 0; }
+.wg-title {
+  max-width: 100%; white-space: normal; text-overflow: clip;
+  font-size: calc(14.5px * var(--text-scale)); line-height: 1.35;
+  overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+}
+.wg-row.done .wg-title { color: var(--txt-faint); }
+.wg-row .list-id { flex-shrink: 0; font-family: var(--mono); font-size: calc(12px * var(--text-scale)); color: var(--txt-faint); min-width: 52px; text-align: right; }
+/* Dependența care vine mai târziu: informație, nu alarmă (chihlimbarul e al
+   urgentului, roșul al restanței) — doar gri, cu iconița de legătură. */
+.wg-dep {
+  max-width: 100%; display: inline-flex; align-items: center; gap: 5px;
+  font-size: calc(12.5px * var(--text-scale)); font-weight: 500; color: var(--txt-faint); white-space: nowrap;
+}
+.wg-dep b { font-family: var(--mono); font-weight: 500; font-size: calc(12px * var(--text-scale)); color: var(--txt-dim); }
+
+/* Celula: un punct (radio), nu inelul de bifă `.ck` — „e în valul ăsta” nu e
+   „e gata”. Cercul pal se vede mereu, ca să fie clar unde se dă clic. */
+.wg-cell { position: relative; display: grid; place-items: center; min-height: 40px; height: 100%; cursor: pointer; }
+.wg-cell:disabled { cursor: default; }
+.wg-ring {
+  position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; border-radius: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: inset 0 0 0 1.5px var(--line);
+  transition: box-shadow 0.12s;
+}
+.wg-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: color-mix(in srgb, var(--txt) 82%, var(--bg));
+  opacity: 0; transform: scale(0.6); transition: opacity 0.12s, transform 0.12s;
+}
+.wg-cell.notes .wg-dot { background: var(--txt-faint); }
+.wg-cell.on .wg-dot { opacity: 1; transform: none; }
+.wg-cell.on .wg-ring { box-shadow: none; }
+.wg-cell:not(:disabled):hover .wg-ring { box-shadow: inset 0 0 0 1.5px var(--border-strong); }
+.wg-cell:not(:disabled):not(.on):hover .wg-dot { opacity: 0.3; transform: scale(0.8); }
+.wg-row.done .wg-ring { box-shadow: none; }
+.wg-row.done .wg-cell.on .wg-dot { opacity: 0.45; }
+
+.wg-empty { padding: 32px 9px; }
+.wg-hint {
+  flex-shrink: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px;
+  padding: 9px 12px 2px 9px; box-shadow: inset 0 1px 0 var(--line);
+  font-size: calc(12px * var(--text-scale)); color: var(--txt-faint);
+}
+.wg-hint kbd {
+  font: inherit; font-family: var(--mono); font-size: calc(11.5px * var(--text-scale)); color: var(--txt-dim);
+  background: var(--surface-2); border-radius: var(--r-s); padding: 0 5px; margin-right: 4px;
+}
+@media (pointer: coarse) { .wg-hint { display: none; } }

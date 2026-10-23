@@ -147,6 +147,24 @@ describe('activeBindings / continuations', () => {
     expect(activeBindings('list', map).map((x) => x.id)).toEqual(['toSidebar'])
     expect(activeBindings('panel', map).map((x) => x.id)).toEqual(['historyBack'])
   })
+  it('„× Valuri” (grid): ale lui bat lista, lista bate globalul, restul listei rămâne', () => {
+    const map: Binding[] = [
+      { seq: ['h'], ctx: 'any', id: 'historyBack', desc: 'global' },
+      { seq: ['h'], ctx: 'list', id: 'toSidebar', desc: 'listă' },
+      { seq: ['h'], ctx: 'grid', id: 'waveLeft', desc: 'grid' },
+      { seq: ['j'], ctx: 'list', id: 'down', desc: 'listă' },
+      { seq: ['u'], ctx: 'any', id: 'undo', desc: 'global' },
+    ]
+    expect(activeBindings('grid', map).map((x) => x.id).sort()).toEqual(['down', 'undo', 'waveLeft'])
+    expect(activeBindings('list', map).map((x) => x.id).sort()).toEqual(['down', 'toSidebar', 'undo'])
+  })
+  it('în grid, h / l / 0 / $ mută între valuri, iar 0 fără numărătoare nu e numărătoare', () => {
+    const fire = (tok: string) => {
+      const r = feed(EMPTY_SEQ, tok, { ctx: 'grid', now: 1, allowCount: true }).result
+      return r.kind === 'fire' ? r.binding.id : r.kind
+    }
+    expect(['h', 'l', '0', '$', 'j', 'x'].map(fire)).toEqual(['waveLeft', 'waveRight', 'waveFirst', 'waveLast', 'down', 'done'])
+  })
   it('which-key: continuările lui g în listă, fără dubluri ascunse', () => {
     const s = feed(EMPTY_SEQ, 'g', { ctx: 'list', now: 1, allowCount: true }).state
     const rest = continuations(s, 'list').map((c) => c.rest)
@@ -155,7 +173,7 @@ describe('activeBindings / continuations', () => {
   it('fiecare intrare are descriere și un context cunoscut', () => {
     for (const x of KEYMAP) {
       expect(x.desc.length).toBeGreaterThan(0)
-      expect(['list', 'panel', 'sidebar', 'any']).toContain(x.ctx)
+      expect(['list', 'grid', 'panel', 'sidebar', 'any']).toContain(x.ctx)
     }
   })
   it('nicio secvență dublată în același context', () => {

@@ -28,6 +28,8 @@ import {
   List,
   Bold,
   ListIndentIncrease,
+  Table2,
+  Link,
   Sun,
   Users,
   FileArchive,
@@ -209,6 +211,10 @@ const ICONS = {
   mdList: List,
   mdBold: Bold,
   mdIndent: ListIndentIncrease,
+  /** Modul „× Valuri” din Teme: tichetele pe rânduri, valurile pe coloane. */
+  waveGrid: Table2,
+  /** O dependență, când o arătăm ca informație (avertismentul din „× Valuri”). */
+  depLink: Link,
 } as const
 
 export type IconName = keyof typeof ICONS

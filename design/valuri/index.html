@@ -1,0 +1,788 @@
+<!doctype html>
+<html lang="ro" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Teme × Valuri</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..800&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   Jetoanele reale din src/styles.css (:root = întunecat, light mai jos)
+   ============================================================ */
+:root, [data-theme='dark'] {
+  --bg: #141517; --surface: #1B1C1F; --surface-2: #232428; --surface-3: #2B2D32;
+  --line: #2A2C31; --border-strong: #3A3D44; --line-soft: #1F2024;
+  --txt: #EEEFF1; --txt-dim: #A6ABB3; --txt-faint: #757A83;
+  --accent: #5B8DFF; --accent-2: #4A7BF0; --accent-soft: rgba(91,141,255,0.15);
+  --done: #3DBF85; --blocked: #FF6369; --urgent: #FF9548; --urgent-soft: rgba(255,149,72,0.15); --star: #FFC53D;
+  --r: 20px; --r-m: 12px; --r-s: 8px;
+  --amb: inset 0 1px 0 rgba(255,255,255,0.04), 0 6px 22px rgba(0,0,0,0.4);
+  --amb-lg: inset 0 1px 0 rgba(255,255,255,0.05), 0 16px 44px rgba(0,0,0,0.5);
+  --layer-0: #5B8DFF; --layer-1: #4FA3F0; --layer-2: #3FB5D6; --layer-3: #2EC4B0; --layer-4: #4CC98A;
+  --mono: 'Geist Mono', ui-monospace, 'SF Mono', monospace;
+  --display: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --text-scale: 1;
+  /* NOU — varianta (a): rampa valurilor după POZIȚIE. Indigo → magenta: în afara
+     accentului (albastru), a rampei de layere (albastru → verde), a urgentului
+     (chihlimbar), a restanței (roșu), a stelei (galben) și a lui „gata” (verde).
+     Toate ≥ 5.4:1 pe --bg și pe --surface-2. */
+  --wave-1: #9A8CFF; --wave-2: #A688FC; --wave-3: #B284F6; --wave-4: #BD80EE;
+  --wave-5: #C77DE4; --wave-6: #D07AD8; --wave-7: #D778CB; --wave-8: #DC77BD;
+  /* Varianta (b): fără culoare — punctul e cerneala, Notițe e cerneala stinsă. */
+  --dot: color-mix(in srgb, var(--txt) 82%, var(--bg));
+  --dot-notes: var(--txt-faint);
+  --page: #0C0D0E; --page-ink: #EEEFF1; --page-dim: #8C919A; --page-card: #1B1C1F;
+  color-scheme: dark;
+}
+[data-theme='light'] {
+  --bg: #FFFFFF; --surface: #FFFFFF; --surface-2: #F6F7F9; --surface-3: #EEF0F3;
+  --line: #E6E8EC; --line-soft: #EEF0F3; --border-strong: #D5D9DF;
+  --txt: #1A1C20; --txt-dim: #565C66; --txt-faint: #868C96;
+  --accent: #2F6BFF; --accent-2: #1F55E0; --accent-soft: #EBF1FF;
+  --done: #1F9D60; --blocked: #E5484D; --urgent: #D05A00; --urgent-soft: #FFF0E3; --star: #F5B000;
+  --amb: 0 1px 2px rgba(16,24,40,0.05), 0 6px 20px rgba(16,24,40,0.07);
+  --amb-lg: 0 2px 6px rgba(16,24,40,0.06), 0 18px 44px rgba(16,24,40,0.12);
+  --layer-0: #2F6BFF; --layer-1: #1F7FD6; --layer-2: #0E8FB0; --layer-3: #0E9F8E; --layer-4: #1F9D60;
+  /* ≥ 5.2:1 pe alb și pe --surface-2 */
+  --wave-1: #5B45D6; --wave-2: #6A41D2; --wave-3: #7A3DCB; --wave-4: #8939C2;
+  --wave-5: #9636B7; --wave-6: #A134AA; --wave-7: #AA339C; --wave-8: #B1338D;
+  --page: #ECEEF1; --page-ink: #1A1C20; --page-dim: #626873; --page-card: #FFFFFF;
+  color-scheme: light;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { background: var(--page); }
+body { font-family: var(--display); color: var(--page-ink); font-size: calc(15px * var(--text-scale)); line-height: 1.45; -webkit-font-smoothing: antialiased; font-feature-settings: "tnum" 1, "cv11" 1; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+svg { display: block; flex-shrink: 0; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ------------------------- pagina-gazdă (nu e aplicația) ------------------------- */
+.mk-bar { position: sticky; top: 0; z-index: 50; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; padding: 12px 16px; background: var(--page); }
+.mk-bar h1 { font-size: calc(15px * var(--text-scale)); font-weight: 700; letter-spacing: -.01em; margin-right: auto; }
+.mk-bar h1 span { color: var(--page-dim); font-weight: 500; margin-left: 6px; }
+.mk-seg { display: flex; align-items: center; gap: 8px; font-size: calc(12px * var(--text-scale)); color: var(--page-dim); font-weight: 600; }
+.mk-seg .sg { display: flex; padding: 3px; border-radius: var(--r-m); background: color-mix(in srgb, var(--page-ink) 8%, transparent); }
+.mk-seg button { font-size: calc(13px * var(--text-scale)); font-weight: 600; padding: 5px 11px; border-radius: var(--r-s); color: var(--page-dim); }
+.mk-seg button[aria-pressed=true] { background: var(--page-card); color: var(--page-ink); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.mk-wrap { padding: 0 16px 64px; }
+[data-theme='light'] .frame { --pc: #0E9F8E; }
+[data-theme='dark'] .frame { --pc: #2EC4B0; }
+.frame { height: 860px; display: flex; border-radius: var(--r); overflow: hidden; background: var(--bg); color: var(--txt); box-shadow: 0 1px 2px rgba(0,0,0,.05), 0 20px 50px -20px rgba(0,0,0,.25); position: relative; }
+
+/* ------------------------- bara laterală ------------------------- */
+.side { width: 240px; flex-shrink: 0; background: var(--surface-2); padding: 14px 10px; display: flex; flex-direction: column; gap: 2px; }
+.side .me { display: flex; align-items: center; gap: 10px; padding: 4px 10px 12px; font-weight: 650; font-size: calc(14px * var(--text-scale)); }
+.side .av { width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; font-size: calc(11px * var(--text-scale)); font-weight: 700; }
+.side .search { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; margin-bottom: 10px; border-radius: var(--r-s); background: var(--bg); color: var(--txt-faint); font-size: calc(13.5px * var(--text-scale)); box-shadow: var(--amb); }
+.side .search kbd { margin-left: auto; font: inherit; font-size: calc(11.5px * var(--text-scale)); }
+.side .nav { display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 10px; border-radius: var(--r-s); color: var(--txt-dim); font-weight: 550; font-size: calc(14px * var(--text-scale)); }
+.side .nav.on { background: var(--surface-3); color: var(--txt); }
+.side .nav .n { margin-left: auto; color: var(--txt-faint); font-family: var(--mono); font-size: calc(12px * var(--text-scale)); }
+.side .nav .pd { width: 10px; height: 10px; border-radius: 50%; margin: 0 3px; background: var(--pc); }
+.side .lbl { margin: 16px 10px 6px; font-size: calc(12px * var(--text-scale)); font-weight: 650; color: var(--txt-faint); }
+
+/* ------------------------- zona principală ------------------------- */
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 22px 0 0; }
+.phd { padding: 0 32px; display: flex; align-items: center; gap: 10px; }
+.phd .pdot { width: 12px; height: 12px; border-radius: 50%; background: var(--pc); }
+.phd h2 { font-size: calc(24px * var(--text-scale)); font-weight: 750; letter-spacing: -.02em; }
+.phd .sub { font-size: calc(13px * var(--text-scale)); color: var(--txt-faint); margin-left: 4px; margin-top: 3px; }
+.tabs { display: flex; gap: 20px; padding: 14px 32px 0; box-shadow: inset 0 -1px 0 var(--line); }
+.tab { font-size: calc(15px * var(--text-scale)); font-weight: 600; color: var(--txt-faint); padding-bottom: 9px; position: relative; }
+.tab.on { color: var(--txt); }
+.tab.on::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; border-radius: 2px; background: var(--accent); }
+.tab kbd { font: inherit; font-family: var(--mono); font-size: calc(11px * var(--text-scale)); color: var(--txt-faint); margin-left: 6px; opacity: .7; }
+
+.chips { display: flex; align-items: center; gap: 6px; padding: 12px 32px 10px; flex-wrap: nowrap; overflow: hidden; }
+.chip { flex-shrink: 0; height: 30px; padding: 0 11px; border-radius: var(--r-s); background: var(--surface-2); color: var(--txt-dim); display: inline-flex; align-items: center; gap: 6px; font-size: calc(13px * var(--text-scale)); font-weight: 600; white-space: nowrap; }
+.chip:hover { background: var(--surface-3); color: var(--txt); }
+.chip.on { background: var(--accent-soft); color: var(--accent); font-weight: 650; }
+.chip .cdot { width: 7px; height: 7px; border-radius: 50%; }
+.chip.ghost { background: transparent; color: var(--txt-faint); }
+.chip.ghost:hover { background: var(--surface-2); color: var(--txt); }
+.chips .grow { flex: 1; min-width: 8px; }
+.chips .themes { display: flex; gap: 6px; min-width: 0; overflow: hidden; mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent); }
+/* Modul pornit = jetonul cu ✕ din banda de valuri (.wb-mode). */
+.mode { height: 30px; padding: 0 6px 0 10px; border-radius: var(--r-s); background: var(--surface-3); color: var(--txt); font-size: calc(13px * var(--text-scale)); font-weight: 600; display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.mode .x { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; color: var(--txt-faint); }
+.mode:hover .x { background: var(--surface-2); color: var(--txt); }
+.more { width: 32px; height: 30px; border-radius: var(--r-s); display: grid; place-items: center; color: var(--txt-dim); position: relative; flex-shrink: 0; }
+.more:hover, .more.open { background: var(--surface-2); color: var(--txt); }
+.more .pip { position: absolute; top: 5px; right: 5px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.pop { position: absolute; z-index: 30; min-width: 260px; padding: 6px; border-radius: var(--r-m); background: var(--surface); box-shadow: var(--amb-lg); }
+[data-theme='dark'] .pop { background: var(--surface-2); }
+.pop .mi { width: 100%; display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border-radius: var(--r-s); font-size: calc(14px * var(--text-scale)); color: var(--txt); text-align: left; }
+.pop .mi:hover { background: var(--surface-3); }
+.pop .mi .ckm { width: 16px; color: var(--accent); }
+.pop .mi kbd { margin-left: auto; font: inherit; font-family: var(--mono); font-size: calc(12px * var(--text-scale)); color: var(--txt-faint); }
+.pop .sep { height: 1px; background: var(--line); margin: 5px 4px; }
+.pop .cap { font-size: calc(12px * var(--text-scale)); font-weight: 650; color: var(--txt-faint); padding: 6px 10px 4px; }
+
+/* ------------------------- tabelul ------------------------- */
+.body { flex: 1; min-height: 0; display: flex; }
+.listcol { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.vt { flex: 1; min-height: 0; overflow: auto; position: relative; padding-bottom: 40px; }
+.vt-in { min-width: calc(var(--tmin) + var(--nw) * var(--wcol) + 24px); width: 100%; }
+.vrow { display: grid; grid-template-columns: minmax(var(--tmin), 1fr) repeat(var(--nw), var(--wcol)) 24px; position: relative; }
+.vrow > .c-t { position: sticky; left: 0; z-index: 2; background: var(--rowbg, var(--bg)); display: flex; align-items: center; min-width: 0; }
+
+/* antetul de coloane: lipit sus */
+.vhead { position: sticky; top: 0; z-index: 6; background: var(--bg); box-shadow: inset 0 -1px 0 var(--line); }
+.vhead .c-t { padding: 0 16px 0 32px; font-size: calc(12px * var(--text-scale)); font-weight: 650; color: var(--txt-faint); align-items: flex-end; padding-bottom: 10px; z-index: 7; }
+.wh { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 1px; padding: 10px 3px 9px; min-width: 0; text-align: center; border-radius: var(--r-s) var(--r-s) 0 0; }
+.wh .rn { font-size: calc(13px * var(--text-scale)); font-weight: 700; color: var(--txt); letter-spacing: .01em; }
+.wh .lb { font-size: calc(11.5px * var(--text-scale)); font-weight: 550; color: var(--txt-dim); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wh .n { font-family: var(--mono); font-size: calc(11.5px * var(--text-scale)); color: var(--txt-faint); margin-top: 2px; }
+.wh.notes .rn { color: var(--txt-dim); font-weight: 650; }
+.wh.hot { background: var(--surface-2); }
+.ramp .wh .rn { color: var(--wc); }
+
+/* capul de grup (temă) */
+.vgroup { height: 46px; margin-top: 6px; }
+.vgroup .c-t { gap: 8px; padding: 0 12px 0 26px; }
+.vgroup .chev { width: 22px; height: 22px; border-radius: var(--r-s); display: grid; place-items: center; color: var(--txt-faint); transition: transform .15s; }
+.vgroup .chev:hover { background: var(--surface-2); color: var(--txt); }
+.vgroup.closed .chev { transform: rotate(-90deg); }
+.vgroup .tdot { width: 10px; height: 10px; border-radius: 50%; background: var(--tc); }
+.vgroup h4 { font-size: calc(14px * var(--text-scale)); font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vgroup .tot { font-family: var(--mono); font-size: calc(12px * var(--text-scale)); color: var(--txt-faint); }
+.vgroup .gc { display: grid; place-items: center; font-family: var(--mono); font-size: calc(12px * var(--text-scale)); font-weight: 500; color: var(--txt-dim); }
+.vgroup .gc.z { color: transparent; }
+
+/* rândul */
+.item { min-height: 40px; --rowbg: var(--bg); }
+.item::after { content: ''; position: absolute; left: 64px; right: 0; bottom: 0; height: 1px; background: var(--line-soft); pointer-events: none; z-index: 3; }
+[data-theme='light'] .item::after { background: var(--line); }
+.item.last::after { display: none; }
+.item .c-t { gap: 12px; padding: 0 12px 0 32px; cursor: pointer; }
+.item:hover { --rowbg: var(--surface-2); background: var(--surface-2); }
+.item.cur { --rowbg: var(--surface-2); background: var(--surface-2); }
+.item.cur .c-t { box-shadow: inset 2px 0 0 var(--accent); }
+.item.docked { --rowbg: var(--accent-soft-solid); background: var(--accent-soft-solid); }
+.item.docked::after, .item.cur::after { opacity: 0; }
+:root { --accent-soft-solid: #1E2840; }
+[data-theme='light'] { --accent-soft-solid: #EBF1FF; }
+.ck { width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; color: #fff;
+  box-shadow: inset 0 0 0 1.75px color-mix(in srgb, var(--pc) 80%, var(--bg)); }
+.ck:hover { background: color-mix(in srgb, var(--pc) 12%, transparent); }
+.ck.on { background: var(--pc); box-shadow: none; }
+.tt { flex: 1; min-width: 0; font-size: calc(14.5px * var(--text-scale)); line-height: 1.35; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; padding: 4px 0; }
+.dep { flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px; font-size: calc(12.5px * var(--text-scale)); color: var(--txt-faint); font-weight: 500; white-space: nowrap; }
+.dep b { font-family: var(--mono); font-weight: 500; font-size: calc(12px * var(--text-scale)); color: var(--txt-dim); }
+.iid { flex-shrink: 0; font-family: var(--mono); font-size: calc(12px * var(--text-scale)); color: var(--txt-faint); min-width: 48px; text-align: right; }
+.item.done .tt { color: var(--txt-faint); }
+.item.done .cell.on .dot { opacity: .45; }
+
+/* celula: punct radio, NU inel de bifă */
+.cell { position: relative; display: grid; place-items: center; min-height: 40px; height: 100%; outline-offset: -3px; }
+.cell .ring { position: absolute; width: 22px; height: 22px; border-radius: 50%; left: 50%; top: 50%; transform: translate(-50%, -50%); box-shadow: inset 0 0 0 1.5px var(--line); cursor: pointer; transition: box-shadow .12s; }
+.cell .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--dot); opacity: 0; transition: opacity .12s, transform .12s; transform: scale(.6); }
+.cell.on .dot { opacity: 1; transform: none; }
+.cell.notes .dot { background: var(--dot-notes); }
+.ramp .cell .dot { background: var(--wc); }
+.ramp .cell.notes .dot { background: var(--dot-notes); }
+.cell:hover .ring { box-shadow: inset 0 0 0 1px var(--border-strong); }
+.cell:not(.on):hover .dot { opacity: .3; transform: scale(.8); }
+.item.done .cell { cursor: default; }
+.item.done .cell .ring, .item.done .cell:hover .ring { box-shadow: none; }
+.cell.on .ring { box-shadow: none; }
+.item.done .cell:not(.on):hover .dot { opacity: 0; }
+
+.hint { flex-shrink: 0; display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; padding: 9px 32px 11px; font-size: calc(12px * var(--text-scale)); color: var(--txt-faint); box-shadow: inset 0 1px 0 var(--line); }
+.hint kbd { font: inherit; font-family: var(--mono); font-size: calc(11.5px * var(--text-scale)); color: var(--txt-dim); background: var(--surface-2); border-radius: 5px; padding: 0 5px; margin-right: 4px; }
+.hint .cnt { margin-left: auto; font-family: var(--mono); color: var(--accent); }
+.empty { padding: 40px 32px; color: var(--txt-faint); font-size: calc(14px * var(--text-scale)); }
+
+/* Teme fără mod: lista de azi (simplificată) */
+.tl { flex: 1; overflow: auto; padding: 0 32px 40px; }
+.tl .lh { display: flex; align-items: center; gap: 8px; margin: 18px 0 6px; font-size: calc(13px * var(--text-scale)); font-weight: 650; }
+.tl .lh .tdot { width: 10px; height: 10px; border-radius: 50%; }
+.tl .lh .s { margin-left: auto; font-size: calc(12px * var(--text-scale)); color: var(--txt-faint); font-weight: 500; }
+.tl .r { display: flex; align-items: center; gap: 12px; height: 40px; position: relative; font-size: calc(14.5px * var(--text-scale)); }
+.tl .r::after { content: ''; position: absolute; left: 32px; right: 0; bottom: 0; height: 1px; background: var(--line); }
+.tl .r .tt { flex: 1; }
+
+/* ------------------------- panoul lateral (≥1200px) ------------------------- */
+.dock { width: 460px; flex-shrink: 0; box-shadow: -1px 0 0 var(--line); display: flex; flex-direction: column; min-height: 0; background: var(--bg); }
+.dock[hidden] { display: none; }
+.dock.modal { position: absolute; z-index: 40; right: 50%; top: 40px; bottom: 40px; transform: translateX(50%); width: min(620px, 92%); border-radius: var(--r); box-shadow: var(--amb-lg); }
+.dk-hd { display: flex; align-items: center; gap: 8px; padding: 14px 16px 6px 24px; }
+.dk-hd .iid { text-align: left; min-width: 0; font-size: calc(12.5px * var(--text-scale)); }
+.dk-hd .sp { flex: 1; }
+.ib { width: 32px; height: 32px; border-radius: var(--r-s); display: grid; place-items: center; color: var(--txt-dim); }
+.ib:hover { background: var(--surface-2); color: var(--txt); }
+.dk-b { flex: 1; overflow: auto; padding: 4px 24px 28px; }
+.dk-title { display: flex; gap: 12px; align-items: flex-start; }
+.dk-title .ck { width: 22px; height: 22px; margin-top: 3px; }
+.dk-title h3 { font-size: calc(19px * var(--text-scale)); font-weight: 700; letter-spacing: -.01em; line-height: 1.3; }
+.fchips { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 16px 34px; }
+.fchip { height: 28px; padding: 0 9px; border-radius: var(--r-s); background: var(--surface-2); color: var(--txt-dim); display: inline-flex; align-items: center; gap: 6px; font-size: calc(13px * var(--text-scale)); font-weight: 550; }
+.fchip.ghost { background: transparent; box-shadow: inset 0 0 0 1px var(--line); color: var(--txt-faint); }
+.fchip .cdot { width: 7px; height: 7px; border-radius: 50%; }
+.fchip .wd { width: 8px; height: 8px; border-radius: 50%; background: var(--dot); }
+.ramp .fchip .wd { background: var(--wc); }
+.fchip .wd.notes { background: var(--dot-notes) !important; }
+.desc-box { background: var(--surface-2); border-radius: var(--r-m); padding: 12px 14px; font-size: calc(14px * var(--text-scale)); line-height: 1.55; box-shadow: inset 0 0 0 1px var(--line); }
+[data-theme='dark'] .desc-box { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--txt) 7%, transparent); }
+.desc-box p + p { margin-top: 8px; }
+.desc-box b { font-weight: 650; }
+.desc-box code { font-family: var(--mono); font-size: calc(12px * var(--text-scale)); background: var(--surface-3); border-radius: 5px; padding: 1px 5px; word-break: break-all; }
+.dk-sec { margin-top: 22px; }
+.dk-sec h5 { font-size: calc(12px * var(--text-scale)); font-weight: 650; color: var(--txt-faint); margin-bottom: 4px; display: flex; gap: 6px; align-items: center; }
+.drow { display: flex; align-items: center; gap: 10px; height: 38px; position: relative; font-size: calc(14px * var(--text-scale)); cursor: pointer; border-radius: var(--r-s); padding: 0 6px; margin: 0 -6px; }
+.drow:hover { background: var(--surface-2); }
+.drow .ck { width: 16px; height: 16px; }
+.drow .tt { font-size: calc(14px * var(--text-scale)); }
+.drow.done .tt { color: var(--txt-faint); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--txt-faint) 60%, transparent); }
+.wtag { flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 7px; border-radius: var(--r-s); background: var(--surface-2); font-size: calc(12px * var(--text-scale)); font-weight: 600; color: var(--txt-dim); }
+.drow:hover .wtag { background: var(--surface-3); }
+.wtag .wd { width: 7px; height: 7px; border-radius: 50%; background: var(--dot); }
+.ramp .wtag .wd { background: var(--wc); }
+.wtag .wd.notes { background: var(--dot-notes) !important; }
+.dk-note { font-size: calc(13px * var(--text-scale)); color: var(--txt-faint); display: flex; gap: 6px; align-items: center; margin-top: 6px; }
+.dk-empty { font-size: calc(13.5px * var(--text-scale)); color: var(--txt-faint); padding: 6px 0; }
+
+/* ------------------------- toast ------------------------- */
+.toast { position: absolute; z-index: 60; left: 50%; bottom: 58px; transform: translate(-50%, 12px); opacity: 0; pointer-events: none; transition: .18s; display: flex; align-items: center; gap: 14px; padding: 10px 10px 10px 16px; border-radius: var(--r-m); background: #1A1C20; color: #EEEFF1; font-size: calc(14px * var(--text-scale)); box-shadow: var(--amb-lg); white-space: nowrap; }
+[data-theme='dark'] .toast { background: #2B2D32; }
+.toast.on { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+.toast b { font-family: var(--mono); font-weight: 500; font-size: calc(13px * var(--text-scale)); }
+.toast button { color: #8AAEFF; font-weight: 650; padding: 4px 8px; border-radius: var(--r-s); }
+.toast button:hover { background: rgba(255,255,255,.08); }
+
+/* ------------------------- note ------------------------- */
+.mk-notes { max-width: 1120px; margin: 40px auto 0; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.note { background: var(--page-card); border-radius: var(--r); padding: 22px 24px; box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 8px 24px rgba(0,0,0,.05); color: var(--page-ink); }
+.note.wide { grid-column: 1 / -1; }
+.note h3 { font-size: calc(16px * var(--text-scale)); font-weight: 700; letter-spacing: -.01em; margin-bottom: 8px; }
+.note p, .note li { font-size: calc(14px * var(--text-scale)); line-height: 1.55; color: var(--page-dim); }
+.note p + p { margin-top: 8px; }
+.note ul { padding-left: 18px; }
+.note li + li { margin-top: 4px; }
+.note b { color: var(--page-ink); font-weight: 650; }
+.note code { font-family: var(--mono); font-size: calc(12.5px * var(--text-scale)); background: color-mix(in srgb, var(--page-ink) 7%, transparent); border-radius: 5px; padding: 1px 5px; }
+.swr { display: flex; gap: 6px; margin: 10px 0 2px; flex-wrap: wrap; align-items: center; font-size: calc(12px * var(--text-scale)); color: var(--page-dim); }
+.swr i { width: 22px; height: 22px; border-radius: 50%; display: block; }
+.sortdemo { font-family: var(--mono); font-size: calc(12px * var(--text-scale)); color: var(--page-dim); line-height: 1.7; margin-top: 8px; columns: 2; }
+.phone-note { display: flex; gap: 10px; align-items: flex-start; }
+.phone-note svg { margin-top: 2px; color: var(--page-dim); }
+</style>
+</head>
+<body>
+
+<div class="mk-bar">
+  <h1>Teme × Valuri <span>macheta 2 · H-13 · doar desktop (≥ 900px)</span></h1>
+  <div class="mk-seg">Temă <div class="sg" data-seg="theme"><button data-v="light">Luminoasă</button><button data-v="dark">Întunecată</button></div></div>
+  <div class="mk-seg">Culoarea valului <div class="sg" data-seg="color"><button data-v="none">(b) fără</button><button data-v="ramp">(a) rampă</button></div></div>
+  <div class="mk-seg">Proiect <div class="sg" data-seg="proj"><button data-v="p4">4 valuri</button><button data-v="p8">8 valuri</button></div></div>
+</div>
+
+<div class="mk-wrap">
+  <div class="frame" id="frame">
+    <aside class="side" id="side"></aside>
+    <section class="main">
+      <div class="phd"><span class="pdot"></span><h2>Sofia</h2><span class="sub" id="psub"></span></div>
+      <nav class="tabs" id="tabs"></nav>
+      <div class="chips" id="chips"></div>
+      <div class="body">
+        <div class="listcol" id="listcol"></div>
+        <aside class="dock" id="dock" hidden></aside>
+      </div>
+    </section>
+    <div class="toast" id="toast"><span id="toast-t"></span><button id="toast-u" type="button">Anulează</button></div>
+  </div>
+
+  <div class="mk-notes">
+    <div class="note">
+      <h3>Culoarea valului: (b) fără culoare</h3>
+      <p><b>Recomandarea e (b): punctul e neutru.</b> Poziția coloanei spune deja în ce val e tichetul, deci culoarea ar repeta aceeași informație. Pe ecran sunt deja culorile temelor, care vin de la om, și culoarea proiectului pe bifă. Nici banda de valuri din „Listă” n-are culori: ar fi primul loc unde un val are culoare, și numai aici.</p>
+      <p>Notițe e cerneala stinsă: „nehotărât” se vede ca absență, nu ca a doua culoare.</p>
+      <p><b>(a), dacă omul o vrea:</b> rampa <code>--wave-1..8</code> după <code>position</code>, indigo → magenta, definită pentru fiecare temă. E în afara accentului, a rampei de layere (albastru → verde), a chihlimbarului, a roșului, a stelei și a verdelui. Contrastul e ≥ 5,2:1 pe fundal și pe <code>--surface-2</code>, în ambele teme. Fără coloană nouă în bază.</p>
+      <div class="swr" id="swr"></div>
+    </div>
+    <div class="note">
+      <h3>Dependențele: doar informație</h3>
+      <p>Pe rând apare, gri, <b>„cere SOF-50 · Val II”</b> cu iconița de legătură, dacă o dependență deschisă e într-un val cu <code>position</code> mai mare. Apare și dacă dependența e încă în Notițe, fiindcă acolo e „nehotărât”. Un tichet din Notițe nu primește avertisment. Nu blochează nimic și nu folosește chihlimbar sau roșu.</p>
+      <p>În exemplul cu 4 valuri, SOF-51 („Pune la loc”, Val I) cere SOF-50 (Val II). În cel cu 8 valuri, SOF-32 cere SOF-31, care e în Notițe.</p>
+      <p>Panoul arată <b>toate</b> dependențele, din toate valurile, fiecare cu valul ei și bifa.</p>
+    </div>
+    <div class="note">
+      <h3>Ordinea temelor: naturală, după nume</h3>
+      <p><code>localeCompare('ro', {numeric: true})</code>, fără nicio coloană nouă. „Fără temă” vine la final, când există. Așa sună lista din proiectul Sofia, cu tot cu temele încă goale:</p>
+      <div class="sortdemo" id="sortdemo"></div>
+      <p>Consecință acceptată: „Prima deschidere” vine după „Pasul 3”.</p>
+    </div>
+    <div class="note">
+      <h3>Telefon</h3>
+      <div class="phone-note">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="2" width="8" height="14" rx="2"/><path d="M8 13.5h2" stroke-linecap="round"/></svg>
+        <p>Sub 900px jetonul „Valuri” nu apare, iar Teme rămâne lista de azi. Fără layout de telefon. Îngustează fereastra sub 900px ca să vezi asta.</p>
+      </div>
+      <p style="margin-top:10px">Peste 1200px tichetul se deschide în panoul lateral, ca în „Listă”. Între 900 și 1200px se deschide ca modal.</p>
+    </div>
+    <div class="note wide">
+      <h3>Ce s-a schimbat față de macheta 1</h3>
+      <ul>
+        <li>Nu e tab nou. E jetonul „Valuri” din tabul <b>Teme</b>; pornit, apare cu ✕, ca modurile din banda de valuri.</li>
+        <li>Fără grilă și fără chenare: rânduri plate, linie de păr care pornește de sub titlu. ID-ul e în coada rândului.</li>
+        <li>Celula are un punct radio, fără umplere. Inelul de păr apare doar la hover, deci nu seamănă cu bifa <code>.ck</code>.</li>
+        <li>Numărul de tichete deschise e în antetul fiecărei coloane, deci bara de rezumat a ieșit. Antetul grupului are numerele pe val, aliniate sub coloane.</li>
+        <li>Bifatele sunt ascunse implicit („⋯ Vizualizare → Ascunde bifatele”). Afișate, sunt stinse, cu bifa plină.</li>
+        <li>Mutarea nu reordonează nimic: rândurile stau după ID în temă. Toastul are „Anulează” (sau <code>u</code>).</li>
+        <li>Au ieșit: redenumirea pe loc, „+ Nou” pe temă, „Doar Scratchpad”, bara de rezumat, tastele 0–3, „Mută tot” / „Pune exemplul la loc”.</li>
+        <li><b>Hotărât (2026-10-23):</b> fără numărătoare (<code>2l</code>). Cifrele <code>1</code>–<code>4</code> rămân taburile, pe loc. Pentru salturi: <code>0</code> (Notițe) și <code>$</code> (ultimul val).</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+const P = 'docs/netvisor/pasi/', H = 'docs/harta-clientului/';
+const RAW = [
+ ['id','Sofia are o poză și un nume','nu','are','N-au personaj: chatul lor n-are nume și nici chip.','Sofia, cu poză în antet și în panou.',H+'01-descoperirea.md'],
+ ['id','Lângă nume scrie „asistent AI”, ca nimeni să n-o ia drept un om','nu','lipsa','N-au personaj, deci n-au avut nevoie.','Lipsește. Legea AI a UE cere ca omul să știe că vorbește cu un AI.',H+'01-descoperirea.md'],
+ ['id','Poza arată ce face Sofia (liniștită / la laptop când lucrează)','nu','are','—','Poza se schimbă cât lucrează, cu un inel verde. Se oprește la „mișcare redusă”.',H+'01-descoperirea.md'],
+ ['id','Clientul alege înfățișarea: Sofia sau Ana','nu','are','—','Hotărât pe 17 oct.: Sofia implicită, Ana la alegere.',H+'08-setarile.md'],
+ ['id','Sofia are o personalitate fixă, aceeași pentru toți','nu','are','N-au personalitate. Tonul îl alege programul din 6 variante, după întrebare.','Implicit caldă, empatică, fără ironie.',H+'08-setarile.md',{ref:'pers'}],
+ ['id','Clientul alege tonul dintr-o listă','clienti','lipsa','Au 6 tonuri (director, controller, antreprenor…), dar le alege programul, nu clientul.','Lipsește. Mai sigur decât textul liber, mai puțin „magic”.',H+'08-setarile.md',{sub:'pers'}],
+ ['id','Clientul scrie personalitatea cu cuvintele lui','nu','are','—','Merge azi, de la următorul mesaj. Textul intră în prompt, deci e o cale de manipulare: de testat.',H+'08-setarile.md',{sub:'pers'}],
+ ['id','Clientul îi poate schimba numele','nu','are','—','Merge azi (cel mult 40 de litere). Atenție: „Sofia” e marcă.',H+'08-setarile.md'],
+ ['id','Sofia arată ce știe să facă, cu idei pentru pagina pe care ești','clienti','partial','Întrebări sugerate, fiecare cu un tool care chiar răspunde.','Doar pe cele 4 pagini ale machetei.',H+'01-descoperirea.md'],
+
+ ['pd','Mesaj de bun venit: ce face și „doar citesc, nu modific nimic”','clienti','are','Un salut scurt, plus întrebări sugerate.','„Bună! Sunt Sofia…” Textul final e încă de scris.',H+'02-prima-deschidere.md'],
+ ['pd','Sugestii de start, fiecare cu un tool care chiar răspunde','clienti','partial','Regula lor: nicio sugestie fără un tool în spate.','5 sugestii, dar legate de firma de test (E.ON, Vodafone).',H+'02-prima-deschidere.md'],
+ ['pd','Avertisment permanent: „asistent AI, poate greși, verifică cifrele”','clienti','lipsa','Permanent, sub câmpul de scris. L-au cerut juriștii.','Lipsește.',H+'02-prima-deschidere.md'],
+ ['pd','La prima folosire îi explicăm o singură dată ce face și ce nu','nu','lipsa','—','Lipsește. Aici ar sta și un eventual acord, dacă îl cere juristul.',H+'02-prima-deschidere.md'],
+ ['pd','Clientul își salvează întrebările și le regăsește la start','clienti','lipsa','Private pe utilizator, fără dubluri, număr limitat.','Lipsește.',H+'02-prima-deschidere.md'],
+ ['pd','Perioadă fixată pentru toată discuția (de exemplu martie)','clienti','lipsa','Un panou de filtre. Dacă întrebarea spune altă perioadă, câștigă întrebarea.','Lipsește. Sofia spune ce perioadă a ales.',H+'02-prima-deschidere.md'],
+ ['pd','Întrebări pornite din paginile Conta (un meniu pe rândul din tabel)','clienti','lipsa','Pe top clienți, facturi restante, comenzi. Numele partenerului e curățat înainte.','Lipsește.',H+'01-descoperirea.md'],
+
+ ['p1','Firma și utilizatorul se iau din login, niciodată din browser','clienti','lipsa','Regula lor de bază. Altfel cineva ar putea cere datele altei firme.','Prototipul n-are login: firma vine din browser.',P+'01-clientul-scrie.md'],
+ ['p1','Butonul de trimitere e blocat cât lucrează Sofia; există Stop','clienti','are','Există Stop; blocarea butonului e doar recomandată.','Merge azi.',P+'01-clientul-scrie.md'],
+ ['p1','Contor de caractere cât scrie clientul','clienti','lipsa','Anunțat și pentru cititoarele de ecran.','Lipsește.',P+'01-clientul-scrie.md'],
+ ['p1','Spunem „vezi doar o parte din firmă”, fără să spunem ce e ascuns','clienti','lipsa','Când utilizatorul vede doar un centru de cost.','Lipsește.',P+'01-clientul-scrie.md'],
+ ['p1','Clientul vede cât de aproape e de limită','clienti','lipsa','Ascuns sub 50%, avertisment la 50–90%, roșu peste 90%.','Lipsește. Nu trebuie să arate bani (regula noastră).',P+'01-clientul-scrie.md'],
+ ['p1','Istoricul din browser e separat pe firmă','clienti','partial','Singura lor scurgere între firme: la schimbarea firmei în același tab.','Istoricul stă pe server. Schimbarea firmei în discuție e de hotărât (9.4).',P+'01-clientul-scrie.md'],
+ ['p1','Alt om la același calculator: oprim tot și ștergem memoria browserului','test','lipsa','Un paznic compară utilizatorul din login cu ultimul ținut minte. Încă în lucru la ei.','Lipsește.',P+'01-clientul-scrie.md'],
+ ['p1','După 3 eșecuri la rând, browserul face o pauză de 30 de secunde','clienti','lipsa','Ca să nu bombardeze un server căzut.','Lipsește.',P+'01-clientul-scrie.md'],
+ ['p1','Erorile care nu ajung la server se raportează echipei','clienti','lipsa','Cu un cod comun pe trimitere și o singură reîncercare.','Lipsește.',P+'01-clientul-scrie.md'],
+
+ ['p2','Funcția e oprită implicit și se pornește pe o listă de firme','clienti','lipsa','Pilot cu ~10 firme, apoi ~110, apoi ~2.200.','Lipsește: toată lumea o vede.',P+'02-admiterea.md'],
+ ['p2','Verificăm dacă utilizatorul are dreptul să folosească Sofia','clienti','lipsa','Rolul „poate folosi AI” sau administrator.','Lipsește.',P+'02-admiterea.md'],
+ ['p2','Verificăm dacă utilizatorul are drept să vadă datele','clienti','lipsa','Drept de citire pe cel puțin o parte din date.','Lipsește.',P+'02-admiterea.md'],
+ ['p2','Doar utilizatorii de pe lista de testeri (pentru pilot)','clienti','lipsa','Opțional, peste celelalte condiții.','Lipsește.',P+'02-admiterea.md'],
+ ['p2','La refuz, un singur mesaj general, fără să spunem ce condiție a picat','clienti','lipsa','„Nu e disponibil”, oricare ar fi motivul.','Lipsește.',P+'02-admiterea.md'],
+ ['p2','Verificăm dacă a trimis prea multe întrebări într-un minut','clienti','lipsa','Cel mult 30 pe minut, pe firmă și utilizator.','Lipsește.',P+'02-admiterea.md',{ref:'ritm'}],
+ ['p2','Verificăm dacă a trimis prea multe întrebări într-o oră','nu','lipsa','Au doar limita pe minut.','Lipsește.',P+'02-admiterea.md',{sub:'ritm'}],
+ ['p2','Verificăm dacă mai are credite pe ziua de azi','clienti','partial','Plafon pe zi, pe firmă și pe utilizator.','Un singur plafon zilnic pentru tot prototipul (2 $).',P+'02-admiterea.md',{ref:'buget'}],
+ ['p2','Verificăm dacă mai are credite pe săptămână','clienti','lipsa','Același plafon ca pe lună, ca nimeni să nu fie oprit la mijlocul lunii.','Lipsește.',P+'02-admiterea.md',{sub:'buget'}],
+ ['p2','Verificăm dacă mai are credite pe lună','clienti','lipsa','~10 € pe firmă pe lună.','Lipsește.',P+'02-admiterea.md',{sub:'buget'}],
+ ['p2','Creditele sunt pe firmă, pe contabil sau pe amândouă','clienti','lipsa','Pe firmă și utilizator. Un contabil cu multe firme poate cheltui câte un plafon în fiecare.','Lipsește. La noi contabilul are multe firme.',P+'02-admiterea.md',{sub:'buget'}],
+ ['p2','Rezervăm creditele înainte de răspuns, ca două întrebări deodată să nu treacă de limită','propus','lipsa','La un test, 20 din 20 de cereri simultane au trecut de plafon. Ei o socotesc obligatorie înainte de lansare.','Lipsește (la un prototip e acceptabil).',P+'02-admiterea.md',{sub:'buget'}],
+ ['p2','Reverificăm creditele între rundele în care Sofia cere date','propus','are','Ei verifică o singură dată pe întrebare.','Verificăm înaintea fiecărui apel la model.',P+'02-admiterea.md',{sub:'buget'}],
+ ['p2','Estimăm costul înainte și refuzăm dacă nu mai încape','clienti','lipsa','Lungimea întrebării și a istoricului ÷ 4. Refuz cu „începe o discuție nouă”.','Lipsește.',P+'02-admiterea.md'],
+ ['p2','Întrebarea are cel mult 10.000 de caractere','clienti','lipsa','Și toată cererea, cel mult 1 MB.','Lipsește.',P+'02-admiterea.md'],
+ ['p2','Discuția are cel mult 30 de mesaje','clienti','lipsa','Apoi clientul începe o discuție nouă.','Lipsește.',P+'02-admiterea.md'],
+ ['p2','Toate refuzurile au texte scrise de echipă, niciodată de AI','clienti','partial','Scrise dinainte și traduse.','Texte fixe, dar unele pomenesc „PM”, „VPN”, coduri.',P+'02-admiterea.md'],
+
+ ['p3','Un program caută în întrebare formulări de atac știute','clienti','lipsa','În 5 limbi, în mai puțin de 5 milisecunde. Gratuit.','Lipsește.',P+'03-verificarea-de-pacalire.md'],
+ ['p3','Înainte de căutare, aducem textul la o formă standard (litere ascunse sau înlocuite)','clienti','lipsa','Caractere invizibile, litere chirilice care arată ca cele latine.','Lipsește.',P+'03-verificarea-de-pacalire.md'],
+ ['p3','Verificăm doar mesajul curent, nu tot istoricul','clienti','lipsa','Altfel un cuvânt apărut o dată ar strica toată discuția.','Lipsește.',P+'03-verificarea-de-pacalire.md'],
+ ['p3','Verificăm și textele venite din Conta (nume de parteneri, explicații)','clienti','partial','Un rezultat suspect e înlocuit cu un rezultat neutru „blocat”.','Doar memoria refuză textul venit din Conta.',P+'03-verificarea-de-pacalire.md'],
+ ['p3','Fiecare tip de blocare are mesajul lui clar','propus','lipsa','Când scria doar „blocat”, AI-ul inventa un motiv. Încă de făcut la ei.','Lipsește.',P+'03-verificarea-de-pacalire.md'],
+ ['p3','Întrebările nevinovate care seamănă cu un atac trebuie să treacă (test)','clienti','lipsa','Un singur cuvânt („verbatim”) le-a blocat o funcție întreagă.','Lipsește.',P+'03-verificarea-de-pacalire.md'],
+ ['p3','La o întrebare doar suspectă: blocăm sau doar notăm?','clienti','lipsa','Suspectă = merge, cu un avertisment mai apăsat pentru AI.','Lipsește. Propunerea noastră: la început doar notăm.',P+'03-verificarea-de-pacalire.md'],
+
+ ['set','Clientul îi cere să țină minte ceva („ține minte că…”)','nu','are','N-au memorie.','Merge azi, doar la cererea clientului.',H+'08-setarile.md',{ref:'mem'}],
+ ['set','Sub răspuns: „Am schimbat Memoria” și butonul „Pune la loc”','nu','are','—','Merge azi.',H+'08-setarile.md',{sub:'mem'}],
+ ['set','Memoria refuză IBAN-uri, linkuri, e-mailuri și text din datele Conta','nu','are','—','Merge azi (cel mult 200 de caractere pe rând).',H+'08-setarile.md',{sub:'mem'}],
+ ['set','Memoria e separată pe firmă','nu','lipsa','—','Azi e una singură, pentru toate firmele.',H+'08-setarile.md',{sub:'mem'}],
+ ['set','Clientul vede istoricul schimbărilor din memorie','nu','partial','—','Serverul îl are, interfața nu.',H+'08-setarile.md',{sub:'mem'}],
+ ['set','Clientul vede lecțiile din corecturile lui','nu','are','—','Merge azi, dar lecțiile nu se folosesc. Recomandare: ascunse până le folosim.',H+'08-setarile.md'],
+ ['set','Fiecare contabil din birou are Sofia lui (ton, memorie)','nu','lipsa','—','Azi e un singur utilizator.',H+'08-setarile.md'],
+ ['set','Administratorul biroului pornește sau oprește Sofia','clienti','lipsa','Comutator pe firmă, plus rolul „poate folosi AI”.','Lipsește.',H+'08-setarile.md'],
+];
+
+
+const NV = { clienti: 'merge la clienți', test: 'doar în test', propus: 'propus, nefăcut', nu: 'n-au' };
+const SO = { are: 'avem', partial: 'parțial', lipsa: 'lipsește' };
+const THEMES = [
+  { key: 'id',  name: 'Identitate',                       color: '#8A55D6' },
+  { key: 'pd',  name: 'Prima deschidere',                 color: '#E0457B' },
+  { key: 'p1',  name: 'Pasul 1: Clientul scrie',          color: '#0E8FB0' },
+  { key: 'p2',  name: 'Pasul 2: Admiterea',               color: '#F06B1F' },
+  { key: 'p3',  name: 'Pasul 3: Verificarea de păcălire', color: '#C98A00' },
+  { key: 'set', name: 'Setările și memoria',              color: '#1F9D60' },
+];
+const TODO = ['Pasul 4: Pregătirea istoricului','Pasul 5: Clasificatorul','Pasul 6: Alegerea modelului','Pasul 7: În afara subiectului','Pasul 8: Datele de bază','Pasul 9: Promptul','Pasul 10: Locul pe server','Pasul 11: Bucla cu date','Pasul 12: Desenul','Pasul 13: Siguranța la ieșire','Pasul 14: Clientul vede','Pasul 15: Verificarea cifrelor','Pasul 16: Sfârșitul','Pasul 17: Înregistrările','Istoricul și firmele','Pasul A: Testele','Pasul B: Lansarea și suportul'];
+const natural = (a, b) => a.localeCompare(b, 'ro', { numeric: true, sensitivity: 'base' });
+
+// Tichetele (aceleași 57 din macheta 1)
+const refs = {};
+const ITEMS = RAW.map((r, i) => {
+  const id = i + 1, o = r[7] || {};
+  if (o.ref) refs[o.ref] = id;
+  return { id, theme: r[0], title: r[1], nv: r[2], so: r[3], nvNote: r[4], soNote: r[5], src: r[6], deps: o.sub ? [refs[o.sub]] : [] };
+});
+const byId = id => ITEMS.find(i => i.id === id);
+
+// Valurile: number = ce e în bază, position = ordinea (după care comparăm).
+const W4 = [
+  { number: 0, position: 0, name: 'Notițe', label: 'nehotărât', notes: true },
+  { number: 1, position: 1, name: 'I',   label: 'MVP' },
+  { number: 2, position: 2, name: 'II',  label: 'Pilot ~110 firme' },
+  { number: 3, position: 3, name: 'III', label: 'Lansarea largă' },
+];
+const W8 = [
+  { number: 0, position: 0, name: 'Notițe', label: 'nehotărât', notes: true },
+  { number: 1, position: 1, name: 'I',    label: 'MVP' },
+  { number: 2, position: 2, name: 'II',   label: 'Pilot ~10 firme' },
+  { number: 3, position: 3, name: 'III',  label: 'Pilot ~110 firme' },
+  { number: 4, position: 4, name: 'IV',   label: 'Lansarea la 2.200' },
+  { number: 5, position: 5, name: 'V',    label: 'Birourile contabile' },
+  { number: 6, position: 6, name: 'VI',   label: 'Memoria pe firmă' },
+  { number: 7, position: 7, name: 'VII',  label: 'Nu facem' },
+];
+const EX4 = { 1:1, 2:1, 5:1, 6:2, 7:3, 10:1, 12:1, 14:3, 17:1, 26:1, 27:1, 31:1, 33:1, 35:2, 37:2, 43:2, 50:2, 51:1 };
+const EX8 = { 1:1, 2:1, 5:1, 6:3, 7:7, 10:1, 11:2, 12:1, 13:4, 14:3, 17:1, 19:5, 21:4, 23:2, 26:2, 27:1, 28:1, 29:2, 31:0, 32:1, 33:1, 34:3, 35:4, 36:4, 37:3, 38:2, 40:5, 41:6, 43:2, 45:3, 48:5, 50:2, 51:1, 52:6, 53:6, 54:6, 56:5, 57:4 };
+const DONE = [1, 3, 4, 5, 7, 8, 18];
+const mk = (waves, ex) => ({ waves, wave: Object.fromEntries(ITEMS.map(i => [i.id, ex[i.id] ?? 0])), done: new Set(DONE) });
+const PROJ = { p4: mk(W4, EX4), p8: mk(W8, EX8) };
+
+const UI = { theme: 'light', color: 'none', proj: 'p4', mode: true, tab: 'teme', filter: 'all', hideDone: true,
+  closed: new Set(), cur: null, panel: null, menu: false, toast: null, undo: null, count: '', countT: null };
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const sid = n => 'SOF-' + String(n).padStart(2, '0');
+const pr = () => PROJ[UI.proj];
+const waves = () => [...pr().waves].sort((a, b) => a.position - b.position);
+const wOf = num => pr().waves.find(w => w.number === num);
+const wIdx = num => waves().findIndex(w => w.number === num);
+const wColor = w => w.notes ? 'var(--dot-notes)' : `var(--wave-${w.position})`;
+const wTitle = w => w.notes ? 'Notițe' : `Val ${w.name}`;
+const isDone = id => pr().done.has(id);
+const visible = it => !(UI.hideDone && isDone(it.id));
+const themesSorted = () => [...THEMES].sort((a, b) => natural(a.name, b.name));
+
+const I = {
+  chev: '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3.5 5.5 3.5 3.5 3.5-3.5"/></svg>',
+  link: '<svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 8a2.5 2.5 0 0 0 3.5 0l2-2A2.5 2.5 0 0 0 8 2.5l-.7.7M8 6a2.5 2.5 0 0 0-3.5 0l-2 2A2.5 2.5 0 0 0 6 11.5l.7-.7"/></svg>',
+  check: '<svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7.4 2.6 2.6L11 4.4"/></svg>',
+  x: '<svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m3 3 6 6M9 3 3 9"/></svg>',
+  close: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="m4 4 8 8M12 4l-8 8"/></svg>',
+  dots: '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><circle cx="3.5" cy="8" r="1.4"/><circle cx="8" cy="8" r="1.4"/><circle cx="12.5" cy="8" r="1.4"/></svg>',
+  grid: '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1.5 4h11M5 1.5v11M1.5 7.5h11M1.5 11h11"/><circle cx="8.5" cy="5.75" r="1" fill="currentColor" stroke="none"/><circle cx="11" cy="9.25" r="1" fill="currentColor" stroke="none"/></svg>',
+  expand: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2.5h4v4M6.5 13.5h-4v-4M13.5 2.5 9 7M2.5 13.5 7 9"/></svg>',
+  settings: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2.2"/><path d="M8 1.8v1.8M8 12.4v1.8M1.8 8h1.8M12.4 8h1.8M3.6 3.6l1.3 1.3M11.1 11.1l1.3 1.3M3.6 12.4l1.3-1.3M11.1 4.9l1.3-1.3" stroke-linecap="round"/></svg>',
+  star: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="m8 1.8 1.9 3.9 4.3.6-3.1 3 .7 4.3L8 11.6l-3.8 2 .7-4.3-3.1-3 4.3-.6L8 1.8Z"/></svg>',
+  cal: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="11" rx="2.5"/><path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3" stroke-linecap="round"/></svg>',
+  inbox: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M2 9.5 3.8 3h8.4L14 9.5V13H2V9.5Z"/><path d="M2 9.5h3.5l1 1.5h3l1-1.5H14"/></svg>',
+  user: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="5.5" r="2.7"/><path d="M2.8 14c.9-2.5 2.8-3.8 5.2-3.8s4.3 1.3 5.2 3.8"/></svg>',
+  search: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3 3"/></svg>',
+  cal2: '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="11" rx="2.5"/><path d="M2 6.5h12" /></svg>',
+};
+
+// Avertismentul: o dependență DESCHISĂ e mai târziu (position) sau încă nehotărâtă (Notițe).
+function conflict(it) {
+  const w = wOf(pr().wave[it.id]);
+  if (w.notes) return null;
+  for (const d of it.deps) {
+    if (isDone(d)) continue;
+    const dw = wOf(pr().wave[d]);
+    if (dw.notes || dw.position > w.position) return { id: d, w: dw };
+  }
+  return null;
+}
+
+/* ------------------------- bara laterală (statică) ------------------------- */
+function renderSide() {
+  $('#side').innerHTML = `
+    <div class="me"><span class="av">IS</span>Ionuț</div>
+    <div class="search">${I.search}Caută<kbd>O</kbd></div>
+    <div class="nav">${I.star}Azi<span class="n">6</span></div>
+    <div class="nav">${I.cal}7 zile<span class="n">14</span></div>
+    <div class="nav">${I.user}Ale mele<span class="n">2</span></div>
+    <div class="lbl">Proiecte</div>
+    <div class="nav">${I.inbox}Inbox<span class="n">9</span></div>
+    <div class="nav" style="--pc:#F2600C"><span class="pd"></span>Horizontal<span class="n">31</span></div>
+    <div class="nav on"><span class="pd"></span>Sofia<span class="n">${ITEMS.filter(i => !isDone(i.id)).length}</span></div>
+    <div class="nav" style="--pc:#D99A00"><span class="pd"></span>Exporturi<span class="n">7</span></div>`;
+}
+
+/* ------------------------- antet: taburi + jetoane ------------------------- */
+function renderTabs() {
+  const T = [['list', 'List'], ['cards', 'Cards'], ['graf', 'Hartă'], ['teme', 'Teme']];
+  $('#tabs').innerHTML = T.map(([k, l], i) => `<button class="tab ${UI.tab === k ? 'on' : ''}" data-tab="${k}">${l}<kbd>${i + 1}</kbd></button>`).join('');
+  const open = ITEMS.filter(i => !isDone(i.id)).length;
+  $('#psub').textContent = `${open} deschise · ${THEMES.length} teme · ${pr().waves.length - 1} valuri + Notițe`;
+}
+
+function renderChips() {
+  const el = $('#chips');
+  if (UI.tab !== 'teme') { el.innerHTML = ''; return; }
+  const wideEnough = $('#frame').clientWidth >= 900;
+  const th = themesSorted().map(t => `<button class="chip ${UI.filter === t.key ? 'on' : ''}" data-filter="${t.key}"><span class="cdot" style="background:${t.color}"></span>${esc(t.name)}</button>`).join('');
+  const modeBtn = !wideEnough ? '' : UI.mode
+    ? `<span class="mode">${I.grid}<span>Valuri</span><button class="x" data-mode="off" title="Înapoi la lista temelor" aria-label="Oprește modul Valuri">${I.x}</button></span>`
+    : `<button class="chip ghost" data-mode="on" title="Teme pe rânduri, valuri pe coloane">${I.grid}Valuri</button>`;
+  const pip = UI.mode && !UI.hideDone ? '<span class="pip"></span>' : '';
+  el.innerHTML = `
+    <button class="chip ${UI.filter === 'all' ? 'on' : ''}" data-filter="all">Toate</button>
+    <div class="themes">${th}</div>
+    <button class="chip ghost" data-toast="Gestionează temele (ThemeManager), neschimbat">${I.settings}Gestionează</button>
+    <span class="grow"></span>
+    ${modeBtn}
+    ${UI.mode && wideEnough ? `<button class="more ${UI.menu ? 'open' : ''}" id="more" aria-label="Vizualizare">${I.dots}${pip}</button>` : ''}`;
+  if (UI.menu && UI.mode) {
+    const r = $('#more').getBoundingClientRect(), f = $('#frame').getBoundingClientRect();
+    const pop = document.createElement('div');
+    pop.className = 'pop'; pop.id = 'pop';
+    pop.style.top = (r.bottom - f.top + 6) + 'px';
+    pop.style.right = (f.right - r.right) + 'px';
+    pop.innerHTML = `<div class="cap">Vizualizare</div>
+      <button class="mi" data-act="hideDone"><span class="ckm">${UI.hideDone ? I.check : ''}</span>Ascunde bifatele</button>
+      <div class="sep"></div>
+      <button class="mi" data-act="expandAll"><span class="ckm"></span>Desfă toate temele</button>
+      <button class="mi" data-act="collapseAll"><span class="ckm"></span>Strânge toate temele</button>
+      <div class="sep"></div>
+      <button class="mi" data-toast="Foaia „Valuri” (WaveManager): redenumire, ordine"><span class="ckm"></span>Gestionează valurile…<kbd>gv</kbd></button>`;
+    $('#frame').appendChild(pop);
+  }
+}
+
+/* ------------------------- tabelul ------------------------- */
+function renderTable() {
+  const col = $('#listcol');
+  const prev = col.querySelector('.vt');
+  const keep = prev ? [prev.scrollTop, prev.scrollLeft] : [0, 0];
+
+  if (UI.tab !== 'teme') { col.innerHTML = `<p class="empty">Macheta acoperă doar tabul Teme. Apasă <b>4</b> sau dă clic pe „Teme”.</p>`; return; }
+  if (!UI.mode || $('#frame').clientWidth < 900) { col.innerHTML = renderPlain(); return; }
+
+  const ws = waves(), n = ws.length;
+  const wcol = n > 5 ? 64 : 84;
+  const head = `<div class="vrow vhead" role="row">
+    <div class="c-t">Tichet</div>
+    ${ws.map(w => {
+      const cnt = ITEMS.filter(i => pr().wave[i.id] === w.number && !isDone(i.id)).length;
+      return `<div class="wh ${w.notes ? 'notes' : ''}" data-col="${w.number}" style="--wc:${wColor(w)}" title="${esc(wTitle(w) + (w.notes ? '' : ' · ' + w.label) + ' · ' + cnt + ' deschise')}">
+        <span class="rn">${w.notes ? 'Notițe' : w.name}</span>
+        <span class="lb" title="${esc(w.label)}">${w.notes ? '&nbsp;' : esc(w.label)}</span>
+        <span class="n">${cnt}</span></div>`;
+    }).join('')}<div></div></div>`;
+
+  let rows = '';
+  const groups = themesSorted().filter(t => UI.filter === 'all' || UI.filter === t.key);
+  const untagged = ITEMS.filter(i => !i.theme);
+  if (UI.filter === 'all' && untagged.length) groups.push({ key: '', name: 'Fără temă', color: 'var(--txt-faint)' });
+  for (const t of groups) {
+    const all = ITEMS.filter(i => i.theme === t.key);
+    const list = all.filter(visible).sort((a, b) => a.id - b.id);
+    if (!list.length && UI.filter === 'all') continue;
+    const closed = UI.closed.has(t.key);
+    rows += `<div class="vrow vgroup ${closed ? 'closed' : ''}" style="--tc:${t.color}">
+      <div class="c-t"><button class="chev" data-fold="${t.key}" aria-expanded="${!closed}" aria-label="${closed ? 'Desfă' : 'Strânge'} ${esc(t.name)}">${I.chev}</button>
+        <span class="tdot"></span><h4>${esc(t.name)}</h4><span class="tot">${list.filter(i => !isDone(i.id)).length}</span></div>
+      ${ws.map(w => { const c = list.filter(i => pr().wave[i.id] === w.number && !isDone(i.id)).length; return `<div class="gc ${c ? '' : 'z'}">${c || '·'}</div>`; }).join('')}<div></div></div>`;
+    if (closed) continue;
+    list.forEach((it, idx) => {
+      const done = isDone(it.id), c = conflict(it), cur = pr().wave[it.id];
+      rows += `<div class="vrow item ${done ? 'done' : ''} ${UI.cur === it.id ? 'cur' : ''} ${UI.panel === it.id ? 'docked' : ''} ${idx === list.length - 1 ? 'last' : ''}" data-row="${it.id}" role="row">
+        <div class="c-t" data-open="${it.id}">
+          <button class="ck ${done ? 'on' : ''}" data-done="${it.id}" aria-label="${done ? 'Debifează' : 'Bifează'}">${done ? I.check : ''}</button>
+          <span class="tt" title="${esc(it.title)}">${esc(it.title)}</span>
+          ${c ? `<span class="dep" title="Depinde de ${esc(byId(c.id).title)}">${I.link}cere <b>${sid(c.id)}</b> · ${esc(wTitle(c.w))}</span>` : ''}
+          <span class="iid">${sid(it.id)}</span>
+        </div>
+        ${ws.map(w => `<button class="cell ${w.notes ? 'notes' : ''} ${cur === w.number ? 'on' : ''}" style="--wc:${wColor(w)}" data-set="${it.id}" data-w="${w.number}" tabindex="-1"
+          aria-pressed="${cur === w.number}" aria-label="${sid(it.id)} în ${esc(wTitle(w))}" title="${esc(wTitle(w))}"><span class="ring"></span><span class="dot"></span></button>`).join('')}<div></div>
+      </div>`;
+    });
+  }
+  if (!rows) rows = `<p class="empty">Nicio sarcină deschisă pe tema asta.</p>`;
+
+  col.innerHTML = `<div class="vt ${UI.color === 'ramp' ? 'ramp' : ''}" style="--nw:${n};--wcol:${wcol}px;--tmin:${UI.panel ? 380 : 440}px" tabindex="0" aria-label="Teme × valuri"><div class="vt-in">${head}${rows}</div></div>
+    <div class="hint"><span><kbd>j</kbd><kbd>k</kbd>rând</span><span><kbd>h</kbd><kbd>l</kbd>val anterior / următor</span><span><kbd>0</kbd><kbd>$</kbd>Notițe / ultimul</span><span><kbd>Enter</kbd>deschide</span><span><kbd>u</kbd>anulează</span><span><kbd>Esc</kbd>un pas înapoi</span><span class="cnt">${UI.count ? UI.count + '…' : ''}</span></div>`;
+  const vt = col.querySelector('.vt');
+  vt.scrollTop = keep[0]; vt.scrollLeft = keep[1];
+}
+
+function renderPlain() {
+  let h = '<div class="tl">';
+  for (const t of themesSorted().filter(t => UI.filter === 'all' || UI.filter === t.key)) {
+    const list = ITEMS.filter(i => i.theme === t.key);
+    h += `<div class="lh"><span class="tdot" style="background:${t.color}"></span>${esc(t.name)}<span class="s">${list.length} tichete</span></div>`;
+    h += list.map(it => `<div class="r"><span class="ck ${isDone(it.id) ? 'on' : ''}">${isDone(it.id) ? I.check : ''}</span><span class="tt">${esc(it.title)}</span><span class="iid">${sid(it.id)}</span></div>`).join('');
+  }
+  return h + '</div>';
+}
+
+/* ------------------------- panoul ------------------------- */
+function wtag(num) {
+  const w = wOf(num);
+  return `<span class="wtag" style="--wc:${wColor(w)}"><span class="wd ${w.notes ? 'notes' : ''}"></span>${esc(wTitle(w))}</span>`;
+}
+function renderDock() {
+  const d = $('#dock');
+  if (!UI.panel || !UI.mode || UI.tab !== 'teme') { d.hidden = true; d.innerHTML = ''; return; }
+  const it = byId(UI.panel), w = wOf(pr().wave[it.id]), t = THEMES.find(x => x.key === it.theme), done = isDone(it.id);
+  const modal = $('#frame').clientWidth < 1200;
+  d.hidden = false; d.className = 'dock' + (modal ? ' modal' : '') + (UI.color === 'ramp' ? ' ramp' : '');
+  const deps = it.deps.map(id => { const x = byId(id), dn = isDone(id);
+    return `<div class="drow ${dn ? 'done' : ''}" data-open="${id}"><span class="ck ${dn ? 'on' : ''}">${dn ? I.check : ''}</span><span class="iid" style="min-width:0">${sid(id)}</span><span class="tt">${esc(x.title)}</span>${wtag(pr().wave[id])}</div>`; }).join('');
+  const rev = ITEMS.filter(x => x.deps.includes(it.id)).map(x => { const dn = isDone(x.id);
+    return `<div class="drow ${dn ? 'done' : ''}" data-open="${x.id}"><span class="ck ${dn ? 'on' : ''}">${dn ? I.check : ''}</span><span class="iid" style="min-width:0">${sid(x.id)}</span><span class="tt">${esc(x.title)}</span>${wtag(pr().wave[x.id])}</div>`; }).join('');
+  const c = conflict(it);
+  d.innerHTML = `
+    <div class="dk-hd"><span class="iid">${sid(it.id)}</span><span class="sp"></span>
+      ${modal ? '' : `<button class="ib" title="Deschide mare" data-toast="Deschide mare: modalul de 94%">${I.expand}</button>`}
+      <button class="ib" data-close title="Închide (Esc)">${I.close}</button></div>
+    <div class="dk-b">
+      <div class="dk-title"><button class="ck ${done ? 'on' : ''}" data-done="${it.id}">${done ? I.check : ''}</button><h3>${esc(it.title)}</h3></div>
+      <div class="fchips">
+        <span class="fchip ghost">${I.cal2}Dată</span>
+        <span class="fchip" style="--wc:${wColor(w)}"><span class="wd ${w.notes ? 'notes' : ''}"></span>${esc(wTitle(w))}${w.notes ? '' : ' · ' + esc(w.label)}</span>
+        <span class="fchip"><span class="cdot" style="background:${t.color}"></span>${esc(t.name)}</span>
+      </div>
+      <div class="desc-box">
+        <p><b>La Netvisor</b> (${NV[it.nv]}): ${esc(it.nvNote)}</p>
+        <p><b>La Sofia azi</b> (${SO[it.so]}): ${esc(it.soNote)}</p>
+        <p>Sursa: <code>${esc(it.src)}</code></p>
+      </div>
+      <div class="dk-sec"><h5>Depinde de</h5>${deps || '<div class="dk-empty">Nicio dependență.</div>'}
+        ${c ? `<div class="dk-note">${I.link}${sid(c.id)} e ${c.w.notes ? 'încă în Notițe' : 'în ' + esc(wTitle(c.w))}, după ${esc(wTitle(w))}. Doar informație, nu blochează.</div>` : ''}</div>
+      ${rev ? `<div class="dk-sec"><h5>Îl cer</h5>${rev}</div>` : ''}
+    </div>`;
+}
+
+function render() {
+  document.documentElement.dataset.theme = UI.theme;
+  document.querySelectorAll('[data-seg]').forEach(s => s.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(UI[s.dataset.seg] === b.dataset.v))));
+  $('#pop')?.remove();
+  renderSide(); renderTabs(); renderChips(); renderTable(); renderDock();
+}
+
+/* ------------------------- acțiuni ------------------------- */
+let toastT = null;
+function toast(text, undo) {
+  UI.undo = undo || null;
+  $('#toast-t').innerHTML = text;
+  $('#toast-u').style.display = undo ? '' : 'none';
+  $('#toast').classList.add('on');
+  clearTimeout(toastT);
+  toastT = setTimeout(() => { $('#toast').classList.remove('on'); UI.undo = null; }, 5000);
+}
+function move(id, num) {
+  const from = pr().wave[id];
+  if (from === num || isDone(id)) return;
+  const p = UI.proj;
+  pr().wave[id] = num;
+  const w = wOf(num);
+  toast(`<b>${sid(id)}</b> mutat în ${esc(wTitle(w))}${w.notes ? '' : ' · ' + esc(w.label)}`, () => { PROJ[p].wave[id] = from; });
+  render();
+}
+function toggleDone(id) {
+  const p = UI.proj, was = isDone(id);
+  was ? pr().done.delete(id) : pr().done.add(id);
+  toast(`<b>${sid(id)}</b> ${was ? 'debifat' : 'bifat'}`, () => { was ? PROJ[p].done.add(id) : PROJ[p].done.delete(id); });
+  if (!was && UI.hideDone && UI.cur === id) UI.cur = neighbour(id);
+  render();
+}
+function doUndo() { if (UI.undo) { UI.undo(); UI.undo = null; $('#toast').classList.remove('on'); render(); } }
+
+function rowOrder() { return [...document.querySelectorAll('.item')].map(r => +r.dataset.row); }
+function neighbour(id) { const o = rowOrder(), i = o.indexOf(id); return o[i + 1] ?? o[i - 1] ?? null; }
+function setCur(id, scroll = true) {
+  UI.cur = id;
+  if (UI.panel && id) UI.panel = id;        // panoul urmează cursorul (formularul e curat)
+  render();
+  if (scroll) document.querySelector(`.item[data-row="${id}"]`)?.scrollIntoView({ block: 'nearest' });
+}
+
+document.addEventListener('click', e => {
+  const t = e.target.closest('button, [data-open], [data-seg] button');
+  if (!e.target.closest('#pop, #more') && UI.menu) { UI.menu = false; render(); if (!t) return; }
+  if (!t) return;
+  const seg = t.closest('[data-seg]');
+  if (seg) { UI[seg.dataset.seg] = t.dataset.v; if (seg.dataset.seg === 'proj') { UI.cur = null; UI.panel = null; } render(); return; }
+  if (t.id === 'toast-u') return doUndo();
+  if (t.id === 'more') { UI.menu = !UI.menu; render(); return; }
+  if (t.dataset.act === 'hideDone') { UI.hideDone = !UI.hideDone; UI.menu = false; render(); return; }
+  if (t.dataset.act === 'expandAll') { UI.closed.clear(); UI.menu = false; render(); return; }
+  if (t.dataset.act === 'collapseAll') { THEMES.forEach(x => UI.closed.add(x.key)); UI.menu = false; render(); return; }
+  if (t.dataset.toast) { UI.menu = false; render(); toast(esc(t.dataset.toast)); return; }
+  if (t.dataset.tab) { UI.tab = t.dataset.tab; render(); return; }
+  if (t.dataset.filter) { UI.filter = t.dataset.filter; render(); return; }
+  if (t.dataset.mode) { UI.mode = t.dataset.mode === 'on'; UI.panel = null; UI.cur = null; render(); return; }
+  if (t.dataset.fold !== undefined) { const k = t.dataset.fold; UI.closed.has(k) ? UI.closed.delete(k) : UI.closed.add(k); render(); return; }
+  if (t.dataset.done) { e.stopPropagation(); toggleDone(+t.dataset.done); return; }
+  if (t.dataset.set) { UI.cur = +t.dataset.set; move(+t.dataset.set, +t.dataset.w); return; }
+  if (t.hasAttribute('data-close')) { UI.panel = null; render(); return; }
+  if (t.dataset.open) { UI.cur = +t.dataset.open; UI.panel = +t.dataset.open; render(); return; }
+});
+
+// Coloana sub cursor: antetul se luminează (ajută la „în ce val apăs?”)
+document.addEventListener('mouseover', e => {
+  const c = e.target.closest('.cell');
+  document.querySelectorAll('.wh.hot').forEach(x => x.classList.remove('hot'));
+  if (c) document.querySelector(`.wh[data-col="${c.dataset.w}"]`)?.classList.add('hot');
+});
+
+/* ------------------------- tastatura (Mod Vim) ------------------------- */
+function stepWave(id, delta) {
+  const ws = waves(), i = wIdx(pr().wave[id]);
+  const j = Math.max(0, Math.min(ws.length - 1, i + delta));
+  if (j !== i) move(id, ws[j].number);
+}
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (!UI.mode || UI.tab !== 'teme') {
+    if (/^[1-4]$/.test(e.key)) { UI.tab = ['list', 'cards', 'graf', 'teme'][+e.key - 1]; render(); }
+    return;
+  }
+  const k = e.key;
+  if (k === 'Escape') {           // un singur pas
+    if (UI.count) { UI.count = ''; clearTimeout(UI.countT); }
+    else if (UI.menu) UI.menu = false;
+    else if (UI.panel) UI.panel = null;
+    else UI.cur = null;
+    render(); return;
+  }
+  if (/^[1-4]$/.test(k)) { UI.tab = ['list', 'cards', 'graf', 'teme'][+k - 1]; render(); return; }  // cifrele rămân taburile, pe loc
+  const n = Math.max(1, parseInt(UI.count || '1', 10));
+  const clearCount = () => { UI.count = ''; clearTimeout(UI.countT); };
+  const o = rowOrder();
+  if (k === 'j' || k === 'k' || k === 'ArrowDown' || k === 'ArrowUp') {
+    e.preventDefault(); clearCount();
+    if (!o.length) return;
+    const i = o.indexOf(UI.cur), d = (k === 'j' || k === 'ArrowDown') ? n : -n;
+    setCur(i < 0 ? o[0] : o[Math.max(0, Math.min(o.length - 1, i + d))]);
+    return;
+  }
+  if (!UI.cur) { clearCount(); return; }
+  if (k === 'h' || k === 'l') { e.preventDefault(); clearCount(); stepWave(UI.cur, k === 'l' ? n : -n); return; }
+  if (k === '0') { move(UI.cur, waves()[0].number); return; }
+  if (k === '$') { clearCount(); move(UI.cur, waves().at(-1).number); return; }
+  if (k === 'Enter') { e.preventDefault(); clearCount(); UI.panel = UI.cur; render(); return; }
+  if (k === 'u') { clearCount(); doUndo(); return; }
+  if (k === 'x') { clearCount(); toggleDone(UI.cur); return; }
+});
+
+window.addEventListener('resize', render);
+
+// note: rampa și ordinea naturală, calculate cu aceleași funcții
+function renderNotes() {
+  $('#swr').innerHTML = 'Rampa (a), în tema curentă: ' + [1,2,3,4,5,6,7,8].map(i => `<i style="background:var(--wave-${i})" title="--wave-${i}"></i>`).join('') + ' · Notițe <i style="background:var(--dot-notes)"></i> · (b) <i style="background:var(--dot)"></i>';
+  $('#sortdemo').innerHTML = [...THEMES.map(t => t.name), ...TODO].sort(natural).map(esc).join('<br>') + '<br>Fără temă';
+}
+renderNotes();
+render();
+})();
+</script>
+</body>
+</html>

@@ -87,6 +87,7 @@ const SHORTCUTS: { keys: string; action: string; where?: string }[] = [
 const VIM_SECTIONS: { title: string; ctx: KeyCtx }[] = [
   { title: 'Oriunde', ctx: 'any' },
   { title: 'Listă', ctx: 'list' },
+  { title: 'Teme × Valuri (în plus față de listă)', ctx: 'grid' },
   { title: 'Panou (tichetul deschis)', ctx: 'panel' },
   { title: 'Bara laterală', ctx: 'sidebar' },
 ]

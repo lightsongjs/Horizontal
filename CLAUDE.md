@@ -388,6 +388,42 @@ Setare de DISPOZITIV în rotiță („Tastatură”: Mod Vim, Panoul urmează cu
   închide panoul, doar iese din câmp.
 - **Ajutorul** (`?`) se generează din `KEYMAP` cât modul e pornit; tabelul scris
   rămâne doar pentru modul oprit. O tastă nouă se adaugă în hartă, nu în panou.
+## Teme × Valuri (H-13)
+
+Macheta aprobată: `design/valuri/index.html` (2026-10-23). Un **mod al tabului
+Teme**, nu un tab nou (ședința de triere e rară): comutatorul „Valuri” din
+rândul de jetoane pune tichetele pe rânduri, grupate pe teme, și valurile pe
+coloane. **Numai de la 900px** — pe telefon comutatorul nu apare. Modul se ține
+pe dispozitiv (`horizontal:themes-grid`), ca o reîncărcare în mijlocul ședinței
+să nu-l piardă. Panoul dublu (iframe-urile) nu e luat în calcul aici.
+
+- **Nimic nou în bază.** Rândul e un tichet, grupul e tema, coloana e un val,
+  punctul e `issue.wave`. Regulile pure: `src/lib/waveGrid.ts` (cu teste).
+  Temele în ordine naturală (`naturalCompare`: „Pasul 2” înaintea lui „Pasul
+  10”; și jetoanele din Teme), „Fără temă” ultima; rândurile după numărul din
+  ID, nu după layer — layerul se mișcă la o mutare și rândul ar sări de sub
+  cursor. Notițele (valul 0) sunt prima coloană, restul după `position`.
+- **Mutarea** e un clic pe cercul unei coloane (cercul pal se vede mereu, ca să
+  fie clar unde se dă clic), prin `TaskActions.run({ kind: 'wave' })`: același
+  toast cu „Anulează”, aceeași coadă. Pe tichetul docat murdar e refuzată
+  (`nudgeSave`), ca orice câmp al formularului.
+- **Valurile n-au culoare**: coloana spune deja valul; punctul e neutru și nu
+  seamănă cu bifa `.ck` („e în valul ăsta” ≠ „e gata”).
+- **Avertismentul pe dependențe** (`depWarning`) e numai informație, gri, sub
+  titlu: „cere HZ-12 · Val 2”. O dependență DESCHISĂ din același proiect e
+  într-un val de după (după `position`, nu `number`) sau încă în Notițe.
+  Nu blochează nimic — dependențele dintre valuri nu blochează nicăieri.
+- **Gramatica de clase e a „Listei”** (`.list-group` > `.list-row[data-issue-id]`
+  + `.list-title`), deci cursorul Vim, `x`, `dd`, `m`, `f`, selecția și Enter
+  (panoul, prin `SplitView`) merg fără cod nou. În plus, contextul `grid` din
+  `keymap.ts` (`registerGrid` din `vim.tsx`): `h` / `l` valul vecin, `0` / `$`
+  Notițe / ultimul. Ale lui bat lista, lista bate globalele. **Fără
+  numărătoare** (`2l`): cifrele 1–4 rămân taburile, pe loc (decizia omului).
+- Ecran lat: `.split-list` nu se mai derulează, ci `.wg-scroll` — antetul
+  valurilor stă sus, coloana titlului în stânga (plafon 640px).
+- Teste: `waveGrid.test.ts`, `keymap.test.ts` (grid), `test:nav` „Teme ×
+  Valuri” (clic pe cerc, `u`, panoul docat, `l`, cifra 1).
+
 ## Mockups — fișier local, nu Artifact
 
 Pentru orice mockup/design vizual (comparații before/after, explorare de layout):

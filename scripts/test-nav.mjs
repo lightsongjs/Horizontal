@@ -444,6 +444,56 @@ try {
     await dp.close()
   }
 
+  // ── Teme × Valuri (H-13): clic pe cerc mută, h / l mută, panoul docat ───
+  // Clicul pe cerc mută tichetul FĂRĂ să-l deschidă; `u` anulează; clicul pe
+  // titlu îl docheză (nu modal); `l` din modul Vim îl mută în valul următor;
+  // cifrele rămân taburile, pe loc. Valurile se pun la loc la capăt.
+  {
+    const wp = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+    await wp.goto(BASE, { waitUntil: 'networkidle' })
+    await wp.waitForTimeout(700)
+    await wp.locator('.sidebar-proj-btn').filter({ hasNotText: /Inbox/ }).first().click()
+    await wp.waitForTimeout(800)
+    await wp.locator('.tab', { hasText: /^Teme/ }).first().click()
+    await wp.waitForTimeout(500)
+    const waves0 = await wp.evaluate(() => Object.fromEntries(JSON.parse(localStorage.getItem('horizontal:v2')).issues.map((i) => [i.id, i.wave])))
+    const waveOf = (id) => wp.evaluate((x) => JSON.parse(localStorage.getItem('horizontal:v2')).issues.find((i) => i.id === x)?.wave, id)
+    await wp.locator('.wg-toggle').click()
+    await wp.waitForTimeout(500)
+    const row = wp.locator('.wg-row:not(.done)').first()
+    const id = await row.getAttribute('data-issue-id')
+    check('Teme × Valuri: tabelul are rânduri', (await wp.locator('.wg-row').count()) > 0 && !!id, `${await wp.locator('.wg-row').count()} rânduri`)
+    const w0 = await waveOf(id)
+    await row.locator('.wg-cell:not(.on)').first().click()
+    await wp.waitForTimeout(600)
+    const w1 = await waveOf(id)
+    const opened = await wp.locator('.split-pane:not([hidden]) .sh-header').count() + await wp.locator('.sheet.on').count()
+    check('…clic pe cerc mută tichetul, fără să-l deschidă', w1 !== w0 && opened === 0, `${id}: ${w0} → ${w1}, deschis=${opened}`)
+    await wp.keyboard.press('u')
+    await wp.waitForTimeout(700)
+    check('…u anulează mutarea', (await waveOf(id)) === w0, `val=${await waveOf(id)}`)
+    await row.locator('.wg-title').click()
+    await wp.waitForTimeout(800)
+    check('…clic pe titlu îl docheză în panou, nu modal', (await wp.locator('.split-pane:not([hidden]) .sh-header').count()) === 1 && (await wp.locator('.sheet.on').count()) === 0, 'panou')
+    const cols = await wp.locator('.wg-head .wg-wh').count()
+    const onIx = await row.locator('.wg-cell').evaluateAll((els) => els.findIndex((e) => e.classList.contains('on')))
+    await wp.keyboard.press(onIx < cols - 1 ? 'l' : 'h')
+    await wp.waitForTimeout(800)
+    const w2 = await waveOf(id)
+    check('…l / h din modul Vim îl mută în valul vecin', w2 !== w0, `${id}: ${w0} → ${w2}`)
+    await wp.keyboard.press('1')
+    await wp.waitForTimeout(500)
+    const onTab = (await wp.locator('.tab.on').first().textContent())?.trim()
+    check('…cifra 1 rămâne tabul „List", pe loc', /^List/.test(onTab ?? ''), `tab=${onTab}`)
+    await wp.evaluate((w) => {
+      const db = JSON.parse(localStorage.getItem('horizontal:v2'))
+      for (const i of db.issues) if (i.id in w) i.wave = w[i.id]
+      localStorage.setItem('horizontal:v2', JSON.stringify(db))
+      localStorage.removeItem('horizontal:themes-grid')
+    }, waves0)
+    await wp.close()
+  }
+
   // ── Proiectul sarcinii se deschide din sidebar la PRIMUL click ──────────
   // O sarcină deschisă din „Azi" încarcă proiectul ei în store, sub listă. O
   // repornire peste card face ca închiderea să NU treacă prin `back()` →

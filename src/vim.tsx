@@ -114,7 +114,16 @@ interface VimApi {
   registerPanel(get: () => PanelAdapter | null): () => void
   getCursor(): string | null
   setCursor(id: string | null): void
+  /**
+   * Modul „× Valuri” (tabul Teme) se anunță: cât e montat, lista e `grid`, iar
+   * `h` / `l` / `0` / `$` mută tichetul între valuri. `to` întoarce valul în
+   * care ajunge tichetul, sau null (e deja acolo / la capăt).
+   */
+  registerGrid(to: GridTarget): () => void
 }
+
+/** Valul în care ajunge tichetul `id` la o tastă din „× Valuri”. */
+export type GridTarget = (id: string, where: 'left' | 'right' | 'first' | 'last') => number | null
 
 interface VimState {
   enabled: boolean
@@ -145,6 +154,7 @@ interface Internal {
   listBusy: React.MutableRefObject<(() => boolean) | null>
   selAdapter: React.MutableRefObject<SelectionAdapter | null>
   panel: React.MutableRefObject<(() => PanelAdapter | null) | null>
+  grid: React.MutableRefObject<GridTarget | null>
   cursorRef: React.MutableRefObject<string | null>
   fieldRef: React.MutableRefObject<string | null>
   findRef: React.MutableRefObject<FindState | null>
@@ -180,6 +190,7 @@ export function VimProvider({ children }: { children: ReactNode }) {
   const listBusy = useRef<(() => boolean) | null>(null)
   const selAdapter = useRef<SelectionAdapter | null>(null)
   const panel = useRef<(() => PanelAdapter | null) | null>(null)
+  const grid = useRef<GridTarget | null>(null)
   const cursorRef = useRef<string | null>(null)
   cursorRef.current = cursorId
   const fieldRef = useRef<string | null>(null)
@@ -200,10 +211,14 @@ export function VimProvider({ children }: { children: ReactNode }) {
     },
     getCursor: () => cursorRef.current,
     setCursor: (id) => { cursorRef.current = id; setCursorId(id) },
+    registerGrid: (to) => {
+      grid.current = to
+      return () => { if (grid.current === to) grid.current = null }
+    },
   }), [])
 
   const internal = useMemo<Internal>(() => ({
-    hostCount, listBusy, selAdapter, panel, cursorRef, fieldRef, findRef, menuExec,
+    hostCount, listBusy, selAdapter, panel, grid, cursorRef, fieldRef, findRef, menuExec,
     setCursorId: (id) => { cursorRef.current = id; setCursorId(id) },
     setField: (f) => { fieldRef.current = f; setFieldState(f) },
     setPane, setPending, setWhichKey, setHint,
@@ -252,6 +267,7 @@ export function useVim(): VimApi {
 /** Fără provider (bara de captură, teste de componente): nimic de anunțat. */
 const NOOP_API: VimApi = {
   registerCursorHost: () => () => {},
+  registerGrid: () => () => {},
   setListBusy: () => {},
   setSelectionAdapter: () => {},
   registerPanel: () => () => {},
@@ -833,6 +849,23 @@ export function useKeyDispatcher(actions: DispatchActions) {
           waitFor(() => document.querySelector('.split-pane:not([hidden]) .sh-header'), () => focusPanel())
           return
         }
+        // „× Valuri”: tichetul (sau selecția) în valul vecin. Rândul nu iese din
+        // listă, deci cursorul rămâne pe loc. Valul e un câmp al formularului:
+        // pe tichetul docat murdar, refuzat ca data sau urgentul.
+        case 'waveLeft': case 'waveRight': case 'waveFirst': case 'waveLast': {
+          const to = internal.grid.current
+          if (!to) return
+          const ids = targets(rows)
+          if (!ids.length) { internal.setHint('Niciun rând sub cursor'); return }
+          if (dirtyBlocks(ids)) return
+          const where = id === 'waveLeft' ? 'left' : id === 'waveRight' ? 'right' : id === 'waveFirst' ? 'first' : 'last'
+          const dest = to(current(rows) ?? ids[0], where)
+          if (dest === null) { internal.setHint(where === 'left' || where === 'first' ? 'E deja în prima coloană' : 'E deja în ultima coloană'); return }
+          internal.setHint(null)
+          void taRef.current.run({ kind: 'wave', value: dest }, ids)
+          clearSel()
+          return
+        }
         case 'toSidebar':
           if (a.sidebarCollapsed()) { a.toggleSidebar(); window.setTimeout(() => focusSidebar(), 0) }
           else focusSidebar()
@@ -1091,9 +1124,10 @@ export function useKeyDispatcher(actions: DispatchActions) {
         && paneOf(active) === 'list') return
       const pane = paneOf(active)
       const ctx: Exclude<KeyCtx, 'any'> | null = pane === 'list' && internal.hostCount.current === 0 ? null
-        : pane === 'panel' && !panel() ? null : pane
+        : pane === 'panel' && !panel() ? null
+        : pane === 'list' && internal.grid.current ? 'grid' : pane
       if (/^[1-4]$/.test(tok) && !seq.current.count && !seq.current.keys.length && a.digitTabs()) return
-      const allowCount = ctx === 'list' || ctx === 'sidebar' || ctx === 'panel'
+      const allowCount = ctx === 'list' || ctx === 'grid' || ctx === 'sidebar' || ctx === 'panel'
       if (!seq.current.keys.length && !seq.current.count) seqCtx.current = ctx
       const r = feed(seq.current, tok, { ctx: seqCtx.current, now: Date.now(), allowCount })
       seq.current = r.state

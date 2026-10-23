@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import type { Issue } from '../lib/types'
 import { useUI } from '../ui'
 import { useHorizontal } from '../store'
@@ -24,16 +24,40 @@ import { useVimOptional } from '../vim'
  * `dockedIssueId`). Pe ecran îngust componenta e transparentă — randează lista
  * și atât, iar formularul se întoarce în foaia de jos.
  */
-export function SplitView({ children }: { children: ReactNode }) {
+export function SplitView({ children, dockMinWidth }: {
+  children: ReactNode
+  /**
+   * Lățimea minimă a LISTEI de lângă panou. Sub ea vizualizarea nu se anunță
+   * gazdă, iar tichetul se deschide ca modal: tabelul „× Valuri” lângă panou,
+   * pe un laptop, rămânea doar cu coloana titlului.
+   */
+  dockMinWidth?: number
+}) {
   const wide = useWide()
   const { registerSplitHost, dockedIssueId, dockedKeyId, closeSheet, isDockedDirty } = useUI()
   const { byId } = useHorizontal()
   const paneRef = useRef<HTMLElement>(null)
+  const splitRef = useRef<HTMLDivElement>(null)
+
+  // Lățimea ÎNTREGULUI `.split` (nu a listei, care se strânge cu panoul deschis
+  // și ar fi oscilat): lista de lângă panou e cam (lățime − gol) / 2,05 —
+  // coloanele `1fr` și `1.05fr` din CSS.
+  const [splitW, setSplitW] = useState<number | null>(null)
+  useLayoutEffect(() => {
+    const el = splitRef.current
+    if (!wide || !dockMinWidth || !el) return
+    const measure = () => setSplitW(el.getBoundingClientRect().width)
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [wide, dockMinWidth])
+  const roomy = !dockMinWidth || (splitW !== null && (splitW - 22) / 2.05 >= dockMinWidth)
 
   useEffect(() => {
-    if (!wide) return
+    if (!wide || !roomy) return
     return registerSplitHost()
-  }, [wide, registerSplitHost])
+  }, [wide, roomy, registerSplitHost])
 
   // Orice listă cu panou e și o listă plată pentru cursorul modului Vim
   // („Listă", „Azi", „7 zile", filtrele, „Ale mele"), la orice lățime:
@@ -86,7 +110,7 @@ export function SplitView({ children }: { children: ReactNode }) {
   // ocupa jumătate din ecran și strângea lista (și banda de valuri) degeaba.
   // `<aside>` rămâne în DOM, doar ascuns — lista nu se remontează la deschidere.
   return (
-    <div className={`split${dockedIssueId ? ' has-pane' : ''}`}>
+    <div className={`split${dockedIssueId ? ' has-pane' : ''}`} ref={splitRef}>
       <div className="split-list">{children}</div>
       <aside className="split-pane" ref={paneRef} aria-label="Tichetul deschis" hidden={!dockedIssueId} tabIndex={-1}>
         {dockedIssueId ? (

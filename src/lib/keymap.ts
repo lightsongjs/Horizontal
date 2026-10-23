@@ -13,8 +13,12 @@
  * arate. O tastă scrisă în două locuri ar fi divergat la prima schimbare.
  */
 
-/** Unde e focusul. `any` = oriunde (global). */
-export type KeyCtx = 'list' | 'panel' | 'sidebar' | 'any'
+/**
+ * Unde e focusul. `any` = oriunde (global). `grid` = lista din modul „× Valuri”
+ * (tabul Teme): e tot o listă, deci moștenește tastele listei, dar `h` / `l`
+ * mută tichetul între valuri în loc să treacă în bara laterală / panou.
+ */
+export type KeyCtx = 'list' | 'grid' | 'panel' | 'sidebar' | 'any'
 
 /** Ce face o tastă. Dispecerul are câte un handler pentru fiecare. */
 export type ActionId =
@@ -30,6 +34,8 @@ export type ActionId =
   | 'toList' | 'fieldDown' | 'fieldUp' | 'fieldFirst' | 'fieldLast' | 'sectionDown' | 'sectionUp' | 'activate'
   | 'pTitle' | 'pDesc' | 'pComment' | 'pHandoff' | 'pRename' | 'pDate' | 'pWave'
   | 'pDone' | 'pUrgent' | 'pPin' | 'pMove' | 'pDelete' | 'pYankLink' | 'pYankTitle'
+  // „× Valuri”: tichetul de sub cursor, în valul vecin / de la capăt
+  | 'waveLeft' | 'waveRight' | 'waveFirst' | 'waveLast'
   // bara laterală
   | 'sbDown' | 'sbUp' | 'sbFirst' | 'sbLast' | 'sbOpen'
 
@@ -112,6 +118,14 @@ export const KEYMAP: Binding[] = [
   b('V', 'list', 'visual', 'Selecție pe interval (ca v)'),
   // `a` ca în yazi (append / create). C nu mai creează cu modul Vim pornit.
   b('a', 'list', 'newTask', 'Sarcină nouă în grupul cursorului (aceeași zi / valul activ)'),
+  // „× Valuri” (tabul Teme): pe rânduri tichetele, pe coloane valurile.
+  // Fără numărătoare: cifrele 1–4 rămân taburile proiectului (decizia omului, H-13).
+  b('h', 'grid', 'waveLeft', 'Mută tichetul în valul din stânga'),
+  b('l', 'grid', 'waveRight', 'Mută tichetul în valul din dreapta'),
+  b('ArrowLeft', 'grid', 'waveLeft', 'Valul din stânga', { hidden: true }),
+  b('ArrowRight', 'grid', 'waveRight', 'Valul din dreapta', { hidden: true }),
+  b('0', 'grid', 'waveFirst', 'Mută tichetul în Notițe'),
+  b('$', 'grid', 'waveLast', 'Mută tichetul în ultimul val'),
   // panou: cursorul de câmp
   b('j', 'panel', 'fieldDown', 'Următorul: titlu → jetoane → descriere → fiecare dependență → fir', { motion: true }),
   b('k', 'panel', 'fieldUp', 'Câmpul anterior', { motion: true }),
@@ -237,12 +251,22 @@ export type FeedResult =
   /** Tasta nu e a noastră: rămâne ascultătorilor vechi. */
   | { kind: 'none' }
 
-/** Legăturile care se aplică în contextul dat: localul bate globalul la aceeași secvență. */
+/**
+ * Legăturile care se aplică în contextul dat: localul bate globalul la aceeași
+ * secvență. `grid` e o listă cu câteva taste în plus: ale lui bat pe ale
+ * listei, care bat globalele.
+ */
 export function activeBindings(ctx: FeedOptions['ctx'], bindings: Binding[] = KEYMAP): Binding[] {
-  const es = bindings.filter((x) => x.ctx === 'any' || x.ctx === ctx)
+  const levels: KeyCtx[] = ctx === 'grid' ? ['grid', 'list', 'any'] : ctx ? [ctx, 'any'] : ['any']
   const key = (x: Binding) => x.seq.join('\u0000')
-  const local = new Set(es.filter((x) => x.ctx !== 'any').map(key))
-  return es.filter((x) => x.ctx !== 'any' || !local.has(key(x)))
+  const taken = new Set<string>()
+  const out: Binding[] = []
+  for (const lvl of levels) {
+    const here = bindings.filter((x) => x.ctx === lvl && !taken.has(key(x)))
+    out.push(...here)
+    for (const x of here) taken.add(key(x))
+  }
+  return out
 }
 
 const startsWith = (seq: string[], prefix: string[]) =>
