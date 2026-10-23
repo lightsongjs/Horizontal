@@ -278,7 +278,18 @@ export function Sidebar({ showUsers = false, onNavigate, smartList = null, onSma
         </button>
       ))}
 
-      <div className="sidebar-section-label">Proiecte</div>
+      {/* „+" la titlu, ca la filtre. Înainte „Proiect nou" stătea doar în
+          piciorul barei, și numai fără proiect deschis — de când „Toate
+          proiectele" a ieșit (2026-10-15) nu mai rămânea aproape niciodată
+          vizibil. Proiectul nou e numai al adminului. */}
+      <div className="sidebar-section-label sidebar-section-row">
+        <span>Proiecte</span>
+        {isAdmin && (
+          <button type="button" className="sidebar-section-add" onClick={openNewProject} aria-label="Proiect nou" title="Proiect nou">
+            <Icon name="add" size={14} />
+          </button>
+        )}
+      </div>
 
       <div className="sidebar-seg" role="tablist">
         {(['all', 'personal', 'work'] as const).map((f) => (
