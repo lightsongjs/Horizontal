@@ -1025,11 +1025,25 @@ Subsetul îl dă specul (`docs/superpowers/specs/2026-10-12-descriere-markdown-d
 - **Tabelele (GFM, din 2026-10-24)**: cititorul le desenează ca rânduri plate
   cu linie de păr (fără grilă, derulare orizontală în cutia lor). Celulele se
   iau ca goluri între bare, nu din `TableCell` — o celulă goală n-are nod și
-  restul s-ar fi mutat cu o coloană. În editor tabelul e un widget de BLOC
-  dintr-un `StateField` (un `ViewPlugin` nu poate înlocui peste capete de
-  rând), desenat cât cursorul nu atinge rândurile lui, text mono cât le atinge;
-  un clic pe un rând pune cursorul pe rândul lui de text. Focusul intră în
-  stare prin `focusChangeEffect`. Un tabel într-o listă / citat rămâne text.
+  restul s-ar fi mutat cu o coloană. **În editor tabelul rămâne mereu desenat
+  și se editează pe celule** (`components/markdown/tableEditor.ts`, regulile
+  pure în `lib/markdown/table.ts`; cerința omului: „la clic să-și păstreze
+  forma”): o celulă cu clic devine `textarea` cu markdown-ul ei brut, iar o
+  tastă scrie DOAR golul celulei (`editCell`) — un tabel aliniat rămâne
+  aliniat, anularea grupează literele. Rând / coloană (butoanele „+”, meniul
+  ⋯, Tab pe ultima celulă, Enter pe ultimul rând) rescriu tabelul în forma
+  minimă. Widgetul de BLOC vine dintr-un `StateField` (un `ViewPlugin` nu
+  poate înlocui peste capete de rând) și își păstrează DOM-ul prin
+  `updateDOM`, altfel câmpul cu focusul ar dispărea la fiecare tastă.
+  Ctrl+Z din celulă e `undo` al editorului; Esc (în captură) iese sub tabel.
+  **În GFM un rând lipit de tabel e încă un rând al lui** — de-aia ieșirea și
+  inserarea lasă un rând gol după. „Editează ca text” (⋯) arată sursa cât
+  cursorul stă în tabel. Focusul descrierii e al cutiei (`focusin`/`focusout`
+  pe gazdă), nu `view.hasFocus`, iar rebaza din store se amână și cât o
+  celulă compune. Un tabel într-o listă / citat rămâne text.
+- **Meniul „/”** (`components/markdown/slash.ts`, `@codemirror/autocomplete`,
+  în `body`): numai pe rând gol sau după marcajul unei liste — după un cuvânt
+  „și / sau” e text. Caută în română și engleză (`slashMatches`, cu teste).
 - Banc: ecranul „Descriere” din `design/preview.html` (căsuța nebifată, textul
   bifat, codul cu fundal, rândul cu `.md-progress`), în ambele teme.
 

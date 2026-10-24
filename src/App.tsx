@@ -1105,7 +1105,7 @@ function Shell({ onSplit }: { onSplit?: (s: SplitState) => void }) {
       const t = e.touches[0]
       // Banda de valuri derulează orizontal și începe la marginea paginii:
       // o tragere spre dreapta pe ea e derulare înapoi, nu sertarul.
-      const onBand = (e.target as Element | null)?.closest?.('.wb-pills')
+      const onBand = (e.target as Element | null)?.closest?.('.wb-pills, .md-table-wrap')
       s = t.clientX < EDGE_PX && !onBand && canEdgeOpenRef.current() ? { x: t.clientX, y: t.clientY, axis: 'pending' } : null
     }
     const onMove = (e: TouchEvent) => {

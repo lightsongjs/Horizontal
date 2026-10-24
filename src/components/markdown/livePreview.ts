@@ -1,8 +1,7 @@
-import { Annotation, StateEffect, StateField, type EditorState, type Extension, type Range } from '@codemirror/state'
+import { Annotation, type Extension, type Range } from '@codemirror/state'
 import { Decoration, EditorView, ViewPlugin, WidgetType, type DecorationSet, type ViewUpdate } from '@codemirror/view'
 import { decorationSpecs } from '../../lib/markdown/decorations'
-import { toBlocks, type Inline } from '../../lib/markdown/blocks'
-import { mdParser } from '../../lib/markdown/parse'
+import { tableField } from './tableEditor'
 import { minimalChange, toggleTask } from '../../lib/markdown/tasks'
 
 /** O schimbare venită din store (rebază), nu de la om — nu se trimite înapoi. */
@@ -69,123 +68,6 @@ class TaskWidget extends WidgetType {
     return b
   }
   ignoreEvent() { return true }
-}
-
-/** Rândurile din celula unui tabel, ca DOM — aceleași clase ca restul editorului. */
-function inlineDom(list: Inline[], into: HTMLElement) {
-  for (const x of list) {
-    switch (x.t) {
-      case 'text': into.append(x.text); break
-      case 'br': into.append(document.createElement('br')); break
-      case 'code': { const c = document.createElement('code'); c.className = 'md-code'; c.textContent = x.text; into.append(c); break }
-      case 'ref': { const r = document.createElement('span'); r.className = 'md-ref'; r.dataset.ref = x.id; r.textContent = x.id; into.append(r); break }
-      case 'link': { const a = document.createElement('span'); a.className = 'md-link'; a.dataset.href = x.href; inlineDom(x.children, a); into.append(a); break }
-      default: { const e = document.createElement(x.t); inlineDom(x.children, e); into.append(e) }
-    }
-  }
-}
-
-/**
- * Tabelul desenat cât cursorul nu e în el. Un clic pe un rând pune cursorul
- * pe rândul de text corespunzător (antetul = primul, apoi după rândul `|---|`),
- * deci tabelul se deschide ca text exact unde ai dat clic.
- */
-class TableWidget extends WidgetType {
-  constructor(readonly text: string, readonly prefixes: readonly string[]) { super() }
-  eq(o: TableWidget) { return o.text === this.text && o.prefixes.join() === this.prefixes.join() }
-  toDOM(view: EditorView) {
-    const wrap = document.createElement('div')
-    wrap.className = 'md-table-wrap'
-    const b = toBlocks(this.text, this.prefixes)[0]
-    if (!b || b.t !== 'table') { wrap.textContent = this.text; return wrap }
-    const t = document.createElement('table')
-    t.className = 'md-table'
-    const row = (cells: Inline[][], tag: 'th' | 'td', line: number) => {
-      const tr = document.createElement('tr')
-      tr.dataset.line = String(line)
-      cells.forEach((c, j) => {
-        const td = document.createElement(tag)
-        if (b.align[j]) td.style.textAlign = b.align[j]!
-        inlineDom(c, td)
-        tr.append(td)
-      })
-      return tr
-    }
-    const head = document.createElement('thead')
-    head.append(row(b.head, 'th', 0))
-    const body = document.createElement('tbody')
-    b.rows.forEach((r, k) => body.append(row(r, 'td', k + 2)))
-    t.append(head, body)
-    wrap.append(t)
-    wrap.addEventListener('mousedown', (e) => {
-      const el = e.target as HTMLElement
-      // Linkurile le lasă editorului (regula lui: deschise cât nu scrii).
-      if (el.closest('[data-href],[data-ref]') && !view.hasFocus) return
-      e.preventDefault()
-      if (!view.state.facet(EditorView.editable)) return
-      const from = view.posAtDOM(wrap)
-      const line = view.state.doc.lineAt(from).number + Number(el.closest('tr')?.dataset.line ?? 0)
-      const at = view.state.doc.line(Math.min(line, view.state.doc.lines))
-      view.focus()
-      view.dispatch({ selection: { anchor: at.to } })
-    })
-    return wrap
-  }
-  ignoreEvent(e: Event) {
-    return !(e.target instanceof HTMLElement && e.target.closest('[data-href],[data-ref]'))
-  }
-}
-
-const setFocus = StateEffect.define<boolean>()
-
-type Tables = { ranges: { from: number; to: number }[]; focused: boolean; deco: DecorationSet }
-
-/**
- * Tabelele ca bloc: un widget care acoperă mai multe rânduri trebuie să vină
- * dintr-un `StateField` (un `ViewPlugin` n-are voie să înlocuiască peste
- * capete de rând). Regula e a marcajelor de bloc, dar pe tot tabelul: desenat
- * cât cursorul (sau selecția) nu atinge niciunul din rândurile lui, text cât
- * îl atinge — un tabel se editează ca text. Focusul intră în stare prin
- * `focusChangeEffect`: fără focus, cursorul rămas în tabel nu-l mai ține brut.
- */
-const tableField = (prefixes: () => readonly string[]): Extension => {
-  const rangesOf = (state: EditorState) => {
-    const out: { from: number; to: number }[] = []
-    mdParser.parse(state.doc.toString()).iterate({
-      enter(n) {
-        if (n.name === 'Table') { out.push({ from: n.from, to: n.to }); return false }
-        // Un tabel într-o listă sau într-un citat rămâne text: widgetul de
-        // bloc ar fi înghițit marcajele din fața rândurilor.
-        if (n.name !== 'Document') return false
-      },
-    })
-    return out
-  }
-  const decoOf = (state: EditorState, ranges: Tables['ranges'], focused: boolean) => {
-    const out: Range<Decoration>[] = []
-    for (const r of ranges) {
-      const a = state.doc.lineAt(r.from), z = state.doc.lineAt(r.to)
-      const touched = focused && state.selection.ranges.some((s) => s.from <= z.to && s.to >= a.from)
-      if (touched) continue
-      out.push(Decoration.replace({ widget: new TableWidget(state.sliceDoc(a.from, z.to), prefixes()), block: true }).range(a.from, z.to))
-    }
-    return Decoration.set(out)
-  }
-  const field = StateField.define<Tables>({
-    create(state) {
-      const ranges = rangesOf(state)
-      return { ranges, focused: false, deco: decoOf(state, ranges, false) }
-    },
-    update(v, tr) {
-      let focused = v.focused
-      for (const e of tr.effects) if (e.is(setFocus)) focused = e.value
-      if (!tr.docChanged && !tr.selection && focused === v.focused) return v
-      const ranges = tr.docChanged ? rangesOf(tr.state) : v.ranges
-      return { ranges, focused, deco: decoOf(tr.state, ranges, focused) }
-    },
-    provide: (f) => EditorView.decorations.from(f, (v) => v.deco),
-  })
-  return [field, EditorView.focusChangeEffect.of((_s, focusing) => setFocus.of(focusing))]
 }
 
 function build(view: EditorView, prefixes: readonly string[]): DecorationSet {

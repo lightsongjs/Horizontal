@@ -1327,6 +1327,82 @@ main {
 .md-table th:last-child, .md-table td:last-child { padding-right: 0; }
 .md-editor .md-table-wrap { cursor: text; margin: 0.2em 0; }
 .md > .md-table-wrap:first-child { margin-top: 0; }
+.md-table thead.md-thead-empty th { padding: 0; height: 0; }
+/* Editorul: tabelul e mereu desenat, editat pe celule (`tableEditor.ts`). */
+.md-editor .md-table-edit { position: relative; padding: 0; overflow: visible; width: fit-content; max-width: 100%; box-sizing: border-box; }
+.md-editor .md-table-edit.editable { padding: 0 24px 22px 0; }
+.md-table-scroll { overflow-x: auto; max-width: 100%; }
+.md-table-edit.editable .md-table th, .md-table-edit.editable .md-table td { padding: 6px 8px; position: relative; cursor: text; }
+.md-table-edit.editable .md-table td:hover, .md-table-edit.editable .md-table th:hover { background: var(--surface-3); }
+.md-table-edit .md-table td:has(.md-cell-input:focus), .md-table-edit .md-table th:has(.md-cell-input:focus) {
+  background: var(--accent-soft);
+}
+/* Locul lui ⋯ în celula din editare: altfel stătea peste capătul textului. */
+.md-table-edit .md-table td:has(.md-cell-input), .md-table-edit .md-table th:has(.md-cell-input) { padding-right: 32px; }
+.md-cell { min-height: 1lh; }
+.md-cell[data-ph]:empty::before { content: attr(data-ph); color: var(--txt-faint); font-weight: 500; }
+.md-cell-grow { display: grid; }
+.md-cell-grow::after { content: attr(data-v); white-space: pre-wrap; visibility: hidden; grid-area: 1 / 1; overflow-wrap: anywhere; }
+.md-cell-input {
+  grid-area: 1 / 1; width: 100%; min-width: 0; resize: none; overflow: hidden;
+  border: 0; outline: none; padding: 0; margin: 0; background: transparent;
+  font: inherit; color: inherit; line-height: inherit; text-align: inherit; overflow-wrap: anywhere;
+}
+.md-cell-input::placeholder { color: var(--txt-faint); font-weight: 500; }
+.md-table-add {
+  position: absolute; display: flex; align-items: center; justify-content: center;
+  border: 0; padding: 0; background: transparent; color: var(--txt-dim); border-radius: var(--r-s);
+  cursor: pointer; opacity: 0; transition: opacity .12s;
+}
+.md-table-add-col { top: 0; right: 0; bottom: 22px; width: 20px; }
+.md-table-add-row { left: 0; right: 24px; bottom: 0; height: 18px; }
+.md-table-edit:not(.editable) .md-table-add { display: none; }
+.md-table-edit:hover .md-table-add, .md-table-edit:focus-within .md-table-add { opacity: 1; }
+.md-table-add:hover { background: var(--surface-3); color: var(--txt); }
+.md-table-more {
+  position: absolute; top: 3px; right: 3px; width: 22px; height: 22px; z-index: 1;
+  display: flex; align-items: center; justify-content: center; border: 0; padding: 0;
+  background: var(--surface); color: var(--txt-dim); border-radius: var(--r-s); box-shadow: var(--amb); cursor: pointer;
+}
+.md-table-more:hover { color: var(--txt); }
+.md-table-menu {
+  position: fixed; z-index: 1000; display: flex; flex-direction: column; min-width: 200px; padding: 4px;
+  background: var(--surface); border-radius: var(--r-m); box-shadow: var(--amb);
+}
+.md-table-mi {
+  border: 0; background: none; text-align: left; padding: 8px 10px; border-radius: var(--r-s);
+  font: inherit; font-size: calc(14px * var(--text-scale)); color: var(--txt); cursor: pointer;
+}
+.md-table-mi:hover:not(:disabled) { background: var(--surface-2); }
+.md-table-mi.danger { color: var(--blocked); }
+.md-table-mi:disabled { opacity: .4; cursor: default; }
+.md-table-sep { height: 1px; margin: 4px 6px; background: var(--line-soft); }
+@media (pointer: coarse) {
+  .md-table-edit.editable { padding: 0 46px 46px 0; }
+  .md-table-add-col { width: 40px; bottom: 46px; }
+  .md-table-add-row { height: 40px; right: 46px; }
+  .md-table-edit:focus-within .md-table-add { background: var(--surface-2); }
+  .md-table-more { width: 28px; height: 28px; }
+  .md-table-mi { padding: 12px 14px; }
+}
+.md-table-menu.sheet-like {
+  left: 0; right: 0; bottom: var(--kb, 0px); top: auto; min-width: 0;
+  border-radius: var(--r) var(--r) 0 0; padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+}
+/* Meniul „/” (`slash.ts`): cutia de meniu a aplicației, nu tema CodeMirror. */
+.cm-tooltip.cm-tooltip-autocomplete.md-slash {
+  background: var(--surface); border: 0; border-radius: var(--r-m); box-shadow: var(--amb); padding: 4px; overflow: hidden;
+}
+.cm-tooltip.cm-tooltip-autocomplete.md-slash > ul { font-family: var(--display); max-height: 18em; min-width: 220px; }
+.cm-tooltip.cm-tooltip-autocomplete.md-slash > ul > li {
+  display: flex; align-items: center; gap: 12px; padding: 7px 10px; border-radius: var(--r-s);
+  font-size: calc(14px * var(--text-scale)); color: var(--txt); line-height: 1.3;
+}
+.cm-tooltip.cm-tooltip-autocomplete.md-slash > ul > li[aria-selected] { background: var(--accent-soft); color: var(--txt); }
+.cm-tooltip.cm-tooltip-autocomplete.md-slash .cm-completionLabel { flex: 1; }
+.cm-tooltip.cm-tooltip-autocomplete.md-slash .cm-completionDetail {
+  font-family: var(--mono); font-style: normal; font-size: calc(12px * var(--text-scale)); color: var(--txt-faint); margin: 0;
+}
 .md-editor .cm-line.md-table-src { font-family: var(--mono); font-size: calc(13px * var(--text-scale)); }
 .md ul, .md ol { margin: 0 0 0.65em; padding-left: var(--md-gutter); }
 .md li { margin: 0; }

@@ -1,12 +1,14 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
 import { Compartment, EditorState, Transaction } from '@codemirror/state'
-import { EditorView, keymap, placeholder as cmPlaceholder } from '@codemirror/view'
+import { EditorView, keymap, placeholder as cmPlaceholder, tooltips } from '@codemirror/view'
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import {
   continueList, indentLines, minimalChange, removeMarker, toggleLinePrefix, toggleWrap, type Edit,
 } from '../lib/markdown/tasks'
 import { Echoes } from '../lib/markdown/rebase'
 import { External, Toggle, livePreview } from './markdown/livePreview'
+import { tableEntryKeys } from './markdown/tableEditor'
+import { slashMenu } from './markdown/slash'
 
 export type FormatCmd = 'task' | 'bullet' | 'bold' | 'indent' | 'outdent'
 /** `focusEnd`: cursorul la capătul textului — o atingere sub text (`DescFold`). */
@@ -27,6 +29,17 @@ export type MarkdownEditorProps = {
    * dacă avea focusul când a sosit editorul (`DescField`). `null` = n-avea.
    */
   takeFocus?(): number | null
+}
+
+/** O celulă de tabel în compunere (Gboard, diacritice). */
+const composingCells = new WeakSet<Element>()
+if (typeof document !== 'undefined') {
+  document.addEventListener('compositionstart', (e) => { if (e.target instanceof HTMLTextAreaElement) composingCells.add(e.target) }, true)
+  document.addEventListener('compositionend', (e) => { if (e.target instanceof HTMLTextAreaElement) composingCells.delete(e.target) }, true)
+}
+function cellComposing(root: Element | null): boolean {
+  const a = document.activeElement
+  return !!root && a instanceof HTMLTextAreaElement && a.classList.contains('md-cell-input') && root.contains(a) && composingCells.has(a)
 }
 
 type Op = (text: string, from: number, to: number) => Edit | null
@@ -110,7 +123,10 @@ const MarkdownEditor = forwardRef<EditorHandle, MarkdownEditorProps>(function Ma
           // Așa `\r` rămâne un caracter la capăt de rând, ascuns de plugin.
           EditorState.lineSeparator.of('\n'),
           history(),
-          keymap.of(markdownKeys),
+          keymap.of([...tableEntryKeys, ...markdownKeys]),
+          slashMenu,
+          // Meniul „/” în `body`: cutia pliată a descrierii l-ar fi tăiat.
+          tooltips({ parent: document.body }),
           keymap.of([...defaultKeymap.filter((b) => b.key !== 'Mod-Enter'), ...historyKeymap]),
           EditorView.lineWrapping,
           editable.current.of(EditorView.editable.of(!p.readOnly)),
@@ -118,7 +134,6 @@ const MarkdownEditor = forwardRef<EditorHandle, MarkdownEditorProps>(function Ma
           cmPlaceholder(p.placeholder ?? ''),
           livePreview(() => props.current.prefixes),
           EditorView.updateListener.of((u) => {
-            if (u.focusChanged) (u.view.hasFocus ? props.current.onFocus : props.current.onBlur)?.()
             if (!u.docChanged || u.transactions.some((t) => t.annotation(External))) return
             const next = u.state.doc.toString()
             echoes.current.emitted(next)
@@ -151,6 +166,29 @@ const MarkdownEditor = forwardRef<EditorHandle, MarkdownEditorProps>(function Ma
       }),
     })
     view.current = v
+    // Focusul „în descriere” e al cutiei întregi, nu doar al lui CodeMirror:
+    // o celulă de tabel (`tableEditor`) e un câmp în interiorul editorului, iar
+    // `hasFocus` l-ar fi raportat ca ieșire (bara de format, rândul de fir).
+    const root = host.current!
+    let inside = false
+    const onIn = () => { if (!inside) { inside = true; props.current.onFocus?.() } }
+    const onOut = (e: FocusEvent) => {
+      if (e.relatedTarget instanceof Node && root.contains(e.relatedTarget)) return
+      // Meniul unui tabel stă în `body`; focusul revine în celulă imediat.
+      setTimeout(() => {
+        if (root.contains(document.activeElement)) return
+        if (inside) { inside = false; props.current.onBlur?.() }
+      }, 0)
+    }
+    // Compunerea dintr-o celulă: CodeMirror n-o vede (`view.composing`), deci
+    // rebaza din store se amână și pentru ea, ca pentru editor.
+    const onCellCompEnd = () => setTimeout(() => {
+      if (cellComposing(root)) return
+      if (pending.current !== null) { apply(v, pending.current); pending.current = null }
+    }, 0)
+    root.addEventListener('focusin', onIn)
+    root.addEventListener('focusout', onOut)
+    root.addEventListener('compositionend', onCellCompEnd)
     const at = p.takeFocus?.() ?? null
     if (at !== null && !p.readOnly) {
       v.focus()
@@ -158,7 +196,12 @@ const MarkdownEditor = forwardRef<EditorHandle, MarkdownEditorProps>(function Ma
     }
     // Pentru testele de browser (Playwright): textul real, cu sintaxa ascunsă inclusă.
     ;(host.current as HTMLDivElement & { hzValue?: () => string }).hzValue = () => v.state.doc.toString()
-    return () => { v.destroy(); view.current = null }
+    return () => {
+      root.removeEventListener('focusin', onIn)
+      root.removeEventListener('focusout', onOut)
+      root.removeEventListener('compositionend', onCellCompEnd)
+      v.destroy(); view.current = null
+    }
     // Montat o dată: valoarea și drepturile intră prin efectele de mai jos.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -166,7 +209,7 @@ const MarkdownEditor = forwardRef<EditorHandle, MarkdownEditorProps>(function Ma
   useEffect(() => {
     const v = view.current
     if (!v) return
-    if (v.composing) { pending.current = p.value; return }
+    if (v.composing || cellComposing(host.current)) { pending.current = p.value; return }
     apply(v, p.value)
   }, [p.value])
 
