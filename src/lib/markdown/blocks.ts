@@ -19,6 +19,9 @@ export type Block =
   | { t: 'quote'; children: Block[] }
   | { t: 'pre'; text: string }
   | { t: 'hr' }
+  | { t: 'table'; align: Align[]; head: Inline[][]; rows: Inline[][][] }
+
+export type Align = 'left' | 'center' | 'right' | null
 
 const MARKS = new Set(['EmphasisMark', 'CodeMark', 'LinkMark', 'HeaderMark', 'QuoteMark', 'TaskMarker', 'ListMark', 'StrikethroughMark'])
 
@@ -115,6 +118,50 @@ function inlines(node: SyntaxNode, from: number, to: number, src: string, refs: 
   return out
 }
 
+/**
+ * Celulele unui rând de tabel, în ordine. Nu din `TableCell`: o celulă goală
+ * („| | La Netvisor |”) n-are nod, deci s-ar fi pierdut și restul s-ar fi
+ * mutat cu o coloană. Celulele sunt golurile dintre bare.
+ */
+function tableCells(row: SyntaxNode, src: string, refs: RegExp | null): Inline[][] {
+  const bars = row.getChildren('TableDelimiter')
+  const cells = row.getChildren('TableCell')
+  const edges: [number, number][] = []
+  let pos = row.from
+  for (const d of bars) { edges.push([pos, d.from]); pos = d.to }
+  edges.push([pos, row.to])
+  if (bars[0]?.from === row.from) edges.shift()
+  if (bars.length && bars[bars.length - 1].to === row.to) edges.pop()
+  return edges.map(([a, b]) => {
+    const c = cells.find((x) => x.from >= a && x.to <= b)
+    return c ? trimEdges(inlines(c, c.from, c.to, src, refs)) : []
+  })
+}
+
+/** `|:--|:-:|--:|` → alinierea fiecărei coloane. */
+export function tableAlign(line: string): Align[] {
+  return line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => {
+    const t = c.trim()
+    const l = t.startsWith(':'), r = t.endsWith(':')
+    return l && r ? 'center' : r ? 'right' : l ? 'left' : null
+  })
+}
+
+function table(c: SyntaxNode, src: string, refs: RegExp | null): Block {
+  let head: Inline[][] = []
+  let align: Align[] = []
+  const rows: Inline[][][] = []
+  for (let k = c.firstChild; k; k = k.nextSibling) {
+    if (k.name === 'TableHeader') head = tableCells(k, src, refs)
+    else if (k.name === 'TableRow') rows.push(tableCells(k, src, refs))
+    else if (k.name === 'TableDelimiter') align = tableAlign(src.slice(k.from, k.to))
+  }
+  // Un rând mai scurt se completează, unul mai lung se taie — ca GitHub.
+  const n = head.length
+  const fit = (r: Inline[][]) => Array.from({ length: n }, (_, i) => r[i] ?? [])
+  return { t: 'table', align: Array.from({ length: n }, (_, i) => align[i] ?? null), head, rows: rows.map(fit) }
+}
+
 const LEVEL: Record<string, 1 | 2 | 3> = {
   ATXHeading1: 1, ATXHeading2: 2, ATXHeading3: 3, ATXHeading4: 3, ATXHeading5: 3, ATXHeading6: 3,
   SetextHeading1: 1, SetextHeading2: 2,
@@ -170,6 +217,7 @@ function block(c: SyntaxNode, src: string, refs: RegExp | null): Block | null {
       return { t: 'pre', text: src.slice(ls, c.to).split('\n').map((l) => l.replace(/^( {1,4}|\t)/, '')).join('\n') }
     }
     case 'HorizontalRule': return { t: 'hr' }
+    case 'Table': return table(c, src, refs)
     case 'QuoteMark':
     case 'ListMark':
       return null

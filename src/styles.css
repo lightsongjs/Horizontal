@@ -1314,6 +1314,20 @@ main {
   background: none; border: 0; padding: 0; cursor: pointer;
 }
 .md-hr { text-align: center; margin: 1.2em 0; font-family: var(--mono); color: var(--txt-faint); }
+/* Tabelele (GFM): rânduri plate despărțite de o linie de păr, ca listele —
+   fără grilă. Un tabel lat derulează în cutia lui, nu lățește panoul. */
+.md-table-wrap { margin: 0.6em 0 0.8em; overflow-x: auto; max-width: 100%; }
+.md-table { border-collapse: collapse; font-size: calc(14px * var(--text-scale)); line-height: 1.45; }
+.md-table th, .md-table td {
+  padding: 6px 14px 6px 0; text-align: left; vertical-align: top;
+  border-bottom: 1px solid var(--line-soft); min-width: 6em;
+}
+.md-table th { font-weight: 650; font-size: calc(12px * var(--text-scale)); color: var(--txt-dim); border-bottom-color: var(--line); }
+.md-table tr:last-child td { border-bottom: 0; }
+.md-table th:last-child, .md-table td:last-child { padding-right: 0; }
+.md-editor .md-table-wrap { cursor: text; margin: 0.2em 0; }
+.md > .md-table-wrap:first-child { margin-top: 0; }
+.md-editor .cm-line.md-table-src { font-family: var(--mono); font-size: calc(13px * var(--text-scale)); }
 .md ul, .md ol { margin: 0 0 0.65em; padding-left: var(--md-gutter); }
 .md li { margin: 0; }
 /* Sub-lista nu deschide un gol în listă (în editor e doar rândul următor). */

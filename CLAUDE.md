@@ -1021,8 +1021,15 @@ Subsetul îl dă specul (`docs/superpowers/specs/2026-10-12-descriere-markdown-d
   `HZ-12` în text devine legătură doar pentru prefixele proiectelor cunoscute;
   linkurile merg doar pe `http:`/`https:`/`mailto:` (`www.` → `https://`).
 - **Ce NU e încă:** foaia rapidă, bara de captură de pe Linux, `TicketActivity`
-  și widget-ul de pe Android (descrierea lor rămâne text simplu; cer APK nou) și
-  **tabelele** — nu sunt activate în parser, rămân text.
+  și widget-ul de pe Android (descrierea lor rămâne text simplu; cer APK nou).
+- **Tabelele (GFM, din 2026-10-24)**: cititorul le desenează ca rânduri plate
+  cu linie de păr (fără grilă, derulare orizontală în cutia lor). Celulele se
+  iau ca goluri între bare, nu din `TableCell` — o celulă goală n-are nod și
+  restul s-ar fi mutat cu o coloană. În editor tabelul e un widget de BLOC
+  dintr-un `StateField` (un `ViewPlugin` nu poate înlocui peste capete de
+  rând), desenat cât cursorul nu atinge rândurile lui, text mono cât le atinge;
+  un clic pe un rând pune cursorul pe rândul lui de text. Focusul intră în
+  stare prin `focusChangeEffect`. Un tabel într-o listă / citat rămâne text.
 - Banc: ecranul „Descriere” din `design/preview.html` (căsuța nebifată, textul
   bifat, codul cu fundal, rândul cu `.md-progress`), în ambele teme.
 

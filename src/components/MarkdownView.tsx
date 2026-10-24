@@ -49,6 +49,18 @@ export function MarkdownView({ text, prefixes, onToggle, onRef, className = '' }
       case 'quote': return <blockquote key={i}>{blk(b.children)}</blockquote>
       case 'pre': return <pre key={i} className="md-pre"><code>{b.text}</code></pre>
       case 'hr': return <div key={i} className="md-hr" role="separator">⁂</div>
+      case 'table': return (
+        <div key={i} className="md-table-wrap">
+          <table className="md-table">
+            <thead><tr>{b.head.map((c, j) => <th key={j} style={b.align[j] ? { textAlign: b.align[j]! } : undefined}>{inl(c)}</th>)}</tr></thead>
+            <tbody>
+              {b.rows.map((r, k) => (
+                <tr key={k}>{r.map((c, j) => <td key={j} style={b.align[j] ? { textAlign: b.align[j]! } : undefined}>{inl(c)}</td>)}</tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )
       case 'ul':
       case 'ol': {
         const L = b.t

@@ -107,9 +107,28 @@ describe('toBlocks', () => {
     ])
   })
 
-  it('tabelele nu sunt activate: rămân text', () => {
-    const b = toBlocks('| a | b |\n|---|---|\n| 1 | 2 |', P)
-    expect(b.every((x) => x.t === 'p' || x.t === 'h')).toBe(true)
+  it('tabel: celula goală își ține coloana, alinierea, rândurile scurte completate', () => {
+    const T = (text: string) => [{ t: 'text', text }]
+    expect(toBlocks('| | La N | La S |\n|---|:-:|--:|\n| **Stare** | n-au | HZ-3 |\n| scurt |', P)).toEqual([{
+      t: 'table',
+      align: [null, 'center', 'right'],
+      head: [[], T('La N'), T('La S')],
+      rows: [
+        [[{ t: 'strong', children: T('Stare') }], T('n-au'), [{ t: 'ref', id: 'HZ-3' }]],
+        [T('scurt'), [], []],
+      ],
+    }])
+  })
+
+  it('tabel fără bare la capete', () => {
+    expect(toBlocks('a | b\n--|--\n1 | 2', P)).toEqual([{
+      t: 'table', align: [null, null], head: [[{ t: 'text', text: 'a' }], [{ t: 'text', text: 'b' }]],
+      rows: [[[{ t: 'text', text: '1' }], [{ t: 'text', text: '2' }]]],
+    }])
+  })
+
+  it('o bară fără rândul de aliniere rămâne text', () => {
+    expect(toBlocks('| a | b |\n| 1 | 2 |', P).every((x) => x.t === 'p')).toBe(true)
   })
 
   it('HTML brut rămâne text', () => {

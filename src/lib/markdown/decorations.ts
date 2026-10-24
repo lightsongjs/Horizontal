@@ -142,6 +142,12 @@ export function decorationSpecs(text: string, reveal: ReadonlySet<number>, prefi
           lines(n.from, n.to, 'md-pre')
           noRef.push([n.from, n.to])
           return false
+        case 'Table':
+          // Fără cursor în el, tabelul e un widget desenat (`livePreview`);
+          // cu cursorul, textul lui brut, pe coloane drepte.
+          lines(n.from, n.to, 'md-table-src')
+          noRef.push([n.from, n.to])
+          return false
         case 'HorizontalRule':
           if (!shown(n.from, n.to)) out.push({ k: 'hr', from: n.from, to: n.to })
           return
