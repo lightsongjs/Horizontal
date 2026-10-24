@@ -279,9 +279,14 @@ export function parseDue(raw: string, now: Date = new Date()): ParsedDue {
     if (m) { rrule = 'FREQ=YEARLY'; hit(m) }
   }
 
-  // „pe 15 ale lunii", „on the 15th"
-  if (!rrule) {
+  // „pe 15 ale lunii", „on the 15th" — și ca precizare a unui „lunar" deja
+  // prins: „every month on the 6th", „în fiecare lună pe 6". Fără ea, ziua
+  // rămânea în titlu, iar seria pornea de azi, nu pe 6. După un „lunar" și
+  // „pe 6" simplu e ziua lunii (nu urmează o lună: „pe 6 noiembrie" e o dată).
+  const monthlyBare = rrule === 'FREQ=MONTHLY'
+  if (!rrule || monthlyBare) {
     m = hay.match(/\bpe\s+(\d{1,2})\s+ale\s+lunii\b/) ?? hay.match(/\bon\s+the\s+(\d{1,2})(?:st|nd|rd|th)?\b/)
+      ?? (monthlyBare ? hay.match(/\b(?:pe|on)\s+(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)?\b(?!\s*(?:[./-]\d|ale\b|ian|feb|mar|apr|mai|iun|iul|aug|sep|oct|noi|nov|dec|jan|may|jun|jul))/) : null)
     if (m) {
       const d = Number(m[1])
       if (d >= 1 && d <= 31) {

@@ -44,7 +44,7 @@ const GROUPS: Group[] = [
     examples: [
       'zilnic', 'la 2 zile', 'în fiecare luni', 'lunea și joia',
       'în zilele lucrătoare', 'de luni până vineri', 'every weekday',
-      'săptămânal', 'la 2 săptămâni', 'lunar', 'pe 15 ale lunii', 'anual',
+      'săptămânal', 'la 2 săptămâni', 'lunar', 'pe 15 ale lunii', 'în fiecare lună pe 6', 'anual',
       'sâmbătă tuns', 'în fiecare sâmbătă tuns',
     ],
   },

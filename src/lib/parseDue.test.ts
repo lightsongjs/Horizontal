@@ -410,6 +410,16 @@ describe('recurență în text', () => {
     expect(parseDue(maskRejected('la 2 zile de concediu', rejected), NOW).rrule).toBeNull()
   })
 
+  it('„lunar" + ziua lunii = lunar pe ziua aceea, iar ziua iese din titlu', () => {
+    for (const t of ['carti every month on the 6th', 'carti monthly on the 6th', 'carti în fiecare lună pe 6', 'carti lunar pe 6', 'carti every month on 6']) {
+      const q = parseDue(t, NOW)
+      expect(q.rrule, t).toBe('FREQ=MONTHLY;BYMONTHDAY=6')
+      expect(q.title, t).toBe('carti')
+    }
+    // „pe 6 noiembrie" după „lunar" e o dată, nu ziua lunii.
+    expect(r('lunar pe 6 noiembrie carti')).toBe('FREQ=MONTHLY')
+  })
+
   it('„pe N ale lunii" nu suprascrie o recurență deja recunoscută', () => {
     // Fără gardă, blocul de mai jos rulează necondiționat și înlocuiește
     // „zilnic" cu „lunar pe 15", pierzând recurența scrisă de om.
