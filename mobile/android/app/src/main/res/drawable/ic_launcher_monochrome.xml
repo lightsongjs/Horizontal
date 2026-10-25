@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generat de design/logo/build-icons.mjs (D-207). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="512" android:viewportHeight="512">
+  <group android:pivotX="256" android:pivotY="256" android:scaleX="0.72" android:scaleY="0.72">
+    <path android:fillColor="#FFFFFFFF" android:pathData="M97.81 272A159 159 0 1 1 414.19 272L363.82 272A109 109 0 1 0 148.18 272Z"/>
+    <path android:fillColor="#FFFFFFFF" android:pathData="M122.91 343L190.33 343A109 109 0 0 0 321.67 343L389.09 343A159 159 0 0 1 122.91 343Z"/>
+    <path android:fillColor="#FFFFFFFF" android:pathData="M77 286H435A22 22 0 0 1 435 330H77A22 22 0 0 1 77 286Z"/>
+  </group>
+</vector>

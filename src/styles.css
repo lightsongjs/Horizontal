@@ -1932,7 +1932,8 @@ button.we-del:hover { color: var(--blocked); background: var(--blocked-soft); }
   text-align: center;
   box-shadow: var(--amb-lg);
 }
-.login-card .logo {
+.login-card .login-mark {
+  display: block;
   margin: 0 auto 14px;
 }
 .login-card h1 {

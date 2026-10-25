@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Logo Horizontal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;650;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#FFFFFF;--surface-2:#F6F7F9;--surface-3:#EEF0F3;--txt:#1A1C20;--dim:#565C66;--mute:#959BA5;--sep:#EEF0F3;
+  --accent:#2F6BFF;--accent-soft:#EBF1FF;--star:#F5B000;--r-s:8px;--r-m:12px;--r:20px;
+  --amb:0 1px 2px rgba(16,24,40,.06),0 6px 20px rgba(16,24,40,.07);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141517;--surface-2:#1B1C1F;--surface-3:#26282C;--txt:#EEEFF1;--dim:#A6ABB3;--mute:#6E737B;--sep:#24262A;
+  --accent:#5B8DFF;--accent-soft:rgba(91,141,255,.15);--star:#FFC53D;--amb:0 10px 30px rgba(0,0,0,.45);color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#141517;--surface-2:#1B1C1F;--surface-3:#26282C;--txt:#EEEFF1;--dim:#A6ABB3;--mute:#6E737B;--sep:#24262A;
+  --accent:#5B8DFF;--accent-soft:rgba(91,141,255,.15);--star:#FFC53D;--amb:0 10px 30px rgba(0,0,0,.45);color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1240px;margin:0 auto;padding:32px 16px 80px}
+header.top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:28px}
+h1{font-size:28px;font-weight:700;letter-spacing:-.02em;margin:0 0 4px}
+.lede{color:var(--dim);margin:0;max-width:640px}
+.toggle{display:flex;background:var(--surface-2);border-radius:var(--r-s);padding:3px}
+.toggle button{font:inherit;font-size:13px;font-weight:600;border:0;background:none;color:var(--dim);padding:6px 12px;border-radius:6px;cursor:pointer}
+.toggle button[aria-pressed="true"]{background:var(--bg);color:var(--txt);box-shadow:var(--amb)}
+.compare{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:40px}
+.compare a{display:flex;flex-direction:column;align-items:center;gap:10px;padding:20px 12px;background:var(--surface-2);border-radius:var(--r);color:inherit;text-decoration:none}
+.compare .lbl{font-size:13px;font-weight:650}
+.compare .tiny{display:flex;gap:10px;align-items:center}
+section.v{padding:36px 0;border-top:1px solid var(--sep)}
+.vhead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.vhead h2{font-size:22px;font-weight:700;letter-spacing:-.015em;margin:0}
+.vhead .k{font:600 13px "Geist Mono",ui-monospace,monospace;color:var(--mute)}
+.badge{font-size:12px;font-weight:650;color:var(--accent);background:var(--accent-soft);padding:3px 10px;border-radius:var(--r-s)}
+.why{color:var(--dim);max-width:720px;margin:0 0 24px}
+.rec{margin:-12px 0 24px;padding:12px 16px;background:var(--accent-soft);border-radius:var(--r-m);max-width:720px;font-size:14px}
+.grid{display:grid;grid-template-columns:minmax(0,520px) minmax(0,1fr);gap:24px;align-items:start}
+.hero{background:var(--surface-2);border-radius:var(--r);padding:24px;display:flex;justify-content:center}
+.hero svg{width:100%;max-width:512px;height:auto;display:block}
+.side{display:flex;flex-direction:column;gap:16px;min-width:0}
+.card{background:var(--surface-2);border-radius:var(--r);padding:16px}
+.card h3{font-size:12px;font-weight:650;color:var(--dim);margin:0 0 12px}
+.sizes{display:flex;align-items:flex-end;gap:18px;flex-wrap:wrap;padding:14px;border-radius:var(--r-m)}
+.sizes figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:6px}
+.sizes figcaption{font:500 11px "Geist Mono",ui-monospace,monospace;color:inherit;opacity:.6}
+.on-light{background:#FFFFFF;color:#1A1C20}
+.on-dark{background:#141517;color:#EEEFF1}
+.pair{display:grid;gap:8px}
+.adaptive{display:flex;gap:20px;flex-wrap:wrap}
+.adaptive figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:6px}
+.adaptive figcaption{font-size:12px;color:var(--dim)}
+.phone{border-radius:var(--r);padding:20px 12px 14px;background:#4E5B53;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;max-width:360px}
+.phone.night{background:#1E2430}
+.app{display:flex;flex-direction:column;align-items:center;gap:5px;color:#fff;font-size:11px;font-weight:500;text-shadow:0 1px 2px rgba(0,0,0,.35)}
+.app svg{width:52px;height:52px;display:block}
+.tabs{display:flex;gap:2px;padding:6px 6px 0;border-radius:var(--r-m) var(--r-m) 0 0;background:#DEE1E6}
+.tab{display:flex;align-items:center;gap:8px;padding:7px 12px;font-size:12px;color:#3C4043;border-radius:8px 8px 0 0;max-width:200px;white-space:nowrap}
+.tab.on{background:#fff}
+.tabs.dark{background:#202124}.tabs.dark .tab{color:#BDC1C6}.tabs.dark .tab.on{background:#35363A;color:#E8EAED}
+.lockups{display:flex;flex-direction:column;gap:8px}
+.lockup{display:flex;align-items:center;gap:12px;padding:16px 18px;border-radius:var(--r-m)}
+.lockup .wm{font-weight:650;font-size:24px;letter-spacing:-.025em}
+.lockup.sm{gap:9px;padding:12px 18px}.lockup.sm .wm{font-size:16px;letter-spacing:-.015em}
+@media (max-width:900px){.grid{grid-template-columns:1fr}.compare{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Logo Horizontal · D-207</h1>
+      <p class="lede">Patru direcții pentru semnul aplicației, desenate ca forme simple (fără font în semn), ca să arate identic ca iconiță PWA, favicon, Linux și Android. Același fișier SVG de 512 pentru toate dimensiunile — fără variantă „hinted” pentru 16px.</p>
+    </div>
+    <div class="toggle" role="group" aria-label="Temă">
+      <button data-t="auto">Auto</button><button data-t="light">Luminos</button><button data-t="dark">Întunecat</button>
+    </div>
+  </header>
+  <div class="compare" id="compare"></div>
+  <div id="variants"></div>
+</div>
+<script src="variants.js"></script>
+<script>
+const V = window.HZ_VARIANTS, REC = window.HZ_RECOMMENDED
+let uid = 0
+// Forme de mască, toate în cutia 512
+function squircle(){ // superelipsă n=5, apropiere de masca Android/One UI
+  const n=5, pts=[]; for(let i=0;i<=72;i++){const t=i/72*2*Math.PI,c=Math.cos(t),s=Math.sin(t)
+    pts.push([256+256*Math.sign(c)*Math.abs(c)**(2/n),256+256*Math.sign(s)*Math.abs(s)**(2/n)])}
+  return 'M'+pts.map(p=>p.map(x=>x.toFixed(1)).join(' ')).join('L')+'Z'
+}
+const SQ = squircle()
+const SHAPES = {
+  app:   '<rect width="512" height="512" rx="112"/>',
+  ios:   '<rect width="512" height="512" rx="115"/>',
+  circle:'<circle cx="256" cy="256" r="256"/>',
+  squircle:`<path d="${SQ}"/>`,
+}
+function icon(v, size, shape='app', opts={}){
+  const id = 'm'+(uid++)
+  const safe = opts.safe ? '<circle cx="256" cy="256" r="235" fill="none" stroke="#E5484D" stroke-width="6" stroke-dasharray="16 12" opacity=".9"/>' : ''
+  const edgeCol = {'#FFFFFF':'rgba(0,0,0,.12)','#1A1C20':'rgba(255,255,255,.16)'}[v.bg.toUpperCase()]
+  const edge = edgeCol && opts.edge!==false ? `<g clip-path="url(#${id})"><g fill="none" stroke="${edgeCol}" stroke-width="${Math.max(4, 1024/size)}">${SHAPES[shape]}</g></g>` : ''
+  return `<svg width="${size}" height="${size}" viewBox="0 0 512 512" role="img" aria-label="${v.name}"><defs><clipPath id="${id}">${SHAPES[shape]}</clipPath></defs>`+
+    `<g clip-path="url(#${id})"><rect width="512" height="512" fill="${v.bg}"/>${v.fg}</g>${edge}${safe}</svg>`
+}
+const generic = [
+  {n:'Calendar', bg:'#F1F3F4', fg:'<rect x="136" y="150" width="240" height="220" rx="28" fill="#fff" stroke="#5F6368" stroke-width="20"/><rect x="136" y="150" width="240" height="64" rx="28" fill="#EA4335"/><text x="256" y="330" font-size="110" font-weight="700" text-anchor="middle" fill="#3C4043" font-family="Inter,sans-serif">17</text>'},
+  {n:'Notițe', bg:'#FBBC04', fg:'<rect x="150" y="140" width="212" height="232" rx="24" fill="#fff"/><rect x="186" y="196" width="140" height="18" rx="9" fill="#C9A100"/><rect x="186" y="244" width="140" height="18" rx="9" fill="#C9A100"/><rect x="186" y="292" width="90" height="18" rx="9" fill="#C9A100"/>'},
+  {n:'Mesaje', bg:'#1A73E8', fg:'<path d="M140 160h232a30 30 0 0 1 30 30v130a30 30 0 0 1-30 30H220l-60 46v-46h-20a30 30 0 0 1-30-30V190a30 30 0 0 1 30-30z" fill="#fff"/>'},
+]
+function app(v,label){return `<div class="app">${icon(v,52,'circle',{edge:false})}<span>${label}</span></div>`}
+function phone(v,night){
+  return `<div class="phone${night?' night':''}">${app(generic[0],'Calendar')}${app(generic[1],'Notițe')}${app(v,'Horizontal')}${app(generic[2],'Mesaje')}</div>`
+}
+function sizes(v,cls){
+  return `<div class="sizes ${cls}">`+[[180,'ios','180 · iOS'],[48,'app','48'],[32,'app','32'],[16,'app','16']]
+    .map(([s,sh,l])=>`<figure>${icon(v,s,sh)}<figcaption>${l}</figcaption></figure>`).join('')+'</div>'
+}
+function tabs(v,dark){
+  return `<div class="tabs${dark?' dark':''}"><div class="tab on">${icon(v,16)}<span>Azi · Horizontal</span></div><div class="tab">${icon(generic[1],16)}<span>Notițe</span></div><div class="tab">${icon(generic[2],16)}<span>Mesaje</span></div></div>`
+}
+function lockup(v,cls){
+  return `<div class="lockup ${cls}">${icon(v,44)}<span class="wm">Horizontal</span></div><div class="lockup sm ${cls}">${icon(v,24)}<span class="wm">Horizontal</span></div>`
+}
+document.getElementById('compare').innerHTML = V.map(v=>
+  `<a href="#v-${v.id}">${icon(v,96)}<span class="lbl">${v.id.toUpperCase()} · ${v.name}${v.id===REC?' ★':''}</span><span class="tiny">${icon(v,32)}${icon(v,16)}</span></a>`).join('')
+document.getElementById('variants').innerHTML = V.map(v=>`
+<section class="v" id="v-${v.id}">
+  <div class="vhead"><span class="k">${v.id.toUpperCase()}</span><h2>${v.name}</h2>${v.id===REC?'<span class="badge">Recomandat</span>':''}</div>
+  <p class="why">${v.why}</p>
+  ${v.id===REC?`<p class="rec"><b>De ce aceasta:</b> e singura care spune numele (orizont) fără literă și fără să copieze bifa generică a categoriei; două forme pline, iar linia care taie toată iconița se citește ca orizont chiar și la 16px, în fila browserului, pe fundal luminos și întunecat. Se poate și anima (soarele urcă) pe ecranul de pornire, iar culoarea bate cu butoanele din aplicație.</p>`:''}
+  <div class="grid">
+    <div class="hero">${icon(v,512)}</div>
+    <div class="side">
+      <div class="card"><h3>Dimensiuni, pe luminos și pe întunecat</h3><div class="pair">${sizes(v,'on-light')}${sizes(v,'on-dark')}</div></div>
+      <div class="card"><h3>Favicon în fila browserului (16px)</h3><div class="pair">${tabs(v,false)}${tabs(v,true)}</div></div>
+      <div class="card"><h3>Android adaptive · cerc, squircle (linia roșie = zona sigură 66dp)</h3><div class="adaptive">
+        <figure>${icon(v,120,'circle',{safe:true})}<figcaption>cerc</figcaption></figure>
+        <figure>${icon(v,120,'squircle',{safe:true})}<figcaption>squircle</figcaption></figure>
+        <figure>${icon(v,120,'circle')}<figcaption>cerc, fără ghid</figcaption></figure>
+        <figure>${icon(v,120,'squircle')}<figcaption>squircle, fără ghid</figcaption></figure>
+      </div></div>
+      <div class="card"><h3>Pe ecranul de start</h3><div class="pair">${phone(v,false)}${phone(v,true)}</div></div>
+      <div class="card"><h3>Semn + nume (Inter 650)</h3><div class="lockups">${lockup(v,'on-light')}${lockup(v,'on-dark')}</div></div>
+    </div>
+  </div>
+</section>`).join('')
+// Tema
+const root = document.documentElement
+function setTheme(t){ if(t==='auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme',t)
+  document.querySelectorAll('.toggle button').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.t===t)))
+  try{ localStorage.setItem('hz-logo-theme',t) }catch(e){} }
+let saved='auto'; try{ saved = localStorage.getItem('hz-logo-theme')||'auto' }catch(e){}
+const q = new URLSearchParams(location.search).get('theme'); setTheme(q||saved)
+document.querySelectorAll('.toggle button').forEach(b=>b.onclick=()=>setTheme(b.dataset.t))
+</script>
+</body>
+</html>

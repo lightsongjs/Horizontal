@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs><linearGradient id="hz" gradientUnits="userSpaceOnUse" x1="131" y1="221" x2="381" y2="395">
+    <stop offset="0" stop-color="#2366FF"/><stop offset=".5" stop-color="#1DA1DC"/><stop offset="1" stop-color="#16D0A4"/>
+  </linearGradient><mask id="cut"><rect width="512" height="512" fill="#fff"/><rect x="0" y="272" width="512" height="71" fill="#000"/></mask></defs>
+  <rect width="512" height="512" rx="115" fill="#141517"/>
+  <path fill-rule="evenodd" mask="url(#cut)" fill="url(#hz)" d="M97 256a159 159 0 1 0 318 0a159 159 0 1 0 -318 0zM147 256a109 109 0 1 0 218 0a109 109 0 1 0 -218 0z"/>
+  <rect x="55" y="286" width="402" height="44" rx="22.0" fill="url(#hz)"/>
+</svg>
