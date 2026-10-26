@@ -39,7 +39,7 @@ export function QuickAddPage() {
   }, [])
   if (loading) return null
   if (enabled && !session) {
-    return <p className="qab-empty">Deschide Horizon și autentifică-te o dată — bara folosește aceeași sesiune.</p>
+    return <p className="qab-empty">Deschide Horizontal și autentifică-te o dată — bara folosește aceeași sesiune.</p>
   }
   return (
     <HorizontalProvider>

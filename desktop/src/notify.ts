@@ -59,7 +59,7 @@ export async function createNotifier(onAction: (a: NotifyAction) => void): Promi
       const actions = r.kind === 'event'
         ? ['default', 'Deschide']
         : ['default', 'Deschide', 'done', 'Gata', 'snooze15', '15 min', 'snooze30', '30 min']
-      const nid: number = await n.Notify('Horizon', 0, 'horizontal', r.title, r.body,
+      const nid: number = await n.Notify('Horizontal', 0, 'horizontal', r.title, r.body,
         actions,
         { urgency: new dbus.Variant('y', 2), resident: new dbus.Variant('b', true), 'desktop-entry': new dbus.Variant('s', 'horizontal') },
         -1)

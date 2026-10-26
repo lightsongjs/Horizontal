@@ -72,7 +72,7 @@ object Notifier {
     fun showReconnect(ctx: Context) {
         val n = NotificationCompat.Builder(ctx, CH_STATUS).setSmallIcon(R.drawable.ic_stat_hz)
             .setContentTitle("Reconectează mementourile")
-            .setContentText("Deschide Horizon și scrie parola o dată.")
+            .setContentText("Deschide Horizontal și scrie parola o dată.")
             .setContentIntent(PendingIntent.getActivity(ctx, 7, Intent(ctx, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE))
             .setAutoCancel(true)
         try { NotificationManagerCompat.from(ctx).notify("stare", STATUS_ID, n.build()) } catch (e: SecurityException) {}

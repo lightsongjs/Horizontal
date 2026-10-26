@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Horizon</string>
-    <string name="title_activity_main">Horizon</string>
+    <string name="app_name">Horizontal</string>
+    <string name="title_activity_main">Horizontal</string>
     <string name="package_name">ro.horizontal.app</string>
     <string name="custom_url_scheme">ro.horizontal.app</string>
     <string name="widget_agenda_desc">Restanțele și următoarele 7 zile, cu bifă</string>

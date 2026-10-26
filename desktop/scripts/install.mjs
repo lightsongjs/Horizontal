@@ -57,7 +57,7 @@ try { run('gtk-update-icon-cache', ['-f', '-t', icons]) } catch { /* opțional *
 //    ca GNOME să lege fereastra de iconiță. Suprascrie un lansator PWA mai vechi cu același nume.
 const entry = (extra) => `[Desktop Entry]
 Type=Application
-Name=Horizon
+Name=Horizontal
 Comment=Planificare și sarcini
 Exec=${exe}${extra} %U
 Icon=horizontal
@@ -76,7 +76,7 @@ const KB = 'org.gnome.settings-daemon.plugins.media-keys'
 const list = parseStrv(run('gsettings', ['get', KB, 'custom-keybindings']))
 run('gsettings', ['set', KB, 'custom-keybindings', formatStrv(withPath(list, KEYBINDING_PATH))])
 const kb = `${KB}.custom-keybinding:${KEYBINDING_PATH}`
-run('gsettings', ['set', kb, 'name', 'Horizon — captură'])
+run('gsettings', ['set', kb, 'name', 'Horizontal — captură'])
 run('gsettings', ['set', kb, 'command', quick])
 run('gsettings', ['set', kb, 'binding', '<Control><Shift>a'])
 

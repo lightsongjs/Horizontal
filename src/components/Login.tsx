@@ -23,7 +23,7 @@ export function Login() {
       <div className="login">
         <div className="login-card">
           <img className="login-mark" src="/icon.svg" width={48} height={48} alt="" />
-          <h1>Horizon</h1>
+          <h1>Horizontal</h1>
           <p className="login-sub">Autentifică-te ca să continui.</p>
 
           <form onSubmit={submit}>

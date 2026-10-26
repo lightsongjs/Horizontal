@@ -52,7 +52,7 @@ function guard(wc: WebContents) {
 }
 
 function createMain() {
-  mainWin = new BrowserWindow({ width: 1400, height: 900, show: false, title: 'Horizon', icon: WINDOW_ICON, autoHideMenuBar: true, webPreferences: webPreferences() })
+  mainWin = new BrowserWindow({ width: 1400, height: 900, show: false, title: 'Horizontal', icon: WINDOW_ICON, autoHideMenuBar: true, webPreferences: webPreferences() })
   guard(mainWin.webContents)
   void mainWin.loadURL(START_URL)
   // Închiderea ascunde: fereastra principală e cea care știe mementourile, deci
@@ -67,7 +67,7 @@ function createBar() {
   // din prima. Pe Wayland poziția o alege compozitorul (centrat).
   barWin = new BrowserWindow({
     width: 720, height: 150, show: false, frame: false, resizable: false,
-    alwaysOnTop: true, skipTaskbar: true, center: true, title: 'Horizon — captură', icon: WINDOW_ICON,
+    alwaysOnTop: true, skipTaskbar: true, center: true, title: 'Horizontal — captură', icon: WINDOW_ICON,
     webPreferences: webPreferences(),
   })
   guard(barWin.webContents)

@@ -76,7 +76,7 @@ self.addEventListener('push', (event) => {
     if (!payload?.id) throw new Error('payload fără id')
   } catch {
     event.waitUntil(
-      self.registration.showNotification('Horizon', {
+      self.registration.showNotification('Horizontal', {
         body: 'Ai un memento. Deschide aplicația.',
         tag: 'reminder-fallback',
       }),

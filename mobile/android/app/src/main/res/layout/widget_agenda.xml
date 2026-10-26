@@ -55,7 +55,7 @@
                 android:textColor="@color/w_ink3" />
             <TextView android:id="@+id/w_empty_btn" android:layout_width="wrap_content" android:layout_height="wrap_content"
                 android:layout_marginTop="14dp" android:paddingStart="12dp" android:paddingEnd="12dp" android:paddingTop="8dp"
-                android:paddingBottom="8dp" android:background="@drawable/w_btn_soft" android:text="Deschide Horizon"
+                android:paddingBottom="8dp" android:background="@drawable/w_btn_soft" android:text="Deschide Horizontal"
                 android:fontFamily="sans-serif-medium" android:textSize="13sp" android:textColor="@color/w_accent_ink"
                 android:visibility="gone" />
         </LinearLayout>
