@@ -6,6 +6,7 @@ import { moveBlock, moveBlockMessage, movedIssue, SAME_PROJECT } from '../lib/mo
 import { withPin, withoutPin, type Pin } from '../lib/pins'
 import { normalizeRules, type SavedFilter } from '../lib/savedFilters'
 import { SEED_ISSUES, SEED_PROJECTS, SEED_THEMES, SEED_WAVES } from '../lib/seed'
+import { planRestore, sortTrash, TRASH_DAYS, type LocalTrashEntry, type TrashItem } from '../lib/trash'
 import type { Assignee, Issue, IssueEvent, InboxRow, Obstacle, ObstacleLink, Project, ProjectMember, Theme, Wave } from '../lib/types'
 import {
   themeKey,
@@ -44,6 +45,8 @@ interface DB {
   /** Fixările din sertar. Local = ale dispozitivului: n-are cont de sincronizat. */
   pins: Pin[]
   filters: SavedFilter[]
+  /** Coșul — oglinda lui `issues_trash` (vezi `src/lib/trash.ts`). */
+  trash: LocalTrashEntry[]
 }
 
 function clone<T>(v: T): T {
@@ -83,6 +86,7 @@ function load(): DB {
         seen: db.seen ?? {},
         pins: db.pins ?? [],
         filters: db.filters ?? [],
+        trash: db.trash ?? [],
       }
     }
   } catch {
@@ -100,6 +104,7 @@ function load(): DB {
     seen: {},
     pins: [],
     filters: [],
+    trash: [],
   }
   save(seeded)
   return seeded
@@ -145,10 +150,40 @@ function nextObstaclePosition(db: DB, projectId: string): number {
   return max + 1
 }
 
-/** Removes issues by id and strips them from every other issue's `deps`. */
+/** Câte zile stă în coș, în milisecunde — `purge_expired_trash` pe server. */
+const TRASH_MS = TRASH_DAYS * 86_400_000
+
+const trashId = () =>
+  typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `t-${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+/**
+ * Removes issues by id and strips them from every other issue's `deps`. Ca
+ * triggerul `issues_trash`: fiecare tichet intră întâi în coș, cu muchiile în
+ * ambele sensuri, obstacolele, firul și vizita — poza se face ÎNAINTE de orice
+ * ștergere, deci și la o ștergere de mai multe deodată.
+ */
 function deleteIssuesImpl(db: DB, ids: string[]): void {
   if (ids.length === 0) return
   const gone = new Set(ids)
+  const at = new Date().toISOString()
+  for (const issue of db.issues.filter((i) => gone.has(i.id))) {
+    db.trash.push({
+      id: trashId(),
+      issueId: issue.id,
+      projectId: issue.projectId,
+      title: issue.title,
+      deletedAt: at,
+      deletedBy: null,
+      deletedByName: null,
+      issue: clone(issue),
+      dependents: db.issues.filter((i) => i.deps?.includes(issue.id)).map((i) => i.id),
+      obstacleIds: db.obstacleLinks.filter((l) => l.issueId === issue.id).map((l) => l.obstacleId),
+      events: (db.events ?? []).filter((e) => e.issueId === issue.id),
+      seenAt: db.seen?.[issue.id] ?? null,
+    })
+  }
+  db.events = (db.events ?? []).filter((e) => !gone.has(e.issueId))
+  for (const id of ids) delete db.seen?.[id]
   db.issues = db.issues
     .filter((i) => !gone.has(i.id))
     .map((i) => (i.deps?.some((d) => gone.has(d)) ? { ...i, deps: i.deps.filter((d) => !gone.has(d)) } : i))
@@ -196,6 +231,7 @@ export function createLocalRepository(): Repository {
       db.waves = db.waves.filter((w) => w.projectId !== id)
       db.themes = db.themes.filter((t) => t.projectId !== id)
       db.issues = db.issues.filter((i) => i.projectId !== id)
+      db.trash = db.trash.filter((t) => t.projectId !== id)
       const goneObstacles = new Set(db.obstacles.filter((o) => o.projectId === id).map((o) => o.id))
       db.obstacles = db.obstacles.filter((o) => o.projectId !== id)
       db.obstacleLinks = db.obstacleLinks.filter((l) => !goneObstacles.has(l.obstacleId))
@@ -370,6 +406,48 @@ export function createLocalRepository(): Repository {
       }
       save(db)
       return clone(moved)
+    },
+
+    async listTrash() {
+      const db = load()
+      // Expirarea (pe server: cronul `purge-trash`) se face la citire.
+      const now = Date.now()
+      const live = db.trash.filter((t) => now - Date.parse(t.deletedAt) < TRASH_MS)
+      if (live.length !== db.trash.length) { db.trash = live; save(db) }
+      const rows: TrashItem[] = live.map(({ id, issueId, projectId, title, deletedAt, deletedBy, deletedByName }) =>
+        ({ id, issueId, projectId, title, deletedAt, deletedBy, deletedByName }))
+      return sortTrash(rows)
+    },
+
+    async restoreFromTrash(trashId: string) {
+      const db = load()
+      const entry = db.trash.find((t) => t.id === trashId)
+      if (!entry) throw new Error('Tichetul nu mai e în coș.')
+      const project = db.projects.find((p) => p.id === entry.projectId)
+      if (!project) throw new Error('Tichetul nu mai e în coș.')
+      const plan = planRestore(entry, {
+        project,
+        issues: db.issues,
+        waves: db.waves.filter((w) => w.projectId === project.id).map((w) => w.number),
+        themes: db.themes.filter((t) => t.projectId === project.id).map((t) => t.key),
+        obstacleIds: db.obstacles.map((o) => o.id),
+      })
+      const id = plan.issue.id
+      db.issues.push(plan.issue)
+      const dependents = new Set(plan.dependents)
+      db.issues = db.issues.map((i) => (dependents.has(i.id) && !i.deps.includes(id) ? { ...i, deps: [...i.deps, id] } : i))
+      for (const o of plan.obstacleIds) db.obstacleLinks.push({ obstacleId: o, issueId: id })
+      db.events = [...(db.events ?? []), ...entry.events.map((e) => ({ ...e, issueId: id }))]
+      if (entry.seenAt) db.seen = { ...db.seen, [id]: entry.seenAt }
+      db.trash = db.trash.filter((t) => t.id !== trashId)
+      save(db)
+      return { id, originalId: entry.issueId }
+    },
+
+    async purgeFromTrash(trashId: string) {
+      const db = load()
+      db.trash = db.trash.filter((t) => t.id !== trashId)
+      save(db)
     },
 
     async listObstacles(projectId: string) {

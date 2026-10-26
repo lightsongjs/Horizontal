@@ -1406,6 +1406,48 @@ firul, fișierele (rândurile) și vizitele urmează tichetul.
 Setup: `npm run migrate supabase/migration-move-issue.sql` **ÎNAINTE** de push
 (clientul cheamă RPC-ul; fără el, mutarea spune „lipsește migrarea").
 
+## Coșul de gunoi (tichete șterse)
+
+Spec: `docs/superpowers/specs/2026-10-26-cos-de-gunoi-design.md`. **Ștergerea
+rămâne o ștergere reală** — fără `deleted_at` pe `issues`, care ar fi cerut un
+filtru în fiecare cititor (pagina, cache-ul offline, `SyncWorker`/widget-ul
+din APK, `functions/api`, `send-reminders`). Triggerul `before delete`
+`issues_trash` (`supabase/migration-trash.sql`) pune deoparte în
+`issues_trash` rândul (`to_jsonb`) și tot ce ia cascada: dependențele în
+ambele sensuri, obstacolele, firul, rândurile de fișiere, vizitele tuturor,
+căile pozelor. Nimic din aplicație nu „mută în coș”: `deleteIssue(s)` și coada
+offline sunt neschimbate.
+
+- **Nu intră în coș:** mutarea (`move_issue` pune `horizontal.trash = off`
+  local, înainte de delete — de-aia `migration-move-issue.sql` se re-rulează
+  ÎNAINTE de `migration-trash.sql`) și ștergerea proiectului (triggerul sare
+  când proiectul nu mai e; coșul lui pleacă prin cascadă).
+- **`restore_issue`** (`security definer`, scriere sau admin; `HZT01`/`HZT02`)
+  întoarce `{ id, original_id }`: numărul vechi dacă e liber, altfel „cel mai
+  mare + 1” — toastul o spune (`restoreNotice`). Reinserarea pune doar
+  coloanele de azi (`trash_reinsert`, o coloană nouă primește default-ul); val
+  / temă / persoană dispărute cad pe valul activ / fără / null; un memento
+  trecut nu sună; dependențele revin doar spre tichete existente și fără ciclu.
+- **Pozele nu se mai șterg la ștergere** (`deleteIssuesImpl` șterge doar
+  rânduri). Octeții pleacă când tichetul iese din coș: „Șterge definitiv”
+  (`purge_trash`) și expirarea de 30 de zile pun căile în `storage_purge`, iar
+  funcția edge `purge-trash` (cron zilnic) le șterge prin Storage API — nu
+  `delete from storage.objects`, care ar lăsa octeții în S3.
+  `storage-report --clean` sare peste pozele din coș.
+- **UI:** rotița → „Date” → „Coș · tichete șterse” (`TrashSheet.tsx`, foaie
+  `trash` împinsă peste setări, „Înapoi” = rotița). Fără ecran, fără URL.
+  Lista vine din `trash_rows` (vedere `security_invoker`, cu numele celui care
+  a șters), direct din `repository`, nu din store; restaurarea cere apoi un
+  `refresh()`. Offline prin `net()`. Modul local oglindește tot în
+  `localStorage` (`planRestore` din `src/lib/trash.ts`).
+- Teste: `src/lib/trash.test.ts`, repo-urile, `npm run test:trash-sql`
+  (Docker de unică folosință, ca `test:move-sql` — NICIODATĂ producția),
+  `test:nav` („coș: …”), `test:layout` (rândul la 320–430px).
+
+Deploy, în ordine: `supabase functions deploy purge-trash` →
+`npm run migrate supabase/migration-move-issue.sql` →
+`npm run migrate supabase/migration-trash.sql` → push.
+
 ## Firul și pasarea
 
 Regula centrală, de care depinde tot restul: `assignee_id` gol înseamnă „al

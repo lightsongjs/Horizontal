@@ -870,6 +870,19 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
 
     deleteIssue: (id) => repo.deleteIssues([id]),
 
+    // Coșul cere rețea, ca proiectele: nu are `overlay`, iar restaurarea e o
+    // decizie a serverului (număr, dependențe). Tichetul restaurat ajunge în
+    // liste la `refresh()`-ul pe care îl cere ecranul „Coș".
+    listTrash: () => net(() => remote.listTrash()),
+    async restoreFromTrash(trashId) {
+      const r = await netWrite(() => remote.restoreFromTrash(trashId))
+      // Numărul a renăscut: o traducere veche „mutat" pe el ar trimite
+      // editările tichetului restaurat la cel mutat.
+      forgetMoved(r.id)
+      return r
+    },
+    purgeFromTrash: (trashId) => netWrite(() => remote.purgeFromTrash(trashId)),
+
     /**
      * Cere rețea (ca proiectele): numărul nou îl dă serverul, sub lacătul lui,
      * iar o mutare pusă la coadă ar fi lăsat restul cozii să scrie pe un ID care

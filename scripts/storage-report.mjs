@@ -52,8 +52,19 @@ if (error) {
   process.exit(1)
 }
 
+// Pozele tichetelor din coș (migration-trash.sql) n-au rând în `attachments`,
+// dar NU sunt orfane: o restaurare le aduce înapoi. `--clean` le-ar fi șters.
+// Fără tabelă (migrarea nerulată) lista e goală, ca înainte.
+const { data: trash, error: trashErr } = await supabase.from('issues_trash').select('paths')
+if (trashErr && trashErr.code !== '42P01' && trashErr.code !== 'PGRST205') {
+  console.error('Nu s-a putut citi coșul:', trashErr.message)
+  process.exit(1)
+}
+const inTrash = new Set((trash ?? []).flatMap((t) => t.paths ?? []))
+
 const byPath = new Map(rows.map((r) => [r.path, r]))
-const orphans = objects.filter((o) => !byPath.has(o.path))
+const orphans = objects.filter((o) => !byPath.has(o.path) && !inTrash.has(o.path))
+if (inTrash.size) console.log(`În coș (păstrate pentru restaurare): ${inTrash.size} obiecte`)
 const missing = rows.filter((r) => !objects.some((o) => o.path === r.path))
 
 const perProject = new Map()

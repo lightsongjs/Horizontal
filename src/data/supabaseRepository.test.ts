@@ -45,6 +45,9 @@ const { fakeDb } = vi.hoisted(() => {
     order() {
       return this
     }
+    limit() {
+      return this
+    }
     single() {
       this.single_ = true
       return this
@@ -319,22 +322,22 @@ describe('supabaseRepository', () => {
     expect(fakeDb.tables.issues).toHaveLength(0)
   })
 
-  it('deleteIssue șterge rândul ȘI octeții fișierelor lui', async () => {
+  it('deleteIssue lasă octeții în bucket — coșul îi aduce înapoi la restaurare', async () => {
     fake_seed()
     const repo = createSupabaseRepository()
     await repo.deleteIssue('P-01')
 
     expect(fakeDb.tables.issues.some((i) => i.id === 'P-01')).toBe(false)
-    expect(fakeDb.storage.removed.flat()).toEqual(['p/P-01/a1'])
+    expect(fakeDb.storage.removed).toEqual([])
   })
 
-  it('deleteIssues citește căile ÎNAINTE de ștergere — cascada le-ar duce cu ea', async () => {
+  it('deleteIssues: un singur delete, fără Storage', async () => {
     fake_seed()
     const repo = createSupabaseRepository()
     await repo.deleteIssues(['P-01', 'P-02'])
 
     expect(fakeDb.tables.issues).toEqual([])
-    expect(fakeDb.storage.removed.flat().sort()).toEqual(['p/P-01/a1', 'p/P-02/a2'])
+    expect(fakeDb.storage.removed).toEqual([])
   })
 
   it('deleteIssues cu listă goală nu atinge nimic', async () => {
@@ -399,18 +402,6 @@ describe('supabaseRepository', () => {
 
     expect(updated.resolvedAt).not.toBeNull()
     expect(fakeDb.tables.obstacles[0].resolved_at).not.toBeNull()
-  })
-
-  it('un eșec la ștergerea octeților NU face ștergerea tichetului să pară eșuată', async () => {
-    fake_seed()
-    const boom = { from: () => ({ remove: async () => ({ data: null, error: { message: 'reteaua a picat' } }) }) }
-    const original = fakeDb.storage
-    // @ts-expect-error -- înlocuire intenționată în test
-    fakeDb.storage = boom
-    const repo = createSupabaseRepository()
-    await expect(repo.deleteIssue('P-01')).resolves.toBeUndefined()
-    fakeDb.storage = original
-    expect(fakeDb.tables.issues.some((i) => i.id === 'P-01')).toBe(false)
   })
 
   it('rowToEvent mapează snake_case la camelCase', () => {
@@ -576,5 +567,35 @@ describe('moveIssue', () => {
   it('fără migrare (PGRST202): un mesaj care spune ce lipsește', async () => {
     withRpc(async () => ({ data: null, error: { code: 'PGRST202', message: 'Could not find the function public.move_issue' } }))
     await expect(createSupabaseRepository().moveIssue('HZ-12', 'apo')).rejects.toThrow('lipsește migrarea')
+  })
+})
+
+describe('coșul', () => {
+  type Rpc = (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>
+  const withRpc = (rpc: Rpc) => Object.assign(fakeDb, { rpc: vi.fn(rpc) })
+
+  it('listTrash citește trash_rows, cele mai noi întâi', async () => {
+    fakeDb.tables.trash_rows = [
+      { id: 't1', issue_id: 'P-01', project_id: 'p', title: 'A', deleted_at: '2026-10-20T10:00:00Z', deleted_by: 'u1', deleted_by_name: 'Ion' },
+      { id: 't2', issue_id: 'P-02', project_id: 'p', title: 'B', deleted_at: '2026-10-25T10:00:00Z', deleted_by: null, deleted_by_name: null },
+    ]
+    const rows = await createSupabaseRepository().listTrash()
+    expect(rows.map((r) => r.issueId)).toEqual(['P-02', 'P-01'])
+    expect(rows[1]).toEqual({ id: 't1', issueId: 'P-01', projectId: 'p', title: 'A', deletedAt: '2026-10-20T10:00:00Z', deletedBy: 'u1', deletedByName: 'Ion' })
+  })
+
+  it('restoreFromTrash cheamă `restore_issue` și întoarce ambele ID-uri', async () => {
+    const db = withRpc(async () => ({ data: { id: 'P-05', original_id: 'P-02' }, error: null }))
+    const r = await createSupabaseRepository().restoreFromTrash('t2')
+    expect(db.rpc).toHaveBeenCalledWith('restore_issue', { p_trash_id: 't2' })
+    expect(r).toEqual({ id: 'P-05', originalId: 'P-02' })
+  })
+
+  it('refuzul serverului ajunge cu mesajul lui; fără migrare, un mesaj clar', async () => {
+    const refusal = { code: 'HZT02', message: 'Nu ai drept de editare în proiectul „X".' }
+    withRpc(async () => ({ data: null, error: refusal }))
+    await expect(createSupabaseRepository().restoreFromTrash('t1')).rejects.toBe(refusal)
+    withRpc(async () => ({ data: null, error: { code: 'PGRST202', message: 'Could not find' } }))
+    await expect(createSupabaseRepository().purgeFromTrash('t1')).rejects.toThrow('lipsește migrarea')
   })
 })
