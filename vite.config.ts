@@ -24,8 +24,8 @@ export default defineConfig(({ command: _command }) => ({
       },
       includeAssets: ['icon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Horizontal',
-        short_name: 'Horizontal',
+        name: 'Horizon',
+        short_name: 'Horizon',
         description: 'Project planning with dependency layers and waves',
         theme_color: '#1A237E',
         background_color: '#F7F9FC',

@@ -2,7 +2,7 @@
   "name": "horizontal-desktop",
   "version": "0.1.0",
   "private": true,
-  "description": "Horizontal pentru Linux — cutia Electron rezidentă",
+  "description": "Horizon pentru Linux — cutia Electron rezidentă",
   "main": "dist/main.js",
   "desktopName": "horizontal.desktop",
   "author": "Horizontal",

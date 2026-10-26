@@ -139,7 +139,7 @@ function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, ca
         <div className="hd-title">
           <div className={`logo${list?.kind === 'today' ? ' star' : ''}`}>{inbox ? <Icon name="people" size={20} /> : list ? <Icon name={list.icon} size={list.kind === 'today' ? 24 : 20} /> : filterId ? <Icon name={filter?.icon ?? 'filter'} size={20} /> : projectChrome ? projectChrome.prefix.slice(0, 2) : 'H'}</div>
           <h1>
-            {inbox ? 'Ale mele' : list ? list.label : filterId ? filter?.name ?? 'Filtru' : projectChrome ? projectChrome.name : 'Horizontal'}
+            {inbox ? 'Ale mele' : list ? list.label : filterId ? filter?.name ?? 'Filtru' : projectChrome ? projectChrome.name : 'Horizon'}
             {(list || filter) && listCount > 0 && <span className="hcount">{listCount}</span>}
           </h1>
         </div>

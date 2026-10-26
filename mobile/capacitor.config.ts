@@ -7,7 +7,7 @@ const url = process.env.HORIZONTAL_URL ?? 'https://horizontal-dyx.pages.dev'
 
 const config: CapacitorConfig = {
   appId: 'ro.horizontal.app',
-  appName: 'Horizontal',
+  appName: 'Horizon',
   // Cerut de Capacitor chiar cu `server.url`; e doar pagina de rezervă.
   webDir: 'www',
   server: { url, cleartext: url.startsWith('http://') },
