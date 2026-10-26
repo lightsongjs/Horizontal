@@ -1,6 +1,7 @@
 import type { SyntaxNode } from '@lezer/common'
 import { mdParser } from './parse'
 import { refPattern, safeHref } from './safeUrl'
+import { isBrTag } from './table'
 
 export type Inline =
   | { t: 'text'; text: string }
@@ -67,7 +68,11 @@ function pushLink(out: Inline[], raw: string, label: Inline[], refs: RegExp | nu
   else for (const x of label) x.t === 'text' ? pushText(out, x.text, refs) : out.push(x)
 }
 
-function inlines(node: SyntaxNode, from: number, to: number, src: string, refs: RegExp | null): Inline[] {
+/**
+ * `cell`: suntem într-o celulă de tabel, unde `<br>` e rândul nou (GFM nu are
+ * altul). Numai acolo și numai el; orice alt HTML rămâne text, ca peste tot.
+ */
+function inlines(node: SyntaxNode, from: number, to: number, src: string, refs: RegExp | null, cell = false): Inline[] {
   const out: Inline[] = []
   let pos = from
   for (let c = node.firstChild; c; c = c.nextSibling) {
@@ -76,9 +81,9 @@ function inlines(node: SyntaxNode, from: number, to: number, src: string, refs: 
     if (c.from > pos) pushText(out, src.slice(pos, c.from), refs)
     pos = Math.max(pos, c.to)
     switch (c.name) {
-      case 'StrongEmphasis': out.push({ t: 'strong', children: inlines(c, c.from, c.to, src, refs) }); break
-      case 'Emphasis': out.push({ t: 'em', children: inlines(c, c.from, c.to, src, refs) }); break
-      case 'Strikethrough': out.push({ t: 'del', children: inlines(c, c.from, c.to, src, refs) }); break
+      case 'StrongEmphasis': out.push({ t: 'strong', children: inlines(c, c.from, c.to, src, refs, cell) }); break
+      case 'Emphasis': out.push({ t: 'em', children: inlines(c, c.from, c.to, src, refs, cell) }); break
+      case 'Strikethrough': out.push({ t: 'del', children: inlines(c, c.from, c.to, src, refs, cell) }); break
       case 'InlineCode': {
         const open = c.firstChild!, close = c.lastChild!
         out.push({ t: 'code', text: src.slice(open.to, close === open ? c.to : close.from) })
@@ -92,7 +97,7 @@ function inlines(node: SyntaxNode, from: number, to: number, src: string, refs: 
           else if (k.name === 'URL') url = k
         }
         const labelTo = marks[1]?.from ?? c.to
-        const label = inlines(c, marks[0].to, labelTo, src, null)
+        const label = inlines(c, marks[0].to, labelTo, src, null, cell)
         if (url) pushLink(out, src.slice(url.from, url.to), label, refs)
         else pushText(out, src.slice(c.from, c.to), refs)
         break
@@ -110,6 +115,10 @@ function inlines(node: SyntaxNode, from: number, to: number, src: string, refs: 
       }
       case 'Escape': pushText(out, src.slice(c.from + 1, c.to), refs); break
       case 'HardBreak': out.push({ t: 'br' }); break
+      case 'HTMLTag':
+        if (cell && isBrTag(src.slice(c.from, c.to))) out.push({ t: 'br' })
+        else pushText(out, src.slice(c.from, c.to), refs)
+        break
       default:
         if (!MARKS.has(c.name)) pushText(out, src.slice(c.from, c.to), refs)
     }
@@ -134,7 +143,7 @@ function tableCells(row: SyntaxNode, src: string, refs: RegExp | null): Inline[]
   if (bars.length && bars[bars.length - 1].to === row.to) edges.pop()
   return edges.map(([a, b]) => {
     const c = cells.find((x) => x.from >= a && x.to <= b)
-    return c ? trimEdges(inlines(c, c.from, c.to, src, refs)) : []
+    return c ? trimEdges(inlines(c, c.from, c.to, src, refs, true)) : []
   })
 }
 

@@ -5,7 +5,7 @@ import { toBlocks, type Inline } from '../../lib/markdown/blocks'
 import { mdParser } from '../../lib/markdown/parse'
 import { minimalChange } from '../../lib/markdown/tasks'
 import {
-  deleteCol, deleteRow, editCell, formatTable, insertCol, insertRow, parseTable, setCell, type TableModel,
+  cellIn, deleteCol, deleteRow, editCell, formatTable, insertCol, insertRow, parseTable, setCell, type TableModel,
 } from '../../lib/markdown/table'
 
 /**
@@ -165,7 +165,8 @@ class Controller {
     this.model.rows.forEach((row, r) => row.forEach((v, c) => {
       const ed = this.editing
       if (ed && ed.r === r && ed.c === c) {
-        if (ed.ta.value !== v) { ed.ta.value = v; this.mirror() }
+        // Câmpul ține rândul nou, documentul `<br>`: se compară descifrat.
+        if (ed.ta.value !== cellIn(v)) { ed.ta.value = cellIn(v); this.mirror() }
         return
       }
       if (prev.rows[r][c] !== v || r === 0) { const td = this.td(r, c); if (td) this.paint(td, r, c) }
@@ -182,7 +183,7 @@ class Controller {
       const grow = el('div', 'md-cell-grow')
       const ta = el('textarea', 'md-cell-input')
       ta.rows = 1
-      ta.value = this.model.rows[r][c]
+      ta.value = cellIn(this.model.rows[r][c])
       ta.spellcheck = true
       ta.setAttribute('aria-label', r === 0 ? `Antet, coloana ${c + 1}` : `Rândul ${r}, coloana ${c + 1}`)
       if (r === 0 && this.model.rows[0].every((x) => !x.trim())) ta.placeholder = `Coloana ${c + 1}`
@@ -230,11 +231,12 @@ class Controller {
 
   onInput() {
     const ed = this.editing!
-    // O celulă e un singur rând: un rând nou lipit devine spațiu, pe loc.
-    if (/[\r\n]/.test(ed.ta.value)) {
+    // Rândurile noi (Shift/Ctrl+Enter, sau lipite) rămân rânduri în câmp și
+    // pleacă în document ca `<br>` (`cellOut`); doar CR-ul lipit se aduce la `\n`.
+    if (ed.ta.value.includes('\r')) {
       const at = ed.ta.selectionStart
-      ed.ta.value = ed.ta.value.replace(/\r?\n/g, ' ')
-      ed.ta.setSelectionRange(at, at)
+      ed.ta.value = ed.ta.value.replace(/\r\n?/g, '\n')
+      ed.ta.setSelectionRange(Math.min(at, ed.ta.value.length), Math.min(at, ed.ta.value.length))
     }
     this.mirror()
     const v = ed.ta.value
@@ -296,7 +298,18 @@ class Controller {
       else undo(this.view)
       return
     }
-    if (e.isComposing || e.altKey || mod) return
+    if (e.isComposing) return
+    // Shift / Ctrl / ⌘ + Enter: rând nou ÎN celulă (`<br>` în sursă). Oprit
+    // aici, ca Ctrl+Enter să nu ajungă și la „salvează” din formular
+    // (`IssueForm`, pe `window`) sau la dispecerul Vim.
+    if (e.key === 'Enter' && !e.altKey && (e.shiftKey || mod)) {
+      e.preventDefault()
+      e.stopPropagation()
+      ed.ta.setRangeText('\n', ed.ta.selectionStart, ed.ta.selectionEnd, 'end')
+      this.onInput()
+      return
+    }
+    if (e.altKey || mod) return
     const go = (rr: number, cc: number) => { e.preventDefault(); this.focusCell(rr, cc) }
     switch (e.key) {
       case 'Tab':
@@ -314,12 +327,13 @@ class Controller {
         else this.structure((m) => insertRow(m, m.rows.length), { r: rows, c })
         return
       case 'ArrowUp':
-        if (e.shiftKey) return
+        // Într-o celulă cu mai multe rânduri, ↑/↓ merg întâi printre ele.
+        if (e.shiftKey || (ed.ta.selectionStart > 0 && ed.ta.value.lastIndexOf('\n', ed.ta.selectionStart - 1) >= 0)) return
         if (r > 0) go(r - 1, c)
         else { e.preventDefault(); this.exit('above') }
         return
       case 'ArrowDown':
-        if (e.shiftKey) return
+        if (e.shiftKey || ed.ta.value.indexOf('\n', ed.ta.selectionEnd) >= 0) return
         if (r < rows - 1) go(r + 1, c)
         else { e.preventDefault(); this.exit('below') }
         return
