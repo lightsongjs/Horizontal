@@ -1273,7 +1273,7 @@ def dpin(glyph, label, on=False):
 # proiectele pe un salt de fundal. Fixed, ca în aplicație — peste ecranul „Azi".
 SERTAR = ('<div class="drawer-bg"></div><nav class="drawer">'
           '<div class="dr-head"><span class="dr-avatar">IS</span><span class="dr-who"><span class="dr-name">Ionuț</span>'
-          '<span class="dr-email">ionut@exemplu.ro</span></span><button class="dr-gear">%s</button></div>'
+          '<span class="dr-email">ionut@exemplu.ro</span><span class="me-build">Versiune · acum 2 min</span></span><button class="dr-gear">%s</button></div>'
           '<div class="dr-scroll"><div class="dr-pins">%s</div>'
           '<div class="dr-group">%s</div>'
           '<div class="dr-group dr-filters"><div class="dr-label">Filtre</div>%s'

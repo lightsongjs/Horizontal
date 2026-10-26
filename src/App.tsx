@@ -71,14 +71,6 @@ function SyncBridge() {
  */
 const resolveIssueId = (id: string) => repository.sync?.resolveId(id) ?? id
 
-function getBuildAgo(): string {
-  const diff = Math.floor((Date.now() - new Date(__BUILD_TIME__).getTime()) / 1000)
-  if (diff < 60) return 'just now'
-  if (diff < 3600) { const m = Math.floor(diff / 60); return `${m} minute${m > 1 ? 's' : ''} ago` }
-  if (diff < 86400) { const h = Math.floor(diff / 3600); return `${h} hour${h > 1 ? 's' : ''} ago` }
-  const d = Math.floor(diff / 86400); return `${d} day${d > 1 ? 's' : ''} ago`
-}
-
 const DAYS_FULL = ['duminică', 'luni', 'marți', 'miercuri', 'joi', 'vineri', 'sâmbătă']
 const MON_FULL = ['ianuarie', 'februarie', 'martie', 'aprilie', 'mai', 'iunie', 'iulie', 'august', 'septembrie', 'octombrie', 'noiembrie', 'decembrie']
 
@@ -111,7 +103,6 @@ function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, ca
       person: (id) => assignees.find((a) => a.id === id)?.name,
     })
     : ''
-  const named = inbox || list || filterId
   return (
     <header>
       {/* Comutatorul sidebar-ului: primul în header, fiindcă pe desktop `.back`
@@ -144,9 +135,7 @@ function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, ca
           </h1>
         </div>
         <div className="crumb">
-          {inbox ? 'Ce ți-a pasat cineva.' : list ? smartCrumb(list.kind, new Date()) : filterId ? filterCrumb : projectChrome ? projectChrome.description : 'Conturi și acces'}
-          {!projectChrome && !named && <span style={{ display: 'block', fontSize: 'calc(10px * var(--text-scale))', opacity: 0.5, marginTop: '1px' }}>Built: {getBuildAgo()}</span>}
-        </div>
+          {inbox ? 'Ce ți-a pasat cineva.' : list ? smartCrumb(list.kind, new Date()) : filterId ? filterCrumb : projectChrome ? projectChrome.description : 'Conturi și acces'}        </div>
       </div>
       {projectChrome && (
         <div className="hprog">

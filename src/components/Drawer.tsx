@@ -7,6 +7,7 @@ import { inboxProjectId } from '../lib/captureTokens'
 import { livePins, type PinKind } from '../lib/pins'
 import { Icon } from './Icon'
 import { ProjectMark } from './ProjectMark'
+import { BuildAge } from './BuildAge'
 import { PinGlyph, PinMenu, pinLabel, pinTarget, sameTarget, type MenuTarget, type NavTarget } from './NavMenu'
 
 /** Ce e pe ecran acum, ca rândul lui să fie marcat. */
@@ -133,6 +134,7 @@ export function Drawer({ current, onPick, onClose, onSettings, onNewProject, onF
           <span className="dr-who">
             <span className="dr-name">{who}</span>
             {me && email && <span className="dr-email">{email}</span>}
+            <BuildAge />
           </span>
           <button type="button" className="dr-gear" onClick={onSettings} aria-label="Setări" title="Setări">
             <Icon name="settingsApp" size={19} />

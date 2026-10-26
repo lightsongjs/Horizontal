@@ -962,7 +962,7 @@ const drawer = () => `
 <nav class="drawer">
   <div class="dr-head">
     <span class="dr-avatar">IS</span>
-    <span class="dr-who"><span class="dr-name">Ionuț Salonariu Popescu-Vlădescu</span><span class="dr-email">ionut.foarte.lung@exemplu-domeniu.ro</span></span>
+    <span class="dr-who"><span class="dr-name">Ionuț Salonariu Popescu-Vlădescu</span><span class="dr-email">ionut.foarte.lung@exemplu-domeniu.ro</span><span class="me-build">Versiune · acum 20 de ore</span></span>
     <button class="dr-gear"><svg width="19" height="19"></svg></button>
   </div>
   <div class="dr-scroll">
@@ -1008,6 +1008,11 @@ for (const width of PHONE_WIDTHS) {
       countInside: r(count).right <= r(long).right + 0.5 && count.scrollWidth <= count.clientWidth + 1,
       rowH: Math.round(r(long).height),
       nameOneLine: names.every((n) => lines(n) <= 1),
+      // Vârsta buildului (`BuildAge`): un rând, în coloana numelui, înaintea rotiței.
+      build: (() => {
+        const b = document.querySelector('.me-build')
+        return { lines: lines(b), h: Math.round(r(b).height), beforeGear: r(b).right <= r(gear).left + 0.5, w: Math.round(r(b).width), cut: b.scrollWidth - b.clientWidth }
+      })(),
       bg: getComputedStyle(dr).backgroundColor,
       border: getComputedStyle(dr).borderRightStyle,
     }
@@ -1021,6 +1026,9 @@ for (const width of PHONE_WIDTHS) {
   check(`numărul rămâne întreg lângă un nume lung @${width}px`, m.countInside, m.countInside ? 'întreg' : 'tăiat')
   check(`rând atingibil @${width}px`, m.rowH >= 44, `${m.rowH}px`)
   check(`numele pătratelor pe un rând @${width}px`, m.nameOneLine, m.nameOneLine ? 'da' : 'rupt')
+  // Întreagă (fără „…”, vârsta e la coadă); un rând, două cu textul mărit
+  // sau la 320px, unde cea mai lungă formă („acum 20 de ore”) nu încape.
+  check(`vârsta buildului întreagă, înaintea rotiței @${width}px`, m.build.lines <= (process.env.TEXT_SCALE || width < 360 ? 2 : 1) &&m.build.cut <= 0 && m.build.beforeGear,`${m.build.w}px, rânduri=${m.build.lines}, înaintea rotiței=${m.build.beforeGear}, tăiat=${m.build.cut}px`)
   check(`sertarul are fundal, fără chenar @${width}px`, m.bg !== 'rgba(0, 0, 0, 0)' && m.border === 'none', `bg=${m.bg} chenar=${m.border}`)
 }
 
