@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { useHorizontal } from '../store'
 import { useQuickDraft } from '../hooks'
-import { fromInputs, toDateInput, toTimeInput } from '../lib/schedule'
+import { fromInputs, toDateInput } from '../lib/schedule'
 import { describeRrule } from '../lib/recurrence'
-import { dueLabel, quickKey } from '../lib/quickDraft'
+import { dueLabel, dueLabelParts, quickKey } from '../lib/quickDraft'
 import { loadBarDraft, saveBarDraft, type BarDraft } from '../lib/barDraft'
 import { Icon } from './Icon'
 import { QuickDesc, QuickTitle } from './QuickFields'
 import { ProjectMark } from './ProjectMark'
+import { QuickDue } from './QuickDue'
 
 interface Props {
   /** Scadența implicită când textul nu conține niciuna (ziua listei deschise). */
@@ -16,7 +17,10 @@ interface Props {
   onAdded?(): void
   /** Se schimbă la fiecare cerere de focus din afară (tasta C). */
   focusSignal?: number
-  /** Bara de captură: semnele `#proiect`, `@persoană`, `!` în text și rândul de butoane, mereu vizibil. */
+  /**
+   * Bara de captură (Linux): rândul foii rapide sub titlu — inelul în culoarea
+   * proiectului, jetonul de dată cu panoul inline, proiectul, urgent, Trimite.
+   */
   rich?: boolean
   /**
    * Bara de captură: ciorna (text, descriere, alegeri de mână, refuzuri) se
@@ -44,7 +48,7 @@ interface Props {
  * Selectorul schimbă doar sarcina în curs — nu ține minte nimic.
  */
 export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, rich = false, keepDraft = false }: Props) {
-  const { assignees } = useHorizontal()
+  const { assignees, assigneeShort } = useHorizontal()
   // O singură citire, la montare: de aici încolo starea React e adevărul, iar
   // stocarea doar o oglindește (efectul de mai jos).
   const [saved] = useState<BarDraft | null>(() => (keepDraft ? loadBarDraft() : null))
@@ -60,6 +64,8 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, rich = false,
   const [descFocus, setDescFocus] = useState(false)
   const [field, setField] = useState<'title' | 'desc'>(saved?.field ?? 'title')
   const inputRef = useRef<HTMLInputElement>(null)
+  /** Bara: panoul datei (`QuickDue`), inline deasupra rândului de jetoane. */
+  const [whenOpen, setWhenOpen] = useState(false)
   const descRef = useRef<HTMLTextAreaElement>(null)
 
   const liveKey = q.date.live.join('\u0001')
@@ -107,7 +113,29 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, rich = false,
   const recur = schedule.rrule ? describeRrule(schedule.rrule) : ''
   const bare = error === 'bare'
 
-  const reset = () => { q.reset(); setDescOpen(false) }
+  const reset = () => { q.reset(); setDescOpen(false); setWhenOpen(false) }
+
+  // Bara: Esc are doi pași. Cât panoul datei e deschis, Esc îl închide DOAR pe
+  // el (tiparul `ChipPop`: în captură, cu `stopPropagation`) — altfel ar ajunge
+  // la ascultătorul din `QuickAddPage`, care golește ciorna și ascunde bara.
+  // Alt+D îl deschide / închide din tastatură, fără să părăsească titlul.
+  useEffect(() => {
+    if (!rich) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && whenOpen) {
+        e.preventDefault()
+        e.stopPropagation()
+        setWhenOpen(false)
+        inputRef.current?.focus()
+      } else if (e.altKey && !e.ctrlKey && !e.metaKey && e.code === 'KeyD') {
+        e.preventDefault()
+        e.stopPropagation()
+        setWhenOpen((v) => !v)
+      }
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [rich, whenOpen])
 
   /** „Nu e o dată." Tot ce e evidențiat acum rămâne text în titlu. */
   const rejectDate = () => {
@@ -124,6 +152,7 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, rich = false,
     const created = await q.submit()
     if (!created) return
     setDescOpen(false)
+    setWhenOpen(false)
     setField('title')
     onAdded?.()
     inputRef.current?.focus()
@@ -165,6 +194,155 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, rich = false,
     )
   }
 
+  if (rich) {
+    const parts = dueAt ? dueLabelParts(dueAt, allDay, new Date()) : null
+    const warn = tokens?.unknown.length ? `nu știu ${tokens.unknown.join(', ')}` : bare ? 'și ce ai de făcut?' : null
+    const chosenProject = !!(q.manual.projectId || tokens?.projectId)
+    const who = assigneeId ? assignees.find((a) => a.id === assigneeId)?.name ?? '' : ''
+    const toTitleEnd = () => {
+      const el = inputRef.current
+      if (!el) return
+      el.focus()
+      el.setSelectionRange(el.value.length, el.value.length)
+    }
+    return (
+      <div
+        className={`qa qa-bar ${focus ? 'focus' : ''} ${q.shake ? 'shake' : ''}`}
+        style={project.accent ? ({ ['--pc' as string]: project.accent }) : undefined}
+      >
+        <form className="qa-form" autoComplete="off" onSubmit={(e) => { e.preventDefault(); void submit() }}>
+          <div className="qa-row">
+            {/* Bifa în culoarea proiectului, ca rândul în care va ajunge sarcina;
+                urgentul = inelul chihlimbar. Numai desen: nu e nimic de bifat. */}
+            <span className={`ck${urgent ? ' urg' : ''}`} aria-hidden="true" />
+            <QuickTitle
+              date={date}
+              text={text}
+              onText={q.setText}
+              inputRef={inputRef}
+              placeholder="Ce ai de făcut? încearcă „mâine la 9” · #proiect · @om · !"
+              enterKeyHint="done"
+              tipBelow
+              onFocus={() => { setFocus(true); setField('title') }}
+              onBlur={() => setFocus(false)}
+              onKeyDown={onKey('title')}
+              suggestions={{ projects, people: assignees, placement: 'flow' }}
+            />
+          </div>
+
+          {descOpen && (
+            <div className="qa-desc-row">
+              <QuickDesc
+                value={desc}
+                onChange={q.setDesc}
+                textareaRef={descRef}
+                onKeyDown={onKey('desc')}
+                onFocus={() => { setFocus(true); setDescFocus(true); setField('desc') }}
+                onBlur={() => { setFocus(false); setDescFocus(false) }}
+              />
+            </div>
+          )}
+
+          {/* Data se alege din panoul formularului (`DuePanel`), inline: fereastra
+              crește în jos (`resizeBar`), fiindcă un popover ar ieși din ea. */}
+          {whenOpen && (
+            <QuickDue
+              dueAt={dueAt}
+              allDay={allDay}
+              fallbackDay={toDateInput(new Date().toISOString())}
+              onDue={(d, t) => q.setManual((m) => ({ ...m, due: fromInputs(d, t) }))}
+              onPicked={toTitleEnd}
+              onClear={() => q.setManual((m) => ({ ...m, due: { dueAt: null, allDay: true } }))}
+            />
+          )}
+
+          {/* Rândul foii rapide („Ordinea rândului”): jetoanele cu text la stânga,
+              comutatoarele lângă Trimite. Fără agrafă (decizia omului): bara
+              capturează un gând, nu fișiere. Persoana nu are jeton — `@nume`. */}
+          <div className="qs-bar">
+            <span className={`qs-due${dueAt ? ' on' : ''}${whenOpen ? ' open' : ''}`}>
+              <button
+                type="button"
+                className="qs-due-btn"
+                aria-expanded={whenOpen}
+                title={`Data și ora (Alt+D, sau „mâine la 10” în text)${recur ? ` · ${recur}` : ''}`}
+                onPointerDown={(e) => e.preventDefault()}
+                onClick={() => setWhenOpen((v) => !v)}
+              >
+                <Icon name={recur ? 'recurring' : 'due'} size={15} />
+                <span className="qs-due-t">{parts ? parts.day : 'Dată'}</span>
+                {parts?.time && <span className="qs-due-h">{parts.time}</span>}
+                {parts?.time && <Icon name="reminder" size={13} />}
+              </button>
+              {useParsed && (
+                <button
+                  type="button"
+                  className="qs-due-x"
+                  title="Nu e o dată — lasă textul în titlu"
+                  aria-label="Respinge data recunoscută"
+                  onPointerDown={(e) => e.preventDefault()}
+                  onClick={rejectDate}
+                >
+                  <Icon name="close" size={13} />
+                </button>
+              )}
+            </span>
+            <label
+              className={`qs-sel qs-proj${chosenProject ? ' tinted' : ''}`}
+              title="Proiectul sarcinii (sau #nume în text)"
+            >
+              <ProjectMark project={project} dot="t-dot" />
+              <span className="qs-sel-t">{project.name}</span>
+              <select
+                aria-label="Proiectul"
+                value={project.id}
+                onChange={(e) => { q.pickProject(e.target.value); toTitleEnd() }}
+              >
+                {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </label>
+            {assigneeId && (
+              <span className="qs-who-badge" title={`Pasat: ${who} (din @nume)`}>
+                {assigneeShort[assigneeId] ?? who.slice(0, 2).toUpperCase()}
+              </span>
+            )}
+            <span className="qs-tools">
+              <span className={`qa-hint${warn ? ' warn' : ''}`} role="status">
+                {warn ?? (saving ? 'se salvează…'
+                  : whenOpen ? <><kbd>Esc</kbd> închide panoul</>
+                    : descFocus ? <><kbd>Ctrl+↵</kbd> adaugă</>
+                      : descOpen ? <><kbd>↵</kbd> adaugă</>
+                        : text.trim() ? <><kbd>Tab</kbd> descriere · <kbd>↵</kbd> adaugă</>
+                          : <><kbd>Esc</kbd> închide</>)}
+              </span>
+              <button
+                type="button"
+                className={`qs-ico qs-urgent${urgent ? ' on' : ''}`}
+                aria-pressed={urgent}
+                aria-label="Urgent"
+                title="Urgent (sau ! în text)"
+                onPointerDown={(e) => e.preventDefault()}
+                onClick={() => q.setManual((m) => ({ ...m, urgent: !urgent }))}
+              >
+                <Icon name="urgent" size={15} />
+              </button>
+              <button
+                type="submit"
+                className="qs-send"
+                aria-label="Adaugă"
+                title="Adaugă (↵)"
+                disabled={text.trim() === '' || saving}
+                onPointerDown={(e) => e.preventDefault()}
+              >
+                <Icon name="send" size={16} />
+              </button>
+            </span>
+          </div>
+        </form>
+      </div>
+    )
+  }
+
   return (
     <div className={`qa ${focus ? 'focus' : ''} ${q.shake ? 'shake' : ''}`}>
       <form
@@ -184,9 +362,9 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, rich = false,
           onFocus={() => { setFocus(true); setField('title') }}
           onBlur={() => setFocus(false)}
           onKeyDown={onKey('title')}
-          suggestions={{ projects, people: assignees, placement: rich ? 'flow' : 'below' }}
+          suggestions={{ projects, people: assignees, placement: 'below' }}
         />
-        {!rich && !focus && !text && <kbd className="qa-kbd">C</kbd>}
+        {!focus && !text && <kbd className="qa-kbd">C</kbd>}
       </div>
 
       {descOpen && (
@@ -235,7 +413,6 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, rich = false,
             <span className="chip"><Icon name="recurring" size={12} /> {recur}</span>
           )}
 
-          {!rich && (
           <label className="qa-proj" title="Proiectul sarcinii">
             <ProjectMark project={project} dot="t-dot" />
             <select
@@ -245,7 +422,6 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, rich = false,
               {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </label>
-          )}
 
           <span className={`qa-hint ${bare || tokens?.unknown.length ? 'warn' : ''}`}>
             {tokens?.unknown.length ? `nu știu ${tokens.unknown.join(', ')}`
@@ -258,45 +434,6 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, rich = false,
         </div>
       )}
 
-      {rich && (
-        <div className="qa-meta qa-rich">
-          <label className="qa-proj" title="Proiectul sarcinii (sau #nume în text)">
-            <ProjectMark project={project} dot="t-dot" />
-            <select value={project.id} onChange={(e) => q.pickProject(e.target.value)}>
-              {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-          </label>
-          <label className="qa-who" title="Cui îi pasezi sarcina (sau @nume în text)">
-            <Icon name="people" size={13} />
-            <select value={assigneeId ?? ''} onChange={(e) => q.setManual((m) => ({ ...m, assigneeId: e.target.value || null }))}>
-              <option value="">al meu</option>
-              {assignees.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-            </select>
-          </label>
-          <span className="qa-when" title="Data și ora (sau „mâine la 10” în text)">
-            <Icon name="due" size={13} />
-            <input
-              type="date"
-              value={dueAt ? toDateInput(dueAt) : ''}
-              onChange={(e) => q.setManual((m) => ({ ...m, due: fromInputs(e.target.value, dueAt && !allDay ? toTimeInput(dueAt) : '') }))}
-            />
-            <input
-              type="time"
-              value={dueAt && !allDay ? toTimeInput(dueAt) : ''}
-              onChange={(e) => q.setManual((m) => ({ ...m, due: fromInputs(dueAt ? toDateInput(dueAt) : toDateInput(defaultDueAt ?? new Date().toISOString()), e.target.value) }))}
-            />
-          </span>
-          <button
-            type="button"
-            className={`qa-urgent ${urgent ? 'on' : ''}`}
-            aria-pressed={urgent}
-            title="Urgent (sau ! în text)"
-            onClick={() => q.setManual((m) => ({ ...m, urgent: !urgent }))}
-          >
-            <Icon name="urgent" size={13} /> urgent
-          </button>
-        </div>
-      )}
       </form>
     </div>
   )

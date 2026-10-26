@@ -5860,15 +5860,6 @@ body:has(.kb-sheet) .toast {
   max-width: 130px;
 }
 
-/* Rândul de butoane al barei de captură. Același limbaj ca .qa-proj: fără
-   chenar, fundal --surface-2, raza de buton. Activ = text plin + linie de 2px. */
-.qa-rich { flex-wrap: wrap; gap: 6px; }
-.qa-who, .qa-when, .qa-urgent { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: var(--r-s); background: var(--surface-2); color: var(--txt-dim); font: inherit; font-size: calc(12px * var(--text-scale)); }
-.qa-who select, .qa-when input { border: 0; background: transparent; color: inherit; font: inherit; }
-.qa-when input { font-family: var(--mono); }
-.qa-urgent { border: 0; cursor: pointer; }
-.qa-urgent.on { color: var(--urgent); background: var(--urgent-soft); }
-
 /* Descrierea de sub titlu, deschisă cu Tab. Stă în aceeași casetă `.qa` ca
    titlul — e a doua jumătate a aceluiași câmp, deci fără chenar propriu.
    Aliniată cu textul titlului (20px „+" + 9px spațiu). */
@@ -6913,20 +6904,70 @@ body:has(.kb-sheet) .toast {
 
 /* ── Bara de captură (aplicația de Linux, /quick-add) ─────────────────────
    O fereastră mică, fără ramă: pagina ESTE bara. Fără chenar — fundalul
-   (--surface) peste nimic e delimitarea. */
+   (--surface) peste nimic e delimitarea. Varianta A din `design/quick-bar`:
+   rândul foii rapide („Ordinea rândului”) sub un titlu de 17px, cu inelul
+   `.ck` în culoarea proiectului. Fără bandă rezervată sus: indiciul datei
+   coboară sub titlu (`.qa-tip.below`), deci fereastra goală are ~96px. */
 html:has(.qab), body:has(.qab) { margin: 0; height: 100%; background: var(--surface); overflow: hidden; }
 /* Cutia instalată înainte de `resizeBar` n-are cum să crească fereastra: acolo
    descrierea deschisă cu Tab se derulează, nu se taie. */
 body:has(.qab) { overflow-y: auto; }
-.qab { padding: 12px 16px; }
-.qab .qa { box-shadow: none; background: transparent; }
+.qab { padding: 12px 16px; font-family: var(--display); }
+.qab .qa { margin: 0; padding: 0; border-radius: 0; box-shadow: none; background: transparent; }
 .qab-empty { margin: 0; padding: 18px 20px; font-family: var(--display); color: var(--txt-dim); background: var(--surface); }
-/* Indiciul datei, în bară: fereastra taie ce iese din ea (overflow hidden), iar
-   poziția „deasupra rândului" din „Azi" l-ar scoate pe sus. Stă în banda de sus,
-   rezervată mereu, ca apariția lui să nu mute câmpul. */
-.qab { padding: 24px 16px 3px; position: relative; }
-.qab .qa { margin-bottom: 0; padding-block: 4px; }
-.qab .qa-tip { position: absolute; top: -21px; bottom: auto; box-shadow: none; background: transparent; padding: 0; }
+.qab .qa-row { gap: 2px 12px; min-height: 30px; margin: 0; }
+/* Pe --surface, nu pe --bg: inelul se amestecă în fundalul pe care stă. */
+.qab .ck { flex-shrink: 0; box-shadow: inset 0 0 0 1.75px color-mix(in srgb, var(--pc, var(--txt-faint)) 80%, var(--surface)); }
+.qab .ck.urg { box-shadow: inset 0 0 0 2px var(--urgent); background: var(--urgent-soft); }
+.qab .qa-wrap { height: 30px; }
+.qab .qa-mirror,
+.qab .qa-input { font-size: calc(17px * var(--text-scale)); line-height: 30px; }
+/* Tot ce stă sub titlu se aliniază cu textul lui: 20px inelul + 12px spațiu. */
+.qab .qa-row > .qa-tip.below { flex-basis: 100%; margin: 0 0 0 32px; color: var(--txt-faint); }
+.qab .qa-row > .qa-suggest.flow { margin-left: 32px; }
+.qab .qa-desc-row { padding: 2px 0 0 32px; }
+.qab .qa-desc { font-size: calc(14px * var(--text-scale)); line-height: 21px; color: var(--txt); max-height: 126px; overflow-y: auto; }
+.qab .qs-when { margin: 10px 0 0 32px; }
+/* Presetările mai joase decât în formular: panoul crește fereastra, iar
+   macheta îl ține la ~235px cu tot cu rând. */
+.qab .fc-pre { height: 46px; gap: 1px; }
+.qab .qa-row { align-content: flex-start; }
+.qab .qs-bar { gap: 6px; margin-top: 12px; padding-left: 32px; }
+/* Jetoanele de 30px (ca în machetă), nu 34px ca pe telefon: aici se dă clic. */
+.qab .qs-due,
+.qab .qs-ico,
+.qab .qs-sel { height: 30px; }
+.qab .qs-ico { width: 30px; }
+.qab .qs-sel { padding: 0 10px; font-size: calc(12.5px * var(--text-scale)); font-weight: 600; }
+.qab .qs-proj { max-width: 220px; }
+/* Jetonul de dată e un grup: butonul care deschide panoul + ✕ = „nu e o
+   dată” (numai pe o dată recunoscută din titlu). Gol = „Dată”, în gri. */
+.qab .qs-due { padding: 0; gap: 0; font-size: calc(12.5px * var(--text-scale)); }
+.qab .qs-due:not(.on) { font-weight: 550; }
+.qs-due-btn {
+  height: 100%; display: inline-flex; align-items: center; gap: 6px;
+  padding: 0 10px; min-width: 0; overflow: hidden;
+  background: none; color: inherit; font: inherit; cursor: pointer;
+}
+.qab .qs-due-h { font-family: var(--mono); font-weight: 500; }
+.qab .qs-due:has(.qs-due-x) .qs-due-btn { padding-right: 4px; }
+.qs-due-x {
+  height: 100%; padding: 0 8px 0 2px; display: inline-flex; align-items: center;
+  background: none; color: inherit; opacity: 0.7; cursor: pointer;
+}
+.qs-due-x:hover { opacity: 1; }
+.qab .qs-due:not(.on):hover,
+.qab .qs-sel:not(.tinted):hover,
+.qab .qs-ico:not(.on):hover { background: var(--surface-3); color: var(--txt); }
+.qab .qs-due.open:not(.on) { background: var(--surface-3); color: var(--txt); }
+.qab .qs-who-badge { padding: 0 4px; font-weight: 650; flex-shrink: 0; }
+.qab .qa-hint { margin: 0 6px 0 0; font-size: calc(11.5px * var(--text-scale)); }
+.qab .qa-hint kbd {
+  font-family: var(--display); font-size: calc(11px * var(--text-scale)); font-weight: 600;
+  color: var(--txt-dim); background: var(--surface-3); border: 0; border-radius: 4px; padding: 1px 5px; margin: 0 1px;
+}
+.qab .qs-send { width: 30px; height: 30px; }
+.qab .qs-send:disabled { opacity: 1; background: var(--surface-3); color: var(--txt-faint); }
 
 /* ── TELEFON: glisarea unui rând de sarcină ──────────────────────────
    Banda stă în spatele rândului și se vede doar pe partea spre care s-a

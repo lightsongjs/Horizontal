@@ -1845,6 +1845,20 @@ Ctrl+Shift+A și mementouri cu aplicația în fundal. Spec/plan:
   (`manual ?? tokens ?? implicit`). Proiect implicit Inbox, ca peste tot
   (`captureDefaultProjectId`), nu ultimul folosit; fără dată → fără scadență (D-241; înainte azi). Implicitul se
   calculează la fiecare randare, nu la montare: proiectele sosesc după bară.
+- **Bara arată ca foaia rapidă** (varianta A din `design/quick-bar/index.html`,
+  2026-10-26, capturile `real-*.png` lângă): inelul `.ck` în culoarea
+  proiectului (chihlimbar cu urgent), titlul de 17px, dedesubt rândul
+  `[Dată] [proiect] (inițiale) ··· indiciu [⚡] (↑)` — `.qs-bar` cu ramura
+  `rich` din `QuickAdd`. **Fără agrafă** (decizia omului) și fără selectul de
+  persoană: `@nume` în text, inițialele numai citite. Data = jetonul (gol:
+  „Dată”) → `QuickDue`/`DuePanel` inline (sau Alt+D), care crește fereastra în
+  jos; ✕ pe jeton refuză o dată recunoscută. Fereastra are înălțimea
+  conținutului (`resizeBar`): ~96px goală, ~161 cu descrierea, ~241 cu panoul;
+  plafoanele din `main.ts` sunt 90–420. Fără bandă rezervată sus: indiciul datei
+  e `.qa-tip.below`. Bara nu e „îngustă” la 720px (`installNarrow({ desktop })`),
+  deci panoul are mărimile de desktop. **Esc în doi pași:** cu panoul deschis îl
+  închide doar pe el (în captură, `stopPropagation`, tiparul `ChipPop`), abia
+  apoi golește + ascunde.
 - **Focusul barei.** Fereastra e creată o dată și refolosită; proba (2026-10-02,
   GNOME Wayland): `show()` + `focus()` pe fereastra existentă primește
   tastatura din prima. **Ascunderea nu golește** (decizia omului, 2026-10-10):
@@ -1863,8 +1877,8 @@ Ctrl+Shift+A și mementouri cu aplicația în fundal. Spec/plan:
   vine (fereastra e deja `visible`), deci primul `focus` dă primul semnal. `blur`
   ascunde cu 150 ms întârziere + reverificare, din același motiv. Rândul din
   listă și foaia rapidă nu țin ciorna — `keepDraft` e numai al barei. Cutia rulează
-  cu `lang=ro-RO` (înainte de `ready`), altfel câmpurile native de dată arată
-  ll/zz în loc de zz.ll.
+  cu `lang=ro-RO` (înainte de `ready`), ca și calendarul nativ din panoul datei
+  să fie în ordinea zz.ll.
 - **Pagina ȘTIE, cutia SUNĂ.** Timerele sunt în procesul principal (Chromium
   sugrumă timerele unei ferestre ascunse; cele Node nu numără somnul →
   `resume`/`unlock-screen` re-planifică). `planReminders` rulează de la zero la

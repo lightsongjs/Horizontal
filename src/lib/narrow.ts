@@ -29,11 +29,13 @@ export function isNarrow(viewportNarrow: boolean, pane: boolean): boolean {
 }
 
 let pane = false
+/** Bara de captură de pe Linux: o fereastră de 720px pe desktop, cu mouse — niciodată „îngustă". */
+let desktop = false
 const listeners = new Set<() => void>()
 
 export function narrowNow(): boolean {
   if (typeof window === 'undefined') return false
-  return isNarrow(window.matchMedia(NARROW_QUERY).matches, pane)
+  return isNarrow(window.matchMedia(NARROW_QUERY).matches, pane || desktop)
 }
 
 export function wideNow(): boolean {
@@ -42,8 +44,9 @@ export function wideNow(): boolean {
 }
 
 /** O dată, sincron, înainte de prima randare (`main.tsx`): primul cadru are deja layoutul corect. */
-export function installNarrow(opts: { pane?: boolean } = {}): void {
+export function installNarrow(opts: { pane?: boolean; desktop?: boolean } = {}): void {
   pane = !!opts.pane
+  desktop = !!opts.desktop
   const root = document.documentElement
   const apply = () => {
     root.toggleAttribute('data-narrow', narrowNow())

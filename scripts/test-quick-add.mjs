@@ -22,7 +22,7 @@ await new Promise((resolve, reject) => {
 
 const browser = await chromium.launch()
 try {
-  const page = await browser.newPage({ viewport: { width: 720, height: 150 } })
+  const page = await browser.newPage({ viewport: { width: 720, height: 96 } })
   const errors = []
   page.on('pageerror', (e) => errors.push(e.message))
   await page.goto(`${BASE}/quick-add`, { waitUntil: 'networkidle' })
@@ -38,7 +38,7 @@ try {
   await page.setViewportSize({ width: 1400, height: 900 })
   await page.goto(BASE, { waitUntil: 'networkidle' })
   const aziBefore = (await openList('Azi')).length
-  await page.setViewportSize({ width: 720, height: 150 })
+  await page.setViewportSize({ width: 720, height: 96 })
   await page.goto(`${BASE}/quick-add`, { waitUntil: 'networkidle' })
   const input = page.locator('.qab .qa-input')
   check('bara are câmpul', (await input.count()) === 1)
@@ -62,11 +62,11 @@ try {
   // pornește pe proiectul personal implicit.
   await input.fill('test semne #exemplu ! mâine')
   await page.waitForTimeout(300)
-  const richRow = await page.locator('.qab .qa-rich').innerText()
+  const richRow = await page.locator('.qab .qs-bar').innerText()
   check('rândul de butoane arată proiectul ales din text', /Exemplu/i.test(richRow), richRow)
-  check('urgent aprins din „!"', (await page.locator('.qab .qa-urgent.on').count()) === 1)
-  await page.locator('.qab .qa-urgent').click()
-  check('butonul are ultimul cuvânt (urgent stins)', (await page.locator('.qab .qa-urgent.on').count()) === 0)
+  check('urgent aprins din „!"', (await page.locator('.qab .qs-urgent.on').count()) === 1)
+  await page.locator('.qab .qs-urgent').click()
+  check('butonul are ultimul cuvânt (urgent stins)', (await page.locator('.qab .qs-urgent.on').count()) === 0)
   await input.press('Enter')
   await page.waitForTimeout(800)
 
@@ -81,7 +81,7 @@ try {
   await page.waitForTimeout(200)
   check('Enter în listă inserează proiectul, nu trimite', /^alegere #Exemplu $/.test(await input.inputValue()), await input.inputValue())
   check('lista se închide după alegere', (await sugg.count()) === 0)
-  check('alegerea e recunoscută (rândul arată proiectul)', /Exemplu/i.test(await page.locator('.qab .qa-rich').innerText()))
+  check('alegerea e recunoscută (rândul arată proiectul)', /Exemplu/i.test(await page.locator('.qab .qs-bar').innerText()))
   // `#` (proiectele există mereu pe backendul local; oamenii nu): lista e
   // sigur deschisă, deci Esc trebuie s-o închidă ea, nu bara.
   await input.pressSequentially('#')
@@ -122,7 +122,7 @@ try {
   // iar sarcina scrisă din bară trebuie văzută apoi din aplicație. Puntea
   // simulată rămâne și pe aplicația de după — inofensiv, metodele sunt goale.
   const desk = page
-  await desk.setViewportSize({ width: 720, height: 150 })
+  await desk.setViewportSize({ width: 720, height: 96 })
   await desk.addInitScript(() => {
     window.__sizes = []
     window.horizontalDesktop = {
@@ -154,10 +154,10 @@ try {
     return { cls: el?.className ?? '', start: el?.selectionStart, end: el?.selectionEnd, len: el?.value?.length }
   })
   await dIn.fill('user: ion')
-  await desk.locator('.qab .qa-urgent').click()
+  await desk.locator('.qab .qs-urgent').click()
   await hideShow()
   check('ascunderea păstrează titlul', (await dIn.inputValue()) === 'user: ion', await dIn.inputValue())
-  check('ascunderea păstrează alegerea de mână (urgent)', (await desk.locator('.qab .qa-urgent.on').count()) === 1)
+  check('ascunderea păstrează alegerea de mână (urgent)', (await desk.locator('.qab .qs-urgent.on').count()) === 1)
   let c = await caret()
   check('la revenire cursorul e în titlu, la sfârșit, fără selecție', c.cls.includes('qa-input') && c.start === c.len && c.end === c.len, JSON.stringify(c))
   await desk.keyboard.type(' parola')
@@ -181,9 +181,60 @@ try {
   check('Esc ascunde bara', (await desk.evaluate(() => window.__hidden ?? 0)) === hiddenBeforeEsc + 1)
   await desk.evaluate(() => window.__setVis('visible'))
   await desk.waitForTimeout(200)
-  check('Esc golește titlul, descrierea și alegerile', (await dIn.inputValue()) === '' && (await desk.locator('.qab .qa-desc').count()) === 0 && (await desk.locator('.qab .qa-urgent.on').count()) === 0)
+  check('Esc golește titlul, descrierea și alegerile', (await dIn.inputValue()) === '' && (await desk.locator('.qab .qa-desc').count()) === 0 && (await desk.locator('.qab .qs-urgent.on').count()) === 0)
   await desk.reload({ waitUntil: 'networkidle' })
   check('după Esc nu rămâne nimic stocat', (await dIn.inputValue()) === '')
+  // ── Varianta A (design/quick-bar): jetonul de dată gol, panoul datei, Esc în doi pași ─
+  const lastSize = () => desk.evaluate(() => window.__sizes.at(-1) ?? 0)
+  const content = () => desk.evaluate(() => Math.ceil(document.querySelector('.qab').getBoundingClientRect().height))
+  await dIn.click()
+  await desk.waitForTimeout(200)
+  const dueChip = desk.locator('.qab .qs-due')
+  check('jetonul de dată gol spune „Dată”, fără accent', (await dueChip.innerText()).trim() === 'Dată' && !(await dueChip.evaluate((el) => el.classList.contains('on'))), await dueChip.innerText())
+  check('fără agrafă și fără selecturile vechi', (await desk.locator('.qab .qs-attach, .qab .qa-who, .qab input[type=date]:not(.native-pick-input), .qab .qa-when').count()) === 0)
+  const emptyH = await lastSize()
+  check('goală, fereastra cere ~96px (fără gol mort)', emptyH >= 90 && emptyH <= 100 && emptyH === await content(), `${emptyH}px`)
+  await dIn.fill('panou de dată')
+  await desk.locator('.qab .qs-due-btn').click()
+  await desk.waitForTimeout(250)
+  check('clic pe „Dată” deschide panoul', (await desk.locator('.qab .qs-when .fc-presets').count()) === 1)
+  check('focusul rămâne în titlu', await desk.evaluate(() => document.activeElement?.classList.contains('qa-input') ?? false))
+  const panelH = await lastSize()
+  check('panoul crește fereastra (~235px), cât conținutul', panelH >= 220 && panelH <= 260 && panelH === await content(), `${panelH}px`)
+  await desk.locator('.qab .fc-pre').nth(1).click()
+  await desk.waitForTimeout(150)
+  check('presetarea „Mâine” pune data pe jeton', /Mâine/.test(await dueChip.innerText()) && await dueChip.evaluate((el) => el.classList.contains('on')), await dueChip.innerText())
+  const hiddenBefore = await desk.evaluate(() => window.__hidden ?? 0)
+  await desk.keyboard.press('Escape')
+  await desk.waitForTimeout(250)
+  check('primul Esc închide doar panoul', (await desk.locator('.qab .qs-when').count()) === 0 && (await dIn.inputValue()) === 'panou de dată' && (await desk.evaluate(() => window.__hidden ?? 0)) === hiddenBefore, await dIn.inputValue())
+  check('data aleasă rămâne după Esc', /Mâine/.test(await dueChip.innerText()))
+  check('fereastra revine la ~96px', (await lastSize()) === emptyH, `${await lastSize()}px`)
+  await desk.keyboard.press('Alt+d')
+  await desk.waitForTimeout(150)
+  check('Alt+D deschide panoul', (await desk.locator('.qab .qs-when').count()) === 1)
+  await desk.keyboard.press('Escape')
+  await desk.keyboard.press('Escape')
+  await desk.waitForTimeout(250)
+  check('al doilea Esc golește și ascunde bara', (await dIn.inputValue()) === '' && (await desk.evaluate(() => window.__hidden ?? 0)) === hiddenBefore + 1)
+  await desk.evaluate(() => window.__setVis('visible'))
+  await desk.waitForTimeout(200)
+  check('după golire jetonul e iar „Dată”', (await desk.locator('.qab .qs-due').innerText()).trim() === 'Dată')
+  await desk.locator('.qab .qa-input').fill('ring #exemplu !')
+  await desk.waitForTimeout(150)
+  check('urgent din „!” = inelul chihlimbar', (await desk.locator('.qab .ck.urg').count()) === 1)
+  check('#proiect colorează jetonul de proiect', (await desk.locator('.qab .qs-proj.tinted').count()) === 1)
+  const oneRow = await desk.evaluate(() => {
+    const bar = document.querySelector('.qab .qs-bar')
+    const tops = new Set([...bar.querySelectorAll('.qs-due, .qs-proj, .qs-urgent, .qs-send')].map((e) => Math.round(e.getBoundingClientRect().top)))
+    return tops.size === 1 && bar.scrollWidth <= bar.clientWidth
+  })
+  check('rândul de jetoane încape pe un rând la 720px', oneRow)
+  await desk.keyboard.press('Escape')
+  await desk.waitForTimeout(150)
+  await desk.evaluate(() => window.__setVis('visible'))
+  await desk.waitForTimeout(150)
+
   await desk.evaluate(() => { window.__hidden = 0; window.__sizes = [] })
   await dIn.fill('test descriere mâine')
   await dIn.press('Tab')

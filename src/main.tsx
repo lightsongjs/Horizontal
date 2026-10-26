@@ -22,8 +22,9 @@ if (pane) {
   document.documentElement.setAttribute('data-pane', pane)
 }
 // Înainte de prima randare: CSS-ul de telefon atârnă de `<html data-narrow>`,
-// iar un panou (îngust ca viewport) rămâne desktop.
-installNarrow({ pane: !!pane })
+// iar un panou (îngust ca viewport) rămâne desktop. La fel bara de captură
+// (720px): e o fereastră de desktop, deci panoul datei are mărimile de desktop.
+installNarrow({ pane: !!pane, desktop: isQuickAddPath(window.location.pathname) })
 
 const root = createRoot(document.getElementById('root')!)
 // Bara de captură nu trece prin `App`: efectul de boot ar fi luat calea drept

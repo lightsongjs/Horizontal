@@ -1829,6 +1829,67 @@ for (const width of PHONE_WIDTHS) {
   await page.close()
 }
 
+/**
+ * Bara de captură de pe Linux (`QuickAdd rich`, varianta A din
+ * `design/quick-bar`): fereastra de 720px, fără ramă. Markup-ul e cel al
+ * componentei (copiat din DOM-ul real). Cazul cel mai lat: dată cu oră,
+ * clopoțel și ✕, nume de proiect lung, inițiale, indiciul cel mai lung.
+ * Invarianți: rândul nu iese din fereastră, Trimite și urgent nestriviți,
+ * goală bara are ~96px (fără gol mort), niciun jeton fără fundal.
+ */
+const captureBar = ({ empty = false } = {}) => `
+<div class="qab"><div class="qa qa-bar" style="--pc:#6e7bff"><form class="qa-form">
+  <div class="qa-row"><span class="ck${empty ? '' : ' urg'}"></span><span class="qa-wrap"><span class="qa-mirror"></span><input class="qa-input" type="search" value="${empty ? '' : 'Trimite oferta revizuită clientului din Cluj'}" placeholder="Ce ai de făcut?"></span></div>
+  <div class="qs-bar">
+    <span class="qs-due${empty ? '' : ' on'}"><button type="button" class="qs-due-btn"><svg width="15" height="15"></svg><span class="qs-due-t">${empty ? 'Dată' : 'Mie 07/10'}</span>${empty ? '' : '<span class="qs-due-h">10:00</span><svg width="13" height="13"></svg>'}</button>${empty ? '' : '<button type="button" class="qs-due-x"><svg width="13" height="13"></svg></button>'}</span>
+    <label class="qs-sel qs-proj${empty ? '' : ' tinted'}"><span class="t-dot" style="background:#6e7bff"></span><span class="qs-sel-t">${empty ? 'Inbox' : 'Aplicație Turism și încă ceva foarte lung'}</span><select><option>x</option></select></label>
+    ${empty ? '' : '<span class="qs-who-badge">AP</span>'}
+    <span class="qs-tools">
+      <span class="qa-hint">${empty ? '<kbd>Esc</kbd> închide' : '<kbd>Tab</kbd> descriere · <kbd>↵</kbd> adaugă'}</span>
+      <button type="button" class="qs-ico qs-urgent${empty ? '' : ' on'}"><svg width="15" height="15"></svg></button>
+      <button type="submit" class="qs-send"${empty ? ' disabled' : ''}><svg width="16" height="16"></svg></button>
+    </span>
+  </div>
+</form></div></div>`
+console.log('\nBara de captură de pe Linux (720px, varianta A):')
+for (const empty of [true, false]) {
+  for (const theme of ['dark', 'light']) {
+    const page = await browser.newPage({ viewport: { width: 720, height: 300 } })
+    await page.setContent(`<style>${CSS}</style>${captureBar({ empty })}`)
+    // Bara e o fereastră de desktop (`installNarrow({ desktop })`), nu „îngustă”.
+    await page.evaluate((t) => { document.documentElement.removeAttribute('data-narrow'); document.documentElement.setAttribute('data-theme', t) }, theme)
+    await page.evaluate(() => document.fonts.ready)
+    const m = await page.evaluate(() => {
+      const r = (el) => el.getBoundingClientRect()
+      const bar = document.querySelector('.qs-bar')
+      const ctl = [...bar.querySelectorAll('.qs-due, .qs-proj, .qs-urgent, .qs-send')]
+      const invisible = ctl.filter((el) => {
+        const cs = getComputedStyle(el)
+        return cs.backgroundColor === 'rgba(0, 0, 0, 0)' && cs.borderStyle === 'none'
+      }).map((el) => el.className)
+      return {
+        height: Math.ceil(r(document.querySelector('.qab')).height),
+        overflow: Math.max(bar.scrollWidth - bar.clientWidth, document.documentElement.scrollWidth - innerWidth),
+        rows: new Set(ctl.map((el) => Math.round(r(el).top))).size,
+        send: Math.round(r(document.querySelector('.qs-send')).width),
+        urgent: Math.round(r(document.querySelector('.qs-urgent')).width),
+        proj: Math.round(r(document.querySelector('.qs-proj')).width),
+        sendIn: r(document.querySelector('.qs-send')).right <= r(bar).right + 0.5,
+        hint: (() => { const h = document.querySelector('.qa-hint'); return h.scrollWidth <= h.clientWidth + 0.5 })(),
+        invisible,
+      }
+    })
+    await page.close()
+    const tag = `${empty ? 'goală' : 'plină'}, ${theme}`
+    const maxRows = Number(process.env.TEXT_SCALE ?? 1) > 1 ? 2 : 1
+    check(`bara (${tag}): rândul nu iese din fereastră`, m.overflow <= 0 && m.sendIn && m.rows <= maxRows, `+${m.overflow}px, ${m.rows} rând(uri)`)
+    check(`bara (${tag}): Trimite și urgent nestriviți`, m.send >= 30 && m.urgent >= 30, `${m.send}px / ${m.urgent}px`)
+    check(`bara (${tag}): proiectul vizibil, indiciul întreg`, m.proj >= 44 && m.hint, `${m.proj}px, indiciu ${m.hint ? 'întreg' : 'tăiat'}`)
+    check(`bara (${tag}): jetoanele au fundal`, m.invisible.length === 0, m.invisible.join(', ') || 'toate')
+    if (empty && !process.env.TEXT_SCALE) check(`bara (${tag}): ~96px, fără gol mort`, m.height >= 90 && m.height <= 100, `${m.height}px`)
+  }
+}
+
 // Meniul de acțiuni al modului Vim (`ActionMenu.tsx`): același markup, rândurile
 // stinse cu motivul lângă (cazul cel mai lat: trei ținte), apoi sub-meniul datei.
 const amItem = (label, key, { off = null, danger = false, sub = false, cur = false } = {}) =>

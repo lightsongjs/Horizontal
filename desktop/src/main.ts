@@ -66,14 +66,14 @@ function createBar() {
   // GNOME Wayland `show()` + `focus()` pe aceeași fereastră primește tastatura
   // din prima. Pe Wayland poziția o alege compozitorul (centrat).
   barWin = new BrowserWindow({
-    width: 720, height: 150, show: false, frame: false, resizable: false,
+    width: 720, height: 96, show: false, frame: false, resizable: false,
     alwaysOnTop: true, skipTaskbar: true, center: true, title: 'Horizontal — captură', icon: WINDOW_ICON,
     webPreferences: webPreferences(),
   })
   guard(barWin.webContents)
   void barWin.loadURL(`${START_URL}/quick-add`)
   // Pierderea focusului ascunde — dar nu imediat: popup-ul unui `<select>` sau
-  // al unui câmp de dată din rândul de butoane ia focusul o clipă. Ascundem
+  // al calendarului / ceasului din panoul datei ia focusul o clipă. Ascundem
   // doar dacă, după o pauză, fereastra chiar nu l-a primit înapoi.
   barWin.on('blur', () => setTimeout(() => { if (barWin && !barWin.isFocused()) barWin.hide() }, 150))
 }
@@ -133,15 +133,16 @@ function start() {
       reschedule()
     })
     ipcMain.on('hz:hide-bar', (e) => { if (e.sender === barWin?.webContents) barWin?.hide() })
-    // Bara crește cu descrierea (Tab). Limitată: o pagină stricată n-are voie
-    // să întindă fereastra peste ecran. 150 = înălțimea de la creare, deci fără
-    // descriere bara arată exact ca înainte. `setResizable` în jurul lui
-    // `setContentSize`: pe GTK o fereastră non-resizable poate ignora mărimea.
+    // Bara își cere înălțimea conținutului: ~96px goală, mai mult cu descrierea
+    // (Tab) sau panoul datei. Limitată: o pagină stricată n-are voie să întindă
+    // fereastra peste ecran, nici s-o strângă sub un rând (90). `setResizable`
+    // în jurul lui `setContentSize`: pe GTK o fereastră non-resizable poate
+    // ignora mărimea.
     ipcMain.on('hz:resize-bar', (e, height) => {
       if (!barWin || barWin.isDestroyed() || e.sender !== barWin.webContents) return
       const h = Math.round(Number(height))
       if (!Number.isFinite(h)) return
-      const clamped = Math.min(420, Math.max(150, h))
+      const clamped = Math.min(420, Math.max(90, h))
       if (barWin.getContentSize()[1] === clamped) return
       barWin.setResizable(true)
       barWin.setContentSize(720, clamped)

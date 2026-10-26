@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bara de captură (Linux)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;650;700;750&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Jetoanele „Senin" din src/styles.css — copiate, nu importate: macheta se deschide singură. */
+.win,[data-theme=dark]{
+  --bg:#141517;--surface:#1B1C1F;--surface-2:#232428;--surface-3:#2B2D32;--line:#2A2C31;--line-soft:#1F2024;
+  --txt:#EEEFF1;--txt-dim:#A6ABB3;--txt-faint:#757A83;--placeholder:#757A83;
+  --accent:#5B8DFF;--accent-soft:rgba(91,141,255,.15);--on-accent:#fff;
+  --blocked:#FF6369;--urgent:#FF9548;--urgent-soft:rgba(255,149,72,.15);
+  --amb-lg:inset 0 1px 0 rgba(255,255,255,.05),0 16px 44px rgba(0,0,0,.5);
+  color-scheme:dark;
+}
+.win[data-theme=light]{
+  --bg:#FFFFFF;--surface:#FFFFFF;--surface-2:#F6F7F9;--surface-3:#EEF0F3;--line:#E6E8EC;--line-soft:#EEF0F3;
+  --txt:#1A1C20;--txt-dim:#565C66;--txt-faint:#868C96;--placeholder:#A0A6AF;
+  --accent:#2F6BFF;--accent-soft:#EBF1FF;--on-accent:#fff;
+  --blocked:#E5484D;--urgent:#D05A00;--urgent-soft:#FFF0E3;
+  --amb-lg:0 2px 6px rgba(16,24,40,.06),0 18px 44px rgba(16,24,40,.12);
+  color-scheme:light;
+}
+:root{--r:20px;--r-m:12px;--r-s:8px;--mono:"Geist Mono",ui-monospace,monospace;--display:Inter,system-ui,sans-serif;
+  --page:#0E0F11;--page-ink:#EEEFF1;--page-dim:#8C9199;--page-soft:#17181B}
+:root[data-page=light]{--page:#ECEAE6;--page-ink:#1D1C1A;--page-dim:#6F6B64;--page-soft:#E2E0DB}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--page);color:var(--page-ink)}
+body{font-family:var(--display);-webkit-font-smoothing:antialiased}
+svg{display:block;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+
+/* ── pagina machetei ─────────────────────────── */
+.wrap{max-width:1180px;margin:0 auto;padding:36px 16px 90px}
+.top{display:flex;gap:24px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap}
+.eyebrow{font-size:12px;font-weight:650;color:var(--page-dim)}
+h1{font-size:32px;line-height:1.1;letter-spacing:-.03em;font-weight:750;margin:6px 0 10px}
+.intro p{font-size:15px;line-height:1.55;color:var(--page-dim);max-width:88ch}
+.intro p+p{margin-top:8px}
+.intro b{color:var(--page-ink);font-weight:600}
+.theme{display:flex;gap:4px;background:var(--page-soft);padding:3px;border-radius:var(--r-s)}
+.theme button{padding:6px 12px;border-radius:6px;font-size:13px;font-weight:600;color:var(--page-dim)}
+.theme button.on{background:var(--page);color:var(--page-ink)}
+section{margin-top:46px}
+section>h2{font-size:21px;font-weight:700;letter-spacing:-.01em;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tag{font-size:11.5px;font-weight:650;padding:3px 8px;border-radius:var(--r-s);background:var(--page-soft);color:var(--page-dim)}
+.tag.rec{background:#2F6BFF;color:#fff}
+.tag.old{background:color-mix(in srgb,#FF6369 22%,transparent);color:#FF8A8F}
+.lede{margin-top:8px;font-size:14px;line-height:1.55;color:var(--page-dim);max-width:92ch}
+.lede b{color:var(--page-ink);font-weight:600}
+.lede code,.note code{font-family:var(--mono);font-size:12.5px}
+.seq{margin-top:8px;font-family:var(--mono);font-size:12.5px;color:var(--page-dim)}
+.states{margin-top:18px;display:grid;gap:22px}
+.st{display:grid;grid-template-columns:200px 720px;gap:22px;align-items:start}
+@media (max-width:980px){.st{grid-template-columns:1fr}}
+.st-cap{font-size:13px;font-weight:650;color:var(--page-ink)}
+.st-cap small{display:block;margin-top:4px;font-weight:450;font-size:12.5px;line-height:1.45;color:var(--page-dim)}
+.st-cap .h{display:inline-block;margin-top:8px;font-family:var(--mono);font-size:11.5px;font-weight:500;padding:2px 7px;border-radius:6px;background:var(--page-soft);color:var(--page-dim)}
+.pair{display:grid;gap:12px;max-width:720px;overflow-x:auto}
+.rec-box{margin-top:50px;padding:22px 24px;border-radius:var(--r);background:var(--page-soft);max-width:900px}
+.rec-box h2{font-size:18px;font-weight:700}
+.rec-box ol{margin:10px 0 0 20px;font-size:14.5px;line-height:1.6;color:var(--page-dim)}
+.rec-box li b{color:var(--page-ink);font-weight:600}
+.rec-box code{font-family:var(--mono);font-size:12.5px}
+
+/* ── fereastra: 720px, fără ramă, --surface (ca `.qab`) ─────────── */
+.win{width:720px;flex-shrink:0;background:var(--surface);color:var(--txt);font-family:var(--display);
+  box-shadow:0 0 0 1px rgba(0,0,0,.35),0 22px 50px rgba(0,0,0,.45);position:relative}
+.win[data-theme=light]{box-shadow:0 0 0 1px rgba(0,0,0,.08),0 22px 50px rgba(16,24,40,.18)}
+.win .hgt{position:absolute;right:-8px;top:0;bottom:0;transform:translateX(100%);display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:10.5px;color:var(--page-dim);white-space:nowrap}
+.win .hgt::before{content:"";width:6px;align-self:stretch;border:1px solid var(--page-dim);border-left:0;opacity:.5}
+
+/* ── comune ─────────────────────────────────────── */
+.ck{width:20px;height:20px;border-radius:50%;flex-shrink:0;box-shadow:inset 0 0 0 1.75px color-mix(in srgb,var(--pc,var(--txt-faint)) 80%,var(--surface))}
+.ck.urg{box-shadow:inset 0 0 0 2px var(--urgent);background:var(--urgent-soft)}
+.t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--txt)}
+.t .ph{color:var(--placeholder)}
+.t .ph q{quotes:"„" "”"}
+.t mark{background:var(--accent-soft);color:inherit;border-radius:4px;box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 30%,transparent)}
+.t mark.pj{background:color-mix(in srgb,var(--pc) 16%,transparent);box-shadow:0 0 0 1px color-mix(in srgb,var(--pc) 35%,transparent)}
+.caret{display:inline-block;width:1.5px;height:1.15em;background:var(--accent);vertical-align:-.18em;margin-left:1px;animation:blink 1.1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.tip{font-size:11.5px;color:var(--txt-faint);height:16px;line-height:16px;white-space:nowrap}
+.tip b{color:var(--txt-dim);font-weight:600}
+.desc{font-size:14px;line-height:21px;color:var(--txt);white-space:pre-wrap}
+.desc .ph{color:var(--placeholder)}
+.chip{height:30px;border-radius:var(--r-s);background:var(--surface-2);color:var(--txt-dim);display:inline-flex;align-items:center;gap:6px;padding:0 10px;font-size:12.5px;font-weight:600;white-space:nowrap;flex-shrink:0}
+.chip.ghost{color:var(--txt-faint);font-weight:550}
+.chip.on{background:var(--accent-soft);color:var(--accent)}
+.chip.pending{background:var(--accent-soft);color:var(--accent);box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 30%,transparent)}
+.chip.tint{background:color-mix(in srgb,var(--pc) 14%,transparent);color:color-mix(in srgb,var(--pc) 80%,var(--txt))}
+.chip .hm{font-family:var(--mono);font-weight:500}
+.chip .x{margin:0 -4px 0 2px;opacity:.7}
+.chip.open{background:var(--surface-3);color:var(--txt)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--pc);flex-shrink:0}
+.ini{font-size:11px;font-weight:650;letter-spacing:.02em;color:var(--accent);padding:0 4px}
+.ico{width:30px;height:30px;border-radius:var(--r-s);background:var(--surface-2);color:var(--txt-dim);display:inline-grid;place-items:center;flex-shrink:0}
+.ico.urg{color:var(--urgent);background:var(--urgent-soft)}
+.send{width:30px;height:30px;border-radius:50%;background:var(--accent);color:var(--on-accent);display:inline-grid;place-items:center;flex-shrink:0}
+.send.off{background:var(--surface-3);color:var(--txt-faint)}
+.kb{font-family:var(--display);font-size:11px;font-weight:600;color:var(--txt-dim);background:var(--surface-3);border-radius:5px;padding:1px 5px;margin:0 1px}
+.hint{font-size:11.5px;color:var(--txt-faint);white-space:nowrap}
+.hint.warn{color:var(--blocked);font-weight:600}
+.gap{flex:1 1 8px}
+
+/* DuePanel, inline (fc-*) */
+.when{border-radius:var(--r-m);background:var(--surface-2);padding:10px}
+.fc-h{margin:0 2px 7px;font-size:12px;font-weight:650;color:var(--txt-faint)}
+.fc-presets{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.fc-pre{height:46px;border-radius:var(--r-s);background:var(--surface-3);color:var(--txt);font-size:13px;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+.fc-pre small{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--txt-faint)}
+.fc-pre.on{background:var(--accent-soft);color:var(--accent)}.fc-pre.on small{color:var(--accent)}
+.fc-pre .k{position:absolute}
+.fc-fields{display:flex;align-items:center;gap:8px;margin-top:8px}
+.fc-pick{height:34px;border-radius:var(--r-s);background:var(--surface-3);color:var(--txt);display:inline-flex;align-items:center;gap:7px;padding:0 12px;font-size:13px;font-weight:600;white-space:nowrap}
+.fc-pick svg{color:var(--accent)}
+.fc-pick small{font-weight:500;color:var(--txt-faint);font-size:12px}
+.fc-pick.date{flex:1}
+.fc-pick .hm{font-family:var(--mono)}
+.fc-time{display:inline-flex;border-radius:var(--r-s);background:var(--surface-3)}
+.fc-time .fc-pick{background:transparent;padding-right:8px}
+.fc-x{width:30px;height:34px;display:grid;place-items:center;color:var(--txt-faint);box-shadow:inset 1px 0 0 var(--line)}
+.fc-link{font-size:12px;font-weight:600;color:var(--txt-faint)}
+.when .keys{margin-top:8px;font-size:11px;color:var(--txt-faint)}
+
+/* ── ACUM (aproximarea capturii) ──────────── */
+.old{padding:24px 16px 3px}
+.old .r1{display:flex;align-items:center;gap:9px;padding:4px 0}
+.old .plus{width:20px;text-align:center;color:var(--txt-faint);font-size:18px}
+.old .t{font-size:14.5px;line-height:24px}
+.old .meta{display:flex;gap:6px;align-items:center;margin-top:8px;padding:8px 0 4px;border-top:1px dashed var(--line-soft);flex-wrap:wrap}
+.old .p{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:var(--r-s);border:1px dashed var(--line);font-size:12px;color:var(--txt-dim)}
+.old .b{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:var(--r-s);background:var(--surface-2);color:var(--txt-dim);font-size:12px}
+.old .b .nat{font-family:var(--mono);color:var(--txt);padding:0 3px}
+.old .b .nat.focus{outline:2px solid var(--accent);border-radius:3px}
+.old .spacer{height:58px}
+
+/* ── A: foaia rapidă, pe desktop ─────────── */
+.va{padding:12px 16px 12px}
+.va .tip{padding-left:32px}
+.va .r1{display:flex;align-items:center;gap:12px;height:30px}
+.va .t{font-size:17px;line-height:30px}
+.va .desc{padding:2px 0 0 32px;max-height:126px;overflow:hidden}
+.va .when{margin:10px 0 0 32px}
+.va .bar{display:flex;align-items:center;gap:6px;margin-top:12px;padding-left:32px}
+.va .tools{display:flex;align-items:center;gap:6px;margin-left:auto}
+.va .hint{margin-right:6px}
+
+/* ── B: o linie de comandă ─────────────────── */
+.vb .r1{display:flex;align-items:center;gap:12px;padding:0 14px 0 18px;height:60px}
+.vb .t{font-size:18px;line-height:28px}
+.vb .chips{display:flex;gap:6px;align-items:center;flex-shrink:0}
+.vb .desc{padding:0 18px 12px 50px;margin-top:-8px;max-height:120px;overflow:hidden}
+.vb .when{margin:0 14px 12px 50px}
+.vb .foot{display:flex;align-items:center;gap:14px;height:30px;padding:0 14px 0 50px;background:var(--surface-2);font-size:11.5px;color:var(--txt-faint)}
+.vb .foot .gap{flex:1}
+.vb .foot span{white-space:nowrap}
+.vb .foot .on{color:var(--txt-dim)}
+
+/* ── C: rândul de jetoane al formularului ─────── */
+.vc{padding:14px 16px 0}
+.vc .field{display:flex;align-items:center;gap:10px;height:44px;padding:0 12px;border-radius:var(--r-m);background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--line)}
+.vc .field.focus{background:var(--bg);box-shadow:inset 0 0 0 1px var(--accent),0 0 0 3px var(--accent-soft)}
+.vc .t{font-size:16px}
+.vc .desc{margin-top:8px;padding:10px 12px;border-radius:var(--r-m);background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--line);max-height:110px;overflow:hidden}
+.vc .chips{display:flex;align-items:center;gap:6px;margin-top:10px;flex-wrap:nowrap}
+.vc .when{margin-top:10px}
+.vc .chip{height:28px;font-size:12px}
+.vc .plus{width:28px;height:28px;border-radius:var(--r-s);background:var(--surface-2);color:var(--txt-dim);display:inline-grid;place-items:center}
+.vc .foot{display:flex;align-items:center;gap:14px;height:30px;margin-top:12px;font-size:11.5px;color:var(--txt-faint)}
+.vc .foot .gap{flex:1}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="i-due" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/></symbol>
+  <symbol id="i-urgent" viewBox="0 0 24 24"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></symbol>
+  <symbol id="i-attach" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7M12 19V5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></symbol>
+</svg>
+
+<div class="wrap">
+  <div class="top">
+    <div class="intro">
+      <div class="eyebrow">Aplicația de Linux · bara Ctrl+Shift+A · fereastră 720px · 2026-10-26</div>
+      <h1>Bara de captură, în „Senin”</h1>
+      <p>Azi rândul de sub titlu e un formular HTML: un <code>&lt;select&gt;</code> cu chenar punctat, alt select „al meu”, <b>dd.mm.yyyy</b> și <b>--:--</b> native, și sub ele ~55px goi (fereastra nu coboară sub <b>150px</b>: <code>Math.max(150, h)</code> în <code>desktop/src/main.ts</code>). Mai jos, trei variante cu aceeași gramatică ca foaia rapidă de pe telefon. Fiecare stare are la dreapta înălțimea ferestrei pe care ar cere-o <code>resizeBar</code>.</p>
+      <p>Din D-241 bara nu mai pune azi: <b>fără dată în text = fără scadență</b>, deci jetonul de dată are stare goală, „Dată”.</p>
+    </div>
+    <div class="theme" role="group" aria-label="Tema">
+      <button data-t="dark" class="on">Întunecat</button>
+      <button data-t="light">Luminos</button>
+      <button data-t="both">Ambele</button>
+    </div>
+  </div>
+
+  <!-- ─────────── ACUM ─────────── -->
+  <section>
+    <h2>Acum <span class="tag old">refăcut din captură</span></h2>
+    <div class="states">
+      <div class="st">
+        <div class="st-cap">Gol, după D-241<small>Patru controale, patru forme: chenar punctat, select gol, câmpuri native cu masca locale-ului și inelul albastru de focus.</small></div>
+        <div class="pair"><div class="win"><div class="old">
+          <div class="r1"><span class="plus">+</span><div class="t"><span class="ph">Adaugă o sarcină… încearcă <q>mâine la 9</q></span></div></div>
+          <div class="meta">
+            <span class="p"><svg width="12" height="12"><use href="#i-inbox"/></svg>Inbox ▾</span>
+            <span class="b"><svg width="13" height="13"><use href="#i-user"/></svg>al meu ▾</span>
+            <span class="b"><svg width="13" height="13"><use href="#i-due"/></svg><span class="nat focus">dd.mm.yyyy</span><span class="nat">--:--</span></span>
+            <span class="b"><svg width="13" height="13"><use href="#i-urgent"/></svg>urgent</span>
+          </div>
+          <div class="spacer"></div>
+        </div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────── A ─────────── -->
+  <section id="A">
+    <h2>A · Foaia rapidă, pe desktop <span class="tag rec">recomandată</span></h2>
+    <div class="seq">[◯ titlu] / [zi] [proiect] (inițiale) ··· indiciu [⚡] [📎] (↑)</div>
+    <p class="lede">Exact rândul din <b>„Ordinea rândului”</b>, cu inelul <code>.ck</code> în culoarea proiectului lângă titlu (urgent = inel chihlimbar) — sarcina arată de la început cum va arăta în listă. Titlul la 17px, ca în foaia rapidă. Jetoanele cu text la stânga, comutatoarele la dreapta lângă Trimite; între ele, indiciul de tastatură care azi stă în <code>.qa-hint</code>. Data se alege din <b>DuePanel inline</b>, care crește fereastra (nu popover: fereastra taie tot ce iese din ea). Persoana nu are jeton: <code>@nume</code> în text, iar inițialele apar numai când e setată.</p>
+    <div class="states">
+      <div class="st"><div class="st-cap">Gol<small>Inelul în culoarea Inbox. Fără bandă de 24px rezervată sus — indiciul datei coboară sub titlu (vezi starea 2), unde nu mută nimic.</small></div>
+        <div class="pair"><div class="win" style="--pc:#8C93A0"><div class="va">
+          <div class="r1"><span class="ck"></span><div class="t"><span class="caret"></span><span class="ph">Ce ai de făcut? încearcă <q>mâine la 9</q> · #proiect · @om · !</span></div></div>
+          <div class="bar">
+            <span class="chip ghost"><svg width="14" height="14"><use href="#i-due"/></svg>Dată</span>
+            <span class="chip"><svg width="14" height="14"><use href="#i-inbox"/></svg>Inbox</span>
+            <span class="tools">
+              <span class="hint"><span class="kb">Tab</span> descriere</span>
+              <span class="ico" title="Urgent (!)"><svg width="15" height="15"><use href="#i-urgent"/></svg></span>
+              <span class="ico" title="Fișier"><svg width="15" height="15"><use href="#i-attach"/></svg></span>
+              <span class="send off"><svg width="16" height="16"><use href="#i-send"/></svg></span>
+            </span>
+          </div>
+        </div></div></div></div>
+
+      <div class="st"><div class="st-cap">Text + dată recunoscută<small>Fragmentul evidențiat în titlu; jetonul de dată pe accent-pal, cu ✕ = „nu e o dată”. Clopoțelul doar cu oră.</small></div>
+        <div class="pair"><div class="win" style="--pc:#8C93A0"><div class="va">
+          <div class="r1"><span class="ck"></span><div class="t">Sună la bancă pentru card <mark>mâine la 9</mark><span class="caret"></span></div></div>
+          <div class="bar">
+            <span class="chip on"><svg width="14" height="14"><use href="#i-due"/></svg>Mâine <span class="hm">9:00</span><svg width="13" height="13"><use href="#i-bell"/></svg><svg class="x" width="13" height="13"><use href="#i-x"/></svg></span>
+            <span class="chip"><svg width="14" height="14"><use href="#i-inbox"/></svg>Inbox</span>
+            <span class="tools">
+              <span class="hint"><span class="kb">Tab</span> descriere · <span class="kb">↵</span> adaugă</span>
+              <span class="ico"><svg width="15" height="15"><use href="#i-urgent"/></svg></span>
+              <span class="ico"><svg width="15" height="15"><use href="#i-attach"/></svg></span>
+              <span class="send"><svg width="16" height="16"><use href="#i-send"/></svg></span>
+            </span>
+          </div>
+        </div></div></div></div>
+
+      <div class="st"><div class="st-cap">Proiect din #nume + @om<small>Jetonul de proiect se colorează (<code>.qs-proj.tinted</code>), inelul trece pe culoarea lui. @ana → inițialele, numai citite.</small></div>
+        <div class="pair"><div class="win" style="--pc:#B57BFF"><div class="va">
+          <div class="r1"><span class="ck"></span><div class="t">Trimite oferta revizuită <mark class="pj">#apollo</mark> <mark class="pj">@ana</mark> <mark>vineri</mark><span class="caret"></span></div></div>
+          <div class="bar">
+            <span class="chip on"><svg width="14" height="14"><use href="#i-due"/></svg>Vin 31 oct<svg class="x" width="13" height="13"><use href="#i-x"/></svg></span>
+            <span class="chip tint"><span class="dot"></span>Apollo</span>
+            <span class="ini">AP</span>
+            <span class="tools">
+              <span class="hint"><span class="kb">↵</span> adaugă</span>
+              <span class="ico"><svg width="15" height="15"><use href="#i-urgent"/></svg></span>
+              <span class="ico"><svg width="15" height="15"><use href="#i-attach"/></svg></span>
+              <span class="send"><svg width="16" height="16"><use href="#i-send"/></svg></span>
+            </span>
+          </div>
+        </div></div></div></div>
+
+      <div class="st"><div class="st-cap">Urgent pornit<small>Din <code>!</code> sau ⚡: comutatorul pe chihlimbar-pal, iar inelul devine <code>.ck.urg</code>. Fără linia de 2px.</small></div>
+        <div class="pair"><div class="win" style="--pc:#8C93A0"><div class="va">
+          <div class="r1"><span class="ck urg"></span><div class="t">Plătește factura la curent <mark class="pj" style="--pc:#FF9548">!</mark> <mark>azi</mark><span class="caret"></span></div></div>
+          <div class="bar">
+            <span class="chip on"><svg width="14" height="14"><use href="#i-due"/></svg>Azi<svg class="x" width="13" height="13"><use href="#i-x"/></svg></span>
+            <span class="chip"><svg width="14" height="14"><use href="#i-inbox"/></svg>Inbox</span>
+            <span class="tools">
+              <span class="hint"><span class="kb">↵</span> adaugă</span>
+              <span class="ico urg"><svg width="15" height="15"><use href="#i-urgent"/></svg></span>
+              <span class="ico"><svg width="15" height="15"><use href="#i-attach"/></svg></span>
+              <span class="send"><svg width="16" height="16"><use href="#i-send"/></svg></span>
+            </span>
+          </div>
+        </div></div></div></div>
+
+      <div class="st"><div class="st-cap">Descrierea deschisă (Tab)<small>Sub titlu, aliniată cu textul lui. Crește cu conținutul până la ~6 rânduri, apoi derulează; fereastra o urmează (plafon 420px).</small></div>
+        <div class="pair"><div class="win" style="--pc:#8C93A0"><div class="va">
+          <div class="r1"><span class="ck"></span><div class="t">Pregătește prezentarea pentru client <mark>joi</mark></div></div>
+          <div class="desc">Ce trebuie să conțină:
+- cifrele din T3 (cere-le de la Mihai)
+- demo pe varianta nouă a raportului<span class="caret"></span></div>
+          <div class="bar">
+            <span class="chip on"><svg width="14" height="14"><use href="#i-due"/></svg>Joi 30 oct<svg class="x" width="13" height="13"><use href="#i-x"/></svg></span>
+            <span class="chip"><svg width="14" height="14"><use href="#i-inbox"/></svg>Inbox</span>
+            <span class="tools">
+              <span class="hint"><span class="kb">Ctrl+↵</span> adaugă</span>
+              <span class="ico"><svg width="15" height="15"><use href="#i-urgent"/></svg></span>
+              <span class="ico"><svg width="15" height="15"><use href="#i-attach"/></svg></span>
+              <span class="send"><svg width="16" height="16"><use href="#i-send"/></svg></span>
+            </span>
+          </div>
+        </div></div></div></div>
+
+      <div class="st"><div class="st-cap">Panoul datei (clic pe „Dată” sau Alt+D)<small><code>QuickDue</code> → <code>DuePanel</code>, inline deasupra rândului. Ziua și ora sunt butoane <code>NativePick</code>: calendarul/ceasul sistemului se deschid la clic, niciun dd.mm.yyyy pe ecran.</small></div>
+        <div class="pair"><div class="win" style="--pc:#8C93A0"><div class="va">
+          <div class="r1"><span class="ck"></span><div class="t">Programare la dentist<span class="caret"></span></div></div>
+          <div class="when">
+            <div class="fc-h">Ziua</div>
+            <div class="fc-presets">
+              <span class="fc-pre">Azi<small>dum 26</small></span>
+              <span class="fc-pre on">Mâine<small>lun 27</small></span>
+              <span class="fc-pre">Luni<small>3 nov</small></span>
+              <span class="fc-pre">+1 săpt.<small>2 nov</small></span>
+            </div>
+            <div class="fc-fields">
+              <span class="fc-pick date"><svg width="15" height="15"><use href="#i-due"/></svg>Mâine <small>lun 27 oct</small></span>
+              <span class="fc-time"><span class="fc-pick"><svg width="15" height="15"><use href="#i-clock"/></svg><span class="hm">10:30</span></span><span class="fc-x"><svg width="13" height="13"><use href="#i-x"/></svg></span></span>
+              <span class="fc-link">scoate</span>
+            </div>
+          </div>
+          <div class="bar">
+            <span class="chip on open" style="background:var(--accent-soft);color:var(--accent)"><svg width="14" height="14"><use href="#i-due"/></svg>Mâine <span class="hm">10:30</span><svg width="13" height="13"><use href="#i-bell"/></svg></span>
+            <span class="chip"><svg width="14" height="14"><use href="#i-inbox"/></svg>Inbox</span>
+            <span class="tools">
+              <span class="hint"><span class="kb">Esc</span> închide panoul</span>
+              <span class="ico"><svg width="15" height="15"><use href="#i-urgent"/></svg></span>
+              <span class="ico"><svg width="15" height="15"><use href="#i-attach"/></svg></span>
+              <span class="send"><svg width="16" height="16"><use href="#i-send"/></svg></span>
+            </span>
+          </div>
+        </div></div></div></div>
+    </div>
+  </section>
+
+  <!-- ─────────── B ─────────── -->
+  <section id="B">
+    <h2>B · O linie de comandă <span class="tag">cea mai joasă</span></h2>
+    <div class="seq">[◯ titlu ··· jetoanele setate (↑)] / bandă de indicii: Dată · #proiect · @om · ! · Tab</div>
+    <p class="lede">Ca un lansator (GNOME Search, Raycast): un singur rând înalt, iar jetoanele apar <b>numai când sunt setate</b>, în coada titlului. Dedesubt o bandă pe <code>--surface-2</code> care învață gramatica (ce încă nu ai folosit e gri, ce ai folosit se aprinde). Cea mai mică fereastră (~90px) și cea mai „tastatură”, dar proiectul implicit (Inbox) nu se vede deloc, iar un titlu lung se îngustează când apar jetoanele.</p>
+    <div class="states">
+      <div class="st"><div class="st-cap">Gol</div>
+        <div class="pair"><div class="win" style="--pc:#8C93A0"><div class="vb">
+          <div class="r1"><span class="ck"></span><div class="t"><span class="caret"></span><span class="ph">Ce ai de făcut?</span></div><span class="send off"><svg width="16" height="16"><use href="#i-send"/></svg></span></div>
+          <div class="foot"><span><svg width="12" height="12" style="display:inline;vertical-align:-1px"><use href="#i-due"/></svg> <q>mâine la 9</q></span><span>#proiect</span><span>@om</span><span>! urgent</span><span class="gap"></span><span><span class="kb">Tab</span> descriere</span><span><span class="kb">Esc</span> renunță</span></div>
+        </div></div></div></div>
+      <div class="st"><div class="st-cap">Text + dată</div>
+        <div class="pair"><div class="win" style="--pc:#8C93A0"><div class="vb">
+          <div class="r1"><span class="ck"></span><div class="t">Sună la bancă pentru card <mark>mâine la 9</mark><span class="caret"></span></div>
+            <span class="chips"><span class="chip on"><svg width="14" height="14"><use href="#i-due"/></svg>Mâine <span class="hm">9:00</span><svg class="x" width="13" height="13"><use href="#i-x"/></svg></span></span>
+            <span class="send"><svg width="16" height="16"><use href="#i-send"/></svg></span></div>
+          <div class="foot"><span class="on"><svg width="12" height="12" style="display:inline;vertical-align:-1px"><use href="#i-due"/></svg> Mâine 9:00</span><span>#proiect</span><span>@om</span><span>! urgent</span><span class="gap"></span><span><span class="kb">Tab</span> descriere</span><span><span class="kb">↵</span> adaugă</span></div>
+        </div></div></div></div>
+      <div class="st"><div class="st-cap">#proiect + urgent</div>
+        <div class="pair"><div class="win" style="--pc:#B57BFF"><div class="vb">
+          <div class="r1"><span class="ck urg"></span><div class="t">Trimite oferta <mark class="pj">#apollo</mark> ! <mark>vineri</mark><span class="caret"></span></div>
+            <span class="chips"><span class="chip on"><svg width="14" height="14"><use href="#i-due"/></svg>Vin 31</span><span class="chip tint"><span class="dot"></span>Apollo</span><span class="ico urg"><svg width="15" height="15"><use href="#i-urgent"/></svg></span></span>
+            <span class="send"><svg width="16" height="16"><use href="#i-send"/></svg></span></div>
+          <div class="foot"><span class="on"><svg width="12" height="12" style="display:inline;vertical-align:-1px"><use href="#i-due"/></svg> Vin 31</span><span class="on">#apollo</span><span>@om</span><span class="on">! urgent</span><span class="gap"></span><span><span class="kb">↵</span> adaugă</span></div>
+        </div></div></div></div>
+      <div class="st"><div class="st-cap">Descriere + panoul datei<small>Banda de jos rămâne ultima; panoul și descrierea împing fereastra în jos.</small></div>
+        <div class="pair"><div class="win" style="--pc:#8C93A0"><div class="vb">
+          <div class="r1"><span class="ck"></span><div class="t">Programare la dentist</div><span class="chips"><span class="chip on"><svg width="14" height="14"><use href="#i-due"/></svg>Mâine <span class="hm">10:30</span></span></span><span class="send"><svg width="16" height="16"><use href="#i-send"/></svg></span></div>
+          <div class="desc">Dr. Popescu, cabinetul de pe Dorobanți<span class="caret"></span></div>
+          <div class="when">
+            <div class="fc-presets"><span class="fc-pre">Azi<small>dum 26</small></span><span class="fc-pre on">Mâine<small>lun 27</small></span><span class="fc-pre">Luni<small>3 nov</small></span><span class="fc-pre">+1 săpt.<small>2 nov</small></span></div>
+            <div class="fc-fields"><span class="fc-pick date"><svg width="15" height="15"><use href="#i-due"/></svg>Mâine <small>lun 27 oct</small></span><span class="fc-time"><span class="fc-pick"><svg width="15" height="15"><use href="#i-clock"/></svg><span class="hm">10:30</span></span><span class="fc-x"><svg width="13" height="13"><use href="#i-x"/></svg></span></span><span class="fc-link">scoate</span></div>
+          </div>
+          <div class="foot"><span class="on"><svg width="12" height="12" style="display:inline;vertical-align:-1px"><use href="#i-due"/></svg> Mâine 10:30</span><span>#proiect</span><span>@om</span><span>! urgent</span><span class="gap"></span><span><span class="kb">Ctrl+↵</span> adaugă</span></div>
+        </div></div></div></div>
+    </div>
+  </section>
+
+  <!-- ─────────── C ─────────── -->
+  <section id="C">
+    <h2>C · Câmpul și jetoanele formularului <span class="tag">cea mai „desktop”</span></h2>
+    <div class="seq">[ câmp titlu ] / [Dată] [proiect] [+] ··· / bandă de indicii</div>
+    <p class="lede">Gramatica <b>formularului complet</b> (<code>formChips</code>): titlul într-un câmp delimitat (ca <code>.desc-box</code>, singurul loc unde „Senin” păstrează conturul), sub el rândul cu numai ce e setat, plus „+” pentru persoană/urgent. Cea mai familiară pentru cine lucrează mult în panou, dar cea mai înaltă și seamănă a dialog, nu a captură de o secundă.</p>
+    <div class="states">
+      <div class="st"><div class="st-cap">Gol</div>
+        <div class="pair"><div class="win"><div class="vc">
+          <div class="field focus"><div class="t"><span class="caret"></span><span class="ph">Ce ai de făcut? încearcă <q>mâine la 9</q></span></div></div>
+          <div class="chips"><span class="chip ghost"><svg width="14" height="14"><use href="#i-due"/></svg>Dată</span><span class="chip"><svg width="14" height="14"><use href="#i-inbox"/></svg>Inbox</span><span class="plus"><svg width="14" height="14"><use href="#i-plus"/></svg></span></div>
+          <div class="foot"><span><span class="kb">Tab</span> descriere</span><span>#proiect · @om · !</span><span class="gap"></span><span><span class="kb">↵</span> adaugă</span><span><span class="kb">Esc</span> renunță</span></div>
+        </div></div></div></div>
+      <div class="st"><div class="st-cap">Text, #proiect, urgent</div>
+        <div class="pair"><div class="win" style="--pc:#B57BFF"><div class="vc">
+          <div class="field focus"><div class="t">Trimite oferta <mark class="pj">#apollo</mark> ! <mark>vineri la 11</mark><span class="caret"></span></div></div>
+          <div class="chips"><span class="chip on"><svg width="14" height="14"><use href="#i-due"/></svg>Vin 31 <span class="hm">11:00</span><svg class="x" width="13" height="13"><use href="#i-x"/></svg></span><span class="chip tint"><span class="dot"></span>Apollo</span><span class="chip" style="background:var(--urgent-soft);color:var(--urgent)"><svg width="14" height="14"><use href="#i-urgent"/></svg>Urgent</span><span class="plus"><svg width="14" height="14"><use href="#i-plus"/></svg></span></div>
+          <div class="foot"><span><span class="kb">Tab</span> descriere</span><span class="gap"></span><span><span class="kb">↵</span> adaugă</span></div>
+        </div></div></div></div>
+      <div class="st"><div class="st-cap">Descriere deschisă</div>
+        <div class="pair"><div class="win"><div class="vc">
+          <div class="field"><div class="t">Pregătește prezentarea <mark>joi</mark></div></div>
+          <div class="desc">cifrele din T3 + demo pe raportul nou<span class="caret"></span></div>
+          <div class="chips"><span class="chip on"><svg width="14" height="14"><use href="#i-due"/></svg>Joi 30 oct</span><span class="chip"><svg width="14" height="14"><use href="#i-inbox"/></svg>Inbox</span><span class="plus"><svg width="14" height="14"><use href="#i-plus"/></svg></span></div>
+          <div class="foot"><span><span class="kb">Shift+Tab</span> titlu</span><span class="gap"></span><span><span class="kb">Ctrl+↵</span> adaugă</span></div>
+        </div></div></div></div>
+    </div>
+  </section>
+
+  <div class="rec-box">
+    <h2>Recomandarea: A</h2>
+    <ol>
+      <li><b>Un singur limbaj de captură.</b> Rândul e cel din foaia rapidă și foaia de tichet (<code>.qs-bar</code>, <code>.qs-due</code>, <code>.qs-sel.qs-proj</code>, <code>.qs-tools</code>); cine a capturat pe telefon știe deja bara.</li>
+      <li><b>Fără gol mort:</b> gol ≈ 96px, cu panoul datei ≈ 235px. Cere coborârea plafonului de jos din <code>main.ts</code> (150 → ~90) și scoaterea benzii de 24px rezervate sus (<code>.qab { padding: 24px … }</code>): indiciul datei trece sub titlu, ca <code>.qa-tip.below</code> din foaia rapidă.</li>
+      <li><b>Persoana iese din rând</b> (ca pe telefon): <code>@nume</code> în text, inițialele numai citite. Selectul „al meu” dispare.</li>
+      <li>B rămâne bună dacă omul vrea bara cât mai mică; C doar dacă vrea bara să semene cu panoul docat.</li>
+    </ol>
+  </div>
+</div>
+
+<script>
+// Tema: Întunecat / Luminos / Ambele (fiecare fereastră dublată, luminoasă dedesubt).
+const originals = [...document.querySelectorAll('.pair > .win')]
+function measure() {
+  document.querySelectorAll('.win').forEach((w) => {
+    let h = w.querySelector('.hgt')
+    if (!h) { h = document.createElement('span'); h.className = 'hgt'; w.appendChild(h) }
+    const px = Math.ceil(w.getBoundingClientRect().height)
+    h.textContent = px + 'px'
+  })
+}
+function setMode(mode) {
+  document.querySelectorAll('.win.clone').forEach((c) => c.remove())
+  document.documentElement.dataset.page = mode === 'light' ? 'light' : 'dark'
+  originals.forEach((w) => {
+    w.dataset.theme = mode === 'light' ? 'light' : 'dark'
+    if (mode === 'both') {
+      const c = w.cloneNode(true)
+      c.classList.add('clone'); c.dataset.theme = 'light'
+      c.querySelector('.hgt')?.remove()
+      w.after(c)
+    }
+  })
+  document.querySelectorAll('.theme button').forEach((b) => b.classList.toggle('on', b.dataset.t === mode))
+  try { localStorage.setItem('qb-theme', mode) } catch {}
+  requestAnimationFrame(measure)
+}
+document.querySelectorAll('.theme button').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.t)))
+let start = 'dark'
+try { start = localStorage.getItem('qb-theme') || 'dark' } catch {}
+setMode(start)
+document.fonts?.ready.then(measure)
+</script>
+</body>
+</html>

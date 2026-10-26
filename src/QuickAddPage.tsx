@@ -23,7 +23,8 @@ export function QuickAddPage() {
   const [fresh, setFresh] = useState(0)
   // Esc = renunț: golește ciorna și ascunde, fără să salveze — și înainte de
   // login, când bara arată doar mesajul. La urcare, nu în captură: lista de
-  // sugestii (`#`, `@`) oprește Esc-ul ei, care o închide doar pe ea.
+  // sugestii (`#`, `@`) și panoul datei (`QuickAdd`, în captură) opresc
+  // Esc-ul lor, care le închide doar pe ele.
   // Remontarea (`fresh`) aduce câmpurile goale și descrierea închisă.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -66,9 +67,9 @@ function QuickAddBar() {
       window.removeEventListener('focus', onFirstFocus)
     }
   }, [])
-  // Fereastra crește cu conținutul: Tab deschide descrierea sub titlu, iar o
-  // fereastră fixă de 150px ar tăia-o. Trimiterea și Esc închid descrierea,
-  // deci observatorul o readuce singur la loc.
+  // Fereastra are înălțimea conținutului: ~96px goală; Tab (descrierea) și
+  // jetonul de dată (panoul) o cresc în jos, fără gol mort dedesubt.
+  // Trimiterea și Esc le închid, deci observatorul o readuce singur la loc.
   useEffect(() => {
     const el = barRef.current
     const bridge = getDesktopBridge()
