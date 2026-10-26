@@ -2157,6 +2157,72 @@ try {
       await ap.close()
     }
 
+    // ── dd cu un tichet DOCAT, în „Listă", cu și fără banda de valuri ────────
+    // Regresia: un tichet docat pe alt drum decât cursorul (căutare, deep link,
+    // „Mergi la") lăsa cursorul pe rândul vechi — `dd` ștergea ACEL rând, iar
+    // tichetul din panou rămânea deschis și neșters. Aici: deschis cu clic, apoi
+    // deschis pe URL cu cursorul pe alt rând; de fiecare dată panoul se închide,
+    // iar după expirarea toastului tichetul docat lipsește din bază — și numai el.
+    for (const waves of [true, false]) {
+      const label = waves ? 'cu valuri' : 'fără bandă'
+      const dp = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+      await dp.goto(BASE, { waitUntil: 'networkidle' })
+      await dp.waitForTimeout(500)
+      if (!waves) {
+        // Un singur val de livrare: fără bandă (vezi „Banda de valuri").
+        await dp.evaluate(() => {
+          const db = JSON.parse(localStorage.getItem('horizontal:v2'))
+          db.waves = db.waves.filter((w) => !(w.projectId === 'demo' && w.number > 1))
+          for (const i of db.issues) if (i.projectId === 'demo') i.wave = 1
+          localStorage.setItem('horizontal:v2', JSON.stringify(db))
+        })
+        await dp.reload({ waitUntil: 'networkidle' })
+        await dp.waitForTimeout(500)
+      }
+      await dp.locator('.sidebar-proj-btn', { hasText: 'Exemplu' }).first().click()
+      await dp.waitForTimeout(700)
+      await dp.locator('.tab', { hasText: /^List/ }).first().click()
+      await dp.waitForTimeout(500)
+      const band = await dp.locator('.wb-pills').count()
+      check(`vim dd docat (${label}): banda e ${waves ? 'prezentă' : 'absentă'}`, waves ? band > 0 : band === 0, `${band} benzi`)
+      const stored = () => dp.evaluate(() => JSON.parse(localStorage.getItem('horizontal:v2')).issues.map((i) => i.id))
+      const paneOpen = () => dp.evaluate(() => !!document.querySelector('.split-pane:not([hidden]) .sh-title-input'))
+      const r0 = await listRows(dp)
+
+      // 1. Deschis cu clic (cursorul vine odată cu el), apoi dd.
+      const a = r0[1].id
+      await dp.locator(`main .list-row[data-issue-id="${a}"]`).first().click()
+      await dp.waitForTimeout(800)
+      const aDocked = await dockedId(dp)
+      await keys(dp, 'd', 'd')
+      await dp.waitForTimeout(500)
+      const aGone = !(await listRows(dp)).some((r) => r.id === a)
+      check(`vim dd docat (${label}): clic + dd închide panoul și ascunde rândul`, aDocked === a && !(await paneOpen()) && aGone, `docat=${aDocked}, panou=${await paneOpen()}, ascuns=${aGone}`)
+
+      // 2. Cursorul pe primul rând, tichetul deschis pe alt drum (URL, ca o căutare).
+      const r1 = await listRows(dp)
+      const first = r1[0].id
+      const b = r1[r1.length - 1].id
+      await dp.locator('h1').first().click().catch(() => {})
+      await keys(dp, 'g', 'g')
+      await dp.evaluate((id) => { history.pushState({}, '', `/${id}`); dispatchEvent(new PopStateEvent('popstate', { state: {} })) }, b)
+      await dp.waitForTimeout(900)
+      const bDocked = await dockedId(dp)
+      const bCursor = await cursorOf(dp)
+      check(`vim dd docat (${label}): un tichet docat pe URL ia și cursorul`, bDocked === b && bCursor === b, `docat=${bDocked}, cursor=${bCursor}, așteptat ${b}`)
+      await keys(dp, 'd', 'd')
+      await dp.waitForTimeout(500)
+      const toastTxt = (await dp.locator('.toast.on').textContent().catch(() => '')) ?? ''
+      check(`vim dd docat (${label}): dd închide panoul, cu toast`, !(await paneOpen()) && /Șters/.test(toastTxt), `panou=${await paneOpen()}, toast=${JSON.stringify(toastTxt)}`)
+
+      // Toastul expiră (5s): abia atunci pleacă ștergerea.
+      await dp.waitForTimeout(5800)
+      const left = await stored()
+      check(`vim dd docat (${label}): după toast, tichetele docate lipsesc din bază`, !left.includes(a) && !left.includes(b), `rămase=${left.join(',')}`)
+      check(`vim dd docat (${label}): …iar rândul de sub vechiul cursor rămâne`, left.includes(first), `${first} ${left.includes(first) ? 'e' : 'NU e'} în bază`)
+      await dp.close()
+    }
+
     // ── Faza 4: câmpurile panoului ───────────────────────────────────────────
     {
       const pp = await browser.newPage({ viewport: { width: 1440, height: 900 } })

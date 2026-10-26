@@ -482,6 +482,17 @@ export function useKeyDispatcher(actions: DispatchActions) {
   // Alt tichet docat: cursorul de câmp pornește de la capăt.
   useEffect(() => { internal.setField(null) }, [ui.dockedIssueId, internal])
 
+  // …și cursorul de rând îl urmează. Panoul urmează cursorul (j/k), dar un
+  // tichet docat pe ALT drum (căutare, deep link, „Mergi la", un card de
+  // dependență, o captură) lăsa cursorul pe rândul vechi: `dd`, `x`, `t`… loveau
+  // atunci un rând nevăzut, nu tichetul deschis — toastul spunea „Șters", iar
+  // tichetul din panou rămânea pe loc. Doar la o schimbare a tichetului docat:
+  // cu formularul murdar cursorul merge singur și panoul stă (asta rămâne).
+  useEffect(() => {
+    if (!vim || !ui.dockedIssueId) return
+    if (internal.cursorRef.current !== ui.dockedIssueId) internal.setCursorId(ui.dockedIssueId)
+  }, [vim, ui.dockedIssueId, internal])
+
   // Un click pe rând (mouse) mută și cursorul acolo, ca tastatura să continue
   // de unde ai ales — și ia focusul de pe buton, ca Enter / Space să rămână ale
   // dispecerului (altfel butonul s-ar fi apăsat singur). Un click în bara
