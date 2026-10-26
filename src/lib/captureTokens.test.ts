@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { inboxProjectId, isInboxProject, normalizeName, parseCaptureTokens } from './captureTokens'
+import { inboxProjectId, isInboxProject, normalizeName, parseCaptureTokens, titleProjectToken } from './captureTokens'
 
 const projects = [
   { id: 'd', name: '✅Daily', prefix: 'D' },
@@ -95,5 +95,24 @@ describe('#inbox și #daily după redenumire', () => {
   })
   it('și înainte de redenumire, #inbox merge', () => {
     expect(parse('sună #inbox')).toMatchObject({ projectId: 'd', title: 'sună' })
+  })
+})
+
+describe('titleProjectToken (tichet existent)', () => {
+  const tok = (t: string, cur = 'd') => titleProjectToken(t, projects, cur)
+  it('oferă proiectul și titlul fără semn', () => {
+    expect(tok('ai ramas la s01e11 #kata')).toEqual({ projectId: 'kata', title: 'ai ramas la s01e11' })
+    expect(tok('#racovita sună la primărie')).toEqual({ projectId: 'r', title: 'sună la primărie' })
+  })
+  it('proiectul curent nu e o mutare', () => {
+    expect(tok('ceva #inbox')).toBeNull()
+    expect(tok('ceva #kata', 'kata')).toBeNull()
+  })
+  it('necunoscut sau în mijlocul cuvântului rămâne text', () => {
+    expect(tok('ceva #zzz')).toBeNull()
+    expect(tok('C# și altceva')).toBeNull()
+  })
+  it('sare peste un semn necunoscut până la unul cunoscut', () => {
+    expect(tok('#zzz ceva #gdpr')).toEqual({ projectId: 'gdpr', title: '#zzz ceva' })
   })
 })

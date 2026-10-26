@@ -165,3 +165,56 @@ export function MoveProjectSheet({ issue, open, prepare, onClose }: {
     </KeyboardSheet>
   )
 }
+
+/**
+ * `#proiect` scris în titlul unui tichet existent (`titleProjectToken`): jetonul
+ * „Mută în …" din rândul formularului. Nu mută singur — mutarea schimbă numărul
+ * și nu se anulează. Un clic scoate semnul din titlu (scris pe ID-ul vechi,
+ * ÎNAINTE de mutare, prin `prepare`) și mută; formularul se remontează pe
+ * tichetul nou, din store. Cu alte modificări nesalvate refuză, ca `MoveChip`.
+ */
+export function TitleMoveChip({ issue, targetId, title, otherDirty }: {
+  issue: Issue
+  targetId: string
+  /** Titlul fără semn. */
+  title: string
+  otherDirty: boolean
+}) {
+  const { projects, updateIssue } = useHorizontal()
+  const { why, targets } = useMoveChoice(issue)
+  const target = targets.find((p) => p.id === targetId)
+  const [refused, setRefused] = useState<string | null>(null)
+  const { busy, error, pick } = useMoveAction(issue, {
+    open: true,
+    remount: true,
+    prepare: title && title !== issue.title ? () => updateIssue(issue.id, { title }) : undefined,
+    onDone: () => {},
+  })
+  const name = target?.name ?? projects.find((p) => p.id === targetId)?.name
+  if (!name) return null
+  const onClick = () => {
+    if (why) return setRefused(why)
+    if (!target) return setRefused(`Nu poți scrie în ${name}.`)
+    if (otherDirty) return setRefused('Salvează întâi — mutarea nu ia cu ea ce n-ai salvat.')
+    setRefused(null)
+    void pick(targetId)
+  }
+  const msg = refused ?? error
+  return (
+    <>
+      <button
+        type="button"
+        data-chip=""
+        tabIndex={-1}
+        className="fc-chip ghost mv-title"
+        disabled={busy}
+        title={`Scoate #${name} din titlu și mută tichetul (primește număr nou)`}
+        onClick={onClick}
+      >
+        <Icon name="fromTitle" size={14} />
+        {busy ? 'Se mută…' : `Mută în ${name}`}
+      </button>
+      {msg && <span className="fc-hint warn" role="alert">{msg}</span>}
+    </>
+  )
+}

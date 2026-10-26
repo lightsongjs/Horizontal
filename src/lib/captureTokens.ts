@@ -33,6 +33,42 @@ function pick<T extends { id: string }>(key: string, items: T[], exact: (t: T) =
 
 const TOKEN = /(^|\s)(?:([#@])([^\s#@!]+)|!(?=\s|$))/g
 
+function pickProject<P extends Pick<Project, 'id' | 'name' | 'prefix'>>(key: string, projects: P[]): P | null {
+  const alias = (x: Pick<Project, 'id' | 'name'>) => (isInboxProject(x) ? INBOX_ALIASES : [])
+  return pick(key, projects, (x) => [normalizeName(x.name), normalizeName(x.prefix), ...alias(x)], (x) => [normalizeName(x.name), ...alias(x)])
+}
+
+export interface TitleProjectToken {
+  projectId: string
+  /** Titlul fără semn, cu spațiile dimprejur strânse. */
+  title: string
+}
+
+/**
+ * `#proiect` scris în titlul unui tichet DEJA creat. Aceeași potrivire ca la
+ * captură, dar aici nu mută nimic singur: formularul doar oferă „Mută în …",
+ * fiindcă mutarea schimbă numărul tichetului și nu se poate anula. Semnul
+ * proiectului curent nu e o cerere de mutare (`null`), la fel ca unul
+ * necunoscut sau ambiguu. Numai primul `#` recunoscut contează, ca la captură.
+ */
+export function titleProjectToken(
+  raw: string,
+  projects: Pick<Project, 'id' | 'name' | 'prefix'>[],
+  currentProjectId: string,
+): TitleProjectToken | null {
+  for (const m of raw.matchAll(TOKEN)) {
+    if (m[2] !== '#') continue
+    const p = pickProject(normalizeName(m[3]), projects)
+    if (!p) continue
+    if (p.id === currentProjectId) return null
+    const start = m.index! + m[1].length
+    const end = m.index! + m[0].length
+    const title = (raw.slice(0, start) + raw.slice(end)).replace(/\s+/g, ' ').trim()
+    return { projectId: p.id, title }
+  }
+  return null
+}
+
 export function parseCaptureTokens(
   raw: string,
   projects: Pick<Project, 'id' | 'name' | 'prefix'>[],
@@ -52,8 +88,7 @@ export function parseCaptureTokens(
       if (projectId !== null) continue
       // Inbox se cheamă și după rol (`#inbox`, `#daily` — numele lui vechi), nu
       // doar după numele afișat: degetele țin minte cuvântul, nu redenumirea.
-      const alias = (x: Pick<Project, 'id' | 'name'>) => (isInboxProject(x) ? INBOX_ALIASES : [])
-      const p = pick(key, projects, (x) => [normalizeName(x.name), normalizeName(x.prefix), ...alias(x)], (x) => [normalizeName(x.name), ...alias(x)])
+      const p = pickProject(key, projects)
       if (p) { projectId = p.id; cut.push([start, end]) } else unknown.push(raw.slice(start, end))
     } else {
       if (assigneeId !== null) continue

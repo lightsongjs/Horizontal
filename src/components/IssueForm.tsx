@@ -28,7 +28,8 @@ import { SheetThreadRow } from './SheetThreadRow'
 import type { EditorHandle } from './MarkdownEditor'
 import { ChipPop } from './ChipPop'
 import { DuePanel } from './DuePanel'
-import { MoveChip } from './MoveProject'
+import { MoveChip, TitleMoveChip } from './MoveProject'
+import { titleProjectToken } from '../lib/captureTokens'
 import { attachBlocked } from './SheetFiles'
 import type { Issue, TestScenario } from '../lib/types'
 import { pinPatch } from '../lib/pinned'
@@ -581,7 +582,7 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
    */
   const { title: saveTitle, bare: bareTitle } = titleToSave(title, titleDate.title)
 
-  const isDirty = isFormDirty({
+  const dirtyState: FormDirtyState = {
     isEdit,
     existing,
     activeWave,
@@ -596,7 +597,15 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
     dueAt: schedule.dueAt,
     remindAt: schedule.remindAt,
     rrule: rruleOut,
-  })
+  }
+  const isDirty = isFormDirty(dirtyState)
+
+  // `#proiect` în titlul unui tichet existent: nu mută singur, doar oferă
+  // „Mută în …" în rândul de jetoane (`TitleMoveChip`).
+  const titleMove = isEdit && existing && canWrite && !isTempIssueId(existing.id)
+    ? titleProjectToken(title, projects, existing.projectId)
+    : null
+  const titleMoveOtherDirty = titleMove ? isFormDirty({ ...dirtyState, title: titleMove.title }) : false
 
   useEffect(() => {
     if (isDirty) {
@@ -1414,6 +1423,9 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
             <Icon name="close" size={14} />
           </button>
         </>
+      )}
+      {titleMove && existing && (
+        <TitleMoveChip issue={existing} targetId={titleMove.projectId} title={titleMove.title} otherDirty={titleMoveOtherDirty} />
       )}
       {/* Titlul era numai dată: salvarea e stinsă, deci spune de ce. */}
       {bareTitle && <span className="fc-hint warn">și ce ai de făcut?</span>}

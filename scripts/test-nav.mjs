@@ -1929,6 +1929,42 @@ try {
     await rf.close()
   }
 
+  // `#proiect` în titlul unui tichet existent: jetonul „Mută în …", nu o mutare
+  // singură. Un clic scoate semnul din titlu și mută (număr nou).
+  {
+    const tm = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+    await tm.goto(BASE, { waitUntil: 'networkidle' })
+    await tm.waitForTimeout(600)
+    await tm.evaluate(() => {
+      const db = JSON.parse(localStorage.getItem('horizontal:v2'))
+      if (!db.projects.some((p) => p.id === 'apo')) {
+        db.projects.push({ id: 'apo', name: 'Apologetica', description: '', prefix: 'APO', currentWave: 1, accent: '#a855f7', type: 'personal' })
+        db.waves.push({ projectId: 'apo', number: 1, name: 'Val 1', label: '', position: 1 })
+      }
+      const src = db.issues.find((i) => i.id.startsWith('EX-'))
+      db.issues.push({ ...src, id: 'EX-90', title: 'De mutat din titlu', deps: [], done: false, dueAt: null, remindAt: null, rrule: null, pinnedAt: null })
+      localStorage.setItem('horizontal:v2', JSON.stringify(db))
+    })
+    await tm.goto(`${BASE}/EX-90`, { waitUntil: 'networkidle' })
+    await tm.waitForTimeout(1200)
+    const titleBox = tm.locator('.sh-title-input').first()
+    await titleBox.click()
+    await tm.keyboard.press('End')
+    await tm.keyboard.type(' #apol')
+    await tm.waitForTimeout(300)
+    const chip = tm.locator('.mv-title').first()
+    check('#proiect în titlu: apare „Mută în Apologetica"', /Mută în Apologetica/.test((await chip.textContent().catch(() => '')) ?? ''), JSON.stringify(await chip.textContent().catch(() => null)))
+    check('…dar nu mută singur', new URL(tm.url()).pathname === '/EX-90', `URL=${new URL(tm.url()).pathname}`)
+    await chip.click()
+    await tm.waitForTimeout(1200)
+    const path = new URL(tm.url()).pathname
+    check('#proiect: clicul mută tichetul', /^\/APO-\d+$/.test(path), `URL=${path}`)
+    const stored = await tm.evaluate((id) => JSON.parse(localStorage.getItem('horizontal:v2')).issues.find((i) => i.id === id)?.title, path.slice(1))
+    check('…iar semnul iese din titlu', stored === 'De mutat din titlu', JSON.stringify(stored))
+    check('…și jetonul dispare', (await tm.locator('.mv-title').count()) === 0, `${await tm.locator('.mv-title').count()}`)
+    await tm.close()
+  }
+
   // ── Modul Vim (src/vim.tsx): cursorul, panoul care urmează, „Listă", oprit ──
   // Cursorul nu e o clasă pe rând: `VimStatus` scrie o regulă CSS pe id. Testul
   // îl citește de acolo, ca să nu depindă de culori.
