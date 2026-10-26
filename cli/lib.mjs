@@ -1,4 +1,4 @@
-// cli/lib.mjs — partea pură a lui `hz`: argumentele, configurația, legătura
+// cli/lib.mjs — partea pură a lui `tk`: argumentele, configurația, legătura
 // cu proiectul (`.horizontal`), textele generate și corpurile cererilor.
 // Fără rețea și fără scrieri pe disc aici (citirile trec prin `fs` dat ca
 // parametru), ca testele să nu aibă nevoie de nimic din afară.
@@ -46,8 +46,8 @@ function canonical(name) {
 }
 
 /**
- * `hz create "Titlu" --deps A,B --urgent` → { cmd, positional, flags }.
- * Acceptă și forma veche, `hz --create --project x --title "…"`: primul
+ * `tk create "Titlu" --deps A,B --urgent` → { cmd, positional, flags }.
+ * Acceptă și forma veche, `tk --create --project x --title "…"`: primul
  * `--<comandă>` cunoscut devine comanda. `--a=b` merge ca `--a b`.
  * Un șir gol e o valoare (`--deps ""` golește), nu o lipsă.
  */
@@ -111,7 +111,7 @@ function jsonFlag(flags, name) {
   try { return JSON.parse(flags[name]) } catch { throw new UsageError(`--${name} trebuie să fie JSON valid`) }
 }
 
-/** Titlul vine pozițional (`hz create "Titlu"`) sau, ca înainte, din `--title`. */
+/** Titlul vine pozițional (`tk create "Titlu"`) sau, ca înainte, din `--title`. */
 export function titleFrom(positional, flags) {
   const t = flags.title ?? positional.join(' ')
   return typeof t === 'string' ? t.trim() : ''
@@ -119,7 +119,7 @@ export function titleFrom(positional, flags) {
 
 /** Corpul pentru POST /api/tickets. `wave` lipsă = valul activ, pus de apelant. */
 export function buildCreateBody({ projectId, title, wave, flags }) {
-  if (!title) throw new UsageError('lipsește titlul: hz create "Titlu"')
+  if (!title) throw new UsageError('lipsește titlul: tk create "Titlu"')
   const body = {
     projectId,
     title,
@@ -240,20 +240,20 @@ export function withClaudeImport(content) {
   return `${content}${sep}${CLAUDE_IMPORT}\n`
 }
 
-/** TICKETING.md: câteva rânduri; tot restul e în `hz guide`. */
+/** TICKETING.md: câteva rânduri; tot restul e în `tk guide`. */
 export function ticketingMd(project) {
   return `# Tichete — Horizontal
 
 Proiectul acesta e legat de proiectul Horizontal **${project.name}** (id \`${project.id}\`, prefix \`${project.prefix}\`), prin \`.horizontal\`.
-Unealta de tichete e \`hz\` (CLI-ul Horizontal, instalat pe sistem) — nu scrie tichete altfel.
+Unealta de tichete e \`tk\` (CLI-ul Horizontal, instalat pe sistem) — nu scrie tichete altfel.
 
-Rulează \`hz guide\` pentru tot: comenzi, reguli, dependențe.
+Rulează \`tk guide\` pentru tot: comenzi, reguli, dependențe.
 
 \`\`\`bash
-hz list                                 # tichetele proiectului
-hz get ${project.prefix}-7                         # tot tichetul, cu atașamentele (uită-te la ele!)
-hz create "Titlu" --deps ${project.prefix}-3 --desc "…"   # tichet nou
-hz update ${project.prefix}-7 --done                       # bifat
+tk list                                 # tichetele proiectului
+tk get ${project.prefix}-7                         # tot tichetul, cu atașamentele (uită-te la ele!)
+tk create "Titlu" --deps ${project.prefix}-3 --desc "…"   # tichet nou
+tk update ${project.prefix}-7 --done                       # bifat
 \`\`\`
 `
 }
@@ -266,7 +266,7 @@ export function waveLabel(w) {
   return [w.name, w.label].filter(Boolean).join(' / ') || null
 }
 
-/** Un rând de `hz list`, la fel ca în ai-client. */
+/** Un rând de `tk list`, la fel ca în ai-client. */
 export function ticketLine(t, waveName) {
   const extra = [
     t.deps?.length ? `← ${t.deps.join(',')}` : '',

@@ -29,8 +29,8 @@
     "test:recurrence-sql": "node scripts/test-recurrence-sql.mjs",
     "test:move-sql": "node scripts/test-move-sql.mjs",
     "test:trash-sql": "node scripts/test-trash-sql.mjs",
-    "hz:install": "node cli/install.mjs",
-    "hz:uninstall": "node cli/install.mjs --uninstall"
+    "tk:install": "node cli/install.mjs",
+    "tk:uninstall": "node cli/install.mjs --uninstall"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.4",

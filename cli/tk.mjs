@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// cli/hz.mjs — CLI-ul de sistem pentru tichetele Horizontal.
-// Un singur `hz` pe calculator (symlink în ~/.local/bin, vezi install.mjs),
+// cli/tk.mjs — CLI-ul de sistem pentru tichetele Horizontal.
+// Un singur `tk` pe calculator (symlink în ~/.local/bin, vezi install.mjs),
 // legat de fiecare proiect printr-un `.horizontal` mic. Înlocuiește copierea
 // lui ticket-kit/ai-client.mjs în fiecare proiect. Fără dependențe npm:
 // Node ≥ 20 are fetch, FormData și Blob.
@@ -34,14 +34,14 @@ function readConfigFile() {
   const p = configPath(process.env, homedir())
   if (!existsSync(p)) return { path: p, data: null }
   try { return { path: p, data: JSON.parse(readFileSync(p, 'utf8')) } } catch {
-    die(`${p} nu e JSON valid; refă-l cu: hz login`)
+    die(`${p} nu e JSON valid; refă-l cu: tk login`)
   }
 }
 
 function config() {
   const cfg = resolveConfig(process.env, readConfigFile().data)
   if (!cfg.apiUrl || !cfg.apiKey) {
-    die('hz nu e configurat: rulează `hz login` (sau setează HORIZONTAL_API_URL și HORIZONTAL_API_KEY)')
+    die('tk nu e configurat: rulează `tk login` (sau setează HORIZONTAL_API_URL și HORIZONTAL_API_KEY)')
   }
   return cfg
 }
@@ -61,7 +61,7 @@ async function api(path, { method = 'GET', body, form } = {}, cfg = config()) {
     die(`Nu ajung la ${cfg.apiUrl}: ${e.cause?.code ?? e.message}`)
   }
   const data = await res.json().catch(() => ({ error: 'non-JSON response' }))
-  if (res.status === 401) die('unauthorized: cheia API e greșită (hz login)')
+  if (res.status === 401) die('unauthorized: cheia API e greșită (tk login)')
   return { status: res.status, data }
 }
 
@@ -96,7 +96,7 @@ function found() {
 
 function projectOrDie(flags) {
   const p = contextProject(flags, found())
-  if (!p) die(`Niciun proiect: rulează \`hz init <id>\` în rădăcina repo-ului sau dă --project <id>`)
+  if (!p) die(`Niciun proiect: rulează \`tk init <id>\` în rădăcina repo-ului sau dă --project <id>`)
   return p
 }
 
@@ -194,7 +194,7 @@ cmds.login = async ({ flags }) => {
 
 cmds.init = async ({ positional, flags }) => {
   const wanted = positional[0] ?? flags.project
-  if (!wanted) throw new UsageError('hz init <id-proiect>   (vezi: hz projects)')
+  if (!wanted) throw new UsageError('tk init <id-proiect>   (vezi: tk projects)')
   const list = await projectList()
   const p = matchProject(list, wanted)
   if (!p) {
@@ -269,7 +269,7 @@ cmds.list = async ({ flags }) => {
 cmds.lookup = async ({ positional, flags }) => {
   const project = projectOrDie(flags)
   const title = titleFrom(positional, flags)
-  if (!title || flags.wave === undefined) throw new UsageError('hz lookup "Titlu" --wave <n>')
+  if (!title || flags.wave === undefined) throw new UsageError('tk lookup "Titlu" --wave <n>')
   const { status, data } = await api(`/api/tickets?${q({ project, title, wave: String(flags.wave) })}`)
   if (status === 200) return out(data.id)
   if (status === 404 && data.error === 'not_found') return out('not_found')
@@ -277,7 +277,7 @@ cmds.lookup = async ({ positional, flags }) => {
 }
 
 cmds.get = async ({ positional, flags }) => {
-  const id = ticketId(positional, flags, 'hz get <ID>')
+  const id = ticketId(positional, flags, 'tk get <ID>')
   const { status, data } = await api(`/api/tickets/${enc(id)}`)
   if (status === 200) return out(JSON.stringify(data, null, 2))
   if (status === 404) { out('not_found'); process.exit(1) }
@@ -303,7 +303,7 @@ cmds.create = async ({ positional, flags }) => {
 }
 
 cmds.update = async ({ positional, flags }) => {
-  const id = ticketId(positional, flags, 'hz update <ID> [--title …] [--done] [--deps A,B] …')
+  const id = ticketId(positional, flags, 'tk update <ID> [--title …] [--done] [--deps A,B] …')
   const rest = flags.id !== undefined ? positional : positional.slice(1)
   const body = buildUpdateBody(flags, rest)
   const { status, data } = await api(`/api/tickets/${enc(id)}`, { method: 'PATCH', body })
@@ -313,7 +313,7 @@ cmds.update = async ({ positional, flags }) => {
     out('has_dependencies')
     if (data.dependsOn?.length) out(`  depends on: ${data.dependsOn.join(', ')}`)
     if (data.dependedOnBy?.length) out(`  depended on by: ${data.dependedOnBy.join(', ')}`)
-    out('  golește-le cu: hz update <ID> --deps ""  apoi mută')
+    out('  golește-le cu: tk update <ID> --deps ""  apoi mută')
     process.exit(1)
   }
   if (status === 409 && data.error === 'recurring') {
@@ -324,7 +324,7 @@ cmds.update = async ({ positional, flags }) => {
 }
 
 cmds.delete = async ({ positional, flags }) => {
-  const id = ticketId(positional, flags, 'hz delete <ID>')
+  const id = ticketId(positional, flags, 'tk delete <ID>')
   const { status, data } = await api(`/api/tickets/${enc(id)}`, { method: 'DELETE' })
   if (status === 200) return out(`deleted: ${data.id}`)
   if (status === 409 && data.error === 'has_dependents') {
@@ -335,9 +335,9 @@ cmds.delete = async ({ positional, flags }) => {
 }
 
 cmds.attach = async ({ positional, flags }) => {
-  const id = ticketId(positional, flags, 'hz attach <ID> <fișier> [<fișier> …]')
+  const id = ticketId(positional, flags, 'tk attach <ID> <fișier> [<fișier> …]')
   const paths = [...(flags.id !== undefined ? positional : positional.slice(1)), ...(flags.file ?? [])]
-  if (!paths.length) throw new UsageError('hz attach <ID> <fișier> [<fișier> …]')
+  if (!paths.length) throw new UsageError('tk attach <ID> <fișier> [<fișier> …]')
   const form = new FormData()
   for (const p of paths) {
     let bytes
@@ -362,7 +362,7 @@ cmds.attach = async ({ positional, flags }) => {
 }
 
 cmds.attachments = async ({ positional, flags }) => {
-  const id = ticketId(positional, flags, 'hz attachments <ID>')
+  const id = ticketId(positional, flags, 'tk attachments <ID>')
   const { status, data } = await api(`/api/tickets/${enc(id)}/attachments`)
   if (status === 404) { out('not_found'); process.exit(1) }
   if (status !== 200) fail(status, data)
@@ -374,7 +374,7 @@ cmds.attachments = async ({ positional, flags }) => {
 cmds['theme-create'] = async ({ positional, flags }) => {
   const project = projectOrDie(flags)
   const name = flags.name ?? positional.join(' ')
-  if (!name || typeof flags.color !== 'string') throw new UsageError('hz theme-create "Nume" --color "#RRGGBB"')
+  if (!name || typeof flags.color !== 'string') throw new UsageError('tk theme-create "Nume" --color "#RRGGBB"')
   const { status, data } = await api('/api/themes', { method: 'POST', body: { projectId: project, name, color: flags.color } })
   if (status !== 201) fail(status, data)
   out(data.key)
@@ -383,7 +383,7 @@ cmds['theme-create'] = async ({ positional, flags }) => {
 cmds['theme-update'] = async ({ positional, flags }) => {
   const project = projectOrDie(flags)
   const key = flags.key ?? positional[0]
-  if (!key) throw new UsageError('hz theme-update <cheie> [--name "…"] [--color "#RRGGBB"]')
+  if (!key) throw new UsageError('tk theme-update <cheie> [--name "…"] [--color "#RRGGBB"]')
   const body = {}
   if (typeof flags.name === 'string') body.name = flags.name
   if (typeof flags.color === 'string') body.color = flags.color
@@ -404,7 +404,7 @@ cmds['wave-create'] = async ({ positional, flags }) => {
 cmds['wave-update'] = async ({ positional, flags }) => {
   const project = projectOrDie(flags)
   const number = flags.number ?? positional[0]
-  if (number === undefined) throw new UsageError('hz wave-update <n> [--name "…"] [--label "…"]')
+  if (number === undefined) throw new UsageError('tk wave-update <n> [--name "…"] [--label "…"]')
   const body = {}
   if (typeof flags.name === 'string') body.name = flags.name
   if (typeof flags.label === 'string') body.label = flags.label
@@ -413,44 +413,44 @@ cmds['wave-update'] = async ({ positional, flags }) => {
   out(`updated: ${data.number}  ${waveLabel(data) ?? ''}`.trimEnd())
 }
 
-const HELP = `hz — tichetele Horizontal din terminal. Ghidul complet: hz guide
+const HELP = `tk — tichetele Horizontal din terminal. Ghidul complet: tk guide
 
 Configurare
-  hz login [--url URL] [--key -]     salvează URL-ul și cheia API (~/.config/horizontal)
-  hz init <proiect>                  leagă repo-ul curent (.horizontal, TICKETING.md, CLAUDE.md)
-  hz status                          ce config și ce proiect vede hz de aici
+  tk login [--url URL] [--key -]     salvează URL-ul și cheia API (~/.config/horizontal)
+  tk init <proiect>                  leagă repo-ul curent (.horizontal, TICKETING.md, CLAUDE.md)
+  tk status                          ce config și ce proiect vede tk de aici
 
 Citire
-  hz projects | waves | themes | assignees      [--json]
-  hz list [--wave N] [--theme cheie] [--done false] [--json]
-  hz lookup "Titlu" --wave N
-  hz get HZ-7
-  hz attachments HZ-7
+  tk projects | waves | themes | assignees      [--json]
+  tk list [--wave N] [--theme cheie] [--done false] [--json]
+  tk lookup "Titlu" --wave N
+  tk get HZ-7
+  tk attachments HZ-7
 
 Scriere
-  hz create "Titlu" [--desc …] [--deps A,B] [--wave N] [--theme cheie]
+  tk create "Titlu" [--desc …] [--deps A,B] [--wave N] [--theme cheie]
                     [--assignee nume] [--due "AAAA-LL-ZZ[ HH:MM]"] [--urgent] [--notes …]
-  hz update HZ-7 [--title …] [--done [false]] [--deps A,B|""] [--wave N] [--desc …]
+  tk update HZ-7 [--title …] [--done [false]] [--deps A,B|""] [--wave N] [--desc …]
                  [--theme cheie|""] [--assignee nume|""] [--due …|""] [--urgent [false]]
                  [--project țintă]  (mută; ID nou)
-  hz delete HZ-7
-  hz attach HZ-7 a.png b.pdf
-  hz theme-create "Nume" --color "#RRGGBB"   |  hz theme-update <cheie> [--name …] [--color …]
-  hz wave-create "Etichetă" [--name IV]      |  hz wave-update <n> [--name …] [--label …]
+  tk delete HZ-7
+  tk attach HZ-7 a.png b.pdf
+  tk theme-create "Nume" --color "#RRGGBB"   |  tk theme-update <cheie> [--name …] [--color …]
+  tk wave-create "Etichetă" [--name IV]      |  tk wave-update <n> [--name …] [--label …]
 
 --project <id> bate .horizontal (la update înseamnă mutare). Forma veche merge:
-hz --create --title "…" --wave 1, hz --get --id HZ-7, hz --attach --id HZ-7 --file a.png`
+tk --create --title "…" --wave 1, tk --get --id HZ-7, tk --attach --id HZ-7 --file a.png`
 
 // ── Pornirea ─────────────────────────────────────────────────────────────────
 
 let parsed
 try { parsed = parseArgs(process.argv.slice(2)) } catch (e) {
-  if (e instanceof UsageError) die(`hz: ${e.message}`)
+  if (e instanceof UsageError) die(`tk: ${e.message}`)
   throw e
 }
 const { cmd, positional, flags } = parsed
 if (!cmd) {
-  if (positional.length) die(`hz: comandă necunoscută: ${positional[0]}\n\n${HELP}`)
+  if (positional.length) die(`tk: comandă necunoscută: ${positional[0]}\n\n${HELP}`)
   out(HELP)
 } else if (flags.help && cmd !== 'help') {
   out(HELP)

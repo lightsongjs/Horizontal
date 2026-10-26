@@ -62,14 +62,14 @@ describe('configurația', () => {
 describe('.horizontal', () => {
   const fs = { existsSync, readFileSync }
   it('se găsește urcând din subdirectoare', () => {
-    const root = mkdtempSync(join(tmpdir(), 'hz-'))
+    const root = mkdtempSync(join(tmpdir(), 'tk-'))
     writeFileSync(join(root, '.horizontal'), '{"project":"kata"}')
     const deep = join(root, 'a', 'b')
     mkdirSync(deep, { recursive: true })
     expect(findProjectFile(deep, fs)).toEqual({ path: join(root, '.horizontal'), dir: root, project: 'kata' })
   })
   it('lipsă → null; stricat → UsageError', () => {
-    const root = mkdtempSync(join(tmpdir(), 'hz-'))
+    const root = mkdtempSync(join(tmpdir(), 'tk-'))
     // tmpdir poate avea un .horizontal mai sus doar în teorie; tăiem căutarea la fs-ul fals
     expect(findProjectFile(root, { existsSync: () => false, readFileSync })).toBe(null)
     writeFileSync(join(root, '.horizontal'), 'nu e json')
@@ -133,9 +133,9 @@ describe('afișarea', () => {
     expect(ticketLine({ id: 'K-1', wave: 1, done: true, theme: 'auth', title: 'T', deps: ['K-0'], dueAt: 'D', urgent: true }, 'I / MVP'))
       .toBe('K-1  [wave 1 · I / MVP] ✓  #auth  T  ← K-0  (due D)  !')
   })
-  it('TICKETING.md e scurt și trimite la hz guide', () => {
+  it('TICKETING.md e scurt și trimite la tk guide', () => {
     const md = ticketingMd({ id: 'kata', prefix: 'KATA', name: 'Katalist' })
-    expect(md).toContain('hz guide')
+    expect(md).toContain('tk guide')
     expect(md).toContain('`kata`')
     expect(md.split('\n').length).toBeLessThan(20)
   })

@@ -1,8 +1,8 @@
-// cli/install.mjs — pune `hz` pe PATH: symlink ~/.local/bin/hz → cli/hz.mjs din
+// cli/install.mjs — pune `tk` pe PATH: symlink ~/.local/bin/tk → cli/tk.mjs din
 // repo. Un symlink, nu o copie: `git pull` actualizează CLI-ul fără reinstalare.
 //
-//   node cli/install.mjs              (npm run hz:install)
-//   node cli/install.mjs --uninstall  (npm run hz:uninstall)
+//   node cli/install.mjs              (npm run tk:install)
+//   node cli/install.mjs --uninstall  (npm run tk:uninstall)
 //
 // HZ_BIN_DIR mută directorul (testele îl țin departe de ~/.local/bin).
 
@@ -11,9 +11,9 @@ import { homedir } from 'node:os'
 import { delimiter, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const target = join(dirname(fileURLToPath(import.meta.url)), 'hz.mjs')
+const target = join(dirname(fileURLToPath(import.meta.url)), 'tk.mjs')
 const binDir = resolve(process.env.HZ_BIN_DIR || join(homedir(), '.local', 'bin'))
-const link = join(binDir, 'hz')
+const link = join(binDir, 'tk')
 
 function isLink(p) {
   try { return lstatSync(p).isSymbolicLink() } catch { return false }
@@ -29,7 +29,7 @@ if (process.argv.includes('--uninstall')) {
     unlinkSync(link)
     console.log(`șters: ${link}`)
   } else if (existsSync(link)) {
-    console.error(`${link} nu e un symlink pus de hz:install; îl las în pace.`)
+    console.error(`${link} nu e un symlink pus de tk:install; îl las în pace.`)
     process.exit(1)
   } else {
     console.log(`nimic de șters: ${link} nu există`)
@@ -51,4 +51,4 @@ const onPath = (process.env.PATH ?? '').split(delimiter).some((d) => d && resolv
 if (!onPath) {
   console.warn(`\natenție: ${binDir} nu e în PATH. Adaugă în ~/.bashrc:\n  export PATH="${binDir}:$PATH"`)
 }
-console.log('\nUrmătorii pași: hz login   apoi, în rădăcina unui repo: hz init <proiect>')
+console.log('\nUrmătorii pași: tk login   apoi, în rădăcina unui repo: tk init <proiect>')
