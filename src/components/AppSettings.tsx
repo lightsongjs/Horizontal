@@ -47,7 +47,7 @@ function OnOff({ label, value, onChange, disabled = false }: { label: string; va
 export function AppSettings() {
   const { theme, setTheme, textScale, setTextScale, vim, setVim, follow, setFollow } = useTheme()
   const { isAdmin } = useAuth()
-  const { closeSheet } = useUI()
+  const { closeSheet, pushSheet } = useUI()
   return (
     <>
       <div className="sheet-head">
@@ -100,6 +100,15 @@ export function AppSettings() {
 
         {/* Ale contului, nu ale dispozitivului — dar aici le caută omul. */}
         <CalendarSettings />
+
+        {/* Coșul: o ștergere din greșeală se repară de aici. Rar, deci în
+            rotiță, nu în bara laterală; foaia se împinge peste setări, iar
+            „Înapoi" duce aici. */}
+        <div className="sheet-section-t">Date</div>
+        <button type="button" className="btn-ghost app-settings-link app-settings-trash" onClick={() => pushSheet({ kind: 'trash' })}>
+          <Icon name="trash" size={15} />
+          Coș · tichete șterse
+        </button>
 
         {/* Utilizatorii au stat în bara laterală, ca rând permanent, deși îi
             deschide doar adminul și rar. Locul lor e lângă celelalte setări. */}

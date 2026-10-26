@@ -581,6 +581,63 @@ try {
   check('URL-ul nu rămâne pe tichetul vechi', staleUrl !== oldTicket, `URL=${staleUrl}`)
   await stale.close()
 
+  // ── Coșul: șters → Coș (rotița) → Restaurează → tichetul revine ─────────
+  // Modul local oglindește triggerul și `restore_issue` (localRepository +
+  // `src/lib/trash.ts`). Filă curată. Așteptarea de după ștergere trece de
+  // fereastra toastului de anulare: coșul trebuie să țină și după ea.
+  {
+    const bin = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+    await bin.goto(BASE, { waitUntil: 'networkidle' })
+    await bin.waitForTimeout(700)
+    await bin.locator('.sidebar-proj-btn').filter({ hasNotText: /Inbox/ }).first().click()
+    await bin.waitForTimeout(900)
+    await bin.locator('.tab', { hasText: /^List/ }).first().click()
+    await bin.waitForTimeout(500)
+    await bin.locator('.list-row').first().click()
+    await bin.waitForTimeout(900)
+    const victimId = new URL(bin.url()).pathname.slice(1)
+    const victimTitle = (await bin.locator('.split-pane .sh-title-input').first().inputValue().catch(() => '')).trim()
+    const listTitles = () => bin.locator('.list-row .list-title').allTextContents().then((t) => t.map((s) => s.trim()))
+    check('coș: un tichet de șters e deschis', /^[A-Z]+-\d+$/.test(victimId) && victimTitle.length > 0, `URL=${victimId}, titlu="${victimTitle}"`)
+    const binDel = bin.locator('.split-pane .sh-delete').first()
+    await binDel.click()
+    await bin.waitForTimeout(300)
+    await binDel.click()
+    await bin.waitForTimeout(1200)
+    check('coș: tichetul șters dispare din „Listă"', !(await listTitles()).includes(victimTitle), `titluri=${(await listTitles()).length}`)
+    await bin.waitForTimeout(5500) // după toast: ștergerea e făcută, nu doar ascunsă
+
+    await bin.locator('.sidebar-theme-btn[aria-label="Setări"]').click()
+    await bin.waitForTimeout(400)
+    await bin.locator('.app-settings-trash').click()
+    await bin.waitForTimeout(700)
+    const binRow = bin.locator('.trash-row', { hasText: victimTitle })
+    const meta = (await binRow.locator('.trash-meta').textContent().catch(() => '')) ?? ''
+    check('coș: tichetul e în coș, cu ID-ul și ziua', (await binRow.count()) === 1 && meta.includes(victimId) && /azi \d\d:\d\d/.test(meta), `rânduri=${await binRow.count()}, coadă="${meta}"`)
+    check('coș: foaia are „Înapoi" spre setări', (await bin.locator('.sheet.on .sheet-back').count()) === 1, `${await bin.locator('.sheet.on .sheet-back').count()}`)
+
+    await binRow.locator('.trash-restore').click()
+    await bin.waitForTimeout(1000)
+    const binToast = ((await bin.locator('.toast').textContent().catch(() => '')) ?? '').trim()
+    check('coș: toastul spune că a revenit, cu același număr', binToast.includes(`${victimId} a revenit.`), `toast="${binToast}"`)
+    check('coș: rândul iese din coș', (await bin.locator('.trash-row', { hasText: victimTitle }).count()) === 0, 'încă acolo')
+
+    await bin.locator('.sheet.on .sheet-back').click()
+    await bin.waitForTimeout(300)
+    check('coș: „Înapoi" duce pe setări', (await bin.locator('.sheet.on .app-settings').count()) === 1, 'nu e rotița')
+    await bin.keyboard.press('Escape')
+    await bin.waitForTimeout(800)
+    check('coș: tichetul restaurat e iar în „Listă"', (await listTitles()).includes(victimTitle), `titluri=${JSON.stringify((await listTitles()).slice(0, 5))}`)
+    await bin.reload({ waitUntil: 'networkidle' })
+    await bin.waitForTimeout(1200)
+    await bin.locator('.sidebar-proj-btn').filter({ hasNotText: /Inbox/ }).first().click()
+    await bin.waitForTimeout(800)
+    await bin.locator('.tab', { hasText: /^List/ }).first().click()
+    await bin.waitForTimeout(500)
+    check('coș: restaurarea ține peste o reîncărcare', (await listTitles()).includes(victimTitle), 'lipsește după reîncărcare')
+    await bin.close()
+  }
+
   // ── „Ale mele" supraviețuiește unei reporniri, ca „Azi" ──────────────────
   // Al patrulea tab NU e un `SmartListKind` (vezi `Screen` din App.tsx), deci
   // are propriul drum prin `parseLastView`/`LAST_VIEW_KEY` — ăsta e testul care

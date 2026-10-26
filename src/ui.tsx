@@ -38,6 +38,9 @@ export type SheetState =
   | { kind: 'wave-manage'; focus?: number | 'new' }
   | { kind: 'theme-manage' }
   | { kind: 'app-settings' }
+  // Coșul de gunoi: tichetele șterse, cu „Restaurează". Împinsă peste rotiță
+  // (`pushSheet`), deci „Înapoi" duce pe setări. Vezi `TrashSheet`.
+  | { kind: 'trash' }
   | { kind: 'obstacle-form'; obstacleId?: string } // creare când n-are id
   | { kind: 'user-form'; userId?: string } // creare când n-are id
   // Editorul unui filtru salvat; creare când n-are id. Vezi `FilterForm`.

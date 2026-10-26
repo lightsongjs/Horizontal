@@ -418,6 +418,8 @@ export const onRequestPatch: PagesFunction<Env> = async (context) => {
 // sau ar rupe alt tichet — tichete care depind de el, comentarii / pase,
 // fișiere (ar rămâne orfane în Storage). Dependențele LUI, vizitele și
 // legăturile cu obstacole pleacă odată cu el (`on delete cascade`).
+// Din migration-trash.sql ștergerea trece și ea prin coș (`deleted_by` null),
+// dar refuzurile rămân: un tichet abia încărcat n-are ce pierde.
 // Asumat: verificările și ștergerea nu sunt o tranzacție. Un comentariu scris
 // exact între ele ar pleca odată cu tichetul — fereastra e de milisecunde, iar
 // ruta e pentru tichete abia încărcate, pe care nu scrie nimeni.

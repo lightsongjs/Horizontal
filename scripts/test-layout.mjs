@@ -1898,6 +1898,54 @@ for (const width of [420, 484, 567, 844]) {
   check(`panoul e desktop (o coloană, fără layoutul de telefon) @${width}px`, !m.narrow && !/\s/.test(m.cols.trim()), `coloane: ${m.cols}`)
 }
 
+/**
+ * Coșul (`TrashSheet.tsx`): rândul are titlul, coada (ID · proiect · când ·
+ * cine) și două butoane care nu se micșorează. La 320px cu textul mărit
+ * „Restaurează" n-are voie să strivească titlul la zero, și nimic nu iese din
+ * foaie.
+ */
+const trashSheet = () => `
+<div class="sheet on"><div class="sheet-scroll trash"><ul class="trash-list">
+  <li class="trash-row" id="tr"><span class="trash-text"><span class="trash-title">Pregătește lansarea versiunii noi pentru toți clienții din regiune</span><span class="trash-meta"><span class="trash-id">HORIZ-128</span> · Un proiect cu nume lung · ieri 23:59 · Ionuț Popescu</span></span>
+    <button class="btn-ghost trash-restore"><svg width="14" height="14"></svg> <span class="trash-restore-label">Restaurează</span></button>
+    <button class="sh-delete trash-purge"><svg width="14" height="14"></svg></button></li>
+  <li class="trash-row"><span class="trash-text"><span class="trash-title">Scurt</span><span class="trash-meta"><span class="trash-id">HZ-02</span> · Inbox · azi 09:05</span></span>
+    <button class="btn-ghost trash-restore"><svg width="14" height="14"></svg> <span class="trash-restore-label">Restaurează</span></button>
+    <button class="sh-delete trash-purge"><svg width="14" height="14"></svg></button></li>
+</ul></div></div>`
+
+console.log('\nCoșul — rândul cu Restaurează și Șterge definitiv:')
+for (const width of PHONE_WIDTHS) {
+  const page = await browser.newPage({ viewport: { width, height: 844 } })
+  await page.setContent(`<style>${CSS}</style>${trashSheet()}`)
+  const m = await page.evaluate(() => {
+    const r = (el) => el.getBoundingClientRect()
+    const row = document.querySelector('#tr')
+    const title = row.querySelector('.trash-title')
+    const restore = row.querySelector('.trash-restore')
+    const purge = row.querySelector('.trash-purge')
+    const label = row.querySelector('.trash-restore-label')
+    const line = getComputedStyle(row, '::after')
+    return {
+      rowOverflow: Math.round(row.scrollWidth - r(row).width),
+      titleW: Math.round(r(title).width),
+      restoreIn: r(restore).right <= window.innerWidth + 0.5 && restore.scrollWidth <= restore.clientWidth + 1,
+      labelShown: getComputedStyle(label).display !== 'none',
+      purgeW: Math.round(r(purge).width),
+      purgeIn: r(purge).right <= window.innerWidth + 0.5,
+      restoreH: Math.round(r(restore).height),
+      hair: line.height,
+      hairBg: line.backgroundColor,
+    }
+  })
+  await page.close()
+  check(`rândul din coș fără overflow @${width}px`, m.rowOverflow <= 0, `${m.rowOverflow}px`)
+  check(`titlul din coș mai are loc @${width}px`, m.titleW >= 90, `${m.titleW}px`)
+  check(`„Restaurează" întreg și în ecran @${width}px`, m.restoreIn && m.restoreH >= 34, `în ecran=${m.restoreIn}, înalt=${m.restoreH}px, cuvânt=${m.labelShown}`)
+  check(`„Șterge definitiv" rotund, întreg @${width}px`, m.purgeIn && m.purgeW === 34, `${m.purgeW}px`)
+  check(`linia de păr dintre rânduri se vede @${width}px`, m.hair === '1px' && m.hairBg !== 'rgba(0, 0, 0, 0)', `${m.hair}, ${m.hairBg}`)
+}
+
 await browser.close()
 
 if (failures.length) {

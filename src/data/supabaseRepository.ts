@@ -6,7 +6,8 @@ import type { Assignee, InboxRow, Issue, IssueEvent, Obstacle, ObstacleLink, Pro
 import { nextIssueId } from '../lib/issueId'
 import { nextPinPosition, type Pin, type PinKind } from '../lib/pins'
 import { isFilterIcon, normalizeRules, type SavedFilter } from '../lib/savedFilters'
-import { pathsForIssues, pathsForProject, removeObjects } from './attachments'
+import { sortTrash, type TrashItem } from '../lib/trash'
+import { pathsForProject, removeObjects } from './attachments'
 import { themeKey, type DueRange, type NewIssue, type NewObstacle, type NewProject, type NewThreadPost, type Repository } from './repository'
 
 interface IssueRow {
@@ -167,6 +168,31 @@ export function rowToInboxRow(row: InboxRowRaw): InboxRow {
   }
 }
 
+/** Cât arată ecranul „Coș" deodată; mai vechi de 30 de zile oricum nu stau. */
+const TRASH_LIMIT = 300
+
+interface TrashRow {
+  id: string
+  issue_id: string
+  project_id: string
+  title: string
+  deleted_at: string
+  deleted_by: string | null
+  deleted_by_name: string | null
+}
+
+export function rowToTrashItem(row: TrashRow): TrashItem {
+  return {
+    id: row.id,
+    issueId: row.issue_id,
+    projectId: row.project_id,
+    title: row.title,
+    deletedAt: row.deleted_at,
+    deletedBy: row.deleted_by,
+    deletedByName: row.deleted_by_name,
+  }
+}
+
 export function rowToSavedFilter(row: Record<string, unknown>): SavedFilter {
   return {
     id: String(row.id),
@@ -191,16 +217,15 @@ export function createSupabaseRepository(): Repository {
   }
 
   /**
-   * Ordinea contează: căile se citesc ÎNAINTE (cascada FK le-ar duce cu ea),
-   * rândurile se șterg apoi, iar octeții la final și best-effort. Cheia externă
-   * șterge rândurile din `attachments`, niciodată octeții.
+   * Doar rândurile. Triggerul coșului (`supabase/migration-trash.sql`) pune
+   * deoparte tichetul cu tot ce ia cascada, iar octeții pozelor RĂMÂN în
+   * bucket: o restaurare le aduce înapoi rândurile, iar `purge-trash` îi șterge
+   * abia când tichetul iese din coș (definitiv sau după 30 de zile).
    */
   async function deleteIssuesImpl(ids: string[]): Promise<void> {
     if (ids.length === 0) return
-    const paths = await pathsForIssues(ids)
     const { error } = await db.from('issues').delete().in('id', ids)
     if (error) throw error
-    await removeObjects(paths)
   }
 
   /** Un insert, cu numărul calculat acum. Vezi `createIssue` pentru cursă. */
@@ -559,6 +584,33 @@ export function createSupabaseRepository(): Repository {
       if (rErr) throw rErr
       // Fără dependențe, prin definiție: `move_issue` refuză orice dependență.
       return rowToIssue(row as IssueRow, {})
+    },
+
+    async listTrash() {
+      const { data, error } = await db
+        .from('trash_rows')
+        .select('id, issue_id, project_id, title, deleted_at, deleted_by, deleted_by_name')
+        .order('deleted_at', { ascending: false })
+        .limit(TRASH_LIMIT)
+      // Migrarea nerulată: coșul e gol, nu o eroare pe ecran.
+      if (error?.code === '42P01' || error?.code === 'PGRST205') return []
+      if (error) throw error
+      return sortTrash(((data ?? []) as TrashRow[]).map(rowToTrashItem))
+    },
+
+    async restoreFromTrash(trashId: string) {
+      const { data, error } = await db.rpc('restore_issue', { p_trash_id: trashId })
+      if (error?.code === 'PGRST202') throw new Error('Coșul nu e încă activ pe server (lipsește migrarea).')
+      // Refuzurile (`HZT0x`) vin cu mesajul românesc din `raise exception`.
+      if (error) throw error
+      const r = data as { id: string; original_id: string }
+      return { id: r.id, originalId: r.original_id }
+    },
+
+    async purgeFromTrash(trashId: string) {
+      const { error } = await db.rpc('purge_trash', { p_trash_id: trashId })
+      if (error?.code === 'PGRST202') throw new Error('Coșul nu e încă activ pe server (lipsește migrarea).')
+      if (error) throw error
     },
 
     async listObstacles(projectId: string) {

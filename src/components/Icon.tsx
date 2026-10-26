@@ -63,6 +63,7 @@ import {
   Settings2,
   Sparkles,
   Trash2,
+  Undo2,
   TriangleAlert,
   User,
   X,
@@ -119,6 +120,9 @@ const ICONS = {
   toThread: ChevronDown,
   danger: TriangleAlert,
   delete: Trash2,
+  /** Coșul de gunoi (rotița, foaia Coș): același desen ca ștergerea, alt rol. */
+  trash: Trash2,
+  restore: Undo2,
   // Nume de ROL, nu de desen: „obstacle", nu „octagon". Desenul se schimbă
   // într-un singur loc. `danger` rămâne pentru avertismente generice.
   obstacle: OctagonAlert,

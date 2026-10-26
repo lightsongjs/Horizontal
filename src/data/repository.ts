@@ -5,6 +5,7 @@ import type { Assignee, Issue, IssueEvent, InboxRow, Obstacle, ObstacleLink, Pro
 import type { Pin, PinKind } from '../lib/pins'
 import type { ThreadSummary } from '../lib/thread'
 import type { FilterIcon, FilterRules, SavedFilter } from '../lib/savedFilters'
+import type { RestoreResult, TrashItem } from '../lib/trash'
 
 export interface NewProject {
   name: string
@@ -138,6 +139,21 @@ export interface Repository {
    * `src/lib/moveIssue.ts`.
    */
   moveIssue(id: string, targetProjectId: string): Promise<Issue>
+  /**
+   * Coșul: tichetele șterse din proiectele la care am acces, cele mai noi
+   * întâi. Pe Supabase le pune acolo triggerul de ștergere
+   * (`supabase/migration-trash.sql`), deci `deleteIssue(s)` nu se schimbă.
+   * Regulile și textele: `src/lib/trash.ts`.
+   */
+  listTrash(): Promise<TrashItem[]>
+  /**
+   * Pune tichetul la loc, cu firul, fișierele, vizitele, obstacolele și
+   * dependențele care încă au cu cine. Număr nou dacă cel vechi a fost
+   * refolosit între timp. Aruncă (mesaj de arătat) fără drept de scriere.
+   */
+  restoreFromTrash(trashId: string): Promise<RestoreResult>
+  /** „Șterge definitiv": iese din coș, iar pozele din bucket. */
+  purgeFromTrash(trashId: string): Promise<void>
 
   listObstacles(projectId: string): Promise<Obstacle[]>
   /** Muchiile obstacol → tichet ale proiectului. Separat de obstacole ca să

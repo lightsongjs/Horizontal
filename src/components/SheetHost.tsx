@@ -16,6 +16,7 @@ import { Icon } from './Icon'
 import { QuickSheet } from './QuickSheet'
 import { FilterForm } from './FilterForm'
 import { EventSheet } from './EventSheet'
+import { TrashSheet } from './TrashSheet'
 
 export function SheetHost() {
   const { sheet, canGoBack, closeSheet, goBack, dockedIssueId } = useUI()
@@ -79,6 +80,7 @@ export function SheetHost() {
         {sheet.kind === 'wave-manage' && <WaveManager focus={sheet.focus} />}
         {sheet.kind === 'theme-manage' && <ThemeManager />}
         {sheet.kind === 'app-settings' && <AppSettings />}
+        {sheet.kind === 'trash' && <TrashSheet />}
         {sheet.kind === 'obstacle-form' && (
           <ObstacleForm key={sheet.obstacleId ?? '__new__'} obstacleId={sheet.obstacleId} />
         )}

@@ -148,7 +148,12 @@ begin
   update public.attachments  set issue_id = v_new, project_id = p_target where issue_id = p_id;
   update public.issue_seen   set issue_id = v_new where issue_id = p_id;
 
+  -- O mutare nu e o ștergere: fără fanionul ăsta, triggerul coșului
+  -- (migration-trash.sql) ar pune rândul vechi în coș, iar o „restaurare" ar
+  -- fi dublat tichetul. Local tranzacției, scos imediat după.
+  perform pg_catalog.set_config('horizontal.trash', 'off', true);
   delete from public.issues where id = p_id;
+  perform pg_catalog.set_config('horizontal.trash', '', true);
   return v_new;
 end
 $fn$;
