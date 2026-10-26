@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { deleteCol, deleteRow, editCell, formatTable, insertCol, insertRow, newTable, parseTable, setAlign, setCell } from './table'
+import { cellIn, cellOut, deleteCol, deleteRow, editCell, formatTable, insertCol, insertRow, newTable, parseTable, setAlign, setCell } from './table'
 import { toBlocks } from './blocks'
 
 const SRC = '| | La N | La S |\n|---|:-:|--:|\n| **Stare** | n-au | a \\| b |\n| scurt |'
@@ -16,9 +16,9 @@ describe('parseTable / formatTable', () => {
     expect(parseTable('a | b\n--|--\n1 | 2')!.rows).toEqual([['a', 'b'], ['1', '2']])
   })
 
-  it('forma minimă, `|` scăpat, rândul nou din celulă devine spațiu', () => {
+  it('forma minimă, `|` scăpat, rândul nou din celulă devine `<br>`', () => {
     const m = setCell(parseTable(SRC)!, 2, 1, 'x|y\nz')
-    expect(formatTable(m)).toBe('|  | La N | La S |\n| --- | :---: | ---: |\n| **Stare** | n-au | a \\| b |\n| scurt | x\\|y z |  |')
+    expect(formatTable(m)).toBe('|  | La N | La S |\n| --- | :---: | ---: |\n| **Stare** | n-au | a \\| b |\n| scurt | x\\|y<br>z |  |')
   })
 
   it('dus-întors: textul formatat se citește la fel', () => {
@@ -78,5 +78,44 @@ describe('editCell', () => {
   it('rezultatul se citește înapoi la fel', () => {
     const next = editCell(A, 1, 1, 'dev')!
     expect(parseTable(next)!.rows[1]).toEqual(['Ana', 'dev'])
+  })
+})
+
+describe('rândul nou în celulă (`<br>`)', () => {
+  it('câmpul → sursa: `\\n` (și CRLF) devine `<br>`', () => {
+    expect(cellOut('a\nb')).toBe('a<br>b')
+    expect(cellOut('a\r\nb\rc')).toBe('a<br>b<br>c')
+    // Shift+Enter la capăt: `<br>` rămâne (trim-ul nu-l mănâncă), ca rândul
+    // nou din câmp să nu dispară sub cursor.
+    expect(cellOut('a\n')).toBe('a<br>')
+  })
+  it('sursa → câmpul: toate formele lui `<br>`, fără să conteze literele', () => {
+    expect(cellIn('a<br>b<br/>c<br />d<BR>e<Br  />f')).toBe('a\nb\nc\nd\ne\nf')
+    expect(cellIn('<b>x</b> <bra>')).toBe('<b>x</b> <bra>')
+  })
+  it('dus-întors', () => {
+    for (const t of ['a\nb', 'x\n\ny', '**a**\n`c`', 'a|b\nc']) {
+      const src = editCell('| h |\n|---|\n| x |', 1, 0, t)!
+      expect(cellIn(parseTable(src)!.rows[1][0])).toBe(t)
+    }
+  })
+  it('editCell scrie `<br>` și lasă restul tabelului aliniat', () => {
+    const A = '| Nume   | Rol |\n|--------|-----|\n| Ana    | dev |'
+    expect(editCell(A, 1, 1, 'dev\nops')).toBe('| Nume   | Rol |\n|--------|-----|\n| Ana    | dev<br>ops |')
+    expect(editCell(A, 1, 0, 'Ana\n')).toBe('| Nume   | Rol |\n|--------|-----|\n| Ana<br>    | dev |')
+  })
+  it('cititorul: `<br>` în celulă e rând nou; alt HTML și `<br>` în afara tabelului rămân text', () => {
+    const b = toBlocks('| a<br>b | <b>x</b><BR/>y |\n|---|---|\n| 1 |  2 |', [])[0]
+    if (b.t !== 'table') throw new Error('nu e tabel')
+    expect(b.head[0]).toEqual([{ t: 'text', text: 'a' }, { t: 'br' }, { t: 'text', text: 'b' }])
+    expect(b.head[1]).toEqual([{ t: 'text', text: '<b>x</b>' }, { t: 'br' }, { t: 'text', text: 'y' }])
+    const p = toBlocks('rând<br>simplu', [])[0]
+    expect(p).toEqual({ t: 'p', children: [{ t: 'text', text: 'rând<br>simplu' }] })
+  })
+  it('`<br>` în bold dintr-o celulă e tot rând nou; în cod rămâne text', () => {
+    const b = toBlocks('| **a<br>b** | `x<br>y` |\n|---|---|', [])[0]
+    if (b.t !== 'table') throw new Error('nu e tabel')
+    expect(b.head[0]).toEqual([{ t: 'strong', children: [{ t: 'text', text: 'a' }, { t: 'br' }, { t: 'text', text: 'b' }] }])
+    expect(b.head[1]).toEqual([{ t: 'code', text: 'x<br>y' }])
   })
 })

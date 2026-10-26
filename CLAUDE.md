@@ -1036,6 +1036,9 @@ Subsetul îl dă specul (`docs/superpowers/specs/2026-10-12-descriere-markdown-d
   poate înlocui peste capete de rând) și își păstrează DOM-ul prin
   `updateDOM`, altfel câmpul cu focusul ar dispărea la fiecare tastă.
   Ctrl+Z din celulă e `undo` al editorului; Esc (în captură) iese sub tabel.
+  Shift/Ctrl/⌘+Enter rupe rândul ÎN celulă: câmpul arată un rând nou, sursa
+  ține `<br>` (`cellIn`/`cellOut`), oprit înainte de „salvează” din formular;
+  `<br>` (`<br/>`, `<BR />`) e singurul HTML desenat, și numai în celule.
   **În GFM un rând lipit de tabel e încă un rând al lui** — de-aia ieșirea și
   inserarea lasă un rând gol după. „Editează ca text” (⋯) arată sursa cât
   cursorul stă în tabel. Focusul descrierii e al cutiei (`focusin`/`focusout`

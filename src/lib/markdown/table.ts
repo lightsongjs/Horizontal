@@ -50,8 +50,20 @@ export function parseTable(src: string): TableModel | null {
 
 const DELIM: Record<string, string> = { left: ':---', center: ':---:', right: '---:', none: '---' }
 
-/** O celulă nu poate ține un rând nou: devine spațiu. `|` se scapă. */
-const cellOut = (c: string) => c.replace(/\r?\n/g, ' ').replace(/\|/g, '\\|').trim()
+/**
+ * Rândul nou dintr-o celulă. GFM nu-l poate ține în sursă (rândul de tabel e o
+ * singură linie), deci convenția e `<br>` — singurul HTML pe care îl
+ * desenăm, și numai în celule. Câmpul celulei arată un rând nou adevărat:
+ * `cellIn` la deschidere, `cellOut` la scriere.
+ */
+const BR = /<br\s*\/?>/gi
+export const isBrTag = (s: string) => /^<br\s*\/?>$/i.test(s)
+
+/** Markdown-ul celulei → textul din câmp (`<br>`, `<br/>`, `<BR />` → rând nou). */
+export const cellIn = (c: string) => c.replace(BR, '\n')
+
+/** Textul din câmp → markdown-ul celulei: rândul nou devine `<br>`, `|` se scapă. */
+export const cellOut = (c: string) => c.replace(/\r\n?|\n/g, '<br>').replace(/\|/g, '\\|').trim()
 
 export function formatTable(m: TableModel): string {
   const row = (cells: string[]) => `| ${cells.map(cellOut).join(' | ')} |`

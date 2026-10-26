@@ -162,6 +162,39 @@ try {
   const savedViaPanel = await descOf(page, '.split-pane').catch(() => null)
   check('Ctrl+Enter salvează descrierea din panou', savedViaPanel === 'a**b**', JSON.stringify(savedViaPanel))
 
+  // ── Tabelul: Shift/Ctrl+Enter = rând nou ÎN celulă (`<br>`), nu „salvează” ──
+  {
+    const id = decodeURIComponent(new URL(page.url()).pathname.slice(1))
+    await page.evaluate((id) => {
+      const db = JSON.parse(localStorage.getItem('horizontal:v2'))
+      db.issues.find((x) => x.id === id).desc = '| a | b |\n|---|---|\n| x | y<BR/>v |'
+      localStorage.setItem('horizontal:v2', JSON.stringify(db))
+    }, id)
+    await page.reload({ waitUntil: 'networkidle' })
+    await page.waitForTimeout(800)
+    await page.locator(`.list-row[data-issue-id="${id}"]`).first().click()
+    await page.waitForTimeout(1000)
+    const brs = await page.locator('.split-pane .md-table td[data-r="1"][data-c="1"] .md-cell br').count()
+    check('tabel: `<BR/>` dintr-o celulă se desenează ca rând nou', brs === 1, `${brs} <br>`)
+    await page.locator('.split-pane .md-table td[data-r="1"][data-c="0"]').click()
+    const cell = page.locator('.split-pane .md-cell-input')
+    await cell.waitFor({ timeout: 3000 })
+    const h1 = (await cell.boundingBox())?.height ?? 0
+    await page.keyboard.press('End')
+    await page.keyboard.press('Shift+Enter')
+    await page.keyboard.type('z')
+    await page.keyboard.press('Control+Enter')
+    await page.keyboard.type('w')
+    const h3 = (await cell.boundingBox())?.height ?? 0
+    const src = await descOf(page, '.split-pane')
+    check('tabel: Shift+Enter și Ctrl+Enter scriu `<br>` în celulă', src === '| a | b |\n|---|---|\n| x<br>z<br>w | y<BR/>v |', JSON.stringify(src))
+    check('…câmpul arată rândurile și crește', (await cell.inputValue()) === 'x\nz\nw' && h3 > h1 * 2, `${JSON.stringify(await cell.inputValue())}, ${Math.round(h1)}→${Math.round(h3)}px`)
+    check('…Ctrl+Enter nu a salvat/închis formularul', (await page.locator('.split-pane .md-cell-input').count()) === 1 && decodeURIComponent(new URL(page.url()).pathname.slice(1)) === id, page.url())
+    await page.locator('.split-pane .md-table td[data-r="1"][data-c="1"]').click()
+    check('tabel: celula deschisă își descifrează `<BR/>`', (await page.locator('.split-pane .md-cell-input').inputValue()) === 'y\nv', JSON.stringify(await page.locator('.split-pane .md-cell-input').inputValue()))
+    await page.keyboard.press('Escape')
+  }
+
   // ── Panoul: descrierea cât textul, rândul de fir sus, citit = văzut ─────
   // Macheta `design/panel-thread`. Un alt tichet decât cel docat, cu o
   // descriere lungă și un comentariu străin nevăzut.
