@@ -11,7 +11,8 @@ import { ProjectMark } from './ProjectMark'
 
 interface Props {
   /** Scadența implicită când textul nu conține niciuna (ziua listei deschise). */
-  defaultDueAt: string
+  /** Ziua unei capturi fără dată în text; null = fără scadență. */
+  defaultDueAt: string | null
   onAdded?(): void
   /** Se schimbă la fiecare cerere de focus din afară (tasta C). */
   focusSignal?: number
@@ -282,7 +283,7 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, rich = false,
             <input
               type="time"
               value={dueAt && !allDay ? toTimeInput(dueAt) : ''}
-              onChange={(e) => q.setManual((m) => ({ ...m, due: fromInputs(dueAt ? toDateInput(dueAt) : toDateInput(defaultDueAt), e.target.value) }))}
+              onChange={(e) => q.setManual((m) => ({ ...m, due: fromInputs(dueAt ? toDateInput(dueAt) : toDateInput(defaultDueAt ?? new Date().toISOString()), e.target.value) }))}
             />
           </span>
           <button

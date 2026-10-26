@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import { useAuth } from './auth'
 import { HorizontalProvider } from './store'
 import { QuickAdd } from './components/QuickAdd'
-import { startOfLocalDay } from './lib/schedule'
 import { getDesktopBridge } from './lib/desktopBridge'
 import { clearBarDraft } from './lib/barDraft'
 
@@ -78,9 +77,8 @@ function QuickAddBar() {
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
-  // Fără dată în text, sarcina e pentru azi — ca adăugarea rapidă din „Azi",
-  // ca să apară imediat în lista pe care omul o deschide dimineața.
-  const today = startOfLocalDay(new Date()).toISOString()
+  // Fără dată în text, sarcina rămâne FĂRĂ scadență (D-241, decizia omului:
+  // „dacă vreau azi, pun eu azi”). Înainte primea azi, ca „Azi” din listă.
   return (
     <div className="qab" ref={barRef}>
       {/* Proiectul implicit e Inbox, ca peste tot (`captureDefaultProjectId`);
@@ -89,7 +87,7 @@ function QuickAddBar() {
         rich
         keepDraft
         focusSignal={round}
-        defaultDueAt={today}
+        defaultDueAt={null}
         onAdded={() => getDesktopBridge()?.hideBar()}
       />
     </div>

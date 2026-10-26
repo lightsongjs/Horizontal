@@ -1843,7 +1843,7 @@ Ctrl+Shift+A și mementouri cu aplicația în fundal. Spec/plan:
 - **Capturi.** Semnele (`#proiect`, `@persoană`, `!`) se recunosc doar la început
   de cuvânt; unul necunoscut rămâne în titlu. Butonul are ultimul cuvânt
   (`manual ?? tokens ?? implicit`). Proiect implicit Inbox, ca peste tot
-  (`captureDefaultProjectId`), nu ultimul folosit; fără dată → azi. Implicitul se
+  (`captureDefaultProjectId`), nu ultimul folosit; fără dată → fără scadență (D-241; înainte azi). Implicitul se
   calculează la fiecare randare, nu la montare: proiectele sosesc după bară.
 - **Focusul barei.** Fereastra e creată o dată și refolosită; proba (2026-10-02,
   GNOME Wayland): `show()` + `focus()` pe fereastra existentă primește

@@ -126,7 +126,7 @@ export function QuickSheet({ ctx }: { ctx: QuickCtx }) {
   const setDue = (date: string, time: string) => {
     q.setManual((m) => ({ ...m, due: fromInputs(date, time) }))
   }
-  const fallbackDay = toDateInput(ctx.mode === 'list' ? ctx.defaultDueAt : new Date().toISOString())
+  const fallbackDay = toDateInput((ctx.mode === 'list' && ctx.defaultDueAt) || new Date().toISOString())
 
   const onKey = (field: 'title' | 'desc') => (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const action = quickKey({

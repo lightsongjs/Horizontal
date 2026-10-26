@@ -18,7 +18,8 @@ import { dayOffset, defaultReminder, reminderAt, startOfLocalDay, toDisplayDate,
  * cel la care te uiți.
  */
 export type QuickCtx =
-  | { mode: 'list'; defaultDueAt: string }
+  /** `defaultDueAt` null = fără dată în text, fără scadență (bara de pe Linux). */
+  | { mode: 'list'; defaultDueAt: string | null }
   | { mode: 'project'; projectId: string; wave: number }
 
 /**
