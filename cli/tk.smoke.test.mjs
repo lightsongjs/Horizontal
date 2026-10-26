@@ -30,6 +30,12 @@ beforeAll(async () => {
       const send = (status, body) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(body)) }
       if (req.headers['x-api-key'] !== KEY) return send(401, { error: 'unauthorized' })
       const u = new URL(req.url, 'http://x')
+      if (u.pathname === '/api/projects' && req.method === 'POST') {
+        const body = JSON.parse(raw.toString())
+        const prefix = body.prefix ?? 'AUTO'
+        if (prefix === 'KATA') return send(409, { error: 'prefix_taken', prefix, existing_project: 'kata' })
+        return send(201, { id: prefix.toLowerCase(), prefix, name: body.name, type: body.type ?? 'personal', currentWave: 1, description: '', accent: '#0EA5E9' })
+      }
       if (u.pathname === '/api/projects') return send(200, PROJECTS)
       if (u.pathname === '/api/waves') return send(200, [{ number: 1, name: 'I', label: 'MVP' }])
       if (u.pathname === '/api/tickets' && req.method === 'POST') {
@@ -149,6 +155,66 @@ describe('tk contra unui server fals', () => {
     const bad = await tk(['init', 'nu-exista'], { cwd: mkdtempSync(join(tmpdir(), 'tk-init-')) })
     expect(bad.code).toBe(1)
     expect(bad.stdout.trim()).toBe('project_not_found')
+  })
+
+  it('init fără argument și fără terminal: eroare de folosire, nimic scris', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'tk-init-'))
+    const r = await tk(['init'], { cwd: dir })
+    expect(r.code).toBe(1)
+    expect(r.stderr).toContain('tk init <id-proiect>')
+    expect(existsSync(join(dir, '.horizontal'))).toBe(false)
+  })
+
+  it('init fără argument, interactiv: cauți fără diacritice, Enter alege', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'tk-init-'))
+    const r = await tk(['init'], { cwd: dir, env: { TK_INTERACTIVE: '1' }, input: 'KĂT\r' })
+    expect(r.code).toBe(0)
+    expect(JSON.parse(readFileSync(join(dir, '.horizontal'), 'utf8'))).toEqual({ project: 'kata' })
+  })
+
+  it('init interactiv: „+ Proiect nou…” cere nume, prefix, tip și leagă proiectul creat', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'tk-init-'))
+    // Un nume care nu se potrivește lasă doar „+ Proiect nou…” și devine numele
+    // propus; Enter îl ia, prefixul KATA e refuzat (ocupat), apoi „tur”, tipul implicit.
+    const r = await tk(['init'], { cwd: dir, env: { TK_INTERACTIVE: '1' }, input: 'Turul Romaniei\r\rKATA\rtur\r\r' })
+    expect(r.code).toBe(0)
+    expect(r.stderr).toContain('KATA e deja folosit de kata')
+    const req = seen.filter((s) => s.method === 'POST' && s.url === '/api/projects').pop()
+    expect(JSON.parse(req.raw.toString())).toEqual({ name: 'Turul Romaniei', prefix: 'TUR', type: 'personal' })
+    expect(JSON.parse(readFileSync(join(dir, '.horizontal'), 'utf8'))).toEqual({ project: 'tur' })
+    expect(r.stdout).toContain('init: tur  TUR  Turul Romaniei')
+  })
+
+  it('init interactiv: cifra alege rândul; prefixul sugerat din nume', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'tk-init-'))
+    const r = await tk(['init'], { cwd: dir, env: { TK_INTERACTIVE: '1' }, input: '2\rNou Proiect\r\rw\r' })
+    expect(r.code).toBe(0)
+    const req = seen.filter((s) => s.method === 'POST' && s.url === '/api/projects').pop()
+    expect(JSON.parse(req.raw.toString())).toEqual({ name: 'Nou Proiect', prefix: 'NP', type: 'work' })
+  })
+
+  it('init interactiv: Esc și Ctrl+C renunță fără să scrie nimic', async () => {
+    for (const input of ['ka\x1b', '\x1b[BNume\r\x03']) {
+      const dir = mkdtempSync(join(tmpdir(), 'tk-init-'))
+      const n = seen.filter((s) => s.method === 'POST').length
+      const r = await tk(['init'], { cwd: dir, env: { TK_INTERACTIVE: '1' }, input })
+      expect(r.code).toBe(1)
+      expect(r.stderr).toContain('renunțat')
+      expect(existsSync(join(dir, '.horizontal'))).toBe(false)
+      expect(existsSync(join(dir, 'CLAUDE.md'))).toBe(false)
+      expect(seen.filter((s) => s.method === 'POST').length).toBe(n)
+    }
+  })
+
+  it('project-create: corpul, rândul de ieșire și prefixul ocupat', async () => {
+    const r = await tk(['project-create', 'Turul', 'Romaniei', '--prefix', 'tur', '--type', 'work'])
+    expect(r.stdout.trim()).toBe('tur  TUR  Turul Romaniei  [work]')
+    expect(JSON.parse(last().raw.toString())).toEqual({ name: 'Turul Romaniei', prefix: 'TUR', type: 'work' })
+    const dup = await tk(['create-project', 'X', '--prefix', 'KATA'])
+    expect(dup.code).toBe(1)
+    expect(dup.stdout.trim()).toBe('prefix_taken: kata')
+    const bad = await tk(['project-create', 'X', '--type', 'job'])
+    expect(bad.code).toBe(1)
   })
 
   it('login scrie config.json cu modul 600 și nu afișează cheia', async () => {

@@ -2,6 +2,7 @@
 // example on first run. Mirrors the Supabase backend's behavior.
 
 import { applyIssuePatch } from '../lib/issuePatch'
+import { buildNewProject, initialWaves } from '../lib/newProject'
 import { moveBlock, moveBlockMessage, movedIssue, SAME_PROJECT } from '../lib/moveIssue'
 import { withPin, withoutPin, type Pin } from '../lib/pins'
 import { normalizeRules, type SavedFilter } from '../lib/savedFilters'
@@ -199,19 +200,9 @@ export function createLocalRepository(): Repository {
 
     async createProject(input: NewProject) {
       const db = load()
-      const id = input.prefix.toLowerCase()
-      const project: Project = {
-        id,
-        name: input.name,
-        description: input.description,
-        prefix: input.prefix.toUpperCase(),
-        currentWave: 1,
-        accent: input.accent ?? '#0EA5E9',
-        type: input.type ?? 'personal',
-      }
+      const project = buildNewProject(input)
       db.projects.push(project)
-      db.waves.push({ projectId: id, number: 0, name: 'Scratchpad', label: '', position: 0 })
-      db.waves.push({ projectId: id, number: 1, name: 'Val 1', label: 'MVP', position: 1 })
+      db.waves.push(...initialWaves(project.id))
       save(db)
       return clone(project)
     },

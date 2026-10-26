@@ -2,8 +2,9 @@
 // edge table, per-project waves and themes) to/from the app's models.
 
 import { requireSupabase } from '../lib/supabase'
-import type { Assignee, InboxRow, Issue, IssueEvent, Obstacle, ObstacleLink, Project, ProjectMember, Theme, Wave } from '../lib/types'
+import type { Assignee, InboxRow, Issue, IssueEvent, Obstacle, ObstacleLink, ProjectMember, Theme, Wave } from '../lib/types'
 import { nextIssueId } from '../lib/issueId'
+import { buildNewProject, initialWaves } from '../lib/newProject'
 import { nextPinPosition, type Pin, type PinKind } from '../lib/pins'
 import { isFilterIcon, normalizeRules, type SavedFilter } from '../lib/savedFilters'
 import { sortTrash, type TrashItem } from '../lib/trash'
@@ -323,15 +324,7 @@ export function createSupabaseRepository(): Repository {
     },
 
     async createProject(input: NewProject) {
-      const project: Project = {
-        id: input.prefix.toLowerCase(),
-        name: input.name,
-        description: input.description,
-        prefix: input.prefix.toUpperCase(),
-        currentWave: 1,
-        accent: input.accent ?? '#0EA5E9',
-        type: input.type ?? 'personal',
-      }
+      const project = buildNewProject(input)
       const { error } = await db.from('projects').insert({
         id: project.id,
         name: project.name,
@@ -344,10 +337,7 @@ export function createSupabaseRepository(): Repository {
       if (error) throw error
       const { error: wErr } = await db
         .from('waves')
-        .insert([
-          { project_id: project.id, number: 0, name: 'Scratchpad', label: '', position: 0 },
-          { project_id: project.id, number: 1, name: 'Val 1', label: 'MVP', position: 1 },
-        ])
+        .insert(initialWaves(project.id).map((w) => ({ project_id: w.projectId, number: w.number, name: w.name, label: w.label, position: w.position })))
       if (wErr) throw wErr
       return project
     },

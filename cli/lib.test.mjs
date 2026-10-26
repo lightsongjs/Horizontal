@@ -5,7 +5,10 @@ import { join } from 'node:path'
 import {
   parseArgs, UsageError, configPath, resolveConfig, findProjectFile, contextProject,
   matchProject, withClaudeImport, buildCreateBody, buildUpdateBody, ticketLine, ticketingMd,
+  fold, rankProjects, pickerItems, pickerStart, pickerKey, pickerView, NEW_PROJECT,
+  suggestPrefix, cleanPrefix, prefixOwner, defaultProjectType, parseProjectType, buildProjectBody,
 } from './lib.mjs'
+import * as app from '../src/lib/newProject'
 
 describe('parseArgs', () => {
   it('comandă, pozițional și flaguri', () => {
@@ -138,5 +141,107 @@ describe('afișarea', () => {
     expect(md).toContain('tk guide')
     expect(md).toContain('`kata`')
     expect(md.split('\n').length).toBeLessThan(20)
+  })
+})
+
+describe('alegerea proiectului (tk init fără argument)', () => {
+  const list = [
+    { id: 'apo', prefix: 'APO', name: 'Apostila' },
+    { id: 'kata', prefix: 'KATA', name: 'Katalist' },
+    { id: 'tr', prefix: 'TR', name: 'Turul României' },
+    { id: 'horizontal', prefix: 'HZ', name: 'Horizontal' },
+  ]
+  const ids = (xs) => xs.map((p) => p.id)
+
+  it('fold: fără diacritice (și ș/ț cu virgulă), fără majuscule', () => {
+    expect(fold('Știri ȚARĂ șî')).toBe('stiri tara si')
+  })
+  it('rank: exact pe id/prefix, apoi început, apoi început de cuvânt, apoi oriunde', () => {
+    expect(ids(rankProjects(list, ''))).toEqual(['apo', 'kata', 'tr', 'horizontal'])
+    expect(ids(rankProjects(list, 'hz'))).toEqual(['horizontal'])
+    expect(ids(rankProjects(list, 'ROM'))).toEqual(['tr'])
+    expect(ids(rankProjects(list, 'romaniei'))).toEqual(['tr'])
+    expect(ids(rankProjects(list, 'ta'))).toEqual(['kata', 'horizontal']) // „kaTA”, „horizonTAl”: oriunde, în ordinea listei
+    expect(ids(rankProjects(list, 'tr'))).toEqual(['tr'])
+    expect(ids(rankProjects(list, 'a'))).toEqual(['apo', 'kata', 'tr', 'horizontal'])
+    expect(rankProjects(list, 'zzz')).toEqual([])
+  })
+  it('„+ Proiect nou…” e mereu ultimul; cifrele nu filtrează', () => {
+    expect(pickerItems(list, 'zzz')).toEqual([NEW_PROJECT])
+    expect(pickerItems(list, '3')).toHaveLength(5)
+  })
+  it('tastele: scrisul filtrează, săgețile se rotesc, Enter alege, Esc renunță', () => {
+    let st = pickerStart()
+    for (const char of 'kat') st = pickerKey(list, st, { char }).state
+    expect(st).toEqual({ query: 'kat', index: 0 })
+    expect(pickerKey(list, st, { name: 'return' }).choice.id).toBe('kata')
+    st = pickerKey(list, st, { name: 'down' }).state
+    expect(pickerKey(list, st, { name: 'return' }).choice).toBe(NEW_PROJECT)
+    st = pickerKey(list, st, { name: 'down' }).state // se rotește
+    expect(st.index).toBe(0)
+    st = pickerKey(list, st, { name: 'up' }).state
+    expect(st.index).toBe(1)
+    st = pickerKey(list, st, { name: 'backspace' }).state
+    expect(st).toEqual({ query: 'ka', index: 0 })
+    expect(pickerKey(list, st, { name: 'escape' })).toMatchObject({ done: true, choice: null })
+    expect(pickerKey(list, st, { name: 'abort' })).toMatchObject({ done: true, choice: null })
+  })
+  it('cifrele aleg rândul: 3 = al treilea, 5 = proiect nou, 9 = în afara listei → primul', () => {
+    const pick = (q) => { let st = pickerStart(); for (const char of q) st = pickerKey(list, st, { char }).state; return pickerKey(list, st, { name: 'return' }).choice }
+    expect(pick('3').id).toBe('tr')
+    expect(pick('5')).toBe(NEW_PROJECT)
+    expect(pick('9').id).toBe('apo')
+  })
+  it('desenul: numerotat, rândul ales marcat, fereastră în jurul lui', () => {
+    const v = pickerView(list, { query: '', index: 1 })
+    expect(v.rows.map((r) => r.text)).toEqual([
+      '1  apo  APO  Apostila  [personal]',
+      '2  kata  KATA  Katalist  [personal]',
+      '3  tr  TR  Turul României  [personal]',
+      '4  horizontal  HZ  Horizontal  [personal]',
+      '5  + Proiect nou…',
+    ])
+    expect(v.rows[1].selected).toBe(true)
+    expect(v.matches).toBe(4)
+    const small = pickerView(list, { query: '', index: 4 }, 2)
+    expect(small.rows.map((r) => r.text)).toEqual(['4  horizontal  HZ  Horizontal  [personal]', '5  + Proiect nou…'])
+    expect(small.hint).toContain('încă 3')
+  })
+})
+
+describe('proiectul nou din CLI', () => {
+  it('prefixul sugerat e cel al formularului din aplicație', () => {
+    for (const n of ['Turul României', 'Horizontal', 'a b c d e f g', '  x-y z ', '123 abc', 'Știri noi']) {
+      expect(suggestPrefix(n)).toBe(app.cleanPrefix(app.autoPrefix(n)))
+      expect(cleanPrefix(n)).toBe(app.cleanPrefix(n))
+    }
+  })
+  it('…iar unde aplicația ar da gol, numele fără diacritice', () => {
+    expect(app.cleanPrefix(app.autoPrefix('Știri'))).toBe('')
+    expect(suggestPrefix('Știri')).toBe('S')
+  })
+  it('prefixOwner e cel al aplicației', () => {
+    const list = [{ id: 'horizontal', prefix: 'HZ', name: 'H' }, { id: 'tur', prefix: 'XX', name: 'T' }]
+    for (const p of ['hz', 'TUR', 'xx', 'nou', '']) expect(prefixOwner(list, p)).toEqual(app.prefixOwner(list, p))
+  })
+  it('tipul implicit: work numai sub ~/01Projects/Work', () => {
+    expect(defaultProjectType('/home/j/01Projects/Work', '/home/j')).toBe('work')
+    expect(defaultProjectType('/home/j/01Projects/Work/smartbill/api', '/home/j')).toBe('work')
+    expect(defaultProjectType('/home/j/01Projects/Workshop', '/home/j')).toBe('personal')
+    expect(defaultProjectType('/home/j/01Projects/personal/Horizontal', '/home/j')).toBe('personal')
+  })
+  it('răspunsul la „Tip”', () => {
+    expect(parseProjectType('', 'work')).toBe('work')
+    expect(parseProjectType('P', 'work')).toBe('personal')
+    expect(parseProjectType('serviciu', 'personal')).toBe('work')
+    expect(parseProjectType('job', 'work')).toBe(null)
+  })
+  it('project-create: corpul; prefixul curățat; refuzurile', () => {
+    expect(buildProjectBody(['Turul', 'X'], { prefix: 'tu-r', type: 'work' })).toEqual({ name: 'Turul X', prefix: 'TUR', type: 'work' })
+    expect(buildProjectBody([], { name: 'N', desc: 'd', accent: '#ffb454' })).toEqual({ name: 'N', description: 'd', accent: '#ffb454' })
+    expect(() => buildProjectBody([], {})).toThrow(UsageError)
+    expect(() => buildProjectBody(['N'], { prefix: 'ăî' })).toThrow(UsageError)
+    expect(() => buildProjectBody(['N'], { type: 'job' })).toThrow(UsageError)
+    expect(parseArgs(['create-project', 'N']).cmd).toBe('project-create')
   })
 })

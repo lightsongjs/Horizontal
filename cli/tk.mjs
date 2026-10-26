@@ -14,11 +14,13 @@ import { readFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join, dirname, basename } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { createInterface } from 'node:readline'
+import { createInterface, emitKeypressEvents } from 'node:readline'
 import {
   parseArgs, UsageError, configPath, resolveConfig, findProjectFile, contextProject,
   matchProject, withClaudeImport, ticketingMd, waveLabel, ticketLine, attachmentLine,
   buildCreateBody, buildUpdateBody, titleFrom, DEFAULT_API_URL, PROJECT_FILE, TICKETING_FILE,
+  pickerStart, pickerKey, pickerView, suggestPrefix, cleanPrefix, prefixOwner,
+  defaultProjectType, parseProjectType, buildProjectBody,
 } from './lib.mjs'
 
 // realpath: rulat prin symlink, ghidul stă lângă fișierul real, nu lângă link.
@@ -192,16 +194,8 @@ cmds.login = async ({ flags }) => {
   out(`ok: ${data.length} proiecte vizibile`)
 }
 
-cmds.init = async ({ positional, flags }) => {
-  const wanted = positional[0] ?? flags.project
-  if (!wanted) throw new UsageError('tk init <id-proiect>   (vezi: tk projects)')
-  const list = await projectList()
-  const p = matchProject(list, wanted)
-  if (!p) {
-    out('project_not_found')
-    err(`Proiectele: ${list.map((x) => x.id).join(', ')}`)
-    process.exit(1)
-  }
+/** Scrie legătura: `.horizontal`, TICKETING.md și importul din CLAUDE.md. */
+function linkProject(p) {
   const dir = process.cwd()
   writeFileSync(join(dir, PROJECT_FILE), JSON.stringify({ project: p.id }, null, 2) + '\n')
   writeFileSync(join(dir, TICKETING_FILE), ticketingMd(p))
@@ -211,6 +205,160 @@ cmds.init = async ({ positional, flags }) => {
   if (after !== null) writeFileSync(claudePath, after)
   out(`init: ${p.id}  ${p.prefix}  ${p.name}`)
   out(`  ${PROJECT_FILE}, ${TICKETING_FILE} scrise; CLAUDE.md ${after === null ? 'avea deja' : before == null ? 'creat cu' : 'a primit'} @${TICKETING_FILE}`)
+}
+
+/**
+ * Alegerea interactivă e permisă doar într-un terminal (stdin + stdout).
+ * `TK_INTERACTIVE=1` o forțează pe un pipe — numai pentru proba de fum, care
+ * trimite tastele ca octeți; un agent dă mereu id-ul.
+ */
+const interactive = () => (process.stdin.isTTY && process.stdout.isTTY) || process.env.TK_INTERACTIVE === '1'
+
+cmds.init = async ({ positional, flags }) => {
+  const wanted = positional[0] ?? flags.project
+  if (!wanted) {
+    if (!interactive()) throw new UsageError('tk init <id-proiect>   (vezi: tk projects; fără argument, numai într-un terminal)')
+    const p = await chooseProject(await projectList())
+    if (!p) { err('init: renunțat; nu s-a scris nimic'); process.exit(1) }
+    return linkProject(p)
+  }
+  const list = await projectList()
+  const p = matchProject(list, wanted)
+  if (!p) {
+    out('project_not_found')
+    err(`Proiectele: ${list.map((x) => x.id).join(', ')}`)
+    process.exit(1)
+  }
+  linkProject(p)
+}
+
+// ── Tastele (alegerea și întrebările din `tk init`) ─────────────────────────
+// O SINGURĂ coadă de taste pentru toată sesiunea: alegerea și întrebările
+// care urmează citesc din ea pe rând, deci o tastă venită înainte ca
+// următoarea întrebare să asculte nu se pierde (contează la un pipe).
+
+let keys = null
+
+function keyQueue() {
+  if (keys) return keys
+  const queue = []
+  let waiting = null
+  let ended = false
+  const push = (k) => { if (waiting) { const w = waiting; waiting = null; w(k) } else queue.push(k) }
+  emitKeypressEvents(process.stdin)
+  if (process.stdin.isTTY) process.stdin.setRawMode(true)
+  process.stdin.on('keypress', (str, key = {}) => {
+    if (key.ctrl && (key.name === 'c' || key.name === 'd')) return push({ name: 'abort' })
+    if (['up', 'down', 'return', 'enter', 'backspace', 'escape'].includes(key.name)) {
+      return push({ name: key.name === 'enter' ? 'return' : key.name })
+    }
+    if (str && !key.ctrl && !key.meta) push({ char: str })
+  })
+  process.stdin.on('end', () => { ended = true; push({ name: 'abort' }) })
+  process.stdin.resume()
+  keys = {
+    next: () => queue.length ? Promise.resolve(queue.shift()) : ended ? Promise.resolve({ name: 'abort' }) : new Promise((r) => { waiting = r }),
+    close: () => {
+      if (process.stdin.isTTY) process.stdin.setRawMode(false)
+      process.stdin.pause()
+    },
+  }
+  // Orice ieșire (și `die`) lasă terminalul cum l-a găsit.
+  process.on('exit', () => { if (process.stdin.isTTY) process.stdin.setRawMode(false); process.stdout.write('\x1b[?25h') })
+  return keys
+}
+
+const tty = process.stdout.isTTY
+const paint = (code, s) => (tty ? `\x1b[${code}m${s}\x1b[0m` : s)
+
+/** Alegerea: filtru + săgeți/cifre + Enter. Întoarce proiectul (creat, dacă trebuie) sau null. */
+async function chooseProject(list) {
+  const k = keyQueue()
+  let state = pickerStart()
+  let drawn = 0
+  const draw = () => {
+    const v = pickerView(list, state)
+    // Un rând rupt de terminal ar strica numărătoarea de mai jos: tăiem la lățime.
+    const width = Math.max(20, (process.stdout.columns || 80) - 1)
+    const fit = (t) => ([...t].length > width ? [...t].slice(0, width - 1).join('') + '…' : t)
+    const count = `   (${v.matches} ${v.matches === 1 ? 'proiect' : 'proiecte'})`
+    const lines = [
+      fit(v.header + count).replace(count, paint('2', count)),
+      ...v.rows.map((r) => (r.selected ? paint('7', fit(`> ${r.text}`)) : fit(`  ${r.text}`))),
+      paint('2', fit(v.hint)),
+    ]
+    // Înapoi la începutul desenului de dinainte, șters până la capăt.
+    if (drawn) process.stdout.write(`\x1b[${drawn}F`)
+    process.stdout.write('\x1b[J' + lines.join('\n') + '\n')
+    drawn = lines.length
+  }
+  if (tty) process.stdout.write('\x1b[?25l')
+  for (;;) {
+    if (tty) draw()
+    const r = pickerKey(list, state, await k.next())
+    state = r.state
+    if (!r.done) continue
+    if (tty) { process.stdout.write(`\x1b[${drawn}F\x1b[J\x1b[?25h`) }
+    if (!r.choice) { k.close(); return null }
+    if (!r.choice.create) { k.close(); return r.choice }
+    const created = await createInteractively(list, /^\d+$/.test(state.query) ? '' : state.query.trim())
+    k.close()
+    return created
+  }
+}
+
+/** Un rând de text în modul brut: Enter = gata (gol → `def`), Esc / Ctrl+C = null. */
+async function promptLine(label, def = '') {
+  const k = keyQueue()
+  let value = ''
+  const shown = () => `${label}${def ? paint('2', ` [${def}]`) : ''}: ${value}`
+  process.stdout.write(shown())
+  for (;;) {
+    const key = await k.next()
+    if (key.name === 'abort' || key.name === 'escape') { process.stdout.write('\n'); return null }
+    if (key.name === 'return') { process.stdout.write('\n'); return value.trim() || def }
+    if (key.name === 'backspace') value = [...value].slice(0, -1).join('')
+    else if (key.char && key.char >= ' ' && key.char !== '\x7f') value += key.char
+    else continue
+    process.stdout.write(`\r\x1b[K${shown()}`)
+  }
+}
+
+/** „+ Proiect nou…”: Nume, Prefix, Tip, apoi POST /api/projects. */
+async function createInteractively(list, nameHint) {
+  const name = await promptLine('Nume', nameHint)
+  if (!name) return null
+  let prefix
+  for (;;) {
+    const answer = await promptLine('Prefix', suggestPrefix(name))
+    if (answer === null) return null
+    prefix = cleanPrefix(answer)
+    if (!prefix) { err('  prefixul are nevoie de o literă A–Z sau o cifră'); continue }
+    const owner = prefixOwner(list, prefix)
+    if (owner) { err(`  ${prefix} e deja folosit de ${owner.id} (${owner.name})`); continue }
+    break
+  }
+  const def = defaultProjectType(process.cwd(), homedir())
+  let type
+  for (;;) {
+    const answer = await promptLine('Tip (work/personal)', def)
+    if (answer === null) return null
+    type = parseProjectType(answer, def)
+    if (type) break
+    err('  work sau personal')
+  }
+  const { status, data } = await api('/api/projects', { method: 'POST', body: { name, prefix, type } })
+  if (status === 201) { out(`creat: ${data.id}  ${data.prefix}  ${data.name}  [${data.type}]`); return data }
+  if (status === 409 && data.error === 'prefix_taken') die(`prefix_taken: ${data.prefix} (${data.existing_project}); nu s-a scris nimic`)
+  fail(status, data)
+}
+
+cmds['project-create'] = async ({ positional, flags }) => {
+  const body = buildProjectBody(positional, flags)
+  const { status, data } = await api('/api/projects', { method: 'POST', body })
+  if (status === 201) return out(`${data.id}  ${data.prefix}  ${data.name}  [${data.type}]`)
+  if (status === 409 && data.error === 'prefix_taken') { out(`prefix_taken: ${data.existing_project}`); process.exit(1) }
+  fail(status, data)
 }
 
 cmds.projects = async ({ flags }) => {
@@ -418,6 +566,7 @@ const HELP = `tk — tichetele Horizontal din terminal. Ghidul complet: tk guide
 Configurare
   tk login [--url URL] [--key -]     salvează URL-ul și cheia API (~/.config/horizontal)
   tk init <proiect>                  leagă repo-ul curent (.horizontal, TICKETING.md, CLAUDE.md)
+  tk init                            în terminal: caută proiectul sau creează unul (+ Proiect nou…)
   tk status                          ce config și ce proiect vede tk de aici
 
 Citire
@@ -435,6 +584,7 @@ Scriere
                  [--project țintă]  (mută; ID nou)
   tk delete HZ-7
   tk attach HZ-7 a.png b.pdf
+  tk project-create "Nume" [--prefix X] [--type work|personal]   proiect nou (fără --prefix: din nume)
   tk theme-create "Nume" --color "#RRGGBB"   |  tk theme-update <cheie> [--name …] [--color …]
   tk wave-create "Etichetă" [--name IV]      |  tk wave-update <n> [--name …] [--label …]
 

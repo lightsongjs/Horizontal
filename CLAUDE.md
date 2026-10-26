@@ -2232,6 +2232,28 @@ copierii lui `ticket-kit/` în fiecare proiect. Node ≥ 20, fără dependențe 
   `.horizontal` (`{ "project": "kata" }`, căutat din cwd în sus; `--project` îl
   bate), un `TICKETING.md` de câteva rânduri și adaugă `@TICKETING.md` în
   `CLAUDE.md`-ul proiectului (idempotent).
+- **`tk init` fără argument** (numai cu stdin + stdout terminal; altfel eroare
+  de folosire — agenții dau id-ul): o alegere în modul brut (`node:readline`,
+  fără dependențe). Scrisul filtrează (fără diacritice și majuscule, pe id /
+  prefix / nume, `rankProjects`), ↑↓ se rotesc, o interogare numai din cifre
+  alege rândul cu acel număr, Enter confirmă. Ultimul rând, „+ Proiect nou…”,
+  întreabă Nume (propus: ce ai scris în filtru), Prefix (sugerat din nume) și
+  Tip (`work` sub `~/01Projects/Work`, altfel `personal`), face `POST
+  /api/projects` și continuă init-ul. Esc / Ctrl+C = nimic scris. Tastele
+  trec printr-o SINGURĂ coadă pe toată sesiunea, ca o tastă venită înainte ca
+  întrebarea următoare să asculte să nu se piardă; `TK_INTERACTIVE=1` forțează
+  modul pe un pipe, numai pentru proba de fum. Regulile (filtrul, tastele,
+  desenul, prefixul, tipul) sunt pure în `cli/lib.mjs`, cu teste.
+- **Proiectele noi**: `tk project-create "Nume" [--prefix X] [--type …]` →
+  `POST /api/projects`, cu regulile formularului din `src/lib/newProject.ts`
+  (prefixul, id = prefixul mic, valurile 0 + 1, culoarea și tipul implicite),
+  folosite și de `ProjectForm` și de ambele repository-uri. Ocupat = același
+  id SAU același prefix (`prefixOwner`) → 409 `prefix_taken`. CLI-ul (.mjs,
+  fără build) oglindește `autoPrefix`/`cleanPrefix`/`prefixOwner`; un test le
+  compară cu cele din `src/`. **Vizibilitatea**: ca în aplicație (unde numai
+  adminul creează proiecte), proiectul nou n-are rând în `project_members`,
+  deci îl văd adminii și cheia API; un cont obișnuit, abia după ce un admin îl
+  adaugă din „Utilizatori”.
 - **De ce ghidul stă în CLI, nu în proiect**: regulile (direcția dependențelor,
   refuzurile API-ului, mutarea cu ID nou, atașamentele) se schimbă odată cu
   API-ul. Copiate în fiecare proiect, rămâneau în urmă exact ca ticket-kit.

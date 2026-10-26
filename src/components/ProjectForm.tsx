@@ -3,8 +3,7 @@ import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { errorMessage } from '../lib/errorMessage'
 import { Icon } from './Icon'
-
-const ACCENTS = ['#0EA5E9', '#3ecf8e', '#ffb454', '#a06eff', '#ff6b6b', '#46d1d9']
+import { PROJECT_ACCENTS as ACCENTS, autoPrefix, cleanPrefix as clean, prefixOwner } from '../lib/newProject'
 
 export function ProjectForm() {
   const { projects, createProject, selectProject } = useHorizontal()
@@ -13,19 +12,15 @@ export function ProjectForm() {
   const [description, setDescription] = useState('')
   const [prefix, setPrefix] = useState('')
   const [prefixTouched, setPrefixTouched] = useState(false)
-  const [accent, setAccent] = useState(ACCENTS[0])
+  const [accent, setAccent] = useState<string>(ACCENTS[0])
   const [type, setType] = useState<'personal' | 'work'>('personal')
-
-  const autoPrefix = (n: string) =>
-    n.trim().split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 6) ||
-    n.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6)
 
   const derivedPrefix = prefixTouched ? prefix : autoPrefix(name)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const cleanPrefix = derivedPrefix.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6)
-  const taken = projects.some((p) => p.id === cleanPrefix.toLowerCase())
+  const cleanPrefix = clean(derivedPrefix)
+  const taken = prefixOwner(projects, cleanPrefix) !== null
   const valid = name.trim() && cleanPrefix && !taken
 
   const save = async () => {
@@ -36,7 +31,7 @@ export function ProjectForm() {
       const created = await createProject({
         name: name.trim(),
         description: description.trim(),
-        prefix: cleanPrefix || name.trim().slice(0, 6).toUpperCase().replace(/[^A-Z0-9]/g, ''),
+        prefix: cleanPrefix,
         accent,
         type,
       })

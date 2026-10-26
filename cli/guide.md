@@ -16,6 +16,10 @@ prin care scrii sau citești tichete dintr-un proiect: nu Supabase direct, nu
   căutat din directorul curent în sus. `--project <id>` îl bate.
   `tk status` arată ce vede tk de unde ești.
 - Repo nelegat? `tk projects`, apoi `tk init <id>` în rădăcina repo-ului.
+  Un agent dă MEREU id-ul: `tk init` fără argument e alegerea interactivă a
+  omului (caută / „+ Proiect nou…”) și, fără terminal, e o eroare de folosire.
+- Proiectul nu există încă? `tk project-create "Nume" [--prefix X] [--type work|personal]`
+  (vezi „Proiectele noi”), apoi `tk init <id>`.
 
 ## Comenzile
 
@@ -83,6 +87,10 @@ tk delete KATA-05                       # → deleted: KATA-05
 
 tk attach KATA-05 eroare.png log.txt    # unul sau mai multe fișiere
 # <id-atașament>  eroare.png  84213  https://…
+
+tk project-create "Turul României" --prefix TUR --type work
+# → tur  TUR  Turul României  [work]    sau   prefix_taken: <id-proiect>
+#   Fără --prefix: inițialele numelui (ca în aplicație). Tip implicit: personal.
 
 tk theme-create "Pasul 2: Admiterea" --color "#F06B1F"   # → pasul-2-admiterea
 tk theme-update pasul-2-admiterea --name "Pasul 2: Admis" --color "#1F9D60"
@@ -200,6 +208,8 @@ API-ul scrie cu cheia de serviciu, deci ce nu se poate anula se refuză:
 | `has_dependencies` | muți un tichet legat prin deps | vezi „Mutarea" |
 | `temp_id` | atașezi pe un ID provizoriu (`HZ-~abc`) | așteaptă sincronizarea |
 | `project_not_found` | id de proiect greșit | `tk projects` |
+| `prefix_taken: <id>` | `project-create` cu un prefix (sau id) deja folosit | alt `--prefix` |
+| `invalid_prefix` | prefixul nu are nicio literă A–Z / cifră (ex. numele „Știri”) | dă `--prefix` |
 | `unauthorized` | cheia API e greșită | omul rulează `tk login` |
 
 ### Scadența și urgentul
@@ -233,6 +243,16 @@ Pentru o încărcare greșită. Trece prin coșul aplicației, dar din API nu ex
   doar numele/culoarea). Un nume existent → `duplicate_theme: <cheie>`.
 - Un val nou primește numărul și locul următoare; numele implicit e cifra romană
   următoare. Ordinea valurilor se schimbă din aplicație, nu de aici.
+
+### Proiectele noi
+
+`tk project-create` face exact ce face formularul din aplicație: prefixul
+(A–Z, 0–9, max 6, majuscule; fără `--prefix`, inițialele numelui), id-ul =
+prefixul cu litere mici (`TUR` → `tur`), valul 1 activ, valurile „Scratchpad”
+(0) și „Val 1 / MVP” (1). Un prefix ocupat (de prefixul sau de id-ul altui
+proiect) se refuză. Proiectul nou n-are membri: îl văd adminii; altcineva îl
+vede abia după ce un admin îl adaugă din „Utilizatori”. Nu crea proiecte din
+proprie inițiativă — numai când omul ți-o cere.
 
 ### Oamenii
 

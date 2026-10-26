@@ -3,7 +3,7 @@
 // Fără rețea și fără scrieri pe disc aici (citirile trec prin `fs` dat ca
 // parametru), ca testele să nu aibă nevoie de nimic din afară.
 
-import { join, dirname, resolve } from 'node:path'
+import { join, dirname, resolve, relative, isAbsolute } from 'node:path'
 
 export const DEFAULT_API_URL = 'https://horizontal-dyx.pages.dev'
 export const PROJECT_FILE = '.horizontal'
@@ -30,11 +30,12 @@ export const COMMAND_ALIASES = {
   'update-theme': 'theme-update',
   'create-wave': 'wave-create',
   'update-wave': 'wave-update',
+  'create-project': 'project-create',
 }
 
 export const COMMANDS = [
   'help', 'guide', 'login', 'init', 'status',
-  'projects', 'waves', 'assignees', 'themes',
+  'projects', 'project-create', 'waves', 'assignees', 'themes',
   'list', 'lookup', 'get', 'create', 'update', 'delete',
   'attach', 'attachments',
   'theme-create', 'theme-update', 'wave-create', 'wave-update',
@@ -227,6 +228,174 @@ export function matchProject(list, wanted) {
     ?? list.find((p) => String(p.prefix ?? '').toLowerCase() === w)
     ?? list.find((p) => String(p.name ?? '').toLowerCase() === w)
     ?? null
+}
+
+// ── Alegerea și crearea proiectului (`tk init` fără argument) ───────────────
+
+/** Fără diacritice și fără majuscule: „Știri” → „stiri” (ș/ț cu virgulă incluse). */
+export function fold(s) {
+  return String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+}
+
+/**
+ * Proiectele care se potrivesc cu `query`, cele mai bune întâi: id/prefix
+ * exact → început de id/prefix/nume → început de cuvânt în nume → oriunde.
+ * În fiecare nivel rămâne ordinea API-ului (după nume). Gol = toate.
+ */
+export function rankProjects(list, query) {
+  const q = fold(query).trim()
+  if (!q) return list.slice()
+  const tier = (p) => {
+    const id = fold(p.id), prefix = fold(p.prefix), name = fold(p.name)
+    if (id === q || prefix === q) return 0
+    if (id.startsWith(q) || prefix.startsWith(q) || name.startsWith(q)) return 1
+    if (name.split(/[^a-z0-9]+/).some((w) => w.startsWith(q))) return 2
+    if (id.includes(q) || prefix.includes(q) || name.includes(q)) return 3
+    return null
+  }
+  return list
+    .map((p, i) => ({ p, i, t: tier(p) }))
+    .filter((x) => x.t !== null)
+    .sort((a, b) => a.t - b.t || a.i - b.i)
+    .map((x) => x.p)
+}
+
+/** Ultimul rând al alegerii: proiect nou. */
+export const NEW_PROJECT = Object.freeze({ create: true })
+
+/**
+ * Rândurile alegerii pentru `query`. O interogare numai din cifre („3”) nu
+ * filtrează: e numărul rândului din lista întreagă (vezi `pickerKey`).
+ */
+export function pickerItems(list, query) {
+  const shown = /^\d+$/.test(query) ? list.slice() : rankProjects(list, query)
+  return [...shown, NEW_PROJECT]
+}
+
+/** Starea de pornire a alegerii. */
+export function pickerStart() {
+  return { query: '', index: 0 }
+}
+
+/**
+ * O tastă în alegere → { state, done?, choice? }. `key` e normalizat de
+ * apelant: { name: 'up'|'down'|'return'|'backspace'|'escape'|'abort' } sau
+ * { char }. `choice` = proiectul, `NEW_PROJECT`, sau null (renunțat).
+ * Cifrele scriu în interogare; o interogare numai din cifre mută rândul ales
+ * pe acel număr (1 = primul), Enter confirmă.
+ */
+export function pickerKey(list, state, key) {
+  const items = pickerItems(list, state.query)
+  const n = items.length
+  switch (key.name) {
+    case 'abort':
+    case 'escape':
+      return { state, done: true, choice: null }
+    case 'up':
+      return { state: { ...state, index: (state.index - 1 + n) % n } }
+    case 'down':
+      return { state: { ...state, index: (state.index + 1) % n } }
+    case 'return':
+      return { state, done: true, choice: items[Math.min(state.index, n - 1)] }
+    case 'backspace':
+      return { state: withQuery(list, state.query.slice(0, -1)) }
+  }
+  if (typeof key.char === 'string' && key.char >= ' ' && key.char !== '\x7f') {
+    return { state: withQuery(list, state.query + key.char) }
+  }
+  return { state }
+}
+
+function withQuery(list, query) {
+  if (/^\d+$/.test(query)) {
+    const k = Number(query) - 1
+    const n = list.length + 1
+    return { query, index: k >= 0 && k < n ? k : 0 }
+  }
+  return { query, index: 0 }
+}
+
+/**
+ * Rândurile de desenat: antetul cu interogarea, apoi o fereastră de cel mult
+ * `max` rânduri în jurul celui ales (numerotate, ca să poți scrie cifra).
+ * `selected` e semnul rândului ales; desenul (culori, ștergere) e al apelantului.
+ */
+export function pickerView(list, state, max = 10) {
+  const items = pickerItems(list, state.query)
+  const index = Math.min(state.index, items.length - 1)
+  const start = Math.max(0, Math.min(index - Math.floor(max / 2), items.length - max))
+  const rows = items.slice(start, start + max).map((p, k) => {
+    const i = start + k
+    const num = String(i + 1).padStart(String(items.length).length)
+    const text = p.create ? '+ Proiect nou…' : `${p.id}  ${p.prefix}  ${p.name}  [${p.type ?? 'personal'}]`
+    return { selected: i === index, text: `${num}  ${text}` }
+  })
+  const hidden = items.length - rows.length
+  return {
+    header: `Proiect: ${state.query}`,
+    hint: `↑↓ sau număr · scrie ca să cauți · Enter alege · Esc renunță${hidden > 0 ? ` · încă ${hidden}` : ''}`,
+    rows,
+    matches: items.length - 1,
+  }
+}
+
+/**
+ * Prefixul sugerat din nume — regula formularului din aplicație
+ * (`autoPrefix` + `cleanPrefix` din src/lib/newProject.ts, aici oglindită:
+ * CLI-ul e .mjs fără build; un test ține cele două la fel). Dacă regula
+ * aplicației dă gol („Știri” → „Ș” → „”), încearcă numele fără diacritice.
+ */
+export function suggestPrefix(name) {
+  const auto = (n) => n.trim().split(/\s+/).map((w) => w[0] ?? '').join('').toUpperCase().slice(0, 6) ||
+    n.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6)
+  return cleanPrefix(auto(name)) || cleanPrefix(auto(String(name).normalize('NFD').replace(/[\u0300-\u036f]/g, '')))
+}
+
+/** Ca `cleanPrefix` din src/lib/newProject.ts: A–Z 0–9, majuscule, max 6. */
+export function cleanPrefix(raw) {
+  return String(raw ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6)
+}
+
+/** Ca `prefixOwner` din src/lib/newProject.ts: proiectul care ocupă prefixul (id sau prefix). */
+export function prefixOwner(list, prefix) {
+  const clean = cleanPrefix(prefix)
+  if (!clean) return null
+  const id = clean.toLowerCase()
+  return list.find((p) => p.id.toLowerCase() === id || String(p.prefix ?? '').toUpperCase() === clean) ?? null
+}
+
+/** Tipul implicit: `work` sub ~/01Projects/Work, altfel `personal`. */
+export function defaultProjectType(cwd, home) {
+  const rel = relative(join(home, '01Projects', 'Work'), resolve(cwd))
+  return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel)) ? 'work' : 'personal'
+}
+
+/** Răspunsul la „Tip”: w/work/s/serviciu → work, p/personal → personal, gol → `def`; altfel null. */
+export function parseProjectType(answer, def) {
+  const a = fold(answer).trim()
+  if (!a) return def
+  if (['w', 'work', 's', 'serviciu'].includes(a)) return 'work'
+  if (['p', 'personal'].includes(a)) return 'personal'
+  return null
+}
+
+/** Corpul pentru POST /api/projects (`tk project-create`). */
+export function buildProjectBody(positional, flags) {
+  const name = String(flags.name ?? positional.join(' ')).trim()
+  if (!name) throw new UsageError('tk project-create "Nume" [--prefix X] [--type work|personal]')
+  const body = { name }
+  if (flags.prefix !== undefined) {
+    const prefix = cleanPrefix(flags.prefix)
+    if (!prefix) throw new UsageError('--prefix are nevoie de cel puțin o literă A–Z sau o cifră')
+    body.prefix = prefix
+  }
+  if (flags.type !== undefined) {
+    if (flags.type !== 'work' && flags.type !== 'personal') throw new UsageError('--type e work sau personal')
+    body.type = flags.type
+  }
+  if (flags.accent !== undefined) body.accent = String(flags.accent)
+  if (flags.desc !== undefined) body.description = String(flags.desc)
+  return body
 }
 
 /**
