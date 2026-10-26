@@ -299,6 +299,82 @@ async function update() {
   }
 }
 
+// One line per file: <attachment-id>  <filename>  <size>  <url>
+function printAttachments(list) {
+  for (const a of list ?? []) {
+    console.log(`${a.id}  ${a.filename}  ${a.size}${a.url ? `  ${a.url}` : ''}`)
+  }
+}
+
+// --attach --id KATA-03 --file poza.jpg [--file ecran.png ...]
+// Uploads files onto the ticket (not onto a comment), like the app's file bar.
+// Max 10 files, 25 MB each, 50 MB per call. Photos are NOT shrunk here.
+// Prints one line per attached file:  <attachment-id>  <filename>  <size>  <url>
+async function attach() {
+  const { id } = flags
+  const paths = []
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--file' && args[i + 1] && !args[i + 1].startsWith('--')) paths.push(args[i + 1])
+  }
+  if (!id || id === true || !paths.length) {
+    console.error('Usage: --attach --id <ticket-id> --file <path> [--file <path> ...]')
+    process.exit(1)
+  }
+  const { readFile } = await import('fs/promises')
+  const { basename } = await import('path')
+  const form = new FormData()
+  for (const p of paths) {
+    let bytes
+    try { bytes = await readFile(p) } catch (e) {
+      console.error(`Cannot read ${p}: ${e.message}`)
+      process.exit(1)
+    }
+    // No type: the API guesses it from the extension (png/jpg/webp/gif/pdf/...).
+    form.append('file', new Blob([bytes]), basename(p))
+  }
+  // Not apiFetch: fetch must set the multipart boundary itself.
+  const res = await fetch(`${API_URL}/api/tickets/${encodeURIComponent(id)}/attachments`, {
+    method: 'POST',
+    headers: { 'X-API-Key': API_KEY },
+    body: form,
+  })
+  const data = await res.json().catch(() => ({ error: 'non-JSON response' }))
+  if (res.status === 201) {
+    printAttachments(data.attachments)
+  } else if (res.status === 404) {
+    console.log('not_found')
+    process.exit(1)
+  } else {
+    // A partial failure still lists what landed (it stays on the ticket).
+    console.error(`Error ${res.status}: ${data.error}${data.filename ? ` (${data.filename})` : ''}`)
+    if (data.attachments?.length) {
+      console.error('Attached before the failure:')
+      printAttachments(data.attachments)
+    }
+    process.exit(1)
+  }
+}
+
+// --attachments --id KATA-03
+// Prints one line per file with a signed download URL (valid 8 h).
+async function attachments() {
+  const { id } = flags
+  if (!id || id === true) {
+    console.error('Usage: --attachments --id <ticket-id>')
+    process.exit(1)
+  }
+  const { status, data } = await apiFetch(`/api/tickets/${encodeURIComponent(id)}/attachments`)
+  if (status === 200) {
+    printAttachments(data.attachments)
+  } else if (status === 404) {
+    console.log('not_found')
+    process.exit(1)
+  } else {
+    console.error(`Error ${status}: ${JSON.stringify(data)}`)
+    process.exit(1)
+  }
+}
+
 if (flags.projects !== undefined) {
   await projects()
 } else if (flags.waves !== undefined) {
@@ -315,7 +391,11 @@ if (flags.projects !== undefined) {
   await get()
 } else if (flags.update !== undefined) {
   await update()
+} else if (flags.attach !== undefined) {
+  await attach()
+} else if (flags.attachments !== undefined) {
+  await attachments()
 } else {
-  console.error('Usage: node ai-client.mjs --projects|--waves|--assignees|--lookup|--create|--list|--get|--update [options]')
+  console.error('Usage: node ai-client.mjs --projects|--waves|--assignees|--lookup|--create|--list|--get|--update|--attach|--attachments [options]')
   process.exit(1)
 }

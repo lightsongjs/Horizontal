@@ -12,6 +12,8 @@
 // utilizatorului (70 de imagini, 2026-08-12) — vezi secțiunea „Calibrare" din
 // spec. Recalibrare: `npm run test:shrink -- --calibrate <cale-poza>`.
 
+import { safeFilename } from './attachmentPath'
+
 export interface ShrinkOptions {
   /** Latura lungă maximă, în pixeli. */
   maxEdge: number
@@ -141,18 +143,9 @@ export function shrinkPlan(
   }
 }
 
-/**
- * Nume pentru AFIȘARE (coloana `filename`). Scoate calea, caracterele de
- * control, limitează lungimea. NU se folosește niciodată în calea din Storage —
- * aceea e construită doar din id-uri.
- */
-export function safeFilename(name: string): string {
-  const base = (name ?? '').split(/[/\\]/).pop() ?? ''
-  // eslint-disable-next-line no-control-regex -- match intenționat de caractere de control
-  const cleaned = base.replace(/[\x00-\x1f]/g, '_').trim()
-  if (!cleaned) return 'fisier'
-  return cleaned.slice(0, 200)
-}
+// Numele de afișat e o regulă comună cu API-ul (fără DOM), deci stă în
+// `attachmentPath.ts`; re-exportat aici pentru cine îl lua de aici.
+export { safeFilename }
 
 const EXT: Record<ShrinkOutputType, string> = {
   'image/jpeg': 'jpg',

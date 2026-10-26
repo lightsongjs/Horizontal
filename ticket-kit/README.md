@@ -157,6 +157,48 @@ Mutarea e **refuzată** (`has_dependencies`) dacă orice dependență atinge tic
 `--update --id <id> --deps ""`, apoi mută. Din același motiv, `--project` nu se
 combină cu `--deps` în aceeași comandă.
 
+### Fișiere atașate (poze, capturi, PDF-uri)
+
+```bash
+# Atașează unul sau mai multe fișiere la tichet (--file se repetă)
+node ai-client.mjs --attach --id HZ-07 --file eroare.png --file log.txt
+# output: 3f2c…-uuid  eroare.png  84213  https://…/object/sign/attachments/…?token=…
+
+# Listează fișierele unui tichet, cu linkuri de descărcare valabile 8 ore
+node ai-client.mjs --attachments --id HZ-07
+```
+
+Fișierele se pun **pe tichet**, nu pe un comentariu — apar în bara de fișiere a
+tichetului din aplicație, exact ca unul urcat de acolo. `--get` le arată și el,
+în câmpul `attachments`.
+
+- Maxim **10 fișiere** pe comandă, **25 MB** fiecare, **50 MB** în total.
+- Tipul se ghicește după extensie (`png`, `jpg`, `webp`, `gif`, `pdf`, `txt`, …).
+  Doar pozele (png/jpg/webp/gif) apar ca miniatură; restul se descarcă.
+- **Pozele nu se micșorează** pe drum (aplicația o face în browser, API-ul nu
+  poate). Pentru o poză de cameră, micșoreaz-o înainte dacă nu-ți trebuie la
+  rezoluția completă.
+- Un ID provizoriu (`HZ-~abc123`) e refuzat (`temp_id`): tichetul nu e încă în bază.
+- Ștergerea unui fișier se face din aplicație. Atenție: un tichet cu fișiere nu
+  mai poate fi șters prin API (`has_activity`).
+
+Direct pe API (fără ai-client):
+
+```bash
+curl -X POST "$HORIZONTAL_API_URL/api/tickets/HZ-07/attachments" \
+  -H "X-API-Key: $HORIZONTAL_API_KEY" \
+  -F "file=@eroare.png" -F "file=@log.txt"
+
+# sau JSON cu base64, pentru clienții care nu fac multipart:
+#   POST /api/tickets/HZ-07/attachments
+#   { "filename": "eroare.png", "data": "<base64>", "contentType": "image/png" }
+#   { "files": [ { "filename": …, "data": … }, … ] }
+```
+
+Răspunsul (201) e `{ id, attachments: [{ id, filename, contentType, size, createdAt, url }] }`.
+Dacă un fișier din mijloc pică (502), răspunsul spune care (`filename`) și listează
+în `attachments` ce s-a urcat deja — acelea rămân pe tichet.
+
 ## Dependențe (`deps`) — direcția și cum le structurezi corect
 
 ⚠️ **Citește asta înainte să pui `deps` pe tichete.** E ușor de greșit direcția.
