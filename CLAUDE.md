@@ -2217,7 +2217,38 @@ culoare dintr-o singură lovitură. `test-layout.mjs` îl taie explicit
 (`.replace(/^﻿/, '')`); orice test nou cu același tipar trebuie să facă la
 fel, altfel pică tăcut pe „toate culorile sunt negru" în loc de eroare clară.
 
-## ticket-kit — sync (repo git separat)
+## CLI-ul `hz` (tichetele din orice proiect)
+
+`cli/` = UN CLI de sistem pentru API-ul de tichete (`functions/api/`), în locul
+copierii lui `ticket-kit/` în fiecare proiect. Node ≥ 20, fără dependențe npm.
+
+- **Instalare**: `npm run hz:install` pune `~/.local/bin/hz` → `cli/hz.mjs` din
+  repo (symlink, deci `git pull` îl actualizează fără reinstalare; avertizează
+  dacă `~/.local/bin` nu e în PATH). `npm run hz:uninstall` îl scoate.
+- **Config pe calculator**: `hz login` → `~/.config/horizontal/config.json`
+  (`$XDG_CONFIG_HOME`, mod 600, `{ apiUrl, apiKey }`); `HORIZONTAL_API_URL` /
+  `HORIZONTAL_API_KEY` din mediu îl bat. Cheia nu se afișează niciodată.
+- **Legătura cu proiectul**: `hz init <id>` în rădăcina unui repo scrie
+  `.horizontal` (`{ "project": "kata" }`, căutat din cwd în sus; `--project` îl
+  bate), un `TICKETING.md` de câteva rânduri și adaugă `@TICKETING.md` în
+  `CLAUDE.md`-ul proiectului (idempotent).
+- **De ce ghidul stă în CLI, nu în proiect**: regulile (direcția dependențelor,
+  refuzurile API-ului, mutarea cu ID nou, atașamentele) se schimbă odată cu
+  API-ul. Copiate în fiecare proiect, rămâneau în urmă exact ca ticket-kit.
+  `cli/guide.md` e sursa unică; `hz guide` o tipărește, iar `TICKETING.md` doar
+  trimite la ea. **O schimbare în API = o schimbare în `cli/guide.md`** (și în
+  `hz.mjs`, dacă e o comandă nouă).
+- Partea pură (argumente, config, `.horizontal`, CLAUDE.md, corpurile cererilor)
+  e în `cli/lib.mjs`, cu teste; `cli/hz.smoke.test.mjs` rulează `hz` ca proces
+  contra unui server HTTP fals — niciodată producția.
+- Ieșirea rămâne cea din ai-client (un rând pe element, `updated:`,
+  `duplicate:`, `not_found`), iar forma veche a flagurilor (`hz --create
+  --title …`, `--get --id`, `--attach --file`) merge în continuare.
+
+**ticket-kit e LEGACY**: rămâne pentru proiectele care încă îl au copiat, dar
+nu primește comenzi noi. Un proiect nou se leagă cu `hz init`.
+
+## ticket-kit — sync (repo git separat, legacy — vezi „CLI-ul `hz`")
 
 `ticket-kit/` are **propriul `.git`** (remote `github.com/lightsongjs/horizontal-ticket-kit`),
 separat de repo-ul Horizontal. Master copy e un clone al aceluiași remote la

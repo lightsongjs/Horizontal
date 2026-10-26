@@ -1,4 +1,6 @@
+/// <reference types="vitest" />
 import { defineConfig } from 'vite'
+import { configDefaults } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import { execSync } from 'node:child_process'
@@ -83,4 +85,7 @@ export default defineConfig(({ command: _command }) => ({
     __BUILD_COMMIT__: JSON.stringify(buildCommit()),
   },
   server: { host: true, port: 5173 },
+  // `.claude/**` = worktree-urile agenților (copii întregi ale repo-ului): fără
+  // excludere, `npm test` le-ar rula testele de două ori, din altă versiune.
+  test: { exclude: [...configDefaults.exclude, '.claude/**', '.worktrees/**'] },
 }))
