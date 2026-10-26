@@ -17,13 +17,7 @@ import { inboxProjectId } from '../lib/captureTokens'
 import { inboxFirst, reorderWithInboxFirst } from '../lib/projectOrder'
 import type { NavAction, SidebarMarks } from '../lib/paneProtocol'
 
-function getBuildAgo(): string {
-  const diff = Math.floor((Date.now() - new Date(__BUILD_TIME__).getTime()) / 1000)
-  if (diff < 60) return 'just now'
-  if (diff < 3600) { const m = Math.floor(diff / 60); return `${m} minute${m > 1 ? 's' : ''} ago` }
-  if (diff < 86400) { const h = Math.floor(diff / 3600); return `${h} hour${h > 1 ? 's' : ''} ago` }
-  const d = Math.floor(diff / 86400); return `${d} day${d > 1 ? 's' : ''} ago`
-}
+import { BuildAge } from './BuildAge'
 
 interface SidebarProps {
   /** „Utilizatori” e deschis (din rotița de setări) — niciun proiect nu e „pe ecran”. */
@@ -161,11 +155,14 @@ export function Sidebar({ showUsers = false, onNavigate, smartList = null, onSma
 
   return (
     <aside className="sidebar">
-      {/* Cine ești, apoi căutarea — ca în sertarul de pe telefon. Data
-          buildului a trecut în `title`: e pentru depanare, nu pentru ochi. */}
-      <div className="sidebar-me" title={`Built: ${getBuildAgo()}`}>
+      {/* Cine ești, apoi căutarea — ca în sertarul de pe telefon. Sub nume,
+          vârsta buildului: a ajuns ultimul push aici? (`BuildAge`) */}
+      <div className="sidebar-me">
         <span className="dr-avatar" aria-hidden="true">{initialsOf(who)}</span>
-        <span className="sidebar-me-name">{who}</span>
+        <span className="sidebar-me-who">
+          <span className="sidebar-me-name">{who}</span>
+          <BuildAge />
+        </span>
         <button className="sidebar-theme-btn" onClick={openAppSettings} aria-label="Setări" title="Setări">
           <Icon name="settingsApp" size={16} />
         </button>

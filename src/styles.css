@@ -3029,8 +3029,13 @@ button.we-del:hover { color: var(--blocked); background: var(--blocked-soft); }
   padding: 2px 6px 14px 8px;
 }
 :where(html:not([data-narrow])) .sidebar-me .dr-avatar { width: 28px; height: 28px; font-size: calc(11px * var(--text-scale)); }
-:where(html:not([data-narrow])) .sidebar-me-name {
+:where(html:not([data-narrow])) .sidebar-me-who {
   flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+:where(html:not([data-narrow])) .sidebar-me-name {
   min-width: 0;
   font-size: calc(14px * var(--text-scale));
   font-weight: 650;
@@ -7314,6 +7319,16 @@ body:has(.qab) { overflow-y: auto; }
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+/* Vârsta buildului sub numele omului (`BuildAge.tsx`), în sertar și în bara
+   laterală: discretă. NU se taie cu „…” — vârsta e la coadă, exact partea
+   care ar dispărea; cu textul mărit trece pe al doilea rând. */
+.me-build {
+  font-family: var(--display);
+  font-size: calc(12px * var(--text-scale));
+  font-weight: 650;
+  line-height: 1.3;
+  color: var(--txt-faint);
 }
 .dr-gear {
   width: 40px;

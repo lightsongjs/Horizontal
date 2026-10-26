@@ -121,6 +121,22 @@ Foaia nu navighează singură: se închide și trimite `OPEN_USERS_EVENT`, iar
 Shell-ul deschide ecranul după randare — pe telefon prin `goTop('users')`,
 deci Back duce pe „Azi”, ca de pe orice tab.
 
+### Vârsta buildului, sub numele omului
+
+„Versiune · acum 2 min” stă sub nume, în sertar și în bara laterală
+(`BuildAge.tsx`): omul vede dacă ultimul push a ajuns pe dispozitiv (service
+worker-ul aplică buildul nou la revenirea în tab). `__BUILD_TIME__` și
+`__BUILD_COMMIT__` vin din `define` (`vite.config.ts`; commitul din
+`CF_PAGES_COMMIT_SHA`, altfel `git rev-parse`, altfel gol — buildul nu pică).
+Tipurile Node ale configului sunt un shim (`vite-node.d.ts`), nu `@types/node`.
+Textul e `formatBuildAge` (`src/lib/buildAge.ts`, pur, cu teste): minute, ore
+cât e azi (sau sub 6 h peste miezul nopții), apoi „ieri” / „acum N zile” pe
+calendarul local. Ceas propriu la 30 s + `visibilitychange`, ca bara laterală să
+nu se randeze întreagă. Tooltipul: data exactă + commitul. **Nu folosi
+constantele în `src/sw.ts`**: s-ar schimba la fiecare build și worker-ul ar
+părea nou de fiecare dată. Rândul nu se taie cu „…” (vârsta e la coadă); trece
+pe două rânduri la 320px și cu text mărit — `test:layout` verifică.
+
 ### Căutarea (O / Ctrl+F): cele mai noi întâi
 
 `rankIssues` (`QuickSearch.tsx`, cu teste) ordonează după `createdAt`

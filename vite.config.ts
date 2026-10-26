@@ -1,6 +1,22 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import { execSync } from 'node:child_process'
+
+/**
+ * Commitul scurt al buildului, pentru tooltipul vârstei buildului (sub
+ * numele omului). Cloudflare Pages dă `CF_PAGES_COMMIT_SHA`; altfel git.
+ * Fără niciunul (arhivă fără `.git`, git lipsă) rămâne gol — nu pică buildul.
+ */
+function buildCommit(): string {
+  const cf = process.env.CF_PAGES_COMMIT_SHA
+  if (cf) return cf.slice(0, 7)
+  try {
+    return execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim()
+  } catch {
+    return ''
+  }
+}
 
 export default defineConfig(({ command: _command }) => ({
   base: '/',
@@ -58,8 +74,13 @@ export default defineConfig(({ command: _command }) => ({
       // mai rea decât o notă.
     }),
   ],
+  // Înghețate în bundle la build (în dev: la pornirea serverului; în vitest:
+  // la pornirea rulării). Le citește numai `BuildAge.tsx` — NU `src/sw.ts`:
+  // workerul trebuie să rămână același între buildurile fără schimbări în el
+  // (contractul din `npm run test:upgrade`).
   define: {
     __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+    __BUILD_COMMIT__: JSON.stringify(buildCommit()),
   },
   server: { host: true, port: 5173 },
 }))
