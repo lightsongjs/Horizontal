@@ -2177,6 +2177,10 @@ teme, valuri. Regulile comune cu aplicația se IMPORTĂ din `src/` (`themeKey`,
 deci ce nu se poate anula se refuză: o temă necunoscută la tichet, scadența pe o
 recurentă, ștergerea unui tichet cu dependenți, comentarii sau fișiere. O oră de
 scadență deja trecută nu primește memento (ar suna pe loc pe toate dispozitivele).
+Fișierele (`POST/GET /api/tickets/<id>/attachments`, `--attach`) urmează drumul
+aplicației — bucketul, calea și numele din `src/lib/attachmentPath.ts`, octeții
+întâi, rândul după, `event_id` null —, dar fără micșorare (Workers n-are canvas),
+de-aia plafonul de 25 MB / fișier.
 
 # context-mode — MANDATORY routing rules
 

@@ -9,6 +9,10 @@
 import { requireSupabase } from '../lib/supabase'
 import { attachmentFilename, shrinkImage } from '../lib/shrinkImage'
 import { uniqueNames, zipFolderName } from '../lib/zipName'
+import { BUCKET, buildAttachmentPath } from '../lib/attachmentPath'
+
+// Bucketul și calea sunt comune cu API-ul (`functions/api/tickets/[id]/attachments.ts`).
+export { BUCKET, buildAttachmentPath }
 
 export interface Attachment {
   id: string
@@ -30,8 +34,6 @@ export interface Attachment {
    */
   eventId: string | null
 }
-
-export const BUCKET = 'attachments'
 
 /**
  * 8 ore, nu o oră. Tokenul stă în query string, deci un URL nou e altă cheie de
@@ -70,15 +72,6 @@ function rowToAttachment(r: AttachmentRow): Attachment {
     createdAt: r.created_at,
     eventId: r.event_id ?? null,
   }
-}
-
-/**
- * `projectId` e primul segment **intenționat**: politica RLS de pe
- * `storage.objects` compară `(storage.foldername(name))[1]` cu
- * `project_members`. Fără extensie — `content_type` real trăiește în DB.
- */
-export function buildAttachmentPath(projectId: string, issueId: string, attachmentId: string): string {
-  return `${projectId}/${issueId}/${attachmentId}`
 }
 
 /**
