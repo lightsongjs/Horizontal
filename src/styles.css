@@ -5763,7 +5763,8 @@ body:has(.kb-sheet) .toast {
   overflow: hidden;
 }
 .qa-mirror mark,
-.sh-title-mirror mark {
+.sh-title-mirror mark,
+.sh-title-mirror .proj-mark {
   background: var(--accent-soft);
   color: transparent;
   border-radius: 4px;
@@ -8133,3 +8134,6 @@ html[data-pane] .sheet:has(.form-cols) .sh-header { background: var(--bg); }
   background: var(--surface-2); border-radius: var(--r-s); padding: 0 5px; margin-right: 4px;
 }
 @media (pointer: coarse) { .wg-hint { display: none; } }
+
+/* `#proiect` în titlul unui tichet existent: unde se mută la salvare. */
+.fc-hint.mv-title { display: inline-flex; align-items: center; gap: 4px; color: var(--accent); font-weight: 600; }

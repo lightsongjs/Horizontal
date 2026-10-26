@@ -1929,8 +1929,8 @@ try {
     await rf.close()
   }
 
-  // `#proiect` în titlul unui tichet existent: jetonul „Mută în …", nu o mutare
-  // singură. Un clic scoate semnul din titlu și mută (număr nou).
+  // `#proiect` în titlul unui tichet existent: evidențiat ca o dată, iar
+  // salvarea scoate semnul din titlu și mută tichetul (număr nou).
   {
     const tm = await browser.newPage({ viewport: { width: 1440, height: 900 } })
     await tm.goto(BASE, { waitUntil: 'networkidle' })
@@ -1947,21 +1947,22 @@ try {
     })
     await tm.goto(`${BASE}/EX-90`, { waitUntil: 'networkidle' })
     await tm.waitForTimeout(1200)
-    const titleBox = tm.locator('.sh-title-input').first()
-    await titleBox.click()
+    await tm.locator('.sh-title-input').first().click()
     await tm.keyboard.press('End')
     await tm.keyboard.type(' #apol')
     await tm.waitForTimeout(300)
-    const chip = tm.locator('.mv-title').first()
-    check('#proiect în titlu: apare „Mută în Apologetica"', /Mută în Apologetica/.test((await chip.textContent().catch(() => '')) ?? ''), JSON.stringify(await chip.textContent().catch(() => null)))
-    check('…dar nu mută singur', new URL(tm.url()).pathname === '/EX-90', `URL=${new URL(tm.url()).pathname}`)
-    await chip.click()
-    await tm.waitForTimeout(1200)
+    const marked = (await tm.locator('.sh-title-mirror .proj-mark').first().textContent().catch(() => '')) ?? ''
+    check('#proiect în titlu: semnul e evidențiat', marked === '#apol', JSON.stringify(marked))
+    const hint = (await tm.locator('.mv-title').first().textContent().catch(() => '')) ?? ''
+    check('…cu indiciul „se mută în Apologetica la salvare"', /se mută în Apologetica la salvare/.test(hint), JSON.stringify(hint))
+    check('…dar nu mută până la salvare', new URL(tm.url()).pathname === '/EX-90', `URL=${new URL(tm.url()).pathname}`)
+    await tm.locator('.sh-save').first().click()
+    await tm.waitForTimeout(1400)
     const path = new URL(tm.url()).pathname
-    check('#proiect: clicul mută tichetul', /^\/APO-\d+$/.test(path), `URL=${path}`)
+    check('#proiect: salvarea mută tichetul', /^\/APO-\d+$/.test(path), `URL=${path}`)
     const stored = await tm.evaluate((id) => JSON.parse(localStorage.getItem('horizontal:v2')).issues.find((i) => i.id === id)?.title, path.slice(1))
     check('…iar semnul iese din titlu', stored === 'De mutat din titlu', JSON.stringify(stored))
-    check('…și jetonul dispare', (await tm.locator('.mv-title').count()) === 0, `${await tm.locator('.mv-title').count()}`)
+    check('…și indiciul dispare', (await tm.locator('.mv-title').count()) === 0, `${await tm.locator('.mv-title').count()}`)
     await tm.close()
   }
 

@@ -42,12 +42,15 @@ export interface TitleProjectToken {
   projectId: string
   /** Titlul fără semn, cu spațiile dimprejur strânse. */
   title: string
+  /** Unde stă semnul în textul primit, pentru evidențiere. */
+  span: [number, number]
 }
 
 /**
  * `#proiect` scris în titlul unui tichet DEJA creat. Aceeași potrivire ca la
- * captură, dar aici nu mută nimic singur: formularul doar oferă „Mută în …",
- * fiindcă mutarea schimbă numărul tichetului și nu se poate anula. Semnul
+ * captură, dar nu la fiecare tastă:
+ * fiindcă mutarea schimbă numărul tichetului: semnul se evidențiază ca o dată,
+ * iar mutarea se face la salvare (`IssueForm`). Semnul
  * proiectului curent nu e o cerere de mutare (`null`), la fel ca unul
  * necunoscut sau ambiguu. Numai primul `#` recunoscut contează, ca la captură.
  */
@@ -64,7 +67,7 @@ export function titleProjectToken(
     const start = m.index! + m[1].length
     const end = m.index! + m[0].length
     const title = (raw.slice(0, start) + raw.slice(end)).replace(/\s+/g, ' ').trim()
-    return { projectId: p.id, title }
+    return { projectId: p.id, title, span: [start, end] }
   }
   return null
 }

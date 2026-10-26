@@ -4,7 +4,7 @@ import { buildAssigneeOptions, type AssigneeOption } from '../lib/assigneeOption
 import { useAuth } from '../auth'
 import { useHorizontal } from '../store'
 import { useUI, type IssueDraft } from '../ui'
-import { useCanWrite, useCoarsePointer, useTitleDate, useNarrow } from '../hooks'
+import { useCanWrite, useCoarsePointer, useTitleDate, useNarrow, useMoveIssue } from '../hooks'
 import { isPane } from '../lib/pane'
 import { OPEN_SPLIT_EVENT } from '../lib/splitState'
 import { ticketUrl } from '../lib/deepLink'
@@ -28,7 +28,7 @@ import { SheetThreadRow } from './SheetThreadRow'
 import type { EditorHandle } from './MarkdownEditor'
 import { ChipPop } from './ChipPop'
 import { DuePanel } from './DuePanel'
-import { MoveChip, TitleMoveChip } from './MoveProject'
+import { MoveChip, TitleMoveHint, useTitleMove } from './MoveProject'
 import { titleProjectToken } from '../lib/captureTokens'
 import { attachBlocked } from './SheetFiles'
 import type { Issue, TestScenario } from '../lib/types'
@@ -115,6 +115,25 @@ export interface FormDirtyState {
  * parametrizată. `obstaclesDirty` de mai sus rămâne separată: e testată și
  * folosită independent.
  */
+type TitlePiece = { text: string; mark: boolean; proj?: boolean }
+
+/** Taie din bucățile oglinzii intervalul `#proiect`, ca `proj` (nu `mark`: */
+/** marcajele `mark` sunt ale datei și se măsoară pentru refuzul prin atingere). */
+function markSpan(pieces: { text: string; mark: boolean }[], [s, e]: [number, number]): TitlePiece[] {
+  const out: TitlePiece[] = []
+  let at = 0
+  for (const p of pieces) {
+    const a = at, b = at + p.text.length
+    at = b
+    if (p.mark || e <= a || s >= b) { out.push(p); continue }
+    const cs = Math.max(s, a) - a, ce = Math.min(e, b) - a
+    if (cs > 0) out.push({ text: p.text.slice(0, cs), mark: false })
+    out.push({ text: p.text.slice(cs, ce), mark: false, proj: true })
+    if (ce < p.text.length) out.push({ text: p.text.slice(ce), mark: false })
+  }
+  return out
+}
+
 export function isFormDirty(s: FormDirtyState): boolean {
   if (s.isEdit) {
     const existing = s.existing
@@ -600,12 +619,15 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
   }
   const isDirty = isFormDirty(dirtyState)
 
-  // `#proiect` în titlul unui tichet existent: nu mută singur, doar oferă
-  // „Mută în …" în rândul de jetoane (`TitleMoveChip`).
+  // `#proiect` în titlul unui tichet existent: se evidențiază ca o dată, iar
+  // la salvare semnul iese din titlu și tichetul se mută (număr nou). Refuzat
+  // (dependențe, fără drept în țintă) rămâne text, cu motivul în rândul de jetoane.
   const titleMove = isEdit && existing && canWrite && !isTempIssueId(existing.id)
     ? titleProjectToken(title, projects, existing.projectId)
     : null
-  const titleMoveOtherDirty = titleMove ? isFormDirty({ ...dirtyState, title: titleMove.title }) : false
+  const titleMoveInfo = useTitleMove(existing, titleMove?.projectId ?? null)
+  const moveIssue = useMoveIssue()
+  const titlePieces: TitlePiece[] = titleMove ? markSpan(titleDate.pieces, titleMove.span) : titleDate.pieces
 
   useEffect(() => {
     if (isDirty) {
@@ -852,7 +874,12 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
         selectors: selectors.filter(Boolean), scenarios, assigneeId, urgent,
         dueAt: schedule.dueAt, allDay: schedule.allDay, remindAt: schedule.remindAt, rrule: rruleOut,
       }
-      const ticketFields = { title: saveTitle, desc: desc.trim() === '' ? '' : desc, theme, wave, deps: realDeps, ...qaPayload }
+      // `#proiect` cunoscut și permis: iese din titlu, iar mutarea vine după
+      // salvare (pe ID-ul vechi întâi, ca nimic din formular să nu se piardă).
+      const moveTo = titleMoveInfo && !titleMoveInfo.refusal && existing
+        ? titleProjectToken(saveTitle, projects, existing.projectId)
+        : null
+      const ticketFields = { title: moveTo?.title || saveTitle, desc: desc.trim() === '' ? '' : desc, theme, wave, deps: realDeps, ...qaPayload }
       const prior = saveTargetId(existing?.id, createdIdRef.current, resolveId)
       let targetId: string
       if (prior !== null) {
@@ -957,6 +984,18 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
         return
       }
       setCloseGuard(null)
+      if (moveTo && prior !== null) {
+        if (moveTo.title !== title) setTitle(moveTo.title)
+        try {
+          // Formularul se remontează pe tichetul nou, din store.
+          await moveIssue(prior, moveTo.projectId, { open: !close, remount: true })
+        } catch (e) {
+          reportError(errorMessage(e))
+          return
+        }
+        if (close) closeSheet()
+        return
+      }
       if (close) {
         closeSheet()
       } else {
@@ -1424,9 +1463,7 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
           </button>
         </>
       )}
-      {titleMove && existing && (
-        <TitleMoveChip issue={existing} targetId={titleMove.projectId} title={titleMove.title} otherDirty={titleMoveOtherDirty} />
-      )}
+      {titleMoveInfo && <TitleMoveHint name={titleMoveInfo.name} refusal={titleMoveInfo.refusal} />}
       {/* Titlul era numai dată: salvarea e stinsă, deci spune de ce. */}
       {bareTitle && <span className="fc-hint warn">și ce ai de făcut?</span>}
       {canWrite && (
@@ -1591,7 +1628,7 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
           title={titleDate.onDate ? 'Nu e o dată — atinge ca să rămână text în titlu' : undefined}
         >
           <span className="sh-title-mirror" ref={titleDate.mirrorRef} aria-hidden="true">
-            {titleDate.pieces.map((p, i) => (p.mark ? <mark key={i}>{p.text}</mark> : <span key={i}>{p.text}</span>))}
+            {titlePieces.map((p, i) => (p.mark ? <mark key={i}>{p.text}</mark> : p.proj ? <span key={i} className="proj-mark">{p.text}</span> : <span key={i}>{p.text}</span>))}
           </span>
           <textarea
             ref={titleInputRef}

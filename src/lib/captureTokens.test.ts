@@ -101,8 +101,8 @@ describe('#inbox și #daily după redenumire', () => {
 describe('titleProjectToken (tichet existent)', () => {
   const tok = (t: string, cur = 'd') => titleProjectToken(t, projects, cur)
   it('oferă proiectul și titlul fără semn', () => {
-    expect(tok('ai ramas la s01e11 #kata')).toEqual({ projectId: 'kata', title: 'ai ramas la s01e11' })
-    expect(tok('#racovita sună la primărie')).toEqual({ projectId: 'r', title: 'sună la primărie' })
+    expect(tok('ai ramas la s01e11 #kata')).toMatchObject({ projectId: 'kata', title: 'ai ramas la s01e11', span: [19, 24] })
+    expect(tok('#racovita sună la primărie')).toMatchObject({ projectId: 'r', title: 'sună la primărie', span: [0, 9] })
   })
   it('proiectul curent nu e o mutare', () => {
     expect(tok('ceva #inbox')).toBeNull()
@@ -113,6 +113,6 @@ describe('titleProjectToken (tichet existent)', () => {
     expect(tok('C# și altceva')).toBeNull()
   })
   it('sare peste un semn necunoscut până la unul cunoscut', () => {
-    expect(tok('#zzz ceva #gdpr')).toEqual({ projectId: 'gdpr', title: '#zzz ceva' })
+    expect(tok('#zzz ceva #gdpr')).toMatchObject({ projectId: 'gdpr', title: '#zzz ceva' })
   })
 })
