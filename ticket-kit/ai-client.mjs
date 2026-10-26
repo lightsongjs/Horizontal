@@ -52,13 +52,28 @@ async function lookup() {
   }
 }
 
+// --urgent true|false  →  boolean; anything else is a usage error.
+function boolFlag(name) {
+  const v = flags[name]
+  if (v === 'true' || v === true) return true
+  if (v === 'false') return false
+  console.error(`--${name} must be true or false`)
+  process.exit(1)
+}
+
 // --create --project kata --title "Auth flow" --wave 1 --deps KATA-03,KATA-04
 // --assignee takes a name or an id, like --project; the API resolves it.
-// Prints: KATA-05   OR   duplicate: KATA-03
+// --theme must be an existing theme key (see --themes); unknown keys are refused.
+// --due "2026-10-24" (all day) or "2026-10-24 15:30" (Romanian time); --urgent true
+// Prints: KATA-05   OR   duplicate: KATA-03   OR   theme_not_found
 async function create() {
-  const { project, title, wave, deps, theme, desc, notes, assignee } = flags
+  const { project, title, wave, deps, theme, desc, notes, assignee, due } = flags
   if (!project || !title || wave === undefined) {
-    console.error('Usage: --create --project <id> --title "<title>" --wave <n> [--deps ID1,ID2] [--theme key] [--desc "..."] [--notes "..."] [--assignee <id|name>]')
+    console.error('Usage: --create --project <id> --title "<title>" --wave <n> [--deps ID1,ID2] [--theme key] [--desc "..."] [--notes "..."] [--assignee <id|name>] [--due "YYYY-MM-DD[ HH:MM]"] [--urgent true]')
+    process.exit(1)
+  }
+  if (due === true) {
+    console.error('--due requires a value: "YYYY-MM-DD" or "YYYY-MM-DD HH:MM"')
     process.exit(1)
   }
   if (assignee === true) {
@@ -76,14 +91,16 @@ async function create() {
       desc: desc ?? '',
       notes: notes ?? '',
       assigneeId: assignee ? String(assignee) : null,
+      ...(due !== undefined ? { due: String(due) } : {}),
+      ...('urgent' in flags ? { urgent: boolFlag('urgent') } : {}),
     }),
   })
   if (status === 201) {
     console.log(data.id)
   } else if (status === 409) {
     console.log(`duplicate: ${data.existing_id}`)
-  } else if (status === 422) {
-    console.log(data.error)
+  } else if (status === 422 || status === 400) {
+    console.log(data.theme ? `${data.error}: ${data.theme}` : data.error)
     process.exit(1)
   } else {
     console.error(`Error ${status}: ${JSON.stringify(data)}`)
@@ -106,7 +123,7 @@ async function fetchWaveNames(project) {
 }
 
 // --waves --project KATA
-// Prints one line per wave: 0  Scratchpad
+// Prints one line per wave, in column order (position): 0  Scratchpad
 async function waves() {
   const { project } = flags
   if (!project) {
@@ -128,16 +145,18 @@ async function waves() {
   }
 }
 
-// --list --project KATA [--wave 1]
-// Prints one line per ticket: KATA-01  [wave 1 · Val 1 / MVP]  Setup DB
+// --list --project KATA [--wave 1] [--theme key]   (--theme "" = tickets without a theme)
+// Prints one line per ticket:
+//   KATA-01  [wave 1 · Val 1 / MVP]  #auth  Setup DB  ← KATA-00  (due 2026-10-24) !
 async function list() {
-  const { project, wave } = flags
+  const { project, wave, theme } = flags
   if (!project) {
-    console.error('Usage: --list --project <id> [--wave <n>]')
+    console.error('Usage: --list --project <id> [--wave <n>] [--theme <key>]')
     process.exit(1)
   }
   const params = new URLSearchParams({ project })
   if (wave !== undefined) params.set('wave', String(wave))
+  if (theme !== undefined) params.set('theme', theme === true ? '' : String(theme))
   const { status, data } = await apiFetch(`/api/tickets?${params}`)
   if (status === 200) {
     if (!data.length) {
@@ -146,7 +165,12 @@ async function list() {
       const names = await fetchWaveNames(project)
       for (const t of data) {
         const name = names.get(t.wave)
-        console.log(`${t.id}  [wave ${t.wave}${name ? ` · ${name}` : ''}]${t.done ? ' ✓' : ''}  ${t.title}`)
+        const extra = [
+          t.deps?.length ? `← ${t.deps.join(',')}` : '',
+          t.dueAt ? `(due ${t.dueAt})` : '',
+          t.urgent ? '!' : '',
+        ].filter(Boolean).join('  ')
+        console.log(`${t.id}  [wave ${t.wave}${name ? ` · ${name}` : ''}]${t.done ? ' ✓' : ''}${t.theme ? `  #${t.theme}` : ''}  ${t.title}${extra ? `  ${extra}` : ''}`)
       }
     }
   } else {
@@ -220,6 +244,8 @@ async function get() {
 // [--project <target>]  moves the ticket to another project; it gets a new ID with
 //                       that project's prefix. Refused if any dependency touches it.
 // [--assignee <id|name>]  gives the ticket to a person; --assignee "" takes it back.
+// [--due "YYYY-MM-DD[ HH:MM]"]  sets the due date (--due "" clears it); refused on recurring tickets.
+// [--urgent true|false]
 // Prints: updated: KATA-03  |  moved: KATA-03 -> TK-12  |  duplicate: KATA-07  |  not_found
 async function update() {
   const { id } = flags
@@ -251,6 +277,12 @@ async function update() {
     body.assigneeId = flags.assignee ? String(flags.assignee) : null
   }
 
+  if ('due' in flags) {
+    if (flags.due === true) { console.error('--due requires a value (use --due "" to clear it)'); process.exit(1) }
+    body.due = String(flags.due)
+  }
+  if ('urgent' in flags) body.urgent = boolFlag('urgent')
+
   if ('selectors' in flags) {
     try { body.selectors = JSON.parse(flags.selectors) }
     catch { console.error('--selectors must be valid JSON array'); process.exit(1) }
@@ -260,9 +292,9 @@ async function update() {
     catch { console.error('--scenarios must be valid JSON array'); process.exit(1) }
   }
 
-  const knownFields = ['title', 'desc', 'theme', 'wave', 'done', 'notes', 'deps', 'selectors', 'scenarios', 'projectId', 'assigneeId']
+  const knownFields = ['title', 'desc', 'theme', 'wave', 'done', 'notes', 'deps', 'selectors', 'scenarios', 'projectId', 'assigneeId', 'due', 'urgent']
   if (!knownFields.some(f => f in body)) {
-    console.error('Provide at least one field: --title, --wave, --done, --deps, --desc, --notes, --theme, --project, --assignee, --selectors, --scenarios')
+    console.error('Provide at least one field: --title, --wave, --done, --deps, --desc, --notes, --theme, --project, --assignee, --due, --urgent, --selectors, --scenarios')
     process.exit(1)
   }
 
@@ -285,10 +317,13 @@ async function update() {
     if (data.dependedOnBy?.length) console.log(`  depended on by: ${data.dependedOnBy.join(', ')}`)
     console.log('  clear them with --update --id <id> --deps "" then move')
     process.exit(1)
+  } else if (status === 409 && data.error === 'recurring') {
+    console.log('recurring: the ticket repeats; change its due date in the app')
+    process.exit(1)
   } else if (status === 409) {
     console.log(`duplicate: ${data.existing_id}`)
   } else if (status === 422) {
-    console.log(data.error)
+    console.log(data.theme ? `${data.error}: ${data.theme}` : data.error)
     process.exit(1)
   } else if (status === 400) {
     console.log(data.error)
@@ -297,6 +332,100 @@ async function update() {
     console.error(`Error ${status}: ${JSON.stringify(data)}`)
     process.exit(1)
   }
+}
+
+function need(names, usage) {
+  for (const n of names) {
+    if (flags[n] === undefined || flags[n] === true) { console.error(`Usage: ${usage}`); process.exit(1) }
+  }
+}
+function fail(status, data) {
+  if (status === 400 || status === 404 || status === 409 || status === 422) {
+    console.log(data.existing_key ? `${data.error}: ${data.existing_key}` : data.error ?? `error ${status}`)
+  } else {
+    console.error(`Error ${status}: ${JSON.stringify(data)}`)
+  }
+  process.exit(1)
+}
+
+// --themes --project cc
+// Prints one line per theme, in the app's order: pasul-2  #F06B1F  Pasul 2: Admiterea
+async function themes() {
+  need(['project'], '--themes --project <id>')
+  const { status, data } = await apiFetch(`/api/themes?project=${encodeURIComponent(flags.project)}`)
+  if (status !== 200) fail(status, data)
+  if (!Array.isArray(data)) { console.error('Error: /api/themes did not return a list (route not deployed?)'); process.exit(1) }
+  if (!data.length) console.log('(no themes found)')
+  for (const t of data) console.log(`${t.key}  ${t.color}  ${t.name}`)
+}
+
+// --create-theme --project cc --name "Pasul 2: Admiterea" --color "#F06B1F"
+// Prints the new key: pasul-2-admiterea   OR   duplicate_theme: <key>
+async function createTheme() {
+  need(['project', 'name', 'color'], '--create-theme --project <id> --name "<name>" --color "#RRGGBB"')
+  const { status, data } = await apiFetch('/api/themes', {
+    method: 'POST',
+    body: JSON.stringify({ projectId: String(flags.project), name: String(flags.name), color: String(flags.color) }),
+  })
+  if (status !== 201) fail(status, data)
+  console.log(data.key)
+}
+
+// --update-theme --project cc --key pasul-2 [--name "..."] [--color "#RRGGBB"]
+// The key never changes (tickets hold it). Prints: updated: pasul-2
+async function updateTheme() {
+  need(['project', 'key'], '--update-theme --project <id> --key <key> [--name "..."] [--color "#RRGGBB"]')
+  const body = {}
+  if (typeof flags.name === 'string') body.name = flags.name
+  if (typeof flags.color === 'string') body.color = flags.color
+  const { status, data } = await apiFetch(
+    `/api/themes/${encodeURIComponent(flags.key)}?project=${encodeURIComponent(flags.project)}`,
+    { method: 'PATCH', body: JSON.stringify(body) },
+  )
+  if (status !== 200) fail(status, data)
+  console.log(`updated: ${data.key}`)
+}
+
+// --create-wave --project cc --label "Pilot" [--name "IV"]
+// Number and position are computed like in the app; the default name is the next
+// roman numeral. Prints: 4  IV / Pilot
+async function createWave() {
+  need(['project'], '--create-wave --project <id> --label "<label>" [--name "<name>"]')
+  const body = { projectId: String(flags.project), label: typeof flags.label === 'string' ? flags.label : '' }
+  if (typeof flags.name === 'string') body.name = flags.name
+  const { status, data } = await apiFetch('/api/waves', { method: 'POST', body: JSON.stringify(body) })
+  if (status !== 201) fail(status, data)
+  console.log(`${data.number}  ${waveLabel(data)}`)
+}
+
+// --update-wave --project cc --number 2 [--name "II"] [--label "Pilot"]
+// Prints: updated: 2  II / Pilot
+async function updateWave() {
+  need(['project', 'number'], '--update-wave --project <id> --number <n> [--name "..."] [--label "..."]')
+  const body = {}
+  if (typeof flags.name === 'string') body.name = flags.name
+  if (typeof flags.label === 'string') body.label = flags.label
+  const { status, data } = await apiFetch(
+    `/api/waves/${encodeURIComponent(flags.number)}?project=${encodeURIComponent(flags.project)}`,
+    { method: 'PATCH', body: JSON.stringify(body) },
+  )
+  if (status !== 200) fail(status, data)
+  console.log(`updated: ${data.number}  ${waveLabel(data) ?? ''}`)
+}
+
+// --delete --id CC-05
+// For fixing a bad import. Refused if other tickets depend on it (has_dependents)
+// or it has comments / files (has_activity) — those are deleted in the app.
+// Prints: deleted: CC-05
+async function del() {
+  need(['id'], '--delete --id <ticket-id>')
+  const { status, data } = await apiFetch(`/api/tickets/${encodeURIComponent(flags.id)}`, { method: 'DELETE' })
+  if (status === 409 && data.error === 'has_dependents') {
+    console.log(`has_dependents: ${data.dependedOnBy.join(', ')}`)
+    process.exit(1)
+  }
+  if (status !== 200) fail(status, data)
+  console.log(`deleted: ${data.id}`)
 }
 
 // One line per file: <attachment-id>  <filename>  <size>  <url>
@@ -391,11 +520,23 @@ if (flags.projects !== undefined) {
   await get()
 } else if (flags.update !== undefined) {
   await update()
+} else if (flags.themes !== undefined) {
+  await themes()
+} else if (flags['create-theme'] !== undefined) {
+  await createTheme()
+} else if (flags['update-theme'] !== undefined) {
+  await updateTheme()
+} else if (flags['create-wave'] !== undefined) {
+  await createWave()
+} else if (flags['update-wave'] !== undefined) {
+  await updateWave()
 } else if (flags.attach !== undefined) {
   await attach()
 } else if (flags.attachments !== undefined) {
   await attachments()
+} else if (flags.delete !== undefined) {
+  await del()
 } else {
-  console.error('Usage: node ai-client.mjs --projects|--waves|--assignees|--lookup|--create|--list|--get|--update|--attach|--attachments [options]')
+  console.error('Usage: node ai-client.mjs --projects|--waves|--assignees|--themes|--lookup|--create|--list|--get|--update|--delete|--create-theme|--update-theme|--create-wave|--update-wave|--attach|--attachments [options]')
   process.exit(1)
 }

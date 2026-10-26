@@ -94,24 +94,6 @@ node ticket-kit/ai-client.mjs --update --id KATA-03 --scenarios '[{"given":"..."
 # output: updated: KATA-03   (sau duplicate: KATA-07 / not_found)
 ```
 
-### Markdown în descrieri
-
-Câmpul `desc` (`--desc`) e markdown; aplicația îl desenează, iar bifele se
-pot apăsa. Subsetul suportat:
-
-- titluri `#`, `##`, `###` (H4–H6 se afișează ca `###`) și paragrafe
-- liste `-` / `*` și `1.`, cu indentare
-- căsuțe `- [ ]` / `- [x]` (în „Ordine" și „Listă" apare progresul, ex. `2/5`)
-- `**îngroșat**`, `*cursiv*`, `~~tăiat~~`
-- `` `cod` `` și blocuri ```` ``` ````
-- `> citat`
-- `[text](url)` și URL-uri goale (doar `http:`, `https:`, `mailto:`)
-- `---`
-- `HZ-12` (id de tichet, cu prefixul unui proiect existent) devine legătură
-
-Nu se desenează: tabele, imagini în text, HTML brut (rămâne text), note de
-subsol. Textul se salvează exact cum e scris — nu se „curăță" nimic.
-
 ### Asignarea unui tichet unui om
 
 ```bash
@@ -156,6 +138,68 @@ Mutarea e **refuzată** (`has_dependencies`) dacă orice dependență atinge tic
 în oricare sens — nimic nu se rupe fără decizia ta. Golește-le întâi cu
 `--update --id <id> --deps ""`, apoi mută. Din același motiv, `--project` nu se
 combină cu `--deps` în aceeași comandă.
+
+### Temele
+
+O temă are o **cheie** (o folosesc tichetele), un nume și o culoare. Cheia se face
+din nume, cu aceeași regulă ca în aplicație, și nu se mai schimbă.
+
+```bash
+node ai-client.mjs --themes --project cc
+# output: pasul-2-admiterea  #F06B1F  Pasul 2: Admiterea   (ordinea naturală: „Pasul 2” înaintea lui „Pasul 10”)
+node ai-client.mjs --create-theme --project cc --name "Pasul 2: Admiterea" --color "#F06B1F"
+# output: pasul-2-admiterea   (sau "duplicate_theme: <cheie>" dacă numele există deja)
+node ai-client.mjs --update-theme --project cc --key pasul-2-admiterea --name "Pasul 2: Admis" --color "#1F9D60"
+# output: updated: pasul-2-admiterea
+```
+
+**`--theme` la `--create` / `--update` trebuie să fie o cheie existentă.** O cheie
+necunoscută e refuzată (`theme_not_found: <cheie>`) — înainte tichetul se crea
+tăcut în „Fără temă”. `--theme ""` scoate tema. `--list --theme <cheie>` filtrează
+lista; `--list --theme ""` arată tichetele fără temă.
+
+### Valurile
+
+```bash
+node ai-client.mjs --create-wave --project cc --label "Pilot"
+# output: 4  IV / Pilot   (numărul și locul = următoarele; numele implicit = cifra romană următoare)
+node ai-client.mjs --create-wave --project cc --label "Nu facem" --name "Nu facem"
+node ai-client.mjs --update-wave --project cc --number 2 --label "Pilot ~110 firme"
+# output: updated: 2  II / Pilot ~110 firme
+```
+
+`--waves` arată valurile în ordinea coloanelor din aplicație (locul, nu numărul).
+Ordinea se schimbă din aplicație (foaia „Valuri”), nu de aici.
+
+### Scadența și urgentul
+
+```bash
+node ai-client.mjs --create --project h --title "..." --wave 1 --due 2026-10-24          # toată ziua
+node ai-client.mjs --update --id H-13 --due "2026-10-24 15:30"   # cu oră (ora României), sună la scadență
+node ai-client.mjs --update --id H-13 --due ""                   # fără scadență
+node ai-client.mjs --update --id H-13 --urgent true
+```
+
+O zi fără oră = toată ziua, fără memento (ca în aplicație). Pe un tichet care se
+repetă, scadența e refuzată (`recurring`) — se schimbă din aplicație.
+
+### Lista arată tot
+
+`--list` arată pe fiecare rând și tema, dependențele, scadența și urgentul:
+`CC-12  [wave 1 · I / MVP]  #pasul-2  Titlul  ← CC-10,CC-11  (due 2026-10-23T21:00:00.000Z)  !`
+
+### Ștergerea unui tichet
+
+Pentru o încărcare greșită:
+
+```bash
+node ai-client.mjs --delete --id CC-05
+# output: deleted: CC-05
+```
+
+Refuzată dacă alte tichete depind de el (`has_dependents: CC-06, …`) sau dacă are
+comentarii ori fișiere (`has_activity` — acelea se șterg din aplicație). Nu se
+poate anula.
 
 ### Fișiere atașate (poze, capturi, PDF-uri)
 
