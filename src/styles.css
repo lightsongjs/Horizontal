@@ -7756,15 +7756,13 @@ body:has(.qab) { overflow-y: auto; }
     width: 2px; border-radius: 2px; background: var(--vim-cur-bar, var(--accent));
   }
   /* Panoul activ: o linie de 2px sus, în accent — singura „ramă" permisă,
-     fiindcă e o stare, nu un decor. Lista o desenează lipită de capul derulării. */
+     fiindcă e o stare, nu un decor. Lista n-o are (2026-10-27): lipită sub
+     taburi, arăta ca a doua subliniere; acolo starea o spune rândul
+     cursorului, în accent numai cât lista are tastatura (`--vim-cur-bar`). */
   #app[data-vim-pane] .sidebar { position: relative; }
   #app[data-vim-pane="sidebar"] .sidebar::before,
   #app[data-vim-pane="panel"] .split-pane::before {
     content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px;
-    background: var(--accent); z-index: 3; pointer-events: none;
-  }
-  #app[data-vim-pane="list"] .split.has-pane > .split-list::before {
-    content: ""; display: block; position: sticky; top: 0; height: 2px; margin-bottom: -2px;
     background: var(--accent); z-index: 3; pointer-events: none;
   }
   /* Bara laterală: elementul cu focus de tastatură (j / k) are un inel. */
