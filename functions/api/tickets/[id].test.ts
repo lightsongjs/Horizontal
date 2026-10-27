@@ -98,6 +98,31 @@ describe('onRequestPatch harness', () => {
   })
 })
 
+describe('onRequestPatch pinned', () => {
+  const current = route('/rest/v1/issues?id=eq.HZ-07&select=id,project_id,title,wave',
+    [{ id: 'HZ-07', project_id: 'horizontal', title: 'Old', wave: 3 }])
+
+  it('pinned true pune pinned_at acum, false îl golește', async () => {
+    let calls = mockFetch([current, route('/rest/v1/issues?id=eq.HZ-07', [{ id: 'HZ-07' }], { method: 'PATCH' })])
+    let res = await onRequestPatch(patchCtx('HZ-07', { pinned: true }))
+    expect(res.status).toBe(200)
+    expect((await res.json() as any).updated).toEqual(['pinned'])
+    const at = calls.find(c => c.method === 'PATCH')!.body.pinned_at
+    expect(Math.abs(Date.parse(at) - Date.now())).toBeLessThan(5000)
+
+    calls = mockFetch([current, route('/rest/v1/issues?id=eq.HZ-07', [{ id: 'HZ-07' }], { method: 'PATCH' })])
+    res = await onRequestPatch(patchCtx('HZ-07', { pinned: false }))
+    expect(calls.find(c => c.method === 'PATCH')!.body).toEqual({ pinned_at: null })
+  })
+
+  it('pinned care nu e boolean → invalid_pinned', async () => {
+    mockFetch([])
+    const res = await onRequestPatch(patchCtx('HZ-07', { pinned: 'da' }))
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ error: 'invalid_pinned' })
+  })
+})
+
 describe('onRequestPatch title dup-check', () => {
   it('scopes the dup-check to the ticket own project', async () => {
     const calls = mockFetch([
@@ -523,7 +548,22 @@ const ISSUE_ROUTES = [
   route('/rest/v1/issues?id=eq.HZ-07&select=id,title,details',
     [{ id: 'HZ-07', title: 'Login picat', details: 'nu intru', wave: 3, done: false }]),
   route('/rest/v1/dependencies?issue_id=eq.HZ-07', []),
+  route('/rest/v1/issue_events?issue_id=eq.HZ-07', [{ id: 'e1' }, { id: 'e2' }]),
 ]
+
+describe('onRequestGet comments + pin', () => {
+  it('spune câte rânduri are firul și când a fost fixat', async () => {
+    mockFetch([
+      route('/rest/v1/issues?id=eq.HZ-07&select=id,title,details',
+        [{ id: 'HZ-07', title: 'T', details: '', wave: 1, done: false, pinned_at: '2026-10-20T08:00:00.000Z' }]),
+      ...ISSUE_ROUTES.slice(1),
+      route('/rest/v1/attachments?issue_id=eq.HZ-07', []),
+    ])
+    const body = await (await onRequestGet(getCtx('HZ-07'))).json() as any
+    expect(body.commentCount).toBe(2)
+    expect(body.pinnedAt).toBe('2026-10-20T08:00:00.000Z')
+  })
+})
 
 describe('onRequestGet attachments', () => {
   it('signs every path in one call and returns downloadable URLs', async () => {

@@ -21,6 +21,7 @@ import {
   buildCreateBody, buildUpdateBody, titleFrom, DEFAULT_API_URL, PROJECT_FILE, TICKETING_FILE,
   pickerStart, pickerKey, pickerView, suggestPrefix, cleanPrefix, prefixOwner,
   defaultProjectType, parseProjectType, buildProjectBody,
+  buildCommentBody, commentHasContent, commentLines, authorFor, pickMe, NO_AUTHOR,
 } from './lib.mjs'
 
 // realpath: rulat prin symlink, ghidul stă lângă fișierul real, nu lângă link.
@@ -141,6 +142,7 @@ cmds.status = async () => {
   out(`config: ${file.path}${file.data ? '' : ' (lipsește)'}`)
   out(`apiUrl: ${cfg.apiUrl || '(nesetat)'}${cfg.source.apiUrl === 'env' ? '  [din HORIZONTAL_API_URL]' : ''}`)
   out(`apiKey: ${cfg.apiKey ? 'setată' : '(nesetată)'}${cfg.source.apiKey === 'env' ? '  [din HORIZONTAL_API_KEY]' : ''}`)
+  out(`me: ${cfg.me ? cfg.me.name : '(nesetat: tk whoami --set <nume>)'}${cfg.source.me === 'env' ? '  [din HORIZONTAL_ME]' : ''}`)
   const f = found()
   out(`proiect: ${f ? `${f.project}  (${f.path})` : '(niciun .horizontal de aici în sus)'}`)
 }
@@ -184,14 +186,44 @@ cmds.login = async ({ flags }) => {
   apiUrl = apiUrl.replace(/\/+$/, '')
   if (!/^https?:\/\//.test(apiUrl)) die('URL-ul trebuie să înceapă cu http:// sau https://')
   if (!apiKey) die('Lipsește cheia API')
-  mkdirSync(dirname(file.path), { recursive: true, mode: 0o700 })
-  writeFileSync(file.path, JSON.stringify({ apiUrl, apiKey }, null, 2) + '\n', { mode: 0o600 })
-  chmodSync(file.path, 0o600) // writeFileSync nu schimbă modul unui fișier existent
+  // `me` (omul de pe calculator) rămâne peste un login nou.
+  writeConfig(file.path, { apiUrl, apiKey, ...(prev.me ? { me: prev.me } : {}) })
   out(`salvat: ${file.path}`)
+  if (typeof flags.me === 'string') return setMe(flags.me, { apiUrl, apiKey })
   if (flags['no-check']) return
   const { status, data } = await api('/api/projects', {}, { apiUrl, apiKey })
   if (status !== 200 || !Array.isArray(data)) fail(status, data)
   out(`ok: ${data.length} proiecte vizibile`)
+  if (!prev.me) out('cine ești (autorul comentariilor): tk whoami --set <nume>   (vezi: tk assignees)')
+}
+
+function writeConfig(path, data) {
+  mkdirSync(dirname(path), { recursive: true, mode: 0o700 })
+  writeFileSync(path, JSON.stringify(data, null, 2) + '\n', { mode: 0o600 })
+  chmodSync(path, 0o600) // writeFileSync nu schimbă modul unui fișier existent
+}
+
+/** Alege omul din /api/assignees și îl ține în config (numai id + nume). */
+async function setMe(wanted, cfg = config()) {
+  const { status, data } = await api('/api/assignees', {}, cfg)
+  if (status !== 200) fail(status, data)
+  const r = pickMe(needList(data, '/api/assignees'), wanted)
+  if (r.error === 'author_not_found') { out(`author_not_found: ${wanted}`); err(`Oamenii: ${data.map((a) => a.name).join(', ')}`); process.exit(1) }
+  if (r.error === 'author_not_linked') { out(`author_not_linked: ${r.person.name} n-are cont legat (se leagă din aplicație / scripts/link-assignees.mjs)`); process.exit(1) }
+  const file = readConfigFile()
+  writeConfig(file.path, { ...(file.data ?? {}), me: r.me })
+  out(`me: ${r.me.name}  (${r.me.id})`)
+}
+
+cmds.whoami = async ({ positional, flags }) => {
+  const wanted = flags.set ?? positional[0]
+  if (wanted !== undefined) {
+    if (!wanted || wanted === true) throw new UsageError('tk whoami --set <nume|id>')
+    return setMe(String(wanted))
+  }
+  const cfg = resolveConfig(process.env, readConfigFile().data)
+  if (!cfg.me) { out('(nesetat)'); err(NO_AUTHOR); process.exit(1) }
+  out(`${cfg.me.name}${cfg.me.name !== cfg.me.id ? `  (${cfg.me.id})` : ''}${cfg.source.me === 'env' ? '  [din HORIZONTAL_ME]' : ''}`)
 }
 
 /** Scrie legătura: `.horizontal`, TICKETING.md și importul din CLAUDE.md. */
@@ -384,7 +416,8 @@ cmds.assignees = async ({ flags }) => {
   needList(data, '/api/assignees')
   if (flags.json) return out(JSON.stringify(data, null, 2))
   if (!data.length) return out('(no assignees found)')
-  for (const a of data) out(`${a.id}  ${a.name}`)
+  // „fără cont” = nu poate fi autor (tk whoami --set), doar destinatar al unei pase.
+  for (const a of data) out(`${a.id}  ${a.name}${a.linked === false ? '  (fără cont)' : ''}`)
 }
 
 cmds.themes = async ({ flags }) => {
@@ -443,7 +476,8 @@ cmds.create = async ({ positional, flags }) => {
     projectId = p.id
     wave = p.currentWave
   }
-  const body = buildCreateBody({ projectId, title: titleFrom(positional, flags), wave, flags })
+  // Autorul (`created_by`) dacă omul e configurat; fără el tichetul rămâne fără autor uman, ca înainte.
+  const body = buildCreateBody({ projectId, title: titleFrom(positional, flags), wave, flags, author: authorFor(flags, config()) })
   const { status, data } = await api('/api/tickets', { method: 'POST', body })
   if (status === 201) return out(data.id)
   if (status === 409 && data.existing_id) return out(`duplicate: ${data.existing_id}`)
@@ -482,10 +516,8 @@ cmds.delete = async ({ positional, flags }) => {
   fail(status, data)
 }
 
-cmds.attach = async ({ positional, flags }) => {
-  const id = ticketId(positional, flags, 'tk attach <ID> <fișier> [<fișier> …]')
-  const paths = [...(flags.id !== undefined ? positional : positional.slice(1)), ...(flags.file ?? [])]
-  if (!paths.length) throw new UsageError('tk attach <ID> <fișier> [<fișier> …]')
+/** Urcă fișierele pe tichet; întoarce `{ status, data }` al API-ului. */
+async function uploadFiles(id, paths) {
   const form = new FormData()
   for (const p of paths) {
     let bytes
@@ -493,14 +525,12 @@ cmds.attach = async ({ positional, flags }) => {
     // Fără tip: API-ul îl ghicește după extensie (png/jpg/webp/gif/pdf/…).
     form.append('file', new Blob([bytes]), basename(p))
   }
-  const { status, data } = await api(`/api/tickets/${enc(id)}/attachments`, { method: 'POST', form })
-  if (status === 201) {
-    if (flags.json) return out(JSON.stringify(data.attachments, null, 2))
-    for (const a of data.attachments ?? []) out(attachmentLine(a))
-    return
-  }
+  return api(`/api/tickets/${enc(id)}/attachments`, { method: 'POST', form })
+}
+
+/** Un eșec de urcare spune ce a ajuns totuși (rămâne pe tichet) și iese. */
+function uploadFailed(status, data) {
   if (status === 404) { out('not_found'); process.exit(1) }
-  // Un eșec parțial spune ce a ajuns totuși (rămâne pe tichet).
   err(`Error ${status}: ${data.error}${data.filename ? ` (${data.filename})` : ''}`)
   if (data.attachments?.length) {
     err('Atașate înainte de eșec:')
@@ -509,6 +539,72 @@ cmds.attach = async ({ positional, flags }) => {
   process.exit(1)
 }
 
+cmds.attach = async ({ positional, flags }) => {
+  const id = ticketId(positional, flags, 'tk attach <ID> <fișier> [<fișier> …]')
+  const paths = [...(flags.id !== undefined ? positional : positional.slice(1)), ...(flags.file ?? [])]
+  if (!paths.length) throw new UsageError('tk attach <ID> <fișier> [<fișier> …]')
+  const { status, data } = await uploadFiles(id, paths)
+  if (status === 201) {
+    if (flags.json) return out(JSON.stringify(data.attachments, null, 2))
+    for (const a of data.attachments ?? []) out(attachmentLine(a))
+    return
+  }
+  uploadFailed(status, data)
+}
+
+cmds.comments = async ({ positional, flags }) => {
+  const id = ticketId(positional, flags, 'tk comments <ID>')
+  const { status, data } = await api(`/api/tickets/${enc(id)}/comments`)
+  if (status === 404) { out('not_found'); process.exit(1) }
+  if (status !== 200 || !Array.isArray(data.comments)) fail(status, data)
+  if (flags.json) return out(JSON.stringify(data.comments, null, 2))
+  if (!data.comments.length) return out('(no comments)')
+  for (const e of data.comments) for (const l of commentLines(e)) out(l)
+}
+
+async function readStdin() {
+  const chunks = []
+  for await (const c of process.stdin) chunks.push(c)
+  return Buffer.concat(chunks).toString('utf8')
+}
+
+cmds.comment = async ({ positional, flags }) => {
+  const usage = 'tk comment <ID> "text" [--to <persoană>|""] [--attach fișier …]'
+  const id = ticketId(positional, flags, usage)
+  const rest = flags.id !== undefined ? positional : positional.slice(1)
+  let text = flags.body ?? flags.text ?? rest.join(' ')
+  if (text === '-') text = await readStdin() // textul lung (markdown) vine pe stdin
+  if (!commentHasContent(text, flags)) throw new UsageError(usage)
+  // Autorul ÎNAINTE de orice urcare: fără el nu scriem nimic (nici fișierele).
+  const author = authorFor(flags, config())
+  if (!author) die(NO_AUTHOR)
+  // Fișierele întâi, pe tichet; apoi comentariul le leagă de el (drumul aplicației).
+  let ids = []
+  if (flags.attach?.length) {
+    const up = await uploadFiles(id, flags.attach)
+    if (up.status !== 201) uploadFailed(up.status, up.data)
+    ids = up.data.attachments.map((a) => a.id)
+  }
+  const { status, data } = await api(`/api/tickets/${enc(id)}/comments`, { method: 'POST', body: buildCommentBody(text, flags, author, ids) })
+  if (status === 201 || status === 200) {
+    if (flags.json) return out(JSON.stringify(data, null, 2))
+    if (data.unchanged) return out(`unchanged: ${id}`)
+    for (const e of data.comments ?? []) {
+      if (e.kind === 'comment') out(`commented: ${id}  ${e.id}`)
+      else out(`passed: ${id} -> ${e.handoff?.to?.name ?? 'creator'}`)
+    }
+    return
+  }
+  if (ids.length) err(`Fișierele au rămas pe tichet (fără comentariu): ${ids.join(', ')}`)
+  if (status === 404) { out('not_found'); process.exit(1) }
+  if (status === 422 && data.error?.startsWith('author_')) {
+    out(`${data.error}: ${data.author}`)
+    err(NO_AUTHOR)
+    process.exit(1)
+  }
+  if (status === 501) { out('migration_missing: firul din API cere supabase/migration-thread-api.sql'); process.exit(1) }
+  fail(status, data)
+}
 cmds.attachments = async ({ positional, flags }) => {
   const id = ticketId(positional, flags, 'tk attachments <ID>')
   const { status, data } = await api(`/api/tickets/${enc(id)}/attachments`)
@@ -568,12 +664,14 @@ Configurare
   tk init <proiect>                  leagă repo-ul curent (.horizontal, TICKETING.md, CLAUDE.md)
   tk init                            în terminal: caută proiectul sau creează unul (+ Proiect nou…)
   tk status                          ce config și ce proiect vede tk de aici
+  tk whoami [--set nume]             cine ești: autorul comentariilor (și created_by)
 
 Citire
   tk projects | waves | themes | assignees      [--json]
   tk list [--wave N] [--theme cheie] [--done false] [--json]
   tk lookup "Titlu" --wave N
-  tk get HZ-7
+  tk get HZ-7                        tot tichetul (commentCount = câte rânduri are firul)
+  tk comments HZ-7 [--json]          firul: comentarii + pase, cronologic
   tk attachments HZ-7
 
 Scriere
@@ -581,10 +679,13 @@ Scriere
                     [--assignee nume] [--due "AAAA-LL-ZZ[ HH:MM]"] [--urgent] [--notes …]
   tk update HZ-7 [--title …] [--done [false]] [--deps A,B|""] [--wave N] [--desc …]
                  [--theme cheie|""] [--assignee nume|""] [--due …|""] [--urgent [false]]
+                 [--pin [false]] [--notes …] [--selectors JSON] [--scenarios JSON]
                  [--project țintă]  (mută; ID nou)
+  tk comment HZ-7 "text" [--to persoană|""] [--attach a.png …] [--as persoană]
+                 comentariu (+ pasă) în numele tău (tk whoami); text "-" = de pe stdin
   tk delete HZ-7
   tk attach HZ-7 a.png b.pdf
-  tk project-create "Nume" [--prefix X] [--type work|personal]   proiect nou (fără --prefix: din nume)
+  tk project-create "Nume" [--prefix X] [--type work|personal] [--accent "#RRGGBB"] [--desc …]
   tk theme-create "Nume" --color "#RRGGBB"   |  tk theme-update <cheie> [--name …] [--color …]
   tk wave-create "Etichetă" [--name IV]      |  tk wave-update <n> [--name …] [--label …]
 

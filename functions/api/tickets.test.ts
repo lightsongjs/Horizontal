@@ -181,3 +181,34 @@ describe('create with an assignee', () => {
     expect(calls.some(c => c.url.includes('/rest/v1/assignees?'))).toBe(false)
   })
 })
+
+describe('create with an author (created_by)', () => {
+  const createRoutes = (people: unknown) => [
+    projectRoute,
+    route('/rest/v1/assignees?', people),
+    route('/rest/v1/issues?project_id=eq.horizontal&select=id', [{ id: 'MS-160' }]),
+    route('&title=ilike.', []),
+    route('/rest/v1/issues', [{ id: 'MS-161' }], { method: 'POST' }),
+  ]
+
+  it('scrie created_by = contul omului, ca o creare din aplicație', async () => {
+    const calls = mockFetch(createRoutes([{ id: 'a-ion', name: 'Ionut', user_id: 'u-ion' }]))
+    const res = await onRequestPost(postCtx({ projectId: 'MS', title: 'Nota', wave: 1, author: 'Ionut' }))
+    expect(res.status).toBe(201)
+    expect(calls.find(c => c.method === 'POST')!.body.created_by).toBe('u-ion')
+  })
+
+  it('un om fără cont nu poate fi autor → 422, nimic scris', async () => {
+    const calls = mockFetch(createRoutes([{ id: 'a-ana', name: 'Ana', user_id: null }]))
+    const res = await onRequestPost(postCtx({ projectId: 'MS', title: 'Nota', wave: 1, author: 'Ana' }))
+    expect(res.status).toBe(422)
+    expect(await res.json()).toEqual({ error: 'author_not_linked', author: 'Ana' })
+    expect(calls.some(c => c.method === 'POST')).toBe(false)
+  })
+
+  it('fără author, created_by nu se trimite (rămâne null: fără autor uman)', async () => {
+    const calls = mockFetch(createRoutes([]))
+    await onRequestPost(postCtx({ projectId: 'MS', title: 'Nota', wave: 1 }))
+    expect(calls.find(c => c.method === 'POST')!.body).not.toHaveProperty('created_by')
+  })
+})

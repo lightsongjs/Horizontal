@@ -15,9 +15,9 @@ export class UsageError extends Error {}
 // ── Argumentele ──────────────────────────────────────────────────────────────
 
 /** Flaguri fără valoare obligatorie: `--urgent` = true, `--urgent false` merge și el. */
-const BOOL_FLAGS = new Set(['urgent', 'done', 'json', 'help', 'no-check', 'force'])
+const BOOL_FLAGS = new Set(['urgent', 'done', 'pin', 'json', 'help', 'no-check', 'force'])
 /** Flaguri care se pot repeta; se strâng într-o listă. */
-const MULTI_FLAGS = new Set(['file'])
+const MULTI_FLAGS = new Set(['file', 'attach'])
 
 /** Numele scurte și cele vechi (ai-client) duc la aceeași comandă. */
 export const COMMAND_ALIASES = {
@@ -31,13 +31,15 @@ export const COMMAND_ALIASES = {
   'create-wave': 'wave-create',
   'update-wave': 'wave-update',
   'create-project': 'project-create',
+  thread: 'comments',
+  me: 'whoami',
 }
 
 export const COMMANDS = [
   'help', 'guide', 'login', 'init', 'status',
   'projects', 'project-create', 'waves', 'assignees', 'themes',
   'list', 'lookup', 'get', 'create', 'update', 'delete',
-  'attach', 'attachments',
+  'attach', 'attachments', 'comments', 'comment', 'whoami',
   'theme-create', 'theme-update', 'wave-create', 'wave-update',
 ]
 
@@ -119,7 +121,7 @@ export function titleFrom(positional, flags) {
 }
 
 /** Corpul pentru POST /api/tickets. `wave` lipsă = valul activ, pus de apelant. */
-export function buildCreateBody({ projectId, title, wave, flags }) {
+export function buildCreateBody({ projectId, title, wave, flags, author = null }) {
   if (!title) throw new UsageError('lipsește titlul: tk create "Titlu"')
   const body = {
     projectId,
@@ -133,6 +135,7 @@ export function buildCreateBody({ projectId, title, wave, flags }) {
   if (flags.theme !== undefined) body.theme = flags.theme
   if (flags.due !== undefined) body.due = String(flags.due)
   if (flags.urgent !== undefined) body.urgent = flags.urgent
+  if (author) body.author = author
   return body
 }
 
@@ -158,12 +161,31 @@ export function buildUpdateBody(flags, positional = []) {
   if (flags.assignee !== undefined) body.assigneeId = flags.assignee ? String(flags.assignee) : null
   if (flags.due !== undefined) body.due = String(flags.due)
   if (flags.urgent !== undefined) body.urgent = flags.urgent
+  if (flags.pin !== undefined) body.pinned = flags.pin
   if (flags.selectors !== undefined) body.selectors = jsonFlag(flags, 'selectors')
   if (flags.scenarios !== undefined) body.scenarios = jsonFlag(flags, 'scenarios')
   if (!Object.keys(body).length) {
-    throw new UsageError('nimic de schimbat: --title, --desc, --notes, --wave, --done, --deps, --theme, --assignee, --due, --urgent, --project, --selectors, --scenarios')
+    throw new UsageError('nimic de schimbat: --title, --desc, --notes, --wave, --done, --deps, --theme, --assignee, --due, --urgent, --pin, --project, --selectors, --scenarios')
   }
   return body
+}
+
+/**
+ * Corpul pentru POST /api/tickets/<id>/comments. `--to` (chiar gol) pasează
+ * tichetul în același gest: `--to ""` = înapoi la creator. `attachmentIds`
+ * le pune apelantul, după urcare.
+ */
+export function buildCommentBody(text, flags, author, attachmentIds = []) {
+  if (!author) throw new UsageError(NO_AUTHOR)
+  const body = { author, body: String(text ?? '') }
+  if (flags.to !== undefined) body.to = flags.to === true ? '' : String(flags.to)
+  if (attachmentIds.length) body.attachmentIds = attachmentIds
+  return body
+}
+
+/** Comentariul are ce scrie? (text, fișiere sau o pasă) */
+export function commentHasContent(text, flags) {
+  return String(text ?? '').trim() !== '' || (flags.attach?.length ?? 0) > 0 || flags.to !== undefined
 }
 
 // ── Configurația ─────────────────────────────────────────────────────────────
@@ -174,20 +196,53 @@ export function configPath(env, home) {
   return join(base, 'horizontal', 'config.json')
 }
 
-/** Mediul bate fișierul, câmp cu câmp. `source` spune de unde vine fiecare (fără cheie). */
+/**
+ * Mediul bate fișierul, câmp cu câmp. `source` spune de unde vine fiecare (fără cheie).
+ * `me` = omul de pe calculatorul ăsta (`{ id, name }` din `tk whoami --set`,
+ * sau `HORIZONTAL_ME` = nume/id): în numele lui scrie tk comentariile.
+ */
 export function resolveConfig(env, file) {
   const f = file ?? {}
   const apiUrl = env.HORIZONTAL_API_URL || f.apiUrl || ''
   const apiKey = env.HORIZONTAL_API_KEY || f.apiKey || ''
+  const fileMe = f.me && typeof f.me === 'object' && f.me.id ? { id: String(f.me.id), name: String(f.me.name ?? f.me.id) } : null
+  const me = env.HORIZONTAL_ME ? { id: env.HORIZONTAL_ME, name: env.HORIZONTAL_ME } : fileMe
   return {
     apiUrl: apiUrl.replace(/\/+$/, ''),
     apiKey,
+    me,
     source: {
       apiUrl: env.HORIZONTAL_API_URL ? 'env' : f.apiUrl ? 'file' : null,
       apiKey: env.HORIZONTAL_API_KEY ? 'env' : f.apiKey ? 'file' : null,
+      me: env.HORIZONTAL_ME ? 'env' : fileMe ? 'file' : null,
     },
   }
 }
+
+/**
+ * Autorul unei scrieri: `--as` bate omul configurat. Întoarce nume/id-ul de
+ * trimis ca `author`, sau null. Gol (`--as ""`) = nimeni.
+ */
+export function authorFor(flags, cfg) {
+  if (flags.as !== undefined) return flags.as ? String(flags.as) : null
+  return cfg.me?.id ?? null
+}
+
+/**
+ * Omul ales pentru `tk whoami --set`: din `/api/assignees`, după id sau nume
+ * (fără majuscule). Trebuie să aibă cont (`linked`) — altfel n-ar putea fi
+ * autorul unui comentariu.
+ */
+export function pickMe(list, wanted) {
+  const w = fold(wanted).trim()
+  const p = list.find((a) => a.id === String(wanted).trim()) ?? list.find((a) => fold(a.name) === w)
+  if (!p) return { error: 'author_not_found' }
+  if (p.linked === false) return { error: 'author_not_linked', person: p }
+  return { me: { id: p.id, name: p.name } }
+}
+
+/** Mesajul când nu se știe în numele cui se scrie. */
+export const NO_AUTHOR = 'Nu știu în numele cui scriu: rulează `tk whoami --set <nume>` (numele din `tk assignees`), sau dă --as <nume>.'
 
 // ── Legătura cu proiectul ────────────────────────────────────────────────────
 
@@ -443,6 +498,37 @@ export function ticketLine(t, waveName) {
     t.urgent ? '!' : '',
   ].filter(Boolean).join('  ')
   return `${t.id}  [wave ${t.wave}${waveName ? ` · ${waveName}` : ''}]${t.done ? ' ✓' : ''}${t.theme ? `  #${t.theme}` : ''}  ${t.title}${extra ? `  ${extra}` : ''}`
+}
+
+/** Ora unui eveniment, ora României: `2026-10-27 14:32`. */
+export function localTime(iso, tz = 'Europe/Bucharest') {
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return String(iso ?? '')
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
+  }).formatToParts(d)
+  const get = (t) => parts.find((p) => p.type === t)?.value
+  return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')}`
+}
+
+/**
+ * Un eveniment din fir → rândurile lui `tk comments`. Capul: ora, autorul
+ * („API” = o unealtă; „notă mutată” = vechiul `notes`), „(editat)”; o pasă e
+ * `Ionut → Ana` (`creator` = înapoi la cine l-a făcut). Corpul, indentat;
+ * fișierele, ca la `tk attachments`.
+ */
+export function commentLines(e) {
+  const head = `${localTime(e.createdAt)}  ${e.author}`
+  const lines = []
+  if (e.kind === 'handoff') {
+    const name = (p) => p?.name ?? 'creator'
+    lines.push(`${head}  pasă: ${name(e.handoff?.from)} → ${name(e.handoff?.to)}`)
+  } else {
+    lines.push(`${head}${e.editedAt ? '  (editat)' : ''}`)
+    if (e.body) for (const l of String(e.body).split(/\r?\n/)) lines.push(`    ${l}`.trimEnd())
+  }
+  for (const a of e.attachments ?? []) lines.push(`    fișier: ${attachmentLine(a)}`)
+  return lines
 }
 
 export function attachmentLine(a) {

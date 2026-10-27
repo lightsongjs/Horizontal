@@ -17,7 +17,7 @@ interface ListRow extends SupabaseIssue, DueRow {
   theme: string | null
 }
 
-import { sbHeaders, resolveProject, nextIssueId, resolveAssignee, themeExists } from './_tickets-lib'
+import { sbHeaders, resolveProject, nextIssueId, resolveAssignee, resolveAuthor, themeExists } from './_tickets-lib'
 import { dueOut, normalizeTheme, parseDue, type DueRow } from './_api-lib'
 
 
@@ -128,6 +128,12 @@ interface CreateBody {
   /** `"2026-10-24"` (toată ziua) sau `"2026-10-24 15:30"`, ora României. */
   due?: string | null
   urgent?: boolean
+  /**
+   * Omul în numele căruia creează unealta (nume / id assignee / id cont, legat
+   * de un cont) → `created_by`. Lipsă = fără autor uman (`created_by` null),
+   * ca înainte. `tk` îl trimite când omul e configurat (`tk whoami --set`).
+   */
+  author?: string | null
 }
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
@@ -175,6 +181,16 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       return Response.json({ error: 'assignee_not_found' }, { status: 422 })
     }
     assigneeId = who.id
+  }
+
+  // 0a. Autorul (opțional): `created_by` = contul omului, ca la o creare din aplicație.
+  let createdBy: string | null = null
+  if (body.author !== undefined && body.author !== null && body.author !== '') {
+    if (typeof body.author !== 'string') return Response.json({ error: 'invalid_author' }, { status: 400 })
+    const author = await resolveAuthor(body.author, SUPABASE_URL, headers)
+    if (!author) return Response.json({ error: 'db_error' }, { status: 502 })
+    if ('error' in author) return Response.json({ ...author, author: body.author }, { status: 422 })
+    createdBy = author.userId
   }
 
   // 0b. Tema trebuie să existe în proiect. Înainte, o cheie greșită crea tichetul
@@ -238,6 +254,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       scenarios: [],
       notes: body.notes ?? '',
       assignee_id: assigneeId,
+      ...(createdBy ? { created_by: createdBy } : {}),
       ...(due ? due : {}),
       ...(body.urgent !== undefined ? { urgent: body.urgent } : {}),
     }),

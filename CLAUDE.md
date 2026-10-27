@@ -1552,7 +1552,31 @@ rămână.** `functions/api/` (ticket-kit) scrie direct prin REST cu
 `null` în contextul ăla, deci `created_by` rămâne `null`, la fel ca înainte de
 fix. Nu e o gaură: e coloana spunând adevărul. Un tichet creat de o unealtă nu
 are cine să fie „Alex" sau „Bogdan", și inventarea unui autor ar fi mai rea
-decât lipsa lui.
+decât lipsa lui. **Excepția (2026-10-27): autorul DAT, nu inventat.** `POST
+/api/tickets` primește opțional `author` (nume / id assignee / id cont, legat de
+un cont), iar `tk` trimite omul configurat pe calculator (`tk whoami --set`):
+atunci `created_by` = contul lui. Fără `author`, tot `null`.
+
+**Firul din API** (`GET/POST /api/tickets/<id>/comments`, `tk comments` /
+`tk comment`). Decizia omului: un comentariu pus prin `tk` e **al omului**
+(„Ionut”), nu al unei „unelte” — deci `author` e OBLIGATORIU la POST (fără el
+`author_required`; `tk` refuză cu „rulează `tk whoami --set`”), validat ca rând
+din `assignees` cu `user_id` (`author_not_found` / `author_not_linked`). Scrierea
+e `post_to_thread_api` (`supabase/migration-thread-api.sql`, numai
+`service_role`): același gest ca `post_to_thread` — comentariu + pasă într-o
+tranzacție, `for update` pe tichet, `handoff_from` = cine îl avea înainte,
+„văzut” pentru autor —, cu autorul ca parametru în loc de `auth.uid()`.
+**Drepturile nu se lărgesc:** cheia API e deja cheie de serviciu și poate scrie
+orice rând (inclusiv `author_id`) direct; regula doar cere un om real. De aceea
+interfața n-are nimic nou: un comentariu din API arată ca unul din aplicație, iar
+`author_id` null rămâne numai „notă mutată”. Fișierele unui comentariu urcă
+întâi pe tichet (`/attachments`), apoi `attachmentIds` le leagă (drumul
+aplicației). `notes` e câmpul vechi (mutat o dată în fir, §10 din
+migration-comments.sql) — ghidul `tk` trimite discuția în fir.
+Teste: `functions/api/_thread-lib.test.ts`, `tickets/[id]/comments.test.ts`,
+`cli/*`, `npm run test:thread-api-sql` (Docker de unică folosință — NICIODATĂ
+producția). Setup: `npm run migrate supabase/migration-thread-api.sql`
+**ÎNAINTE** de push (fără ea POST-ul răspunde `migration_missing`, citirea merge).
 
 `localRepository` (modul local, fără conturi) rămâne cu `createdBy: null` la
 creare, deliberat: n-are cine să fie creatorul, la fel cum autorul unui
@@ -2282,6 +2306,13 @@ copierii lui `ticket-kit/` în fiecare proiect. Node ≥ 20, fără dependențe 
 - Partea pură (argumente, config, `.horizontal`, CLAUDE.md, corpurile cererilor)
   e în `cli/lib.mjs`, cu teste; `cli/tk.smoke.test.mjs` rulează `tk` ca proces
   contra unui server HTTP fals — niciodată producția.
+- **Omul de pe calculator** (`tk whoami --set <nume>`, `me: { id, name }` în
+  config; `HORIZONTAL_ME` / `--as` îl bat): autorul comentariilor (`tk comment`,
+  obligatoriu) și creatorul tichetelor (`tk create`, opțional). Numai id-ul și
+  numele rândului din `assignees` — niciun email nu pleacă nicăieri.
+- **Paritate cu API-ul**: orice rută / câmp din `functions/api/` are comandă sau
+  flag în `tk` (inclusiv firul, `--pin` → `pinned`, `--accent`/`--desc` la
+  proiect). O rută nouă fără comandă în `tk` e o regresie.
 - Ieșirea rămâne cea din ai-client (un rând pe element, `updated:`,
   `duplicate:`, `not_found`), iar forma veche a flagurilor (`tk --create
   --title …`, `--get --id`, `--attach --file`) merge în continuare.
@@ -2304,8 +2335,9 @@ cd ticket-kit && git add -A && git commit -m "..." && git push origin master
 ```
 
 Vezi și `ticket-kit/CLAUDE.md`. Endpoint-urile API pe care le lovește `ai-client.mjs`
-sunt în `functions/api/`: tichete (cu scadență, urgent, ștergere), proiecte, oameni,
-teme, valuri. Regulile comune cu aplicația se IMPORTĂ din `src/` (`themeKey`,
+sunt în `functions/api/`: tichete (cu scadență, urgent, fixare, ștergere), firul
+(comentarii + pase, `author` obligatoriu — vezi „Firul și pasarea”), proiecte,
+oameni, teme, valuri. Regulile comune cu aplicația se IMPORTĂ din `src/` (`themeKey`,
 `nextWaveName`, `naturalCompare`), nu se rescriu. API-ul scrie cu cheia de serviciu,
 deci ce nu se poate anula se refuză: o temă necunoscută la tichet, scadența pe o
 recurentă, ștergerea unui tichet cu dependenți, comentarii sau fișiere. O oră de

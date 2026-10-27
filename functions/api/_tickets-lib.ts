@@ -2,6 +2,7 @@
 // Shared Supabase REST helpers for the tickets endpoints.
 
 import { naturalCompare } from '../../src/lib/waveGrid'
+import { authorFilter, pickAuthor, type AssigneeRow } from './_thread-lib'
 
 export interface Project {
   id: string
@@ -110,4 +111,16 @@ export async function listThemes(projectId: string, supabaseUrl: string, headers
   )
   if (!res.ok) return null
   return (await res.json() as ThemeRow[]).sort((a, b) => naturalCompare(a.name, b.name))
+}
+
+/**
+ * Omul în numele căruia scrie API-ul (`author`): un rând din `assignees` legat
+ * de un cont. `null` = eroare de bază. Cheia API e cheie de serviciu — poate
+ * scrie oricum orice rând —, deci a scrie în numele unui cont nu lărgește
+ * drepturile; regula de aici ține doar ca autorul să fie un om real.
+ */
+export async function resolveAuthor(param: string, supabaseUrl: string, headers: Record<string, string>) {
+  const res = await fetch(`${supabaseUrl}/rest/v1/assignees?${authorFilter(param)}&select=id,name,user_id`, { headers })
+  if (!res.ok) return null
+  return pickAuthor(await res.json() as AssigneeRow[])
 }

@@ -28,17 +28,17 @@ describe('GET /api/assignees', () => {
   it('returns id and name for every person, ordered by name', async () => {
     const urls = mockFetch(() => ({
       body: [
-        { id: 'a3fa07cf-b1ac-4b2e-8895-a855e1c55929', name: 'Ionut' },
-        { id: 'e9f3d61d-991d-40c3-90bb-80f5a8c8605d', name: 'Mihai' },
+        { id: 'a3fa07cf-b1ac-4b2e-8895-a855e1c55929', name: 'Ionut', user_id: 'u-1' },
+        { id: 'e9f3d61d-991d-40c3-90bb-80f5a8c8605d', name: 'Mihai', user_id: null },
       ],
     }))
     const res = await onRequestGet(ctx())
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual([
-      { id: 'a3fa07cf-b1ac-4b2e-8895-a855e1c55929', name: 'Ionut' },
-      { id: 'e9f3d61d-991d-40c3-90bb-80f5a8c8605d', name: 'Mihai' },
+      { id: 'a3fa07cf-b1ac-4b2e-8895-a855e1c55929', name: 'Ionut', linked: true },
+      { id: 'e9f3d61d-991d-40c3-90bb-80f5a8c8605d', name: 'Mihai', linked: false },
     ])
-    expect(urls[0]).toContain('/rest/v1/assignees?select=id,name&order=name.asc')
+    expect(urls[0]).toContain('/rest/v1/assignees?select=id,name,user_id&order=name.asc')
   })
 
   it('returns an empty list when nobody is registered', async () => {

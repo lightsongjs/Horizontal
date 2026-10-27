@@ -12,6 +12,11 @@ prin care scrii sau citești tichete dintr-un proiect: nu Supabase direct, nu
   scrisă de `tk login`. `HORIZONTAL_API_URL` / `HORIZONTAL_API_KEY` din mediu o
   bat. Cheia nu se afișează și nu se pune în repo. Dacă tk spune „nu e
   configurat", cere-i omului să ruleze `tk login` — nu inventa o cheie.
+- **Omul** (în numele cui scrii comentariile) e tot al calculatorului:
+  `tk whoami --set <nume>` (din `tk assignees`, un om cu cont), ținut în
+  același config; `HORIZONTAL_ME` îl bate, `--as <nume>` îl bate la o comandă.
+  `tk whoami` arată cine e. Nesetat → `tk comment` refuză și spune asta; cere-i
+  omului să-l seteze, nu alege tu un nume.
 - **Proiectul** e al repo-ului: fișierul `.horizontal` (`{ "project": "kata" }`),
   căutat din directorul curent în sus. `--project <id>` îl bate.
   `tk status` arată ce vede tk de unde ești.
@@ -25,7 +30,8 @@ prin care scrii sau citești tichete dintr-un proiect: nu Supabase direct, nu
 
 Ieșirea e pentru tine: un rând pe element, cuvinte fixe pe care le poți citi
 (`updated:`, `duplicate:`, `not_found`…). `--json` dă răspunsul brut al API-ului
-la `projects`, `waves`, `themes`, `assignees`, `list`, `attach`, `attachments`.
+la `projects`, `waves`, `themes`, `assignees`, `list`, `attach`, `attachments`,
+`comments`, `comment`.
 Codul de ieșire e 1 la orice refuz sau eroare.
 
 ### Citire
@@ -43,6 +49,7 @@ tk themes
 
 tk assignees
 # a3fa07cf-…  Ionut                     (lista e globală, nu per proiect)
+# 5b1c…       Ana  (fără cont)          (poate primi o pasă, nu poate fi autor)
 
 tk list                                 # tot proiectul
 tk list --wave 1                        # un val
@@ -54,7 +61,14 @@ tk list --done false                    # doar deschise (--done = doar bifate)
 tk lookup "Setup DB" --wave 1           # → KATA-03   sau   not_found
 
 tk get KATA-03                          # JSON complet: desc, deps, notes, selectors,
-                                        # scenarios, assigneeId, dueAt, urgent, attachments
+                                        # scenarios, assigneeId, dueAt, urgent, pinnedAt,
+                                        # attachments, commentCount (câte rânduri are firul)
+
+tk comments KATA-03                     # firul: comentarii + pase, cronologic (alias: thread)
+# 2026-10-27 14:32  Ionut  (editat)
+#     textul comentariului
+#     fișier: <id>  eroare.png  84213  https://…
+# 2026-10-27 14:33  Ionut  pasă: creator → Ana
 
 tk attachments KATA-03
 # <id-atașament>  eroare.png  84213  https://…?token=…   (link valabil 8 ore)
@@ -66,8 +80,9 @@ tk attachments KATA-03
 tk create "Auth flow" --deps KATA-03,KATA-04 --desc "…"
 # → KATA-05   sau   duplicate: KATA-03
 #   Fără --wave intră în valul ACTIV al proiectului (ca o captură din aplicație).
-#   Opțiuni: --wave N  --theme <cheie>  --assignee <nume|id>  --notes "…"
+#   Opțiuni: --wave N  --theme <cheie>  --assignee <nume|id>
 #            --due "2026-10-24"  /  --due "2026-10-24 15:30"  --urgent
+#            (--notes există, dar e câmpul vechi — discuția merge în fir, `tk comment`)
 
 tk update KATA-05 --done                # bifat;  --done false = debifat
 tk update KATA-05 --title "Nou titlu" --wave 2
@@ -76,6 +91,7 @@ tk update KATA-05 --assignee Ionut           # --assignee "" = înapoi la creato
 tk update KATA-05 --theme pasul-2            # --theme "" = fără temă
 tk update KATA-05 --due "2026-10-24 15:30"   # --due "" = fără scadență
 tk update KATA-05 --urgent                   # --urgent false
+tk update KATA-05 --pin                      # „Fixează sus”;  --pin false
 tk update KATA-05 --selectors '["mobile","desktop"]'
 tk update KATA-05 --scenarios '[{"given":"…","when":"…","then":"…"}]'
 # → updated: KATA-05  |  duplicate: KATA-07  |  not_found  |  <eroare>
@@ -84,6 +100,13 @@ tk update KATA-05 --project ticket-kit       # MUTĂ (vezi mai jos);  alias: --m
 # → moved: KATA-05 -> TK-12
 
 tk delete KATA-05                       # → deleted: KATA-05
+
+tk comment KATA-05 "Am reprodus pe Android 16"   # comentariu în fir, în numele tău
+# → commented: KATA-05  <id-eveniment>
+tk comment KATA-05 "Ia-l tu, e pe API" --to Ana  # comentariu + pasă, UN gest
+# → commented: …   passed: KATA-05 -> Ana        (--to "" = înapoi la creator)
+tk comment KATA-05 "Uite" --attach eroare.png    # fișierele se leagă de comentariu
+tk comment KATA-05 - < raport.md                 # textul lung (markdown) de pe stdin
 
 tk attach KATA-05 eroare.png log.txt    # unul sau mai multe fișiere
 # <id-atașament>  eroare.png  84213  https://…
@@ -191,6 +214,24 @@ există e refuzat (`invalid_deps: …`).
   apoi mută. Din același motiv `--project` nu merge cu `--deps` în aceeași comandă
   (`cannot_move_and_set_deps`).
 
+### Firul: comentarii și pase (nu `notes`)
+
+- **Discuția pe un tichet e firul**, ca în aplicație: `tk comments` îl citește,
+  `tk comment` scrie în el. Înainte să te apuci de un tichet cu `commentCount`
+  > 0, citește firul — acolo sunt deciziile de după descriere.
+- **`notes` e un câmp vechi**, nu comentariile. Conținutul lui a fost mutat o
+  dată în fir (apare ca „notă mutată”), iar aplicația nu-l mai arată. Nu scrie
+  observații, progres sau întrebări în `--notes`: scrie un comentariu.
+- **Comentariul e al omului**, nu al unei unelte: în aplicație apare ca scris de
+  cel din `tk whoami` (sau `--as`). Scrie deci ca el ar semna — scurt, la obiect.
+- **Pasarea** (`--to`) e regula aplicației: tichetul ajunge în „Ale mele” la
+  persoana aceea, cu comentariul ca explicație, într-un singur gest (atomic).
+  Preferă `tk comment --to` lui `tk update --assignee`: a doua pasează fără nicio
+  vorbă și fără rând în fir.
+- Comentariile nu se editează și nu se șterg din tk (din aplicație, da).
+- Fișierele cu `--attach` urcă întâi pe tichet, apoi se leagă de comentariu.
+  Dacă comentariul pică după urcare, fișierele rămân pe tichet (tk le listează).
+
 ### Ce refuză API-ul și de ce
 
 API-ul scrie cu cheia de serviciu, deci ce nu se poate anula se refuză:
@@ -206,7 +247,11 @@ API-ul scrie cu cheia de serviciu, deci ce nu se poate anula se refuză:
 | `has_dependents: …` | ștergi un tichet de care depind altele | scoate-l din deps-urile lor |
 | `has_activity` | ștergi un tichet cu comentarii sau fișiere | se șterge din aplicație |
 | `has_dependencies` | muți un tichet legat prin deps | vezi „Mutarea" |
-| `temp_id` | atașezi pe un ID provizoriu (`HZ-~abc`) | așteaptă sincronizarea |
+| `temp_id` | atașezi / comentezi pe un ID provizoriu (`HZ-~abc`) | așteaptă sincronizarea |
+| `author_not_found: X` / `author_not_linked: X` | `tk comment` / `--as` cu un om necunoscut sau fără cont | `tk whoami --set` cu un om din `tk assignees` care NU e „(fără cont)” |
+| `empty_comment` | comentariu fără text, fișiere sau pasă | |
+| `invalid_attachments` | fișiere care nu sunt ale tichetului sau sunt deja pe alt comentariu | |
+| `migration_missing` | firul nu e încă activ pe server | spune-i omului (`migration-thread-api.sql`) |
 | `project_not_found` | id de proiect greșit | `tk projects` |
 | `prefix_taken: <id>` | `project-create` cu un prefix (sau id) deja folosit | alt `--prefix` |
 | `invalid_prefix` | prefixul nu are nicio literă A–Z / cifră (ex. numele „Știri”) | dă `--prefix` |
@@ -258,3 +303,7 @@ proprie inițiativă — numai când omul ți-o cere.
 
 `--assignee` ia un nume (fără majuscule: `ionut` = `Ionut`) sau un id. Gol
 (`--assignee ""`) = „al creatorului". Lista e globală, nu per proiect.
+Pentru o pasă cu explicație folosește `tk comment … --to` (vezi „Firul”).
+
+`tk create` trece omul din `tk whoami` drept creator (`created_by`, „creat de
+Ionut” în aplicație); fără om configurat tichetul rămâne fără autor, ca înainte.

@@ -38,6 +38,23 @@ beforeAll(async () => {
       }
       if (u.pathname === '/api/projects') return send(200, PROJECTS)
       if (u.pathname === '/api/waves') return send(200, [{ number: 1, name: 'I', label: 'MVP' }])
+      if (u.pathname === '/api/assignees') {
+        return send(200, [{ id: 'a-ion', name: 'Ionut', linked: true }, { id: 'a-ana', name: 'Ana', linked: false }])
+      }
+      if (u.pathname === '/api/tickets/KATA-02/comments' && req.method === 'GET') {
+        return send(200, { id: 'KATA-02', comments: [
+          { id: 'e1', kind: 'comment', author: 'Ionut', authorId: 'u', body: 'uite', createdAt: '2026-10-27T12:32:00Z', editedAt: null, attachments: [] },
+          { id: 'e2', kind: 'handoff', author: 'Ionut', authorId: 'u', body: '', createdAt: '2026-10-27T12:32:00Z', editedAt: null,
+            handoff: { from: null, to: { id: 'a-ana', name: 'Ana' } }, attachments: [] },
+        ] })
+      }
+      if (u.pathname === '/api/tickets/KATA-02/comments' && req.method === 'POST') {
+        const body = JSON.parse(raw.toString())
+        if (body.author === 'Ana') return send(422, { error: 'author_not_linked', author: 'Ana' })
+        const comments = [{ id: 'e9', kind: 'comment', author: 'Ionut' }]
+        if ('to' in body) comments.push({ id: 'e10', kind: 'handoff', author: 'Ionut', handoff: { from: null, to: body.to ? { id: 'a-ana', name: body.to } : null } })
+        return send(201, { id: 'KATA-02', comments, assigneeId: null })
+      }
       if (u.pathname === '/api/tickets' && req.method === 'POST') {
         const body = JSON.parse(raw.toString())
         if (body.title === 'Dublura') return send(409, { error: 'duplicate_title', existing_id: 'KATA-02' })
@@ -225,6 +242,62 @@ describe('tk contra unui server fals', () => {
     expect(r.stdout + r.stderr).not.toContain('cheie-din-stdin')
     // Cheia din stdin nu e cea a serverului fals → verificarea o refuză, după salvare.
     expect(r.stderr).toContain('unauthorized')
+  })
+
+  it('comments: firul, un eveniment pe rând, ora României', async () => {
+    const r = await tk(['comments', 'KATA-02'], { cwd: repo() })
+    expect(r.code).toBe(0)
+    expect(r.stdout.trim().split('\n')).toEqual([
+      '2026-10-27 14:32  Ionut', '    uite', '2026-10-27 14:32  Ionut  pasă: creator → Ana',
+    ])
+  })
+
+  it('comment fără om configurat: eroare clară, nicio cerere (nici urcare)', async () => {
+    const dir = repo()
+    writeFileSync(join(dir, 'a.png'), 'png')
+    const n = seen.length
+    const r = await tk(['comment', 'KATA-02', 'gata', '--attach', 'a.png'], { cwd: dir })
+    expect(r.code).toBe(1)
+    expect(r.stderr).toContain('tk whoami --set')
+    expect(seen.length).toBe(n)
+  })
+
+  it('whoami --set ține omul în config; comment îl trimite ca autor, cu pasă', async () => {
+    const cfg = mkdtempSync(join(tmpdir(), 'tk-cfg-'))
+    const env = { XDG_CONFIG_HOME: cfg }
+    const set = await tk(['whoami', '--set', 'ionut'], { env })
+    expect(set.stdout.trim()).toBe('me: Ionut  (a-ion)')
+    expect(JSON.parse(readFileSync(join(cfg, 'horizontal', 'config.json'), 'utf8'))).toEqual({ me: { id: 'a-ion', name: 'Ionut' } })
+    expect((await tk(['whoami'], { env })).stdout.trim()).toBe('Ionut  (a-ion)')
+
+    const r = await tk(['comment', 'KATA-02', 'ia-l', 'tu', '--to', 'Ana'], { cwd: repo(), env })
+    expect(r.stdout.trim().split('\n')).toEqual(['commented: KATA-02  e9', 'passed: KATA-02 -> Ana'])
+    expect(JSON.parse(last().raw.toString())).toEqual({ author: 'a-ion', body: 'ia-l tu', to: 'Ana' })
+
+    // Un om fără cont nu poate fi ales.
+    const bad = await tk(['whoami', '--set', 'Ana'], { env })
+    expect(bad.code).toBe(1)
+    expect(bad.stdout).toContain('author_not_linked')
+  })
+
+  it('comment --attach: urcă întâi pe tichet, apoi leagă id-urile de comentariu; --as bate config', async () => {
+    const dir = repo()
+    writeFileSync(join(dir, 'a.png'), 'png')
+    const r = await tk(['comment', 'KATA-02', '--attach', 'a.png'], { cwd: dir, env: { HORIZONTAL_ME: 'a-ion' } })
+    expect(r.code).toBe(0)
+    const [up, post] = seen.slice(-2)
+    expect(up.url).toBe('/api/tickets/KATA-02/attachments')
+    expect(post.url).toBe('/api/tickets/KATA-02/comments')
+    expect(JSON.parse(post.raw.toString())).toEqual({ author: 'a-ion', body: '', attachmentIds: ['a1', 'a2'] })
+
+    const no = await tk(['comment', 'KATA-02', 'x', '--as', 'Ana'], { cwd: dir, env: { HORIZONTAL_ME: 'a-ion' } })
+    expect(no.code).toBe(1)
+    expect(no.stdout.trim()).toBe('author_not_linked: Ana')
+  })
+
+  it('comment "-" citește textul de pe stdin', async () => {
+    await tk(['comment', 'KATA-02', '-'], { cwd: repo(), env: { HORIZONTAL_ME: 'a-ion' }, input: 'rând 1\nrând 2\n' })
+    expect(JSON.parse(last().raw.toString()).body).toBe('rând 1\nrând 2\n')
   })
 
   it('guide tipărește ghidul de lângă tk.mjs', async () => {

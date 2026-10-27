@@ -40,7 +40,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   const headers = sbHeaders(SUPABASE_SERVICE_ROLE_KEY)
 
   const issueRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/issues?id=eq.${encodeURIComponent(id)}&select=id,title,details,theme,wave,done,notes,assignee_id,selectors,scenarios,due_at,all_day,urgent&limit=1`,
+    `${SUPABASE_URL}/rest/v1/issues?id=eq.${encodeURIComponent(id)}&select=id,title,details,theme,wave,done,notes,assignee_id,selectors,scenarios,due_at,all_day,urgent,pinned_at&limit=1`,
     { headers }
   )
   if (!issueRes.ok) {
@@ -70,6 +70,17 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   }
   const attachments = await signAttachments(await attRes.json() as AttachmentRow[], SUPABASE_URL, headers)
 
+  // Numai numărul: firul întreg e `GET /api/tickets/<id>/comments`. Îl dăm aici
+  // ca un agent să vadă că există o discuție, nu doar `notes` (câmpul vechi).
+  const evRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/issue_events?issue_id=eq.${encodeURIComponent(id)}&select=id`,
+    { headers }
+  )
+  if (!evRes.ok) {
+    return Response.json({ error: 'db_error' }, { status: 502 })
+  }
+  const commentCount = (await evRes.json() as unknown[]).length
+
   const row = issues[0]
   return Response.json({
     id: row.id,
@@ -84,7 +95,9 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     scenarios: row.scenarios ?? [],
     deps: depsRows.map(r => r.depends_on_id),
     ...dueOut(row as unknown as DueRow),
+    pinnedAt: row.pinned_at ?? null,
     attachments,
+    commentCount,
   })
 }
 
@@ -122,6 +135,12 @@ export const onRequestPatch: PagesFunction<Env> = async (context) => {
 
   if ('urgent' in body && typeof body.urgent !== 'boolean') {
     return Response.json({ error: 'invalid_urgent' }, { status: 400 })
+  }
+  // „Fixează sus” (`pinned_at`, migration-pinned-tasks.sql): un comutator, ca în
+  // aplicație — momentul fixării îl dă serverul (ordinea: fixat recent primul).
+  if ('pinned' in body) {
+    if (typeof body.pinned !== 'boolean') return Response.json({ error: 'invalid_pinned' }, { status: 400 })
+    issueUpdate.pinned_at = body.pinned ? new Date().toISOString() : null
   }
   if ('theme' in issueUpdate) {
     const t = normalizeTheme(issueUpdate.theme)
@@ -332,6 +351,7 @@ export const onRequestPatch: PagesFunction<Env> = async (context) => {
   const dbToClient: Record<string, string> = {
     ...Object.fromEntries(Object.entries(FIELD_MAP).map(([client, db]) => [db, client])),
     assignee_id: 'assigneeId',
+    pinned_at: 'pinned',
   }
   const updatedFields = [
     ...Object.keys(issueUpdate)

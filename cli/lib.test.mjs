@@ -7,6 +7,7 @@ import {
   matchProject, withClaudeImport, buildCreateBody, buildUpdateBody, ticketLine, ticketingMd,
   fold, rankProjects, pickerItems, pickerStart, pickerKey, pickerView, NEW_PROJECT,
   suggestPrefix, cleanPrefix, prefixOwner, defaultProjectType, parseProjectType, buildProjectBody,
+  buildCommentBody, commentHasContent, commentLines, localTime, authorFor, pickMe, COMMANDS,
 } from './lib.mjs'
 import * as app from '../src/lib/newProject'
 
@@ -243,5 +244,84 @@ describe('proiectul nou din CLI', () => {
     expect(() => buildProjectBody(['N'], { prefix: 'ăî' })).toThrow(UsageError)
     expect(() => buildProjectBody(['N'], { type: 'job' })).toThrow(UsageError)
     expect(parseArgs(['create-project', 'N']).cmd).toBe('project-create')
+  })
+})
+
+describe('firul (tk comments / tk comment)', () => {
+  it('comenzile există; thread = comments', () => {
+    expect(COMMANDS).toEqual(expect.arrayContaining(['comments', 'comment', 'whoami']))
+    expect(parseArgs(['thread', 'H-7']).cmd).toBe('comments')
+    expect(parseArgs(['me']).cmd).toBe('whoami')
+  })
+
+  it('--attach se repetă; --to "" e o valoare (înapoi la creator)', () => {
+    const { cmd, positional, flags } = parseArgs(['comment', 'H-7', 'gata', '--attach', 'a.png', '--attach', 'b.pdf', '--to', ''])
+    expect(cmd).toBe('comment')
+    expect(positional).toEqual(['H-7', 'gata'])
+    expect(flags).toEqual({ attach: ['a.png', 'b.pdf'], to: '' })
+  })
+
+  it('corpul: autorul obligatoriu; to numai dacă e dat; fișierele după urcare', () => {
+    expect(buildCommentBody('gata', {}, 'Ionut')).toEqual({ author: 'Ionut', body: 'gata' })
+    expect(buildCommentBody('ia-l', { to: 'Ana' }, 'Ionut', ['f1'])).toEqual({ author: 'Ionut', body: 'ia-l', to: 'Ana', attachmentIds: ['f1'] })
+    expect(buildCommentBody('', { to: '' }, 'Ionut')).toEqual({ author: 'Ionut', body: '', to: '' })
+    expect(() => buildCommentBody('x', {}, null)).toThrow(/tk whoami --set/)
+  })
+
+  it('are ce scrie: text, fișiere sau o pasă', () => {
+    expect(commentHasContent('  ', {})).toBe(false)
+    expect(commentHasContent('x', {})).toBe(true)
+    expect(commentHasContent('', { attach: ['a'] })).toBe(true)
+    expect(commentHasContent('', { to: '' })).toBe(true)
+  })
+
+  it('ora României, fără secunde', () => {
+    expect(localTime('2026-10-27T12:32:10Z')).toBe('2026-10-27 14:32')
+    expect(localTime('2026-07-01T12:00:00Z')).toBe('2026-07-01 15:00')
+  })
+
+  it('rândurile: comentariu (editat, corp indentat, fișiere) și pasă', () => {
+    expect(commentLines({
+      kind: 'comment', author: 'Ionut', createdAt: '2026-10-27T12:32:00Z', editedAt: '2026-10-27T12:40:00Z',
+      body: 'unu\ndoi', attachments: [{ id: 'f1', filename: 'a.png', size: 3, url: 'https://s/f1' }],
+    })).toEqual([
+      '2026-10-27 14:32  Ionut  (editat)', '    unu', '    doi', '    fișier: f1  a.png  3  https://s/f1',
+    ])
+    expect(commentLines({
+      kind: 'handoff', author: 'Ionut', createdAt: '2026-10-27T12:32:00Z', body: '',
+      handoff: { from: null, to: { id: 'a', name: 'Ana' } }, attachments: [],
+    })).toEqual(['2026-10-27 14:32  Ionut  pasă: creator → Ana'])
+  })
+})
+
+describe('cine scrie (tk whoami)', () => {
+  it('config: HORIZONTAL_ME bate fișierul', () => {
+    const file = { apiUrl: 'https://f', apiKey: 'k', me: { id: 'a-ion', name: 'Ionut' } }
+    expect(resolveConfig({}, file)).toMatchObject({ me: { id: 'a-ion', name: 'Ionut' }, source: { me: 'file' } })
+    expect(resolveConfig({ HORIZONTAL_ME: 'Ana' }, file)).toMatchObject({ me: { id: 'Ana' }, source: { me: 'env' } })
+    expect(resolveConfig({}, { apiUrl: 'x' }).me).toBeNull()
+  })
+
+  it('--as bate omul configurat; --as "" = nimeni', () => {
+    const cfg = { me: { id: 'a-ion', name: 'Ionut' } }
+    expect(authorFor({}, cfg)).toBe('a-ion')
+    expect(authorFor({ as: 'Ana' }, cfg)).toBe('Ana')
+    expect(authorFor({ as: '' }, cfg)).toBeNull()
+    expect(authorFor({}, { me: null })).toBeNull()
+  })
+
+  it('alege după nume (fără diacritice/majuscule) sau id; numai un om cu cont', () => {
+    const list = [{ id: 'a-ion', name: 'Ionuț', linked: true }, { id: 'a-ana', name: 'Ana', linked: false }]
+    expect(pickMe(list, 'ionut')).toEqual({ me: { id: 'a-ion', name: 'Ionuț' } })
+    expect(pickMe(list, 'a-ion')).toEqual({ me: { id: 'a-ion', name: 'Ionuț' } })
+    expect(pickMe(list, 'Ana')).toMatchObject({ error: 'author_not_linked' })
+    expect(pickMe(list, 'Zoe')).toEqual({ error: 'author_not_found' })
+  })
+
+  it('create trimite autorul doar dacă e; update --pin', () => {
+    expect(buildCreateBody({ projectId: 'k', title: 'T', wave: 1, flags: {}, author: 'a-ion' }).author).toBe('a-ion')
+    expect(buildCreateBody({ projectId: 'k', title: 'T', wave: 1, flags: {} })).not.toHaveProperty('author')
+    expect(buildUpdateBody({ pin: true })).toEqual({ pinned: true })
+    expect(parseArgs(['update', 'H-7', '--pin', 'false']).flags).toEqual({ pin: false })
   })
 })

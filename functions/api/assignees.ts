@@ -14,6 +14,7 @@ interface Env {
 interface SupabaseAssignee {
   id: string
   name: string
+  user_id: string | null
 }
 
 export const onRequestGet: PagesFunction<Env> = async (context) => {
@@ -21,7 +22,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   const headers = sbHeaders(SUPABASE_SERVICE_ROLE_KEY)
 
   const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/assignees?select=id,name&order=name.asc`,
+    `${SUPABASE_URL}/rest/v1/assignees?select=id,name,user_id&order=name.asc`,
     { headers }
   )
   if (!res.ok) {
@@ -29,5 +30,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   }
   const rows = await res.json() as SupabaseAssignee[]
 
-  return Response.json(rows.map((a) => ({ id: a.id, name: a.name })))
+  // `linked` = rândul are un cont: numai un astfel de om poate fi autorul unui
+  // comentariu (`author`). Id-ul contului nu iese din API.
+  return Response.json(rows.map((a) => ({ id: a.id, name: a.name, linked: !!a.user_id })))
 }
