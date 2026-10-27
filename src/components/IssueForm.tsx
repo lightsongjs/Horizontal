@@ -29,7 +29,7 @@ import type { EditorHandle } from './MarkdownEditor'
 import { ChipPop } from './ChipPop'
 import { DuePanel } from './DuePanel'
 import { MoveChip, TitleMoveHint, useTitleMove } from './MoveProject'
-import { titleProjectToken } from '../lib/captureTokens'
+import { titlePersonToken, titleProjectToken } from '../lib/captureTokens'
 import { attachBlocked } from './SheetFiles'
 import type { Issue, TestScenario } from '../lib/types'
 import { pinPatch } from '../lib/pinned'
@@ -119,13 +119,13 @@ type TitlePiece = { text: string; mark: boolean; proj?: boolean }
 
 /** Taie din bucățile oglinzii intervalul `#proiect`, ca `proj` (nu `mark`: */
 /** marcajele `mark` sunt ale datei și se măsoară pentru refuzul prin atingere). */
-function markSpan(pieces: { text: string; mark: boolean }[], [s, e]: [number, number]): TitlePiece[] {
+function markSpan(pieces: TitlePiece[], [s, e]: [number, number]): TitlePiece[] {
   const out: TitlePiece[] = []
   let at = 0
   for (const p of pieces) {
     const a = at, b = at + p.text.length
     at = b
-    if (p.mark || e <= a || s >= b) { out.push(p); continue }
+    if (p.mark || p.proj || e <= a || s >= b) { out.push(p); continue }
     const cs = Math.max(s, a) - a, ce = Math.min(e, b) - a
     if (cs > 0) out.push({ text: p.text.slice(0, cs), mark: false })
     out.push({ text: p.text.slice(cs, ce), mark: false, proj: true })
@@ -627,7 +627,13 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
     : null
   const titleMoveInfo = useTitleMove(existing, titleMove?.projectId ?? null)
   const moveIssue = useMoveIssue()
-  const titlePieces: TitlePiece[] = titleMove ? markSpan(titleDate.pieces, titleMove.span) : titleDate.pieces
+  // `@persoană`, la fel: evidențiat, iar la salvare tichetul trece la omul
+  // acela și semnul iese din titlu (pasarea din formular, fără comentariu).
+  const titlePerson = isEdit && existing && canWrite ? titlePersonToken(title, assignees, assigneeId) : null
+  const titlePersonName = titlePerson ? (assignees.find((a) => a.id === titlePerson.assigneeId)?.name ?? null) : null
+  let titlePieces: TitlePiece[] = titleDate.pieces
+  if (titleMove) titlePieces = markSpan(titlePieces, titleMove.span)
+  if (titlePerson) titlePieces = markSpan(titlePieces, titlePerson.span)
 
   useEffect(() => {
     if (isDirty) {
@@ -870,16 +876,18 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
       // traducere, „HZ-~…" n-ar fi găsit în `currentBlockers`, iar „HZ-13"
       // ar fi părut scos de om — legătura s-ar fi șters în tăcere.
       const realDeps = (deps.map((id) => draftDepMap[id] ?? (id.startsWith('__draft_') ? null : id)).filter(Boolean) as string[]).map(resolveId)
+      const moveTo = titleMoveInfo && !titleMoveInfo.refusal && existing
+        ? titleProjectToken(saveTitle, projects, existing.projectId)
+        : null
+      const personTo = isEdit && existing ? titlePersonToken(moveTo?.title || saveTitle, assignees, assigneeId) : null
+      const saveAssignee = personTo?.assigneeId ?? assigneeId
       const qaPayload = {
-        selectors: selectors.filter(Boolean), scenarios, assigneeId, urgent,
+        selectors: selectors.filter(Boolean), scenarios, assigneeId: saveAssignee, urgent,
         dueAt: schedule.dueAt, allDay: schedule.allDay, remindAt: schedule.remindAt, rrule: rruleOut,
       }
       // `#proiect` cunoscut și permis: iese din titlu, iar mutarea vine după
       // salvare (pe ID-ul vechi întâi, ca nimic din formular să nu se piardă).
-      const moveTo = titleMoveInfo && !titleMoveInfo.refusal && existing
-        ? titleProjectToken(saveTitle, projects, existing.projectId)
-        : null
-      const ticketFields = { title: moveTo?.title || saveTitle, desc: desc.trim() === '' ? '' : desc, theme, wave, deps: realDeps, ...qaPayload }
+      const ticketFields = { title: personTo?.title || moveTo?.title || saveTitle, desc: desc.trim() === '' ? '' : desc, theme, wave, deps: realDeps, ...qaPayload }
       const prior = saveTargetId(existing?.id, createdIdRef.current, resolveId)
       let targetId: string
       if (prior !== null) {
@@ -984,8 +992,9 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
         return
       }
       setCloseGuard(null)
+      if (personTo) { setTitle(personTo.title); setAssigneeId(personTo.assigneeId) }
       if (moveTo && prior !== null) {
-        if (moveTo.title !== title) setTitle(moveTo.title)
+        if (!personTo && moveTo.title !== title) setTitle(moveTo.title)
         try {
           // Formularul se remontează pe tichetul nou, din store.
           await moveIssue(prior, moveTo.projectId, { open: !close, remount: true })
@@ -1464,6 +1473,11 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
         </>
       )}
       {titleMoveInfo && <TitleMoveHint name={titleMoveInfo.name} refusal={titleMoveInfo.refusal} />}
+      {titlePersonName && (
+        <span className="fc-hint mv-title" title="Tichetul trece la omul acesta, fără comentariu în fir">
+          <Icon name="people" size={13} /> trece la {titlePersonName} la salvare
+        </span>
+      )}
       {/* Titlul era numai dată: salvarea e stinsă, deci spune de ce. */}
       {bareTitle && <span className="fc-hint warn">și ce ai de făcut?</span>}
       {canWrite && (

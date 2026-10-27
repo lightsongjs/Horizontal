@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { inboxProjectId, isInboxProject, normalizeName, parseCaptureTokens, titleProjectToken } from './captureTokens'
+import { inboxProjectId, isInboxProject, normalizeName, parseCaptureTokens, titlePersonToken, titleProjectToken } from './captureTokens'
 
 const projects = [
   { id: 'd', name: '✅Daily', prefix: 'D' },
@@ -114,5 +114,23 @@ describe('titleProjectToken (tichet existent)', () => {
   })
   it('sare peste un semn necunoscut până la unul cunoscut', () => {
     expect(tok('#zzz ceva #gdpr')).toMatchObject({ projectId: 'gdpr', title: '#zzz ceva' })
+  })
+})
+
+describe('titlePersonToken (tichet existent)', () => {
+  const tok = (t: string, cur: string | null = null) => titlePersonToken(t, assignees, cur)
+  it('recunoaște @nume, îl scoate din titlu și dă intervalul', () => {
+    const r = tok('BUG cu cartonasele @bogdan')
+    expect(r?.assigneeId).toBe(assignees.find((a) => /Bogdan/.test(a.name))!.id)
+    expect(r?.title).toBe('BUG cu cartonasele')
+    expect('BUG cu cartonasele @bogdan'.slice(...r!.span)).toBe('@bogdan')
+  })
+  it('omul căruia îi e deja nu e o cerere', () => {
+    const id = assignees.find((a) => /Bogdan/.test(a.name))!.id
+    expect(tok('x @bogdan', id)).toBeNull()
+  })
+  it('necunoscut sau lipit de cuvânt rămâne text', () => {
+    expect(tok('scrie @nimeni')).toBeNull()
+    expect(tok('mail@bogdan')).toBeNull()
   })
 })

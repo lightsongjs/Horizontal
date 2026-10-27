@@ -1397,6 +1397,11 @@ firul, fișierele (rândurile) și vizitele urmează tichetul.
 - **UI**: jetonul de proiect din `EditSheet` (foaie mică), jetonul de lângă ID din
   `IssueForm` (`MoveChip`, `ChipPop`), „Mută în proiect…" în ⋮ (`MoreSheet`),
   pentru UN tichet. Confirmarea e un toast, fără anulare.
+- **`#proiect` / `@persoană` în titlul formularului** (`titleProjectToken` /
+  `titlePersonToken`, `captureTokens.ts`): evidențiate (`proj-mark`) cu un
+  indiciu sub titlu; la salvare semnul iese din titlu, iar tichetul se mută,
+  respectiv trece la omul acela (`assigneeId`, fără comentariu în fir — cerut de
+  om, 2026-10-27). Proiectul / omul de acum nu e o cerere; foaia de telefon nu le are.
 - Teste: `src/lib/moveIssue.test.ts`, `localRepository`/`offlineRepository`/
   `supabaseRepository`, `npm run test:move-sql` (pornește singur un container
   `supabase/postgres` de unică folosință, cu Docker; `MOVE_SQL_URL` pentru o

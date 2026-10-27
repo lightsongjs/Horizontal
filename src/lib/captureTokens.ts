@@ -72,6 +72,42 @@ export function titleProjectToken(
   return null
 }
 
+export interface TitlePersonToken {
+  assigneeId: string
+  /** Titlul fără semn, cu spațiile dimprejur strânse. */
+  title: string
+  span: [number, number]
+}
+
+function pickPerson<A extends Pick<Assignee, 'id' | 'name'>>(key: string, assignees: A[]): A | null {
+  const words = (x: { name: string }) => x.name.split(/\s+/).map(normalizeName).filter(Boolean)
+  return pick(key, assignees, (x) => [normalizeName(x.name), ...words(x)], (x) => [normalizeName(x.name), ...words(x)])
+}
+
+/**
+ * `@persoană` scris în titlul unui tichet DEJA creat — perechea lui
+ * `titleProjectToken`: se evidențiază, iar la salvare semnul iese din titlu
+ * și tichetul trece la omul acela. Omul căruia îi e deja nu e o cerere
+ * (`null`), la fel ca unul necunoscut sau ambiguu. Numai primul `@` recunoscut.
+ */
+export function titlePersonToken(
+  raw: string,
+  assignees: Pick<Assignee, 'id' | 'name'>[],
+  currentAssigneeId: string | null,
+): TitlePersonToken | null {
+  for (const m of raw.matchAll(TOKEN)) {
+    if (m[2] !== '@') continue
+    const a = pickPerson(normalizeName(m[3]), assignees)
+    if (!a) continue
+    if (a.id === currentAssigneeId) return null
+    const start = m.index! + m[1].length
+    const end = m.index! + m[0].length
+    const title = (raw.slice(0, start) + raw.slice(end)).replace(/\s+/g, ' ').trim()
+    return { assigneeId: a.id, title, span: [start, end] }
+  }
+  return null
+}
+
 export function parseCaptureTokens(
   raw: string,
   projects: Pick<Project, 'id' | 'name' | 'prefix'>[],
@@ -95,8 +131,7 @@ export function parseCaptureTokens(
       if (p) { projectId = p.id; cut.push([start, end]) } else unknown.push(raw.slice(start, end))
     } else {
       if (assigneeId !== null) continue
-      const words = (x: { name: string }) => x.name.split(/\s+/).map(normalizeName).filter(Boolean)
-      const a = pick(key, assignees, (x) => [normalizeName(x.name), ...words(x)], (x) => [normalizeName(x.name), ...words(x)])
+      const a = pickPerson(key, assignees)
       if (a) { assigneeId = a.id; cut.push([start, end]) } else unknown.push(raw.slice(start, end))
     }
   }

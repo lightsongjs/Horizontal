@@ -2056,6 +2056,39 @@ try {
     await tm.close()
   }
 
+  // `@persoană` în titlul unui tichet existent: evidențiat, iar salvarea
+  // scoate semnul și pasează tichetul.
+  {
+    const tm = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+    await tm.goto(BASE, { waitUntil: 'networkidle' })
+    await tm.waitForTimeout(600)
+    await tm.evaluate(() => {
+      const db = JSON.parse(localStorage.getItem('horizontal:v2'))
+      db.assignees = db.assignees ?? []
+      if (!db.assignees.some((a) => a.id === 'as-ionut')) db.assignees.push({ id: 'as-ionut', name: 'Ionuț' })
+      const src = db.issues.find((i) => i.id.startsWith('EX-'))
+      db.issues.push({ ...src, id: 'EX-91', title: 'De pasat din titlu', deps: [], done: false, assigneeId: null, dueAt: null, remindAt: null, rrule: null, pinnedAt: null })
+      localStorage.setItem('horizontal:v2', JSON.stringify(db))
+    })
+    await tm.goto(`${BASE}/EX-91`, { waitUntil: 'networkidle' })
+    await tm.waitForTimeout(1200)
+    await tm.locator('.sh-title-input').first().click()
+    await tm.keyboard.press('End')
+    await tm.keyboard.type(' @ionut')
+    await tm.waitForTimeout(300)
+    const marked = (await tm.locator('.sh-title-mirror .proj-mark').first().textContent().catch(() => '')) ?? ''
+    check('@persoană în titlu: semnul e evidențiat', marked === '@ionut', JSON.stringify(marked))
+    const hint = (await tm.locator('.mv-title').first().textContent().catch(() => '')) ?? ''
+    check('…cu indiciul „trece la Ionuț la salvare"', /trece la Ionuț la salvare/.test(hint), JSON.stringify(hint))
+    await tm.locator('.sh-save').first().click()
+    await tm.waitForTimeout(1200)
+    const stored = await tm.evaluate(() => JSON.parse(localStorage.getItem('horizontal:v2')).issues.find((i) => i.id === 'EX-91'))
+    check('@persoană: salvarea pasează tichetul', stored?.assigneeId === 'as-ionut', JSON.stringify(stored?.assigneeId))
+    check('…iar semnul iese din titlu', stored?.title === 'De pasat din titlu', JSON.stringify(stored?.title))
+    check('…și indiciul dispare', (await tm.locator('.mv-title').count()) === 0, `${await tm.locator('.mv-title').count()}`)
+    await tm.close()
+  }
+
   // ── Modul Vim (src/vim.tsx): cursorul, panoul care urmează, „Listă", oprit ──
   // Cursorul nu e o clasă pe rând: `VimStatus` scrie o regulă CSS pe id. Testul
   // îl citește de acolo, ca să nu depindă de culori.
