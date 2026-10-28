@@ -1,6 +1,5 @@
 import { app, BrowserWindow, ipcMain, powerMonitor, shell, type WebContents } from 'electron'
 import * as path from 'node:path'
-import { execFile } from 'node:child_process'
 import { parseReminders, planReminders, type Reminder } from './scheduler'
 import { createNotifier, type Notifier, type NotifyAction } from './notify'
 import { exportAppService } from './dbusService'
@@ -82,42 +81,15 @@ function createBar() {
 function showBar() {
   if (!barWin || barWin.isDestroyed()) createBar()
   const win = barWin!
-  win.show()
-  // Pe X11 `focus()` al lui Chromium trimite `_NET_ACTIVE_WINDOW` cu ora
-  // ultimului eveniment văzut de el (vechi), iar mutter îl refuză cât omul
-  // tocmai a scris în altă fereastră: „Horizontal is ready”, bara fără focus.
-  // Cu timestamp 0 mutter nu compară (window.c, `meta_window_activate_full`).
-  // GTK 3 din Python e pe orice Fedora Workstation; dacă lipsește, rămâne
-  // drumul vechi.
-  // `show()` pe X11 e asincron: o activare trimisă înainte de MapNotify e
-  // ignorată, deci reîncercăm până vine focusul.
-  if (X11) void activateUntilFocused(win)
-  else { win.focus(); win.webContents.focus() }
-}
-
-const ACTIVATE_PY = [
-  'import sys, gi',
-  "gi.require_version('Gdk', '3.0'); gi.require_version('GdkX11', '3.0')",
-  'from gi.repository import Gdk, GdkX11',
-  'd = Gdk.Display.get_default()',
-  'GdkX11.X11Window.foreign_new_for_display(d, int(sys.argv[1])).focus(0)',
-  'd.flush()',
-].join('\n')
-
-async function activateUntilFocused(win: BrowserWindow) {
-  for (let i = 0; i < 6 && !win.isDestroyed() && win.isVisible() && !win.isFocused(); i++) {
-    try { await activateX11(win) } catch { win.focus(); break }
-    await new Promise((r) => setTimeout(r, 120))
-  }
-  if (!win.isDestroyed()) win.webContents.focus()
-}
-
-function activateX11(win: BrowserWindow): Promise<void> {
-  const xid = win.getNativeWindowHandle().readUInt32LE(0)
-  return new Promise((resolve, reject) => {
-    execFile('python3', ['-c', ACTIVATE_PY, String(xid)], { env: { ...process.env, GDK_BACKEND: 'x11' }, timeout: 3000 },
-      (err) => (err ? reject(err) : resolve()))
-  })
+  // `showInactive`, nu `show()` + `focus()`: pe Wayland Chromium cere focusul
+  // cu un token xdg-activation făcut din propria suprafață — fără focus, deci
+  // invalid —, iar scurtătura GNOME nu dă niciunul. Mutter răspundea
+  // „Horizontal is ready” și bara stătea fără tastatură. Fără cerere, mutter
+  // dă singur focusul unei ferestre noi (Chromium refă suprafața la fiecare
+  // `show`) și o pune pe ecranul cu mouse-ul.
+  if (win.isVisible() && !win.isFocused()) win.hide()
+  win.showInactive()
+  win.webContents.focus()
 }
 
 function showMain() {
@@ -209,20 +181,5 @@ function start() {
   })
 }
 
-// Bara pe XWayland, nu pe Wayland nativ. Pe Wayland o fereastră arătată din
-// scurtătură cere focusul cu un token xdg-activation, pe care Chromium îl face
-// din propria suprafață — fără focus, deci invalid —, iar scurtătura GNOME
-// (gsd-media-keys) nu dă niciunul. Mutter răspunde „Horizontal is ready” și
-// bara stă fără tastatură; pe X11 o putem activa noi (`activateX11`).
-// `--ozone-platform` se citește înainte de codul nostru (Electron își pune
-// singur `wayland` în linia de comandă, deci ne uităm în argv), deci repornim o dată.
-// `HORIZONTAL_WAYLAND=1` păstrează Wayland (probă).
-const X11 = process.platform === 'linux' && (app.commandLine.getSwitchValue('ozone-platform') === 'x11' || !process.env.WAYLAND_DISPLAY)
-const NEEDS_X11 = process.platform === 'linux' && process.env.XDG_SESSION_TYPE === 'wayland'
-  && !process.argv.some((a) => a.startsWith('--ozone-platform')) && !process.env.HORIZONTAL_WAYLAND
-
-if (NEEDS_X11) {
-  app.relaunch({ args: [...process.argv.slice(1), '--ozone-platform=x11'] })
-  app.exit(0)
-} else if (!app.requestSingleInstanceLock()) app.quit()
+if (!app.requestSingleInstanceLock()) app.quit()
 else start()

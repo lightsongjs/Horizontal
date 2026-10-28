@@ -1888,18 +1888,16 @@ Ctrl+Shift+A și mementouri cu aplicația în fundal. Spec/plan:
   deci panoul are mărimile de desktop. **Esc în doi pași:** cu panoul deschis îl
   închide doar pe el (în captură, `stopPropagation`, tiparul `ChipPop`), abia
   apoi golește + ascunde.
-- **Focusul barei: cutia rulează pe XWayland** (2026-10-28). Pe Wayland nativ
-  Chromium cere focusul cu un token xdg-activation făcut din propria suprafață
-  (fără focus → invalid), iar scurtătura GNOME nu dă niciun token: mutter
-  răspunde „Horizontal is ready” și bara stă fără tastatură — de câte ori omul
-  tocmai scrisese în altă fereastră (proba din 2026-10-02 trecuse din noroc).
-  `main.ts` repornește o dată cu `--ozone-platform=x11` (Electron își pune
-  singur `wayland` în linia de comandă, deci se verifică `argv`), iar
-  `showBar` trimite `_NET_ACTIVE_WINDOW` cu timestamp 0 prin GTK 3 din Python
-  (`activateUntilFocused`, reîncercat până la MapNotify) — mutter nu compară
-  timestamp-ul 0 cu ultima tastă. `HORIZONTAL_WAYLAND=1` păstrează Wayland.
-  Prețul: pe un ecran cu scalare fracționară fereastra principală e mai
-  neclară. **Ascunderea nu golește** (decizia omului, 2026-10-10):
+- **Focusul barei: `showInactive()`, nu `show()` + `focus()`** (2026-10-28).
+  Pe Wayland Chromium cere focusul cu un token xdg-activation făcut din propria
+  suprafață (fără focus → invalid), iar scurtătura GNOME nu dă niciun token:
+  mutter răspundea „Horizontal is ready” și bara stătea fără tastatură, de
+  câte ori omul tocmai scrisese în altă fereastră (proba din 2026-10-02
+  trecuse din noroc). Fără cerere, mutter dă singur focusul unei ferestre noi
+  (Chromium refă suprafața la fiecare `show`) și o centrează pe ecranul cu
+  mouse-ul. NU trece cutia pe X11: focusul se poate repara și acolo, dar
+  Chromium își fixează poziția și bara apare mereu pe ecranul principal.
+  **Ascunderea nu golește** (decizia omului, 2026-10-10):
   bara se ascunde la orice click în afară, iar omul revine des ca să lipească
   ceva copiat din pagina din spate („user: ion", apoi parola). Ciorna — titlu,
   descriere (deschisă + conținut), alegerile de mână, refuzurile de dată și
