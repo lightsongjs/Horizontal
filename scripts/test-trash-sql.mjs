@@ -99,7 +99,7 @@ await admin.end()
 const db = await connect(connection)
 for (const f of ['supabase/schema.sql', 'supabase/migration-access.sql', 'supabase/migration-todo.sql']) await db.query(read(f))
 await db.query(EXTRA_COLUMNS)
-for (const f of ['supabase/migration-push.sql', 'supabase/migration-attachments.sql', 'supabase/migration-comments.sql', 'supabase/migration-obstacles.sql', 'supabase/migration-routines.sql']) {
+for (const f of ['supabase/migration-push.sql', 'supabase/migration-attachments.sql', 'supabase/migration-comments.sql', 'supabase/migration-obstacles.sql', 'supabase/migration-routines.sql', 'supabase/migration-notes-access.sql']) {
   // migration-push cere pg_cron/vault doar în migration-cron, nu aici.
   await db.query(read(f))
 }
@@ -331,6 +331,8 @@ await scenario('fără ciclu cu ce s-a legat între timp', async () => {
 
 await scenario('val, temă, memento, coloană nouă', async () => {
   const u = await user(); await project('hz', 'HZ', 'HZ', 3); await member(u, 'hz')
+  // Șterge și restaurează o notiță: are nevoie de drept (migration-notes-access.sql).
+  await db.query(`update project_members set can_see_notes = true`)
   await db.query(`insert into waves (project_id, number, name) values ('hz',0,'Notițe'), ('hz',2,'II'), ('hz',3,'III')`)
   await db.query(`insert into themes values ('hz','ui','UI','#123456')`)
   await issue('HZ-01', 'hz', { wave: 2, theme: 'ui' })

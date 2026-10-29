@@ -10,8 +10,14 @@ const cors = {
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } })
 
-const validAccess = (access: { project_id: string; role: string }[] | undefined) =>
+/** `notes` = vede Notițele proiectului (`can_see_notes`); lipsă = nu. */
+type Access = { project_id: string; role: string; notes?: boolean }
+
+const validAccess = (access: Access[] | undefined) =>
   (access ?? []).every((a) => a.role === 'read' || a.role === 'write')
+
+const memberRow = (user_id: string, a: Access) =>
+  ({ user_id, project_id: a.project_id, role: a.role, can_see_notes: a.notes === true })
 
 type Admin = ReturnType<typeof createClient>
 
@@ -64,20 +70,20 @@ Deno.serve(async (req) => {
   try {
     if (action === 'list_users') {
       const { data } = await admin.auth.admin.listUsers()
-      const { data: members } = await admin.from('project_members').select('user_id, project_id, role')
+      const { data: members } = await admin.from('project_members').select('user_id, project_id, role, can_see_notes')
       const { data: named } = await admin.from('assignees').select('user_id, name').not('user_id', 'is', null)
       const users = (data?.users ?? []).map((u) => ({
         id: u.id,
         email: u.email,
         name: (named ?? []).find((a) => a.user_id === u.id)?.name ?? null,
         admin: u.app_metadata?.role === 'admin',
-        access: (members ?? []).filter((m) => m.user_id === u.id).map((m) => ({ project_id: m.project_id, role: m.role })),
+        access: (members ?? []).filter((m) => m.user_id === u.id).map((m) => ({ project_id: m.project_id, role: m.role, notes: !!m.can_see_notes })),
       }))
       return json({ users })
     }
 
     if (action === 'create_user') {
-      const { email, password, name, access } = payload as { email: string; password: string; name: string | null; access: { project_id: string; role: string }[] }
+      const { email, password, name, access } = payload as { email: string; password: string; name: string | null; access: Access[] }
       if (!validAccess(access)) return json({ error: 'invalid role (must be read or write)' }, 400)
       const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true })
       if (error) return json({ error: error.message }, 400)
@@ -85,7 +91,7 @@ Deno.serve(async (req) => {
       // anularea lui, deci esecul se raporteaza dupa ce accesul e pus.
       const nameErr = await writeName(admin, data.user.id, name ?? null)
       if (access?.length) {
-        const rows = access.map((a) => ({ user_id: data.user.id, project_id: a.project_id, role: a.role }))
+        const rows = access.map((a) => memberRow(data.user.id, a))
         const { error: mErr } = await admin.from('project_members').insert(rows)
         if (mErr) return json({ error: mErr.message }, 400)
       }
@@ -94,13 +100,13 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'set_access') {
-      const { user_id, access } = payload as { user_id: string; access: { project_id: string; role: string }[] }
+      const { user_id, access } = payload as { user_id: string; access: Access[] }
       if (!validAccess(access)) return json({ error: 'invalid role (must be read or write)' }, 400)
       // NOTE: delete-then-insert is not transactional; on insert failure the
       // caller gets a 400 and should retry. Acceptable for this admin tool.
       await admin.from('project_members').delete().eq('user_id', user_id)
       if (access?.length) {
-        const rows = access.map((a) => ({ user_id, project_id: a.project_id, role: a.role }))
+        const rows = access.map((a) => memberRow(user_id, a))
         const { error } = await admin.from('project_members').insert(rows)
         if (error) return json({ error: error.message }, 400)
       }

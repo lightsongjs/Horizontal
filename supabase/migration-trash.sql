@@ -5,7 +5,8 @@
 -- Spec: docs/superpowers/specs/2026-10-26-cos-de-gunoi-design.md
 -- Teste: `npm run test:trash-sql` (pe un Postgres de unică folosință, NU pe producție).
 --
--- Depinde de: migration-access.sql (is_admin, project_members),
+-- Depinde de: migration-notes-access.sql (notes_ok),
+-- migration-access.sql (is_admin, project_members),
 -- migration-attachments.sql, migration-comments.sql (issue_events, issue_seen,
 -- assignees), migration-obstacles.sql, migration-move-issue.sql (re-rulată:
 -- `move_issue` pune `horizontal.trash = off` înainte să șteargă rândul vechi).
@@ -49,9 +50,11 @@ alter table public.issues_trash enable row level security;
 -- intră prin trigger, ies prin `restore_issue` / `purge_trash`.
 drop policy if exists issues_trash_select on public.issues_trash;
 create policy issues_trash_select on public.issues_trash for select to authenticated
-using (public.is_admin() or exists (
+using ((public.is_admin() or exists (
   select 1 from public.project_members m
-   where m.project_id = issues_trash.project_id and m.user_id = (select auth.uid())));
+   where m.project_id = issues_trash.project_id and m.user_id = (select auth.uid())))
+  -- O notiță ștearsă rămâne notiță (migration-notes-access.sql).
+  and public.notes_ok(issues_trash.project_id, (issues_trash.issue ->> 'wave')::int));
 revoke all on public.issues_trash from anon;
 revoke insert, update, delete on public.issues_trash from authenticated;
 grant select on public.issues_trash to authenticated;
@@ -191,7 +194,8 @@ begin
 
   select * into v_t from public.issues_trash where id = p_trash_id for update;
   if not found or not (v_admin or exists (
-       select 1 from public.project_members m where m.project_id = v_t.project_id and m.user_id = v_me)) then
+       select 1 from public.project_members m where m.project_id = v_t.project_id and m.user_id = v_me))
+     or not public.notes_ok(v_t.project_id, (v_t.issue ->> 'wave')::int) then
     raise exception 'Tichetul nu mai e în coș.' using errcode = 'HZT01';
   end if;
 
@@ -329,7 +333,8 @@ begin
   end if;
   select * into v_t from public.issues_trash where id = p_trash_id for update;
   if not found or not (v_admin or exists (
-       select 1 from public.project_members m where m.project_id = v_t.project_id and m.user_id = v_me)) then
+       select 1 from public.project_members m where m.project_id = v_t.project_id and m.user_id = v_me))
+     or not public.notes_ok(v_t.project_id, (v_t.issue ->> 'wave')::int) then
     raise exception 'Tichetul nu mai e în coș.' using errcode = 'HZT01';
   end if;
   if not (v_admin or exists (select 1 from public.project_members m

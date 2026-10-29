@@ -1411,6 +1411,39 @@ firul, fișierele (rândurile) și vizitele urmează tichetul.
 Setup: `npm run migrate supabase/migration-move-issue.sql` **ÎNAINTE** de push
 (clientul cheamă RPC-ul; fără el, mutarea spune „lipsește migrarea").
 
+## Notițele sunt ale omului, nu ale clientului
+
+Decizia omului, 2026-10-29: în Notițe (valul 0) pune înregistrări, voice note-uri,
+lucruri pe care clientul nu trebuie să le vadă. **Dreptul e pe proiect**,
+`project_members.can_see_notes` (implicit `false`, și pentru membrii de
+dinainte), comutatorul „Notițe” de lângă rol în foaia contului (`UserForm`).
+Adminul vede tot.
+
+- **Regula e în bază** (`supabase/migration-notes-access.sql`), nu în interfață —
+  ascunse doar din UI, notițele ar fi fost citibile prin REST cu sesiunea
+  clientului. Poarta: `notes_ok(proiect, val)` / `issue_notes_ok(id)` /
+  `path_notes_ok(cale)` (`security definer`), adăugată la fiecare politică ce
+  lasă un membru să citească ceva legat de un tichet: `issues`, `waves` (și
+  rândul valului 0, deci clientul n-are pastila — `scratch` null în
+  `WaveTabs`), firul, fișierele (rânduri + Storage, și cele încă fără rând sau
+  din coș), dependențele (ambele capete), `obstacle_issues`, coșul;
+  `inbox_rows` e `security_invoker`, deci urmează singur. Funcțiile `security
+  definer` (`move_issue`, `restore_issue`, `purge_trash`) o verifică explicit:
+  o notiță „nu există”. Mementourile push (`send-reminders`) unei notițe pleacă
+  doar la admini + membrii cu drept.
+- Clientul **nu poate scrie** în Notițe (creare, mutare acolo — `with check`).
+- **Mutarea dintr-o parte în alta publică / ascunde tot tichetul** (fir,
+  fișiere), fără nicio scriere în plus: totul se leagă de `issues.wave`.
+- O regulă nouă de citire pe ceva legat de un tichet primește și ea poarta —
+  altfel e o scurgere. Teste: `npm run test:notes-sql` (Docker de unică
+  folosință, NICIODATĂ producția).
+
+Deploy, în ordine: `npm run migrate supabase/migration-notes-access.sql` →
+re-rulează `migration-move-issue.sql` și `migration-trash.sql` (au primit
+poarta) → `supabase functions deploy admin-users` și `send-reminders` → push.
+Fără funcția nouă, „Salvează” în foaia contului ar fi pus `can_see_notes` pe
+`false` (delete + insert).
+
 ## Coșul de gunoi (tichete șterse)
 
 Spec: `docs/superpowers/specs/2026-10-26-cos-de-gunoi-design.md`. **Ștergerea

@@ -34,6 +34,7 @@ interface IssueRow {
   title: string
   due_at: string | null
   all_day: boolean
+  wave: number
 }
 
 Deno.serve(async (req) => {
@@ -75,7 +76,7 @@ Deno.serve(async (req) => {
   const nowIso = new Date().toISOString()
   const { data: due, error } = await db
     .from('issues')
-    .select('id, project_id, title, due_at, all_day')
+    .select('id, project_id, title, due_at, all_day, wave')
     .not('remind_at', 'is', null)
     .lte('remind_at', nowIso)
     .is('reminder_sent_at', null)
@@ -96,7 +97,7 @@ Deno.serve(async (req) => {
 
   const [{ data: projects }, { data: members }, { data: subs }] = await Promise.all([
     db.from('projects').select('id, name').in('id', projectIds),
-    db.from('project_members').select('user_id, project_id').in('project_id', projectIds),
+    db.from('project_members').select('user_id, project_id, can_see_notes').in('project_id', projectIds),
     db.from('push_subscriptions').select('id, user_id, endpoint, p256dh, auth'),
   ])
 
@@ -116,11 +117,19 @@ Deno.serve(async (req) => {
     .filter((u) => u.app_metadata?.role === 'admin')
     .map((u) => u.id)
 
+  // Notițele (valul 0) sună doar la cine le poate citi — aceeași regulă ca
+  // `notes_ok` din migration-notes-access.sql.
   const membersByProject = new Map<string, Set<string>>()
+  const notesByProject = new Map<string, Set<string>>()
   for (const m of members ?? []) {
     const set = membersByProject.get(m.project_id) ?? new Set<string>()
     set.add(m.user_id)
     membersByProject.set(m.project_id, set)
+    if (m.can_see_notes) {
+      const notes = notesByProject.get(m.project_id) ?? new Set<string>()
+      notes.add(m.user_id)
+      notesByProject.set(m.project_id, notes)
+    }
   }
 
   const subsByUser = new Map<string, typeof subs>()
@@ -137,7 +146,7 @@ Deno.serve(async (req) => {
   for (const issue of rows) {
     const recipients = new Set<string>([
       ...adminIds,
-      ...(membersByProject.get(issue.project_id) ?? []),
+      ...((issue.wave === 0 ? notesByProject : membersByProject).get(issue.project_id) ?? []),
     ])
     // Un token pe TICHET, nu pe dispozitiv: fiecare payload pleacă criptat
     // pentru abonamentul lui (RFC 8291), deci nu se scurge de la un dispozitiv

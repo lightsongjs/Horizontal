@@ -23,9 +23,9 @@ describe('listUsers', () => {
 describe('createUser', () => {
   it('sends create_user with email, password, name, access', async () => {
     invoke.mockResolvedValue({ data: { id: 'new' }, error: null })
-    const id = await createUser('a@b.c', 'pw', 'Ana', [{ project_id: 'p', role: 'write' }])
+    const id = await createUser('a@b.c', 'pw', 'Ana', [{ project_id: 'p', role: 'write', notes: false }])
     expect(invoke).toHaveBeenCalledWith('admin-users', {
-      body: { action: 'create_user', payload: { email: 'a@b.c', password: 'pw', name: 'Ana', access: [{ project_id: 'p', role: 'write' }] } },
+      body: { action: 'create_user', payload: { email: 'a@b.c', password: 'pw', name: 'Ana', access: [{ project_id: 'p', role: 'write', notes: false }] } },
     })
     expect(id).toBe('new')
   })
@@ -56,9 +56,9 @@ describe('mutations send correct action + payload', () => {
   beforeEach(() => invoke.mockResolvedValue({ data: { ok: true }, error: null }))
 
   it('setAccess sends set_access with user_id + access', async () => {
-    await setAccess('u1', [{ project_id: 'p', role: 'read' }])
+    await setAccess('u1', [{ project_id: 'p', role: 'read', notes: true }])
     expect(invoke).toHaveBeenCalledWith('admin-users', {
-      body: { action: 'set_access', payload: { user_id: 'u1', access: [{ project_id: 'p', role: 'read' }] } },
+      body: { action: 'set_access', payload: { user_id: 'u1', access: [{ project_id: 'p', role: 'read', notes: true }] } },
     })
   })
 

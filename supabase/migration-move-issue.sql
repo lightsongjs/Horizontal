@@ -5,7 +5,8 @@
 -- Spec: docs/superpowers/specs/2026-10-12-mutare-tichet-intre-proiecte-design.md
 -- Teste: `npm run test:move-sql` (pe un Postgres de unică folosință, NU pe producție).
 --
--- Depinde de: migration-access.sql (is_admin, project_members),
+-- Depinde de: migration-notes-access.sql (notes_ok, path_notes_ok),
+-- migration-access.sql (is_admin, project_members),
 -- migration-attachments.sql, migration-comments.sql (issue_events, issue_seen,
 -- assignees.user_id), migration-obstacles.sql.
 
@@ -60,8 +61,10 @@ begin
 
   select * into v_old from public.issues where id = p_id for update;
   -- Invizibil = inexistent: un ne-membru nu află că ID-ul există.
+  -- O notiță e invizibilă pentru cine n-are dreptul (migration-notes-access.sql).
   if not found or not (v_admin or exists (
-       select 1 from public.project_members m where m.project_id = v_old.project_id and m.user_id = v_me)) then
+       select 1 from public.project_members m where m.project_id = v_old.project_id and m.user_id = v_me))
+     or not public.notes_ok(v_old.project_id, v_old.wave) then
     raise exception 'Tichetul % nu există.', p_id using errcode = 'HZM06';
   end if;
 
@@ -176,6 +179,8 @@ drop policy if exists attachments_objects_delete on storage.objects;
 create policy attachments_objects_select on storage.objects for select to authenticated
 using (
   bucket_id = 'attachments'
+  -- Fișierele unei notițe: numai cu dreptul pe Notițe (migration-notes-access.sql).
+  and public.path_notes_ok(objects.name)
   and (
     public.is_admin()
     or exists (
@@ -195,6 +200,7 @@ using (
 create policy attachments_objects_delete on storage.objects for delete to authenticated
 using (
   bucket_id = 'attachments'
+  and public.path_notes_ok(objects.name)
   and (
     public.is_admin()
     or exists (

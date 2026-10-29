@@ -794,13 +794,15 @@ def urow(initial, name, email, access, unnamed=False):
             % (initial, name, tag, email, access, ic('chevron-right', 16, 'user-chev')))
 
 
-def arow(color, name, role):
+def arow(color, name, role, notes=False):
     opts = ''.join(
         '<button class="acc-opt %s %s">%s</button>' % ('on' if r == role else '', 'is-' + k, lbl)
         for k, r, lbl in (('none', None, 'Fără'), ('read', 'read', 'Read'), ('write', 'write', 'Write')))
+    # „Notițe" (valul 0) numai cu un rol, ca în UserForm.tsx.
+    chip = ('<button class="acc-notes%s">%s Notițe</button>' % (' on' if notes else '', ic('notepad-text', 14))) if role else ''
     return ('<div class="acc-row"><span class="acc-dot" style="background:%s"></span>'
-            '<span class="acc-name">%s</span><div class="acc-toggle">%s</div></div>'
-            % (color, name, opts))
+            '<span class="acc-name">%s</span><div class="acc-ctl"><div class="acc-toggle">%s</div>%s</div></div>'
+            % (color, name, opts, chip))
 
 
 UTILIZATORI = (
@@ -826,7 +828,7 @@ CONT = (
     '<div class="sheet-section-t"><span>Acces la proiecte</span>'
     '<span class="grant-badge">2 alocate</span></div>'
     '<div class="acc-grid">'
-    + arow('#0EA5E9', 'MateCuSens', 'write')
+    + arow('#0EA5E9', 'MateCuSens', 'write', notes=True)
     + arow('#3ecf8e', 'Horizontal', 'read')
     + arow('#ffb454', 'PFA', None)
     + '</div>'

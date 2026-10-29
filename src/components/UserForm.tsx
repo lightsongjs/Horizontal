@@ -16,7 +16,9 @@ import type { Project } from '../lib/types'
 import { Icon } from './Icon'
 import { ProjectMark } from './ProjectMark'
 
-type Draft = Record<string, ProjectRole | undefined>
+/** Pe proiect: rolul (lipsă = fără acces) și dacă vede Notițele. */
+type Grant = { role?: ProjectRole; notes: boolean }
+type Draft = Record<string, Grant | undefined>
 
 /**
  * Lungimea minimă a parolei, cea implicită din GoTrue. Dacă în Supabase e pusă
@@ -33,8 +35,8 @@ const ROLE_OPTIONS: { value: ProjectRole | undefined; label: string }[] = [
 
 function draftToAccess(d: Draft): AccessEntry[] {
   return Object.entries(d)
-    .filter(([, role]) => role)
-    .map(([project_id, role]) => ({ project_id, role: role as ProjectRole }))
+    .filter(([, g]) => g?.role)
+    .map(([project_id, g]) => ({ project_id, role: g!.role!, notes: g!.notes }))
 }
 
 /** Comutator cu trei stări: fără acces / read / write. */
@@ -59,7 +61,26 @@ function AccessToggle({ value, onChange }: { value: ProjectRole | undefined; onC
   )
 }
 
-function AccessGrid({ projects, draft, onSet }: { projects: Project[]; draft: Draft; onSet: (id: string, v: ProjectRole | undefined) => void }) {
+/**
+ * „Notițe": vede valul 0 al proiectului (înregistrări, voice note-uri, ce e
+ * doar al omului). Oprit implicit; are sens numai cu un rol, deci fără acces
+ * nu apare. Regula adevărată e în bază (`notes_ok`), nu aici.
+ */
+function NotesToggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      className={`acc-notes${on ? ' on' : ''}`}
+      aria-pressed={on}
+      title={on ? 'Vede Notițele proiectului' : 'Nu vede Notițele proiectului'}
+      onClick={() => onChange(!on)}
+    >
+      <Icon name="scratch" size={14} /> Notițe
+    </button>
+  )
+}
+
+function AccessGrid({ projects, draft, onSet }: { projects: Project[]; draft: Draft; onSet: (id: string, v: Grant) => void }) {
   if (projects.length === 0) return <p className="users-empty sm">Niciun proiect de alocat.</p>
   return (
     <div className="acc-grid">
@@ -67,7 +88,15 @@ function AccessGrid({ projects, draft, onSet }: { projects: Project[]; draft: Dr
         <div className="acc-row" key={p.id}>
           <ProjectMark project={p} dot="acc-dot" size={13} />
           <span className="acc-name">{p.name}</span>
-          <AccessToggle value={draft[p.id]} onChange={(v) => onSet(p.id, v)} />
+          <div className="acc-ctl">
+            <AccessToggle
+              value={draft[p.id]?.role}
+              onChange={(role) => onSet(p.id, { role, notes: role ? draft[p.id]?.notes ?? false : false })}
+            />
+            {draft[p.id]?.role && (
+              <NotesToggle on={!!draft[p.id]?.notes} onChange={(notes) => onSet(p.id, { ...draft[p.id], notes })} />
+            )}
+          </div>
         </div>
       ))}
     </div>
@@ -82,7 +111,7 @@ export function UserForm({ userId }: { userId?: string }) {
 
   const current = useMemo<Draft>(() => {
     const m: Draft = {}
-    for (const a of user?.access ?? []) m[a.project_id] = a.role
+    for (const a of user?.access ?? []) m[a.project_id] = { role: a.role, notes: a.notes }
     return m
   }, [user])
 
@@ -102,11 +131,14 @@ export function UserForm({ userId }: { userId?: string }) {
   useEffect(() => { setDraft(current) }, [current])
 
   const isNew = !userId
-  const grantCount = Object.values(draft).filter(Boolean).length
+  const grantCount = Object.values(draft).filter((g) => g?.role).length
 
   const accessChanged = useMemo(() => {
     const keys = new Set([...Object.keys(current), ...Object.keys(draft)])
-    for (const k of keys) if ((current[k] ?? undefined) !== (draft[k] ?? undefined)) return true
+    for (const k of keys) {
+      const a = current[k], b = draft[k]
+      if (a?.role !== b?.role || (!!a?.role && !!a?.notes !== !!b?.notes)) return true
+    }
     return false
   }, [current, draft])
   const nameChanged = name.trim() !== (user?.name ?? '')

@@ -2,7 +2,12 @@ import { supabase } from './supabase'
 import { errorMessage } from './errorMessage'
 import type { ProjectRole } from './access'
 
-export interface AccessEntry { project_id: string; role: ProjectRole }
+/**
+ * `notes` = vede Notițele (valul 0) proiectului — `project_members.can_see_notes`.
+ * Implicit nu: notițele sunt ale omului, nu ale clientului
+ * (`supabase/migration-notes-access.sql`). Adminul vede oricum tot.
+ */
+export interface AccessEntry { project_id: string; role: ProjectRole; notes: boolean }
 /**
  * `name` e rândul din `assignees` legat prin `user_id` — ACELAȘI nume pe care
  * îl vede toată lumea în „Assigned to", pe carduri și în fir. `null` înseamnă

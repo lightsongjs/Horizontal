@@ -99,7 +99,7 @@ await admin.end()
 const db = await connect(connection)
 for (const f of ['supabase/schema.sql', 'supabase/migration-access.sql', 'supabase/migration-todo.sql']) await db.query(read(f))
 await db.query(EXTRA_COLUMNS)
-for (const f of ['supabase/migration-push.sql', 'supabase/migration-attachments.sql', 'supabase/migration-comments.sql', 'supabase/migration-obstacles.sql', 'supabase/migration-routines.sql']) {
+for (const f of ['supabase/migration-push.sql', 'supabase/migration-attachments.sql', 'supabase/migration-comments.sql', 'supabase/migration-obstacles.sql', 'supabase/migration-routines.sql', 'supabase/migration-notes-access.sql']) {
   // migration-push cere pg_cron/vault doar în migration-cron, nu aici.
   await db.query(read(f))
 }

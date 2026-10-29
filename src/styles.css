@@ -5251,6 +5251,19 @@ html[data-text-large] .fc-presets { grid-template-columns: repeat(2, minmax(0, 1
 .acc-opt.on.is-read  { background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--accent); }
 .acc-opt.on.is-write { background: var(--accent); color: var(--on-accent); }
 
+.acc-ctl { flex: none; display: inline-flex; align-items: center; gap: 6px; }
+/* Notițele: oprit = saltul de fundal al comutatorului, pornit = accent pal. */
+.acc-notes {
+  display: inline-flex; align-items: center; gap: 5px;
+  border: none; cursor: pointer; font-family: inherit;
+  font-size: calc(12px * var(--text-scale)); font-weight: 600;
+  padding: 8px 10px; border-radius: var(--r-s);
+  background: var(--surface-3); color: var(--txt-dim);
+  transition: background 0.14s, color 0.14s;
+}
+.acc-notes:hover { color: var(--txt); }
+.acc-notes.on { background: var(--accent-soft); color: var(--accent); }
+
 /* ── Câmpuri auxiliare din foaia contului ─────────────────────────── */
 .fld-hint { margin: 6px 0 0; font-size: calc(12px * var(--text-scale)); color: var(--txt-faint); line-height: 1.5; }
 .fld-hint.ok { color: var(--accent); }
@@ -5307,7 +5320,8 @@ html[data-text-large] .fc-presets { grid-template-columns: repeat(2, minmax(0, 1
 @media (max-width: 640px) {
   .user-access { display: none; }
   .acc-row { flex-wrap: wrap; }
-  .acc-toggle { width: 100%; }
+  .acc-ctl { width: 100%; }
+  .acc-toggle { flex: 1; }
   .acc-opt { flex: 1; text-align: center; }
 }
 
