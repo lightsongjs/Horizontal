@@ -29,6 +29,11 @@ const GROUPS: Group[] = [
     examples: ['azi', 'mâine', 'poimâine', 'vineri', 'luni viitoare', 'tomorrow', 'peste 2 zile'],
   },
   {
+    title: 'Data',
+    note: 'Fără an, e următoarea apariție a zilei. „mai" și „noi" cer „pe"/„on" înainte, fiindcă sunt și cuvinte.',
+    examples: ['pe 5 decembrie', '5 dec 2027', 'on 5th of december', 'december 5th', 'vineri, 5 decembrie', '05.12.2026', 'pe 5.12', 'pe 5 mai'],
+  },
+  {
     title: 'De acum înainte',
     note: 'Cantitatea poate fi scrisă în litere.',
     examples: ['in 5 min', 'peste 20 de minute', 'in 1 hour', 'in 3 hours', 'într-o oră', 'in an hour', 'în 1h30', 'peste o oră și jumătate'],
@@ -51,7 +56,7 @@ const GROUPS: Group[] = [
   {
     title: 'Ce NU e o dată',
     note: 'Cazurile în care parserul trebuie să tacă.',
-    examples: ['Întâlnire la Podul 5', 'cumpără 1500 de șuruburi', 'în 5 mai', 'într-o zi', 'at 2500'],
+    examples: ['Întâlnire la Podul 5', 'cumpără 1500 de șuruburi', 'în 5 mai', '2 noi angajați', 'versiunea 2.10', 'într-o zi', 'at 2500'],
   },
 ]
 

@@ -218,6 +218,47 @@ describe('parseDue — engleză', () => {
   })
 })
 
+describe('parseDue — dată calendaristică', () => {
+  it('mesajul care a pornit tot: engleză lipită de un titlu românesc', () => {
+    expect(p('Simo sa sii faca abonament pe un an la smartbill on 5th of december')).toMatchObject({
+      title: 'Simo sa sii faca abonament pe un an la smartbill', date: '2026-12-05', time: null, rrule: null,
+    })
+  })
+
+  it('formele RO și EN dau aceeași zi, iar fragmentul iese din titlu', () => {
+    for (const t of [
+      'pe 5 decembrie plata', '5 decembrie plata', '5 dec plata', '5 dec. plata', 'plata on the 5th of december',
+      'plata december 5th', 'plata on dec 5', 'vineri, 5 decembrie plata', 'plata 05.12.2026', 'plata 5/12/2026',
+      'plata pe 5.12', 'plata 2026-12-05',
+    ]) expect(p(t), t).toMatchObject({ title: 'plata', date: '2026-12-05', rrule: null })
+  })
+
+  it('fără an: următoarea apariție — azi contează, ieri e la anul', () => {
+    expect(p('pe 24 august x').date).toBe('2026-08-24')
+    expect(p('pe 23 august x').date).toBe('2027-08-23')
+  })
+
+  it('cu an scris, anul învinge', () => expect(p('5 dec 2027 x').date).toBe('2027-12-05'))
+
+  it('cu oră și cu recurență', () => {
+    expect(p('pe 5 decembrie la 10 x')).toMatchObject({ title: 'x', date: '2026-12-05', time: '10:00' })
+    expect(p('anual pe 5 decembrie abonament')).toMatchObject({ title: 'abonament', date: '2026-12-05', rrule: 'FREQ=YEARLY' })
+  })
+
+  it('„on the 5th of december" nu e lunar pe 5', () => expect(p('x on the 5th of december').rrule).toBeNull())
+
+  it('lunile care sunt și cuvinte cer un semnal în plus', () => {
+    for (const t of ['în 5 mai', 'încă 5 mai', 'mai 5 minute', '2 noi angajați', 'you may 2 x']) expect(p(t).date, t).toBeNull()
+    expect(p('pe 5 mai x').date).toBe('2027-05-05')
+    expect(p('on may 5 x').date).toBe('2027-05-05')
+    expect(p('5th may x').date).toBe('2027-05-05')
+  })
+
+  it('numere care nu sunt date rămân text', () => {
+    for (const t of ['versiunea 2.10', 'pe 31 februarie', 'scor 5.12 la meci', '13.13.2026 x']) expect(p(t).date, t).toBeNull()
+  })
+})
+
 describe('parseDue — ce NU are voie să facă', () => {
   it('un număr care nu e oră lasă titlul neatins', () => {
     expect(p('Întâlnire la Podul 5')).toMatchObject({

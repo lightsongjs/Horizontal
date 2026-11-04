@@ -152,6 +152,88 @@ function maskSigils(hay: string): string {
   return hay.replace(/(^|\s)([#@][^\s#@!]+)/g, (_, pre: string, tok: string) => pre + MASK.repeat(tok.length))
 }
 
+/** Numele lunilor, după `fold()`, RO și EN, cu prescurtările uzuale → index 0–11. */
+const MONTH_NAMES: Record<string, number> = {
+  ianuarie: 0, ian: 0, january: 0, jan: 0,
+  februarie: 1, february: 1, feb: 1,
+  martie: 2, march: 2, mar: 2,
+  aprilie: 3, april: 3, apr: 3,
+  mai: 4, may: 4,
+  iunie: 5, june: 5, iun: 5, jun: 5,
+  iulie: 6, july: 6, iul: 6, jul: 6,
+  august: 7, aug: 7,
+  septembrie: 8, september: 8, sept: 8, sep: 8,
+  octombrie: 9, october: 9, oct: 9,
+  noiembrie: 10, november: 10, noi: 10, nov: 10,
+  decembrie: 11, december: 11, dec: 11,
+}
+// Cele mai lungi întâi, ca „decembrie" să nu fie prins ca „dec" + rest.
+const MONTH_ALT = Object.keys(MONTH_NAMES).sort((a, b) => b.length - a.length).join('|')
+/**
+ * Luni care sunt și cuvinte obișnuite: „încă 5 mai", „2 noi angajați", „you may".
+ * Ele devin lună doar cu un semnal în plus — o prepoziție de dată („pe 5 mai",
+ * „on may 5"), un sufix ordinal („5th"), „of" sau un an scris.
+ */
+const AMBIGUOUS_MONTHS = new Set(['mai', 'may', 'mar', 'noi'])
+const WEEKDAY_ALT = [...DAYS_RO, ...DAYS_EN].join('|')
+const DATE_PREP = '(?:pe|on|din|by|until)'
+
+/**
+ * Data calendaristică din text, sau null. Fără an, e următoarea apariție a
+ * zilei: „5 decembrie" spus pe 6 decembrie e anul viitor, spus pe 5 e azi.
+ * O zi a săptămânii lipită înainte („vineri, 5 decembrie") intră în fragment —
+ * altfel ar rămâne în titlu, fiindcă ziua e deja hotărâtă.
+ */
+function matchCalendarDate(hay: string, now: Date): { day: Date; span: [number, number] } | null {
+  const wd = `(?:(?:${WEEKDAY_ALT}),?\\s+)?`
+  type Hit = { m: RegExpMatchArray; d: number; mo: number; y: number | null }
+  const tries: (() => Hit | null)[] = [
+    // 2026-12-05
+    () => {
+      const m = hay.match(/\b(\d{4})-(\d{2})-(\d{2})\b/)
+      return m && { m, d: Number(m[3]), mo: Number(m[2]) - 1, y: Number(m[1]) }
+    },
+    // 05.12.2026, 5/12/2026 — ordinea românească, ziua întâi
+    () => {
+      const m = hay.match(new RegExp(`\\b${wd}(?:${DATE_PREP}\\s+)?(\\d{1,2})[./](\\d{1,2})[./](\\d{4})\\b`))
+      return m && { m, d: Number(m[1]), mo: Number(m[2]) - 1, y: Number(m[3]) }
+    },
+    // pe 5 decembrie, 5 dec 2026, on the 5th of december
+    () => {
+      const m = hay.match(new RegExp(`\\b${wd}(${DATE_PREP}\\s+)?(?:the\\s+)?(\\d{1,2})(st|nd|rd|th)?(\\s+of)?\\s+(${MONTH_ALT})\\b\\.?(?:,?\\s+(\\d{4})\\b)?`))
+      if (!m) return null
+      if (AMBIGUOUS_MONTHS.has(m[5]) && !m[1] && !m[3] && !m[4] && !m[6]) return null
+      return { m, d: Number(m[2]), mo: MONTH_NAMES[m[5]], y: m[6] ? Number(m[6]) : null }
+    },
+    // december 5th, on dec 5, 2026
+    () => {
+      const m = hay.match(new RegExp(`\\b${wd}(on\\s+)?(${MONTH_ALT})\\b\\.?\\s+(?:the\\s+)?(\\d{1,2})(st|nd|rd|th)?\\b(?:,?\\s+(\\d{4})\\b)?`))
+      if (!m) return null
+      if (AMBIGUOUS_MONTHS.has(m[2]) && !m[1] && !m[4] && !m[5]) return null
+      return { m, d: Number(m[3]), mo: MONTH_NAMES[m[2]], y: m[5] ? Number(m[5]) : null }
+    },
+    // pe 5.12 — fără an, prepoziția e obligatorie: „versiunea 2.10" nu e o dată
+    () => {
+      const m = hay.match(new RegExp(`\\b${wd}${DATE_PREP}\\s+(\\d{1,2})[./](\\d{1,2})\\b(?![./]?\\d)`))
+      return m && { m, d: Number(m[1]), mo: Number(m[2]) - 1, y: null }
+    },
+  ]
+  const today = startOfLocalDay(now)
+  for (const t of tries) {
+    const h = t()
+    if (!h || h.m.index === undefined) continue
+    const valid = (y: number) => {
+      const d = new Date(y, h.mo, h.d)
+      return h.mo >= 0 && h.mo < 12 && d.getMonth() === h.mo && d.getDate() === h.d ? d : null
+    }
+    let day = valid(h.y ?? today.getFullYear())
+    if (day && h.y === null && day.getTime() < today.getTime()) day = valid(today.getFullYear() + 1)
+    if (!day) continue
+    return { day, span: [h.m.index, h.m.index + h.m[0].length] }
+  }
+  return null
+}
+
 export function parseDue(raw: string, now: Date = new Date()): ParsedDue {
   const hay = maskSigils(fold(raw))
   const spans: [number, number][] = []
@@ -285,7 +367,7 @@ export function parseDue(raw: string, now: Date = new Date()): ParsedDue {
   // „pe 6" simplu e ziua lunii (nu urmează o lună: „pe 6 noiembrie" e o dată).
   const monthlyBare = rrule === 'FREQ=MONTHLY'
   if (!rrule || monthlyBare) {
-    m = hay.match(/\bpe\s+(\d{1,2})\s+ale\s+lunii\b/) ?? hay.match(/\bon\s+the\s+(\d{1,2})(?:st|nd|rd|th)?\b/)
+    m = hay.match(/\bpe\s+(\d{1,2})\s+ale\s+lunii\b/) ?? hay.match(new RegExp(`\\bon\\s+the\\s+(\\d{1,2})(?:st|nd|rd|th)?\\b(?!\\s+(?:of\\s+)?(?:${MONTH_ALT})\\b)`))
       ?? (monthlyBare ? hay.match(/\b(?:pe|on)\s+(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)?\b(?!\s*(?:[./-]\d|ale\b|ian|feb|mar|apr|mai|iun|iul|aug|sep|oct|noi|nov|dec|jan|may|jun|jul))/) : null)
     if (m) {
       const d = Number(m[1])
@@ -335,6 +417,11 @@ export function parseDue(raw: string, now: Date = new Date()): ParsedDue {
     time = [d.getHours(), d.getMinutes()]
     hit(m)
   }
+
+  // ── dată calendaristică: „pe 5 decembrie", „5 dec 2026", „on 5th of december",
+  //    „december 5th", „05.12.2026", „pe 5.12", „2026-12-05".
+  const abs = matchCalendarDate(hay, now)
+  if (abs) { day = abs.day; spans.push(abs.span) }
 
   // ── zi a săptămânii: cea mai apropiată din viitor
   if (!day) {
