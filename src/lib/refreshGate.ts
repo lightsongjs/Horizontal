@@ -77,3 +77,23 @@ export function debounce(
   call.cancel = () => { if (h !== null) timer.clear(h); h = null }
   return call
 }
+
+/**
+ * Ce proiecte, în afară de cel deschis, are store-ul în memorie și trebuie
+ * reîncărcate la un `refresh()`?
+ *
+ * Un tichet deschis din „Azi” își încarcă proiectul în `allIssues`, iar în
+ * liste varianta de acolo bate lista proaspătă (`dueIssues`, `openIssues`).
+ * Reîncărcat era doar proiectul de pe ecran, deci restul rămâneau poza de la
+ * deschidere: restanțele mutate pe azi de pe telefon nu mai dispăreau de pe
+ * laptop (2026-11-04). Un proiect pe care serverul nu-l mai întoarce nu se
+ * cere — n-ar avea ce răspunde.
+ */
+export function otherLoadedProjects(
+  loaded: readonly { projectId: string }[],
+  current: string | null,
+  known: readonly { id: string }[],
+): string[] {
+  const live = new Set(known.map((p) => p.id))
+  return [...new Set(loaded.map((i) => i.projectId))].filter((id) => id !== current && live.has(id))
+}

@@ -38,7 +38,7 @@ import { shortLabels } from './lib/initials'
 import type { Assignee, InboxRow, Issue, IssueState, Layers, Obstacle, ObstacleLink, Project, ProjectMember, Theme, Wave } from './lib/types'
 import { errorMessage } from './lib/errorMessage'
 import { LOCAL_DB_KEY } from './data/localRepository'
-import { debounce, shouldRefreshOnVisible, STALE_REFRESH_MS, syncRefreshStep } from './lib/refreshGate'
+import { debounce, otherLoadedProjects, shouldRefreshOnVisible, STALE_REFRESH_MS, syncRefreshStep } from './lib/refreshGate'
 import type { ProjectBundle, SyncEvent, SyncStatus } from './data/offline/types'
 
 interface HorizontalState {
@@ -531,6 +531,14 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
       void repository.sync?.flush()
       const p = await repository.listProjects()
       setRawProjects(p)
+      // Celelalte proiecte din memorie (vezi `otherLoadedProjects`): numai
+      // tichetele, pe care le citesc listele. Un eșec lasă poza veche, ca înainte.
+      const others = Promise.all(otherLoadedProjects(allIssuesRef.current, projectId, p).map(async (id) => {
+        const fresh = await repository.listIssues(id).catch(() => null)
+        if (fresh && id !== currentProjectRef.current) {
+          setAllIssues((prev) => [...prev.filter((i) => i.projectId !== id), ...fresh])
+        }
+      }))
       if (projectId) {
         // Obstacolele vin în ACELAȘI Promise.all cu tichetele: dacă ajungeau o
         // randare mai târziu, poarta valului apărea goală și apoi sărea la
@@ -555,6 +563,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
           applyProjectBundle(projectId, { waves: w, themes: t, issues: loaded, obstacles: o, obstacleLinks: ol, members: pm }, { authoritative: true })
         }
       }
+      await others
     } catch (e) {
       setError(errorMessage(e))
       // Același tratament ca în selectProject: marcăm eșecul, ca oricine

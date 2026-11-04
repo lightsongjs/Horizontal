@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { debounce, REFRESH_MIN_INTERVAL_MS, STALE_REFRESH_MS, syncRefreshStep, shouldRefreshOnVisible } from './refreshGate'
+import { debounce, otherLoadedProjects, REFRESH_MIN_INTERVAL_MS, STALE_REFRESH_MS, syncRefreshStep, shouldRefreshOnVisible } from './refreshGate'
 
 describe('shouldRefreshOnVisible', () => {
   it('cere datele prima oară — nu s-a refăcut niciodată', () => {
@@ -51,5 +51,19 @@ describe('debounce', () => {
     d(); run(500); d(); run(1400); expect(calls).toBe(0)
     run(1500); expect(calls).toBe(1)
     d(); d.cancel(); run(5000); expect(calls).toBe(1)
+  })
+})
+
+describe('otherLoadedProjects', () => {
+  const known = [{ id: 'd' }, { id: 'il' }, { id: 'h' }]
+  it('întoarce proiectele din memorie, fără cel deschis, o singură dată', () => {
+    const loaded = [{ projectId: 'd' }, { projectId: 'h' }, { projectId: 'd' }, { projectId: 'il' }]
+    expect(otherLoadedProjects(loaded, 'h', known)).toEqual(['d', 'il'])
+  })
+  it('fără proiect deschis („Azi”) le întoarce pe toate', () => {
+    expect(otherLoadedProjects([{ projectId: 'd' }], null, known)).toEqual(['d'])
+  })
+  it('sare peste un proiect pe care serverul nu-l mai întoarce', () => {
+    expect(otherLoadedProjects([{ projectId: 'sters' }, { projectId: 'd' }], null, known)).toEqual(['d'])
   })
 })
