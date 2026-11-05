@@ -64,6 +64,18 @@ class QuickAddActivity : AppCompatActivity() {
         if (uri == null) return@registerForActivityResult
         Thread { NativeFiles.copyIn(this, uri)?.let { p -> runOnUiThread { addFile(p) } } }.start()
     }
+    private val askPhotos = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { ok ->
+        if (ok) findShot()
+    }
+
+    /**
+     * Captura de ecran proaspătă (ultimele 10 min), oferită în banda de miniaturi:
+     * o atingere o atașează — gestul din Claude, unde imaginea din clipboard apare
+     * singură. Pe telefon captura nu ajunge în clipboard, ci în galerie, deci se
+     * caută acolo (`screenshotOffer`). O captură se oferă o singură dată.
+     */
+    private var offer: ShotCandidate? = null
+    private var offerThumb: android.graphics.Bitmap? = null
 
     override fun onCreate(b: Bundle?) {
         super.onCreate(b)
@@ -113,6 +125,48 @@ class QuickAddActivity : AppCompatActivity() {
         // `fromEngine = false`: draftul brut n-are `live`, iar refuzurile restaurate din ciornă trebuie să ajungă la motor.
         data?.let { apply(rawDraft(title.text.toString(), manual, it, System.currentTimeMillis(), zone).copy(raw = false), fromEngine = false) }
         recompute()
+        // Dreptul la poze se cere o singură dată, la prima deschidere după instalare;
+        // refuzat, fereastra merge ca înainte (agrafa rămâne), fără să mai întrebe.
+        val shots = getSharedPreferences(SHOTS, 0)
+        if (!NativeFiles.photosGranted(this) && !shots.getBoolean("asked", false)) {
+            shots.edit().putBoolean("asked", true).apply()
+            askPhotos.launch(NativeFiles.photosPermission)
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        findShot()
+    }
+
+    private fun findShot() {
+        if (!NativeFiles.photosGranted(this)) return
+        val seen = getSharedPreferences(SHOTS, 0).getLong("seen", -1L).takeIf { it >= 0 }
+        Thread {
+            val now = System.currentTimeMillis()
+            val shot = screenshotOffer(NativeFiles.recentImages(this, now - SHOT_WINDOW_MS), now, seen)
+            val thumb = shot?.let { NativeFiles.thumbnail(this, NativeFiles.imageUri(it.id), dp(80)) }
+            runOnUiThread {
+                if (isFinishing || shot?.id == offer?.id) return@runOnUiThread
+                offer = shot?.takeIf { thumb != null }
+                offerThumb = thumb
+                paintFiles()
+            }
+        }.start()
+    }
+
+    /** Captura a fost tratată (atașată, sau sarcina a plecat fără ea): nu se mai oferă. */
+    private fun markShotSeen() {
+        val s = offer ?: return
+        getSharedPreferences(SHOTS, 0).edit().putLong("seen", s.id).apply()
+        offer = null; offerThumb = null
+    }
+
+    private fun attachShot() {
+        val s = offer ?: return
+        markShotSeen()
+        paintFiles()
+        Thread { NativeFiles.copyIn(this, NativeFiles.imageUri(s.id))?.let { p -> runOnUiThread { addFile(p) } } }.start()
     }
 
     /** Tastatura se cere după ce fereastra are focusul: HyperOS ignoră o cerere mai timpurie. */
@@ -296,7 +350,8 @@ class QuickAddActivity : AppCompatActivity() {
     private fun paintFiles() {
         val row = findViewById<android.widget.LinearLayout>(R.id.q_files)
         row.removeAllViews()
-        findViewById<View>(R.id.q_files_scroll).visibility = if (files.isEmpty()) View.GONE else View.VISIBLE
+        findViewById<View>(R.id.q_files_scroll).visibility = if (files.isEmpty() && offer == null) View.GONE else View.VISIBLE
+        offerThumb?.takeIf { offer != null }?.let { row.addView(shotChip(it)) }
         // Agrafa cu fișiere alese = accent pe accent-soft (`.qs-attach.on`).
         val attach = findViewById<android.widget.ImageView>(R.id.q_attach)
         attach.setBackgroundResource(if (files.isEmpty()) R.drawable.bg_q_chip else R.drawable.bg_q_chip_accent)
@@ -321,6 +376,32 @@ class QuickAddActivity : AppCompatActivity() {
             }
             row.addView(iv)
         }
+    }
+
+    /** Oferta: miniatura capturii + „Atașează captura”, primul element al benzii. */
+    private fun shotChip(thumb: android.graphics.Bitmap): View {
+        val chip = android.widget.LinearLayout(this)
+        chip.orientation = android.widget.LinearLayout.HORIZONTAL
+        chip.gravity = android.view.Gravity.CENTER_VERTICAL
+        chip.layoutParams = android.widget.LinearLayout.LayoutParams(android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, dp(48)).apply { marginEnd = dp(6) }
+        chip.setBackgroundResource(R.drawable.bg_q_chip_accent)
+        chip.setPadding(dp(4), dp(4), dp(12), dp(4))
+        chip.contentDescription = "Atașează captura de ecran"
+        val iv = android.widget.ImageView(this)
+        iv.layoutParams = android.widget.LinearLayout.LayoutParams(dp(40), dp(40))
+        iv.scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
+        iv.setBackgroundResource(R.drawable.bg_q_chip)
+        iv.clipToOutline = true
+        iv.setImageBitmap(thumb)
+        val label = TextView(this)
+        label.layoutParams = android.widget.LinearLayout.LayoutParams(android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT).apply { marginStart = dp(8) }
+        label.text = "Atașează captura"
+        label.typeface = androidx.core.content.res.ResourcesCompat.getFont(this, R.font.inter_semibold)
+        label.textSize = 13f
+        label.setTextColor(color(R.color.q_accent))
+        chip.addView(iv); chip.addView(label)
+        chip.setOnClickListener { attachShot() }
+        return chip
     }
 
     private fun submit() {
@@ -355,6 +436,8 @@ class QuickAddActivity : AppCompatActivity() {
             Engine.reschedule(this)   // mementoul și widget-ul, imediat
             DrainWorker.enqueue(this)
             getSharedPreferences(DRAFT, 0).edit().clear().apply()
+            // Ignorată la trimitere = refuzată: data viitoare n-o mai oferim.
+            markShotSeen()
             files.clear()
             finish()
         }
@@ -427,6 +510,8 @@ class QuickAddActivity : AppCompatActivity() {
 
     companion object {
         private const val DRAFT = "hz-quick-draft"
+        /** `asked` (dreptul la poze cerut o dată) și `seen` (ultima captură tratată); NU se golește cu ciorna. */
+        private const val SHOTS = "hz-quick-shots"
         fun clearDraft(ctx: Context) = ctx.getSharedPreferences(DRAFT, 0).edit().clear().apply()
     }
 }

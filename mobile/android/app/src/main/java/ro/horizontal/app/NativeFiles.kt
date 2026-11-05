@@ -9,9 +9,11 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Build
+import android.provider.MediaStore
 import android.provider.OpenableColumns
 import org.json.JSONObject
 import ro.horizontal.app.core.NativeFile
+import ro.horizontal.app.core.ShotCandidate
 import java.io.File
 import java.util.UUID
 
@@ -88,6 +90,44 @@ object NativeFiles {
         }
         return Bitmap.createBitmap(b, 0, 0, b.width, b.height, Matrix().apply { postRotate(deg) }, true)
     }
+
+    /** Permisiunea de citire a pozelor, după versiune (Android 13 a spart-o pe tipuri). */
+    val photosPermission: String get() =
+        if (Build.VERSION.SDK_INT >= 33) android.Manifest.permission.READ_MEDIA_IMAGES else android.Manifest.permission.READ_EXTERNAL_STORAGE
+
+    fun photosGranted(ctx: Context) =
+        androidx.core.content.ContextCompat.checkSelfPermission(ctx, photosPermission) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+    /** Pozele adăugate din `since` încoace (cele mai noi întâi), pentru `screenshotOffer`. Fără drept → nimic. */
+    fun recentImages(ctx: Context, since: Long): List<ShotCandidate> = try {
+        val cols = buildList {
+            add(MediaStore.Images.Media._ID); add(MediaStore.Images.Media.DATE_ADDED); add(MediaStore.Images.Media.MIME_TYPE)
+            @Suppress("DEPRECATION") add(MediaStore.Images.ImageColumns.BUCKET_DISPLAY_NAME)
+            if (Build.VERSION.SDK_INT >= 29) add(MediaStore.Images.Media.RELATIVE_PATH)
+        }
+        ctx.contentResolver.query(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI, cols.toTypedArray(),
+            "${MediaStore.Images.Media.DATE_ADDED} >= ?", arrayOf((since / 1000).toString()),
+            "${MediaStore.Images.Media.DATE_ADDED} DESC",
+        )?.use { c ->
+            val out = mutableListOf<ShotCandidate>()
+            while (out.size < 20 && c.moveToNext()) {
+                out += ShotCandidate(
+                    id = c.getLong(0), addedAt = c.getLong(1) * 1000, mime = c.getString(2), bucket = c.getString(3),
+                    relativePath = if (cols.size > 4) c.getString(4) else null,
+                )
+            }
+            out
+        } ?: emptyList()
+    } catch (e: Exception) { emptyList() }
+
+    fun imageUri(id: Long): Uri = android.content.ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
+
+    /** Miniatura ofertei; `null` = n-a putut fi citită (atunci nici nu se oferă). */
+    fun thumbnail(ctx: Context, uri: Uri, px: Int): Bitmap? = try {
+        if (Build.VERSION.SDK_INT >= 29) ctx.contentResolver.loadThumbnail(uri, android.util.Size(px, px), null)
+        else ctx.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inSampleSize = 8 }) }
+    } catch (e: Exception) { null }
 
     fun dimensions(path: String): Pair<Int, Int> {
         val o = BitmapFactory.Options().apply { inJustDecodeBounds = true }
