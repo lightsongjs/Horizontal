@@ -7,6 +7,7 @@ import { useUI } from '../ui'
 import { Attachments } from './Attachments'
 import { Icon } from './Icon'
 import { MarkdownView } from './MarkdownView'
+import { TitleText, openTitleLink } from './TitleText'
 
 export function IssueSheet({ issueId }: { issueId: string }) {
   const { byId, waves, unblockedBy, themeOf, assignees, myAssigneeId, projects, updateIssue } = useHorizontal()
@@ -59,7 +60,7 @@ export function IssueSheet({ issueId }: { issueId: string }) {
           )}
           {it.done && <>{' · '}<span className="sheet-done"><Icon name="check" size={13} /> Gata</span></>}
         </div>
-        <h2>{it.title}</h2>
+        <h2 onClick={openTitleLink}><TitleText title={it.title} /></h2>
         {/* `it.createdBy` null e cazul normal azi (vezi mai sus) — atunci se
             arată doar data, fără „creat de —" și fără un avatar gol. */}
         <div className="origin">

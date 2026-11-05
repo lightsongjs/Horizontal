@@ -1302,7 +1302,8 @@ main {
 }
 .md-pre code { font: inherit; }
 .md blockquote { margin: 0 0 0.65em; padding-left: 14px; color: var(--txt-dim); }
-.md-link, .md-editor .md-link {
+/* Linkul din titlul unui rând / card (`TitleText`): ca în descriere. */
+.md-link, .md-editor .md-link, .title-link {
   color: var(--accent);
   text-decoration: underline 1px;
   text-underline-offset: 3px;
@@ -6293,6 +6294,13 @@ body:has(.kb-sheet) .toast {
   color: transparent;
   border-radius: 4px;
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+/* Linkul din titlu: oglinda are text transparent, deci se vede doar linia —
+   sub textul din textarea, în culoarea linkurilor din descriere. */
+.es-title-mirror .es-title-link {
+  text-decoration: underline 1px;
+  text-underline-offset: 3px;
+  text-decoration-color: color-mix(in srgb, var(--accent) 55%, transparent);
 }
 .es-title-wrap.on-date .es-title { cursor: pointer; }
 .es-title-wrap.on-date .es-title-mirror mark {

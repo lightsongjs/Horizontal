@@ -4,6 +4,7 @@ import { useCanWrite } from '../hooks'
 import { DueChip } from './DueChip'
 import { TaskProgress, hasTasks } from './TaskProgress'
 import { ObstacleChip } from './ObstacleChip'
+import { TitleText, openTitleLink } from './TitleText'
 import { Icon } from './Icon'
 import { displayIssueId } from '../lib/issueId'
 
@@ -37,12 +38,12 @@ export const TicketCard = memo(function TicketCard({ id, contextWave, selectMode
   const obstructed = Boolean(blockedByObstacle[id]?.length)
   const holder = it.assigneeId ? assignees.find((a) => a.id === it.assigneeId) : undefined
 
-  const handleClick = () => {
+  const handleClick = (e: React.MouseEvent) => {
     if (treeMode) {
       onTreeSelect?.(id)
     } else if (selectMode) {
       onToggleSelect?.(id)
-    } else {
+    } else if (!openTitleLink(e)) {
       onOpen(id)
     }
   }
@@ -94,7 +95,7 @@ export const TicketCard = memo(function TicketCard({ id, contextWave, selectMode
           <span className="tk-who" title={holder.name}>{assigneeShort[holder.id] ?? '?'}</span>
         )}
       </div>
-      <h5>{it.title}</h5>
+      <h5><TitleText title={it.title} /></h5>
       {(sameWave.length > 0 || crossWave.length > 0 || it.dueAt || obstructed || hasTasks(it.desc)) && (
         <span className="tk-sub">
           <TaskProgress desc={it.desc} />

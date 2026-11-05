@@ -5,6 +5,7 @@ import { isUnread } from '../lib/thread'
 import type { InboxRow } from '../lib/types'
 import { displayIssueId } from '../lib/issueId'
 import { SplitView } from './SplitView'
+import { TitleText, openTitleLink } from './TitleText'
 
 /**
  * Cât ține bulina aprinsă după ce ai deschis rândul. Nu instant: altfel
@@ -53,11 +54,11 @@ export function InboxView({ onOpen }: { onOpen(issueId: string): void }) {
     (userId && assignees.find((a) => a.userId === userId)?.name) || 'cineva'
 
   const row = (r: InboxRow) => (
-    <button key={r.issueId} className="list-row inbox-row" onClick={() => open(r.issueId)} data-issue-id={r.issueId}>
+    <button key={r.issueId} className="list-row inbox-row" onClick={(e) => { if (!openTitleLink(e)) open(r.issueId) }} data-issue-id={r.issueId}>
       <span className={`inbox-dot${isUnread(r.lastForeignAt, r.seenAt) ? '' : ' read'}`} aria-hidden="true" />
       <span className="origin-avatar">{authorName(r.lastForeignAuthor).slice(0, 2).toUpperCase()}</span>
       <div className="inbox-body">
-        <div className="list-title">{r.title}</div>
+        <div className="list-title"><TitleText title={r.title} /></div>
         <div className="inbox-meta">
           <span className="mono">{displayIssueId(r.issueId)}</span>
           <span>de la {authorName(r.lastForeignAuthor)}</span>

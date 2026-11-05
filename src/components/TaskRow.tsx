@@ -10,6 +10,7 @@ import {
 import type { Issue, Project } from '../lib/types'
 import { Bell, Recur } from './DueChip'
 import { TaskProgress } from './TaskProgress'
+import { TitleText, openTitleLink } from './TitleText'
 import { Icon } from './Icon'
 import { useTaskActions } from './TaskActions'
 import { NativePick } from './NativePick'
@@ -134,7 +135,7 @@ const TaskRowView = memo(function TaskRowView({ issue, onOpen, late = false, doc
           )}
       </span>
 
-      <span className="list-title">{issue.title}</span>
+      <span className="list-title"><TitleText title={issue.title} /></span>
 
       <span className="t-tail">
         {/* Fixat sus (`pinnedAt`): piuneza stă prima în coadă. Pe desktop e
@@ -170,7 +171,7 @@ const TaskRowView = memo(function TaskRowView({ issue, onOpen, late = false, doc
     return (
       <button
         className={cls}
-        onClick={() => onOpen(issue.id)}
+        onClick={(e) => { if (!openTitleLink(e)) onOpen(issue.id) }}
         // Click dreapta: „Fixează sus" / „Urgent" lângă cursor. Doar-citire:
         // meniul browserului, ca înainte.
         onContextMenu={canWrite ? (e) => { e.preventDefault(); ta.openRowMenu(issue.id, { x: e.clientX, y: e.clientY }) } : undefined}
@@ -348,11 +349,12 @@ function SwipeRow({ issue, cls, onOpen, canWrite, selecting, selected, children 
   const side = offset > 0 ? 'show-left' : offset < 0 ? 'show-right' : ''
   const close = () => { setRest('closed'); ta.setOpenRow(null) }
 
-  const onClick = () => {
+  const onClick = (e: React.MouseEvent) => {
     if (swallowClick.current) { swallowClick.current = false; return }
     if (selecting) { ta.toggleSelected(issue.id); return }
     // O atingere pe un rând deschis îl închide, nu deschide foaia.
     if (rest !== 'closed') { close(); return }
+    if (openTitleLink(e)) return
     onOpen(issue.id)
   }
 

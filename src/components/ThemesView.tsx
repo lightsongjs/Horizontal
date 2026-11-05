@@ -8,6 +8,7 @@ import { SplitView } from './SplitView'
 import { WaveGrid } from './WaveGrid'
 import { displayIssueId } from '../lib/issueId'
 import { naturalCompare } from '../lib/waveGrid'
+import { TitleText, openTitleLink } from './TitleText'
 
 /**
  * Modul „× Valuri” (H-13) e ținut pe DISPOZITIV: o ședință de triere se
@@ -151,13 +152,13 @@ export function ThemesView() {
             <div className="sub" style={{ marginLeft: 'auto' }}>{untagged.length} tichete</div>
           </div>
           {untagged.map((it) => (
-            <button key={it.id} className={`tk ${stateOf(it.id)}`} onClick={() => openIssue(it.id)}>
+            <button key={it.id} className={`tk ${stateOf(it.id)}`} onClick={(e) => { if (!openTitleLink(e)) openIssue(it.id) }}>
               <span className="check"><Icon name={it.done ? 'done' : 'notDone'} size={16} /></span>
               <span className="tk-body">
                 <span className="tk-top">
                   <span className="tk-id">{displayIssueId(it.id)}</span>
                 </span>
-                <h5>{it.title}</h5>
+                <h5><TitleText title={it.title} /></h5>
               </span>
             </button>
           ))}
@@ -173,14 +174,14 @@ function ThemeIssueRow({ id, color }: { id: string; color: string }) {
   const it = byId[id]
   if (!it) return null
   return (
-    <button className={`tk ${stateOf(id)}`} onClick={() => openIssue(id)}>
+    <button className={`tk ${stateOf(id)}`} onClick={(e) => { if (!openTitleLink(e)) openIssue(id) }}>
       <span className="check"><Icon name={it.done ? 'done' : 'notDone'} size={16} /></span>
       <span className="tk-body">
         <span className="tk-top">
           <span className="theme-dot" style={{ background: color }} />
           <span className="tk-id">{displayIssueId(id)}</span>
         </span>
-        <h5>{it.title}</h5>
+        <h5><TitleText title={it.title} /></h5>
       </span>
     </button>
   )

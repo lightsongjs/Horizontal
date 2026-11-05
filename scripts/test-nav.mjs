@@ -1128,6 +1128,48 @@ try {
   await tel.waitForTimeout(400)
   await tel.close()
 
+  // ── Linkul din titlu: atingerea pe el îl deschide, restul rândului deschide foaia ──
+  // `window.open` e înlocuit, ca să numărăm deschiderile fără file noi.
+  {
+    const lctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
+    await lctx.addInitScript(() => { window.__opened = []; window.open = (u) => { window.__opened.push(String(u)); return null } })
+    const lp = await lctx.newPage()
+    await lp.goto(BASE, { waitUntil: 'networkidle' })
+    await lp.waitForTimeout(800)
+    const L = await touchApi(lp)
+    const opened = () => lp.evaluate(() => window.__opened)
+    await lp.locator('.fab').click()
+    await lp.waitForTimeout(300)
+    await lp.keyboard.type('Vezi https://youtu.be/AvHjix2TpH4?si=x')
+    await lp.keyboard.press('Enter')
+    await lp.waitForTimeout(3500)
+    const link = lp.locator('.task-row .title-link').first()
+    check('titlu cu link: rândul îl arată ca link', (await link.count()) === 1 && (await link.textContent()) === 'youtu.be/AvHjix2TpH4?si=x', await link.textContent().catch(() => 'lipsă'))
+    let c = await L.center(link)
+    await L.tap(c.x, c.y)
+    await lp.waitForTimeout(600)
+    check('atingerea pe link îl deschide, fără foaie', JSON.stringify(await opened()) === '["https://youtu.be/AvHjix2TpH4?si=x"]' && (await lp.locator('.edit-sheet').count()) === 0,
+      `deschise=${JSON.stringify(await opened())} foi=${await lp.locator('.edit-sheet').count()}`)
+    const lt = await lp.locator('.task-row .list-title', { has: lp.locator('.title-link') }).first().boundingBox()
+    await L.tap(lt.x + 8, lt.y + lt.height / 2)
+    await lp.waitForTimeout(800)
+    check('atingerea pe restul titlului deschide foaia', (await lp.locator('.edit-sheet').count()) === 1 && (await opened()).length === 1)
+    // Primul rând al linkului (`getClientRects`): rupt pe două rânduri, centrul
+    // dreptunghiului întreg cade la capătul gol al primului rând.
+    const r0 = await lp.evaluate(() => { const r = document.querySelector('.edit-sheet .es-title-mirror .es-title-link')?.getClientRects()[0]; return r && { x: (r.left + r.right) / 2, y: (r.top + r.bottom) / 2 } })
+    c = r0 ?? { x: 0, y: 0 }
+    await L.tap(c.x, c.y)
+    await lp.waitForTimeout(600)
+    const focused = () => lp.evaluate(() => document.activeElement?.classList.contains('es-title') ?? false)
+    check('foaie, fără focus: atingerea pe link îl deschide și nu scoate tastatura', (await opened()).length === 2 && !(await focused()) && (await lp.locator('.edit-sheet').count()) === 1,
+      `deschise=${(await opened()).length} focus=${await focused()}`)
+    await lp.locator('.edit-sheet .es-title').focus()
+    await L.tap(c.x, c.y)
+    await lp.waitForTimeout(600)
+    check('foaie, cu focus: linkul e text de corectat', (await opened()).length === 2, `deschise=${(await opened()).length}`)
+    await lctx.close()
+  }
+
   // ── Gesturile de pe telefon: glisare, apăsare lungă, selecție ─────────
   // Atingeri reale (CDP, vezi `lib-touch.mjs`), pe un context cu ecran tactil:
   // `click()` ar ocoli exact ce se testează — blocarea direcției, pragurile,

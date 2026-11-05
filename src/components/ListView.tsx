@@ -9,6 +9,7 @@ import { layerVar } from '../lib/layerColors'
 import { DueChip } from './DueChip'
 import { TaskProgress } from './TaskProgress'
 import { ObstacleChip } from './ObstacleChip'
+import { TitleText, openTitleLink } from './TitleText'
 import { Icon } from './Icon'
 import { SplitView } from './SplitView'
 import { displayIssueId } from '../lib/issueId'
@@ -187,10 +188,10 @@ export function ListView() {
                   (focusedId === id ? ' vim-focused' : '') +
                   (obstructed ? ' blocat' : '')
 
-                const handleClick = () => {
+                const handleClick = (e: React.MouseEvent) => {
                   if (wa.treeViewActive) wa.handleTreeSelect(id)
                   else if (inSelect) wa.toggleSelected(id)
-                  else openEditIssue(id)
+                  else if (!openTitleLink(e)) openEditIssue(id)
                 }
 
                 const pinned = isPinnedOpen(it)
@@ -232,7 +233,7 @@ export function ListView() {
                         )}
                     </span>
                     {theme && <span className="theme-dot" style={{ background: theme.color }} />}
-                    <span className="list-title">{it.title}</span>
+                    <span className="list-title"><TitleText title={it.title} /></span>
                     {/* Coada rândului: aceeași ordine ca `.t-tail` din TaskRow. */}
                     <span className="row-tail">
                       {/* Numele întreg pe ecran lat, pastila cu inițiale pe
