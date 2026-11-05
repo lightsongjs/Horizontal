@@ -99,6 +99,7 @@ class QuickAddActivity : AppCompatActivity() {
         findViewById<View>(R.id.scrim).setOnClickListener { finish() }
 
         restoreDraft(b)
+        if (b == null) takeShared(intent)
         title.addTextChangedListener(watcher { if (!painting) { recompute(); suggestAt() } })
         // Cursorul mutat cu o atingere: lista urmează semnul de sub el.
         title.setOnClickListener { suggestAt() }
@@ -132,6 +133,22 @@ class QuickAddActivity : AppCompatActivity() {
             shots.edit().putBoolean("asked", true).apply()
             askPhotos.launch(NativeFiles.photosPermission)
         }
+    }
+
+    /** Venit din „Distribuie" (`ShareActivity`); fereastra poate fi deja deschisă (`singleTask`). */
+    override fun onNewIntent(i: android.content.Intent) {
+        super.onNewIntent(i)
+        takeShared(i)
+    }
+
+    private fun takeShared(i: android.content.Intent?) {
+        val text = i?.getStringExtra(EXTRA_SHARED_TEXT)
+        val subject = i?.getStringExtra(EXTRA_SHARED_SUBJECT)
+        // O singură dată: o recreare (rotire) ar repune altfel linkul peste ciornă.
+        i?.removeExtra(EXTRA_SHARED_TEXT); i?.removeExtra(EXTRA_SHARED_SUBJECT)
+        val t = sharedTitle(title.text.toString(), text, subject) ?: return
+        title.setText(t)
+        title.setSelection(title.length())
     }
 
     override fun onResume() {
@@ -512,6 +529,8 @@ class QuickAddActivity : AppCompatActivity() {
         private const val DRAFT = "hz-quick-draft"
         /** `asked` (dreptul la poze cerut o dată) și `seen` (ultima captură tratată); NU se golește cu ciorna. */
         private const val SHOTS = "hz-quick-shots"
+        const val EXTRA_SHARED_TEXT = "ro.horizontal.app.SHARED_TEXT"
+        const val EXTRA_SHARED_SUBJECT = "ro.horizontal.app.SHARED_SUBJECT"
         fun clearDraft(ctx: Context) = ctx.getSharedPreferences(DRAFT, 0).edit().clear().apply()
     }
 }

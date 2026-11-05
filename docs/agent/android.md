@@ -87,6 +87,12 @@ Pro (HyperOS 3, Android 16).
   pagina; apoi `setSystemBars` cu `--bg` din pagină (fundalul din rotiță nu e
   tema telefonului). `SystemBars` repune fundalul temei la fiecare
   `onConfigurationChanged`, de-aia `MainActivity` cheamă `applyBars` după `super`.
+- **„Distribuie → Horizontal" (`versionCode 21`)**: `ShareActivity` (exportată,
+  fără UI, `ACTION_SEND` text/plain) deschide fereastra de quick add cu textul în
+  titlu (`core/Share.kt`: linkul în titlu, unde se deschide cu o atingere;
+  `EXTRA_SUBJECT` înaintea lui; după o ciornă existentă). `QuickAddActivity`
+  rămâne neexportată; ținta doar umple câmpul, trimiterea e a omului. Fără pagină,
+  deci fără `API` nou.
 - **Xiaomi/HyperOS**: instalarea prin USB cere „Instalare prin USB" activat și o
   confirmare pe telefon. Glisarea aplicației din recente poate fi un force-stop,
   care omoară alarmele — ecranul de stare (`AndroidStatus`) arată starea

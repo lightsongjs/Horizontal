@@ -38,6 +38,17 @@
             android:excludeFromRecents="true" android:taskAffinity="ro.horizontal.app.quick" android:launchMode="singleTask"
             android:windowSoftInputMode="stateAlwaysVisible|adjustNothing" />
 
+        <!-- „Distribuie → Horizontal" din alte aplicații (YouTube, Chrome): fără UI, umple titlul ferestrei de quick add. -->
+        <activity android:name=".ShareActivity" android:exported="true" android:theme="@android:style/Theme.NoDisplay"
+            android:excludeFromRecents="true" android:noHistory="true" android:taskAffinity=""
+            android:label="@string/title_activity_main">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+
         <!-- Foaia unui tichet din widget: nativă, peste ecranul de start; deschisă ca să citești, deci fără tastatură. -->
         <activity android:name=".TicketActivity" android:exported="false" android:theme="@style/Hz.Quick"
             android:excludeFromRecents="true" android:taskAffinity="ro.horizontal.app.ticket" android:launchMode="singleTask"
