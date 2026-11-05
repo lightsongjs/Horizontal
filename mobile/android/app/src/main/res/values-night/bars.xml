@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Fundalul întunecat (bg) din src/styles.css (D-324). -->
+    <color name="hz_app_bg">#141517</color>
+</resources>

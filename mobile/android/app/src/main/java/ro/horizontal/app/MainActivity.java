@@ -1,5 +1,6 @@
 package ro.horizontal.app;
 
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.webkit.WebView;
 import androidx.activity.OnBackPressedCallback;
@@ -32,5 +33,12 @@ public class MainActivity extends BridgeActivity {
                 setEnabled(true);
             }
         });
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        // După `SystemBars`, care tocmai a repus fundalul temei (D-324).
+        HorizontalAndroidPlugin.applyBars(this);
     }
 }

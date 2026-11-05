@@ -25,6 +25,12 @@ export const ANDROID_API_MINE = 4
  * `shade` (atingerea pe ea: aplicația pe „Azi"). Pornită implicit, de cutie.
  */
 export const ANDROID_API_SHADE = 5
+/**
+ * API 6: `setSystemBars` (D-324). Cu targetSdk 36 aplicația e edge-to-edge, iar
+ * fâșiile de sub bara de stare și de navigare erau fundalul temei Android (gri),
+ * nu al paginii. Culoarea vine de la pagină: „fundalul" din rotiță nu e tema telefonului.
+ */
+export const ANDROID_API_BARS = 6
 
 /** Ce îi trebuie ferestrei de quick add: proiectele în care se poate scrie și oamenii. */
 export interface CaptureData {
@@ -80,6 +86,8 @@ export interface HorizontalAndroidPlugin {
   getShade(): Promise<{ enabled: boolean }>
   /** API 5. */
   setShade(o: { enabled: boolean }): Promise<{ enabled: boolean }>
+  /** API 6. Culoarea fâșiilor de sub barele de sistem (`--bg`) și iconițe deschise pe `dark`. */
+  setSystemBars(o: { color: string; dark: boolean }): Promise<void>
   addListener(event: 'reminderAction', fn: (a: DesktopAction) => void): Promise<Listener>
   addListener(event: 'changed', fn: () => void): Promise<Listener>
   addListener(event: 'widget', fn: (e: WidgetEvent) => void): Promise<Listener>
@@ -131,6 +139,7 @@ function buildBridge(cap: CapacitorGlobal): HorizontalAndroidPlugin {
     setCaptureData: call('setCaptureData'),
     getShade: call('getShade'),
     setShade: call('setShade'),
+    setSystemBars: call('setSystemBars'),
     async addListener(eventName: string, fn: (d: never) => void) {
       const callbackId = cap.nativeCallback(NAME, 'addListener', { eventName }, fn as (d: unknown) => void)
       return { remove: async () => { await cap.nativePromise(NAME, 'removeListener', { eventName, callbackId }) } }

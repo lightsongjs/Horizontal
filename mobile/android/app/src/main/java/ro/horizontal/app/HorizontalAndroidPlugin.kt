@@ -107,6 +107,19 @@ class HorizontalAndroidPlugin : Plugin() {
         call.resolve(JSObject().put("enabled", Shade.enabled(context)))
     }
 
+    /**
+     * API 6 (D-324). Fâșiile de sub bara de stare și de navigare: edge-to-edge
+     * (targetSdk 36), `SystemBars` din Capacitor pune padding pe decorView, iar
+     * acolo se vede fundalul ferestrei. Culoarea e a paginii (`--bg`), nu a temei
+     * telefonului — „fundalul" din rotiță poate fi altul decât modul de noapte.
+     */
+    @PluginMethod fun setSystemBars(call: PluginCall) {
+        val color = try { android.graphics.Color.parseColor(call.getString("color") ?: "") } catch (e: IllegalArgumentException) { return call.reject("culoare ilizibilă") }
+        bars = Bars(color, call.getBoolean("dark") ?: false)
+        activity?.runOnUiThread { applyBars(activity) }
+        call.resolve()
+    }
+
     /** Proiectele în care se poate scrie și oamenii, pentru fereastra de quick add (`QuickAddActivity`). */
     @PluginMethod fun setCaptureData(call: PluginCall) {
         val d = CaptureJson.fromJson(call.data) ?: return call.reject("date de captură ilizibile")
@@ -210,7 +223,26 @@ class HorizontalAndroidPlugin : Plugin() {
         // 4: nicio metodă nouă — citirea nativă taie pe `isMine` (`core/Ownership.kt`),
         //    deci pagina poate trimite și ea doar ce e al meu (`ANDROID_API_MINE`).
         // 5: getShade / setShade și evenimentul „shade" (notificarea fixă din bară, D-185).
-        const val API = 5
+        // 6: setSystemBars (barele de sistem în culoarea paginii, D-324).
+        const val API = 6
+
+        data class Bars(val color: Int, val dark: Boolean)
+        @Volatile private var bars: Bars? = null
+
+        /**
+         * Și din `MainActivity.onConfigurationChanged`: `SystemBars` din Capacitor
+         * repune acolo fundalul temei (uiMode e în `configChanges`, deci schimbarea
+         * modului de noapte nu recreează activitatea și pagina nu retrimite nimic).
+         */
+        @JvmStatic fun applyBars(act: android.app.Activity?) {
+            val b = bars ?: return
+            val w = act?.window ?: return
+            w.decorView.setBackgroundColor(b.color)
+            androidx.core.view.WindowCompat.getInsetsController(w, w.decorView).apply {
+                isAppearanceLightStatusBars = !b.dark
+                isAppearanceLightNavigationBars = !b.dark
+            }
+        }
         @Volatile private var instance: HorizontalAndroidPlugin? = null
 
         /**

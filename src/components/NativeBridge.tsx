@@ -3,7 +3,7 @@ import { useHorizontal } from '../store'
 import { useWritableProjects } from '../hooks'
 import { repository } from '../data'
 import { getDesktopBridge, upcomingReminders, type DesktopAction } from '../lib/desktopBridge'
-import { ANDROID_API_CAPTURE, ANDROID_API_MINE, ANDROID_API_SHADE, ANDROID_API_WIDGETS, ANDROID_WINDOW, GO_TODAY_EVENT, agendaKey, captureData, captureKey, androidListKey, canTakeActions, getAndroidBridge, pageReadAt } from '../lib/androidBridge'
+import { ANDROID_API_BARS, ANDROID_API_CAPTURE, ANDROID_API_MINE, ANDROID_API_SHADE, ANDROID_API_WIDGETS, ANDROID_WINDOW, GO_TODAY_EVENT, agendaKey, captureData, captureKey, androidListKey, canTakeActions, getAndroidBridge, pageReadAt } from '../lib/androidBridge'
 import { agendaItems } from '../lib/agenda'
 import { parseTicketPath } from '../lib/deepLink'
 import { runNativeAction } from '../lib/nativeAction'
@@ -13,6 +13,7 @@ import { upcomingEventReminders } from '../lib/calendarEvents'
 import { eventIdFromReminderId } from '../../supabase/functions/_shared/eventReminders.ts'
 import { onlyMine } from '../lib/ownership'
 import { appHistory } from '../lib/historyPort'
+import { useTheme } from '../theme'
 
 /** Cât de des se retrimite lista chiar fără nicio schimbare: fereastra alunecă. */
 const RESEND_MS = 15 * 60_000
@@ -56,6 +57,14 @@ export function NativeBridge() {
   useEffect(() => { if (android) void android.getInfo().then((i) => setAndroidApi(i.api), () => setAndroidApi(0)) }, [android])
   const api = androidApi ?? 0
   const widgets = !!android && api >= ANDROID_API_WIDGETS
+  // Barele de sistem în culoarea paginii (D-324). `--bg` citit, nu copiat: o
+  // nuanță schimbată în styles.css ajunge și aici.
+  const { theme } = useTheme()
+  useEffect(() => {
+    if (!android || api < ANDROID_API_BARS) return
+    const color = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim()
+    if (/^#[0-9a-f]{6}$/i.test(color)) void android.setSystemBars({ color, dark: theme === 'dark' })
+  }, [android, api, theme])
   // Android taie pe `isMine` doar cât o face și citirea nativă (API 4); altfel lista
   // ar clipi între „ale mele" (pagina) și „toate" (`SyncWorker`, care câștigă când e mai nouă).
   const androidMine = api >= ANDROID_API_MINE
