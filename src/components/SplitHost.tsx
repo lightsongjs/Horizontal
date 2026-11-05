@@ -14,6 +14,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useHorizontal } from '../store'
+import { useSidebarCollapsed } from '../hooks'
 import { Sidebar } from './Sidebar'
 import { appHistory } from '../lib/historyPort'
 import { forgetPane, readPaneView, seedPane, type PaneId } from '../lib/pane'
@@ -50,6 +51,8 @@ export function SplitHost({ initial, boot }: { initial: SplitState; boot: boolea
   const [panes, setPanes] = useState<PaneId[]>(() => [...initial.panes])
   const [focus, setFocus] = useState<PaneId>(initial.focus)
   const [routes, setRoutes] = useState<Partial<Record<PaneId, PaneRoute>>>({})
+  // Aceeași cheie ca aplicația obișnuită: bara rămâne cum era la ieșirea din split.
+  const [sidebarCollapsed, toggleSidebar] = useSidebarCollapsed()
   const frames = useRef<Partial<Record<PaneId, HTMLIFrameElement | null>>>({})
   const ready = useRef<Partial<Record<PaneId, boolean>>>({})
   const pendingPath = useRef<string | null>(null)
@@ -109,9 +112,9 @@ export function SplitHost({ initial, boot }: { initial: SplitState; boot: boolea
   useEffect(() => {
     for (const id of panes) {
       const o = panes.find((x) => x !== id)
-      send(id, { hz: 'host', kind: 'peer', otherTicketId: o ? routes[o]?.ticketId ?? null : null, split: panes.length === 2, focused: id === focus })
+      send(id, { hz: 'host', kind: 'peer', otherTicketId: o ? routes[o]?.ticketId ?? null : null, split: panes.length === 2, focused: id === focus, sidebarCollapsed })
     }
-  }, [panes, focus, routes, send])
+  }, [panes, focus, routes, send, sidebarCollapsed])
 
   const close = useCallback((id: PaneId) => {
     const rest = panesRef.current.filter((x) => x !== id)
@@ -154,9 +157,14 @@ export function SplitHost({ initial, boot }: { initial: SplitState; boot: boolea
       else if (m.kind === 'route') setRoutes((r) => ({ ...r, [id]: m.route }))
       else if (m.kind === 'switch') switchTo(m.to)
       else if (m.kind === 'close') close(id)
+      else if (m.kind === 'toggle-sidebar') toggleSidebar()
     }
     // Tastele cât focusul e în bara laterală (documentul de sus).
     const onKey = (e: KeyboardEvent) => {
+      // `[` ca în aplicația obișnuită, cât focusul e în bara laterală (nu într-un câmp).
+      const t = e.target as HTMLElement | null
+      const typing = !!t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))
+      if (e.key === '[' && !typing && !e.ctrlKey && !e.altKey && !e.metaKey) { e.preventDefault(); toggleSidebar(); return }
       const to = paneSwitchTarget(e)
       if (!to) return
       e.preventDefault()
@@ -169,7 +177,7 @@ export function SplitHost({ initial, boot }: { initial: SplitState; boot: boolea
       window.removeEventListener('message', onMessage)
       window.removeEventListener('keydown', onKey, true)
     }
-  }, [send, giveFocus, switchTo, close])
+  }, [send, giveFocus, switchTo, close, toggleSidebar])
 
   const nav = useCallback((a: NavAction) => {
     const id = focusRef.current
@@ -204,7 +212,7 @@ export function SplitHost({ initial, boot }: { initial: SplitState; boot: boolea
   const focusIx = panes.length === 2 ? (panes.indexOf(focus) as 0 | 1) : null
 
   return (
-    <div id="app" className="split-host">
+    <div id="app" className={`split-host${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
       <Sidebar
         showUsers={screen === 'users'}
         smartList={smartList}

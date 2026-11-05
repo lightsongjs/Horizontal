@@ -11,7 +11,10 @@ const post = (m: PaneToHost) => {
   if (window.parent !== window) window.parent.postMessage(m, window.location.origin)
 }
 
-export interface PanePeer { otherTicketId: string | null; split: boolean; focused: boolean }
+export interface PanePeer { otherTicketId: string | null; split: boolean; focused: boolean; sidebarCollapsed: boolean }
+
+/** Bara laterală e a gazdei: panoul doar o cere (antetul, `[`, `gs`). */
+export const postToggleSidebar = () => post({ hz: 'pane', kind: 'toggle-sidebar' })
 
 /**
  * Leagă panoul de gazdă. `route` se trimite la fiecare schimbare (bara
@@ -21,7 +24,7 @@ export interface PanePeer { otherTicketId: string | null; split: boolean; focuse
  * închide.
  */
 export function usePaneLink(enabled: boolean, route: PaneRoute, onNav: (a: NavAction) => void, tryClose: () => boolean): PanePeer {
-  const [peer, setPeer] = useState<PanePeer>({ otherTicketId: null, split: true, focused: false })
+  const [peer, setPeer] = useState<PanePeer>({ otherTicketId: null, split: true, focused: false, sidebarCollapsed: false })
   const onNavRef = useRef(onNav)
   onNavRef.current = onNav
   const tryCloseRef = useRef(tryClose)
@@ -84,7 +87,7 @@ export function usePaneLink(enabled: boolean, route: PaneRoute, onNav: (a: NavAc
         appHistory.dispatchPop()
       } else if (m.kind === 'close-request') {
         if (tryCloseRef.current()) post({ hz: 'pane', kind: 'close' })
-      } else if (m.kind === 'peer') setPeer({ otherTicketId: m.otherTicketId, split: m.split, focused: m.focused })
+      } else if (m.kind === 'peer') setPeer({ otherTicketId: m.otherTicketId, split: m.split, focused: m.focused, sidebarCollapsed: m.sidebarCollapsed ?? false })
     }
     document.addEventListener('focusin', onFocusIn)
     document.addEventListener('pointerdown', onPointer, true)

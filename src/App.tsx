@@ -42,7 +42,7 @@ import { isPane, seedPane, viewStore } from './lib/pane'
 import { clearSplit, loadSplit, OPEN_SPLIT_EVENT, saveSplit, seedFor, SPLIT_MIN_QUERY, type SplitState } from './lib/splitState'
 import { SplitHost } from './components/SplitHost'
 import { ServiceWorkerBridge } from './components/ServiceWorkerBridge'
-import { PaneBar, postPaneClose, usePaneLink } from './components/PaneLink'
+import { PaneBar, postPaneClose, postToggleSidebar, usePaneLink } from './components/PaneLink'
 import type { NavAction, PaneRoute } from './lib/paneProtocol'
 
 /**
@@ -303,7 +303,12 @@ function Shell({ onSplit }: { onSplit?: (s: SplitState) => void }) {
   // Sursa dreptului de a crea într-o listă inteligentă, unde nu există proiect
   // deschis pe care `canWrite` să se pronunțe.
   const writableProjects = useWritableProjects()
-  const [sidebarCollapsed, toggleSidebar] = useSidebarCollapsed()
+  // Într-un panou bara laterală e a gazdei: comutatorul o cere prin mesaj,
+  // iar starea vine înapoi în `peer` (`panePeer`, mai jos).
+  const [ownSidebarCollapsed, toggleOwnSidebar] = useSidebarCollapsed()
+  const [hostSidebarCollapsed, setHostSidebarCollapsed] = useState(false)
+  const sidebarCollapsed = isPane() ? hostSidebarCollapsed : ownSidebarCollapsed
+  const toggleSidebar = isPane() ? postToggleSidebar : toggleOwnSidebar
   const [showUsers, setShowUsers] = useState(false)
   const showUsersRef = useRef(showUsers)
   showUsersRef.current = showUsers
@@ -1416,6 +1421,7 @@ function Shell({ onSplit }: { onSplit?: (s: SplitState) => void }) {
   // modificări nesalvate cere confirmarea de azi (și refuză până atunci).
   const paneTryClose = () => sheet.kind === 'none' || closeSheet() !== false
   const panePeer = usePaneLink(paneMode, paneRoute, paneNav, paneTryClose)
+  useEffect(() => { setHostSidebarCollapsed(panePeer.sidebarCollapsed) }, [panePeer.sidebarCollapsed])
 
   // ── Panoul dublu: pornirea (documentul de sus, de la 1200px). Stânga =
   // unde erai, cu tichetul; dreapta = același ecran, fără tichet.

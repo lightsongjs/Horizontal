@@ -7992,10 +7992,11 @@ body:has(.qab) { overflow-y: auto; }
 /* Indicatorul panoului fără focus se vedea abia, în tema luminoasă. */
 [data-theme='light'] .sidebar-mini i:not(.on) { background: var(--txt-faint); opacity: .35; }
 
-/* Într-un panou: o singură coloană, fără comutatorul barei laterale. */
+/* Într-un panou: o singură coloană. Comutatorul din antet rămâne: ascunde
+   bara laterală a GAZDEI (`toggle-sidebar`). */
 html[data-pane] #app,
 html[data-pane] #app.sidebar-collapsed { grid-template-columns: minmax(0, 1fr); }
-html[data-pane] .header-sidebar-btn { display: none; }
+:where(html:not([data-narrow])) #app.split-host.sidebar-collapsed { grid-template-columns: 0 minmax(0, 1fr); }
 .pane-bar {
   display: flex;
   align-items: center;
