@@ -6,6 +6,7 @@ import { Icon } from './Icon'
 import { getDesktopBridge } from '../lib/desktopBridge'
 import { getAndroidBridge } from '../lib/androidBridge'
 import { AndroidReminderCard } from './AndroidReminderCard'
+import { isPane } from '../lib/pane'
 
 /**
  * Comutatorul de notificări. Trăiește în capul listei „Azi" fiindcă acolo e
@@ -19,6 +20,10 @@ export function PushToggle() {
   // WebView-ul nu are PushManager; cardul Android cere ce lipsește cutiei.
   // Două componente, nu un `return` timpuriu aici: fiecare își cheamă
   // hook-urile necondiționat (regula hook-urilor).
+  // Într-un panou (iframe-ul panoului dublu) mementourile sunt ale gazdei, iar
+  // puntea cutiei de Linux nu ajunge în cadru: fără garda asta, panoul rămas
+  // după ✕ arăta „Activează", care în Electron dă „push service not available".
+  if (isPane()) return null
   return getAndroidBridge() ? <AndroidReminderCard /> : <WebPushToggle />
 }
 
