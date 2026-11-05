@@ -98,6 +98,17 @@ const pristineCreate: FormDirtyState = {
   rrule: null,
 }
 
+describe('isFormDirty — spațiile goale nu sunt o modificare', () => {
+  const saved = { ...pristineEdit, existing: { ...existingIssue, title: 'continua cu x', desc: 'unu\ndoi' }, title: 'continua cu x', desc: 'unu\ndoi' }
+  it('spații la capătul titlului și rânduri goale după descriere → curat', () => {
+    expect(isFormDirty({ ...saved, title: 'continua cu x   ', desc: 'unu  \ndoi\n\n' })).toBe(false)
+  })
+  it('un caracter adevărat → murdar', () => {
+    expect(isFormDirty({ ...saved, title: 'continua cu xy' })).toBe(true)
+    expect(isFormDirty({ ...saved, desc: 'unu\ndoi!' })).toBe(true)
+  })
+})
+
 describe('isFormDirty — draftul firului', () => {
   it('un corp de comentariu nescris marchează formularul ca murdar', () => {
     expect(isFormDirty({ ...pristineEdit, commentDraft: 'ceva' })).toBe(true)

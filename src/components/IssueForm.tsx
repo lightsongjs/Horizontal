@@ -12,6 +12,7 @@ import { stripSpans } from '../lib/parseDue'
 import { fold } from '../lib/text'
 import { fillFromTitle, titleToSave, type FillMemo } from '../lib/titleDueFill'
 import { withLinks } from '../lib/titleLinks'
+import { sameDesc, sameTitle } from '../lib/sameText'
 import {
   NO_SCHEDULE, defaultReminder, displayFromInputDate,
   fromDisplayDate, fromInputs, fromTimeText, isOverdue, reminderAt,
@@ -140,8 +141,9 @@ export function isFormDirty(s: FormDirtyState): boolean {
   if (s.isEdit) {
     const existing = s.existing
     return (
-      s.title !== (existing?.title ?? '') ||
-      s.desc !== (existing?.desc ?? '') ||
+      // Spațiile goale nu sunt o modificare (`lib/sameText`).
+      !sameTitle(s.title, existing?.title ?? '') ||
+      !sameDesc(s.desc, existing?.desc ?? '') ||
       s.theme !== (existing?.theme ?? '') ||
       s.wave !== (existing?.wave ?? s.activeWave) ||
       s.assigneeId !== (existing?.assigneeId ?? null) ||
