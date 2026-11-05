@@ -4,7 +4,7 @@ import { mergeTitleDue, type DueState } from './titleDue'
 import { toDateInput, toTimeInput } from './schedule'
 
 // Luni, 24 august 2026, 18:40 local — după 17, ca „la 17" să se rostogolească
-// pe mâine la adăugarea rapidă, iar aici să NU.
+// pe mâine la adăugarea rapidă, iar aici să NU când ziua existentă e alta.
 const NOW = new Date(2026, 7, 24, 18, 40)
 const iso = (y: number, m: number, d: number, h = 0, min = 0) => new Date(y, m - 1, d, h, min).toISOString()
 const at = (s: string | null) => (s ? `${toDateInput(s)} ${toTimeInput(s)}` : null)
@@ -14,6 +14,10 @@ const NONE: DueState = { dueAt: null, allDay: true, remindAt: null, rrule: null 
 const THU_ALLDAY: DueState = { dueAt: iso(2026, 8, 27), allDay: true, remindAt: null, rrule: null }
 /** Joi 27 aug 10:00, memento cu 30 min înainte. */
 const THU_10: DueState = { dueAt: iso(2026, 8, 27, 10), allDay: false, remindAt: iso(2026, 8, 27, 9, 30), rrule: null }
+/** Azi (luni 24 aug), toată ziua — ora 8 a trecut deja, 20 nu. */
+const TODAY_ALLDAY: DueState = { dueAt: iso(2026, 8, 24), allDay: true, remindAt: null, rrule: null }
+/** Restantă: duminică 23 aug, toată ziua. */
+const YDAY_ALLDAY: DueState = { dueAt: iso(2026, 8, 23), allDay: true, remindAt: null, rrule: null }
 const DAILY_9: DueState = { dueAt: iso(2026, 8, 25, 9), allDay: false, remindAt: iso(2026, 8, 25, 9), rrule: 'FREQ=DAILY' }
 
 /**
@@ -51,6 +55,12 @@ const FIXTURES: {
     existing: THU_10, text: 'raport zilnic', due: '2026-08-27 10:00', allDay: false, remind: '2026-08-27 09:30', rrule: 'FREQ=DAILY' },
   { name: 'recurență care numește ziua → prima apariție, ora rămâne',
     existing: THU_10, text: 'raport vinerea', due: '2026-08-28 10:00', allDay: false, remind: '2026-08-28 09:30', rrule: 'FREQ=WEEKLY;BYDAY=FR' },
+  { name: 'azi + oră încă viitoare → azi la ora aceea',
+    existing: TODAY_ALLDAY, text: 'ședință la 20', due: '2026-08-24 20:00', allDay: false, remind: '2026-08-24 20:00', rrule: null },
+  { name: 'azi + oră trecută → mâine la ora aceea (D-317)',
+    existing: TODAY_ALLDAY, text: 'contact Mihai at 8', due: '2026-08-25 08:00', allDay: false, remind: '2026-08-25 08:00', rrule: null },
+  { name: 'restantă + oră → următoarea apariție a orei, nu tot în trecut',
+    existing: YDAY_ALLDAY, text: 'ședință la 20', due: '2026-08-24 20:00', allDay: false, remind: '2026-08-24 20:00', rrule: null },
   { name: '„peste 2 ore" are și zi, și oră → înlocuiește',
     existing: THU_ALLDAY, text: 'sună peste 2 ore', due: '2026-08-24 20:40', allDay: false, remind: '2026-08-24 20:40', rrule: null },
 ]
@@ -58,7 +68,7 @@ const FIXTURES: {
 describe('mergeTitleDue', () => {
   for (const f of FIXTURES) {
     it(f.name, () => {
-      const r = mergeTitleDue(f.existing, parseDue(f.text, NOW))
+      const r = mergeTitleDue(f.existing, parseDue(f.text, NOW), NOW)
       expect({ due: at(r.dueAt), allDay: r.allDay, remind: at(r.remindAt), rrule: r.rrule })
         .toEqual({ due: f.due, allDay: f.allDay, remind: f.remind, rrule: f.rrule })
     })

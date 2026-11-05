@@ -9,7 +9,10 @@
  *
  * Regulile:
  * - fără scadență existentă → ce a înțeles parserul, ca la adăugarea rapidă;
- * - numai oră → ziua rămâne, se pune ora (fără rostogolire „a trecut deja");
+ * - numai oră → ziua rămâne, se pune ora; dacă asta cade în trecut (ziua e
+ *   azi și ora a trecut, sau scadența e restantă), e următoarea apariție a
+ *   orei, ca la adăugarea rapidă — „la 8" spus seara pe o sarcină de azi e
+ *   mâine la 8 (D-317);
  * - numai zi → ziua se schimbă, ora (dacă există) rămâne;
  * - amândouă → se înlocuiește;
  * - mementoul își ține decalajul; o zi întreagă care capătă oră trece pe
@@ -35,7 +38,7 @@ export type TitleDueParse = Pick<ParsedDue, 'dueAt' | 'allDay' | 'rrule' | 'hasD
  * le trimite prin salvarea automată, care oricum pleacă doar cu ce diferă.
  * `parsed.dueAt === null` (nicio dată recunoscută) → `existing` neatins.
  */
-export function mergeTitleDue(existing: DueState, parsed: TitleDueParse): DueState {
+export function mergeTitleDue(existing: DueState, parsed: TitleDueParse, now: Date = new Date()): DueState {
   if (!parsed.dueAt) return { ...existing }
   const rrule = parsed.rrule ?? existing.rrule
 
@@ -55,7 +58,8 @@ export function mergeTitleDue(existing: DueState, parsed: TitleDueParse): DueSta
     // aceeași zi pe care o arată jetonul.
     const d = new Date(old)
     d.setHours(got.getHours(), got.getMinutes(), 0, 0)
-    target = { dueAt: d.toISOString(), allDay: false }
+    // Trecut → parserul a rostogolit deja ora pe următoarea ei apariție.
+    target = { dueAt: d.getTime() < now.getTime() ? parsed.dueAt : d.toISOString(), allDay: false }
   } else if (parsed.hasDay) {
     const d = new Date(got)
     if (existing.allDay) d.setHours(0, 0, 0, 0)
