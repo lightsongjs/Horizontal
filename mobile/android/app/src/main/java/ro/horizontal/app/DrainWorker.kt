@@ -190,7 +190,8 @@ class DrainWorker(ctx: Context, p: WorkerParameters) : Worker(ctx, p) {
             if (proj.status !in 200..299) return outcomeOf(proj.status, false, false)
             val p = org.json.JSONArray(proj.body).optJSONObject(0) ?: return Outcome.DROP   // proiect șters / fără acces
             val id = c.attemptId ?: run {
-                val ex = SupabaseApi.rest(ctx, "GET", "issues?project_id=eq.${c.projectId}&select=id", asUser = owner) ?: return Outcome.KEEP_NO_SESSION
+                // Prin funcție: RLS ascunde notițele unui client fără drept, iar numărul ar fi nimerit unul de notiță.
+                val ex = SupabaseApi.rest(ctx, "POST", "rpc/project_issue_ids", org.json.JSONObject().put("p_project", c.projectId).toString(), asUser = owner) ?: return Outcome.KEEP_NO_SESSION
                 if (ex.status !in 200..299) return outcomeOf(ex.status, false, false)
                 val a = org.json.JSONArray(ex.body)
                 val candidate = nextIssueId((0 until a.length()).map { a.getJSONObject(it).getString("id") }, p.getString("prefix"))

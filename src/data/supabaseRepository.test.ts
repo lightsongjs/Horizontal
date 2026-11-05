@@ -134,7 +134,14 @@ const { fakeDb } = vi.hoisted(() => {
     from(table: string) {
       return new Query(this.tables, table)
     }
+    // `project_issue_ids` vede TOT proiectul (security definer), deci aici: tabelul întreg.
+    // Unele teste o înlocuiesc (`withRpc`); `reset` o pune la loc.
+    defaultRpc = async (fn: string, args: Record<string, unknown>): Promise<{ data: unknown[] | null; error: { message: string } | null }> => fn === 'project_issue_ids'
+      ? { data: this.tables.issues.filter((r) => r.project_id === args.p_project).map((r) => ({ id: r.id })), error: null }
+      : { data: null, error: { message: `rpc necunoscut: ${fn}` } }
+    rpc = this.defaultRpc
     reset() {
+      this.rpc = this.defaultRpc
       this.tables = {
         projects: [],
         waves: [],
@@ -225,6 +232,20 @@ describe('supabaseRepository', () => {
     // apară instant, fără o rundă suplimentară.
     expect(issue.createdBy).toBe('u1')
     expect(fakeDb.tables.dependencies).toContainEqual({ issue_id: 'P-02', depends_on_id: 'P-01' })
+  })
+
+  it('createIssue ia numerele ocupate prin `project_issue_ids`, nu din `issues` (RLS ascunde notițele)', async () => {
+    fakeDb.tables.projects.push({ id: 'p', prefix: 'P', current_wave: 1, name: 'x', description: '', accent: '#fff' })
+    fakeDb.tables.issues.push({ id: 'P-01', project_id: 'p', title: 'A', details: '', wave: 1, done: false })
+    // Notița pe care clientul n-o vede prin `issues`: o întoarce numai funcția.
+    const rpc = vi.fn(async (fn: string, args: Record<string, unknown>) => {
+      const r = await fakeDb.defaultRpc(fn, args)
+      return fn === 'project_issue_ids' ? { ...r, data: [...(r.data ?? []), { id: 'P-07' }] } : r
+    })
+    fakeDb.rpc = rpc
+    const issue = await createSupabaseRepository().createIssue({ projectId: 'p', title: 'B', deps: [] })
+    expect(rpc).toHaveBeenCalledWith('project_issue_ids', { p_project: 'p' })
+    expect(issue.id).toBe('P-08')
   })
 
   it('createIssue ia alt număr când altcineva (telefonul) a luat între timp același ID', async () => {

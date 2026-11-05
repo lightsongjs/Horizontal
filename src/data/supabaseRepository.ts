@@ -231,7 +231,9 @@ export function createSupabaseRepository(): Repository {
 
   /** Un insert, cu numărul calculat acum. Vezi `createIssue` pentru cursă. */
   async function createIssueOnce(input: NewIssue): Promise<Issue> {
-    const { data: existing, error: exErr } = await db.from('issues').select('id').eq('project_id', input.projectId)
+    // Prin funcție, nu `from('issues')`: RLS ascunde notițele (valul 0) unui
+    // client fără drept, iar „cel mai mare + 1" ar fi nimerit numărul unei notițe.
+    const { data: existing, error: exErr } = await db.rpc('project_issue_ids', { p_project: input.projectId })
     if (exErr) throw exErr
     const { data: proj, error: pErr } = await db
       .from('projects')
@@ -240,7 +242,7 @@ export function createSupabaseRepository(): Repository {
       .single()
     if (pErr) throw pErr
 
-    const id = nextIssueId((existing ?? []).map((r) => r.id), proj.prefix)
+    const id = nextIssueId((existing ?? []).map((r: { id: string }) => r.id), proj.prefix)
     // `getSession()` citește de obicei sesiunea locală, fără rundă către
     // rețea — dar nu e GARANTAT: cu un token aproape de expirare, chiar
     // `getSession()` îl reîmprospătează pe loc, ceea ce E o cerere de

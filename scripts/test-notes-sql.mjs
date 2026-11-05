@@ -96,7 +96,7 @@ await admin.end()
 const db = await connect(connection)
 for (const f of ['supabase/schema.sql', 'supabase/migration-access.sql', 'supabase/migration-todo.sql']) await db.query(read(f))
 await db.query(EXTRA_COLUMNS)
-for (const f of ['supabase/migration-push.sql', 'supabase/migration-attachments.sql', 'supabase/migration-comments.sql', 'supabase/migration-obstacles.sql', 'supabase/migration-routines.sql', 'supabase/migration-notes-access.sql']) {
+for (const f of ['supabase/migration-push.sql', 'supabase/migration-attachments.sql', 'supabase/migration-comments.sql', 'supabase/migration-obstacles.sql', 'supabase/migration-routines.sql', 'supabase/migration-notes-access.sql', 'supabase/migration-issue-ids.sql']) {
   // migration-push cere pg_cron/vault doar în migration-cron, nu aici.
   await db.query(read(f))
 }
@@ -271,6 +271,18 @@ await scenario('scrierea clientului', async () => {
   check('nu redenumește Notițele', !wv.error && wv.rows.length === 0, n(wv))
   const ok = await rpcAs(mate, `insert into issues (id, project_id, title, wave) values ('HZ-03', 'hz', 'x', 0) returning id`)
   check('colegul cu drept creează în Notițe', !ok.error && ok.rows.length === 1, n(ok))
+})
+
+await scenario('numărul următor ține cont și de notițe', async () => {
+  const { client, boss } = await setup()
+  const ids = (r) => (r.rows ?? []).map((x) => x.id).sort().join(',')
+  const c = await rpcAs(client, `select id from public.project_issue_ids('hz')`)
+  check('clientul primește și id-ul notiței (fără conținut)', !c.error && ids(c) === 'HZ-01,HZ-02', c.error ? n(c) : ids(c))
+  const b = await rpcAs(boss, `select id from public.project_issue_ids('hz')`)
+  check('adminul le primește pe toate', !b.error && ids(b) === 'HZ-01,HZ-02', b.error ? n(b) : ids(b))
+  const stranger = await user()
+  const s = await rpcAs(stranger, `select id from public.project_issue_ids('hz')`)
+  check('un nemembru nu primește nimic', !s.error && s.rows.length === 0, n(s))
 })
 
 await scenario('mutarea în alt proiect', async () => {
