@@ -11,6 +11,7 @@ import { ticketUrl } from '../lib/deepLink'
 import { stripSpans } from '../lib/parseDue'
 import { fold } from '../lib/text'
 import { fillFromTitle, titleToSave, type FillMemo } from '../lib/titleDueFill'
+import { withLinks } from '../lib/titleLinks'
 import {
   NO_SCHEDULE, defaultReminder, displayFromInputDate,
   fromDisplayDate, fromInputs, fromTimeText, isOverdue, reminderAt,
@@ -34,6 +35,7 @@ import { attachBlocked } from './SheetFiles'
 import type { Issue, TestScenario } from '../lib/types'
 import { pinPatch } from '../lib/pinned'
 import { Icon } from './Icon'
+import { mirrorLinkDown, mirrorLinkHover } from './TitleText'
 import { waveLabel } from '../lib/waveBar'
 import { displayIssueId, isTempIssueId } from '../lib/issueId'
 import { repository } from '../data'
@@ -1642,7 +1644,14 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
           title={titleDate.onDate ? 'Nu e o dată — atinge ca să rămână text în titlu' : undefined}
         >
           <span className="sh-title-mirror" ref={titleDate.mirrorRef} aria-hidden="true">
-            {titlePieces.map((p, i) => (p.mark ? <mark key={i}>{p.text}</mark> : p.proj ? <span key={i} className="proj-mark">{p.text}</span> : <span key={i}>{p.text}</span>))}
+            {withLinks(titlePieces, title).map((p, i) => {
+              // Linkul e subliniat în oglindă; un click pe el îl deschide cât
+              // nu scrii în titlu (Ctrl/⌘+click oricând) — `mirrorLinkDown`.
+              const link = p.href ? { className: 'mirror-link', 'data-href': p.href } : {}
+              return p.mark ? <mark key={i} {...link}>{p.text}</mark>
+                : p.proj ? <span key={i} className={`proj-mark${p.href ? ' mirror-link' : ''}`} data-href={p.href}>{p.text}</span>
+                : <span key={i} {...link}>{p.text}</span>
+            })}
           </span>
           <textarea
             ref={titleInputRef}
@@ -1674,6 +1683,8 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
             spellCheck={false}
             // O atingere PE fragmentul recunoscut înseamnă „nu e o dată".
             {...titleDate.inputProps}
+            onPointerDown={(e) => { if (!mirrorLinkDown(e, titleDate.mirrorRef.current)) titleDate.inputProps.onPointerDown(e) }}
+            onPointerMove={(e) => { mirrorLinkHover(e, titleDate.mirrorRef.current); titleDate.inputProps.onPointerMove(e) }}
             // Peste plafonul de înălțime din CSS câmpul se derulează, iar
             // oglinda trebuie să meargă cu el — altfel marcajul de dată rămâne
             // pe textul de deasupra.

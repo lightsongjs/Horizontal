@@ -6295,9 +6295,10 @@ body:has(.kb-sheet) .toast {
   border-radius: 4px;
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent);
 }
-/* Linkul din titlu: oglinda are text transparent, deci se vede doar linia —
-   sub textul din textarea, în culoarea linkurilor din descriere. */
-.es-title-mirror .es-title-link {
+/* Linkul din titlul editabil (foaia de tichet, formularul): oglinda are text
+   transparent, deci se vede doar linia — sub textul din textarea, în culoarea
+   linkurilor din descriere. */
+.es-title-mirror .mirror-link, .sh-title-mirror .mirror-link {
   text-decoration: underline 1px;
   text-underline-offset: 3px;
   text-decoration-color: color-mix(in srgb, var(--accent) 55%, transparent);

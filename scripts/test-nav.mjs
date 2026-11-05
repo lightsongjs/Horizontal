@@ -1156,7 +1156,7 @@ try {
     check('atingerea pe restul titlului deschide foaia', (await lp.locator('.edit-sheet').count()) === 1 && (await opened()).length === 1)
     // Primul rând al linkului (`getClientRects`): rupt pe două rânduri, centrul
     // dreptunghiului întreg cade la capătul gol al primului rând.
-    const r0 = await lp.evaluate(() => { const r = document.querySelector('.edit-sheet .es-title-mirror .es-title-link')?.getClientRects()[0]; return r && { x: (r.left + r.right) / 2, y: (r.top + r.bottom) / 2 } })
+    const r0 = await lp.evaluate(() => { const r = document.querySelector('.edit-sheet .es-title-mirror .mirror-link')?.getClientRects()[0]; return r && { x: (r.left + r.right) / 2, y: (r.top + r.bottom) / 2 } })
     c = r0 ?? { x: 0, y: 0 }
     await L.tap(c.x, c.y)
     await lp.waitForTimeout(600)
@@ -1168,6 +1168,37 @@ try {
     await lp.waitForTimeout(600)
     check('foaie, cu focus: linkul e text de corectat', (await opened()).length === 2, `deschise=${(await opened()).length}`)
     await lctx.close()
+
+    // Desktop: titlul din panoul lateral („Azi" docat) — click pe link îl
+    // deschide, fără să pună cursorul în titlu.
+    const dctx = await browser.newContext({ viewport: { width: 1440, height: 900 } })
+    await dctx.addInitScript(() => { window.__opened = []; window.open = (u) => { window.__opened.push(String(u)); return null } })
+    const dp = await dctx.newPage()
+    await dp.goto(BASE, { waitUntil: 'networkidle' })
+    await dp.waitForTimeout(800)
+    const id = await dp.evaluate(() => {
+      const db = JSON.parse(localStorage.getItem('horizontal:v2'))
+      const i = db.issues.find((x) => !x.done && x.projectId !== 'd')
+      i.title = 'Vezi https://youtu.be/AvHjix2TpH4'
+      i.dueAt = new Date().toISOString()
+      i.allDay = true
+      localStorage.setItem('horizontal:v2', JSON.stringify(db))
+      return i.id
+    })
+    await dp.reload({ waitUntil: 'networkidle' })
+    await dp.waitForTimeout(800)
+    const drow = dp.locator(`.task-row[data-issue-id="${id}"] .list-title`)
+    const db0 = await drow.boundingBox()
+    await dp.mouse.click(db0.x + 6, db0.y + db0.height / 2)
+    await dp.waitForTimeout(1200)
+    const dr = await dp.evaluate(() => { const r = document.querySelector('.split-pane .mirror-link')?.getClientRects()[0]; return r && { x: (r.left + r.right) / 2, y: (r.top + r.bottom) / 2 } })
+    if (dr) await dp.mouse.click(dr.x, dr.y)
+    await dp.waitForTimeout(500)
+    const dOpened = await dp.evaluate(() => window.__opened)
+    const dFocus = await dp.evaluate(() => document.activeElement?.tagName)
+    check('panou (desktop): click pe linkul din titlu îl deschide', !!dr && JSON.stringify(dOpened) === '["https://youtu.be/AvHjix2TpH4"]' && dFocus !== 'TEXTAREA',
+      dr ? `deschise=${JSON.stringify(dOpened)} focus=${dFocus}` : 'fără link în panou')
+    await dctx.close()
   }
 
   // ── Gesturile de pe telefon: glisare, apăsare lungă, selecție ─────────

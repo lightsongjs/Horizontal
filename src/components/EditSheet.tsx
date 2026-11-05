@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type RefObject } from 'react'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
-import { swallowNextClick, useAutosave, useCanWriteIn, useTitleDate, type TitleDate } from '../hooks'
+import { useAutosave, useCanWriteIn, useTitleDate, type TitleDate } from '../hooks'
 import type { Normalize } from '../lib/autosave'
 import { dateFragments } from '../lib/parseDue'
 import { dueLabelParts } from '../lib/quickDraft'
@@ -12,6 +12,7 @@ import {
 import { pinPatch } from '../lib/pinned'
 import { mergeTitleDue } from '../lib/titleDue'
 import { withLinks } from '../lib/titleLinks'
+import { mirrorLinkDown, mirrorLinkHover } from './TitleText'
 import type { Issue } from '../lib/types'
 import { Icon } from './Icon'
 import { KeyboardSheet } from './KeyboardSheet'
@@ -427,20 +428,6 @@ function SheetDue({ fields: d, commit }: { fields: EditFields; commit(patch: Par
 }
 
 /**
- * Ținta linkului din oglindă aflat sub punct — dreptunghiurile reale, ca la
- * `markAt`, câte unul pe rând de text. ±3px pe verticală: un link rupt pe două
- * rânduri lasă între ele un gol de interlinie în care degetul cade ușor.
- */
-function linkAt(mirror: HTMLElement | null, x: number, y: number): string | null {
-  for (const el of mirror?.querySelectorAll<HTMLElement>('[data-href]') ?? []) {
-    for (const r of el.getClientRects()) {
-      if (x >= r.left && x <= r.right && y >= r.top - 3 && y <= r.bottom + 3) return el.dataset.href ?? null
-    }
-  }
-  return null
-}
-
-/**
  * Titlul foii de tichet: un `<textarea>` transparent peste o oglindă care
  * desenează fragmentul de dată — tiparul `sh-title-mirror` din formularul
  * complet, nu `QuickTitle`: acela e un `<input>` de un rând, iar aici titlul
@@ -473,7 +460,7 @@ function EditTitle({ date, value, textareaRef, readOnly, onChange, onFocus, onBl
     >
       <span className="es-title-mirror" ref={date.mirrorRef} aria-hidden="true">
         {withLinks(date.pieces, value).map((p, i) => {
-          const cls = p.href ? 'es-title-link' : undefined
+          const cls = p.href ? 'mirror-link' : undefined
           return p.mark
             ? <mark key={i} className={cls} data-href={p.href}>{p.text}</mark>
             : <span key={i} className={cls} data-href={p.href}>{p.text}</span>
@@ -497,20 +484,8 @@ function EditTitle({ date, value, textareaRef, readOnly, onChange, onFocus, onBl
         onKeyDown={onKeyDown}
         // O atingere PE fragmentul evidențiat înseamnă „nu e o dată".
         {...date.inputProps}
-        onPointerDown={(e) => {
-          if (document.activeElement !== e.currentTarget) {
-            const href = linkAt(date.mirrorRef.current, e.clientX, e.clientY)
-            if (href) {
-              // Comanda, nu poziționare: fără focus, fără tastatură, iar
-              // click-ul de după ridicarea degetului nu ajunge pe foaie.
-              e.preventDefault()
-              swallowNextClick()
-              window.open(href, '_blank', 'noopener,noreferrer')
-              return
-            }
-          }
-          date.inputProps.onPointerDown(e)
-        }}
+        onPointerDown={(e) => { if (!mirrorLinkDown(e, date.mirrorRef.current)) date.inputProps.onPointerDown(e) }}
+        onPointerMove={(e) => { mirrorLinkHover(e, date.mirrorRef.current); date.inputProps.onPointerMove(e) }}
       />
     </span>
   )
