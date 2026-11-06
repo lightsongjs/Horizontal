@@ -3,8 +3,25 @@
 
 import type { Issue, Layers } from './types'
 import { layerKeys } from './engine'
+import { hasTime, startOfLocalDay } from './schedule'
 
-/** Stable partition: urgent ids first, original order preserved otherwise. */
+/**
+ * Scadența, în interiorul unei grupe (decizia omului, 2026-11-06): restanțele
+ * primele, apoi de la cea mai apropiată la cea mai îndepărtată — ziua întâi,
+ * iar în aceeași zi cele cu oră cronologic, înaintea celor fără oră (ca
+ * `compareDue`). Fără scadență = la coadă, în ordinea de dinainte (sortare stabilă).
+ */
+function compareDueOnly(a: Issue | undefined, b: Issue | undefined): number {
+  const ad = a?.dueAt ? new Date(a.dueAt) : null
+  const bd = b?.dueAt ? new Date(b.dueAt) : null
+  if (!ad || !bd) return ad ? -1 : bd ? 1 : 0
+  const day = startOfLocalDay(ad).getTime() - startOfLocalDay(bd).getTime()
+  if (day !== 0) return day
+  if (hasTime(a!) !== hasTime(b!)) return hasTime(a!) ? -1 : 1
+  return ad.getTime() - bd.getTime()
+}
+
+/** Stable partition: urgent ids first; within each group by due date (`compareDueOnly`), original order otherwise. */
 export function orderIdsByUrgency(ids: string[], byId: Record<string, Issue>): string[] {
   const urgent: string[] = []
   const rest: string[] = []
@@ -12,7 +29,8 @@ export function orderIdsByUrgency(ids: string[], byId: Record<string, Issue>): s
     if (byId[id]?.urgent) urgent.push(id)
     else rest.push(id)
   }
-  return [...urgent, ...rest]
+  const byDue = (x: string, y: string) => compareDueOnly(byId[x], byId[y])
+  return [...urgent.sort(byDue), ...rest.sort(byDue)]
 }
 
 export interface OrderedLayer {

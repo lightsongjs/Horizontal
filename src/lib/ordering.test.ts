@@ -20,6 +20,24 @@ describe('orderIdsByUrgency', () => {
     expect(orderIdsByUrgency(['a', 'b'], byId)).toEqual(['a', 'b'])
   })
 
+  it('în fiecare grupă: restanțele, apoi scadența crescător; fără scadență la coadă, în ordinea de dinainte', () => {
+    const at = (iso: string, allDay = false) => ({ dueAt: new Date(iso).toISOString(), allDay })
+    const byId = {
+      azi21: issue('azi21', at('2026-11-06T21:00')),
+      nodate1: issue('nodate1'),
+      noi9: issue('noi9', at('2026-11-09T13:00')),
+      restanta: issue('restanta', at('2026-11-06T08:00')),
+      aziFaraOra: issue('aziFaraOra', at('2026-11-06T00:00', true)),
+      nodate2: issue('nodate2'),
+      azi12: issue('azi12', at('2026-11-06T12:30')),
+      urgMaine: issue('urgMaine', { urgent: true, ...at('2026-11-07T12:00') }),
+      urgAzi: issue('urgAzi', { urgent: true, ...at('2026-11-06T10:00') }),
+    }
+    expect(orderIdsByUrgency(Object.keys(byId), byId)).toEqual(
+      ['urgAzi', 'urgMaine', 'restanta', 'azi12', 'azi21', 'aziFaraOra', 'noi9', 'nodate1', 'nodate2'],
+    )
+  })
+
   it('tolerates ids missing from byId (treats as non-urgent)', () => {
     const byId = { a: issue('a', { urgent: true }) }
     expect(orderIdsByUrgency(['a', 'ghost'], byId)).toEqual(['a', 'ghost'])
