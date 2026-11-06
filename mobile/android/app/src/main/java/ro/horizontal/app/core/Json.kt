@@ -7,10 +7,14 @@ object Json {
     private fun JSONObject.str(k: String): String? = if (has(k) && !isNull(k)) getString(k) else null
 
     fun reminderToJson(r: Reminder) = JSONObject().put("id", r.id).put("at", isoJs(r.at)).put("title", r.title).put("body", r.body).put("dueAt", r.dueAt ?: JSONObject.NULL).put("allDay", r.allDay)
+        .put("every", r.every ?: JSONObject.NULL).put("anchor", r.anchor?.let { isoJs(it) } ?: JSONObject.NULL)
+    /** Și rândul de pe punte (`DesktopReminder`): `every` vine de la pagină doar pe o serie; `anchor` doar de pe disc (`deferred`). */
     fun reminderFromJson(o: JSONObject): Reminder? {
         val id = o.str("id") ?: return null
         val at = parseIso(o.str("at")) ?: return null
-        return Reminder(reminderKey(id, at), id, at, o.str("title") ?: return null, o.str("body") ?: return null, o.str("dueAt"), o.optBoolean("allDay", false))
+        val every = if (o.has("every") && !o.isNull("every")) o.optInt("every", 0).takeIf { it >= 1 } else null
+        return Reminder(reminderKey(id, at), id, at, o.str("title") ?: return null, o.str("body") ?: return null, o.str("dueAt"), o.optBoolean("allDay", false),
+            every, parseIso(o.str("anchor")))
     }
     fun actionToJson(a: NativeAction) = JSONObject().put("uid", a.uid).put("kind", a.kind.name).put("id", a.id)
         .put("remindAt", a.remindAt ?: JSONObject.NULL).put("dueAt", a.dueAt ?: JSONObject.NULL).put("prevDueAt", a.prevDueAt ?: JSONObject.NULL)
@@ -56,6 +60,7 @@ object Json {
         .put("rrule", c.rrule ?: JSONObject.NULL).put("urgent", c.urgent).put("assigneeId", c.assigneeId ?: JSONObject.NULL)
         .put("createdAt", c.createdAt).put("attemptId", c.attemptId ?: JSONObject.NULL).put("realId", c.realId ?: JSONObject.NULL)
         .put("drainedAt", c.drainedAt ?: JSONObject.NULL).put("inFlight", c.inFlight).put("tries", c.tries)
+        .put("pingEvery", c.pingEvery ?: JSONObject.NULL)
         .put("files", org.json.JSONArray().also { a -> c.files.forEach { f -> a.put(JSONObject().put("path", f.path).put("filename", f.filename)
             .put("contentType", f.contentType).put("size", f.size).put("attachmentId", f.attachmentId).put("uploaded", f.uploaded)) } })
     fun createFromJson(o: JSONObject): NativeCreate? = try {
@@ -65,7 +70,8 @@ object Json {
             o.str("assigneeId"), o.getLong("createdAt"), o.str("attemptId"), o.str("realId"),
             if (o.isNull("drainedAt")) null else o.getLong("drainedAt"), o.optBoolean("inFlight"), o.optInt("tries"),
             (0 until fs.length()).map { val f = fs.getJSONObject(it)
-                NativeFile(f.getString("path"), f.getString("filename"), f.getString("contentType"), f.getLong("size"), f.getString("attachmentId"), f.optBoolean("uploaded")) })
+                NativeFile(f.getString("path"), f.getString("filename"), f.getString("contentType"), f.getLong("size"), f.getString("attachmentId"), f.optBoolean("uploaded")) },
+            if (o.has("pingEvery") && !o.isNull("pingEvery")) o.optInt("pingEvery", 0).takeIf { it >= 1 } else null)
     } catch (e: Exception) { null }
     fun editToJson(e: NativeEdit) = JSONObject().put("uid", e.uid).put("id", e.id).put("fields", JSONObject(e.fields as Map<*, *>))
         .put("createdAt", e.createdAt).put("inFlight", e.inFlight).put("drainedAt", e.drainedAt ?: JSONObject.NULL)

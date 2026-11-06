@@ -1,10 +1,26 @@
 package ro.horizontal.app.core
 
-/** Un memento din plan. `key` = `id@ISO`: unul amânat e ALT memento, nu același mutat. */
+/**
+ * Un memento din plan. `key` = `id@ISO`: unul amânat e ALT memento, nu același mutat.
+ *
+ * `every` = pasul unei serii de mementouri, în minute (`ping_every`): rândul e
+ * atunci UNUL pe tichet, cu `at` = primul ping (ancora grilei) și `dueAt` =
+ * capătul ferestrei; `planAlarms` îl desfășoară în pinguri (`core/Pings.kt`).
+ * Un ping sunat poartă cheia și ora LUI, iar `anchor` = `at`-ul seriei — cu el
+ * compară `DeferGate` `remind_at` de pe server, care nu se mișcă la fiecare ping.
+ */
 data class Reminder(
     val key: String, val id: String, val at: Long, val title: String, val body: String,
     val dueAt: String?, val allDay: Boolean,
+    val every: Int? = null, val anchor: Long? = null,
 )
+
+/** Pingurile seriei la momentul dat, sau `null` dacă rândul nu e o serie (sau n-are capăt). */
+fun seriesPings(r: Reminder, at: Long): Pings? {
+    val every = r.every ?: return null
+    val end = parseIso(r.dueAt) ?: return null
+    return pings(r.at, every, end, at)
+}
 
 /** Ultima listă a paginii. `readAt` = 0 când pagina era offline (cache, poate vechi). */
 data class PageList(val reminders: List<Reminder>, val heldIds: Set<String>, val readAt: Long)
@@ -76,15 +92,46 @@ data class AlarmPlan(val fireNow: List<Reminder>, val nextAt: Long?, val cancelI
  */
 fun planAlarms(plan: List<Reminder>, now: Long, fired: Set<String>, shown: Map<String, String>): AlarmPlan {
     val minuteEnd = (now / 60_000L + 1) * 60_000L
-    val keys = plan.map { it.key }.toSet()
+    val keys = HashSet<String>()
     val fire = ArrayList<Reminder>()
     var next: Long? = null
+    fun consider(r: Reminder, freshMs: Long) {
+        if (r.key in fired) return
+        if (r.at < minuteEnd) { if (now - r.at <= freshMs) fire += r; return }
+        if (next == null || r.at < next!!) next = r.at
+    }
     for (r in plan) {
-        if (r.key in fired) continue
-        if (r.at < minuteEnd) { if (now - r.at <= MISSED_WINDOW_MS) fire += r; continue }
-        if (next == null || r.at < next) next = r.at
+        keys += r.key
+        // O serie: pingul curent (ultimul dinaintea sfârșitului minutului) sună
+        // ca orice memento, dar numai cât e proaspăt — min(pas, 10 min); cel
+        // următor e alarma. Cheia pingului curent intră în plan, deci notificarea
+        // lui nu se retrage cât seria e în plan (după capăt rămâne ultimul ping,
+        // ca un memento obișnuit nebifat).
+        val p = seriesPings(r, minuteEnd - 1)
+        if (p == null) { consider(r, MISSED_WINDOW_MS); continue }
+        p.current?.let { cur ->
+            val ping = r.copy(key = reminderKey(r.id, cur), at = cur, anchor = r.at)
+            keys += ping.key
+            consider(ping, pingFreshMs(r.every!!))
+        }
+        p.next?.let { n -> if (next == null || n < next!!) next = n }
     }
     return AlarmPlan(fire, next, shown.filterValues { it !in keys }.keys)
+}
+
+/**
+ * Pingurile deja depășite ale unei serii nu mai pot suna (sună doar cel curent),
+ * deci cheile lor ies acum, nu peste 8 zile: o serie la un minut ar fi lăsat
+ * altfel peste o mie de chei pe zi în `fired`.
+ */
+fun pruneSeriesFired(fired: Set<String>, plan: List<Reminder>, now: Long): Set<String> {
+    val current = plan.mapNotNull { r -> seriesPings(r, now)?.current?.let { r.id to it } }.toMap()
+    if (current.isEmpty()) return fired
+    return fired.filterTo(HashSet()) { k ->
+        val cur = current[k.substringBefore('@')] ?: return@filterTo true
+        val t = parseIso(k.substringAfter('@', "")) ?: return@filterTo true
+        t >= cur
+    }
 }
 
 /** Cheile sunate mai vechi de 8 zile nu mai pot reapărea (orizontul e 7 zile în față, 24 h în urmă). */

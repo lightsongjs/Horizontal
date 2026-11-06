@@ -9,6 +9,8 @@ export interface Reminder {
   key: string; id: string; at: number; title: string; body: string
   /** `'event'` = eveniment din Google Calendar: fără „Gata" și amânări (nu se bifează). */
   kind?: 'event'
+  /** Un ping dintr-o serie de mementouri: doar „Gata azi", iar pingul nou îl înlocuiește pe cel vechi. */
+  series?: true
 }
 
 /** Aceeași regulă ca `TTL: 3600` la push: un memento răsuflat e zgomot, nu informație. */
@@ -44,7 +46,11 @@ export function parseReminders(raw: unknown): Reminder[] {
     if (!str(o.key) || !str(o.id) || !str(o.at) || !str(o.title) || !str(o.body)) continue
     const at = Date.parse(o.at)
     if (!Number.isFinite(at)) continue
-    out.push({ key: o.key, id: o.id, at, title: o.title, body: o.body, ...(o.kind === 'event' ? { kind: 'event' as const } : {}) })
+    out.push({
+      key: o.key, id: o.id, at, title: o.title, body: o.body,
+      ...(o.kind === 'event' ? { kind: 'event' as const } : {}),
+      ...(o.series === true ? { series: true as const } : {}),
+    })
   }
   return out
 }

@@ -55,10 +55,18 @@ export async function createNotifier(onAction: (a: NotifyAction) => void): Promi
 
   return {
     async show(r) {
+      // Un ping de serie ÎNLOCUIEȘTE pingul de dinainte al aceluiași tichet, ca
+      // `tag`-ul de pe web: altfel o serie la 10 minute ar stivui notificări.
+      if (r.series) {
+        for (const [key, nid] of [...byKey]) if (byNid.get(nid)?.id === r.id && key !== r.key) await closeKey(key)
+      }
       // Un eveniment de calendar nu se bifează și nu se amână: doar „Deschide".
+      // O serie se bifează („Gata azi"), dar nu se amână: următorul ping vine oricum.
       const actions = r.kind === 'event'
         ? ['default', 'Deschide']
-        : ['default', 'Deschide', 'done', 'Gata', 'snooze15', '15 min', 'snooze30', '30 min']
+        : r.series
+          ? ['default', 'Deschide', 'done', 'Gata azi']
+          : ['default', 'Deschide', 'done', 'Gata', 'snooze15', '15 min', 'snooze30', '30 min']
       const nid: number = await n.Notify('Horizontal', 0, 'horizontal', r.title, r.body,
         actions,
         { urgency: new dbus.Variant('y', 2), resident: new dbus.Variant('b', true), 'desktop-entry': new dbus.Variant('s', 'horizontal') },

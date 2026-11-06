@@ -447,7 +447,7 @@ class QuickAddActivity : AppCompatActivity() {
                 uid = uid, tempId = "${project.prefix}-~${uid.replace("-", "").take(6)}", projectId = project.id, projectName = project.name,
                 title = f.title, desc = desc.text.toString().trim(), dueAt = f.dueAt, allDay = f.allDay, remindAt = f.remindAt,
                 rrule = f.rrule, urgent = f.urgent, assigneeId = f.assigneeId, createdAt = System.currentTimeMillis(),
-                files = files.map(NativeFiles::toNative),
+                files = files.map(NativeFiles::toNative), pingEvery = f.pingEvery,
             )
             PlanStore.edit(this) { s -> s.copy(creates = s.creates + create) to Unit }
             Engine.reschedule(this)   // mementoul și widget-ul, imediat

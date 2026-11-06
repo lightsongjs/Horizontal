@@ -33,6 +33,17 @@ class CreateTest {
         assertTrue(b.isNull("rrule")); assertFalse(b.has("created_by"))
     }
 
+    @Test fun seriaPleacaCuPingEvery_altfelColoanaLipseste() {
+        // fără `ping_every` în corp, o captură obișnuită merge și pe o bază fără migrare
+        assertFalse(insertBody(create(), "HZ-07", 1).has("ping_every"))
+        val serie = create(remindAt = "2026-10-06T06:00:00.000Z").copy(pingEvery = 15)
+        assertEquals(15, insertBody(serie, "HZ-07", 1).getInt("ping_every"))
+        assertEquals(serie, Json.createFromJson(Json.createToJson(serie)))
+        val r = createReminders(listOf(serie), zone).single()
+        assertEquals(15, r.every)
+        assertEquals("până la 10:00 · ✅Daily", r.body)
+    }
+
     @Test fun conflict_alNostru_eGata() {
         val row = JSONObject().put("title", "Raport").put("project_id", "p").put("created_by", "me")
         assertEquals(Conflict.OURS, conflictOf(row, "me", create()))

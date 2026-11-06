@@ -16,7 +16,7 @@ import java.time.ZoneId
  */
 fun syncQuery(now: Long, me: Me = Me.UNKNOWN): String {
     val e = { s: String -> URLEncoder.encode(s, "UTF-8") }
-    return "issues?select=id,title,due_at,all_day,remind_at,assignee_id,created_by,projects(name)" +
+    return "issues?select=id,title,due_at,all_day,remind_at,ping_every,assignee_id,created_by,projects(name)" +
         "&done=is.false&remind_at=gte.${e(isoJs(now - LOOKBACK_MS))}&remind_at=lte.${e(isoJs(now + HORIZON_MS))}" +
         mineFilter(me) + "&order=remind_at.asc&limit=100"
 }
@@ -40,7 +40,10 @@ fun parseIssues(json: String, zone: ZoneId, me: Me = Me.UNKNOWN): List<Reminder>
         val due = o.str("due_at")
         val allDay = o.optBoolean("all_day", false)
         val project = o.optJSONObject("projects")?.str("name")
-        val t = planNotification(id, o.str("title"), due, allDay, project, zone)
-        Reminder(reminderKey(id, at), id, at, t.title, t.body, due, allDay)
+        // Serie de mementouri (`migration-ping-series.sql`): un rând, desfășurat de `planAlarms`.
+        val every = if (o.has("ping_every") && !o.isNull("ping_every")) o.optInt("ping_every", 0).takeIf { it >= 1 } else null
+        val series = every != null && due != null
+        val t = planNotification(id, o.str("title"), due, allDay, project, zone, series)
+        Reminder(reminderKey(id, at), id, at, t.title, t.body, due, allDay, if (series) every else null)
     }
 }

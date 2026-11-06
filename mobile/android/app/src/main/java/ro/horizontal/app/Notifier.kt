@@ -59,9 +59,15 @@ object Notifier {
             .setAutoCancel(true)
             .setWhen(r.at).setShowWhen(true)
             .setContentIntent(openIntent(ctx, r.id))
-            .addAction(0, "Gata", broadcast(ctx, r, ActionReceiver.DONE))
-            .addAction(0, "15 min", broadcast(ctx, r, ActionReceiver.SNOOZE15))
-        extraActions(ctx, r, n)
+        // Un ping de serie are un singur buton, ca pe web (`SERIES_DONE_LABEL`):
+        // o amânare n-are sens peste un memento care revine la pingul următor.
+        // Bifa unei serii zilnice o mută pe mâine; una doar de azi se închide.
+        if (r.every != null) n.addAction(0, "Gata azi", broadcast(ctx, r, ActionReceiver.DONE))
+        else {
+            n.addAction(0, "Gata", broadcast(ctx, r, ActionReceiver.DONE))
+                .addAction(0, "15 min", broadcast(ctx, r, ActionReceiver.SNOOZE15))
+            extraActions(ctx, r, n)
+        }
         // tag = id: același tichet ÎNLOCUIEȘTE notificarea, ca pe web.
         try { NotificationManagerCompat.from(ctx).notify(r.id, 1, n.build()) } catch (e: SecurityException) { /* permisiunea lipsește: cardul din pagină o spune */ }
     }

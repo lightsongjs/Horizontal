@@ -68,6 +68,64 @@ class PlanTest {
         val p = planAlarms(listOf(r("A", t0 - 90 * min), r("B", t0 + 15 * min)), t0, setOf(reminderKey("A", t0 - 90 * min), reminderKey("B", t0 - 5 * min)), shown)
         assertEquals(setOf("B"), p.cancelIds)
     }
+    // ── serii de mementouri: un rând, desfășurat în pinguri
+    private fun serie(id: String, first: Long, every: Int, end: Long) =
+        Reminder(reminderKey(id, first), id, first, id, "b", isoJs(end), false, every)
+
+    @Test fun seriaSunaPingulCurentOSinguraDataSiArmeazaUrmatorul() {
+        val s = serie("S", t0, 15, t0 + 60 * min)
+        val p = planAlarms(listOf(s), t0 + 15 * min + 20_000, emptySet(), emptyMap())
+        val ping = p.fireNow.single()
+        assertEquals(reminderKey("S", t0 + 15 * min), ping.key)
+        assertEquals(t0 + 15 * min, ping.at)
+        assertEquals(t0, ping.anchor)   // `DeferGate` compară cu `remind_at`, care nu se mișcă
+        assertEquals(t0 + 30 * min, p.nextAt)
+        // sunat deja → nu încă o dată
+        val again = planAlarms(listOf(s), t0 + 16 * min, setOf(ping.key), emptyMap())
+        assertEquals(emptyList<Reminder>(), again.fireNow)
+        assertEquals(t0 + 30 * min, again.nextAt)
+    }
+    @Test fun seriaInainteDePrimulPing() {
+        val p = planAlarms(listOf(serie("S", t0, 15, t0 + 60 * min)), t0 - 5 * min, emptySet(), emptyMap())
+        assertEquals(emptyList<Reminder>(), p.fireNow)
+        assertEquals(t0, p.nextAt)
+    }
+    @Test fun pingulRasuflatNuSuna() {
+        // din oră în oră: telefonul trezit la 9:40 nu sună pingul de 9:00 (min(60, 10) = 10 min)
+        val p = planAlarms(listOf(serie("S", t0, 60, t0 + 8 * 60 * min)), t0 + 40 * min, emptySet(), emptyMap())
+        assertEquals(emptyList<Reminder>(), p.fireNow)
+        assertEquals(t0 + 60 * min, p.nextAt)
+        // la un pas de 5 min, unul de acum 4 min încă sună
+        val q = planAlarms(listOf(serie("T", t0, 5, t0 + 60 * min)), t0 + 9 * min, emptySet(), emptyMap())
+        assertEquals(listOf(reminderKey("T", t0 + 5 * min)), q.fireNow.map { it.key })
+    }
+    @Test fun seriaNuSeRetrageCatEInPlanNiciDupaCapat() {
+        val s = serie("S", t0, 15, t0 + 60 * min)
+        val shown = mapOf("S" to reminderKey("S", t0 + 15 * min))
+        assertEquals(emptySet<String>(), planAlarms(listOf(s), t0 + 20 * min, setOf(reminderKey("S", t0 + 15 * min)), shown).cancelIds)
+        // după capăt rămâne ultimul ping, fără alarmă nouă
+        val after = mapOf("S" to reminderKey("S", t0 + 60 * min))
+        val p = planAlarms(listOf(s), t0 + 3 * 60 * min, setOf(reminderKey("S", t0 + 60 * min)), after)
+        assertEquals(emptySet<String>(), p.cancelIds)
+        assertNull(p.nextAt)
+        // bifată (ieșită din plan) → se retrage
+        assertEquals(setOf("S"), planAlarms(emptyList(), t0 + 20 * min, emptySet(), shown).cancelIds)
+    }
+    @Test fun cheileDepasiteAleSerieiIesImediat() {
+        val s = serie("S", t0, 15, t0 + 60 * min)
+        val fired = setOf(reminderKey("S", t0), reminderKey("S", t0 + 15 * min), reminderKey("S", t0 + 30 * min), reminderKey("X", t0))
+        assertEquals(setOf(reminderKey("S", t0 + 30 * min), reminderKey("X", t0)), pruneSeriesFired(fired, listOf(s), t0 + 31 * min))
+    }
+    @Test fun randulSerieiTreceDiscul() {
+        val s = serie("S", t0, 15, t0 + 60 * min)
+        assertEquals(s, Json.reminderFromJson(Json.reminderToJson(s)))
+        val ping = s.copy(key = reminderKey("S", t0 + 15 * min), at = t0 + 15 * min, anchor = t0)
+        assertEquals(ping, Json.reminderFromJson(Json.reminderToJson(ping)))
+        // un rând vechi, fără câmpurile noi
+        val old = Json.reminderToJson(r("A", t0)).apply { remove("every"); remove("anchor") }
+        assertNull(Json.reminderFromJson(old)!!.every)
+    }
+
     @Test fun firedSeCurataDupaOptZile() {
         val keep = reminderKey("A", t0 - 2 * 24 * 60 * min)
         val drop = reminderKey("B", t0 - 9 * 24 * 60 * min)

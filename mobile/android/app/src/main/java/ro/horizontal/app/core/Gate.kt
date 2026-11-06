@@ -46,6 +46,7 @@ fun showAfterDefer(r: Reminder, server: ServerState?, stillShown: Boolean): Bool
     !stillShown -> false
     server == null -> true
     server is ServerState.Gone -> false
-    server is ServerState.Row -> !server.done && server.remindAt == r.at
+    // Un ping de serie se compară cu ancora (`remind_at` nu se mișcă la fiecare ping).
+    server is ServerState.Row -> !server.done && server.remindAt == (r.anchor ?: r.at)
     else -> true
 }

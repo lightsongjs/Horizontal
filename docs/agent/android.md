@@ -93,6 +93,24 @@ Pro (HyperOS 3, Android 16).
   `EXTRA_SUBJECT` înaintea lui; după o ciornă existentă). `QuickAddActivity`
   rămâne neexportată; ținta doar umple câmpul, trimiterea e a omului. Fără pagină,
   deci fără `API` nou.
+- **Seriile de mementouri** („la fiecare 15 minute până la 10", din `versionCode 23`;
+  regula: `docs/agent/recurente-fixate-rutine.md`, „Serii de mementouri"): UN rând
+  pe tichet și în plan (`mergePlan` ține unul pe id) — `Reminder.every` (pasul),
+  `at` = primul ping (ancora), `dueAt` = capătul. Pagina îl trimite cu `every`
+  (`upcomingReminders(…, { series: 'row' })`), citirea nativă cere `ping_every`.
+  `planAlarms` îl desfășoară cu `core/Pings.kt` (port al lui
+  `supabase/functions/_shared/pings.ts`, fixtures comune `src/lib/pings.fixtures.json`):
+  sună pingul curent, cu cheia LUI (`id@ping`), numai cât e proaspăt
+  (`pingFreshMs` = min(pas, 10 min)), și armează următorul; cheia pingului curent
+  ține notificarea pe ecran cât seria e în plan (după capăt rămâne ultimul ping,
+  ca un memento nebifat). `pruneSeriesFired` scoate imediat cheile pingurilor
+  depășite. Pingul sunat poartă `anchor` = `remind_at`, cu care compară
+  `DeferGate` (serverul nu mișcă `remind_at` la fiecare ping). Notificarea are un
+  singur buton, „Gata azi" — fără „15 min" și „Amână…". Fereastra nativă trimite
+  `ping_every` din motor (`Draft.pingEvery` → `NativeCreate`), doar când e serie.
+  Fără `API` nou: un APK mai vechi ignoră `every` și sună doar primul ping.
+  **Ordinea:** `migration-ping-series.sql` ÎNAINTE de APK — `SyncWorker` cere
+  `ping_every` în `select`, iar pe o bază fără coloană citirea nativă ar cădea.
 - **Xiaomi/HyperOS**: instalarea prin USB cere „Instalare prin USB" activat și o
   confirmare pe telefon. Glisarea aplicației din recente poate fi un force-stop,
   care omoară alarmele — ecranul de stare (`AndroidStatus`) arată starea

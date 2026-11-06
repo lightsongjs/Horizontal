@@ -18,8 +18,18 @@ class FixturesTest {
         val all = load("pushPayload.fixtures.json")
         for (i in 0 until all.length()) {
             val f = all.getJSONObject(i); val inp = f.getJSONObject("input"); val want = f.getJSONObject("want")
-            val got = planNotification(inp.getString("id"), inp.str("title"), inp.str("dueAt"), inp.optBoolean("allDay", false), inp.str("projectName"), zone)
+            val got = planNotification(inp.getString("id"), inp.str("title"), inp.str("dueAt"), inp.optBoolean("allDay", false), inp.str("projectName"), zone, inp.optBoolean("series", false))
             assertEquals(f.getString("name"), NotificationText(want.getString("title"), want.getString("body"), want.getString("tag")), got)
+        }
+    }
+
+    @Test fun pings() {
+        val all = load("pings.fixtures.json")
+        for (i in 0 until all.length()) {
+            val f = all.getJSONObject(i); val want = f.getJSONObject("want")
+            val got = pings(parseIso(f.getString("remindAt"))!!, f.getInt("every"), parseIso(f.getString("dueAt"))!!, parseIso(f.getString("now"))!!)
+            assertEquals(f.getString("name"), want.str("current"), got.current?.let(::isoJs))
+            assertEquals(f.getString("name"), want.str("next"), got.next?.let(::isoJs))
         }
     }
 

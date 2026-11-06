@@ -35,6 +35,8 @@ data class Draft(
     val error: String?, val raw: Boolean,
     /** Jetonul de dată („Azi", „Mâine 10:00"); `null` = fără dată. Din motor, `dueLabelParts`. */
     val label: String? = null,
+    /** Serie de mementouri, în minute; `remindAt` e atunci primul ping. Un motor vechi n-o trimite. */
+    val pingEvery: Int? = null,
 )
 
 private fun normalizeName(s: String) =
@@ -116,6 +118,7 @@ fun parseEngineResult(json: String): Draft {
         o.getString("title"), spans, strings("live"), str("projectId"), str("assigneeId"), o.optBoolean("urgent"),
         strings("unknown"), str("dueAt"), o.optBoolean("allDay", true), str("rrule"), str("remindAt"), str("error"), raw = false,
         label = o.optJSONObject("label")?.let { l -> l.getString("day") + (if (l.isNull("time")) "" else " " + l.getString("time")) },
+        pingEvery = if (o.has("pingEvery") && !o.isNull("pingEvery")) o.optInt("pingEvery", 0).takeIf { it >= 1 } else null,
     )
 }
 

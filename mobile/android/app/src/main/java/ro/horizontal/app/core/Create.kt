@@ -27,6 +27,8 @@ data class NativeCreate(
     val rrule: String?, val urgent: Boolean, val assigneeId: String?, val createdAt: Long,
     val attemptId: String? = null, val realId: String? = null, val drainedAt: Long? = null,
     val inFlight: Boolean = false, val tries: Int = 0, val files: List<NativeFile> = emptyList(),
+    /** Serie de mementouri („la fiecare 15 minute până la 10"), din motor: pasul în minute. */
+    val pingEvery: Int? = null,
 ) {
     val id get() = realId ?: tempId
 }
@@ -46,6 +48,9 @@ fun insertBody(c: NativeCreate, id: String, wave: Int): JSONObject = JSONObject(
     .put("assignee_id", c.assigneeId ?: JSONObject.NULL).put("urgent", c.urgent)
     .put("due_at", c.dueAt ?: JSONObject.NULL).put("all_day", c.allDay)
     .put("remind_at", c.remindAt ?: JSONObject.NULL).put("rrule", c.rrule ?: JSONObject.NULL)
+    // Numai pe o serie: coloana vine din `migration-ping-series.sql`, iar o captură
+    // obișnuită trebuie să se poată crea și pe o bază fără ea (ca în pagină).
+    .also { o -> c.pingEvery?.let { o.put("ping_every", it) } }
 
 enum class Conflict { OURS, TAKEN }
 
@@ -80,8 +85,9 @@ fun createReminders(creates: List<NativeCreate>, zone: ZoneId, latestReadAt: Lon
     // Bifate din widget înainte să plece: nu mai sună (`mergePlan` nu le vede).
     creates.filter { c -> (c.drainedAt == null || c.drainedAt >= latestReadAt) && queue.none { it.kind == NativeAction.Kind.DONE && it.id == c.id } }.mapNotNull { c ->
     val at = parseIso(c.remindAt) ?: return@mapNotNull null
-    val t = planNotification(c.id, c.title, c.dueAt, c.allDay, c.projectName, zone)
-    Reminder(reminderKey(c.id, at), c.id, at, t.title, t.body, c.dueAt, c.allDay)
+    val series = c.pingEvery != null && c.dueAt != null
+    val t = planNotification(c.id, c.title, c.dueAt, c.allDay, c.projectName, zone, series)
+    Reminder(reminderKey(c.id, at), c.id, at, t.title, t.body, c.dueAt, c.allDay, if (series) c.pingEvery else null)
 }
 
 /** `buildAttachmentPath` din `src/data/attachments.ts`: doar din id-uri, niciodată din numele fișierului. */
