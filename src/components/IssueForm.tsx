@@ -390,9 +390,10 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
   const [title, setTitle] = useState(existing?.title ?? seed?.title ?? '')
   const [desc, setDesc] = useState(existing?.desc ?? seed?.desc ?? '')
   const [theme, setTheme] = useState(existing?.theme ?? '')
-  // Un val activ care nu (mai) există nu e o alegere: primul val real.
+  // Un val activ care nu (mai) există — sau e arhivat, deschis doar ca să-l
+  // consulți (H-17) — nu e o alegere: primul val real.
   const [wave, setWave] = useState(existing?.wave
-    ?? (waves.some((w) => w.number === activeWave) ? activeWave : (waves.find((w) => w.number !== 0) ?? waves[0])?.number ?? activeWave))
+    ?? (waves.some((w) => w.number === activeWave && !w.archivedAt) ? activeWave : (waves.find((w) => w.number !== 0 && !w.archivedAt) ?? waves[0])?.number ?? activeWave))
   const [assigneeId, setAssigneeId] = useState<string | null>(existing?.assigneeId ?? seed?.assigneeId ?? null)
   const [deps, setDeps] = useState<string[]>(existing?.deps ?? [])
   const [blocks, setBlocks] = useState<string[]>(

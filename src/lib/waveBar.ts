@@ -158,3 +158,19 @@ export function fitPills(
   }
   return { shown, overflow: all.filter((i) => !shown.includes(i)) }
 }
+
+/**
+ * Valurile din taburi și din alegeri (H-17): fără cele arhivate — afară de cel
+ * deschis acum (din „Arhivate", foaia „Valuri"), ca banda să arate unde ești.
+ * La plecarea de pe el, dispare iar.
+ */
+export function visibleWaves<W extends Pick<Wave, 'number' | 'archivedAt'>>(waves: readonly W[], active: number): W[] {
+  return waves.filter((w) => !w.archivedAt || w.number === active)
+}
+
+/** Valul pe care se deschide un proiect: cel memorat, dacă există și nu e arhivat; altfel primul val real. */
+export function landingWave(waves: readonly Pick<Wave, 'number' | 'archivedAt'>[], remembered: number): number | null {
+  const live = waves.filter((w) => !w.archivedAt)
+  if (live.some((w) => w.number === remembered)) return remembered
+  return (live.find((w) => w.number !== SCRATCH) ?? live[0])?.number ?? null
+}

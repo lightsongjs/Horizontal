@@ -194,10 +194,98 @@ describe('POST / PATCH /api/waves', () => {
   it('redenumește un val existent; 404 pe unul necunoscut', async () => {
     mockFetch([projectRoute, route('/rest/v1/waves?project_id=eq.cc&number=eq.2', [{ number: 2, name: 'II', label: 'Nou', position: 2 }], { method: 'PATCH' })])
     const ok = await waveOne.onRequestPatch(ctx('/api/waves/2?project=cc', { method: 'PATCH', params: { number: '2' }, body: { label: 'Nou' } }))
-    expect(await ok.json()).toEqual({ number: 2, name: 'II', label: 'Nou', position: 2 })
+    expect(await ok.json()).toEqual({ number: 2, name: 'II', label: 'Nou', position: 2, archived: false })
     mockFetch([projectRoute, route('/rest/v1/waves?', [], { method: 'PATCH' })])
     const missing = await waveOne.onRequestPatch(ctx('/api/waves/9?project=cc', { method: 'PATCH', params: { number: '9' }, body: { label: 'X' } }))
     expect(missing.status).toBe(404)
+  })
+})
+
+describe('DELETE /api/waves/<n> și arhivarea', () => {
+  // Valurile proiectului: 0 Notițe, 1 MVP, 2 Wave2, 3 arhivat. `archived_at`
+  // prezent = baza are migrarea.
+  const waveRows = [
+    { number: 0, name: 'Scratchpad', label: '', position: 0, archived_at: null },
+    { number: 1, name: 'I', label: 'MVP', position: 1, archived_at: null },
+    { number: 2, name: 'II', label: 'Wave2', position: 2, archived_at: null },
+    { number: 3, name: 'III', label: 'Vechi', position: 3, archived_at: '2026-11-01T00:00:00Z' },
+  ]
+  const wavesRoute = (rows: unknown[] = waveRows) => route('/rest/v1/waves?project_id=eq.cc&select=*', rows, { method: 'GET' })
+  const ticketsRoute = (rows: unknown[]) => route('/rest/v1/issues?project_id=eq.cc&wave=eq.1&select=id,done', rows, { method: 'GET' })
+  const del = (q: string) => waveOne.onRequestDelete(ctx(`/api/waves/1?project=cc${q}`, { method: 'DELETE', params: { number: '1' } }))
+  const writes = (calls: Call[]) => calls.filter((c) => c.method !== 'GET')
+
+  it('tichete deschise: 409 wave_in_use cu lista lor, nicio scriere', async () => {
+    const calls = mockFetch([projectRoute, wavesRoute(), ticketsRoute([{ id: 'CC-01', done: false }, { id: 'CC-02', done: true }, { id: 'CC-03', done: false }])])
+    const res = await del('')
+    expect(res.status).toBe(409)
+    expect(await res.json()).toEqual({ error: 'wave_in_use', wave: 1, count: 2, tickets: ['CC-01', 'CC-03'] })
+    expect(writes(calls)).toEqual([])
+  })
+
+  it('moveTo mută deschisele, iar gatele țin valul în arhivă (nu se șterge)', async () => {
+    const calls = mockFetch([
+      projectRoute, wavesRoute(), ticketsRoute([{ id: 'CC-01', done: false }, { id: 'CC-02', done: true }]),
+      route('/rest/v1/issues?project_id=eq.cc&wave=eq.1&done=eq.false', [], { method: 'PATCH' }),
+      route('/rest/v1/waves?project_id=eq.cc&number=eq.1', [], { method: 'PATCH' }),
+    ])
+    const res = await del('&moveTo=2')
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ deleted: null, archived: 1, moved: ['CC-01'], moveTo: 2, kept: 1 })
+    const w = writes(calls)
+    expect(w.map((c) => c.method)).toEqual(['PATCH', 'PATCH'])
+    expect(w[0].body).toEqual({ wave: 2 })
+    expect(Object.keys(w[1].body)).toEqual(['archived_at'])
+  })
+
+  it('moveTo=0 (Notițele) și un val rămas gol: se șterge de-a binelea', async () => {
+    let moved = false
+    const calls = mockFetch([
+      projectRoute, wavesRoute(),
+      { match: (u, m) => m === 'GET' && u.includes('/rest/v1/issues?project_id=eq.cc&wave=eq.1&select=id,done'), respond: () => ({ body: [{ id: 'CC-01', done: false }] }) },
+      { match: (u, m) => m === 'PATCH' && u.includes('/rest/v1/issues?'), respond: () => { moved = true; return { body: [] } } },
+      { match: (u, m) => m === 'GET' && u.includes('&select=id&limit=1'), respond: () => ({ body: moved ? [] : [{ id: 'CC-01' }] }) },
+      route('/rest/v1/waves?project_id=eq.cc&number=eq.1', [], { method: 'DELETE' }),
+    ])
+    const res = await del('&moveTo=0')
+    expect(await res.json()).toEqual({ deleted: 1, archived: null, moved: ['CC-01'], moveTo: 0, kept: 0 })
+    expect(writes(calls).map((c) => c.method)).toEqual(['PATCH', 'DELETE'])
+    expect(writes(calls)[0].body).toEqual({ wave: 0 })
+  })
+
+  it('refuză Notițele, un moveTo inexistent / arhivat / același, un val necunoscut', async () => {
+    mockFetch([projectRoute, wavesRoute()])
+    expect((await waveOne.onRequestDelete(ctx('/api/waves/0?project=cc', { method: 'DELETE', params: { number: '0' } }))).status).toBe(400)
+    expect((await del('&moveTo=1')).status).toBe(400)
+    const arch = await del('&moveTo=3')
+    expect(arch.status).toBe(422)
+    expect(await arch.json()).toMatchObject({ error: 'move_to_not_found' })
+    expect((await del('&moveTo=9')).status).toBe(422)
+    const unknown = await waveOne.onRequestDelete(ctx('/api/waves/7?project=cc', { method: 'DELETE', params: { number: '7' } }))
+    expect(unknown.status).toBe(404)
+  })
+
+  it('fără migrare: arhivarea refuză ÎNAINTE de a muta ceva', async () => {
+    const noCol = waveRows.map(({ archived_at: _a, ...w }) => w)
+    const calls = mockFetch([projectRoute, wavesRoute(noCol), ticketsRoute([{ id: 'CC-01', done: false }, { id: 'CC-02', done: true }])])
+    const res = await del('&moveTo=2')
+    expect(res.status).toBe(409)
+    expect(await res.json()).toMatchObject({ error: 'migration_missing', kept: 1 })
+    expect(writes(calls)).toEqual([])
+  })
+
+  it('PATCH archived: true arhivează și un val gol; false îl scoate din arhivă', async () => {
+    const calls = mockFetch([
+      projectRoute, wavesRoute(), ticketsRoute([]),
+      route('/rest/v1/waves?project_id=eq.cc&number=eq.1', [{ number: 1, name: 'I', label: 'MVP', position: 1, archived_at: null }], { method: 'PATCH' }),
+    ])
+    const a = await waveOne.onRequestPatch(ctx('/api/waves/1?project=cc', { method: 'PATCH', params: { number: '1' }, body: { archived: true } }))
+    expect(await a.json()).toEqual({ deleted: null, archived: 1, moved: [], moveTo: null, kept: 0 })
+    const u = await waveOne.onRequestPatch(ctx('/api/waves/1?project=cc', { method: 'PATCH', params: { number: '1' }, body: { archived: false } }))
+    expect(await u.json()).toEqual({ number: 1, name: 'I', label: 'MVP', position: 1, archived: false })
+    expect(writes(calls)[1].body).toEqual({ archived_at: null })
+    const mixed = await waveOne.onRequestPatch(ctx('/api/waves/1?project=cc', { method: 'PATCH', params: { number: '1' }, body: { archived: true, label: 'x' } }))
+    expect(mixed.status).toBe(400)
   })
 })
 

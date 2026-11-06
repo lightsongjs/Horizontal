@@ -238,7 +238,9 @@ export function createLocalRepository(): Repository {
       return clone(
         load()
           .waves.filter((w) => w.projectId === projectId)
-          .sort((a, b) => a.position - b.position),
+          .sort((a, b) => a.position - b.position)
+          // Modul local are „coloana" mereu: arhivarea se oferă (și `test:nav` o vede).
+          .map((w) => ({ ...w, archivedAt: w.archivedAt ?? null })),
       )
     },
 
@@ -259,7 +261,7 @@ export function createLocalRepository(): Repository {
       if (!wave) throw new Error(`Unknown wave ${projectId}/${number}`)
       Object.assign(wave, patch)
       save(db)
-      return clone(wave)
+      return clone({ ...wave, archivedAt: wave.archivedAt ?? null })
     },
 
     async deleteWave(projectId, number) {

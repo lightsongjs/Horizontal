@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url'
 import { createInterface, emitKeypressEvents } from 'node:readline'
 import {
   parseArgs, UsageError, configPath, resolveConfig, findProjectFile, contextProject,
-  matchProject, withClaudeImport, ticketingMd, waveLabel, ticketLine, attachmentLine,
+  matchProject, withClaudeImport, ticketingMd, waveLabel, waveMoveTo, waveRemovalLines, ticketLine, attachmentLine,
   buildCreateBody, buildUpdateBody, titleFrom, DEFAULT_API_URL, PROJECT_FILE, TICKETING_FILE,
   pickerStart, pickerKey, pickerView, suggestPrefix, cleanPrefix, prefixOwner,
   defaultProjectType, parseProjectType, buildProjectBody,
@@ -408,7 +408,7 @@ cmds.waves = async ({ flags }) => {
   needList(data, '/api/waves')
   if (flags.json) return out(JSON.stringify(data, null, 2))
   if (!data.length) return out('(no waves found)')
-  for (const w of data) out(`${w.number}  ${waveLabel(w) ?? ''}`.trimEnd())
+  for (const w of data) out(`${w.number}  ${waveLabel(w) ?? ''}${w.archived ? '  (arhivat)' : ''}`.trimEnd())
 }
 
 cmds.assignees = async ({ flags }) => {
@@ -693,6 +693,41 @@ cmds['wave-update'] = async ({ positional, flags }) => {
   out(`updated: ${data.number}  ${waveLabel(data) ?? ''}`.trimEnd())
 }
 
+/** `wave-delete` / `wave-archive`: deschisele opresc totul, afară de `--move-to`. */
+async function removeWave(cmd, positional, flags) {
+  const project = projectOrDie(flags)
+  const number = flags.number ?? positional[0]
+  if (number === undefined) throw new UsageError(`tk ${cmd} <n> [--move-to <n>]`)
+  const moveTo = waveMoveTo(flags)
+  const { status, data } = cmd === 'wave-delete'
+    ? await api(`/api/waves/${enc(number)}?${q({ project, ...(moveTo !== null ? { moveTo: String(moveTo) } : {}) })}`, { method: 'DELETE' })
+    : await api(`/api/waves/${enc(number)}?${q({ project })}`, { method: 'PATCH', body: { archived: true, ...(moveTo !== null ? { moveTo } : {}) } })
+  if (status === 409 && data.error === 'wave_in_use') {
+    out(`wave_in_use: ${data.count} deschise (${data.tickets.join(', ')})`)
+    err('Tichetele astea sunt încă deschise în val. --move-to <n> le mută întâi (0 = Notițele).')
+    process.exit(1)
+  }
+  if (status === 409 && data.error === 'migration_missing') {
+    out(`migration_missing: valul are ${data.kept ?? 0} tichete gata și trebuie arhivat`)
+    err('Arhivarea cere migrarea supabase/migration-wave-archive.sql pe bază. Nimic nu s-a schimbat.')
+    process.exit(1)
+  }
+  if (status !== 200) fail(status, data)
+  for (const line of waveRemovalLines(data)) out(line)
+}
+
+cmds['wave-delete'] = ({ positional, flags }) => removeWave('wave-delete', positional, flags)
+cmds['wave-archive'] = ({ positional, flags }) => removeWave('wave-archive', positional, flags)
+
+cmds['wave-unarchive'] = async ({ positional, flags }) => {
+  const project = projectOrDie(flags)
+  const number = flags.number ?? positional[0]
+  if (number === undefined) throw new UsageError('tk wave-unarchive <n>')
+  const { status, data } = await api(`/api/waves/${enc(number)}?${q({ project })}`, { method: 'PATCH', body: { archived: false } })
+  if (status !== 200) fail(status, data)
+  out(`unarchived: ${data.number}  ${waveLabel(data) ?? ''}`.trimEnd())
+}
+
 const HELP = `tk — tichetele Horizontal din terminal. Ghidul complet: tk guide
 
 Configurare
@@ -728,6 +763,9 @@ Scriere
   tk theme-create "Nume" --color "#RRGGBB"   |  tk theme-update <cheie> [--name …] [--color …]
   tk theme-delete <cheie> [--force]          folosită de tichete → refuz; --force le scoate tema
   tk wave-create "Etichetă" [--name IV]      |  tk wave-update <n> [--name …] [--label …]
+  tk wave-delete <n> [--move-to <n>]         deschise → refuz; --move-to le mută (0 = Notițele);
+                                             cu tichete gata se arhivează, gol se șterge
+  tk wave-archive <n> [--move-to <n>]        |  tk wave-unarchive <n>
 
 --project <id> bate .horizontal (la update înseamnă mutare). Forma veche merge:
 tk --create --title "…" --wave 1, tk --get --id HZ-7, tk --attach --id HZ-7 --file a.png`

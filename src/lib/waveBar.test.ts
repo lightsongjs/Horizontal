@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   fitPills, moveWave, nextWaveName, openCounts, pillText, showWaveBand, stepWave,
-  totalCounts, truncateLabel, waveLabel, waveTitle,
+  totalCounts, truncateLabel, waveLabel, waveTitle, visibleWaves, landingWave,
 } from './waveBar'
 
 const w = (number: number, name: string, label = '', position = number) => ({ number, name, label, position })
@@ -137,3 +137,25 @@ describe('fitPills', () => {
     expect(fitPills([50, 60, 70], 120, 0, 40)).toEqual({ shown: [0], overflow: [1, 2] })
   })
 })
+
+describe('valurile arhivate (H-17)', () => {
+  const ws = [
+    { number: 0, archivedAt: null },
+    { number: 1, archivedAt: '2026-11-06T10:00:00Z' },
+    { number: 2, archivedAt: null },
+    { number: 3 },
+  ]
+  it('visibleWaves: fără arhivate, afară de cel deschis acum', () => {
+    expect(visibleWaves(ws, 2).map((w) => w.number)).toEqual([0, 2, 3])
+    expect(visibleWaves(ws, 1).map((w) => w.number)).toEqual([0, 1, 2, 3])
+  })
+  it('landingWave: cel memorat dacă e activ; arhivat sau dispărut → primul val real', () => {
+    expect(landingWave(ws, 2)).toBe(2)
+    expect(landingWave(ws, 0)).toBe(0)
+    expect(landingWave(ws, 1)).toBe(2)
+    expect(landingWave(ws, 9)).toBe(2)
+    expect(landingWave([{ number: 0, archivedAt: null }], 1)).toBe(0)
+    expect(landingWave([], 1)).toBe(null)
+  })
+})
+

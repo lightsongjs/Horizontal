@@ -32,7 +32,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   }
 
   const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/waves?project_id=eq.${encodeURIComponent(proj.id)}&select=number,name,label,position&order=position.asc,number.asc`,
+    `${SUPABASE_URL}/rest/v1/waves?project_id=eq.${encodeURIComponent(proj.id)}&select=*&order=position.asc,number.asc`,
     { headers }
   )
   if (!res.ok) {

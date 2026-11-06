@@ -87,10 +87,33 @@ export interface SupabaseWave {
   name: string | null
   label: string | null
   position: number | null
+  /** `migration-wave-archive.sql`; lipsește pe o bază fără migrare. */
+  archived_at?: string | null
 }
 
 export function waveOut(w: SupabaseWave) {
-  return { number: w.number, name: w.name ?? '', label: w.label ?? '', position: w.position ?? w.number }
+  return { number: w.number, name: w.name ?? '', label: w.label ?? '', position: w.position ?? w.number, archived: !!w.archived_at }
+}
+
+/**
+ * Ce se întâmplă cu un val la `DELETE` (șterge) sau la arhivare (2026-11-06).
+ *
+ * - Tichetele DESCHISE îl țin pe loc: refuz cu lista lor (ca `theme_in_use`),
+ *   afară de cazul în care `moveTo` le mută întâi în alt val.
+ * - Tichetele GATA nu se pierd: un val care le are se ARHIVEAZĂ (dispare din
+ *   taburi, tichetele rămân în bază, căutabile, `tk get`), nu se șterge.
+ * - Un val gol (după mutare) se șterge de-a binelea la `delete`; `archive`
+ *   arhivează oricum.
+ */
+export function waveRemovalPlan(
+  tickets: ReadonlyArray<{ id: string; done: boolean }>,
+  mode: 'delete' | 'archive',
+  moveTo: number | null,
+): { error: 'wave_in_use'; open: string[] } | { move: string[]; action: 'delete' | 'archive'; kept: number } {
+  const open = tickets.filter((t) => !t.done).map((t) => t.id)
+  const kept = tickets.length - open.length
+  if (open.length && moveTo === null) return { error: 'wave_in_use', open }
+  return { move: open, action: mode === 'delete' && kept === 0 ? 'delete' : 'archive', kept }
 }
 
 /** PostgREST: cheie duplicată (23505) — două creări simultane au ales același număr / aceeași cheie. */

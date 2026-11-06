@@ -163,6 +163,14 @@ interface InboxRowRaw {
   seen_at: string | null
 }
 
+/**
+ * `archivedAt` numai dacă baza are coloana (`migration-wave-archive.sql`):
+ * absentă = arhivarea nu se oferă, în loc de o scriere care ar pica.
+ */
+function waveArchive(row: Record<string, unknown>): Pick<Wave, 'archivedAt'> {
+  return 'archived_at' in row ? { archivedAt: isoOrNull(row.archived_at as string | null) } : {}
+}
+
 export function rowToInboxRow(row: InboxRowRaw): InboxRow {
   return {
     issueId: row.issue_id,
@@ -388,6 +396,7 @@ export function createSupabaseRepository(): Repository {
         // Coloana e nulabilă (valuri create direct în bază); `Wave.label` e text.
         label: w.label ?? '',
         position: w.position,
+        ...waveArchive(w),
       }))
     },
 
@@ -407,6 +416,7 @@ export function createSupabaseRepository(): Repository {
       if (patch.name !== undefined) row.name = patch.name
       if (patch.label !== undefined) row.label = patch.label
       if (patch.position !== undefined) row.position = patch.position
+      if (patch.archivedAt !== undefined) row.archived_at = patch.archivedAt
       const { data, error } = await db
         .from('waves')
         .update(row)
@@ -415,7 +425,7 @@ export function createSupabaseRepository(): Repository {
         .select('*')
         .single()
       if (error) throw error
-      return { projectId: data.project_id, number: data.number, name: data.name, label: data.label, position: data.position }
+      return { projectId: data.project_id, number: data.number, name: data.name, label: data.label ?? '', position: data.position, ...waveArchive(data) }
     },
 
     async deleteWave(projectId, number) {

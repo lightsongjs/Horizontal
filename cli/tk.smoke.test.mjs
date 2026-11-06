@@ -44,6 +44,16 @@ beforeAll(async () => {
         return send(200, { deleted: { key: 'libera', name: 'Liberă', color: '#222222' }, cleared: [] })
       }
       if (u.pathname.startsWith('/api/themes/') && req.method === 'DELETE') return send(404, { error: 'theme_not_found', theme: 'nope' })
+      if (u.pathname === '/api/waves/1' && req.method === 'DELETE') {
+        if (!u.searchParams.has('moveTo')) return send(409, { error: 'wave_in_use', wave: 1, count: 2, tickets: ['KATA-03', 'KATA-07'] })
+        return send(200, { deleted: null, archived: 1, moved: ['KATA-03', 'KATA-07'], moveTo: Number(u.searchParams.get('moveTo')), kept: 4 })
+      }
+      if (u.pathname === '/api/waves/2' && req.method === 'DELETE') return send(200, { deleted: 2, archived: null, moved: [], moveTo: null, kept: 0 })
+      if (u.pathname === '/api/waves/3' && req.method === 'PATCH') {
+        const body = JSON.parse(raw.toString())
+        if (body.archived === false) return send(200, { number: 3, name: 'III', label: 'Vechi', position: 3, archived: false })
+        return send(409, { error: 'migration_missing', kept: 2 })
+      }
       if (u.pathname === '/api/projects') return send(200, PROJECTS)
       if (u.pathname === '/api/waves') return send(200, [{ number: 1, name: 'I', label: 'MVP' }])
       if (u.pathname === '/api/assignees') {
@@ -224,6 +234,36 @@ describe('tk contra unui server fals', () => {
     const none = await tk(['theme-delete', 'nope'], { cwd: repo() })
     expect(none.code).toBe(1)
     expect(none.stdout.trim()).toBe('theme_not_found: nope')
+  })
+
+  it('wave-delete: deschise → wave_in_use, nimic schimbat; --move-to le mută, gatele arhivează valul', async () => {
+    const used = await tk(['wave-delete', '1'], { cwd: repo() })
+    expect(used.code).toBe(1)
+    expect(used.stdout.trim()).toBe('wave_in_use: 2 deschise (KATA-03, KATA-07)')
+    expect(used.stderr).toContain('--move-to')
+    expect(last().url).toBe('/api/waves/1?project=kata')
+
+    const moved = await tk(['wave-delete', '1', '--move-to', '0'], { cwd: repo() })
+    expect(moved.code).toBe(0)
+    expect(last().url).toBe('/api/waves/1?project=kata&moveTo=0')
+    expect(moved.stdout.trim().split('\n')).toEqual(['archived: 1', 'moved → 0: KATA-03, KATA-07', 'kept: 4 gata (rămân în valul arhivat)'])
+
+    const empty = await tk(['delete-wave', '2'], { cwd: repo() })
+    expect(empty.stdout.trim()).toBe('deleted: 2')
+
+    const bad = await tk(['wave-delete', '1', '--move-to', 'x'], { cwd: repo() })
+    expect(bad.code).not.toBe(0)
+  })
+
+  it('wave-archive fără migrare spune ce lipsește; wave-unarchive trimite archived: false', async () => {
+    const arch = await tk(['wave-archive', '3'], { cwd: repo() })
+    expect(arch.code).toBe(1)
+    expect(arch.stdout).toContain('migration_missing')
+    expect(JSON.parse(last().raw.toString())).toEqual({ archived: true })
+    const un = await tk(['wave-unarchive', '3'], { cwd: repo() })
+    expect(un.code).toBe(0)
+    expect(un.stdout.trim()).toBe('unarchived: 3  III / Vechi')
+    expect(JSON.parse(last().raw.toString())).toEqual({ archived: false })
   })
 
   it('attach trimite multipart cu fișierele, fără Content-Type JSON', async () => {

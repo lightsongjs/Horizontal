@@ -8,7 +8,7 @@ import {
   fold, rankProjects, pickerItems, pickerStart, pickerKey, pickerView, NEW_PROJECT,
   suggestPrefix, cleanPrefix, prefixOwner, defaultProjectType, parseProjectType, buildProjectBody,
   buildCommentBody, commentHasContent, commentLines, localTime, authorFor, pickMe, COMMANDS,
-  listParams, mineParams, serverIgnoredAssignee,
+  listParams, mineParams, serverIgnoredAssignee, waveMoveTo, waveRemovalLines,
 } from './lib.mjs'
 import * as app from '../src/lib/newProject'
 
@@ -342,6 +342,16 @@ describe('filtrul pe om (tk list --assignee, tk mine)', () => {
     expect(mineParams({ done: false, all: true }, cfg)).toEqual({ assignee: 'a-ion', done: 'false' })
     expect(mineParams({}, { me: null })).toBe(null)
   })
+  it('wave-delete / wave-archive / wave-unarchive sunt comenzi; --move-to e un număr ≥ 0', () => {
+    expect(parseArgs(['delete-wave', '2', '--move-to', '0']).cmd).toBe('wave-delete')
+    expect(parseArgs(['archive-wave', '2']).cmd).toBe('wave-archive')
+    expect(parseArgs(['wave-unarchive', '2']).cmd).toBe('wave-unarchive')
+    expect(waveMoveTo({})).toBe(null)
+    expect(waveMoveTo({ 'move-to': '0' })).toBe(0)
+    expect(() => waveMoveTo({ 'move-to': '-1' })).toThrow(UsageError)
+    expect(waveRemovalLines({ deleted: 2, archived: null, moved: [], moveTo: null, kept: 0 })).toEqual(['deleted: 2'])
+  })
+
   it('theme-delete e o comandă (alias delete-theme), --force e boolean', () => {
     expect(parseArgs(['delete-theme', 'x', '--force'])).toEqual({ cmd: 'theme-delete', positional: ['x'], flags: { force: true } })
   })

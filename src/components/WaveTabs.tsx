@@ -481,13 +481,14 @@ function WavePill({ wave, on, count, total, onClick, onManage }: {
       type="button"
       role="tab"
       aria-selected={on}
-      className={`wb-pill${on ? ' on' : ''}`}
-      title={waveTitle(wave, count, total)}
+      className={`wb-pill${on ? ' on' : ''}${wave.archivedAt ? ' archived' : ''}`}
+      title={`${waveTitle(wave, count, total)}${wave.archivedAt ? ' · arhivat' : ''}`}
       data-wave={wave.number}
       onClick={onClick}
       onDoubleClick={onManage}
       {...press}
     >
+      {wave.archivedAt && <Icon name="archive" size={12} label="arhivat" />}
       <span className="lb">{pillText(wave, on)}</span>
       <span className="n">{count}</span>
     </button>

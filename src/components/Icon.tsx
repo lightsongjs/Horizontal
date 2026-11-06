@@ -79,6 +79,7 @@ import {
   Tag,
   FolderDown,
   Layers,
+  Archive,
 } from 'lucide-react'
 
 /**
@@ -123,6 +124,8 @@ const ICONS = {
   /** Coșul de gunoi (rotița, foaia Coș): același desen ca ștergerea, alt rol. */
   trash: Trash2,
   restore: Undo2,
+  /** Un val arhivat (H-17): în bandă cât îl consulți, în foaia „Valuri”. */
+  archive: Archive,
   // Nume de ROL, nu de desen: „obstacle", nu „octagon". Desenul se schimbă
   // într-un singur loc. `danger` rămâne pentru avertismente generice.
   obstacle: OctagonAlert,

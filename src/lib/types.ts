@@ -49,6 +49,12 @@ export interface Wave {
   label: string
   /** Ordering within the project's wave list. */
   position: number
+  /**
+   * Arhivat (H-17, `migration-wave-archive.sql`): iese din taburi și din
+   * alegeri, tichetele lui rămân. `null` = activ; absent (`undefined`) = baza
+   * n-are încă coloana, deci arhivarea nu se oferă.
+   */
+  archivedAt?: string | null
 }
 
 export interface Theme {

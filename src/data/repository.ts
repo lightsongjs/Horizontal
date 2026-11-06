@@ -93,7 +93,7 @@ export interface Repository {
 
   listWaves(projectId: string): Promise<Wave[]>
   createWave(projectId: string, name: string, label?: string): Promise<Wave>
-  updateWave(projectId: string, number: number, patch: Partial<Pick<Wave, 'name' | 'label' | 'position'>>): Promise<Wave>
+  updateWave(projectId: string, number: number, patch: Partial<Pick<Wave, 'name' | 'label' | 'position' | 'archivedAt'>>): Promise<Wave>
   deleteWave(projectId: string, number: number): Promise<void>
 
   listThemes(projectId: string): Promise<Theme[]>

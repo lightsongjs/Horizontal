@@ -884,7 +884,8 @@ main {
 /* Valul activ e pe rând chiar și când nu încape întreg (coloană foarte
    îngustă): atunci el cedează, cu „…", nu rândul. Pe telefon derulează. */
 /* Cedează întâi activul (pondere mare), abia apoi Notițele și modurile. */
-:where(html:not([data-narrow])) .wb-pills > .wb-pill.on { flex-shrink: 1000; min-width: 56px; }
+:where(html:not([data-narrow])) .wb-pills > .wb-pill.archived svg { opacity: 0.7; flex-shrink: 0; }
+.wb-pill.on { flex-shrink: 1000; min-width: 56px; }
 :where(html:not([data-narrow])) .wb-pills > .wb-pill.on .lb { min-width: 0; }
 /* Cu text mărit nici Notițele și jetoanele de mod nu mai încap întregi. */
 :where(html:not([data-narrow])) .wb-pills > .wb-scratch, :where(html:not([data-narrow])) .wb-pills > .wb-mode { flex-shrink: 1; min-width: 0; }
@@ -1913,6 +1914,24 @@ main {
   font-weight: 600;
 }
 button.we-del:hover { color: var(--blocked); background: var(--blocked-soft); }
+/* Arhivatele (H-17): jos, strânse; fără mâner — n-au loc în ordinea benzii. */
+.we-archived { margin-top: 14px; }
+.we-arch-toggle {
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 34px; padding: 0 8px; margin-left: -8px;
+  border-radius: var(--r-s); background: transparent;
+  color: var(--txt-faint); font-size: calc(13px * var(--text-scale)); font-weight: 600;
+}
+.we-arch-toggle:hover { color: var(--txt-dim); background: var(--surface-2); }
+.we-arch { min-height: 44px; padding-left: 4px; }
+.we-arch .we-field { color: var(--txt-faint); }
+.we-arch-act {
+  flex-shrink: 0; min-height: 34px; padding: 0 10px;
+  display: inline-flex; align-items: center; gap: 5px;
+  border-radius: var(--r-s); background: var(--surface-2);
+  color: var(--txt-dim); font-size: calc(13px * var(--text-scale)); font-weight: 600;
+}
+.we-arch-act:hover { color: var(--txt); }
 .we-new { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
 .we-new .we-input { height: 42px; background: var(--bg); border-color: var(--border-strong); }
 .we-add {

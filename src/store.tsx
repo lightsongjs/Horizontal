@@ -32,6 +32,7 @@ import { isDormant, nextReveal, routineProjectIds } from './lib/routines'
 import { didJumpOnComplete, jumpNotice } from './lib/recurrence'
 import { applyIssuePatch, planPatch } from './lib/issuePatch'
 import { blockedBy, detectObstacleCycle } from './lib/obstacles'
+import { landingWave, visibleWaves } from './lib/waveBar'
 import { groupInbox, reconcileInbox, withCreation } from './lib/thread'
 import { withPin, withoutPin, withPositions, type Pin, type PinKind } from './lib/pins'
 import { shortLabels } from './lib/initials'
@@ -176,6 +177,10 @@ interface HorizontalState {
   /** Noile poziții ale valurilor mutate prin tragere (`moveWave` din `lib/waveBar`). */
   reorderWaves(changes: { number: number; position: number }[]): Promise<void>
   deleteWave(number: number): Promise<void>
+  /** Valurile arhivate ale proiectului deschis (H-17); `waves` nu le are. */
+  archivedWaves: Wave[]
+  /** Arhivează / scoate din arhivă un val (tichetele lui rămân). */
+  archiveWave(number: number, archived: boolean): Promise<void>
 
   createTheme(name: string, color: string): Promise<Theme | null>
   updateTheme(key: string, patch: Partial<Pick<Theme, 'name' | 'color'>>): Promise<void>
@@ -661,10 +666,14 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
   const projects = useMemo(() => applyOrder(rawProjects, projectOrder), [rawProjects, projectOrder])
   const project = useMemo(() => projects.find((p) => p.id === projectId) ?? null, [projects, projectId])
   const issues = useMemo(() => allIssues.filter((i) => i.projectId === projectId), [allIssues, projectId])
-  const waves = useMemo(
+  // Arhivatele (H-17) nu sunt în `waves` — taburile, alegerile, „Cards" nu le
+  // văd —, afară de cel deschis acum din foaia „Valuri" (`visibleWaves`).
+  const projectWaves = useMemo(
     () => allWaves.filter((w) => w.projectId === projectId).sort((a, b) => a.position - b.position),
     [allWaves, projectId],
   )
+  const waves = useMemo(() => visibleWaves(projectWaves, activeWave), [projectWaves, activeWave])
+  const archivedWaves = useMemo(() => projectWaves.filter((w) => !!w.archivedAt), [projectWaves])
   const themes = useMemo(() => allThemes.filter((t) => t.projectId === projectId), [allThemes, projectId])
   const obstacles = useMemo(
     () => allObstacles.filter((o) => o.projectId === projectId),
@@ -892,12 +901,11 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
           ])
           if (id !== currentProjectRef.current) return
           applyProjectBundle(id, { waves: w, themes: t, issues: loaded, obstacles: o, obstacleLinks: ol, members: pm }, { authoritative: true })
-          // Valul memorat nu mai există (șters): primul val REAL, nu Notițele —
-          // altfel proiectul se deschidea pe Notițe, iar un tichet nou primea
-          // un val inexistent („Val 1" în APIs, care are II…IX).
-          if (w.length && !w.some((x) => x.number === (proj?.currentWave ?? 1))) {
-            setActiveWave((w.find((x) => x.number !== 0) ?? w[0]).number)
-          }
+          // Valul memorat nu mai există (șters) sau e arhivat: primul val REAL,
+          // nu Notițele — altfel proiectul se deschidea pe Notițe, iar un tichet
+          // nou primea un val inexistent („Val 1" în APIs, care are II…IX).
+          const land = landingWave(w, proj?.currentWave ?? 1)
+          if (land !== null && land !== (proj?.currentWave ?? 1)) setActiveWave(land)
         } catch (e) {
           if (id !== currentProjectRef.current) return
           setError(errorMessage(e))
@@ -1093,8 +1101,25 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
       setAllWaves((prev) => prev.filter((w) => !(w.projectId === projectId && w.number === number)))
       setActiveWave((cur) => {
         if (cur !== number) return cur
-        const remaining = allWaves.filter((w) => w.projectId === projectId && w.number !== number)
+        const remaining = allWaves.filter((w) => w.projectId === projectId && w.number !== number && !w.archivedAt)
         return remaining.length ? remaining.sort((a, b) => a.position - b.position)[0].number : 1
+      })
+    },
+    [projectId, allWaves],
+  )
+
+  // Arhivarea din foaia „Valuri" (doar valuri fără tichete deschise — regula
+  // e a foii, ca la API: `waveRemovalPlan`). Scoaterea din arhivă: `null`.
+  const archiveWave = useCallback(
+    async (number: number, archived: boolean) => {
+      if (!projectId || number === 0) return
+      const updated = await repository.updateWave(projectId, number, { archivedAt: archived ? new Date().toISOString() : null })
+      setAllWaves((prev) => prev.map((w) => (w.projectId === projectId && w.number === number ? updated : w)))
+      if (!archived) return
+      setActiveWave((cur) => {
+        if (cur !== number) return cur
+        const land = landingWave(allWaves.filter((w) => w.projectId === projectId && w.number !== number), -1)
+        return land ?? cur
       })
     },
     [projectId, allWaves],
@@ -1537,6 +1562,8 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     renameWave,
     reorderWaves,
     deleteWave,
+    archivedWaves,
+    archiveWave,
     createTheme,
     updateTheme,
     deleteTheme,

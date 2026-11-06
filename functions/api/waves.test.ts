@@ -31,14 +31,16 @@ describe('GET /api/waves', () => {
         body: [
           { number: 0, name: 'Scratchpad', label: null, position: 0 },
           { number: 1, name: 'Val 1', label: 'MVP', position: null },
+          { number: 2, name: 'II', label: 'Vechi', position: 2, archived_at: '2026-11-06T10:00:00Z' },
         ],
       }
     })
     const res = await onRequestGet(ctx('project=MS'))
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual([
-      { number: 0, name: 'Scratchpad', label: '', position: 0 },
-      { number: 1, name: 'Val 1', label: 'MVP', position: 1 },
+      { number: 0, name: 'Scratchpad', label: '', position: 0, archived: false },
+      { number: 1, name: 'Val 1', label: 'MVP', position: 1, archived: false },
+      { number: 2, name: 'II', label: 'Vechi', position: 2, archived: true },
     ])
     expect(urls.some(u => u.includes('/rest/v1/waves?project_id=eq.horizontal') && u.includes('order=position.asc'))).toBe(true)
   })

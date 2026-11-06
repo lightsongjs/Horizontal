@@ -129,6 +129,10 @@ tk theme-delete pasul-2-admiterea       # → deleted: pasul-2-admiterea
 tk theme-delete pasul-2-admiterea --force   # → deleted: …  +  cleared: KATA-03, KATA-07
 tk wave-create "Pilot"                  # → 4  IV / Pilot   (--name "Nu facem" pentru alt nume)
 tk wave-update 2 --label "Pilot ~110 firme"
+tk wave-delete 1                        # → wave_in_use: 2 deschise (KATA-03, KATA-07)  nimic schimbat
+tk wave-delete 1 --move-to 2            # → archived: 1 / moved → 2: KATA-03, KATA-07 / kept: 4 gata
+tk wave-delete 5                        # → deleted: 5   (val gol: se șterge de tot)
+tk wave-archive 3 [--move-to 0]         # arhivează și un val gol;  tk wave-unarchive 3 îl readuce
 ```
 
 Forma veche, din ai-client, merge în continuare: `tk --create --title "…" --wave 1`,
@@ -251,6 +255,7 @@ API-ul scrie cu cheia de serviciu, deci ce nu se poate anula se refuză:
 | `duplicate: <ID>` | există deja un tichet cu titlul ăsta în proiect | folosește-l pe acela |
 | `theme_not_found: <cheie>` | temă necunoscută (înainte cădea tăcut în „Fără temă") | `tk themes` sau `tk theme-create` |
 | `theme_in_use: N (ID-uri)` | `theme-delete` pe o temă purtată de tichete | `--force`, numai dacă omul vrea tichetele „Fără temă” |
+| `wave_in_use: N deschise (ID-uri)` | `wave-delete` / `wave-archive` pe un val cu tichete deschise | `--move-to <n>`, valul ales de om |
 | `assignee_not_found` | numele nu e în `tk assignees` (și la `list --assignee`, `mine`) | se creează din aplicație |
 | `invalid_deps: A, B` | dependențe spre ID-uri inexistente | creează-le întâi |
 | `invalid_due` | scadența nu e `AAAA-LL-ZZ` sau `AAAA-LL-ZZ HH:MM` | |
@@ -306,6 +311,14 @@ Pentru o încărcare greșită. Trece prin coșul aplicației, dar din API nu ex
   <cheie>` pe fiecare. Nu folosi `--force` din proprie inițiativă — întreabă omul.
 - Un val nou primește numărul și locul următoare; numele implicit e cifra romană
   următoare. Ordinea valurilor se schimbă din aplicație, nu de aici.
+- **Ștergerea / arhivarea unui val** (`wave-delete`, `wave-archive`). Tichetele
+  DESCHISE o opresc: `wave_in_use: N deschise (ID-uri)`, nimic schimbat.
+  `--move-to <n>` le mută întâi în alt val activ (0 = Notițele). Tichetele GATA
+  nu se pierd niciodată: un val care le are se **arhivează** (dispare din
+  taburile aplicației, tichetele rămân — `tk get`, căutarea, `tk list --wave N`),
+  iar unul gol se șterge. `tk waves` arată arhivatele cu „(arhivat)”;
+  `wave-unarchive <n>` readuce unul. Notițele (0) nu se ating. `migration_missing`
+  = baza n-are încă `migration-wave-archive.sql`: nimic nu s-a schimbat.
 
 ### Proiectele noi
 

@@ -10,7 +10,7 @@ import { MarkdownView } from './MarkdownView'
 import { TitleText, openTitleLink } from './TitleText'
 
 export function IssueSheet({ issueId }: { issueId: string }) {
-  const { byId, waves, unblockedBy, themeOf, assignees, myAssigneeId, projects, updateIssue } = useHorizontal()
+  const { byId, waves, archivedWaves, unblockedBy, themeOf, assignees, myAssigneeId, projects, updateIssue } = useHorizontal()
   const { openEditIssue, pushSheet, showToast } = useUI()
   const it = byId[issueId]
   // Înainte de `return null`: un hook condiționat ar strica ordinea.
@@ -32,7 +32,7 @@ export function IssueSheet({ issueId }: { issueId: string }) {
   }
   const prefixes = projects.map((p) => p.prefix)
 
-  const waveName = (n: number) => waves.find((w) => w.number === n)?.name ?? `Val ${n}`
+  const waveName = (n: number) => (waves.find((w) => w.number === n) ?? archivedWaves.find((w) => w.number === n))?.name ?? `Val ${n}`
   const theme = it.theme ? themeOf(it.theme) : undefined
   const deps = it.deps ?? []
   const permits = unblockedBy(issueId)

@@ -2848,6 +2848,64 @@ try {
     await op.close()
   }
 
+  // ── Valurile arhivate (H-17): foaia „Valuri" arhivează un val cu tichete
+  // doar gata, el iese din bandă (și după reîncărcare), „Arhivate" îl arată,
+  // „Deschide" îl pune în bandă cât îl consulți, „Scoate" îl readuce. Un val cu
+  // tichete deschise rămâne refuzat, cu motivul.
+  {
+    const ap = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+    await ap.goto(BASE, { waitUntil: 'networkidle' })
+    await ap.evaluate(() => {
+      const db = JSON.parse(localStorage.getItem('horizontal:v2'))
+      db.waves.push({ projectId: 'demo', number: 3, name: 'Val 3', label: 'Arhivabil', position: 2 })
+      const src = db.issues.find((i) => i.projectId === 'demo')
+      db.issues.push({ ...src, id: 'EX-93', title: 'Gata în valul 3', wave: 3, deps: [], done: true, dueAt: null, remindAt: null, rrule: null, pinnedAt: null })
+      localStorage.setItem('horizontal:v2', JSON.stringify(db))
+    })
+    await ap.reload({ waitUntil: 'networkidle' })
+    await ap.waitForTimeout(700)
+    await ap.locator('.sidebar-proj-btn', { hasText: 'Exemplu' }).first().click()
+    await ap.waitForTimeout(800)
+    await ap.locator('.tab', { hasText: /^List/ }).first().click()
+    await ap.waitForTimeout(500)
+    const pill = (n) => ap.locator(`.wb-pills .wb-pill[data-wave="${n}"]`)
+    check('arhivă: valul 3 e în bandă la început', (await pill(3).count()) === 1, `${await pill(3).count()}`)
+    await pill(3).dblclick()
+    await ap.waitForTimeout(500)
+    const del = (n) => ap.locator(`.sheet.on .we[data-wave="${n}"] .we-del`)
+    check('arhivă: pe un val doar cu tichete gata, coșul devine „Arhivează"', /Arhivează/.test((await del(3).getAttribute('aria-label')) ?? ''), String(await del(3).getAttribute('aria-label')))
+    await del(2).click()
+    await ap.waitForTimeout(300)
+    check('…un val cu tichete deschise e refuzat, cu motivul', /deschise/.test((await ap.locator('.sheet.on .banner').textContent().catch(() => '')) ?? ''), String(await ap.locator('.sheet.on .banner').textContent().catch(() => null)))
+    await del(3).click()
+    await ap.waitForTimeout(200)
+    await del(3).click()
+    await ap.waitForTimeout(600)
+    const stored = () => ap.evaluate(() => JSON.parse(localStorage.getItem('horizontal:v2')).waves.find((w) => w.projectId === 'demo' && w.number === 3)?.archivedAt ?? null)
+    check('arhivă: „Sigur?" îl arhivează — iese din bandă, apare sub „Arhivate"', (await pill(3).count()) === 0 && !!(await stored()) && /Arhivate \(1\)/.test(await ap.locator('.sheet.on .we-arch-toggle').textContent().catch(() => '')), `pastile=${await pill(3).count()}, bază=${await stored()}`)
+    await ap.keyboard.press('Escape')
+    await ap.reload({ waitUntil: 'networkidle' })
+    await ap.waitForTimeout(900)
+    check('…și rămâne arhivat după reîncărcare; tichetul gata e tot în bază', (await pill(3).count()) === 0 && (await ap.evaluate(() => JSON.parse(localStorage.getItem('horizontal:v2')).issues.some((i) => i.id === 'EX-93'))), `pastile=${await pill(3).count()}`)
+    await pill(1).dblclick()
+    await ap.waitForTimeout(500)
+    await ap.locator('.sheet.on .we-arch-toggle').click()
+    await ap.locator('.sheet.on .we-arch[data-wave="3"] .we-arch-act', { hasText: 'Deschide' }).click()
+    await ap.waitForTimeout(700)
+    check('arhivă: „Deschide" îl arată în bandă, marcat, activ', (await ap.locator('.wb-pills .wb-pill.archived[data-wave="3"][aria-selected="true"]').count()) === 1 && (await ap.locator('.sheet.on').count()) === 0, `${await ap.locator('.wb-pills .wb-pill.archived').count()} pastile arhivate`)
+    check('…cu tichetul lui gata la vedere', (await ap.locator('main', { hasText: 'Gata în valul 3' }).count()) > 0, 'EX-93')
+    await pill(1).click()
+    await ap.waitForTimeout(500)
+    check('…iar la plecarea de pe el dispare iar', (await pill(3).count()) === 0, `${await pill(3).count()}`)
+    await pill(1).dblclick()
+    await ap.waitForTimeout(500)
+    await ap.locator('.sheet.on .we-arch-toggle').click()
+    await ap.locator('.sheet.on .we-arch[data-wave="3"] .we-arch-act', { hasText: 'Scoate' }).click()
+    await ap.waitForTimeout(600)
+    check('arhivă: „Scoate" îl readuce în bandă și în listă', (await pill(3).count()) === 1 && (await stored()) === null && (await ap.locator('.sheet.on .we[data-wave="3"] .we-del').count()) === 1, `pastile=${await pill(3).count()}, bază=${await stored()}`)
+    await ap.close()
+  }
+
   // Aceeași regresie în aplicația obișnuită: tichet docat în „Listă", apoi
   // „Azi" din bara laterală — formularul rămânea pe „Se încarcă tichetul…".
   {

@@ -35,9 +35,19 @@ describe('localRepository', () => {
     expect(p.id).toBe('tst')
     expect(p.currentWave).toBe(1)
     expect(await repo.listWaves('tst')).toEqual([
-      { projectId: 'tst', number: 0, name: 'Scratchpad', label: '', position: 0 },
-      { projectId: 'tst', number: 1, name: 'Val 1', label: 'MVP', position: 1 },
+      { projectId: 'tst', number: 0, name: 'Scratchpad', label: '', position: 0, archivedAt: null },
+      { projectId: 'tst', number: 1, name: 'Val 1', label: 'MVP', position: 1, archivedAt: null },
     ])
+  })
+
+  it('arhivarea unui val: archivedAt scris și citit, null îl readuce', async () => {
+    const repo = createLocalRepository()
+    await repo.createProject({ name: 'T', description: '', prefix: 'TST' })
+    const at = '2026-11-06T12:00:00.000Z'
+    expect((await repo.updateWave('tst', 1, { archivedAt: at })).archivedAt).toBe(at)
+    expect((await repo.listWaves('tst')).find((w) => w.number === 1)?.archivedAt).toBe(at)
+    await repo.updateWave('tst', 1, { archivedAt: null })
+    expect((await repo.listWaves('tst')).find((w) => w.number === 1)?.archivedAt).toBe(null)
   })
 
   it('wave CRUD: create increments number/position, update renames, delete removes', async () => {

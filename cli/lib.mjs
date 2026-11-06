@@ -31,6 +31,9 @@ export const COMMAND_ALIASES = {
   'delete-theme': 'theme-delete',
   'create-wave': 'wave-create',
   'update-wave': 'wave-update',
+  'delete-wave': 'wave-delete',
+  'archive-wave': 'wave-archive',
+  'unarchive-wave': 'wave-unarchive',
   'create-project': 'project-create',
   thread: 'comments',
   me: 'whoami',
@@ -43,6 +46,7 @@ export const COMMANDS = [
   'list', 'mine', 'lookup', 'get', 'create', 'update', 'delete',
   'attach', 'attachments', 'comments', 'comment', 'whoami',
   'theme-create', 'theme-update', 'theme-delete', 'wave-create', 'wave-update',
+  'wave-delete', 'wave-archive', 'wave-unarchive',
 ]
 
 function canonical(name) {
@@ -524,6 +528,22 @@ tk update ${project.prefix}-7 --done                       # bifat
 }
 
 // ── Afișarea ─────────────────────────────────────────────────────────────────
+
+/**
+ * Parametrul `moveTo` al ștergerii / arhivării unui val: `--move-to <n>` (0 =
+ * Notițele), sau nimic. Același număr ca `--wave`.
+ */
+export function waveMoveTo(flags) {
+  return flags['move-to'] === undefined ? null : waveNumber(flags['move-to'], 'move-to')
+}
+
+/** Ce spune `tk wave-delete` / `wave-archive` după un răspuns 200. */
+export function waveRemovalLines(data) {
+  const lines = [data.deleted !== null ? `deleted: ${data.deleted}` : `archived: ${data.archived}`]
+  if (data.moved?.length) lines.push(`moved → ${data.moveTo}: ${data.moved.join(', ')}`)
+  if (data.kept) lines.push(`kept: ${data.kept} gata (rămân în valul arhivat)`)
+  return lines
+}
 
 /** „Val 1 / MVP" din { name, label }; null dacă n-are niciunul. */
 export function waveLabel(w) {
