@@ -228,4 +228,12 @@ export interface InboxRow {
    *  cont (`auth.users`), deci se mapează la un nume prin `assignees.userId`. */
   lastForeignAuthor: string | null
   seenAt: string | null
+  /**
+   * Cine a creat tichetul și când (`issues.created_by` / `created_at`). Un
+   * tichet creat de altcineva direct pe numele meu n-are niciun eveniment în
+   * fir, deci fără astea rândul ar fi „de la cineva —" (2026-11-06). Opționale:
+   * o poză veche din cache nu le are. Vezi `withCreation` (`lib/thread.ts`).
+   */
+  createdBy?: string | null
+  createdAt?: string | null
 }

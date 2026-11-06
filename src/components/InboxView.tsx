@@ -37,7 +37,7 @@ function timeAgo(iso: string | null): string {
  * stări de mai jos vorbesc despre asta în loc să tacă.
  */
 export function InboxView({ onOpen }: { onOpen(issueId: string): void }) {
-  const { inbox, inboxLoaded, myAssigneeId, assignees, markInboxSeen } = useHorizontal()
+  const { inbox, inboxLoaded, myAssigneeId, myUserId, assignees, markInboxSeen } = useHorizontal()
   // Un singur timer: a doua deschidere (navigare rapidă înainte-înapoi)
   // anulează marcarea celei dintâi, ca să nu stingem o bulină la care omul
   // n-a apucat să se uite.
@@ -50,23 +50,37 @@ export function InboxView({ onOpen }: { onOpen(issueId: string): void }) {
     pending.current = setTimeout(() => { void markInboxSeen(issueId) }, MARK_SEEN_DELAY_MS)
   }
 
-  const authorName = (userId: string | null) =>
-    (userId && assignees.find((a) => a.userId === userId)?.name) || 'cineva'
+  /**
+   * „De la cine": ultimul autor străin — care, fără fir, e creatorul
+   * (`withCreation`, din store). Mi l-am pus singur → „de la tine". Altfel
+   * nimeni cunoscut: „cineva" și „?" în cerc, nu inițialele lui „cineva"
+   * (cercul scria „CI").
+   */
+  const nameOf = (userId: string | null) => (userId && assignees.find((a) => a.userId === userId)?.name) || null
+  const origin = (r: InboxRow): { name: string; initials: string } => {
+    const mine = !r.lastForeignAuthor && !!myUserId && r.createdBy === myUserId
+    const name = mine ? nameOf(myUserId) : nameOf(r.lastForeignAuthor)
+    if (!name) return { name: mine ? 'tine' : 'cineva', initials: '?' }
+    return { name: mine ? 'tine' : name, initials: name.slice(0, 2).toUpperCase() }
+  }
 
-  const row = (r: InboxRow) => (
-    <button key={r.issueId} className="list-row inbox-row" onClick={(e) => { if (!openTitleLink(e)) open(r.issueId) }} data-issue-id={r.issueId}>
-      <span className={`inbox-dot${isUnread(r.lastForeignAt, r.seenAt) ? '' : ' read'}`} aria-hidden="true" />
-      <span className="origin-avatar">{authorName(r.lastForeignAuthor).slice(0, 2).toUpperCase()}</span>
-      <div className="inbox-body">
-        <div className="list-title"><TitleText title={r.title} /></div>
-        <div className="inbox-meta">
-          <span className="mono">{displayIssueId(r.issueId)}</span>
-          <span>de la {authorName(r.lastForeignAuthor)}</span>
-          <time className="mono">{timeAgo(r.lastEventAt)}</time>
+  const row = (r: InboxRow) => {
+    const from = origin(r)
+    return (
+      <button key={r.issueId} className="list-row inbox-row" onClick={(e) => { if (!openTitleLink(e)) open(r.issueId) }} data-issue-id={r.issueId}>
+        <span className={`inbox-dot${isUnread(r.lastForeignAt, r.seenAt) ? '' : ' read'}`} aria-hidden="true" />
+        <span className="origin-avatar" title={from.name === 'cineva' ? 'Expeditor necunoscut' : from.name}>{from.initials}</span>
+        <div className="inbox-body">
+          <div className="list-title"><TitleText title={r.title} /></div>
+          <div className="inbox-meta">
+            <span className="mono">{displayIssueId(r.issueId)}</span>
+            <span>de la {from.name}</span>
+            <time className="mono">{timeAgo(r.lastEventAt)}</time>
+          </div>
         </div>
-      </div>
-    </button>
-  )
+      </button>
+    )
+  }
 
   // `<SplitView>` învelește ORICE stare, nu doar cea cu rânduri — inclusiv
   // „nelegat" și „gol". Fără asta, un tichet docat dintr-o vizitare anterioară

@@ -722,6 +722,8 @@ export function createLocalRepository(): Repository {
               lastForeignAt: lastForeign?.createdAt ?? null,
               lastForeignAuthor: lastForeign?.authorId ?? null,
               seenAt: seen[i.id] ?? null,
+              createdBy: i.createdBy ?? null,
+              createdAt: i.createdAt ?? null,
             }
           }),
       )

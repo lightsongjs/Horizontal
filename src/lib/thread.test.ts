@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { firstUnreadId, groupInbox, keepUnread, needsSeen, isUnread, reconcileInbox, shortAgo, threadRowFromInbox, threadRowState, threadRowText, type ThreadSummary } from './thread'
+import { firstUnreadId, groupInbox, keepUnread, needsSeen, isUnread, reconcileInbox, withCreation, shortAgo, threadRowFromInbox, threadRowState, threadRowText, type ThreadSummary } from './thread'
 import type { Assignee, InboxRow, Issue, IssueEvent } from './types'
 
 const row = (patch: Partial<InboxRow>): InboxRow => ({
@@ -90,6 +90,46 @@ const issue = (patch: Partial<Issue>): Issue => ({
   id: 'T-1', projectId: 'p', title: 'T', desc: '', theme: '', wave: 1, deps: [], done: false,
   selectors: [], scenarios: [], assigneeId: null, createdBy: null, createdAt: '2026-09-17T09:00:00Z',
   urgent: false, dueAt: null, allDay: true, remindAt: null, rrule: null, pingEvery: null, pinnedAt: null, ...patch,
+})
+
+describe('withCreation (fără pasă, crearea e primul eveniment)', () => {
+  const ME = 'u-me'
+  it('creat de altcineva direct pe numele meu: „de la" creator, ora creării, necitit', () => {
+    const r = withCreation(row({ issueId: 'NK-56', createdBy: 'u-alex', createdAt: '2026-11-06T13:01:35Z' }), ME)
+    expect(r).toMatchObject({ lastEventAt: '2026-11-06T13:01:35Z', lastForeignAt: '2026-11-06T13:01:35Z', lastForeignAuthor: 'u-alex' })
+    expect(isUnread(r.lastForeignAt, r.seenAt)).toBe(true)
+    expect(groupInbox([r]).fresh.map((x) => x.issueId)).toEqual(['NK-56'])
+  })
+
+  it('…dar deschis deja după creare: citit', () => {
+    const r = withCreation(row({ createdBy: 'u-alex', createdAt: '2026-11-06T13:01:35Z', seenAt: '2026-11-06T14:00:00Z' }), ME)
+    expect(isUnread(r.lastForeignAt, r.seenAt)).toBe(false)
+  })
+
+  it('cu fir: ultimul eveniment străin rămâne, crearea nu-l bate', () => {
+    const base = row({ createdBy: 'u-alex', createdAt: '2026-11-01T08:00:00Z', lastEventAt: '2026-11-05T10:00:00Z', lastForeignAt: '2026-11-04T10:00:00Z', lastForeignAuthor: 'u-ana' })
+    expect(withCreation(base, ME)).toEqual(base)
+  })
+
+  it('creat de mine: ora creării, dar nicio bulină și niciun expeditor', () => {
+    const r = withCreation(row({ createdBy: ME, createdAt: '2026-11-06T09:00:00Z' }), ME)
+    expect(r).toMatchObject({ lastEventAt: '2026-11-06T09:00:00Z', lastForeignAt: null, lastForeignAuthor: null })
+  })
+
+  it('creator necunoscut (vechi / API fără author): nu inventăm expeditor', () => {
+    const r = withCreation(row({ createdBy: null, createdAt: '2026-09-17T09:00:00Z' }), ME)
+    expect(r).toMatchObject({ lastEventAt: '2026-09-17T09:00:00Z', lastForeignAt: null, lastForeignAuthor: null })
+  })
+
+  it('o poză veche fără creare (cache): neatinsă', () => {
+    const base = row({})
+    expect(withCreation(base, ME)).toBe(base)
+  })
+
+  it('reconcileInbox duce creatorul tichetului încărcat pe rândul nou', () => {
+    const out = reconcileInbox([], [issue({ id: 'T-9', assigneeId: 'a1', createdBy: 'u-alex' })], 'a1')
+    expect(out[0]).toMatchObject({ createdBy: 'u-alex', createdAt: '2026-09-17T09:00:00Z' })
+  })
 })
 
 describe('reconcileInbox', () => {

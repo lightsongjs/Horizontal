@@ -32,7 +32,7 @@ import { isDormant, nextReveal, routineProjectIds } from './lib/routines'
 import { didJumpOnComplete, jumpNotice } from './lib/recurrence'
 import { applyIssuePatch, planPatch } from './lib/issuePatch'
 import { blockedBy, detectObstacleCycle } from './lib/obstacles'
-import { groupInbox, reconcileInbox } from './lib/thread'
+import { groupInbox, reconcileInbox, withCreation } from './lib/thread'
 import { withPin, withoutPin, withPositions, type Pin, type PinKind } from './lib/pins'
 import { shortLabels } from './lib/initials'
 import type { Assignee, InboxRow, Issue, IssueState, Layers, Obstacle, ObstacleLink, Project, ProjectMember, Theme, Wave } from './lib/types'
@@ -816,8 +816,8 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
    * rămânea acolo. Vezi `reconcileInbox`.
    */
   const inbox = useMemo(
-    () => groupInbox(reconcileInbox(inboxRaw, allIssues, myAssigneeId)),
-    [inboxRaw, allIssues, myAssigneeId],
+    () => groupInbox(reconcileInbox(inboxRaw, allIssues, myAssigneeId).map((r) => withCreation(r, myUserId))),
+    [inboxRaw, allIssues, myAssigneeId, myUserId],
   )
 
   /**

@@ -85,20 +85,44 @@ export function reconcileInbox(
     const live = fresh.get(r.issueId)
     if (!live) { merged.push(r); continue }
     if (live.assigneeId !== myAssigneeId) continue
-    merged.push({ ...r, title: live.title, done: live.done, assigneeId: live.assigneeId })
+    merged.push({
+      ...r, title: live.title, done: live.done, assigneeId: live.assigneeId,
+      createdBy: r.createdBy ?? live.createdBy, createdAt: r.createdAt ?? live.createdAt,
+    })
   }
   for (const i of issues) {
     if (i.assigneeId !== myAssigneeId || known.has(i.id)) continue
     // Un tichet care tocmai a devenit al meu n-are fir în poza asta: momentele
-    // rămân null (se completează la următorul refresh). E cinstit — „—" în loc
-    // de o oră inventată — și îl duce la coada listei, nu în „Necitite".
+    // firului rămân null (se completează la următorul refresh). Crearea însă e
+    // știută — `withCreation` o folosește ca prim eveniment.
     merged.push({
       issueId: i.id, projectId: i.projectId, title: i.title, done: i.done,
       assigneeId: i.assigneeId, lastEventAt: null, lastForeignAt: null,
-      lastForeignAuthor: null, seenAt: null,
+      lastForeignAuthor: null, seenAt: null, createdBy: i.createdBy, createdAt: i.createdAt,
     })
   }
   return merged
+}
+
+/**
+ * Crearea e primul eveniment al tichetului, chiar dacă firul n-o scrie
+ * (2026-11-06). Alex creează un tichet direct pe numele meu: nicio pasă, deci
+ * `inbox_rows` n-avea nici autor, nici moment — rândul ieșea „de la cineva —",
+ * iar bulina nu se aprindea niciodată.
+ *
+ * - momentul rândului: ultimul eveniment, altfel crearea;
+ * - „de la" și bulina: ultimul eveniment străin, altfel crearea — dar numai
+ *   dacă a creat-o ALTCINEVA. Un tichet pe care mi l-am pus singur nu e o
+ *   veste. Un creator necunoscut (`null`: vechi, sau API fără `author`) nu
+ *   aprinde nimic: nu inventăm un expeditor.
+ */
+export function withCreation(row: InboxRow, myUserId: string | null): InboxRow {
+  const at = row.createdAt ?? null
+  if (!at) return row
+  const lastEventAt = row.lastEventAt ?? at
+  const foreign = !!row.createdBy && row.createdBy !== myUserId
+  if (row.lastForeignAt || !foreign) return lastEventAt === row.lastEventAt ? row : { ...row, lastEventAt }
+  return { ...row, lastEventAt, lastForeignAt: at, lastForeignAuthor: row.createdBy ?? null }
 }
 
 /**

@@ -565,6 +565,18 @@ describe('supabaseRepository', () => {
       },
     ])
   })
+
+  it('listInbox aduce și creatorul (o pasă fără fir: „de la" creator)', async () => {
+    fakeDb.tables.inbox_rows = [
+      {
+        issue_id: 'NK-56', project_id: 'nk', title: 'A', done: false, assignee_id: 'a1',
+        last_event_at: null, last_foreign_at: null, last_foreign_author: null, seen_at: null,
+      },
+    ]
+    fakeDb.tables.issues.push({ id: 'NK-56', project_id: 'nk', title: 'A', created_by: 'u-alex', created_at: '2026-11-06T13:01:35+00:00' })
+    const rows = await createSupabaseRepository().listInbox()
+    expect(rows[0]).toMatchObject({ issueId: 'NK-56', createdBy: 'u-alex', createdAt: '2026-11-06T13:01:35.000Z' })
+  })
 })
 
 describe('moveIssue', () => {

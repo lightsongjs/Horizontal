@@ -879,7 +879,19 @@ export function createSupabaseRepository(): Repository {
     async listInbox(): Promise<InboxRow[]> {
       const { data, error } = await db.from('inbox_rows').select('*').eq('done', false)
       if (error) throw error
-      return (data ?? []).map(rowToInboxRow)
+      const rows = (data ?? []).map(rowToInboxRow)
+      if (rows.length === 0) return rows
+      // Creatorul nu e în vedere (`inbox_rows` vede doar firul): o a doua
+      // citire, ca să nu cerem o migrare pentru două coloane. Dacă pică, rândul
+      // rămâne cum era — cutia nu se pierde pentru un „de la".
+      const { data: made, error: mErr } = await db.from('issues')
+        .select('id, created_by, created_at').in('id', rows.map((r) => r.issueId))
+      if (mErr) return rows
+      const by = new Map(((made ?? []) as { id: string; created_by: string | null; created_at: string | null }[]).map((m) => [m.id, m]))
+      return rows.map((r) => {
+        const m = by.get(r.issueId)
+        return m ? { ...r, createdBy: m.created_by ?? null, createdAt: isoOrNull(m.created_at) } : r
+      })
     },
 
     async listPins() {
