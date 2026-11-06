@@ -51,10 +51,28 @@ function guard(wc: WebContents) {
   wc.setWindowOpenHandler(({ url }) => { openSafely(url); return { action: 'deny' } })
 }
 
+const failed = new WeakSet<WebContents>()
+
+/**
+ * Încărcare care se reface singură. La pornirea sesiunii rețeaua poate să nu fie
+ * gata: bara primea `ERR_FAILED` la 07:39 (2026-11-06) și rămânea albă toată
+ * ziua, pentru că nimeni nu mai chema `loadURL`. Reîncercăm la 5 s cât eșuează,
+ * iar `showBar` reîncarcă pe loc o bară picată.
+ */
+function load(wc: WebContents, url: string) {
+  wc.on('did-fail-load', (_e, code, _desc, _url, isMainFrame) => {
+    if (!isMainFrame || code === -3) return // -3 = ERR_ABORTED: o navigare nouă a luat locul
+    failed.add(wc)
+    setTimeout(() => { if (!wc.isDestroyed() && failed.has(wc)) void wc.loadURL(url) }, 5000)
+  })
+  wc.on('did-finish-load', () => failed.delete(wc))
+  void wc.loadURL(url)
+}
+
 function createMain() {
   mainWin = new BrowserWindow({ width: 1400, height: 900, show: false, title: 'Horizontal', icon: WINDOW_ICON, autoHideMenuBar: true, webPreferences: webPreferences() })
   guard(mainWin.webContents)
-  void mainWin.loadURL(START_URL)
+  load(mainWin.webContents, START_URL)
   // Închiderea ascunde: fereastra principală e cea care știe mementourile, deci
   // trebuie să rămână încărcată. Ieșirea reală: meniul (Alt → File → Quit, Ctrl+Q).
   mainWin.on('close', (e) => { if (!quitting) { e.preventDefault(); mainWin?.hide() } })
@@ -71,7 +89,7 @@ function createBar() {
     webPreferences: webPreferences(),
   })
   guard(barWin.webContents)
-  void barWin.loadURL(`${START_URL}/quick-add`)
+  load(barWin.webContents, `${START_URL}/quick-add`)
   // Pierderea focusului ascunde — dar nu imediat: popup-ul unui `<select>` sau
   // al calendarului / ceasului din panoul datei ia focusul o clipă. Ascundem
   // doar dacă, după o pauză, fereastra chiar nu l-a primit înapoi.
@@ -81,6 +99,7 @@ function createBar() {
 function showBar() {
   if (!barWin || barWin.isDestroyed()) createBar()
   const win = barWin!
+  if (failed.has(win.webContents)) void win.webContents.loadURL(`${START_URL}/quick-add`)
   // `showInactive`, nu `show()` + `focus()`: pe Wayland Chromium cere focusul
   // cu un token xdg-activation făcut din propria suprafață — fără focus, deci
   // invalid —, iar scurtătura GNOME nu dă niciunul. Mutter răspundea
