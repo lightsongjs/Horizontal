@@ -80,9 +80,23 @@ Deno.serve(async (req) => {
   // nou. Trigger-ul `issues_reset_reminder_sent` (migration-push.sql) golește
   // `reminder_sent_at` fiindcă `remind_at` s-a schimbat — de asta reintră în
   // coadă, fără să facem noi nimic explicit.
-  const patch = action === 'done'
-    ? { done: true }
-    : { remind_at: new Date(Date.now() + SNOOZE_MINUTES * 60_000).toISOString() }
+  //
+  // Amânarea ține minte și mementoul PLANIFICAT: `snoozed_from = coalesce(
+  // snoozed_from, remind_at)` — a doua amânare păstrează baza primei. Saltul
+  // recurenței pleacă de la ea, nu de la ora amânării; fără ea, o sarcină
+  // zilnică de la 08:00 amânată până la 12:00:39 și bifată suna de atunci în
+  // fiecare zi la 12:00:39 (ROUTIN-12, 2026-11-06). Aceeași regulă ca
+  // `snoozeBase` din `src/lib/reminderAction.ts` (aici scadența nu se mută,
+  // deci nici baza). Citire, apoi scriere: între ele poate trece doar o altă
+  // amânare, care ar scrie aceeași bază.
+  let patch: Record<string, unknown>
+  if (action === 'done') patch = { done: true }
+  else {
+    const { data: cur, error: readErr } = await db.from('issues').select('remind_at, snoozed_from').eq('id', id).maybeSingle()
+    if (readErr) return json({ error: readErr.message }, 500, origin)
+    const base = cur?.snoozed_from ?? cur?.remind_at ?? null
+    patch = { remind_at: new Date(Date.now() + SNOOZE_MINUTES * 60_000).toISOString(), ...(base ? { snoozed_from: base } : {}) }
+  }
 
   // O serie de mementouri (`ping_every`) nu se amână: următorul ping vine
   // oricum, iar mutarea lui `remind_at` i-ar muta ancora grilei. Notificarea ei

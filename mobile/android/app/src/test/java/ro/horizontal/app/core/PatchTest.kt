@@ -26,6 +26,12 @@ class PatchTest {
         val p = buildPatch(NativeAction("u", NativeAction.Kind.UNTIL, "HZ-1", remindAt = at, dueAt = "2026-10-03T12:00:00.000Z", title = "t", body = "b", createdAt = 0))
         assertEquals(mapOf("remind_at" to "2026-10-03T06:00:00.000Z", "due_at" to "2026-10-03T12:00:00.000Z"), p.body)
     }
+    @Test fun amanareaScrieSiBaza() {
+        // `snoozed_from` = mementoul planificat: saltul recurenței pleacă de la el (ROUTIN-12).
+        val p = buildPatch(NativeAction("u", NativeAction.Kind.UNTIL, "HZ-1", remindAt = parseIso("2026-11-03T10:00:39Z")!!, title = "t", body = "b", createdAt = 0,
+            snoozedFrom = parseIso("2026-11-03T06:00:00Z")!!))
+        assertEquals(mapOf("remind_at" to "2026-11-03T10:00:39.000Z", "snoozed_from" to "2026-11-03T06:00:00.000Z"), p.body)
+    }
     @Test fun idCuCaractereSpecialeEsteCodat() {
         val p = buildPatch(NativeAction("u", NativeAction.Kind.UNTIL, "A&B", remindAt = 0, title = "t", body = "b", createdAt = 0))
         assertEquals("id=eq.A%26B", p.query)

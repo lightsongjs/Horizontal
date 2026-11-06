@@ -30,7 +30,7 @@ import { buildSmartLists, smartListRange, type SmartLists } from './lib/schedule
 import { onlyMine } from './lib/ownership'
 import { isDormant, nextReveal, routineProjectIds } from './lib/routines'
 import { didJumpOnComplete, jumpNotice } from './lib/recurrence'
-import { applyIssuePatch } from './lib/issuePatch'
+import { applyIssuePatch, planPatch } from './lib/issuePatch'
 import { blockedBy, detectObstacleCycle } from './lib/obstacles'
 import { groupInbox, reconcileInbox } from './lib/thread'
 import { withPin, withoutPin, type Pin, type PinKind } from './lib/pins'
@@ -185,7 +185,7 @@ interface HorizontalState {
    * `dueAt`/`remindAt` de aici sunt valorile de ÎNAINTE de salt, ținute doar
    * în memorie — nu există coloane `prev_due_at` în bază (vezi `undoRecurrence`).
    */
-  recurrenceUndo: { id: string; label: string; dueAt: string | null; remindAt: string | null } | null
+  recurrenceUndo: { id: string; label: string; dueAt: string | null; remindAt: string | null; snoozedFrom: string | null } | null
   /** Scrie înapoi valorile de dinainte de salt și golește `recurrenceUndo`. */
   undoRecurrence(): Promise<void>
   clearRecurrenceUndo(): void
@@ -302,7 +302,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
   // se observă imediat sau deloc, iar două coloane nefolosite după trei secunde
   // ar fi fost greutate moartă în model.
   const [recurrenceUndo, setRecurrenceUndo] = useState<
-    { id: string; label: string; dueAt: string | null; remindAt: string | null } | null
+    { id: string; label: string; dueAt: string | null; remindAt: string | null; snoozedFrom: string | null } | null
   >(null)
   // Coadă de scrieri per tichet — vezi `enqueueWrite`, la nivel de modul.
   const writeQueue = useRef<Map<string, Promise<unknown>>>(new Map())
@@ -1137,7 +1137,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
           undoRef.current = null
           setUndoEntry(null)
           old?.expire?.()
-          setRecurrenceUndo({ id, label: jumpNotice(saved.dueAt!), dueAt: current.dueAt, remindAt: current.remindAt })
+          setRecurrenceUndo({ id, label: jumpNotice(saved.dueAt!), dueAt: current.dueAt, remindAt: current.remindAt, snoozedFrom: current.snoozedFrom ?? null })
         }
       } catch (e) {
         upsertIssue(current)
@@ -1165,7 +1165,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
       // ecran că e încă în zbor, așa cum are `toggleDone` prin `upsertIssue`
       // de mai sus.
       const saved = await enqueueWrite(writeQueue.current, u.id, () =>
-        repository.updateIssue(u.id, { dueAt: u.dueAt, remindAt: u.remindAt, done: false }),
+        repository.updateIssue(u.id, { dueAt: u.dueAt, remindAt: u.remindAt, snoozedFrom: u.snoozedFrom, done: false }),
       )
       upsertIssue(saved)
     } catch (e) {
@@ -1189,8 +1189,11 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
   )
 
   const updateIssue = useCallback(
-    async (id: string, patch: Partial<Issue>) => {
-      const before = allIssuesRef.current.find((i) => i.id === id)?.assigneeId ?? null
+    async (id: string, raw: Partial<Issue>) => {
+      const cur = allIssuesRef.current.find((i) => i.id === id)
+      const before = cur?.assigneeId ?? null
+      // Mementoul sau scadența schimbate de mână golesc baza amânării (`planPatch`).
+      const patch = planPatch(cur ?? dueIssuesRef.current.find((i) => i.id === id) ?? openIssuesRef.current.find((i) => i.id === id), raw)
       // Prin coada per-id, ca `toggleDone`: foaia de tichet de pe telefon
       // salvează singură (textul după o pauză, jetoanele imediat), deci o
       // bifă și un titlu pot fi în zbor pe același tichet deodată. Fără
@@ -1268,8 +1271,12 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const applyWrites = useCallback(
-    async (writes: { id: string; patch: Partial<Issue> }[]) => {
+    async (raw: { id: string; patch: Partial<Issue> }[]) => {
       const now = new Date()
+      // `planPatch`: „Mâine" din listă e o reprogramare, nu o amânare. Anularea ei
+      // (`snapshot`) își aduce singură `snoozedFrom`, deci rămâne neatinsă.
+      const find = (id: string) => allIssuesRef.current.find((i) => i.id === id) ?? dueIssuesRef.current.find((i) => i.id === id) ?? openIssuesRef.current.find((i) => i.id === id)
+      const writes = raw.map((w) => ({ id: w.id, patch: planPatch(find(w.id), w.patch) }))
       // Starea de dinainte, din poza curentă: o sarcină dintr-un proiect
       // nedeschis trăiește doar în `dueIssues`, ca la `toggleDone`.
       const before = new Map<string, Issue>()

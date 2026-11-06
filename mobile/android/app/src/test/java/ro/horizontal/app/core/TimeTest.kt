@@ -30,6 +30,21 @@ class TimeTest {
         assertEquals(a, Json.actionFromJson(Json.actionToJson(a)))
         val min = NativeAction("u", NativeAction.Kind.DONE, "HZ-1", title = "t", body = "b", createdAt = 7)
         assertEquals(min, Json.actionFromJson(Json.actionToJson(min)))
+        val snoozed = a.copy(snoozedFrom = 3)
+        assertEquals(snoozed, Json.actionFromJson(Json.actionToJson(snoozed)))
+        // Coada scrisă de un APK de dinainte de câmp: fără `snoozedFrom`, tot se citește.
+        assertEquals(a, Json.actionFromJson(Json.actionToJson(a).apply { remove("snoozedFrom") }))
+    }
+    @Test fun amanareaSprePaginaPoartaBaza() {
+        val a = NativeAction("u", NativeAction.Kind.UNTIL, "HZ-1", remindAt = parseIso("2026-11-03T10:00:39Z")!!, title = "t", body = "b", createdAt = 0,
+            snoozedFrom = parseIso("2026-11-03T06:00:00Z")!!)
+        assertEquals("2026-11-03T06:00:00.000Z", Json.actionToPage(a).getString("from"))
+        assertEquals(false, Json.actionToPage(a.copy(snoozedFrom = null)).has("from"))
+    }
+    @Test fun reminderAmanatDusIntors() {
+        val at = parseIso("2026-11-03T10:00:39Z")!!
+        val r = Reminder(reminderKey("HZ-1", at), "HZ-1", at, "t", "b", "2026-11-03T06:00:00.000Z", false, snoozedFrom = parseIso("2026-11-03T06:00:00Z"))
+        assertEquals(r, Json.reminderFromJson(Json.reminderToJson(r)))
     }
     @Test fun cheiaGresitaDeLaSursaEIgnorata() {
         val o = JSONObject("""{"key":"x","id":"HZ-1","at":"2026-10-02T06:00:00Z","title":"t","body":"b"}""")

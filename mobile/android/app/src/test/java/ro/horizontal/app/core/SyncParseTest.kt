@@ -11,7 +11,7 @@ class SyncParseTest {
 
     @Test fun interogarea() {
         val q = syncQuery(now)
-        assertTrue(q, q.startsWith("issues?select=id,title,due_at,all_day,remind_at,ping_every,assignee_id,created_by,projects(name)"))
+        assertTrue(q, q.startsWith("issues?select=id,title,due_at,all_day,remind_at,snoozed_from,ping_every,assignee_id,created_by,projects(name)"))
         assertTrue(q, "done=is.false" in q)
         // 24 h în urmă, nu 1 h: altfel o notificare neatinsă ar fi retrasă după o oră
         assertTrue(q, "remind_at=gte.2026-10-01T09%3A00%3A00.000Z" in q)
@@ -58,5 +58,11 @@ class SyncParseTest {
         assertEquals(listOf(10, null, null, null), list.map { it.every })   // fără capăt nu e serie
         assertEquals("până la 10:00 · Inbox", list[0].body)
         assertEquals("10:00", list[1].body)
+    }
+    @Test fun bazaAmanariiVineDinSnoozedFrom() {
+        val json = """[{"id":"HZ-1","title":"a","due_at":"2026-11-03T06:00:00+00:00","all_day":false,"remind_at":"2026-11-03T10:00:39+00:00","snoozed_from":"2026-11-03T06:00:00+00:00"},
+                       {"id":"HZ-2","title":"b","due_at":"2026-11-03T06:00:00+00:00","all_day":false,"remind_at":"2026-11-03T06:00:00+00:00","snoozed_from":null},
+                       {"id":"HZ-3","title":"c","due_at":null,"all_day":true,"remind_at":"2026-11-03T06:00:00+00:00"}]"""
+        assertEquals(listOf(parseIso("2026-11-03T06:00:00Z"), null, null), parseIssues(json, zone).map { it.snoozedFrom })
     }
 }

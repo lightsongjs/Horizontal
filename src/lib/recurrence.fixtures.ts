@@ -98,3 +98,47 @@ export const FIXTURES: Fixture[] = [
   { name: 'zerouri în față — plafonul se citește pe cifrele care contează', rrule: 'FREQ=DAILY;INTERVAL=0005',
     due: iso(2026, 8, 24), from: iso(2026, 8, 24), want: '2026-08-29 09:00' },
 ]
+
+/**
+ * Saltul la bifă cu mementoul dus după scadență — `applyIssuePatch`
+ * (`issuePatch.ts`) și trigger-ul `advance_recurrence()`
+ * (`supabase/migration-snoozed-from.sql`). `issuePatch.test.ts` le verifică la
+ * `now` fix; `scripts/test-recurrence-sql.mjs` le trece prin trigger pe un
+ * Postgres de unică folosință și compară cu `applyIssuePatch` la ceasul bazei.
+ *
+ * Decalajul pleacă de la mementoul PLANIFICAT (`snoozedFrom ?? remind`), nu de
+ * la ora amânării, iar apariția nouă pleacă neamânată (ROUTIN-12, 2026-11-06).
+ */
+export interface AdvanceFixture {
+  name: string
+  rrule: string
+  due: string
+  remind: string | null
+  snoozedFrom: string | null
+  /** „Acum", pentru varianta TS; SQL-ul folosește `now()`. */
+  now: string
+  want: { due: string; remind: string | null }
+}
+
+/** Ca `iso`, cu secunde: ROUTIN-12 a sunat la 12:00:39. */
+function isoS(y: number, m: number, d: number, h: number, mi: number, s: number): string {
+  return new Date(y, m - 1, d, h, mi, s, 0).toISOString()
+}
+
+export const ADVANCE_FIXTURES: AdvanceFixture[] = [
+  { name: 'amânat, apoi bifat → mâine sună la ora inițială', rrule: 'FREQ=DAILY',
+    due: iso(2026, 11, 3, 8), remind: isoS(2026, 11, 3, 12, 0, 39), snoozedFrom: iso(2026, 11, 3, 8),
+    now: iso(2026, 11, 3, 12, 10), want: { due: iso(2026, 11, 4, 8), remind: iso(2026, 11, 4, 8) } },
+  { name: 'cu 30 min înainte, amânat, bifat → mâine tot cu 30 min înainte', rrule: 'FREQ=DAILY',
+    due: iso(2026, 11, 3, 8), remind: isoS(2026, 11, 3, 12, 0, 39), snoozedFrom: iso(2026, 11, 3, 7, 30),
+    now: iso(2026, 11, 3, 12, 10), want: { due: iso(2026, 11, 4, 8), remind: iso(2026, 11, 4, 7, 30) } },
+  { name: 'neamânat: decalajul din remind, ca înainte', rrule: 'FREQ=DAILY',
+    due: iso(2026, 11, 3, 8), remind: iso(2026, 11, 3, 7, 50), snoozedFrom: null,
+    now: iso(2026, 11, 3, 8, 5), want: { due: iso(2026, 11, 4, 8), remind: iso(2026, 11, 4, 7, 50) } },
+  { name: 'amânat pe mâine 9:00 (scadența mutată cu baza), bifat → poimâine la 8', rrule: 'FREQ=DAILY',
+    due: iso(2026, 11, 4, 8), remind: iso(2026, 11, 4, 9), snoozedFrom: iso(2026, 11, 4, 8),
+    now: iso(2026, 11, 4, 9, 5), want: { due: iso(2026, 11, 5, 8), remind: iso(2026, 11, 5, 8) } },
+  { name: 'fără memento: rămâne fără', rrule: 'FREQ=DAILY',
+    due: iso(2026, 11, 3, 8), remind: null, snoozedFrom: null,
+    now: iso(2026, 11, 3, 8, 5), want: { due: iso(2026, 11, 4, 8), remind: null } },
+]

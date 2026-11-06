@@ -111,6 +111,21 @@ Pro (HyperOS 3, Android 16).
   Fără `API` nou: un APK mai vechi ignoră `every` și sună doar primul ping.
   **Ordinea:** `migration-ping-series.sql` ÎNAINTE de APK — `SyncWorker` cere
   `ping_every` în `select`, iar pe o bază fără coloană citirea nativă ar cădea.
+- **Amânarea își ține baza** (din `versionCode 24`; incidentul ROUTIN-12,
+  2026-11-06: o zilnică de la 08:00, amânată până la 12:00:39 și bifată, suna apoi
+  în fiecare zi la 12:00:39 — saltul ținea `due_at − remind_at`). Coloana
+  `issues.snoozed_from` = mementoul PLANIFICAT, dinaintea primei amânări; saltul
+  pleacă de la `coalesce(snoozed_from, remind_at)` și o golește
+  (`supabase/migration-snoozed-from.sql`, antetul are toată regula). Pe telefon:
+  `snoozeTarget(…, remindAt, snoozedFrom)` întoarce și `snoozedFrom` (`snoozeBase`,
+  port al celui din `src/lib/reminderAction.ts`, fixtures comune
+  `reminderAction.fixtures.json`); `Reminder.snoozedFrom` vine din pagină
+  (`DesktopReminder.snoozedFrom`) sau din citirea nativă (`snoozed_from`), iar
+  notificarea îl dă mai departe (extras `at` + `snoozedFrom`) lui „15 min" și
+  „Amână…". `NativeAction.snoozedFrom` pleacă în PATCH (`snoozed_from`) și spre
+  pagină (`until.from`); un APK mai vechi nu-l trimite, iar pagina îl calculează
+  atunci din cache (`runNativeAction`). Fără `API` nou (nicio metodă nouă).
+  **Ordinea:** migrarea ÎNAINTE de APK — `SyncWorker` cere `snoozed_from`.
 - **Xiaomi/HyperOS**: instalarea prin USB cere „Instalare prin USB" activat și o
   confirmare pe telefon. Glisarea aplicației din recente poate fi un force-stop,
   care omoară alarmele — ecranul de stare (`AndroidStatus`) arată starea

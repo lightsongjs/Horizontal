@@ -35,6 +35,10 @@ class SnoozeActivity : Activity() {
         setContentView(R.layout.activity_snooze)
         val id = intent.getStringExtra("id") ?: return finish()
         val dueAt = intent.getStringExtra("dueAt")
+        // Baza amânării (`snoozeBase`): mementoul care a sunat și, dacă era deja amânat, baza lui.
+        val remindAt = intent.longExtra("at")
+        val snoozedFrom = intent.longExtra("snoozedFrom")
+        fun target(opt: SnoozeOption, at: Long) = snoozeTarget(opt, at, dueAt, zone, remindAt, snoozedFrom)
         findViewById<TextView>(R.id.title).text = intent.getStringExtra("title")
         // targetSdk 36 = edge-to-edge impus: fără inset, ultimul rând ar sta sub bara de navigare.
         val sheet = findViewById<View>(R.id.sheet)
@@ -45,8 +49,8 @@ class SnoozeActivity : Activity() {
         val now = System.currentTimeMillis()
         // Ora afișată e calculată la deschidere; cea aplicată, la atingere — foaia poate sta deschisă minute.
         fun bind(rowId: Int, timeId: Int, opt: SnoozeOption, label: (Long) -> String) {
-            findViewById<TextView>(timeId).text = label(snoozeTarget(opt, now, dueAt, zone).remindAt)
-            findViewById<View>(rowId).setOnClickListener { apply(id, dueAt, snoozeTarget(opt, System.currentTimeMillis(), dueAt, zone)) }
+            findViewById<TextView>(timeId).text = label(target(opt, now).remindAt)
+            findViewById<View>(rowId).setOnClickListener { apply(id, dueAt, target(opt, System.currentTimeMillis())) }
         }
         val at = { ms: Long -> Instant.ofEpochMilli(ms).atZone(zone).format(hm) }
         bind(R.id.opt5, R.id.opt5Time, SnoozeOption.Minutes(5), at)
@@ -54,7 +58,7 @@ class SnoozeActivity : Activity() {
         bind(R.id.opt60, R.id.opt60Time, SnoozeOption.Minutes(60), at)
         bind(R.id.opt180, R.id.opt180Time, SnoozeOption.Minutes(180), at)
         bind(R.id.optTomorrow, R.id.optTomorrowTime, SnoozeOption.Tomorrow9) { "mâine ${at(it)}" }
-        findViewById<View>(R.id.optCustom).setOnClickListener { pickCustom(id, dueAt) }
+        findViewById<View>(R.id.optCustom).setOnClickListener { pickCustom(id, dueAt) { ms -> target(SnoozeOption.At(ms), System.currentTimeMillis()) } }
         findViewById<View>(R.id.scrim).setOnClickListener { finish() }
     }
 
@@ -69,14 +73,14 @@ class SnoozeActivity : Activity() {
         recreate()
     }
 
-    private fun pickCustom(id: String, dueAt: String?) {
+    private fun pickCustom(id: String, dueAt: String?, target: (Long) -> SnoozePatch) {
         val today = LocalDate.now(zone)
         DatePickerDialog(this, { _, y, m, d ->
             TimePickerDialog(this, { _, h, min ->
                 val ms = LocalDate.of(y, m + 1, d).atTime(h, min).atZone(zone).toInstant().toEpochMilli()
                 // O oră deja trecută ar suna imediat: nu e o amânare.
                 if (ms <= System.currentTimeMillis()) { Toast.makeText(this, "Ora a trecut deja", Toast.LENGTH_SHORT).show(); return@TimePickerDialog }
-                apply(id, dueAt, snoozeTarget(SnoozeOption.At(ms), System.currentTimeMillis(), dueAt, zone))
+                apply(id, dueAt, target(ms))
             }, 9, 0, true).show()
         }, today.year, today.monthValue - 1, today.dayOfMonth).apply {
             // Zilele trecute nici nu se pot alege; ora de azi deja trecută o prinde verificarea de mai sus.
@@ -86,16 +90,19 @@ class SnoozeActivity : Activity() {
 
     private fun apply(id: String, prevDue: String?, t: SnoozePatch) {
         Actions.dispatch(this, NativeAction(UUID.randomUUID().toString(), NativeAction.Kind.UNTIL, id,
-            remindAt = t.remindAt, dueAt = t.dueAt?.let(::isoJs), prevDueAt = prevDue,
+            remindAt = t.remindAt, dueAt = t.dueAt?.let(::isoJs), prevDueAt = prevDue, snoozedFrom = t.snoozedFrom,
             title = intent.getStringExtra("title") ?: "", body = intent.getStringExtra("body") ?: "",
             allDay = intent.getBooleanExtra("allDay", false), createdAt = System.currentTimeMillis()))
         finish()
     }
 
+    private fun Intent.longExtra(k: String): Long? = if (hasExtra(k)) getLongExtra(k, 0L) else null
+
     companion object {
         fun pendingIntent(ctx: Context, r: Reminder): PendingIntent = PendingIntent.getActivity(ctx, "${r.id}|more".hashCode(),
             Intent(ctx, SnoozeActivity::class.java).putExtra("id", r.id).putExtra("title", r.title).putExtra("body", r.body)
-                .putExtra("dueAt", r.dueAt).putExtra("allDay", r.allDay).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_HISTORY),
+                .putExtra("dueAt", r.dueAt).putExtra("allDay", r.allDay).putExtra("at", r.at)
+                .also { i -> r.snoozedFrom?.let { i.putExtra("snoozedFrom", it) } }.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_HISTORY),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
     }
 }

@@ -13,6 +13,8 @@ data class Reminder(
     val key: String, val id: String, val at: Long, val title: String, val body: String,
     val dueAt: String?, val allDay: Boolean,
     val every: Int? = null, val anchor: Long? = null,
+    /** `issues.snoozed_from`: mementoul planificat, cât e amânat — baza unei a doua amânări (`snoozeBase`). */
+    val snoozedFrom: Long? = null,
 )
 
 /** Pingurile seriei la momentul dat, sau `null` dacă rândul nu e o serie (sau n-are capăt). */
@@ -43,6 +45,8 @@ data class NativeAction(
     val prevDueAt: String? = null,
     val title: String, val body: String, val allDay: Boolean = false,
     val createdAt: Long, val drainedAt: Long? = null, val inFlight: Boolean = false,
+    /** Doar la UNTIL: baza amânării (`snoozeBase`), scrisă în `snoozed_from`. `null` = nimic de ținut minte. */
+    val snoozedFrom: Long? = null,
 ) { enum class Kind { DONE, UNTIL } }
 
 /** Aceeași regulă ca `TTL: 3600` la push și ca pe Linux: un memento răsuflat e zgomot. */
@@ -74,7 +78,8 @@ fun mergePlan(page: PageList?, native: NativeList?, actions: List<NativeAction>)
             NativeAction.Kind.UNTIL -> {
                 val at = a.remindAt ?: continue
                 val prev = byId[a.id]
-                byId[a.id] = Reminder(reminderKey(a.id, at), a.id, at, a.title, a.body, a.dueAt ?: prev?.dueAt ?: a.prevDueAt, a.allDay)
+                byId[a.id] = Reminder(reminderKey(a.id, at), a.id, at, a.title, a.body, a.dueAt ?: prev?.dueAt ?: a.prevDueAt, a.allDay,
+                    snoozedFrom = a.snoozedFrom ?: prev?.snoozedFrom)
             }
         }
     }

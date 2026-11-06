@@ -44,6 +44,12 @@ class PlanTest {
         val plan = mergePlan(null, native, listOf(until)).single()
         assertEquals(reminderKey("A", t0 + 15 * min), plan.key)
     }
+    @Test fun untilTineBazaAmanarii() {
+        // O a doua amânare din notificare, înainte de o nouă citire, pleacă de la baza primei.
+        val native = NativeList(listOf(r("A", t0)), readAt = t0)
+        val until = NativeAction("u", NativeAction.Kind.UNTIL, "A", remindAt = t0 + 15 * min, title = "A", body = "b", createdAt = t0, snoozedFrom = t0)
+        assertEquals(t0, mergePlan(null, native, listOf(until)).single().snoozedFrom)
+    }
 
     @Test fun sunaCeleDinUltimaOraSiSareCeleMaiVechi() {
         val p = planAlarms(listOf(r("old", t0 - 61 * min), r("late", t0 - 59 * min), r("next", t0 + 10 * min)), t0, emptySet(), emptyMap())

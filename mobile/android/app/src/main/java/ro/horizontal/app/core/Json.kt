@@ -8,30 +8,39 @@ object Json {
 
     fun reminderToJson(r: Reminder) = JSONObject().put("id", r.id).put("at", isoJs(r.at)).put("title", r.title).put("body", r.body).put("dueAt", r.dueAt ?: JSONObject.NULL).put("allDay", r.allDay)
         .put("every", r.every ?: JSONObject.NULL).put("anchor", r.anchor?.let { isoJs(it) } ?: JSONObject.NULL)
-    /** Și rândul de pe punte (`DesktopReminder`): `every` vine de la pagină doar pe o serie; `anchor` doar de pe disc (`deferred`). */
+        .put("snoozedFrom", r.snoozedFrom?.let { isoJs(it) } ?: JSONObject.NULL)
+    /**
+     * Și rândul de pe punte (`DesktopReminder`): `every` vine de la pagină doar pe o serie; `anchor` doar de pe disc (`deferred`);
+     * `snoozedFrom` doar pe un tichet amânat (o pagină sau un plan de dinainte de câmp nu-l au: neamânat).
+     */
     fun reminderFromJson(o: JSONObject): Reminder? {
         val id = o.str("id") ?: return null
         val at = parseIso(o.str("at")) ?: return null
         val every = if (o.has("every") && !o.isNull("every")) o.optInt("every", 0).takeIf { it >= 1 } else null
         return Reminder(reminderKey(id, at), id, at, o.str("title") ?: return null, o.str("body") ?: return null, o.str("dueAt"), o.optBoolean("allDay", false),
-            every, parseIso(o.str("anchor")))
+            every, parseIso(o.str("anchor")), parseIso(o.str("snoozedFrom")))
     }
     fun actionToJson(a: NativeAction) = JSONObject().put("uid", a.uid).put("kind", a.kind.name).put("id", a.id)
         .put("remindAt", a.remindAt ?: JSONObject.NULL).put("dueAt", a.dueAt ?: JSONObject.NULL).put("prevDueAt", a.prevDueAt ?: JSONObject.NULL)
         .put("title", a.title).put("body", a.body).put("allDay", a.allDay).put("createdAt", a.createdAt)
         .put("drainedAt", a.drainedAt ?: JSONObject.NULL).put("inFlight", a.inFlight)
+        .put("snoozedFrom", a.snoozedFrom ?: JSONObject.NULL)
     fun actionFromJson(o: JSONObject): NativeAction? = try {
         NativeAction(o.getString("uid"), NativeAction.Kind.valueOf(o.getString("kind")), o.getString("id"),
             if (o.isNull("remindAt")) null else o.getLong("remindAt"), o.str("dueAt"), o.str("prevDueAt"),
             o.getString("title"), o.getString("body"), o.optBoolean("allDay"), o.getLong("createdAt"),
-            if (o.isNull("drainedAt")) null else o.getLong("drainedAt"), o.optBoolean("inFlight"))
+            if (o.isNull("drainedAt")) null else o.getLong("drainedAt"), o.optBoolean("inFlight"),
+            // Coada scrisă de un APK de dinainte de câmp n-o are: fără bază, pagina o calculează.
+            if (!o.has("snoozedFrom") || o.isNull("snoozedFrom")) null else o.getLong("snoozedFrom"))
     } catch (e: Exception) { null }
     /** `DesktopAction` din `src/lib/desktopBridge.ts`. */
     fun actionToPage(a: NativeAction): JSONObject = when (a.kind) {
         // `prevDueAt`: pagina refuză un „Gata" pe o recurentă care a sărit între timp
         // (ar sări a doua oară) — aceeași gardă ca în `buildPatch`. `null` = fără scadență.
         NativeAction.Kind.DONE -> JSONObject().put("action", "done").put("id", a.id).put("prevDueAt", a.prevDueAt ?: JSONObject.NULL)
-        NativeAction.Kind.UNTIL -> JSONObject().put("action", "until").put("id", a.id).put("at", isoJs(a.remindAt ?: 0)).also { o -> a.dueAt?.let { o.put("dueAt", it) } }
+        // `from`: baza amânării, scrisă de pagină în `snoozedFrom` (`runNativeAction`).
+        NativeAction.Kind.UNTIL -> JSONObject().put("action", "until").put("id", a.id).put("at", isoJs(a.remindAt ?: 0))
+            .also { o -> a.dueAt?.let { o.put("dueAt", it) }; a.snoozedFrom?.let { o.put("from", isoJs(it)) } }
     }
     fun agendaItemToJson(i: AgendaItem) = JSONObject().put("id", i.id).put("title", i.title).put("project", i.project ?: JSONObject.NULL)
         .put("dueAt", i.dueAt ?: JSONObject.NULL).put("allDay", i.allDay).put("hasReminder", i.hasReminder).put("recurring", i.recurring).put("urgent", i.urgent)

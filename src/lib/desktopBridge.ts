@@ -40,6 +40,12 @@ export interface DesktopReminder {
    * câmpul și sună doar primul ping.
    */
   every?: number
+  /**
+   * Doar pe Android: `Issue.snoozedFrom` (ISO), ca o a doua amânare din
+   * notificare să păstreze baza primei (`snoozeTarget` din `core/SnoozeTarget.kt`).
+   * Lipsă = neamânat. Linux îl ignoră — acolo amână pagina, din cache.
+   */
+  snoozedFrom?: string
 }
 
 /**
@@ -56,7 +62,9 @@ export type DesktopAction =
   | { action: 'done'; id: string; prevDueAt?: string | null }
   | { action: 'open'; id: string }
   | { action: 'snooze'; id: string; minutes?: number }
-  | { action: 'until'; id: string; at: string; dueAt?: string }
+  /** `from`: baza amânării (`snoozeBase`, port Kotlin) — mementoul planificat,
+   *  scris în `snoozedFrom`. Un APK mai vechi n-o trimite; pagina o calculează atunci. */
+  | { action: 'until'; id: string; at: string; dueAt?: string; from?: string }
 
 export interface HorizontalDesktop {
   version: string
@@ -133,7 +141,7 @@ export function upcomingReminders(
       const at = new Date(ms).toISOString()
       return { key: `${i.id}@${at}`, id: i.id, at, title: plan.title, body: plan.body, dueAt: i.dueAt ?? null, allDay: i.allDay }
     }
-    if (!series) { out.push(row(t)); continue }
+    if (!series) { out.push(i.snoozedFrom ? { ...row(t), snoozedFrom: i.snoozedFrom } : row(t)); continue }
     const every = i.pingEvery!
     if (opts.series === 'row') { out.push({ ...row(t), every }); continue }
     const end = Date.parse(i.dueAt!)

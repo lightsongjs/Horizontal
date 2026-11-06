@@ -19,10 +19,16 @@ class ActionReceiver : BroadcastReceiver() {
             allDay = i.getBooleanExtra("allDay", false), createdAt = now)
         val a = when (i.action) {
             DONE -> base
-            SNOOZE15 -> base.copy(kind = NativeAction.Kind.UNTIL, remindAt = snoozeTarget(SnoozeOption.Minutes(15), now, base.prevDueAt, ZoneId.systemDefault()).remindAt)
+            SNOOZE15 -> {
+                // `at` = mementoul care a sunat; `snoozedFrom` = baza, dacă era deja amânat. Din ele, `snoozeBase`.
+                val t = snoozeTarget(SnoozeOption.Minutes(15), now, base.prevDueAt, ZoneId.systemDefault(), i.longExtra("at"), i.longExtra("snoozedFrom"))
+                base.copy(kind = NativeAction.Kind.UNTIL, remindAt = t.remindAt, snoozedFrom = t.snoozedFrom)
+            }
             else -> return
         }
         Actions.dispatch(ctx, a, now)
     }
+    private fun Intent.longExtra(k: String): Long? = if (hasExtra(k)) getLongExtra(k, 0L) else null
+
     companion object { const val DONE = "ro.horizontal.app.DONE"; const val SNOOZE15 = "ro.horizontal.app.SNOOZE15" }
 }

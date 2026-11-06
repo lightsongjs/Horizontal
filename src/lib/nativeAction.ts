@@ -1,6 +1,6 @@
 import type { Issue } from './types'
 import type { DesktopAction } from './desktopBridge'
-import { reminderMutation } from './reminderAction'
+import { reminderMutation, snoozeBase } from './reminderAction'
 
 export interface NativeActionDeps {
   find(id: string): Issue | undefined
@@ -29,7 +29,14 @@ export function runNativeAction(raw: DesktopAction, d: NativeActionDeps): void {
   if (a.action === 'open') { d.open(a.id); return }
   // O serie nu se amână (`reminderMutation`): „Amână…" vine doar de la un APK vechi.
   if (a.action === 'until' && d.find(a.id)?.pingEvery) return
-  if (a.action === 'until') { void d.updateIssue(a.id, a.dueAt ? { remindAt: a.at, dueAt: a.dueAt } : { remindAt: a.at }); return }
+  if (a.action === 'until') {
+    // Baza amânării (`snoozeBase`): cea calculată de cutie, ca ora; un APK de
+    // dinainte de `from` n-o trimite, și atunci o calculează pagina din cache.
+    const known = d.find(a.id)
+    const from = a.from ?? (known ? snoozeBase(known, a.dueAt) : undefined)
+    void d.updateIssue(a.id, { remindAt: a.at, ...(a.dueAt ? { dueAt: a.dueAt } : {}), ...(from ? { snoozedFrom: from } : {}) })
+    return
+  }
   const issue = d.find(a.id)
   if (a.action === 'done' && a.prevDueAt !== undefined) {
     // Garda recurenței, ca `buildPatch` din cutie: pe o recurentă `done` rămâne

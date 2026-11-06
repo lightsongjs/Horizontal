@@ -42,9 +42,12 @@ class FixturesTest {
                 "tomorrow9" -> SnoozeOption.Tomorrow9
                 else -> SnoozeOption.At(parseIso(o.getString("at"))!!)
             }
-            val got = snoozeTarget(option, parseIso(f.getString("now"))!!, f.getJSONObject("issue").str("dueAt"), zone)
+            val issue = f.getJSONObject("issue")
+            val got = snoozeTarget(option, parseIso(f.getString("now"))!!, issue.str("dueAt"), zone,
+                parseIso(issue.str("remindAt")), parseIso(issue.str("snoozedFrom")))
             assertEquals(f.getString("name"), want.getString("remindAt"), isoJs(got.remindAt))
             assertEquals(f.getString("name"), want.str("dueAt"), got.dueAt?.let(::isoJs))
+            assertEquals(f.getString("name"), want.str("snoozedFrom"), got.snoozedFrom?.let(::isoJs))
         }
     }
 

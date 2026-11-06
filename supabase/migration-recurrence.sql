@@ -193,6 +193,9 @@ begin
 end;
 $$;
 
+-- ATENTIE: redefinita in `migration-snoozed-from.sql` (decalajul pleaca de la
+-- `coalesce(snoozed_from, remind_at)`, ROUTIN-12). Re-rularea fisierului asta
+-- dupa ea ar readuce bugul - ruleaz-o si pe aceea din nou.
 create or replace function advance_recurrence() returns trigger language plpgsql as $$
 declare
   nxt   timestamptz;

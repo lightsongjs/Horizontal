@@ -20,6 +20,11 @@ describe('upcomingReminders', () => {
     expect(r.title).toBe('Sună la bancă')
     expect(r.body).toContain('Personal')
   })
+  it('unul amânat își duce baza (`snoozedFrom`) la cutie; unul neamânat n-are câmpul', () => {
+    const [r] = upcomingReminders([{ ...base, snoozedFrom: '2026-10-02T11:00:00.000Z' }], projects, now)
+    expect(r.snoozedFrom).toBe('2026-10-02T11:00:00.000Z')
+    expect('snoozedFrom' in upcomingReminders([base], projects, now)[0]).toBe(false)
+  })
   it('unul trecut, nebifat, intră — notificarea lui poate fi încă pe ecran', () => {
     expect(upcomingReminders([at('2026-10-02T07:00:00.000Z')], projects, now)).toHaveLength(1)
   })

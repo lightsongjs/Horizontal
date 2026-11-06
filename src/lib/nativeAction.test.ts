@@ -50,6 +50,22 @@ describe('runNativeAction', () => {
     expect(d.updateIssue).toHaveBeenCalledWith('HZ-1', { remindAt: '2026-10-03T06:00:00.000Z', dueAt: '2026-10-03T12:00:00.000Z' })
   })
 
+  it('snooze ține minte mementoul planificat (snoozedFrom)', () => {
+    const d = deps({ done: false, dueAt: '2026-10-02T08:00:00.000Z', remindAt: '2026-10-02T08:45:00.000Z', snoozedFrom: '2026-10-02T08:00:00.000Z' })
+    runNativeAction({ action: 'snooze', id: 'HZ-1', minutes: 15 }, d)
+    expect(d.updateIssue).toHaveBeenCalledWith('HZ-1', { remindAt: '2026-10-02T09:15:00.000Z', snoozedFrom: '2026-10-02T08:00:00.000Z' })
+  })
+  it('until cu from: baza calculată de cutie', () => {
+    const d = deps({ done: false, dueAt: '2026-10-02T08:00:00.000Z', remindAt: '2026-10-02T08:00:00.000Z' })
+    runNativeAction({ action: 'until', id: 'HZ-1', at: '2026-10-02T09:15:00.000Z', from: '2026-10-02T07:30:00.000Z' }, d)
+    expect(d.updateIssue).toHaveBeenCalledWith('HZ-1', { remindAt: '2026-10-02T09:15:00.000Z', snoozedFrom: '2026-10-02T07:30:00.000Z' })
+  })
+  it('until fără from (APK vechi): baza din cache, mutată cu scadența', () => {
+    const d = deps({ done: false, dueAt: '2026-10-02T12:00:00.000Z', remindAt: '2026-10-02T11:30:00.000Z' })
+    runNativeAction({ action: 'until', id: 'HZ-1', at: '2026-10-03T06:00:00.000Z', dueAt: '2026-10-03T12:00:00.000Z' }, d)
+    expect(d.updateIssue).toHaveBeenCalledWith('HZ-1', { remindAt: '2026-10-03T06:00:00.000Z', dueAt: '2026-10-03T12:00:00.000Z', snoozedFrom: '2026-10-03T11:30:00.000Z' })
+  })
+
   it('id provizoriu: tradus în cel real înainte de orice', () => {
     const d = { ...deps({ done: false }), resolveId: (id: string) => (id === 'HZ-~abc' ? 'HZ-14' : id) }
     runNativeAction({ action: 'done', id: 'HZ-~abc' }, d)

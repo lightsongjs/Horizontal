@@ -36,6 +36,9 @@ interface IssueRow {
   // `migration-ping-series.sql`. Opțional din același motiv: fără migrare
   // tichetul nu e o serie.
   ping_every?: number | null
+  // `migration-snoozed-from.sql`. Opțional din același motiv: fără migrare
+  // nicio sarcină nu e amânată.
+  snoozed_from?: string | null
 }
 
 /**
@@ -68,6 +71,7 @@ function rowToIssue(row: IssueRow, depsByIssue: Record<string, string[]>): Issue
     dueAt: isoOrNull(row.due_at),
     allDay: row.all_day ?? true,
     remindAt: isoOrNull(row.remind_at),
+    snoozedFrom: isoOrNull(row.snoozed_from),
     rrule: row.rrule ?? null,
     pingEvery: row.ping_every ?? null,
     pinnedAt: isoOrNull(row.pinned_at),
@@ -541,6 +545,7 @@ export function createSupabaseRepository(): Repository {
       if ('dueAt' in patch) row.due_at = patch.dueAt ?? null
       if ('allDay' in patch) row.all_day = patch.allDay ?? true
       if ('remindAt' in patch) row.remind_at = patch.remindAt ?? null
+      if ('snoozedFrom' in patch) row.snoozed_from = patch.snoozedFrom ?? null
       if ('rrule' in patch) row.rrule = patch.rrule ?? null
       if ('pingEvery' in patch) row.ping_every = patch.pingEvery ?? null
       if ('pinnedAt' in patch) row.pinned_at = patch.pinnedAt ?? null

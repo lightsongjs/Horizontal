@@ -113,10 +113,19 @@ describe('datePatch', () => {
 
 describe('snapshot', () => {
   it('ține doar câmpurile atinse', () => {
-    expect(snapshot(timed, { dueAt: 'x', remindAt: 'y' })).toEqual({ dueAt: timed.dueAt, remindAt: timed.remindAt })
+    // `snoozedFrom` vine cu scadența/mementoul: `planPatch` îl golește la mutare.
+    expect(snapshot(timed, { dueAt: 'x', remindAt: 'y' })).toEqual({ dueAt: timed.dueAt, remindAt: timed.remindAt, snoozedFrom: null })
+    expect(snapshot(timed, { urgent: true })).toEqual({ urgent: false })
   })
   it('bifarea unei recurente ține și scadența, ca anularea să întoarcă saltul', () => {
-    expect(snapshot(recurring, { done: true })).toEqual({ done: false, dueAt: recurring.dueAt, remindAt: recurring.remindAt })
+    expect(snapshot(recurring, { done: true })).toEqual({ done: false, dueAt: recurring.dueAt, remindAt: recurring.remindAt, snoozedFrom: null })
+  })
+  it('anularea bifei pe o recurentă amânată pune înapoi și baza amânării', () => {
+    const snoozed = { ...recurring, snoozedFrom: recurring.remindAt, remindAt: new Date(Date.parse(recurring.remindAt!) + 3_600_000).toISOString() }
+    const jumped = applyIssuePatch(snoozed, { done: true }, NOW)
+    expect(jumped.snoozedFrom).toBeNull()
+    const undone = applyIssuePatch(jumped, snapshot(snoozed, { done: true }), NOW)
+    expect(undone).toMatchObject({ dueAt: snoozed.dueAt, remindAt: snoozed.remindAt, snoozedFrom: snoozed.snoozedFrom })
   })
   it('anularea unei bife recurente nu mai sare (false → false)', () => {
     const jumped = applyIssuePatch(recurring, { done: true }, NOW)

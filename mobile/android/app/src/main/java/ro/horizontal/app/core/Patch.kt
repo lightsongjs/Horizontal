@@ -27,6 +27,7 @@ fun buildPatch(a: NativeAction): PatchRequest = when (a.kind) {
     )
     NativeAction.Kind.UNTIL -> PatchRequest(
         "id=eq.${enc(a.id)}",
-        buildMap { put("remind_at", isoJs(a.remindAt ?: 0)); a.dueAt?.let { put("due_at", it) } },
+        // `snoozed_from`: baza amânării (`snoozeBase`) — saltul recurenței pleacă de la ea, nu de la ora amânării.
+        buildMap { put("remind_at", isoJs(a.remindAt ?: 0)); a.dueAt?.let { put("due_at", it) }; a.snoozedFrom?.let { put("snoozed_from", isoJs(it)) } },
     )
 }

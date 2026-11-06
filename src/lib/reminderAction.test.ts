@@ -27,6 +27,13 @@ describe('reminderMutation', () => {
       patch: { remindAt: new Date(now.getTime() + min * 60_000).toISOString() },
     })
   })
+  it('„Amână" ține minte mementoul planificat; a doua amânare păstrează baza primei', () => {
+    const planned = '2026-10-02T09:00:00.000Z'
+    const first = reminderMutation('snooze', { done: false, dueAt: planned, remindAt: planned }, now)
+    expect(first).toEqual({ kind: 'patch', patch: { remindAt: new Date(now.getTime() + SNOOZE_MINUTES * 60_000).toISOString(), snoozedFrom: planned } })
+    const second = reminderMutation('snooze', { done: false, dueAt: planned, remindAt: '2026-10-02T10:00:00.000Z', snoozedFrom: planned }, now, 15)
+    expect(second).toEqual({ kind: 'patch', patch: { remindAt: new Date(now.getTime() + 15 * 60_000).toISOString(), snoozedFrom: planned } })
+  })
   it('o serie de mementouri nu se amână (un worker vechi încă arată „Amână")', () => {
     expect(reminderMutation('snooze', { done: false, pingEvery: 15 }, now)).toEqual({ kind: 'none' })
     expect(reminderMutation('done', { done: false, pingEvery: 15 }, now)).toEqual({ kind: 'toggle' })

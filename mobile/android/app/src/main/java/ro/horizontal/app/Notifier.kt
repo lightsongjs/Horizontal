@@ -39,6 +39,7 @@ object Notifier {
 
     private fun extras(i: Intent, r: Reminder) = i.putExtra("id", r.id).putExtra("key", r.key).putExtra("at", r.at)
         .putExtra("title", r.title).putExtra("body", r.body).putExtra("dueAt", r.dueAt).putExtra("allDay", r.allDay)
+        .also { r.snoozedFrom?.let { s -> i.putExtra("snoozedFrom", s) } }
 
     private fun broadcast(ctx: Context, r: Reminder, action: String) = PendingIntent.getBroadcast(ctx, "${r.id}|$action".hashCode(),
         extras(Intent(ctx, ActionReceiver::class.java).setAction(action), r), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)

@@ -39,7 +39,7 @@ export type BulkAction =
   /** Valul (meniul de acțiuni din modul Vim, pe tichetele aceluiași proiect). */
   | { kind: 'wave'; value: number }
 
-type Fields = Partial<Pick<Issue, 'dueAt' | 'allDay' | 'remindAt' | 'urgent' | 'done' | 'assigneeId' | 'pinnedAt' | 'wave'>>
+type Fields = Partial<Pick<Issue, 'dueAt' | 'allDay' | 'remindAt' | 'snoozedFrom' | 'urgent' | 'done' | 'assigneeId' | 'pinnedAt' | 'wave'>>
 
 export interface Write {
   id: string
@@ -173,6 +173,10 @@ export function snapshot(issue: Issue, patch: Fields): Fields {
     prev.dueAt = issue.dueAt
     prev.remindAt = issue.remindAt
   }
+  // Baza amânării pleacă odată cu ele (saltul o golește, `planPatch` la fel la
+  // o mutare), deci anularea o pune înapoi — altfel mementoul amânat restaurat
+  // ar deveni planul.
+  if ('dueAt' in prev || 'remindAt' in prev) prev.snoozedFrom = issue.snoozedFrom ?? null
   return prev
 }
 

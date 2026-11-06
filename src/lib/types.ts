@@ -112,6 +112,16 @@ export interface Issue {
   allDay: boolean
   /** Când sună mementoul, ISO. `null` = fără memento. */
   remindAt: string | null
+  /**
+   * Mementoul PLANIFICAT al apariției curente, ISO, cât timp e amânat — baza
+   * dinaintea primei amânări (`issues.snoozed_from`, `migration-snoozed-from.sql`).
+   * Invariant: `dueAt − snoozedFrom` e decalajul ales de om. `null`/lipsă = neamânat.
+   * Saltul recurenței pleacă de la el, nu de la `remindAt`, apoi îl golește:
+   * altfel o amânare de dimineață ar suna în fiecare zi la ora amânării
+   * (ROUTIN-12, 2026-11-06). Opțional: o bază fără migrare nu-l aduce.
+   * Regulile: `snoozeBase` (`reminderAction.ts`), `planPatch` (`issuePatch.ts`).
+   */
+  snoozedFrom?: string | null
   /** RRULE pentru recurență. Rezervat — motorul vine mai târziu. */
   rrule: string | null
   /**
