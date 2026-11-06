@@ -5,7 +5,7 @@ import { applyIssuePatch } from '../lib/issuePatch'
 import { rollPingSeries } from '../lib/pingSeries'
 import { buildNewProject, initialWaves } from '../lib/newProject'
 import { moveBlock, moveBlockMessage, movedIssue, SAME_PROJECT } from '../lib/moveIssue'
-import { withPin, withoutPin, type Pin } from '../lib/pins'
+import { withPin, withoutPin, withPositions, type Pin } from '../lib/pins'
 import { normalizeRules, type SavedFilter } from '../lib/savedFilters'
 import { SEED_ISSUES, SEED_PROJECTS, SEED_THEMES, SEED_WAVES } from '../lib/seed'
 import { planRestore, sortTrash, TRASH_DAYS, type LocalTrashEntry, type TrashItem } from '../lib/trash'
@@ -641,6 +641,12 @@ export function createLocalRepository(): Repository {
     async removePin(kind, ref) {
       const db = load()
       db.pins = withoutPin(db.pins, kind, ref)
+      save(db)
+    },
+
+    async movePins(pins) {
+      const db = load()
+      db.pins = withPositions(db.pins, pins)
       save(db)
     },
 

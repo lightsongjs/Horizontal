@@ -3169,6 +3169,17 @@ button.we-del:hover { color: var(--blocked); background: var(--blocked-soft); }
 :where(html:not([data-narrow])) .sidebar-nav-item.on .sidebar-nav-icon {
   opacity: 1;
 }
+/* Fixatele din bară se trag cu mouse-ul (`useReorderDrag`): cea ridicată
+   plutește cu umbră, celelalte își fac loc cu `transform`. */
+:where(html:not([data-narrow])) .sidebar-pinned { position: relative; }
+:where(html:not([data-narrow])) .sidebar-pinned.shifting { transition: transform 0.15s ease; }
+:where(html:not([data-narrow])) .sidebar-pinned.lift {
+  z-index: 2;
+  background: var(--surface-3);
+  color: var(--txt);
+  box-shadow: var(--amb);
+  cursor: grabbing;
+}
 
 :where(html:not([data-narrow])) .sidebar-proj-list {
   display: flex;
@@ -7480,6 +7491,12 @@ body:has(.qab) { overflow-y: auto; }
 }
 .dr-pin.on .dr-pin-ico { color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent), var(--amb); }
 .dr-pin.on { color: var(--txt); }
+/* Ținut apăsat, pătratul se ridică; tras, celelalte își fac loc (`PinTile`). */
+.dr-pin { position: relative; -webkit-touch-callout: none; user-select: none; }
+.dr-pin.shifting { transition: transform 0.15s ease; }
+.dr-pin.lift { z-index: 2; color: var(--txt); }
+.dr-pin.lift .dr-pin-ico { transform: scale(1.08); color: var(--accent); }
+.dr-pin-ico { transition: transform 0.12s ease; }
 .pin-prefix {
   font-family: var(--mono);
   font-size: calc(14px * var(--text-scale));

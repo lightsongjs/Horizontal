@@ -33,7 +33,7 @@ import { didJumpOnComplete, jumpNotice } from './lib/recurrence'
 import { applyIssuePatch, planPatch } from './lib/issuePatch'
 import { blockedBy, detectObstacleCycle } from './lib/obstacles'
 import { groupInbox, reconcileInbox } from './lib/thread'
-import { withPin, withoutPin, type Pin, type PinKind } from './lib/pins'
+import { withPin, withoutPin, withPositions, type Pin, type PinKind } from './lib/pins'
 import { shortLabels } from './lib/initials'
 import type { Assignee, InboxRow, Issue, IssueState, Layers, Obstacle, ObstacleLink, Project, ProjectMember, Theme, Wave } from './lib/types'
 import { errorMessage } from './lib/errorMessage'
@@ -103,6 +103,8 @@ interface HorizontalState {
   pins: Pin[]
   pin(kind: PinKind, ref: string): Promise<void>
   unpin(kind: PinKind, ref: string): Promise<void>
+  /** Ordinea trasă de mână: pozițiile din `movePin` (`lib/pins`), optimist. */
+  movePins(moved: Pin[]): Promise<void>
   /** Filtrele salvate ale contului, după `position`. Vezi `lib/savedFilters`. */
   savedFilters: SavedFilter[]
   /** Lista de filtre a fost citită o dată (altfel „filtrul nu mai există" ar minți la pornire). */
@@ -787,6 +789,20 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
       await repository.removePin(kind, ref)
     } catch (e) {
       if (old) { const back = old; setPins((prev) => [...withoutPin(prev, kind, ref), back]) }
+      setError(errorMessage(e))
+    }
+  }, [])
+
+  const movePins = useCallback(async (moved: Pin[]) => {
+    if (moved.length === 0) return
+    let before: Pin[] = []
+    setPins((prev) => { before = prev; return withPositions(prev, moved) })
+    try {
+      await repository.movePins(moved)
+    } catch (e) {
+      // Înapoi doar pozițiile atinse aici: o fixare adăugată între timp rămâne.
+      const back = before.filter((p) => moved.some((m) => m.kind === p.kind && m.ref === p.ref))
+      setPins((prev) => withPositions(prev, back))
       setError(errorMessage(e))
     }
   }, [])
@@ -1491,6 +1507,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     pins,
     pin,
     unpin,
+    movePins,
     savedFilters,
     filtersLoaded,
     filterContext,

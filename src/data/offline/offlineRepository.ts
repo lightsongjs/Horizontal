@@ -9,7 +9,7 @@
 
 import type { Repository } from '../repository'
 import type { Assignee, InboxRow, Issue, Project } from '../../lib/types'
-import type { Pin } from '../../lib/pins'
+import { withPositions, type Pin } from '../../lib/pins'
 import type { SavedFilter } from '../../lib/savedFilters'
 import type { Kv } from './kv'
 import { errorMessage } from '../../lib/errorMessage'
@@ -791,6 +791,10 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
       const kv = await kvReady
       const cur = (await kv?.get<Pin[]>(K.pins).catch(() => undefined)) ?? null
       if (kv && cur) await kv.set(K.pins, cur.filter((p) => !(p.kind === kind && p.ref === ref))).catch(() => {})
+    },
+    async movePins(pins) {
+      await netWrite(() => remote.movePins(pins))
+      await patchCached<Pin>(K.pins, (xs) => withPositions(xs, pins))
     },
 
     // ── Merg offline ─────────────────────────────────────────────────────────

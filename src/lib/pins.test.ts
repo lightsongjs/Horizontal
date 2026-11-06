@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isPinned, livePins, nextPinPosition, withPin, withoutPin, type Pin } from './pins'
+import { dragShift, dropIndex, isPinned, livePins, movePin, nextPinPosition, pinKey, withPin, withoutPin, withPositions, type Pin } from './pins'
 
 describe('pins', () => {
   it('fixarea adaugă la coadă, în ordinea fixării', () => {
@@ -35,5 +35,58 @@ describe('pins', () => {
       { kind: 'filter', ref: 'f1', position: 2 },
     ]
     expect(livePins(pins, { projects: ['b'], filters: ['f1'] }).map((p) => p.ref)).toEqual(['week', 'f1', 'b'])
+  })
+
+  describe('movePin (ordinea trasă de mână)', () => {
+    const live: Pin[] = [
+      { kind: 'project', ref: 'a', position: 0 },
+      { kind: 'list', ref: 'week', position: 1 },
+      { kind: 'filter', ref: 'f', position: 2 },
+      { kind: 'project', ref: 'd', position: 5 },
+    ]
+    const keys = (ps: Pin[]) => [...ps].sort((x, y) => x.position - y.position).map(pinKey)
+
+    it('mutat sus: ordinea nouă, scrise doar pozițiile schimbate', () => {
+      const moved = movePin(live, 'filter:f', 0)
+      expect(keys(withPositions(live, moved))).toEqual(['filter:f', 'project:a', 'list:week', 'project:d'])
+      expect(moved).toEqual([
+        { kind: 'filter', ref: 'f', position: 0 },
+        { kind: 'project', ref: 'a', position: 1 },
+        { kind: 'list', ref: 'week', position: 2 },
+        { kind: 'project', ref: 'd', position: 3 },
+      ])
+    })
+
+    it('mutat jos și la mijloc', () => {
+      expect(keys(withPositions(live, movePin(live, 'project:a', 3)))).toEqual(['list:week', 'filter:f', 'project:d', 'project:a'])
+      expect(keys(withPositions(live, movePin(live, 'project:a', 1)))).toEqual(['list:week', 'project:a', 'filter:f', 'project:d'])
+    })
+
+    it('pe loc, sau o cheie necunoscută: nicio scriere', () => {
+      expect(movePin(live, 'list:week', 1)).toEqual([])
+      expect(movePin(live, 'project:zz', 0)).toEqual([])
+    })
+
+    it('un loc în afara listei se taie la capăt', () => {
+      expect(keys(withPositions(live, movePin(live, 'project:a', 99)))[3]).toBe('project:a')
+      expect(keys(withPositions(live, movePin(live, 'project:d', -4)))[0]).toBe('project:d')
+    })
+
+    it('o fixare nouă după mutare rămâne la coadă, orfanele nu se scriu', () => {
+      const all: Pin[] = [...live, { kind: 'project', ref: 'gone', position: 3 }]
+      const shown = livePins(all, { projects: ['a', 'd'], filters: ['f'] })
+      const moved = movePin(shown, 'project:d', 0)
+      expect(moved.map(pinKey)).not.toContain('project:gone')
+      const after = withPin(withPositions(all, moved), 'project', 'new')
+      expect(livePins(after, { projects: ['a', 'd', 'new'], filters: ['f'] }).map(pinKey).slice(-1)[0]).toBe('project:new')
+    })
+  })
+
+  it('dropIndex / dragShift: ținta și locul făcut celorlalți', () => {
+    const mids = [10, 30, 50, 70]
+    expect(dropIndex(mids, 0, 55)).toBe(2)
+    expect(dropIndex(mids, 3, 5)).toBe(0)
+    expect([0, 1, 2, 3].map((j) => dragShift(j, 0, 2, 20))).toEqual([0, -20, -20, 0])
+    expect([0, 1, 2, 3].map((j) => dragShift(j, 3, 1, 20))).toEqual([0, 20, 20, 0])
   })
 })

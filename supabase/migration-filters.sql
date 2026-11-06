@@ -16,7 +16,7 @@ create table if not exists public.pinned_items (
   user_id    uuid not null default auth.uid() references auth.users(id) on delete cascade,
   kind       text not null check (kind in ('filter','project','list')),
   ref        text not null,
-  -- Ordinea = ordinea fixării. Reordonarea prin tragere poate veni mai târziu.
+  -- Ordinea = ordinea fixării, apoi trasă de mână (clientul renumerotează 0…n-1).
   position   integer not null default 0,
   created_at timestamptz not null default now(),
   primary key (user_id, kind, ref)

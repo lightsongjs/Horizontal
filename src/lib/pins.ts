@@ -60,3 +60,50 @@ export function livePins(
       : (PINNABLE_LISTS as readonly string[]).includes(p.ref))
     .sort((a, b) => a.position - b.position || `${a.kind}:${a.ref}`.localeCompare(`${b.kind}:${b.ref}`))
 }
+
+/** Cheia unei fixări — `kind` + `ref`, ca cheia primară din `pinned_items` (fără `user_id`). */
+export const pinKey = (p: Pick<Pin, 'kind' | 'ref'>) => `${p.kind}:${p.ref}`
+
+/**
+ * Mută o fixare pe locul `to` din lista VIE (`livePins`, ordinea de pe
+ * ecran) și întoarce doar fixările a căror poziție se schimbă (2026-11-06).
+ *
+ * Renumerotare 0…n-1, nu „o valoare între vecini" ca la tichete
+ * (`movePinned`): `position` e întreg, iar fixările sunt câteva. Fixările
+ * orfane (`livePins` le ascunde) își păstrează poziția: dacă o țintă revine,
+ * cade undeva în ordine și se departajează după cheie — nu merită o scriere
+ * pentru ce nu se vede. O fixare nouă (`nextPinPosition`) rămâne la coadă.
+ */
+export function movePin(live: readonly Pin[], key: string, to: number): Pin[] {
+  const from = live.findIndex((p) => pinKey(p) === key)
+  if (from < 0) return []
+  const rest = live.filter((_, i) => i !== from)
+  const at = Math.max(0, Math.min(to, rest.length))
+  if (at === from) return []
+  const order = [...rest.slice(0, at), live[from], ...rest.slice(at)]
+  return order
+    .map((p, i) => ({ ...p, position: i }))
+    .filter((p, i) => order[i].position !== p.position)
+}
+
+/** `pins` cu pozițiile din `moved` (aceeași cheie); restul neatinse. */
+export function withPositions(pins: readonly Pin[], moved: readonly Pin[]): Pin[] {
+  const at = new Map(moved.map((p) => [pinKey(p), p.position]))
+  return pins.map((p) => (at.has(pinKey(p)) ? { ...p, position: at.get(pinKey(p))! } : p))
+}
+
+/**
+ * Locul unde cade un element tras: câte ALTE elemente au mijlocul înaintea
+ * centrului lui. `mids` = mijloacele (pe axa tragerii) la începutul tragerii.
+ */
+export function dropIndex(mids: readonly number[], from: number, center: number): number {
+  return mids.filter((m, j) => j !== from && m < center).length
+}
+
+/** Cât se dă la o parte elementul `j` cât `from` e tras spre `to`: un pas, sau nimic. */
+export function dragShift(j: number, from: number, to: number, step: number): number {
+  if (j === from) return 0
+  if (from < to && j > from && j <= to) return -step
+  if (from > to && j >= to && j < from) return step
+  return 0
+}

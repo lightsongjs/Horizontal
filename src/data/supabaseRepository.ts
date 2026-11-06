@@ -908,6 +908,15 @@ export function createSupabaseRepository(): Repository {
       if (error) throw error
     },
 
+    async movePins(pins) {
+      // Câte un UPDATE pe rând (sunt câteva fixări), nu un upsert: upsertul ar
+      // reînvia o fixare desprinsă între timp pe alt dispozitiv.
+      const res = await Promise.all(pins.map((p) =>
+        db.from('pinned_items').update({ position: p.position }).eq('kind', p.kind).eq('ref', p.ref)))
+      const failed = res.find((r) => r.error)
+      if (failed?.error) throw failed.error
+    },
+
     async listSavedFilters() {
       const { data, error } = await db.from('saved_filters').select('*').order('position').order('created_at')
       if (error) throw error

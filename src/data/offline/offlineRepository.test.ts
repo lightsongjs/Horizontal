@@ -36,6 +36,7 @@ export function fakeRemote() {
     listPins: vi.fn(guard(() => [{ kind: 'list', ref: 'week', position: 0 }])),
     addPin: vi.fn(async (kind: string, ref: string) => guard(() => ({ kind, ref, position: 1 }))()),
     removePin: vi.fn(guard(() => undefined)),
+    movePins: vi.fn(guard(() => undefined)),
     listSavedFilters: vi.fn(guard(() => [])),
     createSavedFilter: vi.fn(async (input: { name: string }) => guard(() => ({ id: 'f1', name: input.name, icon: 'filter', rules: { projects: [], people: [], due: [], urgent: false }, position: 0 }))()),
     deleteSavedFilter: vi.fn(guard(() => undefined)),

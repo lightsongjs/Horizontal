@@ -219,6 +219,11 @@ export interface Repository {
   /** Idempotent: o fixare existentă rămâne pe locul ei. */
   addPin(kind: PinKind, ref: string): Promise<Pin>
   removePin(kind: PinKind, ref: string): Promise<void>
+  /**
+   * Ordinea trasă de mână: pune pozițiile date (`movePin`). Numai UPDATE —
+   * o fixare scoasă între timp pe alt dispozitiv nu reînvie.
+   */
+  movePins(pins: Pin[]): Promise<void>
   /** Filtrele salvate ale contului, după `position`. Vezi `src/lib/savedFilters.ts`. */
   listSavedFilters(): Promise<SavedFilter[]>
   createSavedFilter(input: NewSavedFilter): Promise<SavedFilter>

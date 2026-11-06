@@ -483,6 +483,15 @@ describe('localRepository — fixări și filtre', () => {
     expect((await repo.listPins()).map((p) => p.ref)).toEqual(['week'])
   })
 
+  it('movePins pune pozițiile trase; o fixare scoasă între timp nu reînvie', async () => {
+    const repo = createLocalRepository()
+    await repo.addPin('project', 'demo')
+    await repo.addPin('list', 'week')
+    await repo.movePins([{ kind: 'list', ref: 'week', position: 0 }, { kind: 'project', ref: 'demo', position: 1 }, { kind: 'list', ref: 'inbox', position: 2 }])
+    const pins = await repo.listPins()
+    expect([...pins].sort((a, b) => a.position - b.position).map((p) => p.ref)).toEqual(['week', 'demo'])
+  })
+
   it('listOpenIssues întoarce doar nebifatele, din toate proiectele', async () => {
     const repo = createLocalRepository()
     const open = await repo.listOpenIssues()

@@ -1,16 +1,17 @@
-import { useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type React from 'react'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { useAuth } from '../auth'
-import { useCanWrite, useCanWriteFn } from '../hooks'
+import { swallowNextClick, useCanWrite, useCanWriteFn } from '../hooks'
 import { SMART_LISTS, type SmartListKind } from './SmartListView'
 import { Icon } from './Icon'
 import { repository } from '../data'
 import { logoutPlan } from '../lib/logoutPlan'
 import { getAndroidBridge } from '../lib/androidBridge'
 import { ProjectMark } from './ProjectMark'
-import { livePins, type PinKind } from '../lib/pins'
+import { livePins, movePin, pinKey, type PinKind } from '../lib/pins'
+import { useReorderDrag } from './reorderDrag'
 import { PinGlyph, PinMenu, pinLabel, pinTarget, type MenuTarget } from './NavMenu'
 import { initialsOf } from './Drawer'
 import { inboxProjectId } from '../lib/captureTokens'
@@ -18,6 +19,9 @@ import { inboxFirst, reorderWithInboxFirst } from '../lib/projectOrder'
 import type { NavAction, SidebarMarks } from '../lib/paneProtocol'
 
 import { BuildAge } from './BuildAge'
+
+/** Un mouse care a coborât pe o fixată devine tragere abia după atâția pixeli; până atunci e click. */
+const DRAG_SLOP_PX = 5
 
 interface SidebarProps {
   /** „Utilizatori” e deschis (din rotița de setări) — niciun proiect nu e „pe ecran”. */
@@ -57,7 +61,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ showUsers = false, onNavigate, smartList = null, onSmartList, inboxActive = false, inboxUnread = 0, inboxTotal = 0, onInbox, filterId = null, onFilter, onFilterForm, onSearch, onSplit, split }: SidebarProps = {}) {
-  const { projects, project: storeProject, openCountByProject, selectProject, reorderProjects, smartLists, reportError, pins, savedFilters, filterCounts, assignees, myAssigneeId } = useHorizontal()
+  const { projects, project: storeProject, openCountByProject, selectProject, reorderProjects, smartLists, reportError, pins, movePins, savedFilters, filterCounts, assignees, myAssigneeId } = useHorizontal()
   // Meniul de fixare: click dreapta pe un rând, sau ⋮ pe rândul de proiect.
   const [menu, setMenu] = useState<MenuTarget | null>(null)
   const menuAt = (kind: PinKind, ref: string, label: string) => (e: React.MouseEvent) => {
@@ -70,6 +74,60 @@ export function Sidebar({ showUsers = false, onNavigate, smartList = null, onSma
   /** Punctul gri: locul panoului celălalt (macheta: „Deschis în celălalt panou"). */
   const otherDot = (on: boolean) => (on ? <span className="sidebar-other" title="Deschis în celălalt panou" /> : null)
   const pinned = livePins(pins, { projects: projects.map((p) => p.id), filters: savedFilters.map((f) => f.id) })
+  // Ordinea fixatelor se trage cu mouse-ul (după `DRAG_SLOP_PX`; un click
+  // rămâne click) sau Alt+↑/↓ pe rândul cu focusul. E a contului, ca fixarea:
+  // `pinned_items.position`, aceeași pe telefon (pătratele din sertar).
+  const pinKeys = pinned.map(pinKey)
+  const livePinned = useRef(pinned)
+  livePinned.current = pinned
+  const refocus = useRef<string | null>(null)
+  const movePinTo = (key: string, to: number) => void movePins(movePin(livePinned.current, key, to))
+  const pinDrag = useReorderDrag(pinKeys, 'y', movePinTo)
+  const pinGesture = useRef<{ key: string; y: number; started: boolean; pointerId: number } | null>(null)
+  const pinDragLive = useRef(pinDrag)
+  pinDragLive.current = pinDrag
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      const g = pinGesture.current
+      if (!g || e.pointerId !== g.pointerId) return
+      if (!g.started) {
+        if (Math.abs(e.clientY - g.y) < DRAG_SLOP_PX) return
+        g.started = true
+        // Butonul ar primi click-ul de la eliberare și ar naviga.
+        swallowNextClick()
+        pinDragLive.current.begin(g.key, g.y)
+      }
+      pinDragLive.current.track(e.clientY)
+    }
+    const onUp = (e: PointerEvent) => {
+      const g = pinGesture.current
+      if (!g || e.pointerId !== g.pointerId) return
+      pinGesture.current = null
+      if (g.started) pinDragLive.current.end(true)
+    }
+    const onCancel = (e: PointerEvent) => {
+      if (pinGesture.current?.pointerId !== e.pointerId) return
+      pinGesture.current = null
+      pinDragLive.current.end(false)
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onCancel)
+    return () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onCancel)
+    }
+  }, [])
+  // Alt+↑/↓: rândul mutat își păstrează focusul, ca să poată merge mai departe.
+  const pinOrder = pinKeys.join(',')
+  useLayoutEffect(() => {
+    const k = refocus.current
+    if (!k) return
+    refocus.current = null
+    const el = pinDrag.el(k)
+    if (el && document.activeElement !== el) el.focus()
+  }, [pinOrder, pinDrag])
   // Pe un ecran-listă (Ale mele, un filtru) proiectul din store e doar al
   // tichetului deschis, nu ecranul — aceeași gardă ca `projectChrome`.
   const offProject = inboxActive || filterId !== null
@@ -186,18 +244,34 @@ export function Sidebar({ showUsers = false, onNavigate, smartList = null, onSma
       {pinned.length > 0 && (
         <>
           <div className="sidebar-section-label">Fixate</div>
-          {pinned.map((p) => {
+          {pinned.map((p, i) => {
             const t = pinTarget(p)
             if (!t) return null
             const label = pinLabel(p, projects, savedFilters)
+            const key = pinKey(p)
+            const lifted = pinDrag.drag?.key === key
             const on = t.kind === 'project'
               ? !offProject && !smartList && !showUsers && project?.id === t.id
               : t.kind === 'filter' ? filterId === t.id
               : t.screen === 'inbox' ? inboxActive : smartList === t.screen
             return (
               <button
-                key={`${p.kind}:${p.ref}`}
-                className={`sidebar-nav-item sidebar-pinned ${on ? 'on' : ''}`}
+                key={key}
+                ref={pinDrag.ref(key)}
+                className={`sidebar-nav-item sidebar-pinned ${on ? 'on' : ''}${lifted ? ' lift' : ''}${pinDrag.drag && !lifted ? ' shifting' : ''}`}
+                style={pinDrag.offset(key) ? { transform: pinDrag.offset(key) } : undefined}
+                onPointerDown={pinned.length > 1 ? (e) => {
+                  if (e.pointerType !== 'mouse' || e.button !== 0) return
+                  pinGesture.current = { key, y: e.clientY, started: false, pointerId: e.pointerId }
+                } : undefined}
+                onKeyDown={(e) => {
+                  if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return
+                  const to = e.key === 'ArrowUp' ? i - 1 : e.key === 'ArrowDown' ? i + 1 : -1
+                  if (to < 0 || to >= pinned.length) return
+                  e.preventDefault()
+                  refocus.current = key
+                  movePinTo(key, to)
+                }}
                 onClick={() => {
                   if (t.kind === 'project') goToProject(t.id)
                   else if (t.kind === 'filter') onFilter?.(t.id)
