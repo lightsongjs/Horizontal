@@ -74,7 +74,7 @@ export const KEYMAP: Binding[] = [
   b('gp', 'any', 'goTo', '„Mergi la…” (proiect, filtru, listă, val)'),
   b('z', 'any', 'goTo', '„Mergi la…” (ca zoxide în yazi)'),
   b(':', 'any', 'goTo', '„Mergi la…” (pe RO: Shift + ș)'),
-  b('/', 'any', 'search', 'Caută tichet în toate proiectele (și O, Ctrl+F)'),
+  b('/', 'any', 'search', 'Caută tichet în toate proiectele (și Ctrl+K)'),
   b('O', 'any', 'search', 'Caută tichet în toate proiectele (ca /)'),
   b('?', 'any', 'help', 'Ajutorul cu tastele'),
   b('gs', 'any', 'toggleSidebar', 'Ascunde / arată bara laterală'),

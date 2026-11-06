@@ -19,6 +19,7 @@ import { Sidebar } from './Sidebar'
 import { appHistory } from '../lib/historyPort'
 import { forgetPane, readPaneView, seedPane, type PaneId } from '../lib/pane'
 import { isPaneToHost, paneSwitchTarget, sidebarMarks, type HostToPane, type NavAction, type PaneRoute } from '../lib/paneProtocol'
+import { isSearchShortcut } from '../lib/searchShortcut'
 import { clearSplit, deepLinkForPane, isSentinel, otherPane, saveSplit, seedFor, sentinelState, type SplitState } from '../lib/splitState'
 import { parseTicketPath } from '../lib/deepLink'
 
@@ -187,6 +188,19 @@ export function SplitHost({ initial, boot }: { initial: SplitState; boot: boolea
     send(id, { hz: 'host', kind: 'nav', action: a })
     giveFocus(id)
   }, [send, giveFocus])
+
+  // Ctrl+K cât focusul e în bara gazdei: căutarea se deschide în panoul cu
+  // focus, ca „Caută" din bară. Înăuntrul unui panou o prinde aplicația lui.
+  // Captură + `preventDefault`, altfel browserul mută focusul în bara de adrese.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!isSearchShortcut(e)) return
+      e.preventDefault()
+      nav({ type: 'search' })
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [nav])
 
   const toggle = useCallback(() => {
     const ps = panesRef.current

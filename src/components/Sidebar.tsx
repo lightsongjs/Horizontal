@@ -19,6 +19,7 @@ import { inboxFirst, reorderWithInboxFirst } from '../lib/projectOrder'
 import type { NavAction, SidebarMarks } from '../lib/paneProtocol'
 
 import { BuildAge } from './BuildAge'
+import { SEARCH_SHORTCUT_LABEL } from '../lib/searchShortcut'
 
 /** Un mouse care a coborât pe o fixată devine tragere abia după atâția pixeli; până atunci e click. */
 const DRAG_SLOP_PX = 5
@@ -41,7 +42,7 @@ interface SidebarProps {
   onFilter?: (id: string) => void
   /** „+" de la titlul „Filtre" (fără id) și „Editează" din meniul unui filtru. */
   onFilterForm?: (id?: string) => void
-  /** Câmpul „Caută” din capul barei (aceeași căutare ca O / Ctrl+F). */
+  /** Câmpul „Caută” din capul barei (aceeași căutare ca Ctrl+K). */
   onSearch?: () => void
   /** „Împarte ecranul" (panoul dublu), jos în bară; doar de la 1200px. */
   onSplit?: () => void
@@ -229,7 +230,7 @@ export function Sidebar({ showUsers = false, onNavigate, smartList = null, onSma
         <button className="sidebar-search" onClick={onSearch}>
           <Icon name="search" size={15} />
           <span>Caută</span>
-          <kbd>Ctrl F</kbd>
+          <kbd>{SEARCH_SHORTCUT_LABEL}</kbd>
         </button>
       )}
       {split && split.focusIx !== null && (

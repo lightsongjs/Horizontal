@@ -1042,7 +1042,7 @@ for (const width of PHONE_WIDTHS) {
 const deskSidebar = () => `
 <div style="display:grid;grid-template-columns:240px 1fr;height:900px">
 <aside class="sidebar">
-  <button class="sidebar-search"><svg width="15" height="15"></svg><span>Caută</span><kbd>Ctrl F</kbd></button>
+  <button class="sidebar-search"><svg width="15" height="15"></svg><span>Caută</span><kbd>Ctrl K</kbd></button>
   <nav class="sidebar-nav">
     <button class="sidebar-nav-item on"><span class="sidebar-nav-icon"><svg width="17" height="17"></svg></span><span>Azi</span><span class="sl-late">2</span><span class="sl-count">14</span></button>
     <button class="sidebar-nav-item"><span class="sidebar-nav-icon"><svg width="17" height="17"></svg></span><span>7 zile</span><span class="sl-count">31</span></button>

@@ -373,7 +373,7 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
         void copyLink(existing?.id)
       } else if (e.key === 'f' || e.key === 'F') {
         // F = „fixează sus" (TickTick n-are tastă; `F` e liberă: Ctrl+F e
-        // căutarea, iar `shouldIgnoreKey`-ul de aici sare peste modificatori).
+        // căutarea browserului, iar `shouldIgnoreKey`-ul de aici sare peste modificatori).
         e.preventDefault()
         togglePinRef.current()
       }

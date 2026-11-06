@@ -1105,7 +1105,7 @@ export function useKeyDispatcher(actions: DispatchActions) {
         else { marked.current = ids; publishSel(readRows()) }
         return
       }
-      // Combinațiile (Ctrl+S, Ctrl+F, Ctrl+,) rămân ale ascultătorilor lor.
+      // Combinațiile (Ctrl+S, Ctrl+K, Ctrl+,) rămân ale ascultătorilor lor.
       if (e.ctrlKey || e.metaKey || e.altKey) return
       if (a.blocked()) { clearSeq(); return }
       const tok = token(e)

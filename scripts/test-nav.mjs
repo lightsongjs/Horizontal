@@ -687,6 +687,39 @@ try {
     await pctx.close()
   }
 
+  // ── Căutarea e Ctrl+K, ca în Slack (2026-11-06) ─────────────────────────
+  // Ctrl+K o deschide de oriunde, și dintr-un câmp de text; înainte erau O și
+  // Ctrl+F, care acum nu mai fac nimic al aplicației (Ctrl+F e iar căutarea
+  // din pagină a browserului). `defaultPrevented`: browserul nu mai mută
+  // focusul în bara de adrese.
+  {
+    const kp = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+    await kp.goto(BASE, { waitUntil: 'networkidle' })
+    await kp.waitForTimeout(700)
+    const searchOpen = () => kp.locator('.qs-overlay').count().then((n) => n > 0)
+    await kp.evaluate(() => window.addEventListener('keydown', (e) => { if (e.key === 'k') window.__ctrlKPrevented = e.defaultPrevented }))
+    await kp.locator('.sidebar-me-name').click()
+    await kp.keyboard.press('Control+k')
+    await kp.waitForTimeout(300)
+    check('Ctrl+K deschide căutarea', (await searchOpen()) && (await kp.evaluate(() => document.activeElement?.classList.contains('qs-input'))), `deschisă=${await searchOpen()}`)
+    check('…și browserul nu-și ia combinația', await kp.evaluate(() => window.__ctrlKPrevented === true), String(await kp.evaluate(() => window.__ctrlKPrevented)))
+    await kp.keyboard.press('Escape')
+    await kp.waitForTimeout(200)
+    await kp.locator('.sidebar-me-name').click()
+    await kp.keyboard.press('Control+f')
+    await kp.waitForTimeout(250)
+    const afterF = await searchOpen()
+    await kp.keyboard.press('o')
+    await kp.waitForTimeout(250)
+    check('Ctrl+F și O nu mai deschid căutarea', !afterF && !(await searchOpen()), `Ctrl+F=${afterF}, O=${await searchOpen()}`)
+    await kp.locator('.qa-input').first().click()
+    await kp.keyboard.type('ceva')
+    await kp.keyboard.press('Control+k')
+    await kp.waitForTimeout(300)
+    check('Ctrl+K merge și din mijlocul unui câmp de text', await searchOpen(), `deschisă=${await searchOpen()}`)
+    await kp.close()
+  }
+
   // ── Teme × Valuri (H-13): clic pe cerc mută, h / l mută, panoul docat ───
   // Clicul pe cerc mută tichetul FĂRĂ să-l deschidă; `u` anulează; clicul pe
   // titlu îl docheză (nu modal); `l` din modul Vim îl mută în valul următor;
@@ -2968,6 +3001,12 @@ try {
     await sp.locator('.sidebar-split-btn').click()
     await sp.waitForTimeout(2500)
     check('split: pornirea din bara laterală', (await sp.locator('.split-pane-frame iframe').count()) === 2 && (await crumb('L')) === 'Azi' && (await crumb('R')) === 'Azi', `L=${await crumb('L')}, R=${await crumb('R')}`)
+    // Ctrl+K din bara gazdei: căutarea se deschide în panoul cu focus.
+    await sp.locator('.sidebar-me-name').click()
+    await sp.keyboard.press('Control+k')
+    await sp.waitForTimeout(800)
+    const qsIn = async (id) => (await pane(id)?.locator('.qs-overlay').count()) ?? 0
+    check('split: Ctrl+K din bara gazdei deschide căutarea într-un singur panou', (await qsIn('L')) + (await qsIn('R')) === 1, `L=${await qsIn('L')}, R=${await qsIn('R')}`)
     await sctx.close()
 
     // Sub 1200px butonul nu apare.

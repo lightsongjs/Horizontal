@@ -10,6 +10,7 @@ import { ProjectDetail, type Tab } from './components/ProjectDetail'
 import { SheetHost } from './components/SheetHost'
 import { Sidebar } from './components/Sidebar'
 import { QuickSearch } from './components/QuickSearch'
+import { isSearchShortcut } from './lib/searchShortcut'
 import { UsersView } from './components/UsersView'
 import { SmartListView, SMART_LISTS, smartListDueAt, type SmartListKind } from './components/SmartListView'
 import type { QuickCtx } from './lib/quickDraft'
@@ -151,7 +152,7 @@ function Header({ onNewIssue, onSearch, onProjectSettings, onRefresh, onInfo, ca
       {/* Not gated on canWrite, unlike its neighbours: searching changes
           nothing, so a read-only member must be able to do it. */}
       {(
-        <button className="header-search-btn" onClick={onSearch} aria-label="Caută tichet" title="Caută tichet (O, Ctrl+F)">
+        <button className="header-search-btn" onClick={onSearch} aria-label="Caută tichet" title="Caută tichet (Ctrl+K)">
           <Icon name="search" size={15} />
         </button>
       )}
@@ -1253,16 +1254,8 @@ function Shell({ onSplit }: { onSplit?: (s: SplitState) => void }) {
       // s-ar închide și el.
 
       const target = e.target as HTMLElement
-      // Ctrl+F = căutarea de tichete, și dintr-un câmp: căutarea din pagină a
-      // browserului găsește doar rândurile randate. Rămâne a browserului peste
-      // un tichet deschis ca modal (descrierea lungă) și în editorul de
-      // descriere.
-      if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'f'
-        && !modalOpen && !showSearch && !showUsers && !target.closest('.cm-editor')) {
-        e.preventDefault()
-        if (leaveDocked()) setShowSearch(true)
-        return
-      }
+      // Căutarea de tichete e Ctrl+K (ascultătorul de captură de mai jos);
+      // Ctrl+F e iar căutarea din pagină a browserului, peste tot.
       if (['INPUT', 'TEXTAREA'].includes(target.tagName) || target.isContentEditable) return
       if (e.metaKey || e.ctrlKey || e.altKey) return
 
@@ -1277,7 +1270,7 @@ function Shell({ onSplit }: { onSplit?: (s: SplitState) => void }) {
       if (showSearch) return
       if (showUsers) return
 
-      // C / O / P înlocuiesc stiva de foi, deci trec prin `leaveDocked()`:
+      // C (ca Ctrl+K, mai jos) înlocuiește stiva de foi, deci trece prin `leaveDocked()`:
       // altfel un formular docat cu modificări nesalvate ar dispărea în
       // tăcere, exact ce previne `openEditIssue` la un click în listă.
       // C = „creează", dar „creează" înseamnă altceva în cele două contexte.
@@ -1290,8 +1283,8 @@ function Shell({ onSplit }: { onSplit?: (s: SplitState) => void }) {
       // `inInbox` taie fiecare ramură de mai jos care ar acționa pe `project`:
       // pe „Ale mele", o pasă docată încarcă proiectul EI în store ca formularul
       // să funcționeze, dar nu suntem pe ecranul acelui proiect. Fără gardă, C
-      // deschidea un tichet nou ÎN PROIECTUL STRĂIN peste panou, O deschidea
-      // căutarea limitată la el, iar 1-4 schimbau un tab de proiect care nici
+      // deschidea un tichet nou ÎN PROIECTUL STRĂIN peste panou, iar 1-4
+      // schimbau un tab de proiect care nici
       // nu se vede — exact scurgerea reparată la FAB, acum în ambele locuri.
       // Cu modul Vim, crearea e `a` (ca în yazi); în liste o ia dispecerul,
       // aici ajunge doar unde n-are gazdă de cursor (Cards, Hartă).
@@ -1309,7 +1302,6 @@ function Shell({ onSplit }: { onSplit?: (s: SplitState) => void }) {
         if (!leaveDocked()) return
         project && openNewIssue()
       }
-      else if (e.key === 'o' || e.key === 'O') { e.preventDefault(); if (!leaveDocked()) return; setShowSearch(true) }
       // Fără scurtătură pentru proiect nou (decizia omului, 2026-10-17): un
       // proiect se creează doar din buton — prea rar ca să merite o tastă.
       else if (e.key === '?') { e.preventDefault(); setShowInfo(v => !v) }
@@ -1323,6 +1315,26 @@ function Shell({ onSplit }: { onSplit?: (s: SplitState) => void }) {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [project, openNewIssue, openNewProject, modalOpen, showInfo, showSearch, showUsers, canWrite, isAdmin, toggleSidebar, changeTab, leaveDocked, smartList, writableProjects, offProject, narrow, activeWave, vimOn]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Ctrl+K (⌘K) = căutarea de tichete, ca în Slack (decizia omului,
+  // 2026-11-06; înainte O și Ctrl+F). De oriunde, și dintr-un câmp sau din
+  // editorul de descriere: e o combinație, nu poate fi confundată cu tastarea.
+  // În faza de CAPTURĂ și cu `preventDefault`, înaintea browserului — Chrome
+  // și Firefox mută altfel focusul în bara de adrese. Două excepții:
+  // „Mergi la…" are Ctrl+K ca săgeată în sus (Ctrl+J / Ctrl+K, ca în fzf), iar
+  // peste un modal sau „Utilizatori" combinația doar se înghite, ca O și
+  // Ctrl+F înainte: căutarea ar înlocui foaia de dedesubt.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!isSearchShortcut(e)) return
+      if ((e.target as Element | null)?.closest?.('.goto-card')) return
+      e.preventDefault()
+      if (showSearch || modalOpen || showUsers) return
+      if (leaveDocked()) setShowSearch(true)
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [showSearch, modalOpen, showUsers, leaveDocked])
 
   // ── Modul Vim: un singur dispecer de taste (`src/vim.tsx`) ───────────────
   // Ce știe doar Shell-ul îi dă prin funcții citite LA APĂSARE, nu la montare.
