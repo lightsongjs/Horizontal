@@ -84,7 +84,14 @@ Deno.serve(async (req) => {
     ? { done: true }
     : { remind_at: new Date(Date.now() + SNOOZE_MINUTES * 60_000).toISOString() }
 
-  const { error } = await db.from('issues').update(patch).eq('id', id)
+  // O serie de mementouri (`ping_every`) nu se amână: următorul ping vine
+  // oricum, iar mutarea lui `remind_at` i-ar muta ancora grilei. Notificarea ei
+  // are doar „Gata azi", dar un service worker de dinainte de serii încă arată
+  // „Amână" — filtrul de mai jos îl face să nu atingă nimic. Același refuz ca
+  // `reminderMutation` din pagină.
+  let q = db.from('issues').update(patch).eq('id', id)
+  if (action === 'snooze') q = q.is('ping_every', null)
+  const { error } = await q
   if (error) return json({ error: error.message }, 500, origin)
 
   return json({ ok: true, action }, 200, origin)

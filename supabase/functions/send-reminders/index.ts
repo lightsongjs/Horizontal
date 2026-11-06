@@ -11,6 +11,14 @@
 // tichetul nemarcat, deci se reîncearcă la minutul următor. Invers (marchează
 // apoi trimite) un minut ratat ar înghiți mementoul pentru totdeauna — și un
 // memento ratat e singurul mod în care funcția asta poate fi inutilă.
+//
+// Seriile de mementouri (`ping_every`, „la fiecare 15 minute până la 10") au
+// drumul lor, în aceeași rulare: `remind_at` e ancora grilei, nu un moment care
+// trece o dată, deci „netrimis" nu mai e `reminder_sent_at is null`, ci „pingul
+// curent e mai nou decât ultimul trimis". Acolo ordinea e INVERSĂ, deliberat:
+// pingul se REVENDICĂ întâi (un update condiționat), apoi se trimite. Două
+// rulări suprapuse ar trimite altfel același ping de două ori, iar un ping
+// pierdut la o eroare de rețea e recuperat de următorul, peste câteva minute.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 // `npm:` — Edge Runtime rulează pachetul npm prin compatibilitatea Node.
 // Dacă un deploy eșuează la import, alternativa e `https://esm.sh/web-push@3.6.7`
@@ -21,6 +29,7 @@ import {
   decideEventReminder, eventNotificationTitle, eventReminderId,
   EVENT_LATE_MINUTES, EVENT_PRE_MINUTES, type EventReminderRow, type EventStage,
 } from '../_shared/eventReminders.ts'
+import { pingFreshMs, pings } from '../_shared/pings.ts'
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -35,6 +44,14 @@ interface IssueRow {
   due_at: string | null
   all_day: boolean
   wave: number
+  /** Doar pe o serie: pasul, în minute. */
+  ping_every?: number | null
+}
+
+interface SeriesRow extends IssueRow {
+  remind_at: string
+  ping_every: number
+  reminder_sent_at: string | null
 }
 
 Deno.serve(async (req) => {
@@ -80,19 +97,23 @@ Deno.serve(async (req) => {
     .not('remind_at', 'is', null)
     .lte('remind_at', nowIso)
     .is('reminder_sent_at', null)
+    // Seriile au drumul lor, mai jos: `reminder_sent_at` e acolo ultimul ping.
+    .is('ping_every', null)
     .eq('done', false)
     .order('remind_at')
     .limit(BATCH)
   if (error) return json({ error: error.message }, 500)
+  const series = await claimSeriesPings(db, Date.now())
+  if ('error' in series) return json({ error: series.error }, 500)
   // Evenimentele de calendar întâi și independent: o zi fără niciun tichet cu
   // memento nu înseamnă o zi fără ședințe.
   const events = await sendEventReminders(db, Date.now()).catch((e) => {
     console.error(`mementourile de calendar: ${String(e)}`)
     return { error: String(e) }
   })
-  if (!due?.length) return json({ sent: 0, reminders: 0, events })
+  const rows = [...(due as IssueRow[]), ...series.rows]
+  if (!rows.length) return json({ sent: 0, reminders: 0, events })
 
-  const rows = due as IssueRow[]
   const projectIds = [...new Set(rows.map((r) => r.project_id))]
 
   const [{ data: projects }, { data: members }, { data: subs }] = await Promise.all([
@@ -157,6 +178,8 @@ Deno.serve(async (req) => {
       dueAt: issue.due_at,
       allDay: issue.all_day,
       projectName: projectName.get(issue.project_id) ?? '',
+      // Un ping de serie: `dueAt` e capătul ferestrei, iar butonul e doar „Gata azi".
+      ...(issue.ping_every ? { series: true } : {}),
       ...(actionSecret
         ? { actionToken: await mintToken(actionSecret, issue.id, Date.now()), actionUrl }
         : {}),
@@ -183,7 +206,10 @@ Deno.serve(async (req) => {
               // noapte n-are voie să primească dimineața mementourile de ieri:
               // un memento răsuflat nu mai e informație, e zgomot care învață
               // omul să ignore notificările. Aceeași durată ca a tokenului.
-              TTL: 3600,
+              TTL: issue.ping_every ? seriesTtl(issue.ping_every) : 3600,
+              // Un ping încă nelivrat (telefon adormit) e ÎNLOCUIT la serviciul
+              // de push de următorul, nu livrat lângă el la trezire.
+              ...(issue.ping_every ? { topic: pushTopic(issue.id) } : {}),
             },
           )
           sent++
@@ -198,7 +224,8 @@ Deno.serve(async (req) => {
       }
     }
     void anyAttempt
-    deliveredIssueIds.push(issue.id)
+    // Pingurile de serie sunt deja revendicate (`claimSeriesPings`).
+    if (!issue.ping_every) deliveredIssueIds.push(issue.id)
   }
 
   // Marcarea, într-un singur update. Trigger-ul `issues_reset_reminder_sent` NU
@@ -211,8 +238,60 @@ Deno.serve(async (req) => {
     await db.from('push_subscriptions').delete().in('endpoint', deadEndpoints)
   }
 
-  return json({ reminders: rows.length, sent, pruned: deadEndpoints.length, events })
+  return json({ reminders: rows.length, series: series.rows.length, sent, pruned: deadEndpoints.length, events })
 })
+
+/**
+ * Cât trăiește un ping la serviciul de push: cel mult până vine următorul, și
+ * nu peste o oră (aceeași regulă ca la un memento obișnuit). Un ping livrat
+ * după ce a venit următorul e zgomot.
+ */
+const seriesTtl = (everyMin: number) => Math.min(everyMin * 60, 3600)
+
+/** `Topic` (RFC 8030 §5.4): cel mult 32 de caractere din alfabetul base64url. */
+const pushTopic = (id: string) => `hz-${id}`.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 32)
+
+/**
+ * Pingurile de serie de trimis ACUM, deja revendicate. Pentru fiecare serie
+ * deschisă care a început (`remind_at <= now`): pingul curent de pe grilă
+ * (`pings`, regula comună cu pagina și cu Kotlin), dacă e mai nou decât ultimul
+ * trimis și încă proaspăt (`pingFreshMs`: min(pas, 10 min) — unul mai vechi
+ * nu mai e informație, iar următorul vine oricum).
+ *
+ * Revendicarea e un update condiționat (`reminder_sent_at < ping`), cu
+ * `returning`: numai rulările care chiar au scris trimit. Schimbă DOAR
+ * `reminder_sent_at`, deci `issues_reset_reminder_sent` (care urmărește
+ * `remind_at`) și saltul de recurență nu se amestecă.
+ */
+async function claimSeriesPings(db: ReturnType<typeof createClient>, nowMs: number): Promise<{ rows: IssueRow[] } | { error: string }> {
+  const { data, error } = await db
+    .from('issues')
+    .select('id, project_id, title, due_at, all_day, wave, remind_at, ping_every, reminder_sent_at')
+    .not('ping_every', 'is', null)
+    .not('remind_at', 'is', null)
+    .not('due_at', 'is', null)
+    .lte('remind_at', new Date(nowMs).toISOString())
+    .eq('done', false)
+    .order('remind_at')
+    .limit(BATCH)
+  if (error) return { error: error.message }
+  const out: IssueRow[] = []
+  for (const r of (data ?? []) as SeriesRow[]) {
+    const { current } = pings(Date.parse(r.remind_at), r.ping_every, Date.parse(r.due_at!), nowMs)
+    if (current === null || nowMs - current > pingFreshMs(r.ping_every)) continue
+    if (r.reminder_sent_at && Date.parse(r.reminder_sent_at) >= current) continue
+    const ping = new Date(current).toISOString()
+    const { data: claimed, error: cErr } = await db
+      .from('issues')
+      .update({ reminder_sent_at: ping })
+      .eq('id', r.id)
+      .or(`reminder_sent_at.is.null,reminder_sent_at.lt.${ping}`)
+      .select('id')
+    if (cErr) { console.error(`revendicarea pingului ${r.id}@${ping}: ${cErr.message}`); continue }
+    if (claimed?.length) out.push(r)
+  }
+  return { rows: out }
+}
 
 /** Aceleași opțiuni ca la tichete — de-ce-urile sunt acolo. */
 const PUSH_OPTS = { urgency: 'high' as const, TTL: 3600 }
