@@ -104,6 +104,77 @@ describe('PATCH /api/themes/<key>', () => {
   })
 })
 
+describe('DELETE /api/themes/<key>', () => {
+  const del = (q: string, key = 'pasul-2') =>
+    themeOne.onRequestDelete(ctx(`/api/themes/${key}?${q}`, { method: 'DELETE', params: { key } }))
+
+  it('o temă nefolosită se șterge direct', async () => {
+    const calls = mockFetch([
+      projectRoute,
+      route('/rest/v1/themes?project_id=eq.cc&key=eq.pasul-2', null, { method: 'DELETE' }),
+      route('/rest/v1/themes?', themeRows),
+      route('/rest/v1/issues?', []),
+    ])
+    const res = await del('project=cc')
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ deleted: { key: 'pasul-2', name: 'Pasul 2: Admiterea', color: '#F06B1F' }, cleared: [] })
+    expect(calls.some(c => c.method === 'PATCH')).toBe(false)
+    expect(calls.filter(c => c.method === 'DELETE')).toHaveLength(1)
+  })
+
+  it('purtată de tichete → 409 theme_in_use cu câte și care, fără nicio scriere', async () => {
+    const calls = mockFetch([
+      projectRoute,
+      route('/rest/v1/themes?', themeRows),
+      route('/rest/v1/issues?', [{ id: 'CC-03' }, { id: 'CC-07' }]),
+    ])
+    const res = await del('project=cc')
+    expect(res.status).toBe(409)
+    expect(await res.json()).toEqual({ error: 'theme_in_use', theme: 'pasul-2', count: 2, tickets: ['CC-03', 'CC-07'] })
+    expect(calls.every(c => c.method === 'GET')).toBe(true)
+    expect(calls.find(c => c.url.includes('/rest/v1/issues?'))!.url).toContain('project_id=eq.cc&theme=eq.pasul-2')
+  })
+
+  it('force=true: întâi scoate tema de pe tichete, apoi o șterge; întoarce ce a golit', async () => {
+    const calls = mockFetch([
+      projectRoute,
+      route('/rest/v1/issues?project_id=eq.cc&theme=eq.pasul-2', [{ id: 'CC-07' }, { id: 'CC-03' }], { method: 'PATCH' }),
+      route('/rest/v1/themes?project_id=eq.cc&key=eq.pasul-2', null, { method: 'DELETE' }),
+      route('/rest/v1/themes?', themeRows),
+      route('/rest/v1/issues?', [{ id: 'CC-03' }, { id: 'CC-07' }]),
+    ])
+    const res = await del('project=cc&force=true')
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ deleted: { key: 'pasul-2', name: 'Pasul 2: Admiterea', color: '#F06B1F' }, cleared: ['CC-03', 'CC-07'] })
+    const writes = calls.filter(c => c.method !== 'GET')
+    expect(writes.map(c => c.method)).toEqual(['PATCH', 'DELETE'])
+    expect(writes[0].body).toEqual({ theme: null })
+  })
+
+  it('golirea pică → tema rămâne (nicio ștergere)', async () => {
+    const calls = mockFetch([
+      projectRoute,
+      route('/rest/v1/issues?project_id=eq.cc&theme=eq.pasul-2', { message: 'x' }, { method: 'PATCH', ok: false, status: 500 }),
+      route('/rest/v1/themes?', themeRows),
+      route('/rest/v1/issues?', [{ id: 'CC-03' }]),
+    ])
+    const res = await del('project=cc&force=true')
+    expect(res.status).toBe(502)
+    expect(calls.some(c => c.method === 'DELETE')).toBe(false)
+  })
+
+  it('404 pe temă sau proiect necunoscut, 400 fără proiect', async () => {
+    mockFetch([projectRoute, route('/rest/v1/themes?', themeRows)])
+    const res = await del('project=cc', 'nope')
+    expect(res.status).toBe(404)
+    expect(await res.json()).toEqual({ error: 'theme_not_found', theme: 'nope' })
+    mockFetch([route('/rest/v1/projects?', [])])
+    expect((await del('project=zz')).status).toBe(404)
+    mockFetch([])
+    expect((await del('')).status).toBe(400)
+  })
+})
+
 describe('POST / PATCH /api/waves', () => {
   it('numărul și locul = cel mai mare + 1; numele implicit = cifra romană următoare', async () => {
     const calls = mockFetch([

@@ -342,6 +342,9 @@ describe('filtrul pe om (tk list --assignee, tk mine)', () => {
     expect(mineParams({ done: false, all: true }, cfg)).toEqual({ assignee: 'a-ion', done: 'false' })
     expect(mineParams({}, { me: null })).toBe(null)
   })
+  it('theme-delete e o comandă (alias delete-theme), --force e boolean', () => {
+    expect(parseArgs(['delete-theme', 'x', '--force'])).toEqual({ cmd: 'theme-delete', positional: ['x'], flags: { force: true } })
+  })
   it('mine e o comandă; ale-mele duce la ea, me rămâne whoami', () => {
     expect(COMMANDS).toContain('mine')
     expect(parseArgs(['ale-mele', '--all']).cmd).toBe('mine')

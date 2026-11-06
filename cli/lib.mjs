@@ -28,6 +28,7 @@ export const COMMAND_ALIASES = {
   config: 'login',
   'create-theme': 'theme-create',
   'update-theme': 'theme-update',
+  'delete-theme': 'theme-delete',
   'create-wave': 'wave-create',
   'update-wave': 'wave-update',
   'create-project': 'project-create',
@@ -41,7 +42,7 @@ export const COMMANDS = [
   'projects', 'project-create', 'waves', 'assignees', 'themes',
   'list', 'mine', 'lookup', 'get', 'create', 'update', 'delete',
   'attach', 'attachments', 'comments', 'comment', 'whoami',
-  'theme-create', 'theme-update', 'wave-create', 'wave-update',
+  'theme-create', 'theme-update', 'theme-delete', 'wave-create', 'wave-update',
 ]
 
 function canonical(name) {

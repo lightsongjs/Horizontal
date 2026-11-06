@@ -36,6 +36,14 @@ beforeAll(async () => {
         if (prefix === 'KATA') return send(409, { error: 'prefix_taken', prefix, existing_project: 'kata' })
         return send(201, { id: prefix.toLowerCase(), prefix, name: body.name, type: body.type ?? 'personal', currentWave: 1, description: '', accent: '#0EA5E9' })
       }
+      if (u.pathname === '/api/themes/folosita' && req.method === 'DELETE') {
+        if (u.searchParams.get('force') !== 'true') return send(409, { error: 'theme_in_use', theme: 'folosita', count: 2, tickets: ['KATA-03', 'KATA-07'] })
+        return send(200, { deleted: { key: 'folosita', name: 'Folosită', color: '#111111' }, cleared: ['KATA-03', 'KATA-07'] })
+      }
+      if (u.pathname === '/api/themes/libera' && req.method === 'DELETE') {
+        return send(200, { deleted: { key: 'libera', name: 'Liberă', color: '#222222' }, cleared: [] })
+      }
+      if (u.pathname.startsWith('/api/themes/') && req.method === 'DELETE') return send(404, { error: 'theme_not_found', theme: 'nope' })
       if (u.pathname === '/api/projects') return send(200, PROJECTS)
       if (u.pathname === '/api/waves') return send(200, [{ number: 1, name: 'I', label: 'MVP' }])
       if (u.pathname === '/api/assignees') {
@@ -194,6 +202,28 @@ describe('tk contra unui server fals', () => {
       expect(old.code).toBe(1)
       expect(old.stderr).toContain('nu știe încă filtrul pe om')
     }
+  })
+
+  it('theme-delete: liberă → deleted; folosită → theme_in_use, nimic șters; --force → cleared', async () => {
+    const free = await tk(['theme-delete', 'libera'], { cwd: repo() })
+    expect(free.code).toBe(0)
+    expect(free.stdout.trim()).toBe('deleted: libera')
+    expect(last().method).toBe('DELETE')
+    expect(last().url).toBe('/api/themes/libera?project=kata')
+
+    const used = await tk(['theme-delete', 'folosita'], { cwd: repo() })
+    expect(used.code).toBe(1)
+    expect(used.stdout.trim()).toBe('theme_in_use: 2 (KATA-03, KATA-07)')
+    expect(used.stderr).toContain('--force')
+
+    const forced = await tk(['delete-theme', 'folosita', '--force'], { cwd: repo() })
+    expect(forced.code).toBe(0)
+    expect(last().url).toBe('/api/themes/folosita?project=kata&force=true')
+    expect(forced.stdout.trim().split('\n')).toEqual(['deleted: folosita', 'cleared: KATA-03, KATA-07'])
+
+    const none = await tk(['theme-delete', 'nope'], { cwd: repo() })
+    expect(none.code).toBe(1)
+    expect(none.stdout.trim()).toBe('theme_not_found: nope')
   })
 
   it('attach trimite multipart cu fișierele, fără Content-Type JSON', async () => {

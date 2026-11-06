@@ -655,6 +655,23 @@ cmds['theme-update'] = async ({ positional, flags }) => {
   out(`updated: ${data.key}`)
 }
 
+cmds['theme-delete'] = async ({ positional, flags }) => {
+  const project = projectOrDie(flags)
+  const key = flags.key ?? positional[0]
+  if (!key) throw new UsageError('tk theme-delete <cheie> [--force]')
+  const params = { project }
+  if (flags.force) params.force = 'true'
+  const { status, data } = await api(`/api/themes/${enc(key)}?${q(params)}`, { method: 'DELETE' })
+  if (status === 409 && data.error === 'theme_in_use') {
+    out(`theme_in_use: ${data.count} (${data.tickets.join(', ')})`)
+    err('Tichetele astea poartă tema. --force le-o scoate (rămân „Fără temă”) și o șterge.')
+    process.exit(1)
+  }
+  if (status !== 200) fail(status, data)
+  out(`deleted: ${data.deleted.key}`)
+  if (data.cleared.length) out(`cleared: ${data.cleared.join(', ')}`)
+}
+
 cmds['wave-create'] = async ({ positional, flags }) => {
   const project = projectOrDie(flags)
   const body = { projectId: project, label: flags.label ?? positional.join(' ') }
@@ -709,6 +726,7 @@ Scriere
   tk attach HZ-7 a.png b.pdf
   tk project-create "Nume" [--prefix X] [--type work|personal] [--accent "#RRGGBB"] [--desc …]
   tk theme-create "Nume" --color "#RRGGBB"   |  tk theme-update <cheie> [--name …] [--color …]
+  tk theme-delete <cheie> [--force]          folosită de tichete → refuz; --force le scoate tema
   tk wave-create "Etichetă" [--name IV]      |  tk wave-update <n> [--name …] [--label …]
 
 --project <id> bate .horizontal (la update înseamnă mutare). Forma veche merge:
