@@ -477,6 +477,92 @@ try {
     await dp.close()
   }
 
+  // ── Ordinea fixatelor, trasă de mână (`PinnedRows`, `movePinned`) ────────
+  // Trei fixate de azi (A sus, apoi B, C). Desktop: tragi rândul cu mouse-ul
+  // (un click rămâne click: tichetul NU se deschide la eliberare), Alt+↓ îl
+  // coboară cu un loc, iar ordinea rămâne după reîncărcare — e în `pinnedAt`.
+  // Telefon: atingeri reale pe mâner (rândul își păstrează glisarea și
+  // apăsarea lungă). Totul se scoate din bază la capăt.
+  {
+    const seed = (page) => page.evaluate(() => {
+      const db = JSON.parse(localStorage.getItem('horizontal:v2'))
+      const src = db.issues.find((x) => !x.done)
+      const day = new Date(); day.setHours(0, 0, 0, 0)
+      const now = Date.now()
+      ;['A', 'B', 'C'].forEach((n, k) => db.issues.push({
+        ...src, id: src.id.replace(/\d+$/, String(870 + k)), title: `Fixată ${n}`, deps: [], done: false,
+        dueAt: day.toISOString(), allDay: true, remindAt: null, rrule: null, pinnedAt: new Date(now - k * 3600_000).toISOString(),
+      }))
+      localStorage.setItem('horizontal:v2', JSON.stringify(db))
+    })
+    const unseed = (page) => page.evaluate(() => {
+      const db = JSON.parse(localStorage.getItem('horizontal:v2'))
+      db.issues = db.issues.filter((i) => !/^Fixată [ABC]$/.test(i.title))
+      localStorage.setItem('horizontal:v2', JSON.stringify(db))
+    })
+    const order = (page) => page.evaluate(() => {
+      const g = document.querySelector('.smart-list .list-group')
+      return g?.querySelector('.list-group-label')?.textContent === 'Fixate'
+        ? [...g.querySelectorAll('.list-title')].map((t) => t.textContent.replace('Fixată ', '')).join('')
+        : null
+    })
+    const stored = (page) => page.evaluate(() => JSON.parse(localStorage.getItem('horizontal:v2')).issues
+      .filter((i) => /^Fixată [ABC]$/.test(i.title)).sort((a, b) => Date.parse(b.pinnedAt) - Date.parse(a.pinnedAt))
+      .map((i) => i.title.slice(-1)).join(''))
+
+    const dctx = await browser.newContext({ viewport: { width: 1440, height: 900 } })
+    const dp = await dctx.newPage()
+    await dp.goto(BASE, { waitUntil: 'networkidle' })
+    await seed(dp)
+    await dp.reload({ waitUntil: 'networkidle' })
+    await dp.waitForTimeout(800)
+    await dp.locator('.tabbar button, .sidebar-smart-item, .sidebar button')
+      .filter({ hasText: /^Azi/ }).locator('visible=true').first().click()
+    await dp.waitForTimeout(800)
+    check('ordine fixate: pornește A, B, C (cel mai recent sus)', (await order(dp)) === 'ABC', String(await order(dp)))
+    const rowOf = (page, n) => page.locator('.pin-row', { hasText: `Fixată ${n}` }).first()
+    const c = await rowOf(dp, 'C').boundingBox()
+    const a = await rowOf(dp, 'A').boundingBox()
+    await dp.mouse.move(c.x + c.width / 2, c.y + c.height / 2)
+    await dp.mouse.down()
+    await dp.mouse.move(c.x + c.width / 2, a.y + 4, { steps: 12 })
+    await dp.mouse.up()
+    await dp.waitForTimeout(700)
+    const opened = (await dp.locator('.split-pane:not([hidden]) .sh-header').count()) + (await dp.locator('.sheet.on').count())
+    check('desktop: tras cu mouse-ul, C urcă primul', (await order(dp)) === 'CAB' && (await stored(dp)) === 'CAB', `ecran=${await order(dp)}, bază=${await stored(dp)}`)
+    check('…și eliberarea NU deschide tichetul', opened === 0 && new URL(dp.url()).pathname === '/', `deschise=${opened}, URL=${new URL(dp.url()).pathname}`)
+    await rowOf(dp, 'C').locator('.task-row').focus()
+    await dp.keyboard.press('Alt+ArrowDown')
+    await dp.waitForTimeout(600)
+    check('desktop: Alt+↓ pe rândul cu focus îl coboară un loc', (await order(dp)) === 'ACB', String(await order(dp)))
+    await dp.reload({ waitUntil: 'networkidle' })
+    await dp.waitForTimeout(900)
+    check('…și ordinea rămâne după reîncărcare (e în pinnedAt)', (await order(dp)) === 'ACB', String(await order(dp)))
+    await rowOf(dp, 'B').locator('.task-row').click()
+    await dp.waitForTimeout(700)
+    check('…iar un click simplu pe o fixată tot o deschide', (await dp.locator('.split-pane:not([hidden]) .sh-header, .sheet.on').count()) > 0, new URL(dp.url()).pathname)
+    await unseed(dp)
+    await dctx.close()
+
+    const pctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
+    const pp = await pctx.newPage()
+    await pp.goto(BASE, { waitUntil: 'networkidle' })
+    await seed(pp)
+    await pp.reload({ waitUntil: 'networkidle' })
+    await pp.waitForTimeout(900)
+    const PT = await touchApi(pp)
+    check('telefon: fiecare fixată are mânerul de ordine', (await pp.locator('.smart-list .pin-grip').count()) === 3, `${await pp.locator('.smart-list .pin-grip').count()} mânere`)
+    const g = await PT.center(rowOf(pp, 'A').locator('.pin-grip'))
+    const cBox = await rowOf(pp, 'C').boundingBox()
+    await PT.drag(g.x, g.y, g.x, cBox.y + cBox.height - 4, { steps: 14 })
+    await pp.waitForTimeout(700)
+    const pOpened = (await pp.locator('.sheet.on, .edit-sheet').count()) + (await pp.locator('.swipe.show-left, .swipe.show-right').count())
+    check('telefon: tras de mâner, A coboară ultimul', (await order(pp)) === 'BCA' && (await stored(pp)) === 'BCA', `ecran=${await order(pp)}, bază=${await stored(pp)}`)
+    check('…fără foaie deschisă, fără rând glisat, fără selecție', pOpened === 0 && (await pp.locator('.sel-mark').count()) === 0, `deschise/glisate=${pOpened}`)
+    await unseed(pp)
+    await pctx.close()
+  }
+
   // ── Teme × Valuri (H-13): clic pe cerc mută, h / l mută, panoul docat ───
   // Clicul pe cerc mută tichetul FĂRĂ să-l deschidă; `u` anulează; clicul pe
   // titlu îl docheză (nu modal); `l` din modul Vim îl mută în valul următor;

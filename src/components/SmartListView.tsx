@@ -4,9 +4,10 @@ import { useUI } from '../ui'
 import { PushToggle } from './PushToggle'
 import { QuickAdd } from './QuickAdd'
 import { TaskRow } from './TaskRow'
+import { PinnedRows } from './PinnedRows'
 import { useRowPinKey } from './RowPin'
 import { unpinned } from '../lib/pinned'
-import { addDays, isOverdue, startOfLocalDay, toShortDate, WEEK_FIRST_OFFSET } from '../lib/schedule'
+import { addDays, startOfLocalDay, toShortDate, WEEK_FIRST_OFFSET } from '../lib/schedule'
 import type { Issue } from '../lib/types'
 import { Icon, type IconName } from './Icon'
 import { SplitView } from './SplitView'
@@ -43,7 +44,6 @@ export function smartListDueAt(kind: SmartListKind, now = new Date()): string {
 const DAYS_FULL = ['duminică', 'luni', 'marți', 'miercuri', 'joi', 'vineri', 'sâmbătă']
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
-const now = () => new Date()
 
 interface GroupProps {
   label: string
@@ -67,7 +67,8 @@ interface GroupProps {
   /**
    * Grupul „Fixate": ordinea vine gata (`comparePinned`, nu `mergeDay`, care
    * ar reordona după urgent și oră), iar fiecare rând își spune singur ziua
-   * și dacă e restant — rândurile vin din zile diferite.
+   * și dacă e restant — rândurile vin din zile diferite. Ordinea se trage de
+   * mână (`PinnedRows`).
    */
   pinned?: boolean
 }
@@ -95,9 +96,7 @@ function Group({ label, date, issues, color, onOpen, late, empty, action, events
         )}
       </div>
       {events && <EventBand items={events.band} />}
-      {pinned ? issues.map((it) => (
-        <TaskRow key={it.id} issue={it} onOpen={onOpen} late={isOverdue(it, now())} day docked={it.id === dockedIssueId} />
-      )) : issues.length > 0 || (events && events.timed.length > 0)
+      {pinned ? <PinnedRows issues={issues} onOpen={onOpen} dockedIssueId={dockedIssueId} /> : issues.length > 0 || (events && events.timed.length > 0)
         ? mergeDay(issues, events?.timed ?? []).map((r) => r.kind === 'issue'
           ? <TaskRow key={r.issue.id} issue={r.issue} onOpen={onOpen} late={late} docked={r.issue.id === dockedIssueId} />
           : <EventRow key={r.occ.key} occ={r.occ} />)

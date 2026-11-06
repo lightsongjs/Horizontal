@@ -1222,13 +1222,15 @@ for (const width of PHONE_WIDTHS) {
  * cade sub 380px) + proiectul lung, un rând cu semnul de fixare (`.t-pin`), și butonul de pe rândul ID-ului din foaia de tichet
  * (`.es-pin`). Semnul și ziua stau în `.t-tail` (`flex-shrink: 0`), deci
  * titlul trebuie să mai primească loc, iar butonul n-are voie să crească
- * rândul ID-ului (marginile negative) sau să iasă din foaie.
+ * rândul ID-ului (marginile negative) sau să iasă din foaie. Pe telefon rândul
+ * din „Fixate" are lângă el mânerul de ordine (`.pin-grip`, `flex-shrink: 0`,
+ * `PinnedRows`): o țintă de deget întreagă, în ecran, care nu strivește titlul.
  */
 const PIN_TITLE = 'Credențiale ANAF: utilizator, parolă și codul de pe SMS pentru depunere'
 const pinnedList = () => `
 <div class="panel smart-list"><div class="list-group" style="--gc: var(--accent)">
   <div class="list-group-head"><span class="list-group-ico pin"><svg width="15" height="15"></svg></span><span class="list-group-label">Fixate</span><span class="list-group-num">2</span></div>
-  <button class="list-row task-row" id="pin-a"><span class="list-check"><span class="ck"></span></span><span class="list-title">${PIN_TITLE}</span><span class="t-tail"><span class="t-time t-day">Mâine<span class="t-day-h"> 10:00</span></span><span class="t-proj"><span class="t-dot" style="background:#0ea5e9"></span><span class="t-proj-name">Aplicație Turism și încă ceva lung</span></span></span></button>
+  <div class="pin-row" id="pin-a-wrap"><div class="swipe"><button class="list-row task-row" id="pin-a"><span class="list-check"><span class="ck"></span></span><span class="list-title">${PIN_TITLE}</span><span class="t-tail"><span class="t-time t-day">Mâine<span class="t-day-h"> 10:00</span></span><span class="t-proj"><span class="t-dot" style="background:#0ea5e9"></span><span class="t-proj-name">Aplicație Turism și încă ceva lung</span></span></span></button></div><button type="button" class="pin-grip" id="pin-grip"><svg width="16" height="16"></svg></button></div>
   <button class="list-row task-row" id="pin-b"><span class="list-check"><span class="ck"></span></span><span class="list-title">Rând fixat din Listă</span><span class="t-tail"><span class="t-pin" id="pin-mark"><svg width="13" height="13"></svg></span><span class="t-proj"><span class="t-dot" style="background:#0ea5e9"></span><span class="t-proj-name">Inbox</span></span></span></button>
 </div></div>
 <div class="kb-sheet edit-sheet" style="animation:none;position:static"><div class="qs-form">
@@ -1264,9 +1266,15 @@ for (const width of PHONE_WIDTHS) {
       metaH: Math.round(meta.getBoundingClientRect().height),
       textH: Math.round(metaSpan.getBoundingClientRect().height),
       docOverflow: document.documentElement.scrollWidth - innerWidth,
+      grip: (() => { const g = r('#pin-grip'); return { w: Math.round(g.width), h: Math.round(g.height), right: g.right, inRow: g.top >= r('#pin-a-wrap').top - 0.5 && g.bottom <= r('#pin-a-wrap').bottom + 0.5 } })(),
+      wrapRight: r('#pin-a-wrap').right,
+      listRight: r('.list-group').right,
     }
   })
   await page.close()
+  check(`mânerul de ordine: țintă de deget, în rând, în ecran @${width}px`,
+    m.grip.w >= 36 && m.grip.h >= 44 && m.grip.inRow && m.grip.right <= width + 0.5 && m.wrapRight <= m.listRight + 0.5,
+    `${m.grip.w}×${m.grip.h}px, în rând=${m.grip.inRow}, dreapta ${Math.round(m.grip.right)}/${width}`)
   check(`rândul fixat nu iese din listă @${width}px`, m.rowOverflow <= 0 && m.docOverflow <= 0, `${m.rowOverflow}px, pagina +${m.docOverflow}px`)
   check(`titlul rândului fixat mai are loc @${width}px`, m.titleW > 80, `${m.titleW}px`)
   check(`semnul de fixare se vede, în accent @${width}px`, m.markW >= 13 && m.markColor !== 'rgba(0, 0, 0, 0)' && m.headIco >= 15, `${m.markW}px, ${m.markColor}, cap ${m.headIco}px`)

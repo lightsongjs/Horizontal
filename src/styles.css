@@ -617,7 +617,30 @@ main {
   pointer-events: none;
 }
 .list-group > .list-row:last-child::after,
-.list-group > .swipe:last-child > .list-row::after { display: none; }
+.list-group > .swipe:last-child > .list-row::after,
+.list-group > .pin-row:last-child > .list-row::after,
+.list-group > .pin-row:last-child > .swipe > .list-row::after { display: none; }
+/* Grupul „Fixate": ordinea se trage (`PinnedRows`, `movePinned`). Rândul
+   ridicat plutește cu umbră; ceilalți își fac loc cu `transform`. */
+.pin-row { display: flex; align-items: center; position: relative; }
+.pin-row > .list-row,
+.pin-row > .swipe { flex: 1; min-width: 0; }
+.pin-row.shifting { transition: transform 0.15s ease; }
+.pin-row.lift { z-index: 2; background: var(--bg); border-radius: var(--r-m); box-shadow: var(--amb); }
+.pin-row.lift .list-row::after { display: none; }
+.pin-row.lift .list-row { cursor: grabbing; }
+/* Telefon: mânerul din dreapta (rândul are glisarea și apăsarea lungă). */
+.pin-grip {
+  width: 36px; min-height: 44px; align-self: stretch; flex-shrink: 0;
+  display: grid; place-items: center;
+  background: none; border: 0; padding: 0; color: var(--txt-faint);
+  touch-action: none; cursor: grab;
+}
+.pin-row.lift .pin-grip { color: var(--accent); cursor: grabbing; }
+.pin-grip:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: var(--r-s); }
+/* Sub 380px mânerul ar strivi titlul: numele proiectului pleacă (rămâne
+   punctul, iar culoarea e oricum pe bifă) — același prag ca `.t-day-h`. */
+@media (max-width: 379px) { .pin-row .t-proj-name { display: none; } }
 .list-row:hover { background: var(--surface-2); }
 .list-row:hover::after { opacity: 0; }
 .list-row.done { opacity: 0.55; }
