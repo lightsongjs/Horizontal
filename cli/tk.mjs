@@ -22,6 +22,7 @@ import {
   pickerStart, pickerKey, pickerView, suggestPrefix, cleanPrefix, prefixOwner,
   defaultProjectType, parseProjectType, buildProjectBody,
   buildCommentBody, commentHasContent, commentLines, authorFor, pickMe, NO_AUTHOR,
+  listParams, mineParams, serverIgnoredAssignee,
 } from './lib.mjs'
 
 // realpath: rulat prin symlink, ghidul stă lângă fișierul real, nu lângă link.
@@ -430,14 +431,17 @@ cmds.themes = async ({ flags }) => {
   for (const t of data) out(`${t.key}  ${t.color}  ${t.name}`)
 }
 
+const OLD_SERVER = 'serverul publicat nu știe încă filtrul pe om (GET /api/tickets?assignee=…): trebuie publicat functions/api'
+
 cmds.list = async ({ flags }) => {
   const project = projectOrDie(flags)
-  const params = { project }
-  if (flags.wave !== undefined) params.wave = String(flags.wave)
-  if (flags.theme !== undefined) params.theme = String(flags.theme)
+  const params = listParams(project, flags)
   const { status, data } = await api(`/api/tickets?${q(params)}`)
+  if (status === 404 && data.error === 'assignee_not_found') { out(`assignee_not_found: ${params.assignee}`); process.exit(1) }
   if (status !== 200) fail(status, data)
   needList(data, '/api/tickets')
+  if (serverIgnoredAssignee(params, data)) die(OLD_SERVER)
+  // `done` se filtrează și pe server; aici rămâne pentru un server mai vechi.
   let rows = data
   if (flags.done === false) rows = rows.filter((t) => !t.done)
   if (flags.done === true) rows = rows.filter((t) => t.done)
@@ -445,6 +449,21 @@ cmds.list = async ({ flags }) => {
   if (!rows.length) return out('(no tickets found)')
   const names = await waveNames(project)
   for (const t of rows) out(ticketLine(t, names.get(t.wave)))
+}
+
+// „Ale mele” din aplicație: tichetele pasate ție (tk whoami), din toate proiectele.
+cmds.mine = async ({ flags }) => {
+  const params = mineParams(flags, config())
+  if (!params) die(NO_AUTHOR)
+  const { status, data } = await api(`/api/tickets?${q(params)}`)
+  if (status === 404 && data.error === 'assignee_not_found') { out(`assignee_not_found: ${params.assignee}`); process.exit(1) }
+  if (status === 400 && data.error === 'missing_params') die(OLD_SERVER)
+  if (status !== 200) fail(status, data)
+  needList(data, '/api/tickets')
+  if (serverIgnoredAssignee(params, data)) die(OLD_SERVER)
+  if (flags.json) return out(JSON.stringify(data, null, 2))
+  if (!data.length) return out('(nimic pasat ție)')
+  for (const t of data) out(ticketLine(t))
 }
 
 cmds.lookup = async ({ positional, flags }) => {
@@ -668,7 +687,10 @@ Configurare
 
 Citire
   tk projects | waves | themes | assignees      [--json]
-  tk list [--wave N] [--theme cheie] [--done false] [--json]
+  tk list [--wave N] [--theme cheie] [--assignee nume|""] [--done [false]] [--json]
+  tk mine [--done | --all] [--project id] [--as persoană] [--json]
+                                     „Ale mele”: pasate ție, din toate proiectele
+                                     (implicit nebifate; --done = bifate, --all = toate)
   tk lookup "Titlu" --wave N
   tk get HZ-7                        tot tichetul (commentCount = câte rânduri are firul)
   tk comments HZ-7 [--json]          firul: comentarii + pase, cronologic

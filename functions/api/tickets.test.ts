@@ -64,13 +64,13 @@ describe('wave 0 is a real wave', () => {
   it('lists tickets in wave 0 instead of rejecting it', async () => {
     const calls = mockFetch([
       projectRoute,
-      route('/rest/v1/issues?project_id=eq.horizontal', [{ id: 'MS-161', title: 'Nota', wave: 0, done: false }]),
+      route('/rest/v1/issues?project_id=eq.horizontal', [{ id: 'MS-161', project_id: 'horizontal', title: 'Nota', wave: 0, done: false }]),
       route('/rest/v1/dependencies?', []),
     ])
     const res = await onRequestGet(getCtx('project=MS&wave=0'))
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual([
-      { id: 'MS-161', title: 'Nota', wave: 0, done: false, theme: null, deps: [], dueAt: null, allDay: true, urgent: false },
+      { id: 'MS-161', projectId: 'horizontal', title: 'Nota', wave: 0, done: false, theme: null, assigneeId: null, deps: [], dueAt: null, allDay: true, urgent: false },
     ])
     expect(calls.some(c => c.url.includes('wave=eq.0'))).toBe(true)
   })
@@ -142,6 +142,81 @@ describe('wave validation still rejects bad input', () => {
 })
 
 // Assigning on create: --assignee takes a name or an id, like --project.
+// „Ale mele” din API: filtrul pe om (și pe bifat) se face în bază, nu pe client.
+describe('list by assignee (tk mine, tk list --assignee)', () => {
+  const ionut = route('/rest/v1/assignees?', [{ id: '0b5d2c1e-0000-4000-8000-000000000001', name: 'Ionut' }])
+  const issues = (rows: unknown[]) => route('/rest/v1/issues?', rows)
+  const issuesCall = (calls: Call[]) => decodeURIComponent(calls.find(c => c.url.includes('/rest/v1/issues?'))!.url)
+
+  it('fără project: caută în toate proiectele, după assignee_id, și întoarce proiectul și omul', async () => {
+    const calls = mockFetch([
+      ionut,
+      issues([
+        { id: 'CC-04', project_id: 'cc', title: 'A', wave: 1, done: false, theme: null, assignee_id: '0b5d2c1e-0000-4000-8000-000000000001', due_at: null, all_day: true, urgent: false },
+        { id: 'MS-12', project_id: 'ms', title: 'B', wave: 2, done: false, theme: 'x', assignee_id: '0b5d2c1e-0000-4000-8000-000000000001', due_at: null, all_day: true, urgent: true },
+      ]),
+      route('/rest/v1/dependencies?', []),
+    ])
+    const res = await onRequestGet(getCtx('assignee=Ionut&done=false'))
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual([
+      { id: 'CC-04', projectId: 'cc', title: 'A', wave: 1, done: false, theme: null, assigneeId: '0b5d2c1e-0000-4000-8000-000000000001', deps: [], dueAt: null, allDay: true, urgent: false },
+      { id: 'MS-12', projectId: 'ms', title: 'B', wave: 2, done: false, theme: 'x', assigneeId: '0b5d2c1e-0000-4000-8000-000000000001', deps: [], dueAt: null, allDay: true, urgent: true },
+    ])
+    expect(calls.some(c => c.url.includes('/rest/v1/projects?'))).toBe(false)
+    const url = issuesCall(calls)
+    expect(url).not.toContain('project_id=eq.')
+    expect(url).toContain('assignee_id=eq.0b5d2c1e-0000-4000-8000-000000000001')
+    expect(url).toContain('done=eq.false')
+    expect(calls.find(c => c.url.includes('/rest/v1/assignees?'))!.url).toContain('name=ilike.Ionut')
+  })
+
+  it('cu project: filtrul pe om se adaugă la cel pe proiect', async () => {
+    const calls = mockFetch([projectRoute, ionut, issues([]), route('/rest/v1/dependencies?', [])])
+    const res = await onRequestGet(getCtx('project=MS&assignee=Ionut'))
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual([])
+    const url = issuesCall(calls)
+    expect(url).toContain('project_id=eq.horizontal')
+    expect(url).toContain('assignee_id=eq.0b5d2c1e-0000-4000-8000-000000000001')
+    expect(url).not.toContain('done=')
+  })
+
+  it('assignee= (gol) = nepasate, doar într-un proiect', async () => {
+    const calls = mockFetch([projectRoute, issues([]), route('/rest/v1/dependencies?', [])])
+    expect((await onRequestGet(getCtx('project=MS&assignee='))).status).toBe(200)
+    expect(issuesCall(calls)).toContain('assignee_id=is.null')
+    expect(calls.some(c => c.url.includes('/rest/v1/assignees?'))).toBe(false)
+
+    mockFetch([])
+    const res = await onRequestGet(getCtx('assignee='))
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ error: 'missing_params', required: ['project'] })
+  })
+
+  it('un om necunoscut → 404 assignee_not_found, fără nicio listă', async () => {
+    const calls = mockFetch([route('/rest/v1/assignees?', [])])
+    const res = await onRequestGet(getCtx('assignee=Nimeni'))
+    expect(res.status).toBe(404)
+    expect(await res.json()).toEqual({ error: 'assignee_not_found' })
+    expect(calls.some(c => c.url.includes('/rest/v1/issues?'))).toBe(false)
+  })
+
+  it('done altceva decât true/false → 400 invalid_done', async () => {
+    mockFetch([projectRoute])
+    const res = await onRequestGet(getCtx('project=MS&done=da'))
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ error: 'invalid_done' })
+  })
+
+  it('fără project și fără assignee, lista tot cere proiectul', async () => {
+    mockFetch([])
+    const res = await onRequestGet(getCtx('done=false'))
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ error: 'missing_params', required: ['project'] })
+  })
+})
+
 describe('create with an assignee', () => {
   const createRoutes = (assignees: unknown) => [
     projectRoute,

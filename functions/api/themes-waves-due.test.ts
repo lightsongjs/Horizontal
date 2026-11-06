@@ -135,15 +135,15 @@ describe('GET /api/tickets: tema, dependențele, scadența', () => {
     const calls = mockFetch([
       projectRoute,
       route('/rest/v1/issues?project_id=eq.cc', [
-        { id: 'CC-01', title: 'A', wave: 1, done: false, theme: 'pasul-2', due_at: '2026-10-23T21:00:00.000Z', all_day: true, urgent: true },
-        { id: 'CC-02', title: 'B', wave: 2, done: false, theme: 'pasul-2', due_at: null, all_day: true, urgent: false },
+        { id: 'CC-01', project_id: 'cc', title: 'A', wave: 1, done: false, theme: 'pasul-2', assignee_id: 'uuid-ana', due_at: '2026-10-23T21:00:00.000Z', all_day: true, urgent: true },
+        { id: 'CC-02', project_id: 'cc', title: 'B', wave: 2, done: false, theme: 'pasul-2', assignee_id: null, due_at: null, all_day: true, urgent: false },
       ]),
       route('/rest/v1/dependencies?', [{ issue_id: 'CC-02', depends_on_id: 'CC-01' }]),
     ])
     const res = await tickets.onRequestGet(ctx('/api/tickets?project=cc&theme=pasul-2'))
     expect(await res.json()).toEqual([
-      { id: 'CC-01', title: 'A', wave: 1, done: false, theme: 'pasul-2', deps: [], dueAt: '2026-10-23T21:00:00.000Z', allDay: true, urgent: true },
-      { id: 'CC-02', title: 'B', wave: 2, done: false, theme: 'pasul-2', deps: ['CC-01'], dueAt: null, allDay: true, urgent: false },
+      { id: 'CC-01', projectId: 'cc', title: 'A', wave: 1, done: false, theme: 'pasul-2', assigneeId: 'uuid-ana', deps: [], dueAt: '2026-10-23T21:00:00.000Z', allDay: true, urgent: true },
+      { id: 'CC-02', projectId: 'cc', title: 'B', wave: 2, done: false, theme: 'pasul-2', assigneeId: null, deps: ['CC-01'], dueAt: null, allDay: true, urgent: false },
     ])
     expect(calls[1].url).toContain('theme=eq.pasul-2')
     expect(decodeURIComponent(calls[2].url)).toContain('issue_id=in.("CC-01","CC-02")')

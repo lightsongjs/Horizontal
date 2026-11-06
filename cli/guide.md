@@ -30,7 +30,7 @@ prin care scrii sau citești tichete dintr-un proiect: nu Supabase direct, nu
 
 Ieșirea e pentru tine: un rând pe element, cuvinte fixe pe care le poți citi
 (`updated:`, `duplicate:`, `not_found`…). `--json` dă răspunsul brut al API-ului
-la `projects`, `waves`, `themes`, `assignees`, `list`, `attach`, `attachments`,
+la `projects`, `waves`, `themes`, `assignees`, `list`, `mine`, `attach`, `attachments`,
 `comments`, `comment`.
 Codul de ieșire e 1 la orice refuz sau eroare.
 
@@ -55,8 +55,15 @@ tk list                                 # tot proiectul
 tk list --wave 1                        # un val
 tk list --theme pasul-2                 # o temă;  --theme "" = fără temă
 tk list --done false                    # doar deschise (--done = doar bifate)
+tk list --assignee Ionut                # pasate lui Ionut;  --assignee "" = nepasate
 # KATA-12  [wave 1 · I / MVP]  #auth  Titlul  ← KATA-10,KATA-11  (due 2026-10-23T21:00:00.000Z)  !
 #   ✓ după val = bifat;  ← = dependențele;  ! = urgent
+#   --json: id, projectId, title, wave, done, theme, assigneeId, deps, dueAt, allDay, urgent
+
+tk mine                                 # „Ale mele”: pasate ție (tk whoami), din TOATE
+                                        # proiectele, nebifate — ce arată aplicația
+tk mine --done | --all                  # doar bifate | toate
+tk mine --project cc --json             # un singur proiect; brut (alias: ale-mele)
 
 tk lookup "Setup DB" --wave 1           # → KATA-03   sau   not_found
 
@@ -240,7 +247,7 @@ API-ul scrie cu cheia de serviciu, deci ce nu se poate anula se refuză:
 |---|---|---|
 | `duplicate: <ID>` | există deja un tichet cu titlul ăsta în proiect | folosește-l pe acela |
 | `theme_not_found: <cheie>` | temă necunoscută (înainte cădea tăcut în „Fără temă") | `tk themes` sau `tk theme-create` |
-| `assignee_not_found` | numele nu e în `tk assignees` | se creează din aplicație |
+| `assignee_not_found` | numele nu e în `tk assignees` (și la `list --assignee`, `mine`) | se creează din aplicație |
 | `invalid_deps: A, B` | dependențe spre ID-uri inexistente | creează-le întâi |
 | `invalid_due` | scadența nu e `AAAA-LL-ZZ` sau `AAAA-LL-ZZ HH:MM` | |
 | `recurring` | scadență pe un tichet care se repetă | se schimbă din aplicație |
@@ -304,6 +311,14 @@ proprie inițiativă — numai când omul ți-o cere.
 `--assignee` ia un nume (fără majuscule: `ionut` = `Ionut`) sau un id. Gol
 (`--assignee ""`) = „al creatorului". Lista e globală, nu per proiect.
 Pentru o pasă cu explicație folosește `tk comment … --to` (vezi „Firul”).
+
+**„Ale mele” = `tk mine`**: tichetele cu `assignee_id` = omul din `tk whoami`
+(sau `--as`), din toate proiectele, filtrate în bază — nu citi toate proiectele
+ca să filtrezi tu. Un tichet pe care omul și l-a creat singur și nu l-a pasat
+nimănui NU e acolo (rămâne „al creatorului”), exact ca în aplicație; „Azi” /
+„7 zile” au altă regulă (le include). `tk list --assignee <om>` face același
+filtru într-un proiect. Pe un server publicat înainte de filtru, tk se oprește
+cu eroare în loc să întoarcă toate tichetele.
 
 `tk create` trece omul din `tk whoami` drept creator (`created_by`, „creat de
 Ionut” în aplicație); fără om configurat tichetul rămâne fără autor, ca înainte.

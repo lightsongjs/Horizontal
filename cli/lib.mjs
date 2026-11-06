@@ -15,7 +15,7 @@ export class UsageError extends Error {}
 // ── Argumentele ──────────────────────────────────────────────────────────────
 
 /** Flaguri fără valoare obligatorie: `--urgent` = true, `--urgent false` merge și el. */
-const BOOL_FLAGS = new Set(['urgent', 'done', 'pin', 'json', 'help', 'no-check', 'force'])
+const BOOL_FLAGS = new Set(['urgent', 'done', 'pin', 'json', 'help', 'no-check', 'force', 'all'])
 /** Flaguri care se pot repeta; se strâng într-o listă. */
 const MULTI_FLAGS = new Set(['file', 'attach'])
 
@@ -33,12 +33,13 @@ export const COMMAND_ALIASES = {
   'create-project': 'project-create',
   thread: 'comments',
   me: 'whoami',
+  'ale-mele': 'mine',
 }
 
 export const COMMANDS = [
   'help', 'guide', 'login', 'init', 'status',
   'projects', 'project-create', 'waves', 'assignees', 'themes',
-  'list', 'lookup', 'get', 'create', 'update', 'delete',
+  'list', 'mine', 'lookup', 'get', 'create', 'update', 'delete',
   'attach', 'attachments', 'comments', 'comment', 'whoami',
   'theme-create', 'theme-update', 'wave-create', 'wave-update',
 ]
@@ -239,6 +240,45 @@ export function pickMe(list, wanted) {
   if (!p) return { error: 'author_not_found' }
   if (p.linked === false) return { error: 'author_not_linked', person: p }
   return { me: { id: p.id, name: p.name } }
+}
+
+/**
+ * Parametrii lui `GET /api/tickets` pentru `tk list`. `--assignee` și `--done`
+ * se filtrează pe server (`--assignee ""` = nepasate); `--wave` / `--theme` ca
+ * înainte.
+ */
+export function listParams(project, flags) {
+  const params = { project }
+  if (flags.wave !== undefined) params.wave = String(flags.wave)
+  if (flags.theme !== undefined) params.theme = String(flags.theme)
+  if (flags.assignee !== undefined) params.assignee = String(flags.assignee)
+  if (flags.done !== undefined) params.done = String(flags.done)
+  return params
+}
+
+/**
+ * Parametrii lui `tk mine` = „Ale mele” din aplicație: tichetele PASATE omului
+ * de pe calculator (`tk whoami`, sau `--as`), din toate proiectele (`--project`
+ * restrânge). Ca în aplicație, implicit doar cele nebifate; `--done` = doar
+ * bifate, `--all` = toate. `null` = nu știm cine ești.
+ */
+export function mineParams(flags, cfg) {
+  const who = authorFor(flags, cfg)
+  if (!who) return null
+  const params = { assignee: who }
+  if (typeof flags.project === 'string' && flags.project) params.project = flags.project
+  if (flags.done !== undefined) params.done = String(flags.done)
+  else if (!flags.all) params.done = 'false'
+  return params
+}
+
+/**
+ * Un server publicat înainte de filtrul pe om ignoră `assignee` și întoarce
+ * TOT proiectul — exact greșeala care nu trebuie să treacă tăcută. Rândurile
+ * lui n-au `assigneeId`; o listă goală nu spune nimic, deci trece.
+ */
+export function serverIgnoredAssignee(params, rows) {
+  return params.assignee !== undefined && rows.some((r) => !('assigneeId' in r))
 }
 
 /** Mesajul când nu se știe în numele cui se scrie. */

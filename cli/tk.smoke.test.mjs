@@ -60,6 +60,17 @@ beforeAll(async () => {
         if (body.title === 'Dublura') return send(409, { error: 'duplicate_title', existing_id: 'KATA-02' })
         return send(201, { id: 'KATA-09' })
       }
+      if (u.pathname === '/api/tickets' && req.method === 'GET' && u.searchParams.has('assignee')) {
+        const who = u.searchParams.get('assignee')
+        // „Vechi” = un server publicat înainte de filtru: ignoră assignee, rânduri fără assigneeId.
+        if (who === 'Vechi') return send(200, [{ id: 'KATA-01', title: 'Schema', wave: 1, done: true, theme: null, deps: [] }])
+        if (who === 'Nimeni') return send(404, { error: 'assignee_not_found' })
+        if (!u.searchParams.has('project') && who === 'VechiFaraProiect') return send(400, { error: 'missing_params', required: ['project'] })
+        return send(200, [
+          { id: 'CC-04', projectId: 'cc', title: 'Pasat mie', wave: 2, done: false, theme: null, assigneeId: 'a-ion', deps: [], dueAt: '2026-11-07', allDay: true, urgent: false },
+          { id: 'KATA-02', projectId: 'kata', title: 'API', wave: 1, done: false, theme: 'auth', assigneeId: 'a-ion', deps: ['KATA-01'], urgent: true },
+        ])
+      }
       if (u.pathname === '/api/tickets' && req.method === 'GET') {
         return send(200, [
           { id: 'KATA-01', title: 'Schema', wave: 1, done: true, theme: null, deps: [] },
@@ -131,6 +142,58 @@ describe('tk contra unui server fals', () => {
   it('list --json --done false dă doar deschisele, brut', async () => {
     const r = await tk(['list', '--json', '--done', 'false'], { cwd: repo() })
     expect(JSON.parse(r.stdout).map((t) => t.id)).toEqual(['KATA-02'])
+  })
+
+  it('list --assignee filtrează pe server (și --done merge la server)', async () => {
+    const r = await tk(['list', '--assignee', 'Ionut', '--done', 'false', '--json'], { cwd: repo() })
+    expect(r.code).toBe(0)
+    expect(JSON.parse(r.stdout).map((t) => [t.id, t.assigneeId])).toEqual([['CC-04', 'a-ion'], ['KATA-02', 'a-ion']])
+    expect(last().url).toBe('/api/tickets?project=kata&assignee=Ionut&done=false')
+  })
+
+  it('list --assignee pe un server vechi (care ignoră filtrul) → eroare, nu toate tichetele', async () => {
+    const r = await tk(['list', '--assignee', 'Vechi'], { cwd: repo() })
+    expect(r.code).toBe(1)
+    expect(r.stdout).toBe('')
+    expect(r.stderr).toContain('nu știe încă filtrul pe om')
+  })
+
+  it('mine = „Ale mele”: omul din tk whoami, toate proiectele, implicit nebifate', async () => {
+    const r = await tk(['mine'], { env: { HORIZONTAL_ME: 'a-ion' } })
+    expect(r.code).toBe(0)
+    expect(last().url).toBe('/api/tickets?assignee=a-ion&done=false')
+    expect(r.stdout.trim().split('\n')).toEqual([
+      'CC-04  [wave 2]  Pasat mie  (due 2026-11-07)',
+      'KATA-02  [wave 1]  #auth  API  ← KATA-01  !',
+    ])
+  })
+
+  it('mine: .horizontal nu restrânge, --project da; --done / --all / --as / --json', async () => {
+    await tk(['mine', '--all', '--as', 'Ana'], { cwd: repo(), env: { HORIZONTAL_ME: 'a-ion' } })
+    expect(last().url).toBe('/api/tickets?assignee=Ana')
+    await tk(['ale-mele', '--done', '--project', 'kata'], { env: { HORIZONTAL_ME: 'a-ion' } })
+    expect(last().url).toBe('/api/tickets?assignee=a-ion&project=kata&done=true')
+    const r = await tk(['mine', '--json'], { env: { HORIZONTAL_ME: 'a-ion' } })
+    expect(JSON.parse(r.stdout)[0]).toMatchObject({ id: 'CC-04', projectId: 'cc', assigneeId: 'a-ion' })
+  })
+
+  it('mine fără tk whoami → mesajul, nicio cerere', async () => {
+    const before = seen.length
+    const r = await tk(['mine'])
+    expect(r.code).toBe(1)
+    expect(r.stderr).toContain('tk whoami --set')
+    expect(seen.length).toBe(before)
+  })
+
+  it('mine: om necunoscut → assignee_not_found; server vechi → eroare clară', async () => {
+    const r = await tk(['mine'], { env: { HORIZONTAL_ME: 'Nimeni' } })
+    expect(r.code).toBe(1)
+    expect(r.stdout.trim()).toBe('assignee_not_found: Nimeni')
+    for (const who of ['Vechi', 'VechiFaraProiect']) {
+      const old = await tk(['mine'], { env: { HORIZONTAL_ME: who } })
+      expect(old.code).toBe(1)
+      expect(old.stderr).toContain('nu știe încă filtrul pe om')
+    }
   })
 
   it('attach trimite multipart cu fișierele, fără Content-Type JSON', async () => {

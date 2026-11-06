@@ -8,6 +8,7 @@ import {
   fold, rankProjects, pickerItems, pickerStart, pickerKey, pickerView, NEW_PROJECT,
   suggestPrefix, cleanPrefix, prefixOwner, defaultProjectType, parseProjectType, buildProjectBody,
   buildCommentBody, commentHasContent, commentLines, localTime, authorFor, pickMe, COMMANDS,
+  listParams, mineParams, serverIgnoredAssignee,
 } from './lib.mjs'
 import * as app from '../src/lib/newProject'
 
@@ -323,5 +324,34 @@ describe('cine scrie (tk whoami)', () => {
     expect(buildCreateBody({ projectId: 'k', title: 'T', wave: 1, flags: {} })).not.toHaveProperty('author')
     expect(buildUpdateBody({ pin: true })).toEqual({ pinned: true })
     expect(parseArgs(['update', 'H-7', '--pin', 'false']).flags).toEqual({ pin: false })
+  })
+})
+
+describe('filtrul pe om (tk list --assignee, tk mine)', () => {
+  it('list: --assignee și --done pleacă la server; "" = nepasate', () => {
+    expect(listParams('kata', { assignee: 'Ionut', done: false, wave: 2 }))
+      .toEqual({ project: 'kata', wave: '2', assignee: 'Ionut', done: 'false' })
+    expect(listParams('kata', { assignee: '' })).toEqual({ project: 'kata', assignee: '' })
+    expect(listParams('kata', {})).toEqual({ project: 'kata' })
+  })
+  it('mine: omul din config, --as îl bate; implicit nebifate, --done / --all', () => {
+    const cfg = { me: { id: 'a-ion', name: 'Ionut' } }
+    expect(mineParams({}, cfg)).toEqual({ assignee: 'a-ion', done: 'false' })
+    expect(mineParams({ as: 'Ana', all: true }, cfg)).toEqual({ assignee: 'Ana' })
+    expect(mineParams({ done: true, project: 'cc' }, cfg)).toEqual({ assignee: 'a-ion', project: 'cc', done: 'true' })
+    expect(mineParams({ done: false, all: true }, cfg)).toEqual({ assignee: 'a-ion', done: 'false' })
+    expect(mineParams({}, { me: null })).toBe(null)
+  })
+  it('mine e o comandă; ale-mele duce la ea, me rămâne whoami', () => {
+    expect(COMMANDS).toContain('mine')
+    expect(parseArgs(['ale-mele', '--all']).cmd).toBe('mine')
+    expect(parseArgs(['me']).cmd).toBe('whoami')
+    expect(parseArgs(['mine', '--all', '--json']).flags).toEqual({ all: true, json: true })
+  })
+  it('un server vechi (fără assigneeId în rânduri) nu trece drept filtrat', () => {
+    expect(serverIgnoredAssignee({ assignee: 'x' }, [{ id: 'A-1' }])).toBe(true)
+    expect(serverIgnoredAssignee({ assignee: 'x' }, [{ id: 'A-1', assigneeId: null }])).toBe(false)
+    expect(serverIgnoredAssignee({ assignee: 'x' }, [])).toBe(false)
+    expect(serverIgnoredAssignee({}, [{ id: 'A-1' }])).toBe(false)
   })
 })

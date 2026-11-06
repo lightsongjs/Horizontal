@@ -14,7 +14,9 @@ interface SupabaseIssue {
 }
 
 interface ListRow extends SupabaseIssue, DueRow {
+  project_id: string
   theme: string | null
+  assignee_id: string | null
 }
 
 import { sbHeaders, resolveProject, nextIssueId, resolveAssignee, resolveAuthor, themeExists } from './_tickets-lib'
@@ -28,36 +30,62 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   const waveParam = url.searchParams.get('wave')
   // `theme=<cheie>` filtrează lista; `theme=` (gol) = tichetele fără temă.
   const themeParam = url.searchParams.get('theme')
+  // `assignee=<nume|id>` = tichetele pasate omului (`assignee_id`), ca „Ale mele”
+  // din aplicație; fără `project` caută în TOATE proiectele. `assignee=` (gol) =
+  // nepasate, doar într-un proiect. `done=true|false` filtrează tot pe server.
+  const assigneeParam = url.searchParams.get('assignee')
+  const doneParam = url.searchParams.get('done')
 
-  if (!projectParam) {
+  const acrossProjects = !projectParam && !title && !!assigneeParam
+  if (!projectParam && !acrossProjects) {
     return Response.json({ error: 'missing_params', required: ['project'] }, { status: 400 })
   }
 
   const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = context.env
   const headers = sbHeaders(SUPABASE_SERVICE_ROLE_KEY)
 
-  const proj = await resolveProject(projectParam, SUPABASE_URL, headers)
-  if (!proj) {
-    return Response.json({ error: 'project_not_found' }, { status: 404 })
+  let project: string | null = null
+  if (projectParam) {
+    const proj = await resolveProject(projectParam, SUPABASE_URL, headers)
+    if (!proj) {
+      return Response.json({ error: 'project_not_found' }, { status: 404 })
+    }
+    project = proj.id
   }
-  const project = proj.id
 
-  // LIST mode: no title param — return all tickets for project, optionally filtered by wave / theme.
-  // Fiecare rând are și tema, dependențele și scadența, ca să nu fie nevoie de un GET pe tichet.
+  // LIST mode: no title param — return all tickets for project, optionally filtered by wave / theme / assignee / done.
+  // Fiecare rând are și tema, dependențele, scadența, proiectul și omul căruia
+  // i-a fost pasat, ca să nu fie nevoie de un GET pe tichet.
   if (!title) {
-    let filter = `project_id=eq.${project}`
+    const filters: string[] = []
+    if (project) filters.push(`project_id=eq.${project}`)
     if (waveParam) {
       const waveNum = Number(waveParam)
       if (!Number.isInteger(waveNum) || waveNum < 0) {
         return Response.json({ error: 'invalid_wave' }, { status: 400 })
       }
-      filter += `&wave=eq.${waveNum}`
+      filters.push(`wave=eq.${waveNum}`)
     }
     if (themeParam !== null) {
-      filter += themeParam === '' ? '&or=(theme.is.null,theme.eq.)' : `&theme=eq.${encodeURIComponent(themeParam)}`
+      filters.push(themeParam === '' ? 'or=(theme.is.null,theme.eq.)' : `theme=eq.${encodeURIComponent(themeParam)}`)
+    }
+    if (doneParam !== null) {
+      if (doneParam !== 'true' && doneParam !== 'false') {
+        return Response.json({ error: 'invalid_done' }, { status: 400 })
+      }
+      filters.push(`done=eq.${doneParam}`)
+    }
+    if (assigneeParam === '') {
+      filters.push('assignee_id=is.null')
+    } else if (assigneeParam !== null) {
+      const assignee = await resolveAssignee(assigneeParam, SUPABASE_URL, headers)
+      if (!assignee) {
+        return Response.json({ error: 'assignee_not_found' }, { status: 404 })
+      }
+      filters.push(`assignee_id=eq.${assignee.id}`)
     }
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/issues?${filter}&select=id,title,wave,done,theme,due_at,all_day,urgent&order=id.asc`,
+      `${SUPABASE_URL}/rest/v1/issues?${filters.join('&')}&select=id,project_id,title,wave,done,theme,assignee_id,due_at,all_day,urgent&order=id.asc`,
       { headers }
     )
     if (!res.ok) {
@@ -82,10 +110,12 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     for (const d of depRows) depsOf.set(d.issue_id, [...(depsOf.get(d.issue_id) ?? []), d.depends_on_id])
     return Response.json(data.map((i) => ({
       id: i.id,
+      projectId: i.project_id,
       title: i.title,
       wave: i.wave,
       done: i.done,
       theme: i.theme || null,
+      assigneeId: i.assignee_id ?? null,
       deps: depsOf.get(i.id) ?? [],
       ...dueOut(i),
     })))
