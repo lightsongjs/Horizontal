@@ -21,18 +21,16 @@ export function sameTarget(a: NavTarget | null, b: NavTarget): boolean {
   return a.kind === 'screen' ? a.screen === (b as typeof a).screen : a.id === (b as { id: string }).id
 }
 
-/** Ținta unei fixări. */
+/** Ținta unei fixări. O listă fixată (moștenire, vezi `PinKind`) n-are: navigarea e fixă. */
 export function pinTarget(p: Pin): NavTarget | null {
   if (p.kind === 'project') return { kind: 'project', id: p.ref }
   if (p.kind === 'filter') return { kind: 'filter', id: p.ref }
-  if (p.kind === 'list' && (p.ref === 'week' || p.ref === 'inbox')) return { kind: 'screen', screen: p.ref }
   return null
 }
 
 /** Eticheta și semnul unei fixări — aceleași în pătrat și în rândul de sidebar. */
 export function pinLabel(p: Pin, projects: readonly Project[], filters: readonly SavedFilter[]): string {
   if (p.kind === 'project') return projects.find((x) => x.id === p.ref)?.name ?? p.ref
-  if (p.kind === 'list') return p.ref === 'week' ? '7 zile' : 'Ale mele'
   return filters.find((f) => f.id === p.ref)?.name ?? 'Filtru'
 }
 
@@ -48,8 +46,7 @@ export function PinGlyph({ pin, projects, filters, size = 20 }: { pin: Pin; proj
     if (isInboxProject(p)) return <span style={{ color: p.accent || undefined, display: 'inline-flex' }}><Icon name="inbox" size={size} /></span>
     return <span className="pin-prefix" style={{ color: p.accent || 'var(--txt-dim)' }}>{p.prefix.slice(0, 2)}</span>
   }
-  const icon: IconName = pin.kind === 'list' ? (pin.ref === 'week' ? 'list' : 'people')
-    : filters.find((f) => f.id === pin.ref)?.icon ?? 'filter'
+  const icon: IconName = filters.find((f) => f.id === pin.ref)?.icon ?? 'filter'
   return <Icon name={icon} size={size} />
 }
 

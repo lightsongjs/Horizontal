@@ -1033,6 +1033,63 @@ for (const width of PHONE_WIDTHS) {
 }
 
 /**
+ * Bara laterală de pe desktop (`Sidebar.tsx`): navigarea (Azi, 7 zile, Ale
+ * mele) e un bloc deasupra grupului „Fixate", iar fixatele (numai proiecte și
+ * filtre) stau sub titlul lor, despărțite prin aer — până pe 2026-11-06 erau
+ * amestecate. Același ax pentru iconițe în ambele blocuri; un nume lung se
+ * taie cu „…", nu lățește bara.
+ */
+const deskSidebar = () => `
+<div style="display:grid;grid-template-columns:240px 1fr;height:900px">
+<aside class="sidebar">
+  <button class="sidebar-search"><svg width="15" height="15"></svg><span>Caută</span><kbd>Ctrl F</kbd></button>
+  <nav class="sidebar-nav">
+    <button class="sidebar-nav-item on"><span class="sidebar-nav-icon"><svg width="17" height="17"></svg></span><span>Azi</span><span class="sl-late">2</span><span class="sl-count">14</span></button>
+    <button class="sidebar-nav-item"><span class="sidebar-nav-icon"><svg width="17" height="17"></svg></span><span>7 zile</span><span class="sl-count">31</span></button>
+    <button class="sidebar-nav-item"><span class="sidebar-nav-icon"><svg width="17" height="17"></svg></span><span>Ale mele</span><span class="sl-new">3</span><span class="sl-count">9</span></button>
+  </nav>
+  <div class="sidebar-fixate">
+    <div class="sidebar-section-label">Fixate</div>
+    <button class="sidebar-nav-item sidebar-pinned" id="long-pin"><span class="sidebar-nav-icon"><span class="pin-prefix">CC</span></span><span class="sidebar-pinned-name">ColegConta-inspiratieNoua pentru contabilitate</span></button>
+    <button class="sidebar-nav-item sidebar-pinned"><span class="sidebar-nav-icon"><span class="pin-prefix">NV</span></span><span class="sidebar-pinned-name">NEVEON TICKETING</span></button>
+    <button class="sidebar-nav-item sidebar-pinned"><span class="sidebar-nav-icon"><svg width="16" height="16"></svg></span><span class="sidebar-pinned-name">Ale lui Mihai</span></button>
+  </div>
+  <div class="sidebar-scroll"><div class="sidebar-section-label">Filtre</div></div>
+</aside><main></main></div>`
+
+console.log('\nBara laterală: navigarea deasupra fixatelor:')
+{
+  const page = await browser.newPage({ viewport: { width: 1280, height: 900 } })
+  await page.setContent(`<style>${CSS}</style>${deskSidebar()}`)
+  const m = await page.evaluate(() => {
+    const r = (el) => el.getBoundingClientRect()
+    const side = document.querySelector('.sidebar')
+    const nav = [...document.querySelectorAll('.sidebar-nav .sidebar-nav-item')]
+    const pins = [...document.querySelectorAll('.sidebar-fixate .sidebar-nav-item')]
+    const label = document.querySelector('.sidebar-fixate .sidebar-section-label')
+    const name = document.querySelector('#long-pin .sidebar-pinned-name')
+    const icoX = (b) => Math.round(r(b.querySelector('.sidebar-nav-icon')).left)
+    const text = document.createRange()
+    text.selectNodeContents(label)
+    return {
+      // Aerul dintre ultimul rând de navigare și textul titlului „Fixate".
+      gap: Math.round(r(text).top - r(nav[nav.length - 1]).bottom),
+      order: r(nav[nav.length - 1]).bottom <= r(label).top && r(label).bottom <= r(pins[0]).top,
+      icons: new Set([...nav, ...pins].map(icoX)).size,
+      rowH: [...nav, ...pins].map((b) => Math.round(r(b).height)),
+      cut: name.scrollWidth > name.clientWidth && getComputedStyle(name).textOverflow === 'ellipsis',
+      inside: pins.every((b) => r(b).right <= r(side).right + 0.5) && side.scrollWidth <= side.clientWidth,
+    }
+  })
+  await page.close()
+  check('navigarea stă deasupra „Fixate", titlul între ele', m.order, m.order ? 'nav → Fixate → fixate' : 'amestecate')
+  check('„Fixate" se desparte de navigare prin aer', m.gap >= 12 && m.gap <= 32, `${m.gap}px`)
+  check('iconițele navigării și ale fixatelor pe același ax', m.icons === 1, `${m.icons} axe`)
+  check('rândurile au aceeași înălțime în ambele blocuri', new Set(m.rowH).size === 1 && m.rowH[0] >= 32, m.rowH.join(','))
+  check('un nume fixat lung se taie cu „…", nu lățește bara', m.cut && m.inside, `tăiat=${m.cut}, în bară=${m.inside}`)
+}
+
+/**
  * Editorul de filtru (`FilterForm.tsx`): jetoanele SE RUP pe rânduri, nu
  * derulează — un proiect ascuns după margine nu se mai poate alege. Și capul
  * unui grup pe proiect din ecranul filtrului: numele lung se taie, numărul nu.

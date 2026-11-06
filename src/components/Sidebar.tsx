@@ -239,10 +239,50 @@ export function Sidebar({ showUsers = false, onNavigate, smartList = null, onSma
         </div>
       )}
 
+      {/* Navigarea: Azi, 7 zile, Ale mele — fixă, deasupra fixatelor. Până
+          pe 2026-11-06 „7 zile" și „Ale mele" se puteau fixa și ele, iar
+          grupul „Fixate" curgea direct în listele zilei, fără graniță. */}
+      <nav className="sidebar-nav" aria-label="Navigare">
+        {SMART_LISTS.map(({ kind, label, icon }) => (
+          <button
+            key={kind}
+            className={`sidebar-nav-item ${smartList === kind ? 'on' : ''}`}
+            onClick={() => onSmartList?.(kind)}
+          >
+            <span className={`sidebar-nav-icon ${icon}`}><Icon name={icon} size={17} /></span>
+            <span>{label}</span>
+            {otherDot(!!other && other.otherScreen === kind)}
+            {/* Restanțele nu au rând propriu: ar fi un rând gol în ziua bună.
+                Trăiesc ca badge pe „Azi", fiindcă sunt o problemă de azi. */}
+            {kind === 'today' && overdueCount > 0 && (
+              <span className="sl-late" title={`${overdueCount} restanțe`}>{overdueCount}</span>
+            )}
+            {counts[kind] > 0 && <span className="sl-count">{counts[kind]}</span>}
+          </button>
+        ))}
+
+        {/* „Ale mele" — cutia de pase. Nu vine din `SMART_LISTS`: n-are zi, deci
+            nu se calculează layer/wave pe ea, e doar tot ce ți-a pasat cineva. */}
+        <button
+          className={`sidebar-nav-item ${inboxActive ? 'on' : ''}`}
+          onClick={() => onInbox?.()}
+        >
+          <span className="sidebar-nav-icon"><Icon name="people" size={17} /></span>
+          <span>Ale mele</span>
+          {otherDot(!!other && other.otherScreen === 'inbox')}
+          {/* Două numere, ca pe „Azi" (restanțe + total): necititele sunt o
+              chemare, totalul e mărimea listei. Necititele dispar când le-ai
+              văzut; totalul rămâne cât timp tichetele sunt ale tale. */}
+          {inboxUnread > 0 && <span className="sl-new" title={`${inboxUnread} necitite`}>{inboxUnread}</span>}
+          {inboxTotal > 0 && <span className="sl-count">{inboxTotal}</span>}
+        </button>
+      </nav>
+
       {/* Fixatele: pe telefon sunt pătratele din sertar, aici rânduri
-          obișnuite într-un grup sus — aceeași ordine, aceeași țintă. */}
+          obișnuite într-un grup sub navigare — aceeași ordine, aceeași țintă.
+          Numai proiecte și filtre (`livePins`); fără fixate, fără titlu. */}
       {pinned.length > 0 && (
-        <>
+        <div className="sidebar-fixate" role="group" aria-label="Fixate">
           <div className="sidebar-section-label">Fixate</div>
           {pinned.map((p, i) => {
             const t = pinTarget(p)
@@ -252,8 +292,7 @@ export function Sidebar({ showUsers = false, onNavigate, smartList = null, onSma
             const lifted = pinDrag.drag?.key === key
             const on = t.kind === 'project'
               ? !offProject && !smartList && !showUsers && project?.id === t.id
-              : t.kind === 'filter' ? filterId === t.id
-              : t.screen === 'inbox' ? inboxActive : smartList === t.screen
+              : t.kind === 'filter' && filterId === t.id
             return (
               <button
                 key={key}
@@ -275,8 +314,6 @@ export function Sidebar({ showUsers = false, onNavigate, smartList = null, onSma
                 onClick={() => {
                   if (t.kind === 'project') goToProject(t.id)
                   else if (t.kind === 'filter') onFilter?.(t.id)
-                  else if (t.screen === 'inbox') onInbox?.()
-                  else onSmartList?.(t.screen as SmartListKind)
                 }}
                 onContextMenu={menuAt(p.kind, p.ref, label)}
               >
@@ -285,44 +322,8 @@ export function Sidebar({ showUsers = false, onNavigate, smartList = null, onSma
               </button>
             )
           })}
-        </>
+        </div>
       )}
-
-      {SMART_LISTS.map(({ kind, label, icon }) => (
-        <button
-          key={kind}
-          className={`sidebar-nav-item ${smartList === kind ? 'on' : ''}`}
-          onClick={() => onSmartList?.(kind)}
-          onContextMenu={kind === 'week' ? menuAt('list', 'week', '7 zile') : undefined}
-        >
-          <span className={`sidebar-nav-icon ${icon}`}><Icon name={icon} size={17} /></span>
-          <span>{label}</span>
-          {otherDot(!!other && other.otherScreen === kind)}
-          {/* Restanțele nu au rând propriu: ar fi un rând gol în ziua bună.
-              Trăiesc ca badge pe „Azi", fiindcă sunt o problemă de azi. */}
-          {kind === 'today' && overdueCount > 0 && (
-            <span className="sl-late" title={`${overdueCount} restanțe`}>{overdueCount}</span>
-          )}
-          {counts[kind] > 0 && <span className="sl-count">{counts[kind]}</span>}
-        </button>
-      ))}
-
-      {/* „Ale mele" — cutia de pase. Nu vine din `SMART_LISTS`: n-are zi, deci
-          nu se calculează layer/wave pe ea, e doar tot ce ți-a pasat cineva. */}
-      <button
-        className={`sidebar-nav-item ${inboxActive ? 'on' : ''}`}
-        onClick={() => onInbox?.()}
-        onContextMenu={menuAt('list', 'inbox', 'Ale mele')}
-      >
-        <span className="sidebar-nav-icon"><Icon name="people" size={17} /></span>
-        <span>Ale mele</span>
-        {otherDot(!!other && other.otherScreen === 'inbox')}
-        {/* Două numere, ca pe „Azi" (restanțe + total): necititele sunt o
-            chemare, totalul e mărimea listei. Necititele dispar când le-ai
-            văzut; totalul rămâne cât timp tichetele sunt ale tale. */}
-        {inboxUnread > 0 && <span className="sl-new" title={`${inboxUnread} necitite`}>{inboxUnread}</span>}
-        {inboxTotal > 0 && <span className="sl-count">{inboxTotal}</span>}
-      </button>
 
       {/* Doar filtrele și proiectele derulează; cine ești, căutarea și listele
           zilei rămân pe loc (pe telefon sertarul derulează tot). */}

@@ -1271,7 +1271,8 @@ def dpin(glyph, label, on=False):
             % (' on' if on else '', glyph, label))
 
 
-# Sertarul (Drawer.tsx): cine ești + rotița, pătratele fixate, listele, apoi
+# Sertarul (Drawer.tsx): cine ești + rotița, pătratele fixate (numai proiecte
+# și filtre — navigarea nu se fixează), listele, apoi
 # proiectele pe un salt de fundal. Fixed, ca în aplicație — peste ecranul „Azi".
 SERTAR = ('<div class="drawer-bg"></div><nav class="drawer">'
           '<div class="dr-head"><span class="dr-avatar">IS</span><span class="dr-who"><span class="dr-name">Ionuț</span>'
@@ -1284,7 +1285,7 @@ SERTAR = ('<div class="drawer-bg"></div><nav class="drawer">'
           '<button class="dr-add">%s Proiect</button></div></div></nav>'
           % (ic('settings', 19),
              dpin('<span class="pin-prefix" style="color:#0EA5E9">TU</span>', 'Aplicație Turism', on=True)
-             + dpin(ic('inbox', 20), 'Inbox') + dpin(ic('calendar-range', 20), '7 zile') + dpin(ic('user', 20), 'Ale mele'),
+             + dpin(ic('inbox', 20), 'Inbox') + dpin(ic('list-filter', 20), 'Ale lui Mihai'),
              drow(ic('calendar-days', 19), 'Azi', 4, extra='<span class="sl-late">2</span>')
              + drow(ic('calendar-range', 19), '7 zile', 11)
              + drow(ic('user', 19), 'Ale mele', extra='<span class="sl-new">2</span>')

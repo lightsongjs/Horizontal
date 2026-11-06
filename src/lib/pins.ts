@@ -2,16 +2,16 @@
 // sidebar-ului. Pur, fără store: ce e fixat vine din bază (`pinned_items`,
 // sincronizat în cont), iar aici se decide doar ordinea și ce mai e viu.
 
-/** Ce se poate fixa. `list` = o listă a aplicației (vezi `PinnableList`). */
-export type PinKind = 'filter' | 'project' | 'list'
-
 /**
- * Listele care se pot fixa. „Azi" nu: e rădăcina, deschisă oricum la pornire,
- * iar un pătrat care duce unde ești deja e un pătrat în plus. Inbox-ul NU e
- * aici — e un proiect (`kind: 'project'`), deci se fixează ca proiect.
+ * Ce se poate fixa: un proiect sau un filtru salvat.
+ *
+ * `list` e moștenire: până pe 2026-11-06 se fixau și „7 zile" și „Ale mele".
+ * De atunci navigarea (Azi, 7 zile, Ale mele) stă fixă deasupra grupului
+ * „Fixate", deci o listă fixată ar fi apărut de două ori. Rândurile vechi din
+ * `pinned_items` rămân în bază (fără migrare), dar nu se mai arată
+ * (`livePins`) și nu se mai pot crea din UI.
  */
-export type PinnableList = 'week' | 'inbox'
-export const PINNABLE_LISTS: readonly PinnableList[] = ['week', 'inbox']
+export type PinKind = 'filter' | 'project' | 'list'
 
 export interface Pin {
   kind: PinKind
@@ -40,12 +40,13 @@ export function withoutPin(pins: readonly Pin[], kind: PinKind, ref: string): Pi
 }
 
 /**
- * Fixările care încă au în ce să ducă, în ordinea fixării.
+ * Fixările care încă au în ce să ducă, în ordinea fixării: numai proiecte și
+ * filtre — grupul „Fixate" nu ține navigare (vezi `PinKind`).
  *
  * Un proiect șters (sau la care ai pierdut accesul) și un filtru șters lasă în
  * urmă un rând de fixare — nu-l ștergem din bază de aici (o listă de proiecte
  * încă neîncărcată ar arăta „nimic nu mai există" și ar șterge tot), doar nu-l
- * arătăm. O listă necunoscută (un `ref` dintr-o versiune viitoare) la fel.
+ * arătăm. O listă fixată (moștenire) sau un `kind` necunoscut, la fel.
  */
 export function livePins(
   pins: readonly Pin[],
@@ -57,7 +58,7 @@ export function livePins(
     .filter((p) =>
       p.kind === 'project' ? projects.has(p.ref)
       : p.kind === 'filter' ? filters.has(p.ref)
-      : (PINNABLE_LISTS as readonly string[]).includes(p.ref))
+      : false)
     .sort((a, b) => a.position - b.position || `${a.kind}:${a.ref}`.localeCompare(`${b.kind}:${b.ref}`))
 }
 

@@ -3169,6 +3169,17 @@ button.we-del:hover { color: var(--blocked); background: var(--blocked-soft); }
 :where(html:not([data-narrow])) .sidebar-nav-item.on .sidebar-nav-icon {
   opacity: 1;
 }
+/* Navigarea (Azi, 7 zile, Ale mele) și grupul „Fixate" sunt două blocuri:
+   același ritm de 2px ca în bară, iar „Fixate" se desparte de navigare doar
+   prin aer și titlul de secțiune — fără linie, fără chenar. */
+:where(html:not([data-narrow])) .sidebar-nav,
+:where(html:not([data-narrow])) .sidebar-fixate {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-shrink: 0;
+}
+:where(html:not([data-narrow])) .sidebar-fixate { margin-top: 6px; }
 /* Fixatele din bară se trag cu mouse-ul (`useReorderDrag`): cea ridicată
    plutește cu umbră, celelalte își fac loc cu `transform`. */
 :where(html:not([data-narrow])) .sidebar-pinned { position: relative; }

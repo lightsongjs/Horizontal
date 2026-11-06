@@ -564,7 +564,9 @@ try {
   }
 
   // ── Ordinea proiectelor fixate din bară / sertar (`pinned_items.position`) ─
-  // Trei fixări: primul proiect, „7 zile", „Ale mele". Desktop: tras cu
+  // Trei fixări: primul proiect și două filtre (F, G), plus o fixare veche a
+  // listei „7 zile" — de pe 2026-11-06 navigarea nu mai intră în „Fixate",
+  // deci nu se arată nicăieri, iar navigarea stă deasupra grupului. Desktop: tras cu
   // mouse-ul în grupul „Fixate" din bara laterală (eliberarea NU navighează),
   // Alt+↓ coboară rândul cu focusul și focusul rămâne pe el, iar ordinea
   // rămâne după reîncărcare. Telefon: în sertar, ținut apăsat și tras (ca pe
@@ -572,26 +574,34 @@ try {
   {
     const seed = (page) => page.evaluate(() => {
       const db = JSON.parse(localStorage.getItem('horizontal:v2'))
-      const old = db.pins ?? []
+      const old = { pins: db.pins ?? [], filters: db.filters ?? [] }
+      const rules = { projects: [], people: [], due: [], urgent: false }
+      db.filters = [
+        ...old.filters,
+        { id: 'nav-f', name: 'Fixat F', icon: 'flag', rules, position: 90 },
+        { id: 'nav-g', name: 'Fixat G', icon: 'star', rules, position: 91 },
+      ]
       db.pins = [
         { kind: 'project', ref: db.projects[0].id, position: 0 },
         { kind: 'list', ref: 'week', position: 1 },
-        { kind: 'list', ref: 'inbox', position: 2 },
+        { kind: 'filter', ref: 'nav-f', position: 2 },
+        { kind: 'filter', ref: 'nav-g', position: 3 },
       ]
       localStorage.setItem('horizontal:v2', JSON.stringify(db))
       return { old, project: db.projects[0].name }
     })
-    const restore = (page, old) => page.evaluate((pins) => {
+    const restore = (page, old) => page.evaluate(({ pins, filters }) => {
       const db = JSON.parse(localStorage.getItem('horizontal:v2'))
       db.pins = pins
+      db.filters = filters
       localStorage.setItem('horizontal:v2', JSON.stringify(db))
     }, old)
-    // P = proiectul, W = „7 zile", M = „Ale mele".
-    const code = (label, project) => (label === project ? 'P' : label === '7 zile' ? 'W' : label === 'Ale mele' ? 'M' : '?')
+    // P = proiectul, F / G = filtrele. Fixarea veche a „7 zile" nu intră în cod.
+    const code = (label, project) => (label === project ? 'P' : label === 'Fixat F' ? 'F' : label === 'Fixat G' ? 'G' : '?')
     const stored = (page) => page.evaluate(() => {
       const db = JSON.parse(localStorage.getItem('horizontal:v2'))
-      return [...db.pins].sort((a, b) => a.position - b.position)
-        .map((p) => (p.kind === 'project' ? 'P' : p.ref === 'week' ? 'W' : 'M')).join('')
+      return [...db.pins].filter((p) => p.kind !== 'list').sort((a, b) => a.position - b.position)
+        .map((p) => (p.kind === 'project' ? 'P' : p.ref === 'nav-f' ? 'F' : 'G')).join('')
     })
 
     const dctx = await browser.newContext({ viewport: { width: 1440, height: 900 } })
@@ -602,7 +612,21 @@ try {
     await dp.waitForTimeout(800)
     const side = dp.locator('.sidebar .sidebar-pinned')
     const order = async (page) => (await page.locator('.sidebar .sidebar-pinned .sidebar-pinned-name').allTextContents()).map((l) => code(l, project)).join('')
-    check('fixate din bară: pornesc P, W, M', (await order(dp)) === 'PWM', await order(dp))
+    check('fixate din bară: pornesc P, F, G (fixarea veche „7 zile" nu apare)', (await order(dp)) === 'PFG', await order(dp))
+    // Navigarea e un bloc al ei, DEASUPRA grupului „Fixate", nu amestecată în el.
+    const groups = await dp.evaluate(() => {
+      const nav = document.querySelector('.sidebar .sidebar-nav')
+      const fix = document.querySelector('.sidebar .sidebar-fixate')
+      return {
+        nav: nav ? [...nav.querySelectorAll('.sidebar-nav-item > span:nth-child(2)')].map((b) => b.textContent.trim()) : null,
+        inFix: fix ? [...fix.querySelectorAll('.sidebar-nav-item > span:nth-child(2)')].map((b) => b.textContent.trim()) : null,
+        navFirst: !!nav && !!fix && !!(nav.compareDocumentPosition(fix) & Node.DOCUMENT_POSITION_FOLLOWING),
+      }
+    })
+    check('bară: navigarea (Azi, 7 zile, Ale mele) e deasupra „Fixate", în afara grupului',
+      JSON.stringify(groups.nav) === JSON.stringify(['Azi', '7 zile', 'Ale mele']) && groups.navFirst
+        && groups.inFix.length === 3 && !groups.inFix.some((t) => /^(Azi|7 zile|Ale mele)$/.test(t)),
+      JSON.stringify(groups))
     const path0 = new URL(dp.url()).pathname
     const m = await side.nth(2).boundingBox()
     const top = await side.nth(0).boundingBox()
@@ -611,20 +635,21 @@ try {
     await dp.mouse.move(m.x + m.width / 2, top.y + 3, { steps: 12 })
     await dp.mouse.up()
     await dp.waitForTimeout(600)
-    check('bară: tras cu mouse-ul, „Ale mele" urcă prima', (await order(dp)) === 'MPW' && (await stored(dp)) === 'MPW', `ecran=${await order(dp)}, bază=${await stored(dp)}`)
+    check('bară: tras cu mouse-ul, G urcă primul', (await order(dp)) === 'GPF' && (await stored(dp)) === 'GPF', `ecran=${await order(dp)}, bază=${await stored(dp)}`)
     check('…și eliberarea NU navighează', new URL(dp.url()).pathname === path0, new URL(dp.url()).pathname)
     await side.nth(0).focus()
     await dp.keyboard.press('Alt+ArrowDown')
     await dp.waitForTimeout(500)
     const focused = await dp.evaluate(() => document.activeElement?.querySelector?.('.sidebar-pinned-name')?.textContent ?? null)
-    check('bară: Alt+↓ coboară rândul cu focus un loc', (await order(dp)) === 'PMW', await order(dp))
-    check('…și focusul rămâne pe el (Alt+↓ din nou merge mai departe)', focused === 'Ale mele', String(focused))
+    check('bară: Alt+↓ coboară rândul cu focus un loc', (await order(dp)) === 'PGF', await order(dp))
+    check('…și focusul rămâne pe el (Alt+↓ din nou merge mai departe)', focused === 'Fixat G', String(focused))
     await dp.reload({ waitUntil: 'networkidle' })
     await dp.waitForTimeout(800)
-    check('…ordinea rămâne după reîncărcare (e în pinned_items)', (await order(dp)) === 'PMW', await order(dp))
-    await side.filter({ hasText: '7 zile' }).click()
+    check('…ordinea rămâne după reîncărcare (e în pinned_items)', (await order(dp)) === 'PGF', await order(dp))
+    await side.filter({ hasText: 'Fixat F' }).click()
     await dp.waitForTimeout(500)
-    check('…iar un click simplu pe o fixată tot navighează', (await side.filter({ hasText: '7 zile' }).getAttribute('class')).includes(' on'), await side.filter({ hasText: '7 zile' }).getAttribute('class'))
+    check('…iar un click simplu pe o fixată tot navighează', (await side.filter({ hasText: 'Fixat F' }).getAttribute('class')).includes(' on'), await side.filter({ hasText: 'Fixat F' }).getAttribute('class'))
+    await restore(dp, old)
     await dctx.close()
 
     const pctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
@@ -639,25 +664,25 @@ try {
     await pp.waitForTimeout(400)
     const tiles = pp.locator('.drawer .dr-pin')
     const tOrder = async () => (await pp.locator('.drawer .dr-pin .dr-pin-name').allTextContents()).map((l) => code(l, project)).join('')
-    check('sertar: pătratele pornesc P, W, M', (await drawerOpen()) && (await tOrder()) === 'PWM', `${await tOrder()}`)
+    check('sertar: pătratele pornesc P, F, G (fără „7 zile")', (await drawerOpen()) && (await tOrder()) === 'PFG', `${await tOrder()}`)
     const t0 = await PT.center(tiles.nth(0))
     const t2 = await tiles.nth(2).boundingBox()
     await PT.drag(t0.x, t0.y, t2.x + t2.width - 6, t0.y + 2, { holdMs: 650, steps: 14 })
     await pp.waitForTimeout(600)
     const sheet = (await pp.locator('.action-sheet, .as-item').count())
-    check('sertar: ținut apăsat și tras, P ajunge ultimul', (await tOrder()) === 'WMP' && (await stored(pp)) === 'WMP', `ecran=${await tOrder()}, bază=${await stored(pp)}`)
+    check('sertar: ținut apăsat și tras, P ajunge ultimul', (await tOrder()) === 'FGP' && (await stored(pp)) === 'FGP', `ecran=${await tOrder()}, bază=${await stored(pp)}`)
     check('…sertarul rămâne deschis, fără meniu, fără navigare', (await drawerOpen()) && sheet === 0 && new URL(pp.url()).pathname === '/', `deschis=${await drawerOpen()}, meniu=${sheet}, URL=${new URL(pp.url()).pathname}`)
     const t1 = await PT.center(tiles.nth(1))
     await PT.longPress(t1.x, t1.y)
     await pp.waitForTimeout(400)
     const menu = (await pp.locator('.as-item', { hasText: 'Desprinde' }).count()) > 0
-    check('sertar: ținut fără mișcare deschide meniul (Desprinde)', menu && (await tOrder()) === 'WMP', `meniu=${menu}, ${await tOrder()}`)
+    check('sertar: ținut fără mișcare deschide meniul (Desprinde)', menu && (await tOrder()) === 'FGP', `meniu=${menu}, ${await tOrder()}`)
     await PT.tap(195, 120)
     await pp.waitForTimeout(400)
     check('…fundalul închide meniul, sertarul rămâne', (await pp.locator('.as-item').count()) === 0 && (await drawerOpen()), `meniu=${await pp.locator('.as-item').count()}`)
     await PT.drag(t1.x, t1.y, t1.x - 200, t1.y + 4, { steps: 10 })
     await pp.waitForTimeout(500)
-    check('…iar o tragere rapidă spre stânga (fără ținut) tot închide sertarul', !(await drawerOpen()) && (await stored(pp)) === 'WMP', `deschis=${await drawerOpen()}, bază=${await stored(pp)}`)
+    check('…iar o tragere rapidă spre stânga (fără ținut) tot închide sertarul', !(await drawerOpen()) && (await stored(pp)) === 'FGP', `deschis=${await drawerOpen()}, bază=${await stored(pp)}`)
     await restore(pp, old)
     await pctx.close()
   }

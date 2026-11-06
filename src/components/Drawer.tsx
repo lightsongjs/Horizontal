@@ -34,7 +34,7 @@ interface RowProps {
   label: string
   on: boolean
   onClick(): void
-  /** Apăsare lungă → meniul de fixare. Absent = rândul nu se fixează (Azi). */
+  /** Apăsare lungă → meniul de fixare. Absent = rândul nu se fixează (navigarea: Azi, 7 zile, Ale mele). */
   pin?: { kind: PinKind; ref: string }
   onMenu(t: MenuTarget): void
   count?: number
@@ -241,6 +241,9 @@ export function Drawer({ current, onPick, onClose, onSettings, onNewProject, onF
         </div>
 
         <div className="dr-scroll">
+          {/* Pătratele: numai proiecte și filtre (`livePins`). Navigarea (Azi,
+              7 zile, Ale mele) e rândurile de sub ele și nu se mai fixează —
+              un pătrat „7 zile" deasupra rândului „7 zile" era același lucru de două ori. */}
           {pinned.length > 0 && (
             <div className="dr-pins" role="list" aria-label="Fixate">
               {pinned.map((p) => {
@@ -269,10 +272,10 @@ export function Drawer({ current, onPick, onClose, onSettings, onNewProject, onF
               count={smartLists.today.length} late={smartLists.overdue.length} />
             <Row icon={<Icon name="list" size={19} />} label="7 zile" on={same(current, { kind: 'screen', screen: 'week' })}
               onClick={() => go({ kind: 'screen', screen: 'week' })} onMenu={openMenu}
-              pin={{ kind: 'list', ref: 'week' }} count={weekCount} />
+              count={weekCount} />
             <Row icon={<Icon name="people" size={19} />} label="Ale mele" on={same(current, { kind: 'screen', screen: 'inbox' })}
               onClick={() => go({ kind: 'screen', screen: 'inbox' })} onMenu={openMenu}
-              pin={{ kind: 'list', ref: 'inbox' }} fresh={inbox.fresh.length} />
+              fresh={inbox.fresh.length} />
             {inboxProject && (
               <Row icon={<ProjectMark project={inboxProject} size={19} />} label={inboxProject.name}
                 on={same(current, { kind: 'project', id: inboxProject.id })}
