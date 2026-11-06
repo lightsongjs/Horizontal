@@ -2737,19 +2737,22 @@ try {
     await pane('L').locator('.ccm-exit').click()
     await sp.waitForTimeout(400)
 
-    // ✕ curat: celălalt NU se reîncarcă — iframe-ul lui se lărgește, cu tot cu ce avea.
+    // ✕ curat: celălalt se lărgește și, cât are ceva nesalvat (aici rândul de
+    // captură), rămâne panou, cu tot cu ce avea — nu se reîncarcă peste el.
     await pane('R').locator('.qa-input').first().fill('ciornă nesalvată')
     const marker = await pane('R').evaluate(() => { (window).__alive = 'da'; return true })
     await pane('L').locator('.pane-close').click()
-    await sp.waitForTimeout(800)
+    await sp.waitForTimeout(1500)
     const r = pane('R')
     const kept = r ? await r.evaluate(() => [(window).__alive, document.querySelector('.qa-input')?.value]) : null
     const width = await sp.evaluate(() => document.querySelector('.split-pane-frame')?.getBoundingClientRect().width ?? 0)
-    check('split: ✕ închide fără reîncărcarea celuilalt, care se lărgește', marker && kept?.[0] === 'da' && kept?.[1] === 'ciornă nesalvată' && width > 1000 && (await sp.locator('.split-pane-frame iframe').count()) === 1,
+    check('split: ✕ cu ceva nesalvat în celălalt îl lasă panou, lărgit, cu tot cu ciornă', marker && kept?.[0] === 'da' && kept?.[1] === 'ciornă nesalvată' && width > 1000 && (await sp.locator('.split-pane-frame iframe').count()) === 1,
       `rămas=${JSON.stringify(kept)}, lățime=${Math.round(width)}px`)
-    await sp.reload({ waitUntil: 'networkidle' })
-    await sp.waitForTimeout(1600)
-    check('split: după ✕, reîncărcarea dă aplicația normală, din ruta rămasă', (await sp.locator('iframe').count()) === 0 && /Azi/.test(await sp.locator('.hd-title').first().innerText().catch(() => '')), `${await sp.locator('iframe').count()} iframe-uri`)
+    // Golit, devine aplicația normală (2026-11-06: rămas panou, era o
+    // fundătură — fără antet, fără panou lateral, doar ←).
+    await pane('R').locator('.qa-input').first().fill('')
+    await sp.waitForTimeout(2500)
+    check('split: după ✕, panoul rămas curat devine aplicația normală, din ruta lui', (await sp.locator('iframe').count()) === 0 && /Azi/.test(await sp.locator('.hd-title').first().innerText().catch(() => '')) && (await sp.locator('.header-sidebar-btn').count()) === 1, `${await sp.locator('iframe').count()} iframe-uri`)
 
     // Pornirea din bara laterală (fără tichet).
     await sp.locator('.sidebar-split-btn').click()

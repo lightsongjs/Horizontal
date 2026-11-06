@@ -143,3 +143,5 @@ export function PaneBar({ route, peer, onBack, onClose }: {
 
 /** ✕ a trecut de gardă: gazda scoate panoul. */
 export const postPaneClose = () => post({ hz: 'pane', kind: 'close' })
+/** Panoul rămas singur și curat: gazda îl transformă în aplicația normală. */
+export const postPaneAdopt = () => post({ hz: 'pane', kind: 'adopt' })

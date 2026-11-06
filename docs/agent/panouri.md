@@ -125,9 +125,13 @@ separată; fără operații între panouri, nicio scurtătură veche schimbată.
   `LAST_VIEW_KEY`/ultimul proiect în `localStorage`: `viewStore` le ține pe ale
   lor în `sessionStorage`.
 - **✕ (decizia omului):** garda de azi se aplică NUMAI panoului care se închide;
-  celălalt nu se reîncarcă — iframe-ul lui se lărgește și rămâne aplicația,
-  cu ce avea nesalvat, până la reîncărcare, care pornește aplicația normală din
-  ruta lui (gazda îi scrie `LAST_VIEW_KEY`).
+  celălalt se lărgește. **Imediat ce n-are nimic nesalvat** (foaie murdară sau
+  rând de captură scris), trimite `adopt`, iar gazda se reîncarcă (`replace`)
+  în aplicația normală din ruta lui (gazda îi scrie `LAST_VIEW_KEY`). Până
+  atunci rămâne panou, cu tot cu ciornă. De ce (2026-11-06): rămas panou până
+  la o reîncărcare manuală, era o fundătură — tichetul pe tot ecranul, fără
+  antet, fără panou lateral, fără ✕, doar ← — omul a trebuit să închidă
+  aplicația. `test:nav` verifică ambele jumătăți.
 - **Bara laterală e a gazdei, comutatorul rămâne în panou.** Butonul din antet,
   `[` și `gs` trimit `toggle-sidebar`; gazda ține starea (aceeași cheie
   `horizontal:sidebar-collapsed`) și o întoarce în `peer`. Tot ce e „al

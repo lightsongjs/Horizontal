@@ -46,6 +46,8 @@ export type PaneToHost =
   | { hz: 'pane'; kind: 'close' }
   /** Comutatorul barei laterale (butonul din antet, `[`, `gs`): bara e a gazdei. */
   | { hz: 'pane'; kind: 'toggle-sidebar' }
+  /** Singurul panou rămas după ✕, fără nimic nesalvat: gazda pornește aplicația normală din ruta lui. */
+  | { hz: 'pane'; kind: 'adopt' }
 
 export type HostToPane =
   | { hz: 'host'; kind: 'nav'; action: NavAction }
@@ -65,7 +67,7 @@ const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object
 export function isPaneToHost(v: unknown): v is PaneToHost {
   if (!isObj(v) || v.hz !== 'pane') return false
   switch (v.kind) {
-    case 'ready': case 'focus': case 'yield': case 'close': case 'toggle-sidebar': return true
+    case 'ready': case 'focus': case 'yield': case 'close': case 'toggle-sidebar': case 'adopt': return true
     case 'switch': return v.to === 'L' || v.to === 'R'
     case 'route': return isObj(v.route) && typeof v.route.path === 'string' && typeof v.route.label === 'string'
     default: return false

@@ -42,7 +42,7 @@ import { isPane, seedPane, viewStore } from './lib/pane'
 import { clearSplit, loadSplit, OPEN_SPLIT_EVENT, saveSplit, seedFor, SPLIT_MIN_QUERY, type SplitState } from './lib/splitState'
 import { SplitHost } from './components/SplitHost'
 import { ServiceWorkerBridge } from './components/ServiceWorkerBridge'
-import { PaneBar, postPaneClose, postToggleSidebar, usePaneLink } from './components/PaneLink'
+import { PaneBar, postPaneAdopt, postPaneClose, postToggleSidebar, usePaneLink } from './components/PaneLink'
 import type { NavAction, PaneRoute } from './lib/paneProtocol'
 
 /**
@@ -283,7 +283,7 @@ function Shell({ onSplit }: { onSplit?: (s: SplitState) => void }) {
   // Pentru `onPop`, care se atașează rar: stratul de închis e cel de ACUM.
   const taRef = useRef(ta)
   taRef.current = ta
-  const { openNewIssue, openNewProject, openProjectSettings, openAppSettings, openFilterForm, openIssue, closeSheet, pushSheet, sheet, ticketId, dockedIssueId, toast, clearToast, showToast, isDockedDirty, nudgeSave } = useUI()
+  const { openNewIssue, openNewProject, openProjectSettings, openAppSettings, openFilterForm, openIssue, closeSheet, pushSheet, sheet, ticketId, dockedIssueId, toast, clearToast, showToast, isDockedDirty, subscribeDockedDirty, nudgeSave } = useUI()
   const { vim: vimOn } = useTheme()
   // Stabil peste randări nelegate de toast: `recurrenceUndo` (din store, un
   // `useState`) nu-și schimbă identitatea decât când SE SCHIMBĂ toast-ul, deci
@@ -1422,6 +1422,24 @@ function Shell({ onSplit }: { onSplit?: (s: SplitState) => void }) {
   const paneTryClose = () => sheet.kind === 'none' || closeSheet() !== false
   const panePeer = usePaneLink(paneMode, paneRoute, paneNav, paneTryClose)
   useEffect(() => { setHostSidebarCollapsed(panePeer.sidebarCollapsed) }, [panePeer.sidebarCollapsed])
+  // Rămas singur după ✕: un panou n-are antetul tichetului, panoul lateral și
+  // nici ✕, deci ca „aplicație” era o fundătură (2026-11-06: omul a trebuit să
+  // închidă aplicația). Imediat ce n-are nimic nesalvat, gazda se reîncarcă în
+  // aplicația normală, din ruta lui. Cu un formular murdar așteaptă salvarea —
+  // garda de ✕ (decizia din 2026-10-22) rămâne: nimic nesalvat nu se pierde.
+  const [paneDockedDirty, setPaneDockedDirty] = useState(false)
+  useEffect(() => (paneMode ? subscribeDockedDirty(setPaneDockedDirty) : undefined), [paneMode, subscribeDockedDirty])
+  const paneClean = sheet.kind === 'none' || (dockedIssueId !== null && !paneDockedDirty)
+  useEffect(() => {
+    if (!paneMode || panePeer.split || !paneClean) return
+    // Rândul de captură nu e o foaie, deci nu are gardă: un rând scris și
+    // netrimis ține și el panoul pe loc (verificat pe secundă, până se golește).
+    const ready = () => !isDockedDirty()
+      && !Array.from(document.querySelectorAll<HTMLInputElement>('.qa-input')).some((i) => i.value.trim() !== '')
+    if (ready()) { postPaneAdopt(); return }
+    const t = setInterval(() => { if (ready()) { clearInterval(t); postPaneAdopt() } }, 1000)
+    return () => clearInterval(t)
+  }, [paneMode, panePeer.split, paneClean, isDockedDirty])
 
   // ── Panoul dublu: pornirea (documentul de sus, de la 1200px). Stânga =
   // unde erai, cu tichetul; dreapta = același ecran, fără tichet.

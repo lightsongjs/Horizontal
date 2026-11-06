@@ -8,9 +8,9 @@
 // - Back-ul browserului: o intrare-santinelă în istoricul de sus, pusă la loc
 //   după fiecare Back, iar Back-ul pleacă la panoul cu focus;
 // - URL-ul de sus = ruta panoului cu focus;
-// - ✕: panoul se închide după garda lui; celălalt NU se reîncarcă — iframe-ul
-//   lui se lărgește și rămâne aplicația până la următoarea reîncărcare, care
-//   pornește un singur panou normal, din ruta lui (decizia omului, 2026-10-22).
+// - ✕: panoul se închide după garda lui; celălalt se lărgește, iar imediat ce
+//   n-are nimic nesalvat (`adopt`) gazda se reîncarcă în aplicația normală,
+//   din ruta lui (2026-11-06; până atunci rămânea panou până la reîncărcare).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useHorizontal } from '../store'
@@ -158,6 +158,9 @@ export function SplitHost({ initial, boot }: { initial: SplitState; boot: boolea
       else if (m.kind === 'switch') switchTo(m.to)
       else if (m.kind === 'close') close(id)
       else if (m.kind === 'toggle-sidebar') toggleSidebar()
+      // Singurul panou rămas, curat: aplicația normală, din ruta lui (`adoptView`
+      // a scris deja ecranul memorat). `replace`: Back nu se întoarce în split.
+      else if (m.kind === 'adopt') { if (panesRef.current.length === 1) { adoptView(id); window.location.replace(routesRef.current[id]?.path ?? '/') } }
     }
     // Tastele cât focusul e în bara laterală (documentul de sus).
     const onKey = (e: KeyboardEvent) => {
