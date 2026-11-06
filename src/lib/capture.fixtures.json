@@ -60,6 +60,16 @@
       "name": "butonul de proiect bate semnul",
       "input": { "text": "plată #daily", "manual": { "projectId": "p-pers" } },
       "want": { "title": "plată", "projectId": "p-pers" }
+    },
+    {
+      "name": "serie de mementouri: capătul e scadența, primul ping e mementoul",
+      "input": { "text": "pastile la fiecare 15 minute de la 12 până la 13 zilnic" },
+      "want": { "title": "pastile", "dueAt": "2026-10-06T10:00:00.000Z", "allDay": false, "rrule": "FREQ=DAILY", "remindAt": "2026-10-06T09:00:00.000Z", "pingEvery": 15, "error": null, "label": { "day": "Azi", "time": "13:00" } }
+    },
+    {
+      "name": "serie cu ziua aleasă de mână: seria cade, ca recurența",
+      "input": { "text": "pastile la fiecare 15 minute", "manual": { "due": { "dueAt": "2026-10-08T07:00:00.000Z", "allDay": false } } },
+      "want": { "title": "pastile", "dueAt": "2026-10-08T07:00:00.000Z", "rrule": null, "remindAt": "2026-10-08T07:00:00.000Z", "pingEvery": null }
     }
   ]
 }

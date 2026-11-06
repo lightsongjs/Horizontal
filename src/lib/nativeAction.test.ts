@@ -39,6 +39,12 @@ describe('runNativeAction', () => {
     const d = deps(); runNativeAction({ action: 'until', id: 'HZ-1', at: '2026-10-03T06:00:00.000Z' }, d)
     expect(d.updateIssue).toHaveBeenCalledWith('HZ-1', { remindAt: '2026-10-03T06:00:00.000Z' })
   })
+  it('o serie nu se amână: nici „15 min" de pe Linux, nici „Amână…" de pe un APK vechi', () => {
+    const d = deps({ done: false, pingEvery: 15 })
+    runNativeAction({ action: 'snooze', id: 'HZ-1', minutes: 15 }, d)
+    runNativeAction({ action: 'until', id: 'HZ-1', at: '2026-10-03T06:00:00.000Z' }, d)
+    expect(d.updateIssue).not.toHaveBeenCalled()
+  })
   it('until cu dueAt: și scadența, exact cum a calculat-o cutia', () => {
     const d = deps(); runNativeAction({ action: 'until', id: 'HZ-1', at: '2026-10-03T06:00:00.000Z', dueAt: '2026-10-03T12:00:00.000Z' }, d)
     expect(d.updateIssue).toHaveBeenCalledWith('HZ-1', { remindAt: '2026-10-03T06:00:00.000Z', dueAt: '2026-10-03T12:00:00.000Z' })

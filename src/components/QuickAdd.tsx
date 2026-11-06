@@ -3,6 +3,7 @@ import { useHorizontal } from '../store'
 import { useQuickDraft } from '../hooks'
 import { fromInputs, toDateInput } from '../lib/schedule'
 import { describeRrule } from '../lib/recurrence'
+import { pingChipLabel } from '../lib/pingSeries'
 import { dueLabel, dueLabelParts, quickKey } from '../lib/quickDraft'
 import { loadBarDraft, saveBarDraft, type BarDraft } from '../lib/barDraft'
 import { Icon } from './Icon'
@@ -111,6 +112,8 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, rich = false,
   const { dueAt, allDay } = schedule
   // Calculat o singură dată — nu de două ori în JSX (condiție + text).
   const recur = schedule.rrule ? describeRrule(schedule.rrule) : ''
+  // Seria de mementouri: fereastra, nu ora capătului (care e `dueAt`).
+  const series = schedule.pingEvery ? pingChipLabel({ ...schedule, rrule: null }) : ''
   const bare = error === 'bare'
 
   const reset = () => { q.reset(); setDescOpen(false); setWhenOpen(false) }
@@ -265,7 +268,7 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, rich = false,
                 type="button"
                 className="qs-due-btn"
                 aria-expanded={whenOpen}
-                title={`Data și ora (Alt+D, sau „mâine la 10” în text)${recur ? ` · ${recur}` : ''}`}
+                title={`Data și ora (Alt+D, sau „mâine la 10” în text)${series ? ` · ${series}` : ''}${recur ? ` · ${recur}` : ''}`}
                 onPointerDown={(e) => e.preventDefault()}
                 onClick={() => setWhenOpen((v) => !v)}
               >
@@ -401,7 +404,7 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, rich = false,
 
           {dueAt && !allDay && (
             <span className="chip bell">
-              <span className="chip-ico"><Icon name="reminder" size={13} /></span> memento la oră
+              <span className="chip-ico"><Icon name="reminder" size={13} /></span> {series || 'memento la oră'}
             </span>
           )}
 

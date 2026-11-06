@@ -1,5 +1,6 @@
 import type { Issue, Project } from './types'
 import { planNotification } from './pushPayload'
+import { pings, pingsBetween } from '../../supabase/functions/_shared/pings.ts'
 
 /**
  * Contractul cu aplicația de Linux (`desktop/`). Cutia Electron injectează
@@ -25,6 +26,20 @@ export interface DesktopReminder {
    * acțiunea pe un id `cal:` (`NativeBridge`), deci nu se întâmplă nimic rău.
    */
   kind?: 'event'
+  /**
+   * Un ping dintr-o serie de mementouri (`pingEvery`): cutia de Linux arată
+   * doar „Gata azi" (fără amânări) și închide pingul de dinainte al aceluiași
+   * tichet. O cutie mai veche pune butoanele obișnuite; o amânare de acolo e
+   * refuzată de pagină (`reminderMutation`).
+   */
+  series?: true
+  /**
+   * Doar pe Android (`series: 'row'`): pasul seriei, în minute. Rândul e UNUL pe
+   * tichet, cu `at` = primul ping (ancora grilei) și `dueAt` = capătul; cutia
+   * desfășoară singură pingurile (`core/Pings.kt`). Un APK mai vechi ignoră
+   * câmpul și sună doar primul ping.
+   */
+  every?: number
 }
 
 /**
@@ -79,15 +94,28 @@ export const REMINDER_LOOKBACK_MS = 24 * 3_600_000
 export const REMINDER_HORIZON_MS = 24 * 3_600_000
 
 /**
+ * Câte pinguri ale unei serii primește cutia de Linux într-o listă. Pagina
+ * retrimite lista cel târziu la 15 minute (`RESEND_MS`), iar lista pornește
+ * mereu de la pingul curent — deci o oră de pinguri la un minut acoperă larg
+ * golul dintre două trimiteri, fără sute de timere pentru o zi întreagă.
+ */
+export const SERIES_PINGS_LIMIT = 60
+
+/**
  * Mementourile pe care cutia trebuie să le țină, din ce știe pagina acum
  * (cache-ul offline inclus). Textul vine din `planNotification`, ca notificarea
  * de pe desktop să spună exact ce spune cea de pe telefon.
+ *
+ * O serie (`pingEvery`) e, implicit, desfășurată în pinguri — de la cel curent
+ * (ultimul deja sunat, ca notificarea lui să rămână pe ecran) până la capătul
+ * ferestrei — fiecare cu cheia lui `id@ping`. Cu `series: 'row'` (Android)
+ * rămâne UN rând cu `every`, iar cutia desfășoară singură.
  */
 export function upcomingReminders(
   issues: Issue[],
   projects: Pick<Project, 'id' | 'name'>[],
   now: Date,
-  opts: { horizonMs?: number; limit?: number } = {},
+  opts: { horizonMs?: number; limit?: number; series?: 'expand' | 'row' } = {},
 ): DesktopReminder[] {
   const from = now.getTime() - REMINDER_LOOKBACK_MS
   const to = now.getTime() + (opts.horizonMs ?? REMINDER_HORIZON_MS)
@@ -99,9 +127,18 @@ export function upcomingReminders(
     const t = Date.parse(i.remindAt)
     if (!Number.isFinite(t) || t < from || t > to) continue
     seen.add(i.id)
-    const at = new Date(t).toISOString()
-    const plan = planNotification({ id: i.id, title: i.title, dueAt: i.dueAt ?? undefined, allDay: i.allDay, projectName: names.get(i.projectId) })
-    out.push({ key: `${i.id}@${at}`, id: i.id, at, title: plan.title, body: plan.body, dueAt: i.dueAt ?? null, allDay: i.allDay })
+    const series = !!i.pingEvery && !!i.dueAt
+    const plan = planNotification({ id: i.id, title: i.title, dueAt: i.dueAt ?? undefined, allDay: i.allDay, projectName: names.get(i.projectId), series })
+    const row = (ms: number): DesktopReminder => {
+      const at = new Date(ms).toISOString()
+      return { key: `${i.id}@${at}`, id: i.id, at, title: plan.title, body: plan.body, dueAt: i.dueAt ?? null, allDay: i.allDay }
+    }
+    if (!series) { out.push(row(t)); continue }
+    const every = i.pingEvery!
+    if (opts.series === 'row') { out.push({ ...row(t), every }); continue }
+    const end = Date.parse(i.dueAt!)
+    const cur = pings(t, every, end, now.getTime()).current
+    for (const ms of pingsBetween(t, every, end, cur ?? t, to, SERIES_PINGS_LIMIT)) out.push({ ...row(ms), series: true })
   }
   out.sort((a, b) => a.at.localeCompare(b.at))
   // Plafonul taie din coadă, după sortare: un telefon nedeschis câteva zile

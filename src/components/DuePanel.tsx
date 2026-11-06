@@ -37,6 +37,8 @@ export function DuePanel({
   onReminder,
   rrule,
   onClearRrule,
+  series,
+  onClearSeries,
   foot,
 }: {
   now: Date
@@ -59,6 +61,13 @@ export function DuePanel({
   /** Recurența care chiar se salvează (fără dată nu există). Fără `onClearRrule` nu se arată. */
   rrule?: string | null
   onClearRrule?(): void
+  /**
+   * Seria de mementouri, gata scrisă („La 15 min · 09:00–10:00"), sau null.
+   * Ca repetarea: se scrie în titlu, aici doar se vede și se scoate. Fără
+   * `onClearSeries` nu se arată.
+   */
+  series?: string | null
+  onClearSeries?(): void
   foot?: ReactNode
 }) {
   const presets = datePresets(now)
@@ -142,6 +151,14 @@ export function DuePanel({
             ))}
           </div>
         </>
+      )}
+      {series && onClearSeries && (
+        <p className="fc-recur">
+          <Icon name="bell" size={13} />
+          <span>Serie: {series}</span>
+          <span aria-hidden="true">·</span>
+          <button type="button" className="fc-link" onClick={onClearSeries}>scoate</button>
+        </p>
       )}
       {/* Repetarea nu se alege de aici: se scrie în titlu („în fiecare luni"),
           iar `parseDue` o recunoaște. Aici doar se vede și se scoate. */}

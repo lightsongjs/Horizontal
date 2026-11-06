@@ -271,6 +271,17 @@ describe('reschedule', () => {
   it('fără memento rămâne fără memento', () => {
     expect(reschedule({ dueAt: T10, allDay: false, remindAt: null }, { dueAt: T12, allDay: false }).remindAt).toBeNull()
   })
+  it('o serie de mementouri se mută întreagă: primul ping își ține distanța față de capăt', () => {
+    const prev = { dueAt: T10, allDay: false, remindAt: new Date(new Date(T10).getTime() - 60 * 60_000).toISOString(), pingEvery: 15 }
+    expect(reschedule(prev, { dueAt: T12, allDay: false })).toEqual({
+      dueAt: T12, allDay: false, remindAt: new Date(new Date(T12).getTime() - 60 * 60_000).toISOString(),
+    })
+  })
+  it('o serie mutată pe toată ziua sau fără dată cade', () => {
+    const prev = { dueAt: T10, allDay: false, remindAt: new Date(new Date(T10).getTime() - 60 * 60_000).toISOString(), pingEvery: 15 }
+    expect(reschedule(prev, { dueAt: DAY, allDay: true })).toEqual({ dueAt: DAY, allDay: true, remindAt: null, pingEvery: null })
+    expect(reschedule(prev, { dueAt: null, allDay: true })).toEqual({ dueAt: null, allDay: true, remindAt: null, rrule: null, pingEvery: null })
+  })
   it('schimbarea formei ia implicitul formei noi', () => {
     expect(reschedule({ dueAt: T10, allDay: false, remindAt: T10 }, { dueAt: DAY, allDay: true }).remindAt).toBeNull()
     expect(reschedule({ dueAt: DAY, allDay: true, remindAt: null }, { dueAt: T12, allDay: false }).remindAt).toBe(T12)

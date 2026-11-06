@@ -33,6 +33,9 @@ interface IssueRow {
   // `migration-pinned-tasks.sql`. Opțional: pe o bază fără migrare `select('*')`
   // nu-l aduce, iar tichetul e pur și simplu nefixat.
   pinned_at?: string | null
+  // `migration-ping-series.sql`. Opțional din același motiv: fără migrare
+  // tichetul nu e o serie.
+  ping_every?: number | null
 }
 
 /**
@@ -66,6 +69,7 @@ function rowToIssue(row: IssueRow, depsByIssue: Record<string, string[]>): Issue
     allDay: row.all_day ?? true,
     remindAt: isoOrNull(row.remind_at),
     rrule: row.rrule ?? null,
+    pingEvery: row.ping_every ?? null,
     pinnedAt: isoOrNull(row.pinned_at),
   }
 }
@@ -277,6 +281,7 @@ export function createSupabaseRepository(): Repository {
       allDay: input.allDay ?? true,
       remindAt: isoOrNull(input.remindAt),
       rrule: input.rrule ?? null,
+      pingEvery: input.pingEvery ?? null,
       // Un tichet nou nu se naște fixat; coloana nu intră în insert, deci
       // crearea merge și pe o bază fără `migration-pinned-tasks.sql`.
       pinnedAt: null,
@@ -297,6 +302,9 @@ export function createSupabaseRepository(): Repository {
       all_day: issue.allDay,
       remind_at: issue.remindAt,
       rrule: issue.rrule,
+      // Numai pe o serie: coloana vine din `migration-ping-series.sql`, iar un
+      // tichet obișnuit trebuie să se poată crea și pe o bază fără ea.
+      ...(issue.pingEvery ? { ping_every: issue.pingEvery } : {}),
     })
     // Marcat: doar ACEST 23505 înseamnă „numărul era luat" (vezi `createIssue`).
     if (error) throw Object.assign(error, { atIssueInsert: true })
@@ -534,6 +542,7 @@ export function createSupabaseRepository(): Repository {
       if ('allDay' in patch) row.all_day = patch.allDay ?? true
       if ('remindAt' in patch) row.remind_at = patch.remindAt ?? null
       if ('rrule' in patch) row.rrule = patch.rrule ?? null
+      if ('pingEvery' in patch) row.ping_every = patch.pingEvery ?? null
       if ('pinnedAt' in patch) row.pinned_at = patch.pinnedAt ?? null
       if (Object.keys(row).length) {
         const { error } = await db.from('issues').update(row).eq('id', id)

@@ -22,11 +22,12 @@ export const NO_SCHEDULE = {
   allDay: true,
   remindAt: null,
   rrule: null,
+  pingEvery: null,
   // Nu e o dată de scadență, dar e tot un câmp „de timp" pe care orice tichet
   // nou îl are gol: stă aici ca literalele (seed, fixtures) să-l primească o
   // dată, nu în fiecare obiect. Vezi `pinnedAt` în `types.ts`.
   pinnedAt: null,
-} satisfies Pick<Issue, 'dueAt' | 'allDay' | 'remindAt' | 'rrule' | 'pinnedAt'>
+} satisfies Pick<Issue, 'dueAt' | 'allDay' | 'remindAt' | 'rrule' | 'pingEvery' | 'pinnedAt'>
 
 export function startOfLocalDay(d: Date): Date {
   const x = new Date(d)
@@ -281,12 +282,22 @@ export function reminderAt(dueAt: string | null, kind: ReminderKind): string | n
  * Fără dată pleacă și recurența: o repetare fără zi de pornire e o stare din
  * care interfața nu mai poate ieși — aceeași regulă ca `rruleOut` din
  * `IssueForm`. Cu dată, `rrule` lipsește din patch: nu s-a atins.
+ *
+ * O serie de mementouri (`pingEvery`) se mută întreagă: primul ping își ține
+ * distanța față de capăt, ca la `moveDue`. Fără oră nu mai e o fereastră, deci
+ * seria cade (`pingEvery: null`), iar mementoul ia implicitul formei noi.
  */
 export function reschedule(
-  prev: { dueAt: string | null; allDay: boolean; remindAt: string | null },
+  prev: { dueAt: string | null; allDay: boolean; remindAt: string | null; pingEvery?: number | null },
   next: { dueAt: string | null; allDay: boolean },
-): { dueAt: string | null; allDay: boolean; remindAt: string | null; rrule?: null } {
-  if (!next.dueAt) return { dueAt: null, allDay: true, remindAt: null, rrule: null }
+): { dueAt: string | null; allDay: boolean; remindAt: string | null; rrule?: null; pingEvery?: null } {
+  const series = !!prev.pingEvery && !!prev.dueAt && !!prev.remindAt && !prev.allDay
+  if (!next.dueAt) return { dueAt: null, allDay: true, remindAt: null, rrule: null, ...(series ? { pingEvery: null } : {}) }
+  if (series && !next.allDay) {
+    const lead = Date.parse(prev.dueAt!) - Date.parse(prev.remindAt!)
+    return { dueAt: next.dueAt, allDay: false, remindAt: new Date(Date.parse(next.dueAt) - lead).toISOString() }
+  }
+  if (series) return { dueAt: next.dueAt, allDay: next.allDay, remindAt: reminderAt(next.dueAt, defaultReminder(next.allDay)), pingEvery: null }
   const kind = prev.dueAt && prev.allDay === next.allDay
     ? reminderKindOf(prev.dueAt, prev.remindAt)
     : defaultReminder(next.allDay)

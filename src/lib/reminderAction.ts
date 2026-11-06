@@ -15,9 +15,15 @@ export type ReminderMutation =
  * constanta eticheta butonului web și `supabase/functions/reminder-action`: acolo
  * serverul construiește notificarea de pe telefon, deci rămâne la 5. Cutia de
  * desktop trimite 15 sau 30 (vezi `desktop/src/notify.ts`).
+ *
+ * O serie de mementouri (`pingEvery`) nu se amână: următorul ping vine oricum,
+ * iar mutarea lui `remindAt` i-ar muta ancora grilei. Notificarea ei are doar
+ * „Gata azi", dar un service worker sau o cutie de dinainte de serii încă arată
+ * „Amână" — apăsat acolo, nu face nimic.
  */
-export function reminderMutation(action: 'done' | 'snooze', issue: Pick<Issue, 'done'> | undefined, now: Date, minutes: number = SNOOZE_MINUTES): ReminderMutation {
+export function reminderMutation(action: 'done' | 'snooze', issue: (Pick<Issue, 'done'> & Partial<Pick<Issue, 'pingEvery'>>) | undefined, now: Date, minutes: number = SNOOZE_MINUTES): ReminderMutation {
   if (action === 'done') return issue?.done ? { kind: 'none' } : { kind: 'toggle' }
+  if (issue?.pingEvery) return { kind: 'none' }
   return { kind: 'patch', patch: { remindAt: new Date(now.getTime() + minutes * 60_000).toISOString() } }
 }
 

@@ -1,5 +1,6 @@
 import { dueChipDay, hasTime, isOverdue, reminderKindOf, toDisplayDate, toTimeInput } from '../lib/schedule'
 import { describeRrule } from '../lib/recurrence'
+import { pingChipLabel } from '../lib/pingSeries'
 import type { Issue } from '../lib/types'
 import { Icon } from './Icon'
 
@@ -53,14 +54,16 @@ const REMINDER_LABEL: Record<string, string> = {
   d1: 'memento cu o zi înainte',
 }
 
-type Due = Pick<Issue, 'dueAt' | 'allDay' | 'remindAt' | 'done' | 'rrule'>
+type Due = Pick<Issue, 'dueAt' | 'allDay' | 'remindAt' | 'done' | 'rrule'> & Partial<Pick<Issue, 'pingEvery'>>
 
 /** Textul din `title`: aici încape tot ce nu încape pe card. */
 export function dueTitle(issue: Due, now: Date): string {
   if (!issue.dueAt) return ''
   const parts = [toDisplayDate(issue.dueAt) + (hasTime(issue) ? ` ${toTimeInput(issue.dueAt)}` : ' · toată ziua')]
+  // O serie își spune fereastra, nu un decalaj față de scadență (care e capătul ei).
   const kind = reminderKindOf(issue.dueAt, issue.remindAt)
-  if (kind !== 'none') parts.push(REMINDER_LABEL[kind])
+  if (issue.pingEvery) parts.push(`mementouri: ${pingChipLabel({ pingEvery: issue.pingEvery, remindAt: issue.remindAt, dueAt: issue.dueAt, rrule: null }).toLowerCase()}`)
+  else if (kind !== 'none') parts.push(REMINDER_LABEL[kind])
   const rec = describeRrule(issue.rrule)
   if (rec) parts.push(`se repetă ${rec}`)
   if (isOverdue(issue, now)) parts.unshift('Restanță')

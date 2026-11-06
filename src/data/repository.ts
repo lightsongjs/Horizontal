@@ -30,6 +30,8 @@ export interface NewIssue {
   allDay?: boolean
   remindAt?: string | null
   rrule?: string | null
+  /** Serie de mementouri: pasul în minute (`Issue.pingEvery`). */
+  pingEvery?: number | null
 }
 
 export interface NewThreadPost {

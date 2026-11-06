@@ -27,6 +27,8 @@ export function runNativeAction(raw: DesktopAction, d: NativeActionDeps): void {
   // tichetul în store (`find`), iar coada ar traduce-o oricum doar dacă e încă în ea.
   const a = { ...raw, id: d.resolveId(raw.id) } as DesktopAction
   if (a.action === 'open') { d.open(a.id); return }
+  // O serie nu se amână (`reminderMutation`): „Amână…" vine doar de la un APK vechi.
+  if (a.action === 'until' && d.find(a.id)?.pingEvery) return
   if (a.action === 'until') { void d.updateIssue(a.id, a.dueAt ? { remindAt: a.at, dueAt: a.dueAt } : { remindAt: a.at }); return }
   const issue = d.find(a.id)
   if (a.action === 'done' && a.prevDueAt !== undefined) {

@@ -40,6 +40,10 @@ export interface DraftDate {
   dueAt: string | null
   allDay: boolean
   rrule: string | null
+  /** Serie de mementouri: pasul, în minute (`ParsedDue.pingEvery`). Absent = nu. */
+  pingEvery?: number | null
+  /** Primul ping al seriei (`ParsedDue.remindAt`). */
+  remindAt?: string | null
   /** Textul fără fragmentele de dată. */
   title: string
 }
@@ -60,6 +64,10 @@ export interface DraftSchedule {
   dueAt: string | null
   allDay: boolean
   rrule: string | null
+  /** Serie de mementouri: pasul; `null` = mementoul implicit al formei. */
+  pingEvery: number | null
+  /** Mementoul care se salvează: primul ping al seriei, sau implicitul formei. */
+  remindAt: string | null
 }
 
 /**
@@ -69,9 +77,15 @@ export interface DraftSchedule {
  * de unde pornește seria.
  */
 export function draftSchedule(date: DraftDate, manual: ManualPick, ctx: QuickCtx): DraftSchedule {
-  if (manual.due) return { dueAt: manual.due.dueAt, allDay: manual.due.allDay, rrule: null }
-  if (date.active) return { dueAt: date.dueAt, allDay: date.allDay, rrule: date.rrule }
-  return { dueAt: ctx.mode === 'list' ? ctx.defaultDueAt : null, allDay: true, rrule: null }
+  const plain = (dueAt: string | null, allDay: boolean, rrule: string | null): DraftSchedule =>
+    ({ dueAt, allDay, rrule, pingEvery: null, remindAt: reminderAt(dueAt, defaultReminder(allDay)) })
+  // Seria cade ca recurența: o zi aleasă de mână nu mai spune unde e fereastra.
+  if (manual.due) return plain(manual.due.dueAt, manual.due.allDay, null)
+  if (date.active && date.pingEvery && date.remindAt) {
+    return { dueAt: date.dueAt, allDay: false, rrule: date.rrule, pingEvery: date.pingEvery, remindAt: date.remindAt }
+  }
+  if (date.active) return plain(date.dueAt, date.allDay, date.rrule)
+  return plain(ctx.mode === 'list' ? ctx.defaultDueAt : null, true, null)
 }
 
 export type DraftError = 'empty' | 'bare'
@@ -86,16 +100,18 @@ export function resolveDraft(input: DraftInput): NewIssue | { error: DraftError 
   if (!text.trim()) return { error: 'empty' }
   const title = (tokens ? tokens.title : date.title).trim()
   if (!title) return { error: 'bare' }
-  const { dueAt, allDay, rrule } = draftSchedule(date, manual, ctx)
+  const { dueAt, allDay, rrule, pingEvery, remindAt } = draftSchedule(date, manual, ctx)
   const out: NewIssue = {
     projectId,
     title,
     desc: desc.trim(),
     dueAt,
     allDay,
-    remindAt: reminderAt(dueAt, defaultReminder(allDay)),
+    remindAt,
     rrule,
   }
+  // Numai pe o serie: un tichet obișnuit nu trimite coloana (vezi `createIssue`).
+  if (pingEvery) out.pingEvery = pingEvery
   // Valul activ e al proiectului DESCHIS. Mutată în alt proiect din selector,
   // sarcina ia valul curent al aceluia (implicitul depozitului): numărul
   // valului de aici poate să nici nu existe acolo.
@@ -213,6 +229,8 @@ export interface CaptureResult {
   allDay: boolean
   rrule: string | null
   remindAt: string | null
+  /** Serie de mementouri: pasul, în minute; `null` = memento obișnuit. */
+  pingEvery: number | null
   /** Ce scrie jetonul de dată („Azi", „Mâine 10:00"); `null` = fără dată. */
   label: { day: string; time: string | null } | null
   issue: NewIssue | null
@@ -252,7 +270,10 @@ export function computeDraft(i: CaptureInput): CaptureResult {
     ?? i.projects.find((p) => p.type === 'personal')
     ?? i.projects[0]
   const ctx: QuickCtx = i.ctx ?? { mode: 'list', defaultDueAt: startOfLocalDay(now).toISOString() }
-  const date: DraftDate = { active, dueAt: parsed.dueAt, allDay: parsed.allDay, rrule: parsed.rrule ?? null, title: dateTitle }
+  const date: DraftDate = {
+    active, dueAt: parsed.dueAt, allDay: parsed.allDay, rrule: parsed.rrule ?? null,
+    pingEvery: parsed.pingEvery, remindAt: parsed.remindAt, title: dateTitle,
+  }
   const resolved = resolveDraft({ text: i.text, desc: i.desc, date, tokens, manual: i.manual, projectId: project?.id ?? '', ctx })
   const schedule = draftSchedule(date, i.manual, ctx)
   return {
@@ -266,7 +287,8 @@ export function computeDraft(i: CaptureInput): CaptureResult {
     dueAt: schedule.dueAt,
     allDay: schedule.allDay,
     rrule: schedule.rrule,
-    remindAt: reminderAt(schedule.dueAt, defaultReminder(schedule.allDay)),
+    remindAt: schedule.remindAt,
+    pingEvery: schedule.pingEvery,
     label: schedule.dueAt ? dueLabelParts(schedule.dueAt, schedule.allDay, now) : null,
     issue: 'error' in resolved ? null : resolved,
     error: 'error' in resolved ? resolved.error : null,

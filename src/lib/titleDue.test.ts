@@ -111,3 +111,15 @@ describe('dateFragments — ce e deja în titlu la deschidere', () => {
     expect(dateFragments('Ședință', NOW)).toEqual([])
   })
 })
+
+describe('mergeTitleDue — serii de mementouri', () => {
+  it('o serie scrisă în titlu înlocuiește tot, cu primul ping ca memento', () => {
+    const m = mergeTitleDue(THU_10, parseDue('la fiecare 15 minute de la 19 până la 20', NOW), NOW)
+    expect([at(m.remindAt), at(m.dueAt), m.pingEvery, m.allDay]).toEqual(['2026-08-24 19:00', '2026-08-24 20:00', 15, false])
+  })
+  it('peste o serie, o zi scrisă mută fereastra întreagă', () => {
+    const series: DueState = { dueAt: iso(2026, 8, 27, 10), allDay: false, remindAt: iso(2026, 8, 27, 9), rrule: null, pingEvery: 15 }
+    const m = mergeTitleDue(series, parseDue('vineri', NOW), NOW)
+    expect([at(m.remindAt), at(m.dueAt), m.pingEvery]).toEqual(['2026-08-28 09:00', '2026-08-28 10:00', 15])
+  })
+})

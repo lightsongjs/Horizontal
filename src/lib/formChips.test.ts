@@ -21,6 +21,11 @@ describe('visibleChips', () => {
     expect(visibleChips({ ...empty, hasDue: true, hasTime: true, reminder: 'm30' })).toEqual(['due', 'reminder'])
   })
 
+  it('o serie de mementouri ține locul jetonului de memento', () => {
+    expect(visibleChips({ ...empty, hasDue: true, hasTime: true, reminder: 'none', pingEvery: 15 })).toEqual(['due', 'ping'])
+    expect(visibleChips({ ...empty, hasDue: true, hasTime: true, reminder: 'due', pingEvery: 15, rrule: 'FREQ=DAILY' })).toEqual(['due', 'ping', 'recur'])
+  })
+
   it('recurența fără dată nu se arată (nu se salvează nici ea)', () => {
     expect(visibleChips({ ...empty, rrule: 'FREQ=DAILY' })).toEqual(['due'])
     expect(visibleChips({ ...empty, hasDue: true, rrule: 'FREQ=DAILY' })).toEqual(['due', 'recur'])

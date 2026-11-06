@@ -130,7 +130,8 @@ export function NativeBridge() {
       // `heldIds` rămân toate: sunt id-uri din coada offline, nu rânduri afișate.
       const forAndroid = androidMine ? mine : all
       if (android && androidReady) {
-        const list = upcomingReminders(forAndroid, projects, now, ANDROID_WINDOW)
+        // O serie pleacă UN rând (`every`): cutia își desfășoară singură pingurile.
+        const list = upcomingReminders(forAndroid, projects, now, { ...ANDROID_WINDOW, series: 'row' })
         const heldIds = (await repository.sync?.heldIds()) ?? []
         if (cancelled) return
         const readAt = pageReadAt(syncStatus, repository.sync, now)

@@ -5,7 +5,7 @@ import type { Issue } from './types'
 const issue = (id: string, extra: Partial<Issue> = {}): Issue => ({
   id, projectId: 'hz', title: id, desc: '', theme: '', wave: 1, deps: [], done: false, selectors: [], scenarios: [],
   assigneeId: null, createdBy: null, createdAt: '2026-10-01T00:00:00.000Z', urgent: false, dueAt: null, allDay: true,
-  remindAt: null, rrule: null, pinnedAt: null, ...extra,
+  remindAt: null, rrule: null, pingEvery: null, pinnedAt: null, ...extra,
 })
 const item = (issueId: string, deletedAt: string, extra: Partial<TrashItem> = {}): TrashItem => ({
   id: `t-${issueId}`, issueId, projectId: 'hz', title: issueId, deletedAt, deletedBy: null, deletedByName: null, ...extra,

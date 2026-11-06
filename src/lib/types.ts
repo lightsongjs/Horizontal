@@ -115,6 +115,14 @@ export interface Issue {
   /** RRULE pentru recurență. Rezervat — motorul vine mai târziu. */
   rrule: string | null
   /**
+   * Serie de mementouri („la fiecare 15 minute până la 10"): pasul, în minute
+   * (1–720). `remindAt` e atunci primul ping și ancora grilei, `dueAt` capătul
+   * ferestrei (inclusiv), iar `rrule` spune doar în ce zile revine seria.
+   * `null` = memento obișnuit. Regulile: `supabase/functions/_shared/pings.ts`
+   * și `src/lib/pingSeries.ts`.
+   */
+  pingEvery: number | null
+  /**
    * Când a fost fixat tichetul („Fixează sus", ca Pin din TickTick), ISO.
    * `null` = nefixat. Un tichet fixat, deschis și al meu stă primul în „Azi",
    * cu sau fără scadență; în „Listă" urcă primul în grupul lui. Ordinea între

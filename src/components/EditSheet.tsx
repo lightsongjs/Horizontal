@@ -6,10 +6,11 @@ import type { Normalize } from '../lib/autosave'
 import { dateFragments } from '../lib/parseDue'
 import { dueLabelParts } from '../lib/quickDraft'
 import {
-  fromInputs, reminderAt, reminderKindOf, reschedule,
+  defaultReminder, fromInputs, reminderAt, reminderKindOf, reschedule,
   toDateInput, toTimeInput,
 } from '../lib/schedule'
 import { pinPatch } from '../lib/pinned'
+import { isPingSeries, pingChipLabel } from '../lib/pingSeries'
 import { mergeTitleDue } from '../lib/titleDue'
 import { withLinks } from '../lib/titleLinks'
 import { mirrorLinkDown, mirrorLinkHover } from './TitleText'
@@ -35,6 +36,7 @@ type EditFields = {
   allDay: boolean
   remindAt: string | null
   rrule: string | null
+  pingEvery: number | null
   urgent: boolean
   pinnedAt: string | null
 }
@@ -46,6 +48,7 @@ const fieldsOf = (i: Issue): EditFields => ({
   allDay: i.allDay,
   remindAt: i.remindAt,
   rrule: i.rrule ?? null,
+  pingEvery: i.pingEvery ?? null,
   urgent: i.urgent,
   pinnedAt: i.pinnedAt ?? null,
 })
@@ -136,7 +139,7 @@ function EditBody({ issue }: { issue: Issue }) {
     if (!date.active || !canWrite || !date.title) return
     const m = mergeTitleDue(d, date.parsed)
     holdTitle.current = false
-    void a.commit({ title: date.title, dueAt: m.dueAt, allDay: m.allDay, remindAt: m.remindAt, rrule: m.rrule })
+    void a.commit({ title: date.title, dueAt: m.dueAt, allDay: m.allDay, remindAt: m.remindAt, rrule: m.rrule, pingEvery: m.pingEvery ?? null })
   }
   const applyRef = useRef(applyDate)
   applyRef.current = applyDate
@@ -409,6 +412,7 @@ function SheetDue({ fields: d, commit }: { fields: EditFields; commit(patch: Par
     commit(reschedule(d, fromInputs(date, time)))
   }
   const now = new Date()
+  const series = isPingSeries(d)
   return (
     <DuePanel
       now={now}
@@ -420,9 +424,12 @@ function SheetDue({ fields: d, commit }: { fields: EditFields; commit(patch: Par
       onClearTime={() => move(curDate, '')}
       onClear={() => commit(reschedule(d, { dueAt: null, allDay: true }))}
       reminder={reminderKindOf(d.dueAt, d.remindAt)}
-      onReminder={(kind) => commit({ remindAt: reminderAt(d.dueAt, kind) })}
+      // O serie n-are decalaj de ales: fereastra ei e mementoul.
+      onReminder={series ? undefined : (kind) => commit({ remindAt: reminderAt(d.dueAt, kind) })}
       rrule={d.dueAt ? d.rrule : null}
       onClearRrule={() => commit({ rrule: null })}
+      series={series ? pingChipLabel({ ...d, rrule: null }) : null}
+      onClearSeries={() => commit({ pingEvery: null, remindAt: reminderAt(d.dueAt, defaultReminder(d.allDay)) })}
     />
   )
 }

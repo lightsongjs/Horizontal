@@ -16,6 +16,9 @@ export interface IssueDraft {
   dueAt: string | null
   allDay: boolean
   rrule: string | null
+  /** Serie de mementouri scrisă în foaia rapidă: pasul și primul ping. */
+  pingEvery?: number | null
+  remindAt?: string | null
   urgent: boolean
   assigneeId: string | null
 }

@@ -6,7 +6,7 @@ const now = new Date('2026-10-02T10:00:00.000Z')
 const base: Issue = {
   id: 'HZ-1', projectId: 'p1', title: 'Sună la bancă', desc: '', theme: '', wave: 1, deps: [], done: false,
   selectors: [], scenarios: [], assigneeId: null, createdBy: null, createdAt: '2026-10-01T00:00:00.000Z',
-  urgent: false, dueAt: '2026-10-02T12:00:00.000Z', allDay: false, remindAt: '2026-10-02T12:00:00.000Z', rrule: null, pinnedAt: null,
+  urgent: false, dueAt: '2026-10-02T12:00:00.000Z', allDay: false, remindAt: '2026-10-02T12:00:00.000Z', rrule: null, pingEvery: null, pinnedAt: null,
 }
 const projects = [{ id: 'p1', name: 'Personal' }]
 const at = (iso: string): Issue => ({ ...base, remindAt: iso })
@@ -62,3 +62,27 @@ describe('upcomingReminders — fereastra Android', () => {
     expect(r).toMatchObject({ dueAt: '2026-10-01T21:00:00.000Z', allDay: true })
   })
 })
+
+describe('upcomingReminders — serii de mementouri', () => {
+  // La 15 minute, 09:30Z–10:30Z; acum e 10:00Z, chiar pe un ping.
+  const series: Issue = { ...base, remindAt: '2026-10-02T09:30:00.000Z', dueAt: '2026-10-02T10:30:00.000Z', pingEvery: 15 }
+  it('Linux: desfășurată de la pingul curent până la capăt, fiecare cu cheia lui', () => {
+    const list = upcomingReminders([series], projects, now)
+    expect(list.map((r) => r.at)).toEqual([
+      '2026-10-02T10:00:00.000Z', '2026-10-02T10:15:00.000Z', '2026-10-02T10:30:00.000Z',
+    ])
+    expect(list.every((r) => r.series && r.key === `HZ-1@${r.at}`)).toBe(true)
+    expect(list[0].body).toMatch(/^până la /)
+  })
+  it('Android: un singur rând, ancora și pasul; cutia desfășoară singură', () => {
+    const list = upcomingReminders([series], projects, now, { series: 'row' })
+    expect(list).toHaveLength(1)
+    expect(list[0]).toMatchObject({ at: '2026-10-02T09:30:00.000Z', every: 15, dueAt: '2026-10-02T10:30:00.000Z' })
+  })
+  it('un tichet obișnuit nu primește nici `series`, nici `every`', () => {
+    const [r] = upcomingReminders([base], projects, now, { series: 'row' })
+    expect(r).not.toHaveProperty('series')
+    expect(r).not.toHaveProperty('every')
+  })
+})
+

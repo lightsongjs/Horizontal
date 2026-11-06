@@ -17,7 +17,7 @@ const base: Issue = {
   id: 'HZ-01', projectId: 'p', title: 't', desc: '', theme: '', wave: 1, deps: [],
   done: false, selectors: [], scenarios: [], assigneeId: null, createdBy: null,
   createdAt: '2026-09-01T00:00:00.000Z', urgent: false,
-  dueAt: null, allDay: true, remindAt: null, rrule: null, pinnedAt: null,
+  dueAt: null, allDay: true, remindAt: null, rrule: null, pingEvery: null, pinnedAt: null,
 }
 const timed: Issue = { ...base, id: 'HZ-02', dueAt: iso(2026, 10, 1, 9, 30), allDay: false, remindAt: iso(2026, 10, 1, 9, 0) }
 const allDay: Issue = { ...base, id: 'HZ-03', dueAt: iso(2026, 10, 2), allDay: true }

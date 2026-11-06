@@ -60,7 +60,7 @@ describe('resolveDraft', () => {
   })
 
   it('„fără dată” ales de mână bate și ziua listei', () => {
-    expect(draftSchedule(noDate('x'), { due: { dueAt: null, allDay: true } }, LIST)).toEqual({ dueAt: null, allDay: true, rrule: null })
+    expect(draftSchedule(noDate('x'), { due: { dueAt: null, allDay: true } }, LIST)).toEqual({ dueAt: null, allDay: true, rrule: null, pingEvery: null, remindAt: null })
   })
 
   it('text numai-dată: „bare”, nu o sarcină fără titlu', () => {

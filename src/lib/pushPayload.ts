@@ -26,6 +26,13 @@ export interface ReminderPayload {
   /** Adresa absolută a funcției care acceptă tokenul. Serverul o știe, workerul nu. */
   actionUrl?: string
   /**
+   * Un ping dintr-o serie de mementouri (`ping_every`, „la fiecare 15 minute
+   * până la 10"). `dueAt` e atunci capătul ferestrei, iar notificarea are un
+   * singur buton, „Gata azi": o amânare n-are sens peste un memento care
+   * revine oricum la următorul ping. Absent = memento obișnuit.
+   */
+  series?: boolean
+  /**
    * `'event'` = un eveniment din Google Calendar, nu un tichet (`id` = `cal:<uuid>`).
    * Absent = tichet, ca înainte. Câmpurile de mai jos există doar pentru eveniment.
    * NU intră în fixtures-urile comune cu Kotlin (`pushPayload.fixtures.json`):
@@ -75,6 +82,12 @@ export interface ActionRequest {
  */
 export const SNOOZE_MINUTES = 5
 
+/**
+ * Singurul buton al unei serii. „azi", fiindcă bifa unei serii zilnice o mută
+ * pe mâine (trigger-ul de recurență), iar una doar de azi se închide.
+ */
+export const SERIES_DONE_LABEL = 'Gata azi'
+
 const pad = (n: number) => String(n).padStart(2, '0')
 
 /**
@@ -86,7 +99,9 @@ export function planNotification(p: ReminderPayload): NotificationPlan {
   const parts: string[] = []
   if (p.dueAt && !p.allDay) {
     const d = new Date(p.dueAt)
-    if (!Number.isNaN(d.getTime())) parts.push(`${pad(d.getHours())}:${pad(d.getMinutes())}`)
+    // La o serie scadența e capătul ferestrei: „10:00" pe pingul de 9:15 ar
+    // citi-o drept ora pingului.
+    if (!Number.isNaN(d.getTime())) parts.push(`${p.series ? 'până la ' : ''}${pad(d.getHours())}:${pad(d.getMinutes())}`)
   }
   if (p.projectName) parts.push(p.projectName)
   return {
@@ -96,10 +111,12 @@ export function planNotification(p: ReminderPayload): NotificationPlan {
     body: parts.length ? parts.join(' · ') : p.id,
     url: `/${p.id}`,
     tag: p.id,
-    actions: [
-      { action: 'done', title: 'Gata' },
-      { action: 'snooze', title: `Amână ${SNOOZE_MINUTES} min` },
-    ],
+    actions: p.series
+      ? [{ action: 'done', title: SERIES_DONE_LABEL }]
+      : [
+        { action: 'done', title: 'Gata' },
+        { action: 'snooze', title: `Amână ${SNOOZE_MINUTES} min` },
+      ],
     request: p.actionToken && p.actionUrl
       ? { url: p.actionUrl, token: p.actionToken, id: p.id }
       : null,

@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { parseDue } from '../lib/parseDue'
 import { describeRrule } from '../lib/recurrence'
+import { pingChipLabel } from '../lib/pingSeries'
 import { dayOffset, toDisplayDate, toTimeInput } from '../lib/schedule'
 import { Icon } from './Icon'
 import { AndroidStatus } from './AndroidStatus'
@@ -51,6 +52,15 @@ const GROUPS: Group[] = [
       'în zilele lucrătoare', 'de luni până vineri', 'every weekday',
       'săptămânal', 'la 2 săptămâni', 'lunar', 'pe 15 ale lunii', 'în fiecare lună pe 6', 'anual',
       'sâmbătă tuns', 'în fiecare sâmbătă tuns',
+    ],
+  },
+  {
+    title: 'Serii de mementouri',
+    note: 'Un memento care revine din N în N minute (1–720), într-o fereastră: de acum (sau de la start) până la capăt (implicit 23:59), azi — ori în zilele scrise. Un singur rând în „Azi"; „Gata azi" o încheie pe ziua de azi.',
+    examples: [
+      'la fiecare 10 minute până la 10', 'din oră în oră între 9 și 17', 'la fiecare oră la fix',
+      'la 15 minute 9-17 zilnic', 'la fiecare jumătate de oră de la 14', 'every 15 minutes until 10am',
+      'every hour on the hour', 'every 30 mins from 9 to 5 daily',
     ],
   },
   {
@@ -182,6 +192,11 @@ const RULES: { title: string; body: string }[] = [
 function explain(text: string, now: Date): { title: string; due: string | null } {
   const r = parseDue(text, now)
   if (!r.dueAt) return { title: r.title, due: null }
+  if (r.pingEvery && r.remindAt) {
+    const first = dayOffset(r.remindAt, now)
+    const day = first === 0 ? 'azi' : first === 1 ? 'mâine' : toDisplayDate(r.remindAt)
+    return { title: r.title, due: `${day} · ${pingChipLabel({ pingEvery: r.pingEvery, remindAt: r.remindAt, dueAt: r.dueAt, rrule: r.rrule }).toLowerCase()}` }
+  }
   const off = dayOffset(r.dueAt, now)
   const day = off === 0 ? 'azi' : off === 1 ? 'mâine' : toDisplayDate(r.dueAt)
   const time = r.allDay ? '' : ` ${toTimeInput(r.dueAt)}`

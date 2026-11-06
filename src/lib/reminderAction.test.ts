@@ -27,6 +27,10 @@ describe('reminderMutation', () => {
       patch: { remindAt: new Date(now.getTime() + min * 60_000).toISOString() },
     })
   })
+  it('o serie de mementouri nu se amână (un worker vechi încă arată „Amână")', () => {
+    expect(reminderMutation('snooze', { done: false, pingEvery: 15 }, now)).toEqual({ kind: 'none' })
+    expect(reminderMutation('done', { done: false, pingEvery: 15 }, now)).toEqual({ kind: 'toggle' })
+  })
 })
 
 // Fixtures-urile presupun Europe/Bucharest, la fel ca în JUnit.

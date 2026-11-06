@@ -2,6 +2,7 @@
 // example on first run. Mirrors the Supabase backend's behavior.
 
 import { applyIssuePatch } from '../lib/issuePatch'
+import { rollPingSeries } from '../lib/pingSeries'
 import { buildNewProject, initialWaves } from '../lib/newProject'
 import { moveBlock, moveBlockMessage, movedIssue, SAME_PROJECT } from '../lib/moveIssue'
 import { withPin, withoutPin, type Pin } from '../lib/pins'
@@ -67,17 +68,21 @@ function load(): DB {
         // completează la citire. Fără asta, un tichet vechi ar avea `dueAt`
         // undefined, iar `dueAt === null` (testul „are scadență") ar fi fals
         // în ambele sensuri.
-        issues: (db.issues ?? []).map((i) => ({
+        // `rollPingSeries`: oglinda cronului `roll_ping_series()` — modul local
+        // n-are pg_cron, deci o serie zilnică nebifată trece pe ziua ei următoare
+        // la prima citire de după fereastră.
+        issues: (db.issues ?? []).map((i) => rollPingSeries({
           ...i,
           urgent: i.urgent ?? false,
           dueAt: i.dueAt ?? null,
           allDay: i.allDay ?? true,
           remindAt: i.remindAt ?? null,
           rrule: i.rrule ?? null,
+          pingEvery: i.pingEvery ?? null,
           pinnedAt: i.pinnedAt ?? null,
           createdBy: i.createdBy ?? null,
           createdAt: i.createdAt ?? LEGACY_CREATED_AT,
-        })),
+        }, new Date())),
         assignees: db.assignees ?? [],
         // Adăugate după ce cineva avea deja date în localStorage.
         obstacles: (db.obstacles ?? []).map((o) => ({ ...o, deps: o.deps ?? [] })),
@@ -342,6 +347,7 @@ export function createLocalRepository(): Repository {
         allDay: input.allDay ?? true,
         remindAt: input.remindAt ?? null,
         rrule: input.rrule ?? null,
+        pingEvery: input.pingEvery ?? null,
         pinnedAt: null,
       }
       db.issues.push(issue)

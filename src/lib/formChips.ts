@@ -12,7 +12,7 @@ import { addDays, startOfLocalDay, toDayMonth, type ReminderKind } from './sched
  * Pur, ca decizia „ce jeton apare" să se testeze fără DOM.
  */
 
-export type ChipKind = 'due' | 'reminder' | 'recur' | 'wave' | 'theme' | 'assignee' | 'urgent'
+export type ChipKind = 'due' | 'reminder' | 'ping' | 'recur' | 'wave' | 'theme' | 'assignee' | 'urgent'
 export type AddItem = 'theme' | 'assignee' | 'urgent'
 
 export interface ChipInput {
@@ -23,6 +23,12 @@ export interface ChipInput {
   reminder: ReminderKind
   /** Recurența care chiar se salvează (`rruleOut`): fără dată nu există. */
   rrule: string | null
+  /**
+   * Serie de mementouri (`pingEvery`), care chiar se salvează: atunci jetonul
+   * seriei („La 15 min · 09:00–10:00") ține locul celui de memento — decalajul
+   * față de scadență n-are sens peste o fereastră.
+   */
+  pingEvery?: number | null
   /** Câte valuri are proiectul. Cu unul singur (Inbox) n-ai ce alege. */
   waveCount: number
   hasTheme: boolean
@@ -32,7 +38,8 @@ export interface ChipInput {
 
 export function visibleChips(i: ChipInput): ChipKind[] {
   const out: ChipKind[] = ['due']
-  if (i.hasDue && i.hasTime && i.reminder !== 'none') out.push('reminder')
+  if (i.hasDue && i.hasTime && i.pingEvery) out.push('ping')
+  else if (i.hasDue && i.hasTime && i.reminder !== 'none') out.push('reminder')
   if (i.hasDue && i.rrule) out.push('recur')
   if (i.waveCount > 1) out.push('wave')
   if (i.hasTheme) out.push('theme')

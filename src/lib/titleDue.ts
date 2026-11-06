@@ -19,7 +19,11 @@
  *   mementoul implicit al unei ore (`reschedule`, ca la jetoane);
  * - recurența: o oră schimbă seria (rămâne `rrule`), o zi mută doar apariția
  *   curentă (tot rămâne `rrule`); numai o expresie de recurență în text o
- *   înlocuiește.
+ *   înlocuiește;
+ * - o serie de mementouri scrisă în text („la fiecare 15 minute până la 10")
+ *   înlocuiește tot: fereastra ei e completă, cu zi, primul ping și capăt.
+ *   Peste o serie existentă, o zi sau o oră scrisă mută fereastra întreagă
+ *   (`reschedule`).
  */
 import type { ParsedDue } from './parseDue'
 import { reschedule } from './schedule'
@@ -29,9 +33,12 @@ export interface DueState {
   allDay: boolean
   remindAt: string | null
   rrule: string | null
+  /** Serie de mementouri (`Issue.pingEvery`); absent = nu e. */
+  pingEvery?: number | null
 }
 
 export type TitleDueParse = Pick<ParsedDue, 'dueAt' | 'allDay' | 'rrule' | 'hasDay' | 'hasTime'>
+  & Partial<Pick<ParsedDue, 'pingEvery' | 'remindAt'>>
 
 /**
  * Scadența care rezultă. Întoarce câmpurile întregi (nu un diff): apelantul
@@ -41,10 +48,14 @@ export type TitleDueParse = Pick<ParsedDue, 'dueAt' | 'allDay' | 'rrule' | 'hasD
 export function mergeTitleDue(existing: DueState, parsed: TitleDueParse, now: Date = new Date()): DueState {
   if (!parsed.dueAt) return { ...existing }
   const rrule = parsed.rrule ?? existing.rrule
+  if (parsed.pingEvery && parsed.remindAt) {
+    return { dueAt: parsed.dueAt, allDay: false, remindAt: parsed.remindAt, rrule: parsed.rrule, pingEvery: parsed.pingEvery }
+  }
+  const keep = existing.pingEvery !== undefined ? { pingEvery: existing.pingEvery } : {}
 
   if (!existing.dueAt) {
     const next = reschedule(existing, { dueAt: parsed.dueAt, allDay: parsed.allDay })
-    return { dueAt: next.dueAt, allDay: next.allDay, remindAt: next.remindAt, rrule }
+    return { dueAt: next.dueAt, allDay: next.allDay, remindAt: next.remindAt, rrule, ...keep, ...pick(next) }
   }
 
   const old = new Date(existing.dueAt)
@@ -73,5 +84,8 @@ export function mergeTitleDue(existing: DueState, parsed: TitleDueParse, now: Da
   }
 
   const next = reschedule(existing, target)
-  return { dueAt: next.dueAt, allDay: next.allDay, remindAt: next.remindAt, rrule }
+  return { dueAt: next.dueAt, allDay: next.allDay, remindAt: next.remindAt, rrule, ...keep, ...pick(next) }
 }
+
+/** Seria căzută la mutare (`reschedule` a scos-o), dacă e cazul. */
+const pick = (n: { pingEvery?: null }) => ('pingEvery' in n ? { pingEvery: null } : {})

@@ -5,6 +5,7 @@ import { useQuickDraft } from '../hooks'
 import { dueLabelParts, quickKey, type QuickCtx } from '../lib/quickDraft'
 import { fromInputs, toDateInput } from '../lib/schedule'
 import { describeRrule } from '../lib/recurrence'
+import { pingChipLabel } from '../lib/pingSeries'
 import { Icon } from './Icon'
 import { KeyboardSheet } from './KeyboardSheet'
 import { QuickDesc, QuickTitle } from './QuickFields'
@@ -115,6 +116,8 @@ export function QuickSheet({ ctx }: { ctx: QuickCtx }) {
         dueAt: schedule.dueAt,
         allDay: schedule.allDay,
         rrule: schedule.rrule,
+        pingEvery: schedule.pingEvery,
+        remindAt: schedule.remindAt,
         urgent,
         assigneeId,
       },
@@ -199,7 +202,7 @@ export function QuickSheet({ ctx }: { ctx: QuickCtx }) {
             type="button"
             className={`qs-due ${dueAt ? 'on' : ''}`}
             aria-expanded={whenOpen}
-            title="Data și ora (sau „mâine la 10” în text)"
+            title={schedule.pingEvery ? `Mementouri: ${pingChipLabel({ ...schedule, rrule: null }).toLowerCase()}` : 'Data și ora (sau „mâine la 10” în text)'}
             onPointerDown={keepFocus}
             onClick={() => setWhenOpen((v) => !v)}
           >

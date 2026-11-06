@@ -22,5 +22,8 @@
     "want": { "title": "T", "body": "P", "tag": "EX-07" } },
   { "name": "proiect cu nume gol: tratat ca lipsă",
     "input": { "id": "EX-08", "title": "T", "projectName": "" },
-    "want": { "title": "T", "body": "EX-08", "tag": "EX-08" } }
+    "want": { "title": "T", "body": "EX-08", "tag": "EX-08" } },
+  { "name": "serie: scadența e capătul ferestrei",
+    "input": { "id": "HZ-9", "title": "Pastilele", "dueAt": "2026-11-06T08:00:00.000Z", "allDay": false, "projectName": "Inbox", "series": true },
+    "want": { "title": "Pastilele", "body": "până la 10:00 · Inbox", "tag": "HZ-9" } }
 ]

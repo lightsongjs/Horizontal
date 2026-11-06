@@ -22,6 +22,7 @@ import { dueLabelParts } from '../lib/quickDraft'
 import {
   REMINDER_CHIP, addMenuItems, recurChipLabel, visibleChips,
 } from '../lib/formChips'
+import { pingChipLabel } from '../lib/pingSeries'
 import { Attachments } from './Attachments'
 import { Thread } from './Thread'
 import { DescFold } from './DescFold'
@@ -110,6 +111,8 @@ export interface FormDirtyState {
   dueAt: string | null
   remindAt: string | null
   rrule: string | null
+  /** Serie de mementouri (`Issue.pingEvery`). Absent = nu se compară. */
+  pingEvery?: number | null
 }
 
 /**
@@ -162,7 +165,8 @@ export function isFormDirty(s: FormDirtyState): boolean {
       s.urgent !== (existing?.urgent ?? false) ||
       s.dueAt !== (existing?.dueAt ?? null) ||
       s.remindAt !== (existing?.remindAt ?? null) ||
-      s.rrule !== (existing?.rrule ?? null)
+      s.rrule !== (existing?.rrule ?? null) ||
+      (s.pingEvery !== undefined && s.pingEvery !== (existing?.pingEvery ?? null))
     )
   }
   return (
@@ -461,8 +465,26 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
   // Mementoul implicit urmează forma scadenței cât timp userul nu l-a atins.
   const [reminderTouched, setReminderTouched] = useState(false)
   const [rrule, setRrule] = useState<string | null>(existing?.rrule ?? seed?.rrule ?? null)
+  /**
+   * Seria de mementouri („la fiecare 15 minute până la 10"): pasul și cât stă
+   * primul ping înaintea capătului. Se ține DISTANȚA, nu ora: o scadență mutată
+   * de mână duce fereastra întreagă cu ea, ca `moveDue`. Se scrie numai din
+   * titlu, ca repetarea, și se scoate din popoverul datei.
+   */
+  const [series, setSeries] = useState<{ every: number; lead: number } | null>(() => {
+    const src = existing ?? seed
+    if (!src?.pingEvery || !src.remindAt || !src.dueAt) return null
+    return { every: src.pingEvery, lead: Date.parse(src.dueAt) - Date.parse(src.remindAt) }
+  })
+  /** Seria dinaintea celei venite din titlu — ce se pune la loc când fragmentul dispare sau e refuzat. */
+  const seriesBefore = useRef<{ every: number; lead: number } | null | undefined>(undefined)
   const schedule = (() => {
     const { dueAt, allDay } = fromInputs(dueDate, dueTime)
+    // O serie are nevoie de o fereastră: fără oră nu mai există, iar mementoul
+    // revine la implicitul formei.
+    if (series && dueAt && !allDay) {
+      return { dueAt, allDay, remindAt: new Date(Date.parse(dueAt) - series.lead).toISOString(), kind: 'none' as ReminderKind, pingEvery: series.every as number | null }
+    }
     // Un tichet existent își păstrează mementoul salvat cât scadența are aceeași
     // formă (cu / fără oră): implicitul „la oră" pus peste un tichet cu oră și
     // fără memento îl făcea „nesalvat" la simpla deschidere, iar orice salvare
@@ -470,7 +492,7 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
     const kind = reminderTouched ? reminder
       : existing?.dueAt && dueAt && existing.allDay === allDay ? reminder
       : defaultReminder(allDay)
-    return { dueAt, allDay, remindAt: reminderAt(dueAt, kind), kind }
+    return { dueAt, allDay, remindAt: reminderAt(dueAt, kind), kind, pingEvery: null as number | null }
   })()
   /**
    * Recurența care chiar se salvează. O repetare fără dată de start nu înseamnă
@@ -575,6 +597,13 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
     setDueText(next.fields.date)
     setTimeText(next.fields.time)
     if (titleDate.active && parsed.rrule) setRrule(parsed.rrule)
+    if (titleDate.active && parsed.pingEvery && parsed.remindAt && parsed.dueAt) {
+      if (seriesBefore.current === undefined) seriesBefore.current = series
+      setSeries({ every: parsed.pingEvery, lead: Date.parse(parsed.dueAt) - Date.parse(parsed.remindAt) })
+    } else if (seriesBefore.current !== undefined) {
+      setSeries(seriesBefore.current)
+      seriesBefore.current = undefined
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [title, titleDate.rejectedKey, canWrite, titleTyped])
 
@@ -586,6 +615,7 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
     // titlul rămâne fără dată, iar o altă dată scrisă mai târziu în titlu se
     // aplică din nou.
     fillMemo.current = null
+    seriesBefore.current = undefined
     setTitle(next)
   }
 
@@ -620,6 +650,7 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
     dueAt: schedule.dueAt,
     remindAt: schedule.remindAt,
     rrule: rruleOut,
+    pingEvery: schedule.pingEvery,
   }
   const isDirty = isFormDirty(dirtyState)
 
@@ -888,6 +919,9 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
       const qaPayload = {
         selectors: selectors.filter(Boolean), scenarios, assigneeId: saveAssignee, urgent,
         dueAt: schedule.dueAt, allDay: schedule.allDay, remindAt: schedule.remindAt, rrule: rruleOut,
+        // Coloana pleacă numai când e ceva de scris sau de șters: un tichet
+        // obișnuit se salvează și pe o bază fără `migration-ping-series.sql`.
+        ...(schedule.pingEvery || existing?.pingEvery ? { pingEvery: schedule.pingEvery } : {}),
       }
       // `#proiect` cunoscut și permis: iese din titlu, iar mutarea vine după
       // salvare (pe ID-ul vechi întâi, ca nimic din formular să nu se piardă).
@@ -964,7 +998,7 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
         return i
       })
       if (!snap.find((i) => i.id === targetId)) {
-        snap = [...snap, { id: targetId, projectId: project.id, title: saveTitle, desc: desc.trim() === '' ? '' : desc, theme, wave, deps: realDeps, done: false, selectors: selectors.filter(Boolean), scenarios, assigneeId, createdBy: null, createdAt: new Date().toISOString(), urgent, dueAt: schedule.dueAt, allDay: schedule.allDay, remindAt: schedule.remindAt, rrule: rruleOut, pinnedAt: null }]
+        snap = [...snap, { id: targetId, projectId: project.id, title: saveTitle, desc: desc.trim() === '' ? '' : desc, theme, wave, deps: realDeps, done: false, selectors: selectors.filter(Boolean), scenarios, assigneeId, createdBy: null, createdAt: new Date().toISOString(), urgent, dueAt: schedule.dueAt, allDay: schedule.allDay, remindAt: schedule.remindAt, rrule: rruleOut, pingEvery: schedule.pingEvery, pinnedAt: null }]
       }
       const cascadeQueue = [...realDeps]
       const cascadeSeen = new Set<string>()
@@ -1111,6 +1145,7 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
     hasTime: !!dueTime,
     reminder: schedule.kind,
     rrule: rruleOut,
+    pingEvery: schedule.pingEvery,
     waveCount: waves.length,
     hasTheme: !!theme,
     hasAssignee: !!assigneeId,
@@ -1197,9 +1232,11 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
       onClearTime={() => setTimeText('')}
       onClear={clearDue}
       reminder={schedule.kind}
-      onReminder={(kind) => { setReminder(kind); setReminderTouched(true) }}
+      onReminder={schedule.pingEvery ? undefined : (kind) => { setReminder(kind); setReminderTouched(true) }}
       rrule={rruleOut}
       onClearRrule={() => setRrule(null)}
+      series={schedule.pingEvery ? pingChipLabel({ pingEvery: schedule.pingEvery, remindAt: schedule.remindAt, dueAt: schedule.dueAt, rrule: null }) : null}
+      onClearSeries={() => { setSeries(null); seriesBefore.current = undefined }}
       foot={!narrow && <div className="fc-foot"><kbd>Esc</kbd> închide, înapoi pe jeton</div>}
     />
   )
@@ -1383,6 +1420,15 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
             <button key={kind} {...chipProps('date', first)} disabled={!canWrite} className="fc-chip" aria-label={`Memento ${reminderLabel}`} title={`Memento ${reminderLabel}`}>
               <Icon name="bell" size={14} />
               {reminderLabel}
+            </button>
+          )
+        }
+        if (kind === 'ping') {
+          const label = pingChipLabel({ pingEvery: schedule.pingEvery, remindAt: schedule.remindAt, dueAt: schedule.dueAt, rrule: null })
+          return (
+            <button key={kind} {...chipProps('date', first)} disabled={!canWrite} className="fc-chip" aria-label={`Serie de mementouri: ${label}`} title={`Serie de mementouri: ${label}`}>
+              <Icon name="bell" size={14} />
+              {label}
             </button>
           )
         }

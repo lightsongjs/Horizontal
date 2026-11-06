@@ -11,6 +11,7 @@
 
 import { startOfLocalDay, addDays } from './schedule'
 import { firstOccurrence, formatRrule, nextOccurrence, parseRrule } from './recurrence'
+import { PING_MAX_MINUTES, seriesWindow } from './pingSeries'
 
 export interface ParsedDue {
   /** Titlul cu fragmentele de dată scoase. Poate fi GOL — vezi mai jos. */
@@ -29,6 +30,14 @@ export interface ParsedDue {
   hasDay: boolean
   /** Textul a numit o ORĂ. Fals = `allDay`. */
   hasTime: boolean
+  /**
+   * Serie de mementouri („la fiecare 15 minute până la 10"): pasul, în minute.
+   * Atunci `dueAt` e capătul ferestrei, iar `remindAt` primul ping. `null` =
+   * o scadență obișnuită (mementoul îl pune apelantul, din forma ei).
+   */
+  pingEvery: number | null
+  /** Primul ping al seriei, ISO; `null` fără serie. */
+  remindAt: string | null
 }
 
 const DAYS_RO = ['duminica', 'luni', 'marti', 'miercuri', 'joi', 'vineri', 'sambata']
@@ -234,9 +243,119 @@ function matchCalendarDate(hay: string, now: Date): { day: Date; span: [number, 
   return null
 }
 
-export function parseDue(raw: string, now: Date = new Date()): ParsedDue {
-  const hay = maskSigils(fold(raw))
+/** O oră din fragmentele seriei: „9", „9:30", „5pm", „ora 10". */
+const SERIES_T = '(?:ora\\s+)?(\\d{1,2})(?::(\\d{2}))?(?:\\s*(am|pm))?'
+
+interface SeriesHit {
+  every: number
+  align: boolean
+  start: [number, number] | null
+  end: [number, number] | null
+  spans: [number, number][]
+}
+
+type SeriesClock = { hm: [number, number]; ap: boolean }
+
+/** `[h, m]` din grupurile unui `SERIES_T`, sau null dacă nu e o oră. `ap` = am/pm scris. */
+function seriesTime(h: string | undefined, m: string | undefined, ap: string | undefined): SeriesClock | null {
+  if (h === undefined) return null
+  let hh = Number(h)
+  const mm = m ? Number(m) : 0
+  if (hh > 24 || mm > 59 || (ap && (hh < 1 || hh > 12))) return null
+  if (ap === 'pm' && hh < 12) hh += 12
+  if (ap === 'am' && hh === 12) hh = 0
+  return { hm: [hh % 24, mm], ap: !!ap }
+}
+
+/**
+ * Seria de mementouri din text: pasul („la fiecare 15 minute", „din oră în
+ * oră", „every hour"), alinierea („la fix"), startul („de la 9", „între 9 și
+ * 17", „9-17") și capătul („până la 10", „until 10am"). Fără pas nu există
+ * serie, iar startul și capătul nu se caută deloc — „de la 9" singur nu e o dată.
+ *
+ * Se caută PRIMA în `parseDue`, iar fragmentele găsite se MASCHEAZĂ cu lungimea
+ * păstrată (`hay`): „la 15" din „la 15 minute", „la 2" din „la 2 ore" și „până
+ * la 10" ar fi fost citite altfel drept oră. Un pas în afara 1–720 de minute
+ * rămâne text, dar tot mascat: „la 1000 minute" n-are voie să devină ora 10:00.
+ */
+function matchSeries(hay: string): { hit: SeriesHit | null; hay: string } {
   const spans: [number, number][] = []
+  let out = hay
+  const take = (m: RegExpMatchArray) => {
+    const s = m.index!, e = s + m[0].length
+    out = out.slice(0, s) + MASK.repeat(e - s) + out.slice(e)
+    spans.push([s, e])
+  }
+  const UNIT_RO = '(minute|minut|min|ore|ora|h)'
+  const UNIT_EN = '(minutes|minute|mins|min|m|hours|hour|hrs|hr|h)'
+  const hours = (u: string) => /^(ore|ora|h|hours|hour|hrs|hr)$/.test(u)
+
+  let every: number | null = null
+  let m: RegExpMatchArray | null
+  // Formele fără cifră întâi: „la fiecare jumătate de oră" conține „fiecare ... oră".
+  if ((m = out.match(/\b(?:(?:la\s+)?(?:fiecare\s+)?jumatate\s+de\s+ora|din\s+jumatate\s+in\s+jumatate\s+de\s+ora|every\s+half(?:\s+an)?\s+hour|half[-\s]?hourly)\b/))) {
+    every = 30
+  } else if ((m = out.match(/\b(?:(?:la|in)\s+fiecare\s+ora|din\s+ora\s+in\s+ora|every\s+hour|hourly)\b/))) {
+    every = 60
+  } else if ((m = out.match(new RegExp(`\\b(?:la\\s+fiecare|la|every)\\s+(\\d{1,4})\\s*(?:de\\s+)?${UNIT_RO}\\b`))
+    ?? out.match(new RegExp(`\\bdin\\s+(\\d{1,4})\\s+in\\s+\\d{1,4}\\s*(?:de\\s+)?${UNIT_RO}\\b`))
+    ?? out.match(new RegExp(`\\bevery\\s+(\\d{1,4})\\s*${UNIT_EN}\\b`)))) {
+    const n = Number(m[1]) * (hours(m[2]) ? 60 : 1)
+    if (n < 1 || n > PING_MAX_MINUTES) {
+      take(m)
+      return { hit: null, hay: out }
+    }
+    every = n
+  }
+  if (every === null || !m) return { hit: null, hay }
+  take(m)
+
+  const align = !!(m = out.match(/\b(?:la\s+fix|la\s+ore\s+fixe|on\s+the\s+hour)\b/))
+  if (m) take(m)
+
+  // Un număr urmat de o lună sau de un punct cu cifre e o dată, nu o oră.
+  const notDate = `(?![./]\\d)(?!\\s+(?:of\\s+)?(?:${MONTH_ALT})\\b)`
+  const FROM = '(?:de\\s+la|incepand\\s+(?:cu|de\\s+la)|from|starting(?:\\s+(?:at|from))?)'
+  let start: SeriesClock | null = null
+  let end: SeriesClock | null = null
+  // „între 9 și 17", „between 9 and 5pm", „de la 9 până la 10", „from 9 to 5", „9-17"
+  const ranges = [
+    new RegExp(`\\b(?:intre|between)\\s+(?:orele\\s+)?${SERIES_T}\\s+(?:si|and)\\s+${SERIES_T}\\b${notDate}`),
+    new RegExp(`\\b${FROM}\\s+${SERIES_T}\\s*(?:pana\\s+la|until|till|til|to|-|–)\\s*${SERIES_T}\\b${notDate}`),
+    new RegExp(`(?<![\\d./:–-])\\b(\\d{1,2})(?::(\\d{2}))?(?:\\s*(am|pm))?\\s*[-–]\\s*(\\d{1,2})(?::(\\d{2}))?(?:\\s*(am|pm))?\\b(?![./:–-]?\\d)`),
+  ]
+  for (const re of ranges) {
+    const r = out.match(re)
+    const a = r && seriesTime(r[1], r[2], r[3])
+    const b = r && seriesTime(r[4], r[5], r[6])
+    if (r && a && b) { start = a; end = b; take(r); break }
+  }
+  if (!start && (m = out.match(new RegExp(`\\b${FROM}\\s+${SERIES_T}\\b${notDate}`)))) {
+    start = seriesTime(m[1], m[2], m[3])
+    if (start) take(m)
+  }
+  if (!end && (m = out.match(new RegExp(`\\b(?:pana\\s+la|until|till|til)\\s+${SERIES_T}\\b${notDate}`)))) {
+    end = seriesTime(m[1], m[2], m[3])
+    if (end) take(m)
+  }
+
+  // Capătul fără am/pm înaintea startului e după-amiaza: „from 9 to 5" = 17:00.
+  // Tot înainte după asta (22–2), fereastra ar trece de miezul nopții, iar o
+  // serie trăiește într-o singură zi: capătul cade, rămâne 23:59.
+  let endHm = end?.hm ?? null
+  if (start && end) {
+    const sm = start.hm[0] * 60 + start.hm[1]
+    let em = end.hm[0] * 60 + end.hm[1]
+    if (em <= sm && !end.ap && em + 720 < 1440) em += 720
+    endHm = em > sm ? [Math.floor(em / 60), em % 60] : null
+  }
+  return { hit: { every, align, start: start?.hm ?? null, end: endHm, spans }, hay: out }
+}
+
+export function parseDue(raw: string, now: Date = new Date()): ParsedDue {
+  // Seria întâi, mascată: vezi `matchSeries`.
+  const { hit: series, hay } = matchSeries(maskSigils(fold(raw)))
+  const spans: [number, number][] = series ? [...series.spans] : []
   const hit = (m: RegExpMatchArray) => {
     if (m.index !== undefined) spans.push([m.index, m.index + m[0].length])
   }
@@ -497,7 +616,27 @@ export function parseDue(raw: string, now: Date = new Date()): ParsedDue {
   }
 
   if (spans.length === 0) {
-    return { title: raw.trim(), dueAt: null, allDay: true, rrule: null, spans: [], hasDay: false, hasTime: false }
+    return { title: raw.trim(), dueAt: null, allDay: true, rrule: null, spans: [], hasDay: false, hasTime: false, pingEvery: null, remindAt: null }
+  }
+
+  // ── seria: fereastra se calculează aici, din zi, recurență și ore — nu prin
+  //    regula „oră trecută = mâine" de mai jos, care e pentru un singur memento.
+  //    O oră liberă rămasă („every 15 minutes at 9") e startul, dacă n-a fost
+  //    scris altul; la fel ora unui decalaj („peste o oră").
+  if (series) {
+    const w = seriesWindow({
+      every: series.every,
+      start: series.start ?? time,
+      end: series.end,
+      align: series.align,
+      day,
+      rrule,
+    }, now)
+    const merged = mergeSpans(spans)
+    return {
+      title: stripSpans(raw, merged), dueAt: w.dueAt, allDay: false, rrule, spans: merged,
+      hasDay: day !== null, hasTime: true, pingEvery: series.every, remindAt: w.remindAt,
+    }
   }
 
   // ── prima apariție a unei recurențe care NUMEȘTE o zi
@@ -552,5 +691,5 @@ export function parseDue(raw: string, now: Date = new Date()): ParsedDue {
   // are deja o scadență (`mergeTitleDue`), „la 17" înseamnă „ora 17 în ziua
   // lui", iar ziua implicită de aici (azi, sau mâine după rostogolire) ar fi
   // mutat sarcina fără să fi cerut-o nimeni.
-  return { title, dueAt: base.toISOString(), allDay: !time, rrule, spans: merged, hasDay: day !== null, hasTime: time !== null }
+  return { title, dueAt: base.toISOString(), allDay: !time, rrule, spans: merged, hasDay: day !== null, hasTime: time !== null, pingEvery: null, remindAt: null }
 }

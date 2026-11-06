@@ -664,3 +664,78 @@ describe('parseDue — prima apariție: cu oră, azi contează; fără oră, de 
   })
   it('„pe 24 ale lunii la 10" spus pe 24 la 08:40 → azi', () => expect(at('factura pe 24 ale lunii la 10', MON)).toBe('24 10:00'))
 })
+
+describe('parseDue — serii de mementouri', () => {
+  /** Ce iese dintr-o serie: titlul, primul ping, capătul, pasul, zilele. */
+  function s(text: string) {
+    const r = parseDue(text, NOW)
+    const at = (iso: string | null) => (iso ? `${toDateInput(iso)} ${toTimeInput(iso)}` : null)
+    return { title: r.title, first: at(r.remindAt), end: at(r.dueAt), every: r.pingEvery, rrule: r.rrule, allDay: r.allDay }
+  }
+
+  it('„la fiecare oră": de acum, până la 23:59, azi', () => {
+    expect(s('roagă-te la fiecare oră')).toEqual({ title: 'roagă-te', first: '2026-08-24 09:40', end: '2026-08-24 23:59', every: 60, rrule: null, allDay: false })
+  })
+  it('„la fiecare 10 minute până la 10"', () => {
+    expect(s('pastile la fiecare 10 minute până la 10')).toMatchObject({ title: 'pastile', first: '2026-08-24 08:50', end: '2026-08-24 10:00', every: 10 })
+  })
+  it('„la 15" din „la 15 minute" nu e ora 15, iar „la 2 ore" nu e ora 2', () => {
+    expect(s('apă la 15 minute')).toMatchObject({ title: 'apă', every: 15, first: '2026-08-24 08:55' })
+    expect(s('stretch la 2 ore')).toMatchObject({ title: 'stretch', every: 120, first: '2026-08-24 10:40' })
+  })
+  it('engleză: every N minutes until 10am, every hour on the hour', () => {
+    expect(s('meds every 15 minutes until 10am')).toMatchObject({ title: 'meds', first: '2026-08-24 08:55', end: '2026-08-24 10:00', every: 15 })
+    expect(s('pray every hour on the hour')).toMatchObject({ title: 'pray', first: '2026-08-24 09:00', every: 60 })
+    expect(s('water hourly')).toMatchObject({ title: 'water', every: 60 })
+    expect(s('water every half hour')).toMatchObject({ title: 'water', every: 30 })
+  })
+  it('„la fix": grila ceasului', () => {
+    expect(s('la fiecare 15 minute la fix')).toMatchObject({ first: '2026-08-24 08:45' })
+    expect(s('din oră în oră la ore fixe')).toMatchObject({ first: '2026-08-24 09:00', every: 60 })
+  })
+  it('intervalul: „între 9 și 17", „9-17", „from 9 to 5" (= 17:00)', () => {
+    expect(s('din oră în oră între 9 și 17')).toMatchObject({ first: '2026-08-24 09:00', end: '2026-08-24 17:00', every: 60 })
+    expect(s('la 15 minute 9-17')).toMatchObject({ first: '2026-08-24 09:00', end: '2026-08-24 17:00' })
+    expect(s('every 30 mins from 9 to 5')).toMatchObject({ first: '2026-08-24 09:00', end: '2026-08-24 17:00' })
+    expect(s('every hour between 9 and 5pm')).toMatchObject({ end: '2026-08-24 17:00' })
+  })
+  it('startul trecut azi: ancora rămâne pe start, fereastra azi', () => {
+    expect(s('la fiecare 15 minute de la 8 până la 10')).toMatchObject({ first: '2026-08-24 08:00', end: '2026-08-24 10:00' })
+  })
+  it('fereastra trecută: mâine la start', () => {
+    expect(s('la fiecare 10 minute de la 7 până la 8')).toMatchObject({ first: '2026-08-25 07:00', end: '2026-08-25 08:00' })
+  })
+  it('zilele vin din recurență: „zilnic", „daily", „lunea"', () => {
+    expect(s('la fiecare 15 minute de la 9 până la 10 zilnic')).toMatchObject({ title: '', every: 15, rrule: 'FREQ=DAILY', first: '2026-08-24 09:00' })
+    expect(s('every 15 minutes daily')).toMatchObject({ every: 15, rrule: 'FREQ=DAILY' })
+    expect(s('la fiecare oră în fiecare zi')).toMatchObject({ every: 60, rrule: 'FREQ=DAILY' })
+    // Luni 24 august: o serie „marțea" pornește mâine, la 09:00.
+    expect(s('la fiecare oră martea')).toMatchObject({ rrule: 'FREQ=WEEKLY;BYDAY=TU', first: '2026-08-25 09:00', end: '2026-08-25 23:59' })
+  })
+  it('o zi numită fără start: la 09:00', () => {
+    expect(s('la fiecare 15 minute mâine')).toMatchObject({ first: '2026-08-25 09:00', end: '2026-08-25 23:59' })
+  })
+  it('o oră liberă e startul: „every hour at 14"', () => {
+    expect(s('every hour at 14')).toMatchObject({ first: '2026-08-24 14:00', end: '2026-08-24 23:59' })
+  })
+  it('„începând cu 9:30 până la ora 11"', () => {
+    expect(s('la fiecare 15 minute începând cu 9:30 până la ora 11')).toMatchObject({ first: '2026-08-24 09:30', end: '2026-08-24 11:00' })
+  })
+  it('pasul în afara 1–720 de minute rămâne text, fără nicio oră', () => {
+    expect(s('la 1000 minute')).toMatchObject({ title: 'la 1000 minute', every: null, end: null })
+    expect(s('la fiecare 13 ore')).toMatchObject({ every: null, end: null })
+  })
+  it('decalajele și recurențele de zile rămân ce erau', () => {
+    expect(s('în 15 min')).toMatchObject({ every: null, first: null, end: '2026-08-24 08:55' })
+    expect(s('peste 15 minute')).toMatchObject({ every: null, end: '2026-08-24 08:55' })
+    expect(p('la 2 zile')).toMatchObject({ rrule: 'FREQ=DAILY;INTERVAL=2' })
+    expect(p('every 2 days')).toMatchObject({ rrule: 'FREQ=DAILY;INTERVAL=2' })
+    expect(p('în fiecare zi la 15')).toMatchObject({ rrule: 'FREQ=DAILY', time: '15:00' })
+  })
+  it('fără pas, „de la 9" și „până la 10" nu sunt o serie', () => {
+    expect(parseDue('de la 9 până la 10', NOW).pingEvery).toBeNull()
+  })
+  it('o dată scrisă lângă un interval nu e citită drept interval', () => {
+    expect(s('ședință 2026-12-05 la fiecare oră')).toMatchObject({ title: 'ședință', first: '2026-12-05 09:00', end: '2026-12-05 23:59' })
+  })
+})

@@ -769,7 +769,7 @@ export function useQuickDraft({ ctx, tokens: withTokens = false, initial }: Quic
   const project = projects.find((p) => p.id === draft.projectId)
   const resolved: NewIssue | { error: DraftError } = draft.issue ?? { error: draft.error ?? 'empty' }
   const error = draft.error
-  const schedule = { dueAt: draft.dueAt, allDay: draft.allDay, rrule: draft.rrule }
+  const schedule = { dueAt: draft.dueAt, allDay: draft.allDay, rrule: draft.rrule, pingEvery: draft.pingEvery, remindAt: draft.remindAt }
 
   const reset = () => { setText(''); setDesc(''); date.reset(); setManual({}) }
 
