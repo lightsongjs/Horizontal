@@ -211,6 +211,13 @@ Pro (HyperOS 3, Android 16).
   tratată. Dreptul la poze (`READ_MEDIA_IMAGES`, sub 33 `READ_EXTERNAL_STORAGE`) se
   cere o singură dată (`asked`); refuzat → fereastra merge ca înainte. Pe desktop
   nu e nevoie: omul lipește direct (Ctrl+V).
+  **Și în foaia rapidă din aplicație** (din `versionCode 22`, API 7):
+  `useScreenshotOffer` cere cutiei aceeași ofertă (`getScreenshot` → id +
+  miniatură JPEG), la deschiderea foii și la revenirea în aplicație; „Atașează
+  captura" stă deasupra rândului de controale, iar `takeScreenshot` dă octeții
+  (base64) ca `File` printre fișierele foii. `seen` e comun cu fereastra nativă
+  (`QuickAddActivity.shotSeen`/`markShotSeen`): trimisă fără ea → `skipScreenshot`.
+  Dreptul la poze îl cere doar fereastra nativă; fără el pagina nu oferă nimic.
 
 - **Foaia tichetului din widget** (`TicketActivity`): atingerea pe un rând o
   deschide nativ, peste ecranul de start (fără sesiune nativă → aplicația). Titlul

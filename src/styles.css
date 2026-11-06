@@ -5982,6 +5982,17 @@ body:has(.kb-sheet) .toast {
    dată și numele proiectului da, tăiate cu „…" — la 320px rândul încape
    întreg (verificat de `npm run test:layout`). */
 .qs-bar { display: flex; align-items: center; gap: 5px; margin-top: 12px; }
+/* Captura de ecran proaspătă (APK, `useScreenshotOffer`): miniatura + un
+   cuvânt, deasupra rândului de controale — în rând n-ar încăpea fără să taie
+   proiectul, ca în fereastra nativă. O atingere o pune lângă agrafă. */
+.qs-shot {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 10px; height: 40px; padding: 4px 12px 4px 4px;
+  border-radius: var(--r-s); background: var(--surface-2); color: var(--txt);
+  font-size: calc(13px * var(--text-scale)); font-weight: 600;
+}
+.qs-shot img { width: 32px; height: 32px; object-fit: cover; border-radius: var(--r-s); display: block; }
+.qs-shot:active, .qs-shot:focus-visible { background: var(--accent-soft); }
 /* În foaia de tichet rândul stă sub titlu, înaintea descrierii. */
 .edit-sheet .qs-bar { margin: 12px 0 14px; }
 .qs-due,

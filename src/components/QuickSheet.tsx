@@ -13,6 +13,7 @@ import { pickFiles } from '../lib/pickFiles'
 import { AttachButton, attachBlocked, filesNoun } from './SheetFiles'
 import { ProjectMark } from './ProjectMark'
 import { QuickDue } from './QuickDue'
+import { useScreenshotOffer } from './useScreenshotOffer'
 
 /**
  * Un buton din foaie nu ia focusul: titlul îl păstrează, deci tastatura nu
@@ -56,11 +57,21 @@ export function QuickSheet({ ctx }: { ctx: QuickCtx }) {
   }, [held])
 
   const toTitle = () => titleRef.current?.focus()
+  const shot = useScreenshotOffer()
+  const takeShot = async () => {
+    const file = await shot.take()
+    if (file) setHeld((prev) => [...prev, file])
+    else showToast('Captura nu s-a putut citi')
+    toTitle()
+  }
 
   const submit = async () => {
     const files = held
     const created = await q.submit()
     if (!created) return
+    // Oferta ignorată la trimitere nu se mai arată (ca în fereastra nativă);
+    // voalul și Back o păstrează.
+    if (shot.offer) shot.skip()
     // Pe calea obișnuită de închidere: efectul de istoric din `App.tsx`
     // desface intrarea foii, deci Back nu mai are ce închide după asta.
     closeSheet()
@@ -174,6 +185,13 @@ export function QuickSheet({ ctx }: { ctx: QuickCtx }) {
             onPicked={toTitle}
             onClear={() => q.setManual((m) => ({ ...m, due: { dueAt: null, allDay: true } }))}
           />
+        )}
+
+        {shot.offer && (
+          <button type="button" className="qs-shot" onPointerDown={keepFocus} onClick={() => void takeShot()}>
+            <img src={shot.offer.thumb} alt="" />
+            <span>Atașează captura</span>
+          </button>
         )}
 
         <div className="qs-bar">

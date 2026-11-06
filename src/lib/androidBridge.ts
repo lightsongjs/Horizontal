@@ -31,6 +31,12 @@ export const ANDROID_API_SHADE = 5
  * nu al paginii. Culoarea vine de la pagină: „fundalul" din rotiță nu e tema telefonului.
  */
 export const ANDROID_API_BARS = 6
+/**
+ * API 7: `getScreenshot` / `takeScreenshot` / `skipScreenshot`. Captura de ecran
+ * proaspătă oferită și în foaia rapidă din aplicație, ca în fereastra nativă —
+ * pe telefon captura nu ajunge în clipboard, deci un Ctrl+V n-are ce lipi.
+ */
+export const ANDROID_API_SHOTS = 7
 
 /** Ce îi trebuie ferestrei de quick add: proiectele în care se poate scrie și oamenii. */
 export interface CaptureData {
@@ -88,6 +94,12 @@ export interface HorizontalAndroidPlugin {
   setShade(o: { enabled: boolean }): Promise<{ enabled: boolean }>
   /** API 6. Culoarea fâșiilor de sub barele de sistem (`--bg`) și iconițe deschise pe `dark`. */
   setSystemBars(o: { color: string; dark: boolean }): Promise<void>
+  /** API 7. Captura din ultimele 10 min, încă neoferită; `{}` = nimic de oferit. */
+  getScreenshot(): Promise<{ id?: string; thumb?: string }>
+  /** API 7. Octeții capturii (base64); o marchează tratată. */
+  takeScreenshot(o: { id: string }): Promise<{ name: string; type: string; data: string }>
+  /** API 7. Sarcina a plecat fără ea: nu se mai oferă. */
+  skipScreenshot(o: { id: string }): Promise<void>
   addListener(event: 'reminderAction', fn: (a: DesktopAction) => void): Promise<Listener>
   addListener(event: 'changed', fn: () => void): Promise<Listener>
   addListener(event: 'widget', fn: (e: WidgetEvent) => void): Promise<Listener>
@@ -140,6 +152,9 @@ function buildBridge(cap: CapacitorGlobal): HorizontalAndroidPlugin {
     getShade: call('getShade'),
     setShade: call('setShade'),
     setSystemBars: call('setSystemBars'),
+    getScreenshot: call('getScreenshot'),
+    takeScreenshot: call('takeScreenshot'),
+    skipScreenshot: call('skipScreenshot'),
     async addListener(eventName: string, fn: (d: never) => void) {
       const callbackId = cap.nativeCallback(NAME, 'addListener', { eventName }, fn as (d: unknown) => void)
       return { remove: async () => { await cap.nativePromise(NAME, 'removeListener', { eventName, callbackId }) } }

@@ -120,6 +120,42 @@ class HorizontalAndroidPlugin : Plugin() {
         call.resolve()
     }
 
+    /**
+     * API 7. Captura de ecran proaspătă, pentru foaia rapidă din pagină: aceeași
+     * ofertă ca fereastra nativă (`screenshotOffer`, ultimele 10 min, o singură
+     * dată — `seen` e comun cu `QuickAddActivity`). Fără dreptul la poze → nimic;
+     * dreptul îl cere fereastra nativă, la prima ei deschidere.
+     */
+    @PluginMethod fun getScreenshot(call: PluginCall) {
+        if (!NativeFiles.photosGranted(context)) return call.resolve(JSObject())
+        Thread {
+            val now = System.currentTimeMillis()
+            val shot = ro.horizontal.app.core.screenshotOffer(NativeFiles.recentImages(context, now - SHOT_WINDOW_MS), now, QuickAddActivity.shotSeen(context))
+            val thumb = shot?.let { NativeFiles.thumbnail(context, NativeFiles.imageUri(it.id), 160) }
+            if (shot == null || thumb == null) return@Thread call.resolve(JSObject())
+            val jpg = java.io.ByteArrayOutputStream().also { thumb.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, it) }.toByteArray()
+            call.resolve(JSObject().put("id", shot.id.toString()).put("thumb", "data:image/jpeg;base64," + android.util.Base64.encodeToString(jpg, android.util.Base64.NO_WRAP)))
+        }.start()
+    }
+
+    /** API 7. Captura oferită, ca octeți (base64): pagina o pune printre fișierele foii. Se marchează tratată. */
+    @PluginMethod fun takeScreenshot(call: PluginCall) {
+        val id = call.getString("id")?.toLongOrNull() ?: return call.reject("captura lipsește")
+        QuickAddActivity.markShotSeen(context, id)
+        Thread {
+            val p = NativeFiles.copyIn(context, NativeFiles.imageUri(id)) ?: return@Thread call.reject("captura nu s-a putut citi")
+            val f = java.io.File(p.path)
+            val data = try { android.util.Base64.encodeToString(f.readBytes(), android.util.Base64.NO_WRAP) } finally { f.delete() }
+            call.resolve(JSObject().put("name", p.filename).put("type", p.contentType).put("data", data))
+        }.start()
+    }
+
+    /** API 7. Sarcina a plecat fără captura oferită: nu se mai oferă (nici în fereastra nativă). */
+    @PluginMethod fun skipScreenshot(call: PluginCall) {
+        call.getString("id")?.toLongOrNull()?.let { QuickAddActivity.markShotSeen(context, it) }
+        call.resolve()
+    }
+
     /** Proiectele în care se poate scrie și oamenii, pentru fereastra de quick add (`QuickAddActivity`). */
     @PluginMethod fun setCaptureData(call: PluginCall) {
         val d = CaptureJson.fromJson(call.data) ?: return call.reject("date de captură ilizibile")
@@ -224,7 +260,8 @@ class HorizontalAndroidPlugin : Plugin() {
         //    deci pagina poate trimite și ea doar ce e al meu (`ANDROID_API_MINE`).
         // 5: getShade / setShade și evenimentul „shade" (notificarea fixă din bară, D-185).
         // 6: setSystemBars (barele de sistem în culoarea paginii, D-324).
-        const val API = 6
+        // 7: getScreenshot / takeScreenshot / skipScreenshot (captura oferită în foaia rapidă din pagină).
+        const val API = 7
 
         data class Bars(val color: Int, val dark: Boolean)
         @Volatile private var bars: Bars? = null

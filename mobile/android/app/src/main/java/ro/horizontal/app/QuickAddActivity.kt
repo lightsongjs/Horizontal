@@ -158,7 +158,7 @@ class QuickAddActivity : AppCompatActivity() {
 
     private fun findShot() {
         if (!NativeFiles.photosGranted(this)) return
-        val seen = getSharedPreferences(SHOTS, 0).getLong("seen", -1L).takeIf { it >= 0 }
+        val seen = shotSeen(this)
         Thread {
             val now = System.currentTimeMillis()
             val shot = screenshotOffer(NativeFiles.recentImages(this, now - SHOT_WINDOW_MS), now, seen)
@@ -175,7 +175,7 @@ class QuickAddActivity : AppCompatActivity() {
     /** Captura a fost tratată (atașată, sau sarcina a plecat fără ea): nu se mai oferă. */
     private fun markShotSeen() {
         val s = offer ?: return
-        getSharedPreferences(SHOTS, 0).edit().putLong("seen", s.id).apply()
+        markShotSeen(this, s.id)
         offer = null; offerThumb = null
     }
 
@@ -528,7 +528,10 @@ class QuickAddActivity : AppCompatActivity() {
     companion object {
         private const val DRAFT = "hz-quick-draft"
         /** `asked` (dreptul la poze cerut o dată) și `seen` (ultima captură tratată); NU se golește cu ciorna. */
-        private const val SHOTS = "hz-quick-shots"
+        const val SHOTS = "hz-quick-shots"
+        /** Ultima captură tratată, comună cu foaia rapidă din pagină (`getScreenshot`): una oferită acolo nu mai apare aici. */
+        fun shotSeen(ctx: android.content.Context): Long? = ctx.getSharedPreferences(SHOTS, 0).getLong("seen", -1L).takeIf { it >= 0 }
+        fun markShotSeen(ctx: android.content.Context, id: Long) { ctx.getSharedPreferences(SHOTS, 0).edit().putLong("seen", id).apply() }
         const val EXTRA_SHARED_TEXT = "ro.horizontal.app.SHARED_TEXT"
         const val EXTRA_SHARED_SUBJECT = "ro.horizontal.app.SHARED_SUBJECT"
         fun clearDraft(ctx: Context) = ctx.getSharedPreferences(DRAFT, 0).edit().clear().apply()
