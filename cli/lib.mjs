@@ -34,6 +34,12 @@ export const COMMAND_ALIASES = {
   'delete-wave': 'wave-delete',
   'archive-wave': 'wave-archive',
   'unarchive-wave': 'wave-unarchive',
+  // În aplicație valul se cheamă sprint (2026-11-07); API-ul rămâne /api/waves.
+  sprints: 'waves',
+  'sprint-update': 'wave-update',
+  'sprint-delete': 'wave-delete',
+  'sprint-archive': 'wave-archive',
+  'sprint-unarchive': 'wave-unarchive',
   'create-project': 'project-create',
   thread: 'comments',
   me: 'whoami',
@@ -46,8 +52,11 @@ export const COMMANDS = [
   'list', 'mine', 'lookup', 'get', 'create', 'update', 'delete',
   'attach', 'attachments', 'comments', 'comment', 'whoami',
   'theme-create', 'theme-update', 'theme-delete', 'wave-create', 'wave-update',
-  'wave-delete', 'wave-archive', 'wave-unarchive',
+  'wave-delete', 'wave-archive', 'wave-unarchive', 'sprint-create',
 ]
+
+/** Flagurile cu nume de sprint duc la cele vechi: `--sprint 3` = `--wave 3`. */
+const FLAG_ALIASES = { sprint: 'wave' }
 
 function canonical(name) {
   const c = COMMAND_ALIASES[name] ?? name
@@ -77,6 +86,7 @@ export function parseArgs(argv) {
     let value
     const eq = name.indexOf('=')
     if (eq >= 0) { value = name.slice(eq + 1); name = name.slice(0, eq) }
+    name = FLAG_ALIASES[name] ?? name
     // Forma veche: `--create`, `--list`… fără valoare, în locul comenzii.
     if (cmd === null && value === undefined && canonical(name) && !BOOL_FLAGS.has(name) && name !== 'project') {
       cmd = canonical(name)
@@ -541,14 +551,14 @@ export function waveMoveTo(flags) {
 export function waveRemovalLines(data) {
   const lines = [data.deleted !== null ? `deleted: ${data.deleted}` : `archived: ${data.archived}`]
   if (data.moved?.length) lines.push(`moved → ${data.moveTo}: ${data.moved.join(', ')}`)
-  if (data.kept) lines.push(`kept: ${data.kept} gata (rămân în valul arhivat)`)
+  if (data.kept) lines.push(`kept: ${data.kept} gata (rămân în sprintul arhivat)`)
   return lines
 }
 
-/** „Val 1 / MVP" din { name, label }; null dacă n-are niciunul. */
+/** „III / Lansare" din { name, label }; un sprint cu dată (nume = etichetă) o dată; null dacă n-are niciunul. */
 export function waveLabel(w) {
   if (!w) return null
-  return [w.name, w.label].filter(Boolean).join(' / ') || null
+  return [...new Set([w.name, w.label].filter(Boolean))].join(' / ') || null
 }
 
 /** Un rând de `tk list`, la fel ca în ai-client. */

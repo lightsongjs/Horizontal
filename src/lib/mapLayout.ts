@@ -24,6 +24,7 @@
 
 import { deriveState, indexById } from './engine'
 import { openObstacles } from './obstacles'
+import { waveName } from './waveBar'
 import type { Issue, IssueState, Obstacle, ObstacleLink, ObstacleState, Wave } from './types'
 
 export const NODE_W = 196
@@ -250,7 +251,7 @@ export function layoutMap({ issues, obstacles, links, waves }: MapLayoutInput): 
     const cols = waveIssueIds.map((id) => issueCol[id])
     const x1 = xOf(Math.min(...cols)) - 20
     const x2 = xOf(Math.max(...cols)) + NODE_W + 20
-    bands.push({ x1, x2, label: w.name })
+    bands.push({ x1, x2, label: waveName(w) })
   }
 
   const maxCol = sortedCols.length ? Math.max(...sortedCols) : 0

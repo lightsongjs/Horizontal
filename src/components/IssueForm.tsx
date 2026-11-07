@@ -38,7 +38,7 @@ import type { Issue, TestScenario } from '../lib/types'
 import { pinPatch } from '../lib/pinned'
 import { Icon } from './Icon'
 import { mirrorLinkDown, mirrorLinkHover } from './TitleText'
-import { waveLabel } from '../lib/waveBar'
+import { waveLabel, waveName } from '../lib/waveBar'
 import { displayIssueId, isTempIssueId } from '../lib/issueId'
 import { repository } from '../data'
 import { errorMessage } from '../lib/errorMessage'
@@ -1113,7 +1113,7 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
       if (dependants.length > 0) {
         const required = Math.min(...dependants.map((d) => d.wave))
         if (n !== required) {
-          const names = dependants.map((d) => `„${d.title}" (val ${d.wave})`).join(', ')
+          const names = dependants.map((d) => `„${d.title}" (sprint ${d.wave})`).join(', ')
           setWaveError(`„${title}" este o dependență a ${names}. Nu poți muta tichetul.`)
           return false
         }
@@ -1200,7 +1200,7 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
   const waveObj = waves.find((w) => w.number === wave)
   // Același text ca în bandă: eticheta valului, „Val III" fără ea, „Notițe"
   // pentru valul 0 — niciodată numărul brut.
-  const waveText = (w: typeof waveObj) => !w ? `Val ${wave}` : w.number === 0 ? (w.label.trim() || 'Notițe') : waveLabel(w)
+  const waveText = (w: typeof waveObj) => !w ? `Sprint ${wave}` : w.number === 0 ? (w.label.trim() || 'Notițe') : waveLabel(w)
   const waveChipText = waveText(waveObj)
 
   /** Săgețile ←/→ se mută între jetoanele rândului (rolul `toolbar`). */
@@ -1252,7 +1252,7 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
           className={`fc-mi${wave === w.number ? ' on' : ''}`}
           onClick={() => { if (chooseWave(w.number)) closePop(true) }}
         >
-          <span className="fc-mi-r">{w.number === 0 ? '' : w.name}</span>
+          <span className="fc-mi-r">{w.number === 0 ? '' : waveName(w)}</span>
           <span className="fc-mi-t">{waveText(w)}</span>
           {w.number === activeWave && <span className="fc-mi-hint">activ</span>}
           {wave === w.number && <Icon name="check" size={14} />}
@@ -1363,7 +1363,7 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
 
   const POPS = {
     date: { role: 'dialog', label: 'Scadență', body: datePop },
-    wave: { role: 'menu', label: 'Val', body: waveMenu },
+    wave: { role: 'menu', label: 'Sprint', body: waveMenu },
     theme: { role: 'menu', label: 'Temă', body: themeMenu },
     who: { role: 'dialog', label: 'Persoană', body: whoPop },
     add: { role: 'menu', label: 'Adaugă', body: addMenu },
@@ -1449,8 +1449,8 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
               {...chipProps('wave', first)}
               disabled={!canWrite}
               className={`fc-chip${isOpen('wave')}`}
-              aria-label={`Val: ${waveObj?.name ?? wave}`}
-              title={waveObj?.name}
+              aria-label={`Sprint: ${waveObj ? waveName(waveObj) : wave}`}
+              title={waveObj ? waveName(waveObj) : undefined}
             >
               <Icon name="wave" size={14} />
               {waveChipText}

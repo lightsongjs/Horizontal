@@ -1968,7 +1968,7 @@ const actionMenu = (level) => `<div class="am-menu" role="menu" style="left:8px;
     ? [['Azi', 'a'], ['Mâine', 'm'], ['Luni', 'l'], ['+1 săptămână', 's'], ['Alege din calendar…', 'c'], ['Zi întreagă (scoate ora)', 'z'], ['Fără dată', '-']].map(([l, k], i) => amItem(l, k, { cur: i === 0 })).join('') +
       `<div class="am-time">Oră: scrie cifrele (<kbd>1530</kbd>, <kbd>9</kbd>) + <kbd>Enter</kbd><b class="am-time-v">15:30</b></div>`
     : amItem('Dată și oră', 't', { sub: true, cur: true }) + amItem('Mâine', 'D') + amItem('Fără dată (scoate data, ora, mementoul)', '-') +
-      amItem('Urgent', '!') + amItem('Fixează sus', 'F') + amItem('Val', 'w', { sub: true }) +
+      amItem('Urgent', '!') + amItem('Fixează sus', 'F') + amItem('Sprint', 'w', { sub: true }) +
       amItem('Mută în proiect', 'M', { sub: true, off: 'doar pe un tichet' }) + amItem('Pasează', '@', { off: 'doar pe un tichet' }) +
       amItem('Redenumește', 'r', { off: 'doar pe un tichet' }) + amItem('Gata', 'x') + amItem('Copiază linkul', 'y', { off: 'doar pe un tichet' }) +
       amItem('Șterge (u anulează)', 'Del', { danger: true })) +

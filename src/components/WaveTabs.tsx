@@ -283,7 +283,7 @@ function Band({
         ref={scrollRef}
         className={`wb-pills${fade.l ? ' fade-l' : ''}${fade.r ? ' fade-r' : ''}`}
         role="tablist"
-        aria-label="Valuri"
+        aria-label="Sprinturi"
         onScroll={measure}
         onKeyDown={onKeyDown}
       >
@@ -319,8 +319,8 @@ function Band({
           <button
             type="button"
             className="wb-pill wb-add"
-            aria-label="Val nou"
-            title="Valuri: adaugă, redenumește, mută (V)"
+            aria-label="Sprint nou"
+            title="Sprinturi: adaugă, redenumește, mută (V)"
             onClick={() => onManage('new')}
           >
             <Icon name="add" size={16} />
@@ -415,7 +415,7 @@ function OverflowPill({ waves, activeWave, open, total, frameRef, onChoose }: {
           frameRef={frameRef}
           sheet={false}
           role="menu"
-          label="Alte valuri"
+          label="Alte sprinturi"
           arrows="both"
           className="wb-over-menu"
           onClose={close}
@@ -613,11 +613,11 @@ function MoreMenu({ modes, band, narrow, canWrite }: {
               <div className="wb-hr" role="separator" />
               {!band && (
                 <button type="button" role="menuitem" className="fc-mi" onClick={() => { close(false); openWaveManage('new') }}>
-                  <Icon name="add" size={16} /><span className="fc-mi-t">Val nou…</span>
+                  <Icon name="add" size={16} /><span className="fc-mi-t">Sprint nou…</span>
                 </button>
               )}
               <button type="button" role="menuitem" className="fc-mi" onClick={() => { close(false); openWaveManage() }}>
-                <Icon name="settings" size={16} /><span className="fc-mi-t">Gestionează valurile…</span>
+                <Icon name="settings" size={16} /><span className="fc-mi-t">Gestionează sprinturile…</span>
                 {!narrow && <kbd className="wb-kbd">V</kbd>}
               </button>
             </>

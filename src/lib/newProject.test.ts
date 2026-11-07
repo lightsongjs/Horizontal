@@ -50,10 +50,10 @@ describe('buildNewProject / initialWaves', () => {
     })
     expect(buildNewProject({ name: 'X', prefix: 'X', accent: PROJECT_ACCENTS[2], type: 'work' })).toMatchObject({ accent: '#ffb454', type: 'work' })
   })
-  it('Notițele (0) și „Val 1 / MVP” (1)', () => {
+  it('Notițele (0) și „Backlog” (1)', () => {
     expect(initialWaves('tur')).toEqual([
       { projectId: 'tur', number: 0, name: 'Scratchpad', label: '', position: 0 },
-      { projectId: 'tur', number: 1, name: 'Val 1', label: 'MVP', position: 1 },
+      { projectId: 'tur', number: 1, name: 'Backlog', label: 'Backlog', position: 1 },
     ])
   })
 })

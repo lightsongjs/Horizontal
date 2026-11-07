@@ -193,7 +193,7 @@ describe('supabaseRepository', () => {
     expect(issues.find((i) => i.id === 'P-02')!.deps).toEqual(['P-01'])
   })
 
-  it('createProject inserts the project with a Scratchpad + Val 1 wave', async () => {
+  it('createProject inserts the project with a Scratchpad + Backlog wave', async () => {
     const repo = createSupabaseRepository()
     const p = await repo.createProject({ name: 'Turism', description: 'd', prefix: 'TUR' })
 
@@ -201,7 +201,7 @@ describe('supabaseRepository', () => {
     expect(fakeDb.tables.projects[0]).toMatchObject({ id: 'tur', prefix: 'TUR', current_wave: 1 })
     expect(fakeDb.tables.waves).toEqual([
       { project_id: 'tur', number: 0, name: 'Scratchpad', label: '', position: 0 },
-      { project_id: 'tur', number: 1, name: 'Val 1', label: 'MVP', position: 1 },
+      { project_id: 'tur', number: 1, name: 'Backlog', label: 'Backlog', position: 1 },
     ])
   })
 

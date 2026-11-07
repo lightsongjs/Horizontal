@@ -234,7 +234,7 @@ def wave_band(mode_chips='', more_dot=False):
             '<button class="wb-pill" role="tab"><span class="lb">Dashboard &amp; use…</span><span class="n">2</span></button>'
             '<button class="wb-pill" role="tab"><span class="lb">Polish</span><span class="n">1</span></button>'
             '<button class="wb-pill" role="tab"><span class="lb">Val IV</span><span class="n">0</span></button>'
-            '<button class="wb-pill wb-add" aria-label="Val nou">%s</button>%s'
+            '<button class="wb-pill wb-add" aria-label="Sprint nou">%s</button>%s'
             '</div><span class="wb-more-wrap"><button class="wb-more" aria-label="Vizualizare">%s%s</button></span></div>'
             % (ic('notepad-text', 16), ic('plus', 16), mode_chips, ic('ellipsis', 18),
                '<span class="dot"></span>' if more_dot else ''))
@@ -253,7 +253,7 @@ WAVES = wave_band()
 WAVE_GATE = (
     '<div class="wave-gate"><div class="wave-gate-top">%s'
     '<span class="wave-gate-n">1</span>'
-    '<span class="wave-gate-l">obstacol deschis în acest val</span>'
+    '<span class="wave-gate-l">obstacol deschis în acest sprint</span>'
     '<span class="wave-gate-c">1 la alții</span></div>'
     '<div class="obst-list">'
     '<button class="obst-row"><span class="obst-row-id">TUR-B1</span>'
@@ -266,7 +266,7 @@ WAVE_GATE = (
 )
 
 ORDINE = WAVES + WAVE_GATE + ''.join([
-    layer(0, '1', 'Începe aici', 'Nu depinde de nimic din acest val · 1 tichete',
+    layer(0, '1', 'Începe aici', 'Nu depinde de nimic din acest sprint · 1 tichete',
           tk('TUR-01', 'Email', T['email'], 'Adresă email nouă pentru proiect', done=True), now=True),
     layer(1, '2', 'Layer 2', 'Depinde de layer 1 · 2 tichete',
           tk('TUR-02', 'Supabase / DB', T['db'], 'Cont Supabase (DB + Auth)',

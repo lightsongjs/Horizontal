@@ -6,6 +6,7 @@
 // două ori ar fi lăsat API-ul să facă proiecte pe care aplicația nu le-ar face.
 
 import type { Project, Wave } from './types'
+import { BACKLOG } from './sprints'
 
 /** Paleta din formular; prima e și culoarea implicită. */
 export const PROJECT_ACCENTS = ['#0EA5E9', '#3ecf8e', '#ffb454', '#a06eff', '#ff6b6b', '#46d1d9'] as const
@@ -68,10 +69,14 @@ export function buildNewProject(input: NewProjectInput): Project {
   }
 }
 
-/** Valurile cu care pornește orice proiect: Notițele (0) și „Val 1 / MVP” (1, cel activ). */
+/**
+ * Valurile cu care pornește orice proiect: Notițele (0) și „Backlog” (1, cel
+ * activ) — sprintul cu tot ce nu e programat (cerința omului, 2026-11-07;
+ * înainte „Val 1 / MVP”). Sprinturile cu dată se fac apoi din `lib/sprints`.
+ */
 export function initialWaves(projectId: string): Wave[] {
   return [
     { projectId, number: 0, name: 'Scratchpad', label: '', position: 0 },
-    { projectId, number: 1, name: 'Val 1', label: 'MVP', position: 1 },
+    { projectId, number: 1, name: BACKLOG, label: BACKLOG, position: 1 },
   ]
 }

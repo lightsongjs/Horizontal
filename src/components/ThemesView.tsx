@@ -61,9 +61,9 @@ export function ThemesView() {
       {chips}
       {!narrow && (grid ? (
         <>
-          <button type="button" className="wb-mode" onClick={() => setGrid(false)} title="Înapoi la lista temelor" aria-label="Oprește modul Valuri">
+          <button type="button" className="wb-mode" onClick={() => setGrid(false)} title="Înapoi la lista temelor" aria-label="Oprește modul Sprinturi">
             <Icon name="waveGrid" size={14} />
-            <span>Valuri</span>
+            <span>Sprinturi</span>
             <span className="x" aria-hidden="true"><Icon name="close" size={12} /></span>
           </button>
           <GridMenu
@@ -75,8 +75,8 @@ export function ThemesView() {
           />
         </>
       ) : (
-        <button type="button" className="chip wg-toggle" onClick={() => setGrid(true)} title="Teme pe rânduri, valuri pe coloane">
-          <Icon name="waveGrid" size={14} /> Valuri
+        <button type="button" className="chip wg-toggle" onClick={() => setGrid(true)} title="Teme pe rânduri, sprinturi pe coloane">
+          <Icon name="waveGrid" size={14} /> Sprinturi
         </button>
       ))}
     </div>
@@ -235,7 +235,7 @@ function GridMenu({ hideDone, onToggleHideDone, onExpandAll, onCollapseAll, canW
             <>
               <div className="wb-hr" role="separator" />
               <button type="button" role="menuitem" className="fc-mi" onClick={() => { close(false); openWaveManage() }}>
-                <Icon name="settings" size={16} /><span className="fc-mi-t">Gestionează valurile…</span>
+                <Icon name="settings" size={16} /><span className="fc-mi-t">Gestionează sprinturile…</span>
               </button>
             </>
           )}

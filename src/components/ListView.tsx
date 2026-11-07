@@ -143,13 +143,13 @@ export function ListView() {
         {!waves.some((w) => w.number !== 0) && orderedLayers.length === 0 ? (
           <NoWaves />
         ) : orderedLayers.length === 0 ? (
-          <p className="empty">Niciun tichet în acest val. Apasă + ca să adaugi unul.</p>
+          <p className="empty">Niciun tichet în acest sprint. Apasă + ca să adaugi unul.</p>
         ) : visibleLayers.length === 0 ? (
           <p className="empty">
             {personFilter === 'none'
-              ? 'Niciun tichet nepasat în acest val.'
+              ? 'Niciun tichet nepasat în acest sprint.'
               : filteredName
-                ? `Niciun tichet pasat lui ${filteredName} în acest val.`
+                ? `Niciun tichet pasat lui ${filteredName} în acest sprint.`
                 : 'Niciun tichet pentru acest filtru.'}
           </p>
         ) : (

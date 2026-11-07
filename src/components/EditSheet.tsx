@@ -326,7 +326,7 @@ function EditBody({ issue }: { issue: Issue }) {
               type="button"
               className="qs-ico qs-more"
               aria-label="Formularul complet"
-              title="Formularul complet: temă, dependențe, val, fir"
+              title="Formularul complet: temă, dependențe, sprint, fir"
               onPointerDown={keepFocus}
               onClick={() => void toFull()}
             >

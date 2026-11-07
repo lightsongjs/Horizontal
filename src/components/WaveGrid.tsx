@@ -79,7 +79,7 @@ export function WaveGrid({ filter, hideDone, collapsed, onToggleGroup }: {
 
   return (
     <div className="wg">
-      <div className="wg-scroll" style={style} role="table" aria-label="Tichetele pe valuri">
+      <div className="wg-scroll" style={style} role="table" aria-label="Tichetele pe sprinturi">
         <div className="wg-in">
           <div className="wg-r wg-head" role="row">
             <div className="wg-t" role="columnheader">Tichet</div>
@@ -138,7 +138,7 @@ export function WaveGrid({ filter, hideDone, collapsed, onToggleGroup }: {
                       {warn && (
                         <span
                           className="wg-dep"
-                          title={`Depinde de ${displayIssueId(warn.id)} (${byId[warn.id]?.title ?? ''}), care e ${warn.wave === 0 ? 'încă în Notițe' : `în ${warnWave ? waveTitle(warnWave) : 'alt val'}`}`}
+                          title={`Depinde de ${displayIssueId(warn.id)} (${byId[warn.id]?.title ?? ''}), care e ${warn.wave === 0 ? 'încă în Notițe' : `în ${warnWave ? waveTitle(warnWave) : 'alt sprint'}`}`}
                         >
                           <Icon name="depLink" size={13} />
                           cere <b>{displayIssueId(warn.id)}</b> · {warnWave ? waveTitle(warnWave) : '?'}
@@ -180,7 +180,7 @@ export function WaveGrid({ filter, hideDone, collapsed, onToggleGroup }: {
       {vim && !dockedIssueId && (
         <div className="wg-hint" aria-hidden="true">
           <span><kbd>j</kbd><kbd>k</kbd>rând</span>
-          <span><kbd>h</kbd><kbd>l</kbd>val anterior / următor</span>
+          <span><kbd>h</kbd><kbd>l</kbd>sprint anterior / următor</span>
           <span><kbd>0</kbd><kbd>$</kbd>Notițe / ultimul</span>
           <span><kbd>Enter</kbd>deschide</span>
           <span><kbd>x</kbd>gata</span>

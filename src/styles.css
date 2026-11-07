@@ -1947,7 +1947,11 @@ button.we-del:hover { color: var(--blocked); background: var(--blocked-soft); }
   gap: 6px;
   flex-shrink: 0;
 }
-.we-add:disabled { opacity: 0.5; }
+.we-add:disabled, .we-add.busy { opacity: 0.5; }
+.we-add.busy { pointer-events: none; }
+/* Sprint nou = un buton-calendar (NativePick) + o notă despre nume și ordine. */
+.we-new { flex-wrap: wrap; }
+.we-hint { flex: 1 1 180px; min-width: 0; color: var(--txt-faint); font-size: calc(12px * var(--text-scale)); line-height: 1.35; }
 .wave-del {
   flex-shrink: 0;
   background: var(--surface-2);

@@ -400,11 +400,11 @@ export function createSupabaseRepository(): Repository {
       }))
     },
 
-    async createWave(projectId: string, name: string, label = '') {
+    async createWave(projectId: string, name: string, label = '', at?: number) {
       const { data: rows, error: exErr } = await db.from('waves').select('number, position').eq('project_id', projectId)
       if (exErr) throw exErr
       const number = (rows ?? []).reduce((m, w) => Math.max(m, w.number), 0) + 1
-      const position = (rows ?? []).reduce((m, w) => Math.max(m, w.position), -1) + 1
+      const position = at ?? (rows ?? []).reduce((m, w) => Math.max(m, w.position), -1) + 1
       const wave: Wave = { projectId, number, name, label, position }
       const { error } = await db.from('waves').insert({ project_id: projectId, number, name, label, position })
       if (error) throw error

@@ -191,6 +191,35 @@ describe('POST / PATCH /api/waves', () => {
     expect(await res.json()).toEqual({ number: 4, name: 'III', label: 'Pilot', position: 3 })
     expect(calls.find(c => c.method === 'POST')!.body).toMatchObject({ project_id: 'cc', number: 4, position: 3 })
   })
+  it('sprint din dată: numele = eticheta = „dd/mm/yy”, locul în ordinea datei', async () => {
+    const calls = mockFetch([
+      projectRoute,
+      route('/rest/v1/waves', [], { method: 'POST' }),
+      route('/rest/v1/waves?project_id=eq.cc&number=eq.', [{}], { method: 'PATCH' }),
+      route('/rest/v1/waves?', [
+        { number: 0, name: 'Scratchpad', label: '', position: 0 },
+        { number: 1, name: 'Backlog', label: 'Backlog', position: 1 },
+        { number: 2, name: '12/11/26', label: '12/11/26', position: 2 },
+        { number: 3, name: '26/11/26', label: '26/11/26', position: 3 },
+      ]),
+    ])
+    const res = await waves.onRequestPost(ctx('/api/waves', { method: 'POST', body: { projectId: 'cc', date: '2026-11-19' } }))
+    expect(res.status).toBe(201)
+    expect(await res.json()).toEqual({ number: 4, name: '19/11/26', label: '19/11/26', position: 3 })
+    const patch = calls.find(c => c.method === 'PATCH')!
+    expect(patch.url).toContain('number=eq.3')
+    expect(patch.body).toEqual({ position: 4 })
+    expect(calls.findIndex(c => c.method === 'PATCH')).toBeLessThan(calls.findIndex(c => c.method === 'POST'))
+  })
+  it('sprint din dată: dată invalidă → 400, dată deja folosită → 409', async () => {
+    mockFetch([projectRoute, route('/rest/v1/waves?', [{ number: 2, name: '19/11/26', label: '19/11/26', position: 2 }])])
+    const bad = await waves.onRequestPost(ctx('/api/waves', { method: 'POST', body: { projectId: 'cc', date: '19.11.2026' } }))
+    expect(bad.status).toBe(400)
+    expect(await bad.json()).toMatchObject({ error: 'invalid_date' })
+    const dup = await waves.onRequestPost(ctx('/api/waves', { method: 'POST', body: { projectId: 'cc', date: '2026-11-19' } }))
+    expect(dup.status).toBe(409)
+    expect(await dup.json()).toMatchObject({ error: 'sprint_exists', number: 2 })
+  })
   it('redenumește un val existent; 404 pe unul necunoscut', async () => {
     mockFetch([projectRoute, route('/rest/v1/waves?project_id=eq.cc&number=eq.2', [{ number: 2, name: 'II', label: 'Nou', position: 2 }], { method: 'PATCH' })])
     const ok = await waveOne.onRequestPatch(ctx('/api/waves/2?project=cc', { method: 'PATCH', params: { number: '2' }, body: { label: 'Nou' } }))

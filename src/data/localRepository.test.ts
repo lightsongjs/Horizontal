@@ -29,14 +29,14 @@ describe('localRepository', () => {
     expect(projects.map((p) => p.id)).toContain('demo')
   })
 
-  it('createProject adds the project with a Scratchpad + Val 1 wave', async () => {
+  it('createProject adds the project with a Scratchpad + Backlog wave', async () => {
     const repo = createLocalRepository()
     const p = await repo.createProject({ name: 'Test', description: '', prefix: 'TST' })
     expect(p.id).toBe('tst')
     expect(p.currentWave).toBe(1)
     expect(await repo.listWaves('tst')).toEqual([
       { projectId: 'tst', number: 0, name: 'Scratchpad', label: '', position: 0, archivedAt: null },
-      { projectId: 'tst', number: 1, name: 'Val 1', label: 'MVP', position: 1, archivedAt: null },
+      { projectId: 'tst', number: 1, name: 'Backlog', label: 'Backlog', position: 1, archivedAt: null },
     ])
   })
 
@@ -56,6 +56,9 @@ describe('localRepository', () => {
 
     const w2 = await repo.createWave('tst', 'Val 2', 'Next')
     expect(w2).toMatchObject({ number: 2, position: 2, name: 'Val 2', label: 'Next' })
+    // Un sprint cu dată își primește locul (lib/sprints), nu coada.
+    const s = await repo.createWave('tst', '19/11/26', '19/11/26', 2)
+    expect(s).toMatchObject({ number: 3, position: 2, name: '19/11/26', label: '19/11/26' })
 
     await repo.updateWave('tst', 2, { name: 'Sprint 2' })
     expect((await repo.listWaves('tst')).find((w) => w.number === 2)!.name).toBe('Sprint 2')

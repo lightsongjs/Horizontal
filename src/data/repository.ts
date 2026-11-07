@@ -85,14 +85,15 @@ export interface DueRange {
 
 export interface Repository {
   listProjects(): Promise<Project[]>
-  /** Creates the project and its first wave ("Val 1"). */
+  /** Creates the project with its Scratchpad (0) and „Backlog" (1) waves. */
   createProject(input: NewProject): Promise<Project>
   updateProject(id: string, patch: Partial<Pick<Project, 'name' | 'description' | 'accent' | 'type' | 'remindersOnly'>>): Promise<Project>
   /** Deletes the project and all its waves, themes, and issues. */
   deleteProject(id: string): Promise<void>
 
   listWaves(projectId: string): Promise<Wave[]>
-  createWave(projectId: string, name: string, label?: string): Promise<Wave>
+  /** `position` lipsă = ultimul loc; dată = locul ales (un sprint cu dată, `lib/sprints`). */
+  createWave(projectId: string, name: string, label?: string, position?: number): Promise<Wave>
   updateWave(projectId: string, number: number, patch: Partial<Pick<Wave, 'name' | 'label' | 'position' | 'archivedAt'>>): Promise<Wave>
   deleteWave(projectId: string, number: number): Promise<void>
 

@@ -287,6 +287,31 @@ separată; fără operații între panouri, nicio scurtătură veche schimbată.
   (vitest); `test:nav` „Panoul dublu" cap-coadă; `test:layout` (gazda la
   1200/1366/1920, bara panoului la 420–844).
 
+## Sprinturile (valurile, în interfață)
+
+Cerința omului, 2026-11-07: în aplicație nu mai scrie „val”, ci **sprint**
+(taburi, foaia „Sprinturi”, meniuri, mesaje, panoul de taste, ghidul `tk`).
+**Numele interne rămân** — tabela `waves`, câmpul `wave`, `/api/waves`,
+componentele `Wave*` —, ca nimic să nu se strice. Un text nou vizibil spune
+„sprint”; în cod și în comentarii „val” rămâne corect.
+
+- Proiect nou = Notițele (0) + **Backlog** (1, activ), `initialWaves`.
+- **Sprint nou = o dată** (foaia „Sprinturi”: butonul-calendar `NativePick`;
+  `tk sprint-create --date AAAA-LL-ZZ`; `POST /api/waves { date }`). Numele și
+  eticheta sunt data, `dd/mm/yy` (`sprintName`, `src/lib/sprints.ts`, pur, cu
+  teste); aceeași dată de două ori e refuzată.
+- **Ordinea rămâne `position`** (banda, grila, API-ul, tragerea o citesc pe
+  ea). Data decide doar unde intră un sprint nou: înaintea primului sprint cu
+  dată mai târzie, iar cele de după se dau cu un loc (`placeSprint`); fără
+  unul, imediat după ultimul sprint cu dată (ms are Backlog-ul la coadă: un
+  sprint nou intră înaintea lui, nu după); fără niciun sprint cu dată, la
+  coadă. Backlog-ul și valurile fără dată își păstrează ordinea, deci la un
+  proiect nou Backlog-ul rămâne primul, lângă Notițe. Tragerea de mână poate
+  strica ordinea datelor, deliberat — e alegerea omului.
+- `tk`: aliasuri `sprints`, `sprint-update/-delete/-archive/-unarchive`,
+  `--sprint` = `--wave`; comenzile vechi merg (`wave-create "Etichetă"` face
+  încă un val cu cifră romană, fără dată).
+
 ## Banda de valuri („Listă" și „Cards")
 
 Mockup aprobat: `design/wave-bar/index.html`. Un singur rând deasupra listei:

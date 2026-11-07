@@ -8,6 +8,7 @@ import { Attachments } from './Attachments'
 import { Icon } from './Icon'
 import { MarkdownView } from './MarkdownView'
 import { TitleText, openTitleLink } from './TitleText'
+import { waveName as shownWaveName } from '../lib/waveBar'
 
 export function IssueSheet({ issueId }: { issueId: string }) {
   const { byId, waves, archivedWaves, unblockedBy, themeOf, assignees, myAssigneeId, projects, updateIssue } = useHorizontal()
@@ -32,7 +33,7 @@ export function IssueSheet({ issueId }: { issueId: string }) {
   }
   const prefixes = projects.map((p) => p.prefix)
 
-  const waveName = (n: number) => (waves.find((w) => w.number === n) ?? archivedWaves.find((w) => w.number === n))?.name ?? `Val ${n}`
+  const waveName = (n: number) => { const w = waves.find((x) => x.number === n) ?? archivedWaves.find((x) => x.number === n); return w ? shownWaveName(w) : `Sprint ${n}` }
   const theme = it.theme ? themeOf(it.theme) : undefined
   const deps = it.deps ?? []
   const permits = unblockedBy(issueId)

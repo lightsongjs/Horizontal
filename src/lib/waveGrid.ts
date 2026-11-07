@@ -9,6 +9,7 @@
  */
 import type { Issue, Theme, Wave } from './types'
 import { isTempIssueId } from './issueId'
+import { waveName } from './waveBar'
 
 /** Ordinea naturală a numelor: „Pasul 2” înaintea lui „Pasul 10”; fără majuscule, ș după s (româna). */
 export function naturalCompare(a: string, b: string): number {
@@ -127,5 +128,5 @@ export function openCounts(issues: Issue[]): Map<number, number> {
 
 /** Numele scurt al valului în antet: „Notițe” pentru 0, altfel numele lui („Val 1”, „II”). */
 export function waveTitle(w: Wave): string {
-  return w.number === 0 ? (w.label.trim() || 'Notițe') : w.name
+  return w.number === 0 ? (w.label.trim() || 'Notițe') : waveName(w)
 }

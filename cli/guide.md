@@ -40,9 +40,10 @@ Codul de ieșire e 1 la orice refuz sau eroare.
 tk projects
 # kata  KATA  Katalist  [work]          (id  prefix  nume  [tip])
 
-tk waves
+tk sprints                              # = tk waves
 # 0  Scratchpad
-# 1  I / MVP                            (număr  nume / etichetă, în ordinea coloanelor)
+# 1  Backlog
+# 2  19/11/26                           (număr  nume / etichetă, în ordinea coloanelor)
 
 tk themes
 # pasul-2-admiterea  #F06B1F  Pasul 2: Admiterea
@@ -52,12 +53,12 @@ tk assignees
 # 5b1c…       Ana  (fără cont)          (poate primi o pasă, nu poate fi autor)
 
 tk list                                 # tot proiectul
-tk list --wave 1                        # un val
+tk list --sprint 1                      # un sprint (= --wave 1)
 tk list --theme pasul-2                 # o temă;  --theme "" = fără temă
 tk list --done false                    # doar deschise (--done = doar bifate)
 tk list --assignee Ionut                # pasate lui Ionut;  --assignee "" = nepasate
 # KATA-12  [wave 1 · I / MVP]  #auth  Titlul  ← KATA-10,KATA-11  (due 2026-10-23T21:00:00.000Z)  !
-#   ✓ după val = bifat;  ← = dependențele;  ! = urgent
+#   ✓ după sprint = bifat;  ← = dependențele;  ! = urgent
 #   --json: id, projectId, title, wave, done, theme, assigneeId, deps, dueAt, allDay, urgent
 
 tk mine                                 # „Ale mele”: pasate ție (tk whoami), din TOATE
@@ -86,8 +87,8 @@ tk attachments KATA-03
 ```bash
 tk create "Auth flow" --deps KATA-03,KATA-04 --desc "…"
 # → KATA-05   sau   duplicate: KATA-03
-#   Fără --wave intră în valul ACTIV al proiectului (ca o captură din aplicație).
-#   Opțiuni: --wave N  --theme <cheie>  --assignee <nume|id>
+#   Fără --sprint intră în sprintul ACTIV al proiectului (ca o captură din aplicație).
+#   Opțiuni: --sprint N (= --wave N)  --theme <cheie>  --assignee <nume|id>
 #            --due "2026-10-24"  /  --due "2026-10-24 15:30"  --urgent
 #            (--notes există, dar e câmpul vechi — discuția merge în fir, `tk comment`)
 
@@ -127,17 +128,21 @@ tk theme-update pasul-2-admiterea --name "Pasul 2: Admis" --color "#1F9D60"
 tk theme-delete pasul-2-admiterea       # → deleted: pasul-2-admiterea
 # → theme_in_use: 2 (KATA-03, KATA-07)   dacă o poartă tichete: nimic șters
 tk theme-delete pasul-2-admiterea --force   # → deleted: …  +  cleared: KATA-03, KATA-07
-tk wave-create "Pilot"                  # → 4  IV / Pilot   (--name "Nu facem" pentru alt nume)
-tk wave-update 2 --label "Pilot ~110 firme"
-tk wave-delete 1                        # → wave_in_use: 2 deschise (KATA-03, KATA-07)  nimic schimbat
-tk wave-delete 1 --move-to 2            # → archived: 1 / moved → 2: KATA-03, KATA-07 / kept: 4 gata
-tk wave-delete 5                        # → deleted: 5   (val gol: se șterge de tot)
-tk wave-archive 3 [--move-to 0]         # arhivează și un val gol;  tk wave-unarchive 3 îl readuce
+tk sprint-create --date 2026-11-19      # → 4  19/11/26   (sprint_exists: <n> dacă data e luată)
+tk sprint-update 2 --label "Pilot ~110 firme"
+tk sprint-delete 1                      # → wave_in_use: 2 deschise (KATA-03, KATA-07)  nimic schimbat
+tk sprint-delete 1 --move-to 2          # → archived: 1 / moved → 2: KATA-03, KATA-07 / kept: 4 gata
+tk sprint-delete 5                      # → deleted: 5   (sprint gol: se șterge de tot)
+tk sprint-archive 3 [--move-to 0]       # arhivează și un sprint gol;  tk sprint-unarchive 3 îl readuce
 ```
 
 Forma veche, din ai-client, merge în continuare: `tk --create --title "…" --wave 1`,
 `tk --get --id KATA-03`, `tk --attach --id KATA-03 --file a.png --file b.png`,
 `tk --update --id KATA-03 --done true`, `--create-theme`, `--update-wave --number 2`.
+Comenzile cu „wave” merg și ele (`tk waves`, `wave-create`, `wave-update`,
+`wave-delete`, `wave-archive`, `wave-unarchive`, `--wave`) — sunt aceleași ca
+cele cu „sprint”; doar `wave-create "Etichetă"` face încă un val cu cifră
+romană, fără dată.
 
 ## Regulile care contează
 
@@ -146,14 +151,18 @@ Forma veche, din ai-client, merge în continuare: `tk --create --title "…" --w
 Folosește **id-ul scurt** din `tk projects` (`kata`), nu numele afișat: un nume cu
 diacritice sau spații poate întoarce `project_not_found`. API-ul acceptă și
 numele, dar id-ul nu se schimbă niciodată. Același lucru pentru teme (cheia, nu
-numele) și valuri (numărul).
+numele) și sprinturi (numărul).
 
-### Layer și val sunt două axe
+### Layer și sprint sunt două axe
+
+În aplicație „valul” se cheamă **sprint**; în API și în JSON numele rămâne
+`wave` (câmpul `wave`, ruta `/api/waves`).
 
 - **Layerul** se calculează din dependențe, nu se setează („ce pot începe acum").
-- **Valul** e manual, sprintul de livrare („ce livrez acum"). Valul 0 e
-  Scratchpad/Notițe — un val ca oricare: `create`, `list`, `lookup` merg pe el.
-- Dependențele între valuri nu blochează nimic în vederea filtrată pe val.
+- **Sprintul** e manual, livrarea („ce livrez acum"). Sprintul 0 e
+  Scratchpad/Notițe — unul ca oricare: `create`, `list`, `lookup` merg pe el.
+  Un proiect nou pornește cu **Backlog** (1): tot ce nu e programat.
+- Dependențele între sprinturi nu blochează nimic în vederea filtrată pe sprint.
 
 ### ⚠️ Direcția dependențelor — regula care NU trebuie greșită
 
@@ -204,9 +213,9 @@ semnat" — reîncearcă mai târziu, nu presupune că nu există.
 ### Flow tipic
 
 ```bash
-tk list --wave 1                              # 1. ce există deja (fără dubluri)
-tk lookup "Setup DB" --wave 1                 # 2. id-ul dependenței → KATA-03
-tk create "Deploy" --wave 1 --deps KATA-03    # 3. tichetul, cu deps rezolvate → KATA-05
+tk list --sprint 1                            # 1. ce există deja (fără dubluri)
+tk lookup "Setup DB" --sprint 1               # 2. id-ul dependenței → KATA-03
+tk create "Deploy" --sprint 1 --deps KATA-03  # 3. tichetul, cu deps rezolvate → KATA-05
 tk get KATA-05                                # 4. verifici ce s-a scris
 tk update KATA-05 --done                      # 5. după ce e gata
 ```
@@ -216,12 +225,12 @@ există e refuzat (`invalid_deps: …`).
 
 ### Mutarea în alt proiect
 
-`tk update HZ-07 --project ticket-kit [--wave 2] [--theme api]`
+`tk update HZ-07 --project ticket-kit [--sprint 2] [--theme api]`
 
 - Tichetul primește **ID nou**, cu prefixul țintei (`HZ-07` → `TK-12`); linkul
   vechi nu mai merge. Folosește de aici încolo ID-ul din `moved: … -> …`.
-- Fără `--wave` aterizează în valul activ al țintei (`wave_not_in_target` dacă
-  dai un val care nu există acolo). Tema se golește (cheile sunt per proiect);
+- Fără `--sprint` aterizează în sprintul activ al țintei (`wave_not_in_target` dacă
+  dai un sprint care nu există acolo). Tema se golește (cheile sunt per proiect);
   `--theme` trebuie să existe în țintă (`theme_not_in_target`).
 - **Refuzată** (`has_dependencies`) dacă orice dependență atinge tichetul, în
   oricare sens. Golește-le întâi (`--deps ""` pe el și pe cei care depind de el),
@@ -255,7 +264,8 @@ API-ul scrie cu cheia de serviciu, deci ce nu se poate anula se refuză:
 | `duplicate: <ID>` | există deja un tichet cu titlul ăsta în proiect | folosește-l pe acela |
 | `theme_not_found: <cheie>` | temă necunoscută (înainte cădea tăcut în „Fără temă") | `tk themes` sau `tk theme-create` |
 | `theme_in_use: N (ID-uri)` | `theme-delete` pe o temă purtată de tichete | `--force`, numai dacă omul vrea tichetele „Fără temă” |
-| `wave_in_use: N deschise (ID-uri)` | `wave-delete` / `wave-archive` pe un val cu tichete deschise | `--move-to <n>`, valul ales de om |
+| `wave_in_use: N deschise (ID-uri)` | `sprint-delete` / `sprint-archive` pe un sprint cu tichete deschise | `--move-to <n>`, sprintul ales de om |
+| `sprint_exists: N` | `sprint-create` pe o dată care are deja sprintul N | folosește sprintul N |
 | `assignee_not_found` | numele nu e în `tk assignees` (și la `list --assignee`, `mine`) | se creează din aplicație |
 | `invalid_deps: A, B` | dependențe spre ID-uri inexistente | creează-le întâi |
 | `invalid_due` | scadența nu e `AAAA-LL-ZZ` sau `AAAA-LL-ZZ HH:MM` | |
@@ -297,7 +307,7 @@ Pentru o încărcare greșită. Trece prin coșul aplicației, dar din API nu ex
 - Dacă un fișier din mijloc pică, tk spune care și listează ce a ajuns deja —
   acelea rămân pe tichet; nu le urca din nou.
 
-### Temele și valurile
+### Temele și sprinturile
 
 - O temă are o **cheie** (o folosesc tichetele), un nume și o culoare. Cheia se
   face din nume, ca în aplicație, și nu se mai schimbă (`theme-update` schimbă
@@ -309,23 +319,28 @@ Pentru o încărcare greșită. Trece prin coșul aplicației, dar din API nu ex
   listează tichetele golite (`cleared:`). Refacerea, dacă a fost o greșeală:
   `tk theme-create` cu același nume (dă aceeași cheie) + `tk update <ID> --theme
   <cheie>` pe fiecare. Nu folosi `--force` din proprie inițiativă — întreabă omul.
-- Un val nou primește numărul și locul următoare; numele implicit e cifra romană
-  următoare. Ordinea valurilor se schimbă din aplicație, nu de aici.
-- **Ștergerea / arhivarea unui val** (`wave-delete`, `wave-archive`). Tichetele
-  DESCHISE o opresc: `wave_in_use: N deschise (ID-uri)`, nimic schimbat.
-  `--move-to <n>` le mută întâi în alt val activ (0 = Notițele). Tichetele GATA
-  nu se pierd niciodată: un val care le are se **arhivează** (dispare din
-  taburile aplicației, tichetele rămân — `tk get`, căutarea, `tk list --wave N`),
-  iar unul gol se șterge. `tk waves` arată arhivatele cu „(arhivat)”;
-  `wave-unarchive <n>` readuce unul. Notițele (0) nu se ating. `migration_missing`
-  = baza n-are încă `migration-wave-archive.sql`: nimic nu s-a schimbat.
+- **Un sprint nou se face dintr-o dată**: `tk sprint-create --date AAAA-LL-ZZ`.
+  Numele și eticheta sunt data, „dd/mm/yy” (`2026-11-19` → „19/11/26”), iar
+  locul e în ordinea datei: înaintea primului sprint mai târziu, altfel la
+  coadă. Backlog-ul și sprinturile fără dată nu se mută. Aceeași dată de două
+  ori → `sprint_exists: <n>`, nimic creat. Ordinea se poate schimba apoi din
+  aplicație (tragere), nu de aici.
+- **Ștergerea / arhivarea unui sprint** (`sprint-delete`, `sprint-archive`).
+  Tichetele DESCHISE o opresc: `wave_in_use: N deschise (ID-uri)`, nimic
+  schimbat. `--move-to <n>` le mută întâi în alt sprint activ (0 = Notițele).
+  Tichetele GATA nu se pierd niciodată: un sprint care le are se **arhivează**
+  (dispare din taburile aplicației, tichetele rămân — `tk get`, căutarea,
+  `tk list --sprint N`), iar unul gol se șterge. `tk sprints` arată arhivatele cu
+  „(arhivat)”; `sprint-unarchive <n>` readuce unul. Notițele (0) nu se ating.
+  `migration_missing` = baza n-are încă `migration-wave-archive.sql`: nimic nu
+  s-a schimbat.
 
 ### Proiectele noi
 
 `tk project-create` face exact ce face formularul din aplicație: prefixul
 (A–Z, 0–9, max 6, majuscule; fără `--prefix`, inițialele numelui), id-ul =
-prefixul cu litere mici (`TUR` → `tur`), valul 1 activ, valurile „Scratchpad”
-(0) și „Val 1 / MVP” (1). Un prefix ocupat (de prefixul sau de id-ul altui
+prefixul cu litere mici (`TUR` → `tur`), sprintul 1 activ, sprinturile „Scratchpad”
+(0) și „Backlog” (1). Un prefix ocupat (de prefixul sau de id-ul altui
 proiect) se refuză. Proiectul nou n-are membri: îl văd adminii; altcineva îl
 vede abia după ce un admin îl adaugă din „Utilizatori”. Nu crea proiecte din
 proprie inițiativă — numai când omul ți-o cere.

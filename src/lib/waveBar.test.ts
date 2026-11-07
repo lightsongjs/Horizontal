@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   fitPills, moveWave, nextWaveName, openCounts, pillText, showWaveBand, stepWave,
-  totalCounts, truncateLabel, waveLabel, waveTitle, visibleWaves, landingWave,
+  totalCounts, truncateLabel, waveLabel, waveName, waveTitle, visibleWaves, landingWave,
 } from './waveBar'
 
 const w = (number: number, name: string, label = '', position = number) => ({ number, name, label, position })
@@ -19,10 +19,13 @@ describe('showWaveBand', () => {
 describe('labels', () => {
   it('uses the label, falling back to the numeral', () => {
     expect(waveLabel(w(1, 'I', 'MVP'))).toBe('MVP')
-    expect(waveLabel(w(3, 'III', '  '))).toBe('Val III')
-    expect(waveLabel(w(3, '', ''))).toBe('Val')
-    // Modul local numește valurile „Val 1": fără „Val Val 1".
-    expect(waveLabel(w(1, 'Val 1', ''))).toBe('Val 1')
+    expect(waveLabel(w(3, 'III', '  '))).toBe('Sprint III')
+    expect(waveLabel(w(3, '', ''))).toBe('Sprint')
+    // Modul local numește valurile „Val 1": în interfață e „Sprint 1”, fără „Sprint Val 1".
+    expect(waveLabel(w(1, 'Val 1', ''))).toBe('Sprint 1')
+    // Un nume care nu e cifră (Backlog, o dată) se arată ca atare.
+    expect(waveLabel(w(1, 'Backlog', ''))).toBe('Backlog')
+    expect(waveLabel(w(2, '19/11/26', ''))).toBe('19/11/26')
   })
 
   it('truncates long labels on inactive pills only', () => {
@@ -39,9 +42,21 @@ describe('labels', () => {
     expect(truncateLabel('🚀'.repeat(20))).toBe('🚀'.repeat(17) + '…')
   })
 
+  it('waveName: numele afișat spune „Sprint”, nu „Val”', () => {
+    expect(waveName({ name: 'Val 1' })).toBe('Sprint 1')
+    expect(waveName({ name: 'val 2' })).toBe('Sprint 2')
+    expect(waveName({ name: 'III' })).toBe('III')
+    expect(waveName({ name: '19/11/26' })).toBe('19/11/26')
+    expect(waveName({ name: 'Backlog' })).toBe('Backlog')
+    expect(waveName({ name: 'Valoare' })).toBe('Valoare')
+    expect(waveTitle(w(1, 'Val 1', 'MVP'), 3, 3)).toBe('Sprint 1 · MVP · 3 deschise')
+  })
+
   it('titles carry the numeral, the full label and the counts', () => {
     expect(waveTitle(w(2, 'II', 'Extindere clase 7,8,12'), 88, 88)).toBe('II · Extindere clase 7,8,12 · 88 deschise')
-    expect(waveTitle(w(2, 'II'), 3, 5)).toBe('Val II · 3 deschise din 5')
+    expect(waveTitle(w(2, 'II'), 3, 5)).toBe('Sprint II · 3 deschise din 5')
+    // Sprintul cu dată are numele = eticheta: o singură dată în tooltip.
+    expect(waveTitle(w(3, '19/11/26', '19/11/26'), 2, 2)).toBe('19/11/26 · 2 deschise')
   })
 })
 

@@ -35,7 +35,7 @@ function parseNumber(v: unknown): number | null {
  * `DELETE` și lui `PATCH { archived: true }`.
  */
 async function removeWave(context: Ctx, number: number, projectParam: string, mode: 'delete' | 'archive', moveToIn: unknown): Promise<Response> {
-  if (number === SCRATCH) return Response.json({ error: 'scratch_wave', detail: 'Notițele (valul 0) nu se șterg și nu se arhivează.' }, { status: 400 })
+  if (number === SCRATCH) return Response.json({ error: 'scratch_wave', detail: 'Notițele (sprintul 0) nu se șterg și nu se arhivează.' }, { status: 400 })
   let moveTo: number | null = null
   if (moveToIn !== undefined && moveToIn !== null && moveToIn !== '') {
     moveTo = parseNumber(moveToIn)

@@ -15,6 +15,7 @@ import {
 import { repository } from './data'
 import { invalidateThreadSummary, noteThreadSeen } from './data/threadSummary'
 import { useAuth } from './auth'
+import { duplicateSprint, placeSprint, sprintName } from './lib/sprints'
 import { applyOrder, loadOrder, saveOrder } from './lib/projectOrder'
 import type { NewIssue, NewObstacle, NewProject, NewSavedFilter } from './data/repository'
 import { filterIssues, type MatchContext, type SavedFilter } from './lib/savedFilters'
@@ -172,7 +173,8 @@ interface HorizontalState {
   reorderProjects(ids: string[]): void
   createAssignee(name: string): Promise<Assignee>
 
-  createWave(name: string, label?: string): Promise<void>
+  /** Sprint nou din data `AAAA-LL-ZZ` (nume = etichetă = „dd/mm/yy”, locul după dată). */
+  createSprint(iso: string): Promise<void>
   renameWave(number: number, name: string, label: string): Promise<void>
   /** Noile poziții ale valurilor mutate prin tragere (`moveWave` din `lib/waveBar`). */
   reorderWaves(changes: { number: number; position: number }[]): Promise<void>
@@ -1055,13 +1057,27 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     setIssuesLoadedFor((cur) => (cur === id ? null : cur))
   }, [])
 
-  const createWave = useCallback(
-    async (name: string, label = '') => {
+  // Un sprint se face dintr-o dată (`lib/sprints`): numele și eticheta sunt
+  // „dd/mm/yy”, locul e înaintea primului sprint mai târziu. Cele de după se
+  // dau întâi cu un loc (de la coadă), apoi intră sprintul — o eroare la
+  // mijloc lasă cel mult o gaură în poziții, nu două valuri pe același loc.
+  const createSprint = useCallback(
+    async (iso: string) => {
       if (!projectId) return
-      const wave = await repository.createWave(projectId, name, label)
-      setAllWaves((prev) => [...prev, wave])
+      const name = sprintName(iso)
+      if (!name) throw new Error('Alege o dată validă pentru sprint.')
+      const own = allWaves.filter((w) => w.projectId === projectId)
+      if (duplicateSprint(own, iso)) throw new Error(`Există deja sprintul ${name}.`)
+      const { position, shifts } = placeSprint(own, iso)
+      for (const s of shifts) await repository.updateWave(projectId, s.number, { position: s.position })
+      const wave = await repository.createWave(projectId, name, name, position)
+      const moved = new Map(shifts.map((s) => [s.number, s.position]))
+      setAllWaves((prev) => [
+        ...prev.map((w) => (w.projectId === projectId && moved.has(w.number) ? { ...w, position: moved.get(w.number)! } : w)),
+        wave,
+      ])
     },
-    [projectId],
+    [projectId, allWaves],
   )
 
   const renameWave = useCallback(
@@ -1558,7 +1574,7 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     deleteProject,
     reorderProjects,
     createAssignee,
-    createWave,
+    createSprint,
     renameWave,
     reorderWaves,
     deleteWave,

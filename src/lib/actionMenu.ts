@@ -59,7 +59,7 @@ export function rootItems(t: MenuTargets): MenuItem[] {
     { key: '-', label: 'Fără dată (scoate data, ora, mementoul)', action: { kind: 'date', preset: { kind: 'none' } } },
     { key: '!', label: t.allUrgent ? 'Nu mai e urgent' : 'Urgent', action: { kind: 'urgent' } },
     { key: 'F', label: t.allPinned ? 'Scoate de sus' : 'Fixează sus', action: { kind: 'pin' } },
-    { key: 'w', label: 'Val', action: { kind: 'sub', level: 'wave' }, disabled: t.waves.length ? null : t.wavesWhy ?? 'proiectul n-are valuri' },
+    { key: 'w', label: 'Sprint', action: { kind: 'sub', level: 'wave' }, disabled: t.waves.length ? null : t.wavesWhy ?? 'proiectul n-are sprinturi' },
     { key: 'M', label: 'Mută în proiect', action: { kind: 'sub', level: 'move' }, disabled: many },
     { key: '@', label: 'Pasează', action: { kind: 'handoff' }, disabled: many },
     { key: 'r', label: 'Redenumește', action: { kind: 'rename' }, disabled: many },
@@ -117,6 +117,6 @@ export function pushDigit(d: string, digit: string): string {
 export const LEVEL_TITLE: Record<MenuLevel, string> = {
   root: 'Acțiuni',
   date: 'Dată și oră',
-  wave: 'Val',
+  wave: 'Sprint',
   move: 'Mută în proiect',
 }

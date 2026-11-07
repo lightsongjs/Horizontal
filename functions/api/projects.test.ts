@@ -57,7 +57,7 @@ describe('POST /api/projects', () => {
     expect(posts[0].body).toEqual({ id: 'tr', name: 'Turul României', description: '', prefix: 'TR', current_wave: 1, accent: '#0EA5E9', type: 'work' })
     expect(posts[1].body).toEqual([
       { project_id: 'tr', number: 0, name: 'Scratchpad', label: '', position: 0 },
-      { project_id: 'tr', number: 1, name: 'Val 1', label: 'MVP', position: 1 },
+      { project_id: 'tr', number: 1, name: 'Backlog', label: 'Backlog', position: 1 },
     ])
   })
 

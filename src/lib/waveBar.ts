@@ -26,11 +26,25 @@ export function showWaveBand(waves: Pick<Wave, 'number'>[]): boolean {
   return deliveryWaves(waves).length >= 2
 }
 
-/** „Val III" din numele „III" — sau numele însuși, dacă scrie deja „Val …" (modul local). */
+/**
+ * Numele valului așa cum se AFIȘEAZĂ: „Val 1" (modul local, proiectele vechi)
+ * devine „Sprint 1"; restul („III", „19/11/26", „Backlog") rămâne. Orice loc
+ * care arată `w.name` trece pe aici — datele nu se rescriu.
+ */
+export function waveName(w: Pick<Wave, 'name'>): string {
+  return w.name.replace(/^\s*val(?=\s|$)/i, 'Sprint')
+}
+
+/**
+ * „Sprint III" din numele „III" (în interfață valul se cheamă sprint, din
+ * 2026-11-07). „Val 1" (modul local, date vechi) devine „Sprint 1"; un nume
+ * care nu e cifră („Backlog", „19/11/26") se arată ca atare.
+ */
 export function waveFallback(w: Pick<Wave, 'name'>): string {
   const name = w.name.trim()
-  if (!name) return 'Val'
-  return /^val\b/i.test(name) ? name : `Val ${name}`
+  if (!name) return 'Sprint'
+  const bare = name.replace(/^(val|sprint)\s+/i, '')
+  return /^(\d+|[IVXLCDM]+)$/.test(bare) ? `Sprint ${bare}` : name
 }
 
 /** Eticheta valului, sau „Val III" când n-are una. */
@@ -53,7 +67,8 @@ export function pillText(w: Pick<Wave, 'name' | 'label'>, active: boolean): stri
 
 /** Tooltipul: cifra, eticheta întreagă și cifrele (cu bifatele, dacă diferă). */
 export function waveTitle(w: Pick<Wave, 'name' | 'label'>, open: number, total: number): string {
-  const head = w.label.trim() ? `${w.name} · ${w.label.trim()}` : waveFallback(w)
+  const label = w.label.trim()
+  const head = !label ? waveFallback(w) : label === w.name.trim() ? label : `${waveName(w)} · ${label}`
   return `${head} · ${open} deschise${total !== open ? ` din ${total}` : ''}`
 }
 

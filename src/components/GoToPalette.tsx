@@ -41,7 +41,7 @@ export function GoToPalette({ onClose, onGo, showWaves }: { onClose(): void; onG
     ...(showWaves && project
       ? [...waves].sort((a, b) => a.position - b.position).map((w): Item => ({
         label: `${project.name} › ${w.number === 0 ? 'Notițe' : waveLabel(w)}`,
-        sub: 'val',
+        sub: 'sprint',
         target: { kind: 'wave', number: w.number },
       }))
       : []),
@@ -89,7 +89,7 @@ export function GoToPalette({ onClose, onGo, showWaves }: { onClose(): void; onG
             className="qs-input"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Mergi la… (proiect, filtru, listă, val)"
+            placeholder="Mergi la… (proiect, filtru, listă, sprint)"
             autoComplete="off"
             autoCorrect="off"
             spellCheck={false}

@@ -53,11 +53,11 @@ export function ActionMenu({ menu, onLevel, onClose, exec }: {
     let wavesWhy: string | null = null
     let ws: MenuTargets['waves'] = []
     if (!pid) wavesWhy = 'tichete din proiecte diferite'
-    else if (project?.id !== pid) wavesWhy = 'deschide proiectul ca să alegi valul'
+    else if (project?.id !== pid) wavesWhy = 'deschide proiectul ca să alegi sprintul'
     else {
       ws = [...waves].sort((a, b) => a.position - b.position)
         .map((w) => ({ number: w.number, label: w.number === 0 ? 'Notițe' : waveLabel(w) }))
-      if (ws.length < 2) { wavesWhy = 'proiectul are un singur val'; ws = [] }
+      if (ws.length < 2) { wavesWhy = 'proiectul are un singur sprint'; ws = [] }
     }
     const one = issues.length === 1 ? issues[0] : null
     const block = one ? moveBlock(one, project?.id === one.projectId ? loaded : [], project?.id === one.projectId ? obstacleLinks : []) : null

@@ -28,6 +28,16 @@ describe('parseArgs', () => {
     expect(parseArgs(['ls']).cmd).toBe('list')
     expect(parseArgs(['update-wave', '2']).cmd).toBe('wave-update')
   })
+  it('sprinturile: aliasuri pentru valuri, --sprint = --wave', () => {
+    expect(parseArgs(['sprints']).cmd).toBe('waves')
+    expect(parseArgs(['sprint-update', '2']).cmd).toBe('wave-update')
+    expect(parseArgs(['sprint-archive', '2']).cmd).toBe('wave-archive')
+    expect(parseArgs(['sprint-unarchive', '2']).cmd).toBe('wave-unarchive')
+    expect(parseArgs(['sprint-delete', '2']).cmd).toBe('wave-delete')
+    expect(parseArgs(['sprint-create', '--date', '2026-11-19'])).toEqual({ cmd: 'sprint-create', positional: [], flags: { date: '2026-11-19' } })
+    expect(parseArgs(['create', 'X', '--sprint', '3']).flags).toEqual({ wave: '3' })
+    expect(parseArgs(['list', '--sprint=0']).flags).toEqual({ wave: '0' })
+  })
   it('șirul gol e o valoare (golește), nu o lipsă', () => {
     expect(parseArgs(['update', 'A-1', '--deps', '']).flags.deps).toBe('')
   })

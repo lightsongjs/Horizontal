@@ -407,7 +407,7 @@ cmds.waves = async ({ flags }) => {
   if (status !== 200) fail(status, data)
   needList(data, '/api/waves')
   if (flags.json) return out(JSON.stringify(data, null, 2))
-  if (!data.length) return out('(no waves found)')
+  if (!data.length) return out('(no sprints found)')
   for (const w of data) out(`${w.number}  ${waveLabel(w) ?? ''}${w.archived ? '  (arhivat)' : ''}`.trimEnd())
 }
 
@@ -469,7 +469,7 @@ cmds.mine = async ({ flags }) => {
 cmds.lookup = async ({ positional, flags }) => {
   const project = projectOrDie(flags)
   const title = titleFrom(positional, flags)
-  if (!title || flags.wave === undefined) throw new UsageError('tk lookup "Titlu" --wave <n>')
+  if (!title || flags.wave === undefined) throw new UsageError('tk lookup "Titlu" --sprint <n>')
   const { status, data } = await api(`/api/tickets?${q({ project, title, wave: String(flags.wave) })}`)
   if (status === 200) return out(data.id)
   if (status === 404 && data.error === 'not_found') return out('not_found')
@@ -489,7 +489,7 @@ cmds.create = async ({ positional, flags }) => {
   let wave = flags.wave
   let projectId = project
   if (wave === undefined) {
-    // Fără --wave: valul activ al proiectului, ca o captură din aplicație.
+    // Fără --wave / --sprint: sprintul activ al proiectului, ca o captură din aplicație.
     const p = matchProject(await projectList(), project)
     if (!p) { out('project_not_found'); process.exit(1) }
     projectId = p.id
@@ -681,10 +681,26 @@ cmds['wave-create'] = async ({ positional, flags }) => {
   out(`${data.number}  ${waveLabel(data) ?? ''}`.trimEnd())
 }
 
+/** Un sprint se face dintr-o dată: numele și eticheta = „dd/mm/yy”, locul după dată (serverul). */
+cmds['sprint-create'] = async ({ flags }) => {
+  const project = projectOrDie(flags)
+  const date = typeof flags.date === 'string' ? flags.date.trim() : ''
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(`${date}T00:00:00Z`))) {
+    throw new UsageError('tk sprint-create --date AAAA-LL-ZZ   (ex. 2026-11-19 → sprintul „19/11/26”)')
+  }
+  const { status, data } = await api('/api/waves', { method: 'POST', body: { projectId: project, date } })
+  if (status === 409 && data.error === 'sprint_exists') {
+    out(`sprint_exists: ${data.number}`)
+    process.exit(1)
+  }
+  if (status !== 201) fail(status, data)
+  out(`${data.number}  ${waveLabel(data) ?? ''}`.trimEnd())
+}
+
 cmds['wave-update'] = async ({ positional, flags }) => {
   const project = projectOrDie(flags)
   const number = flags.number ?? positional[0]
-  if (number === undefined) throw new UsageError('tk wave-update <n> [--name "…"] [--label "…"]')
+  if (number === undefined) throw new UsageError('tk sprint-update <n> [--name "…"] [--label "…"]')
   const body = {}
   if (typeof flags.name === 'string') body.name = flags.name
   if (typeof flags.label === 'string') body.label = flags.label
@@ -704,11 +720,11 @@ async function removeWave(cmd, positional, flags) {
     : await api(`/api/waves/${enc(number)}?${q({ project })}`, { method: 'PATCH', body: { archived: true, ...(moveTo !== null ? { moveTo } : {}) } })
   if (status === 409 && data.error === 'wave_in_use') {
     out(`wave_in_use: ${data.count} deschise (${data.tickets.join(', ')})`)
-    err('Tichetele astea sunt încă deschise în val. --move-to <n> le mută întâi (0 = Notițele).')
+    err('Tichetele astea sunt încă deschise în sprint. --move-to <n> le mută întâi (0 = Notițele).')
     process.exit(1)
   }
   if (status === 409 && data.error === 'migration_missing') {
-    out(`migration_missing: valul are ${data.kept ?? 0} tichete gata și trebuie arhivat`)
+    out(`migration_missing: sprintul are ${data.kept ?? 0} tichete gata și trebuie arhivat`)
     err('Arhivarea cere migrarea supabase/migration-wave-archive.sql pe bază. Nimic nu s-a schimbat.')
     process.exit(1)
   }
@@ -722,7 +738,7 @@ cmds['wave-archive'] = ({ positional, flags }) => removeWave('wave-archive', pos
 cmds['wave-unarchive'] = async ({ positional, flags }) => {
   const project = projectOrDie(flags)
   const number = flags.number ?? positional[0]
-  if (number === undefined) throw new UsageError('tk wave-unarchive <n>')
+  if (number === undefined) throw new UsageError('tk sprint-unarchive <n>')
   const { status, data } = await api(`/api/waves/${enc(number)}?${q({ project })}`, { method: 'PATCH', body: { archived: false } })
   if (status !== 200) fail(status, data)
   out(`unarchived: ${data.number}  ${waveLabel(data) ?? ''}`.trimEnd())
@@ -738,20 +754,20 @@ Configurare
   tk whoami [--set nume]             cine ești: autorul comentariilor (și created_by)
 
 Citire
-  tk projects | waves | themes | assignees      [--json]
-  tk list [--wave N] [--theme cheie] [--assignee nume|""] [--done [false]] [--json]
+  tk projects | sprints | themes | assignees    [--json]   (sprints = waves)
+  tk list [--sprint N] [--theme cheie] [--assignee nume|""] [--done [false]] [--json]
   tk mine [--done | --all] [--project id] [--as persoană] [--json]
                                      „Ale mele”: pasate ție, din toate proiectele
                                      (implicit nebifate; --done = bifate, --all = toate)
-  tk lookup "Titlu" --wave N
+  tk lookup "Titlu" --sprint N
   tk get HZ-7                        tot tichetul (commentCount = câte rânduri are firul)
   tk comments HZ-7 [--json]          firul: comentarii + pase, cronologic
   tk attachments HZ-7
 
 Scriere
-  tk create "Titlu" [--desc …] [--deps A,B] [--wave N] [--theme cheie]
+  tk create "Titlu" [--desc …] [--deps A,B] [--sprint N] [--theme cheie]
                     [--assignee nume] [--due "AAAA-LL-ZZ[ HH:MM]"] [--urgent] [--notes …]
-  tk update HZ-7 [--title …] [--done [false]] [--deps A,B|""] [--wave N] [--desc …]
+  tk update HZ-7 [--title …] [--done [false]] [--deps A,B|""] [--sprint N] [--desc …]
                  [--theme cheie|""] [--assignee nume|""] [--due …|""] [--urgent [false]]
                  [--pin [false]] [--notes …] [--selectors JSON] [--scenarios JSON]
                  [--project țintă]  (mută; ID nou)
@@ -762,10 +778,12 @@ Scriere
   tk project-create "Nume" [--prefix X] [--type work|personal] [--accent "#RRGGBB"] [--desc …]
   tk theme-create "Nume" --color "#RRGGBB"   |  tk theme-update <cheie> [--name …] [--color …]
   tk theme-delete <cheie> [--force]          folosită de tichete → refuz; --force le scoate tema
-  tk wave-create "Etichetă" [--name IV]      |  tk wave-update <n> [--name …] [--label …]
-  tk wave-delete <n> [--move-to <n>]         deschise → refuz; --move-to le mută (0 = Notițele);
+  tk sprint-create --date AAAA-LL-ZZ         sprintul „dd/mm/yy”, pus în ordinea datei
+  tk sprint-update <n> [--name …] [--label …]
+  tk sprint-delete <n> [--move-to <n>]       deschise → refuz; --move-to le mută (0 = Notițele);
                                              cu tichete gata se arhivează, gol se șterge
-  tk wave-archive <n> [--move-to <n>]        |  tk wave-unarchive <n>
+  tk sprint-archive <n> [--move-to <n>]      |  tk sprint-unarchive <n>
+  (merg și numele vechi: waves, wave-create "Etichetă", wave-update…, --wave N)
 
 --project <id> bate .horizontal (la update înseamnă mutare). Forma veche merge:
 tk --create --title "…" --wave 1, tk --get --id HZ-7, tk --attach --id HZ-7 --file a.png`

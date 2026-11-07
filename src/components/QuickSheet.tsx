@@ -253,7 +253,7 @@ export function QuickSheet({ ctx }: { ctx: QuickCtx }) {
               type="button"
               className="qs-ico qs-more"
               aria-label="Formularul complet"
-              title="Formularul complet: temă, dependențe, val"
+              title="Formularul complet: temă, dependențe, sprint"
               onPointerDown={keepFocus}
               onClick={toFull}
             >

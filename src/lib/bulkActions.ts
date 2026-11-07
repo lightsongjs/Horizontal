@@ -275,7 +275,7 @@ export function bulkNotice(action: BulkAction, written: number, readOnly: number
       head = action.value ? plural(written, 'Fixat sus', 'fixate sus') : plural(written, 'Fixare scoasă', 'scoase de sus')
       break
     case 'wave':
-      head = plural(written, 'Mutat în alt val', 'mutate în alt val')
+      head = plural(written, 'Mutat în alt sprint', 'mutate în alt sprint')
       break
     case 'assign':
       head = action.assigneeId

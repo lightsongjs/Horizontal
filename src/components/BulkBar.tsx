@@ -1,5 +1,6 @@
 import type { Wave } from '../lib/types'
 import { Icon } from './Icon'
+import { waveName } from '../lib/waveBar'
 
 interface Props {
   selCount: number
@@ -29,9 +30,9 @@ export function BulkBar({
                   defaultValue=""
                   onChange={(e) => { if (e.target.value) onBulkMove(Number(e.target.value)) }}
                 >
-                  <option value="">— val —</option>
+                  <option value="">— sprint —</option>
                   {otherWaves.map((w) => (
-                    <option key={w.number} value={w.number}>{w.name}</option>
+                    <option key={w.number} value={w.number}>{waveName(w)}</option>
                   ))}
                 </select>
               </>

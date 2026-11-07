@@ -702,7 +702,7 @@ export function useKeyDispatcher(actions: DispatchActions) {
     const wave = (detail: { dir?: 1 | -1; manage?: boolean }) => {
       const ev = new CustomEvent<{ dir?: 1 | -1; manage?: boolean; handled: boolean }>('hz:wave', { detail: { ...detail, handled: false } })
       window.dispatchEvent(ev)
-      if (!ev.detail.handled) toast('Valurile sunt într-un proiect (Listă sau Cards)')
+      if (!ev.detail.handled) toast('Sprinturile sunt într-un proiect (Listă sau Cards)')
     }
 
     const yank = async (id: string, what: 'link' | 'title', title?: string) => {

@@ -2906,6 +2906,36 @@ try {
     await ap.close()
   }
 
+  // ── Sprinturile (2026-11-07): foaia „Sprinturi" face un sprint dintr-o
+  // DATĂ — numit „dd/mm/yy" și pus în ordinea datelor, nu la coadă.
+  {
+    const sp = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+    await sp.goto(BASE, { waitUntil: 'networkidle' })
+    await sp.waitForTimeout(700)
+    await sp.locator('.sidebar-proj-btn', { hasText: 'Exemplu' }).first().click()
+    await sp.waitForTimeout(800)
+    await sp.locator('.tab', { hasText: /^List/ }).first().click()
+    await sp.waitForTimeout(500)
+    await sp.locator('.wb-pills .wb-pill[data-wave="1"]').dblclick()
+    await sp.waitForTimeout(500)
+    check('sprinturi: foaia se cheamă „Sprinturi"', (await sp.locator('.sheet.on .sheet-head h2').textContent().catch(() => '')) === 'Sprinturi', String(await sp.locator('.sheet.on .sheet-head h2').textContent().catch(() => null)))
+    const pickDate = async (iso) => {
+      await sp.locator('.sheet.on .we-new input[type="date"]').evaluate((el, v) => { el.value = v; el.dispatchEvent(new Event('change')) }, iso)
+      await sp.waitForTimeout(600)
+    }
+    await pickDate('2026-11-19')
+    await pickDate('2026-11-12')
+    const order = await sp.evaluate(() => JSON.parse(localStorage.getItem('horizontal:v2')).waves
+      .filter((w) => w.projectId === 'demo').sort((a, b) => a.position - b.position).map((w) => w.name))
+    const i12 = order.indexOf('12/11/26'), i19 = order.indexOf('19/11/26')
+    check('sprinturi: data aleasă dă sprintul „dd/mm/yy", iar 12/11 intră înaintea lui 19/11', i12 >= 0 && i19 === i12 + 1, order.join(' · '))
+    await sp.keyboard.press('Escape')
+    await sp.waitForTimeout(400)
+    const pills = await sp.locator('.wb-pills .wb-pill .lb').allTextContents()
+    check('…și banda arată data ca etichetă, în aceeași ordine', pills.indexOf('12/11/26') >= 0 && pills.indexOf('19/11/26') === pills.indexOf('12/11/26') + 1, pills.join(' · '))
+    await sp.close()
+  }
+
   // Aceeași regresie în aplicația obișnuită: tichet docat în „Listă", apoi
   // „Azi" din bara laterală — formularul rămânea pe „Se încarcă tichetul…".
   {

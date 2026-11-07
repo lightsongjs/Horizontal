@@ -1,9 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useHorizontal } from '../store'
-import { deliveryWaves, moveWave, nextWaveName, openCounts, totalCounts, waveFallback, SCRATCH } from '../lib/waveBar'
+import { deliveryWaves, moveWave, openCounts, totalCounts, waveFallback, waveName, SCRATCH } from '../lib/waveBar'
+import { toDateInput } from '../lib/schedule'
+import { NativePick } from './NativePick'
+import { sprintDateOf } from '../lib/sprints'
 import { errorMessage } from '../lib/errorMessage'
 import { useUI } from '../ui'
 import { Icon } from './Icon'
+
+/** Coloana cifrei: un sprint cu dată o are deja în nume, deci aici doar semnul calendarului. */
+const rnText = (w: { name: string; label: string }) => (sprintDateOf(w) ? <Icon name="due" size={14} /> : waveName(w))
 
 interface Drag {
   number: number
@@ -18,7 +24,7 @@ interface Drag {
 }
 
 /**
- * Foaia „Valuri": aceeași ordine ca banda, cu cifra (NUMELE valului, nu poziția
+ * Foaia „Sprinturi" (valurile, în interfață): aceeași ordine ca banda, cu cifra (NUMELE valului, nu poziția
  * lui — după ștergerea lui I, „II" rămâne „II"), eticheta editabilă pe loc,
  * numărul de tichete deschise, tragerea pentru ordine (`position`, prin
  * `reorderWaves`; ←/↑/↓ pe mâner, de la tastatură) și ștergerea, refuzată cât
@@ -31,40 +37,36 @@ interface Drag {
  * „Deschide" le arată în bandă cât le consulți, „Scoate" le readuce.
  */
 export function WaveManager({ focus }: { focus?: number | 'new' }) {
-  const { waves, archivedWaves, issues, createWave, renameWave, reorderWaves, deleteWave, archiveWave, setActiveWave, reportError } = useHorizontal()
+  const { waves, archivedWaves, issues, createSprint, renameWave, reorderWaves, deleteWave, archiveWave, setActiveWave, reportError } = useHorizontal()
   const { closeSheet } = useUI()
   const [showArchived, setShowArchived] = useState(false)
-  const [newLabel, setNewLabel] = useState('')
   const [busy, setBusy] = useState(false)
   const [confirmDel, setConfirmDel] = useState<number | null>(null)
   const [blocked, setBlocked] = useState<number | null>(null)
   const [drag, setDrag] = useState<Drag | null>(null)
   const rows = useRef(new Map<number, HTMLDivElement>())
-  const newRef = useRef<HTMLInputElement>(null)
+  const newRef = useRef<HTMLDivElement>(null)
 
   // Valul arhivat deschis acum e în `waves` (ca banda să-l arate), dar locul lui aici e jos.
   const delivery = useMemo(() => deliveryWaves(waves).filter((w) => !w.archivedAt), [waves])
   const scratch = waves.find((w) => w.number === SCRATCH) ?? null
   const open = useMemo(() => openCounts(issues), [issues])
   const total = useMemo(() => totalCounts(issues), [issues])
-  const nextName = nextWaveName(waves)
-
-  // Deschisă din „+" / „Val nou…": cursorul în câmpul de val nou. Din apăsarea
-  // lungă pe o pastilă: în eticheta valului acela.
+  // Deschisă din „+" / „Sprint nou…": focusul pe butonul de dată. Din apăsarea
+  // lungă pe o pastilă: în eticheta sprintului acela.
   useEffect(() => {
     if (focus === undefined) return
-    const el = focus === 'new' ? newRef.current : rows.current.get(focus)?.querySelector('input')
+    const el = (focus === 'new' ? newRef.current : rows.current.get(focus))?.querySelector('input')
     el?.focus({ preventScroll: false })
     // Doar la deschidere.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const add = async () => {
+  const add = async (iso: string) => {
     if (busy) return
     setBusy(true)
     try {
-      await createWave(nextName, newLabel.trim())
-      setNewLabel('')
+      await createSprint(iso)
     } catch (e) {
       reportError(errorMessage(e))
     } finally {
@@ -127,8 +129,8 @@ export function WaveManager({ focus }: { focus?: number | 'new' }) {
   return (
     <>
       <div className="sheet-head">
-        <h2>Valuri</h2>
-        <p>Ordinea de aici e ordinea din bandă. Trage de mâner ca să muți. Fiecare val își calculează propriile layere.</p>
+        <h2>Sprinturi</h2>
+        <p>Ordinea de aici e ordinea din bandă. Trage de mâner ca să muți. Fiecare sprint își calculează propriile layere.</p>
       </div>
       <div className="sheet-scroll">
         {scratch && (
@@ -141,7 +143,7 @@ export function WaveManager({ focus }: { focus?: number | 'new' }) {
           </div>
         )}
         {delivery.length === 0 && (
-          <p className="empty" style={{ padding: '8px 0' }}>Niciun val încă.</p>
+          <p className="empty" style={{ padding: '8px 0' }}>Niciun sprint încă.</p>
         )}
         <div className="we-list" onPointerMove={onDragMove} onPointerUp={endDrag} onPointerCancel={() => setDrag(null)}>
           {delivery.map((w, i) => {
@@ -158,7 +160,7 @@ export function WaveManager({ focus }: { focus?: number | 'new' }) {
                 <button
                   type="button"
                   className="we-grip"
-                  aria-label={`Mută valul ${w.name}`}
+                  aria-label={`Mută sprintul ${waveName(w)}`}
                   title="Trage ca să muți (sau ↑/↓)"
                   onPointerDown={(e) => startDrag(e, w.number, i)}
                   onKeyDown={(e) => {
@@ -168,12 +170,12 @@ export function WaveManager({ focus }: { focus?: number | 'new' }) {
                 >
                   <Icon name="drag" size={16} />
                 </button>
-                <span className="we-rn" title={`Valul ${w.name}`}>{w.name}</span>
+                <span className="we-rn" title={waveFallback(w)}>{rnText(w)}</span>
                 <input
                   key={`${w.number}:${w.label}`}
                   className="we-input"
                   defaultValue={w.label}
-                  aria-label={`Eticheta valului ${w.name}`}
+                  aria-label={`Eticheta sprintului ${waveName(w)}`}
                   placeholder={waveFallback(w)}
                   onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
                   onBlur={(e) => {
@@ -187,10 +189,10 @@ export function WaveManager({ focus }: { focus?: number | 'new' }) {
                 <button
                   type="button"
                   className="we-del"
-                  aria-label={archivable(w.number) ? `Arhivează valul ${w.name}` : `Șterge valul ${w.name}`}
+                  aria-label={archivable(w.number) ? `Arhivează sprintul ${waveName(w)}` : `Șterge sprintul ${waveName(w)}`}
                   title={archivable(w.number)
-                    ? `Arhivează: ${total.get(w.number)} tichete gata rămân, valul iese din bandă`
-                    : (total.get(w.number) ?? 0) > 0 ? `${total.get(w.number)} tichete în acest val` : 'Șterge'}
+                    ? `Arhivează: ${total.get(w.number)} tichete gata rămân, sprintul iese din bandă`
+                    : (total.get(w.number) ?? 0) > 0 ? `${total.get(w.number)} tichete în acest sprint` : 'Șterge'}
                   onClick={() => onDelete(w.number)}
                 >
                   {confirmDel === w.number
@@ -204,9 +206,9 @@ export function WaveManager({ focus }: { focus?: number | 'new' }) {
         {blocked !== null && (
           <div className="banner">
             <Icon name="danger" size={15} /> {(open.get(blocked) ?? 0) > 0
-              ? <>Valul are {open.get(blocked)} tichete deschise. Mută-le pe alt val (din editarea tichetului) sau bifează-le
+              ? <>Sprintul are {open.get(blocked)} tichete deschise. Mută-le pe alt sprint (din editarea tichetului) sau bifează-le
                 înainte să-l poți arhiva — cele gata rămân în arhivă.</>
-              : <>Valul are {total.get(blocked) ?? 0} tichete. Mută-le pe alt val (din editarea tichetului) înainte să-l poți
+              : <>Sprintul are {total.get(blocked) ?? 0} tichete. Mută-le pe alt sprint (din editarea tichetului) înainte să-l poți
                 șterge.</>}
           </div>
         )}
@@ -218,7 +220,7 @@ export function WaveManager({ focus }: { focus?: number | 'new' }) {
             </button>
             {showArchived && archivedWaves.map((w) => (
               <div key={w.number} className="we we-arch" data-wave={w.number}>
-                <span className="we-rn" title={`Valul ${w.name}`}>{w.name}</span>
+                <span className="we-rn" title={waveFallback(w)}>{rnText(w)}</span>
                 <span className="we-field">{w.label.trim() || waveFallback(w)}</span>
                 <span className="we-n" title={`${total.get(w.number) ?? 0} tichete`}>{total.get(w.number) ?? 0}</span>
                 <button type="button" className="we-arch-act" onClick={() => { setActiveWave(w.number); closeSheet() }}>Deschide</button>
@@ -234,20 +236,18 @@ export function WaveManager({ focus }: { focus?: number | 'new' }) {
           </div>
         )}
 
-        <div className="we-new">
-          <span className="we-rn" aria-label={`Următorul val: ${nextName}`}>{nextName}</span>
-          <input
-            ref={newRef}
-            className="we-input"
-            value={newLabel}
-            onChange={(e) => setNewLabel(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && add()}
-            placeholder="Val nou, ex. „Lansare”"
-            aria-label="Eticheta valului nou"
-          />
-          <button type="button" className="we-add" onClick={add} disabled={busy}>
-            <Icon name="add" size={16} /> Adaugă
-          </button>
+        {/* Sprint nou = o dată (calendarul sistemului), numit „dd/mm/yy” și pus în ordinea datei. */}
+        <div className="we-new" ref={newRef}>
+          <NativePick
+            type="date"
+            label="Sprint nou: alege data"
+            className={`we-add${busy ? ' busy' : ''}`}
+            initial={() => toDateInput(new Date().toISOString())}
+            onPick={add}
+          >
+            <Icon name="add" size={16} /> Sprint nou · alege data
+          </NativePick>
+          <span className="we-hint">Se numește cu data (19/11/26) și intră în ordinea datelor.</span>
         </div>
       </div>
     </>

@@ -99,7 +99,7 @@ export function WaveGate() {
         <Icon name="obstacle" size={15} />
         <span className="wave-gate-n">{open.length}</span>
         <span className="wave-gate-l">
-          {open.length === 1 ? 'obstacol deschis' : 'obstacole deschise'} în acest val
+          {open.length === 1 ? 'obstacol deschis' : 'obstacole deschise'} în acest sprint
         </span>
         {elsewhere > 0 && <span className="wave-gate-c">{elsewhere} la alții</span>}
       </div>

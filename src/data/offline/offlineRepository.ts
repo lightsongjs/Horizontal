@@ -739,7 +739,7 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
     createProject: (input) => netWrite(() => remote.createProject(input)),
     updateProject: (id, patch) => netWrite(() => remote.updateProject(id, patch)),
     deleteProject: (id) => netWrite(() => remote.deleteProject(id)),
-    createWave: (pid, name, label) => netWrite(() => remote.createWave(pid, name, label)),
+    createWave: (pid, name, label, position) => netWrite(() => remote.createWave(pid, name, label, position)),
     updateWave: (pid, num, patch) => netWrite(() => remote.updateWave(pid, num, patch)),
     deleteWave: (pid, num) => netWrite(() => remote.deleteWave(pid, num)),
     createTheme: (pid, name, color) => netWrite(() => remote.createTheme(pid, name, color)),

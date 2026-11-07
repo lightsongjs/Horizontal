@@ -100,7 +100,7 @@ export const TicketCard = memo(function TicketCard({ id, contextWave, selectMode
         <span className="tk-sub">
           <TaskProgress desc={it.desc} />
           {sameWave.length > 0 && <span className="dep"><Icon name="dep" size={13} /> {sameWave.join(', ')}</span>}
-          {crossWave.length > 0 && <span className="tk-children">+{crossWave.length} din alt val</span>}
+          {crossWave.length > 0 && <span className="tk-children">+{crossWave.length} din alt sprint</span>}
           <DueChip issue={it} />
           <ObstacleChip issueId={id} />
         </span>

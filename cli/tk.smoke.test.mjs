@@ -55,6 +55,11 @@ beforeAll(async () => {
         return send(409, { error: 'migration_missing', kept: 2 })
       }
       if (u.pathname === '/api/projects') return send(200, PROJECTS)
+      if (u.pathname === '/api/waves' && req.method === 'POST') {
+        const body = JSON.parse(raw.toString())
+        if (body.date === '2026-11-12') return send(409, { error: 'sprint_exists', number: 2, detail: 'Există deja sprintul 12/11/26.' })
+        return send(201, { number: 4, name: '19/11/26', label: '19/11/26', position: 3 })
+      }
       if (u.pathname === '/api/waves') return send(200, [{ number: 1, name: 'I', label: 'MVP' }])
       if (u.pathname === '/api/assignees') {
         return send(200, [{ id: 'a-ion', name: 'Ionut', linked: true }, { id: 'a-ana', name: 'Ana', linked: false }])
@@ -246,7 +251,7 @@ describe('tk contra unui server fals', () => {
     const moved = await tk(['wave-delete', '1', '--move-to', '0'], { cwd: repo() })
     expect(moved.code).toBe(0)
     expect(last().url).toBe('/api/waves/1?project=kata&moveTo=0')
-    expect(moved.stdout.trim().split('\n')).toEqual(['archived: 1', 'moved → 0: KATA-03, KATA-07', 'kept: 4 gata (rămân în valul arhivat)'])
+    expect(moved.stdout.trim().split('\n')).toEqual(['archived: 1', 'moved → 0: KATA-03, KATA-07', 'kept: 4 gata (rămân în sprintul arhivat)'])
 
     const empty = await tk(['delete-wave', '2'], { cwd: repo() })
     expect(empty.stdout.trim()).toBe('deleted: 2')
@@ -264,6 +269,26 @@ describe('tk contra unui server fals', () => {
     expect(un.code).toBe(0)
     expect(un.stdout.trim()).toBe('unarchived: 3  III / Vechi')
     expect(JSON.parse(last().raw.toString())).toEqual({ archived: false })
+  })
+
+  it('sprint-create --date trimite data; fără dată sau cu una greșită refuză local', async () => {
+    const ok = await tk(['sprint-create', '--date', '2026-11-19'], { cwd: repo() })
+    expect(ok.code).toBe(0)
+    expect(ok.stdout.trim()).toBe('4  19/11/26')
+    expect(last().url).toBe('/api/waves')
+    expect(JSON.parse(last().raw.toString())).toEqual({ projectId: 'kata', date: '2026-11-19' })
+
+    const dup = await tk(['sprint-create', '--date', '2026-11-12'], { cwd: repo() })
+    expect(dup.code).toBe(1)
+    expect(dup.stdout.trim()).toBe('sprint_exists: 2')
+
+    const n = seen.length
+    const none = await tk(['sprint-create'], { cwd: repo() })
+    expect(none.code).not.toBe(0)
+    expect(none.stderr).toContain('--date')
+    const bad = await tk(['sprint-create', '--date', '19.11.2026'], { cwd: repo() })
+    expect(bad.code).not.toBe(0)
+    expect(seen.length).toBe(n)
   })
 
   it('attach trimite multipart cu fișierele, fără Content-Type JSON', async () => {

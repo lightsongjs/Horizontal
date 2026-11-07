@@ -79,8 +79,8 @@ const SHORTCUTS: { keys: string; action: string; where?: string }[] = [
   { keys: 'Ctrl+↵', action: 'Adaugă din descriere', where: 'în quick add' },
   { keys: 'Ctrl+K', action: 'Caută tichet, cele mai noi întâi (deschise; bifa „și închise" le adaugă pe cele bifate)', where: 'oriunde' },
   { keys: '1 2 3 4', action: 'Taburile List / Cards / Hartă / Teme', where: 'în proiect' },
-  { keys: ', .', action: 'Valul anterior / următor (Notițele sunt primul)', where: 'în Cards / List' },
-  { keys: 'V', action: 'Foaia „Valuri": redenumește, mută, adaugă', where: 'în Cards / List' },
+  { keys: ', .', action: 'Sprintul anterior / următor (Notițele sunt primul)', where: 'în Cards / List' },
+  { keys: 'V', action: 'Foaia „Sprinturi": redenumește, mută, adaugă', where: 'în Cards / List' },
   { keys: 'T', action: 'Arbore de dependențe', where: 'în Cards / List' },
   { keys: 'S', action: 'Selectează mai multe', where: 'în Cards / List' },
   { keys: 'H J K L', action: 'Navighează între tichete', where: 'în Cards / List' },
@@ -102,7 +102,7 @@ const SHORTCUTS: { keys: string; action: string; where?: string }[] = [
 const VIM_SECTIONS: { title: string; ctx: KeyCtx }[] = [
   { title: 'Oriunde', ctx: 'any' },
   { title: 'Listă', ctx: 'list' },
-  { title: 'Teme × Valuri (în plus față de listă)', ctx: 'grid' },
+  { title: 'Teme × Sprinturi (în plus față de listă)', ctx: 'grid' },
   { title: 'Panou (tichetul deschis)', ctx: 'panel' },
   { title: 'Bara laterală', ctx: 'sidebar' },
 ]
@@ -148,7 +148,7 @@ const RULES: { title: string; body: string }[] = [
   },
   {
     title: 'Mutarea în alt proiect',
-    body: 'Din jetonul de proiect (foaia de tichet, lângă ID în formular) sau din ⋮ al unui rând. Tichetul primește NUMĂR NOU în proiectul țintă (HZ-12 → APO-07), iar linkul vechi nu-l mai găsește. Firul, fișierele și scadența merg cu el; valul devine cel activ al țintei, tema se golește. Un tichet cu dependențe (în orice sens) sau legat de un obstacol nu se mută — scoate-le întâi.',
+    body: 'Din jetonul de proiect (foaia de tichet, lângă ID în formular) sau din ⋮ al unui rând. Tichetul primește NUMĂR NOU în proiectul țintă (HZ-12 → APO-07), iar linkul vechi nu-l mai găsește. Firul, fișierele și scadența merg cu el; sprintul devine cel activ al țintei, tema se golește. Un tichet cu dependențe (în orice sens) sau legat de un obstacol nu se mută — scoate-le întâi.',
   },
   {
     title: 'Toată ziua',
@@ -168,7 +168,7 @@ const RULES: { title: string; body: string }[] = [
   },
   {
     title: 'Obstacol vs. dependență',
-    body: 'Un obstacol nu are val și nu are layer — nu intră în calculul layerelor. E o condiție din afara muncii, nu muncă: layerul unui tichet nu se mișcă niciodată la depășirea unui obstacol.',
+    body: 'Un obstacol nu are sprint și nu are layer — nu intră în calculul layerelor. E o condiție din afara muncii, nu muncă: layerul unui tichet nu se mișcă niciodată la depășirea unui obstacol.',
   },
   {
     title: 'Obstacol depășit',
@@ -176,7 +176,7 @@ const RULES: { title: string; body: string }[] = [
   },
   {
     title: '„Blochează" = nu',
-    body: 'Un obstacol poate exista fără să blocheze: se vede pe hartă și în poarta valului, dar nu stinge niciun tichet legat.',
+    body: 'Un obstacol poate exista fără să blocheze: se vede pe hartă și în poarta sprintului, dar nu stinge niciun tichet legat.',
   },
   {
     title: 'Fără răspuns de N zile',
@@ -249,7 +249,7 @@ export function InfoPanel({ onClose }: { onClose: () => void }) {
                 Ca la Vim și yazi; oprit din rotița de setări („Tastatură”), revin tastele de dinainte.
                 Numărătorile (<kbd>5</kbd><kbd>j</kbd>) merg pe mișcări. Acțiunile se aplică intervalului
                 (<kbd>v</kbd>), selecției (<kbd>Space</kbd>) sau rândului de sub cursor. Amânat:{' '}
-                <kbd>X</kbd> taie + <kbd>p</kbd> lipește în ziua / valul cursorului.
+                <kbd>X</kbd> taie + <kbd>p</kbd> lipește în ziua / sprintul cursorului.
               </p>
               {VIM_SECTIONS.map((g) => (
                 <div key={g.ctx} className="info-grp">

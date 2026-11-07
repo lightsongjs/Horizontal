@@ -244,11 +244,11 @@ export function createLocalRepository(): Repository {
       )
     },
 
-    async createWave(projectId: string, name: string, label = '') {
+    async createWave(projectId: string, name: string, label = '', at?: number) {
       const db = load()
       const existing = db.waves.filter((w) => w.projectId === projectId)
       const number = existing.reduce((m, w) => Math.max(m, w.number), 0) + 1
-      const position = existing.reduce((m, w) => Math.max(m, w.position), -1) + 1
+      const position = at ?? existing.reduce((m, w) => Math.max(m, w.position), -1) + 1
       const wave: Wave = { projectId, number, name, label, position }
       db.waves.push(wave)
       save(db)

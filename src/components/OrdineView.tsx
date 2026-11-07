@@ -48,7 +48,7 @@ export function OrdineView() {
       {!waves.some((w) => w.number !== 0) && orderedLayers.length === 0 ? (
         <NoWaves />
       ) : orderedLayers.length === 0 ? (
-        <p className="empty">Niciun tichet în acest val. Apasă + ca să adaugi unul.</p>
+        <p className="empty">Niciun tichet în acest sprint. Apasă + ca să adaugi unul.</p>
       ) : (
         orderedLayers.map((g, i) => {
           const ready = i === 0
@@ -69,7 +69,7 @@ export function OrdineView() {
                 <div>
                   <h4>{ready ? 'Începe aici' : `Layer ${g.L + 1}`}</h4>
                   <div className="sub">
-                    {ready ? 'Nu depinde de nimic din acest val' : `Depinde de layer ${g.L}`} ·{' '}
+                    {ready ? 'Nu depinde de nimic din acest sprint' : `Depinde de layer ${g.L}`} ·{' '}
                     {freeCount < liveIds.length ? `se poate începe · ${freeCount} din ${liveIds.length}` : `${g.ids.length} tichete`}
                   </div>
                 </div>

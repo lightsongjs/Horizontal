@@ -110,6 +110,6 @@ describe('openCounts / compareRows / waveTitle', () => {
   it('valul 0 e „Notițe” (sau eticheta lui), restul numele', () => {
     expect(waveTitle(wave(0, 0, 'Scratchpad'))).toBe('Notițe')
     expect(waveTitle(wave(0, 0, 'Scratchpad', 'Idei'))).toBe('Idei')
-    expect(waveTitle(wave(1, 1, 'Val 1', 'MVP'))).toBe('Val 1')
+    expect(waveTitle(wave(1, 1, 'Val 1', 'MVP'))).toBe('Sprint 1')
   })
 })
