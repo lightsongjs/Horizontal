@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import quickAddSrc from '../components/QuickAdd.tsx?raw'
 import quickSheetSrc from '../components/QuickSheet.tsx?raw'
-import { captureDefaultProjectId, draftSchedule, dueLabel, dueLabelParts, keyboardInset, quickKey, resolveDraft, type DraftDate, type DraftInput, type QuickCtx } from './quickDraft'
+import { captureDefaultProjectId, draftSchedule, dueLabel, dueLabelParts, keyboardInset, seriesDueLabel, quickKey, resolveDraft, type DraftDate, type DraftInput, type QuickCtx } from './quickDraft'
 import type { CaptureTokens } from './captureTokens'
 
 const TODAY = '2026-10-03T00:00:00.000Z'
@@ -166,4 +166,28 @@ describe('captureDefaultProjectId — unde cade o sarcină fără proiect ales',
   it('fără Inbox (sau fără drept de scriere în el, deci absent din listă): null, iar computeDraft alege', () => {
     expect(captureDefaultProjectId(LIST, [{ id: 'home', name: 'Home' }])).toBeNull()
   })
+})
+
+describe('seriesDueLabel — butonul de dată al barei spune seria', () => {
+  const now = new Date(2026, 10, 9, 9, 20)
+  const at = (d: number, h: number, m = 0) => new Date(2026, 10, d, h, m).toISOString()
+  const base = { allDay: false, rrule: null as string | null }
+  it('azi: fără zi, doar pasul și fereastra', () => {
+    expect(seriesDueLabel({ ...base, pingEvery: 60, remindAt: at(9, 9, 20), dueAt: at(9, 16) }, now)).toBe('Din oră în oră · 09:20–16:00')
+  })
+  it('altă zi: ziua în față', () => {
+    expect(seriesDueLabel({ ...base, pingEvery: 15, remindAt: at(10, 9), dueAt: at(10, 10) }, now)).toBe('Mâine · La 15 min · 09:00–10:00')
+  })
+  it('recurentă: zilele la coadă', () => {
+    expect(seriesDueLabel({ ...base, rrule: 'FREQ=DAILY', pingEvery: 60, remindAt: at(9, 9, 20), dueAt: at(9, 16) }, now)).toBe('Din oră în oră · 09:20–16:00 · zilnic')
+  })
+  it('fără serie: gol (butonul rămâne „Azi 16:00" + clopoțel)', () => {
+    expect(seriesDueLabel({ ...base, pingEvery: null, remindAt: at(9, 15, 45), dueAt: at(9, 16) }, now)).toBe('')
+    expect(seriesDueLabel({ ...base, pingEvery: 60, remindAt: null, dueAt: null }, now)).toBe('')
+  })
+})
+
+it('bara de captură: butonul de dată spune seria (`seriesDueLabel`), nu doar în tooltip', () => {
+  expect(quickAddSrc).toMatch(/seriesDueLabel\(schedule/)
+  expect(quickAddSrc).toMatch(/<span className="qs-due-t">\{seriesText\}<\/span>/)
 })

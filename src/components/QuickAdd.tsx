@@ -4,7 +4,7 @@ import { useQuickDraft } from '../hooks'
 import { fromInputs, toDateInput } from '../lib/schedule'
 import { describeRrule } from '../lib/recurrence'
 import { pingChipLabel } from '../lib/pingSeries'
-import { dueLabel, dueLabelParts, quickKey } from '../lib/quickDraft'
+import { dueLabel, dueLabelParts, quickKey, seriesDueLabel } from '../lib/quickDraft'
 import { loadBarDraft, saveBarDraft, type BarDraft } from '../lib/barDraft'
 import { Icon } from './Icon'
 import { QuickDesc, QuickTitle } from './QuickFields'
@@ -199,6 +199,7 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, rich = false,
 
   if (rich) {
     const parts = dueAt ? dueLabelParts(dueAt, allDay, new Date()) : null
+    const seriesText = seriesDueLabel(schedule, new Date())
     const warn = tokens?.unknown.length ? `nu știu ${tokens.unknown.join(', ')}` : bare ? 'și ce ai de făcut?' : null
     const chosenProject = !!(q.manual.projectId || tokens?.projectId)
     const who = assigneeId ? assignees.find((a) => a.id === assigneeId)?.name ?? '' : ''
@@ -263,19 +264,31 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, rich = false,
               comutatoarele lângă Trimite. Fără agrafă (decizia omului): bara
               capturează un gând, nu fișiere. Persoana nu are jeton — `@nume`. */}
           <div className="qs-bar">
-            <span className={`qs-due${dueAt ? ' on' : ''}${whenOpen ? ' open' : ''}`}>
+            <span className={`qs-due${dueAt ? ' on' : ''}${seriesText ? ' series' : ''}${whenOpen ? ' open' : ''}`}>
               <button
                 type="button"
                 className="qs-due-btn"
                 aria-expanded={whenOpen}
-                title={`Data și ora (Alt+D, sau „mâine la 10” în text)${series ? ` · ${series}` : ''}${recur ? ` · ${recur}` : ''}`}
+                title={seriesText
+                  ? `${seriesText} (Alt+D deschide panoul datei)`
+                  : `Data și ora (Alt+D, sau „mâine la 10” în text)${recur ? ` · ${recur}` : ''}`}
                 onPointerDown={(e) => e.preventDefault()}
                 onClick={() => setWhenOpen((v) => !v)}
               >
-                <Icon name={recur ? 'recurring' : 'due'} size={15} />
-                <span className="qs-due-t">{parts ? parts.day : 'Dată'}</span>
-                {parts?.time && <span className="qs-due-h">{parts.time}</span>}
-                {parts?.time && <Icon name="reminder" size={13} />}
+                {seriesText ? (
+                  // Seria se spune pe buton, nu doar în tooltip; lungă, se taie cu „…".
+                  <>
+                    <Icon name="reminder" size={15} />
+                    <span className="qs-due-t">{seriesText}</span>
+                  </>
+                ) : (
+                  <>
+                    <Icon name={recur ? 'recurring' : 'due'} size={15} />
+                    <span className="qs-due-t">{parts ? parts.day : 'Dată'}</span>
+                    {parts?.time && <span className="qs-due-h">{parts.time}</span>}
+                    {parts?.time && <Icon name="reminder" size={13} />}
+                  </>
+                )}
               </button>
               {useParsed && (
                 <button

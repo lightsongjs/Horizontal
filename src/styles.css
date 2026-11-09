@@ -7052,6 +7052,14 @@ body:has(.qab) { overflow-y: auto; }
   background: none; color: inherit; font: inherit; cursor: pointer;
 }
 .qab .qs-due-h { font-family: var(--mono); font-weight: 500; }
+/* Seria de mementouri spusă pe buton („Din oră în oră · 09:20–16:00"):
+   lungă, se taie cu „…" pe un rând. În fereastra îngustă indiciul de taste
+   (nemicșorabil, în `.qs-tools`) i-ar lua tot locul — seria ajungea la 0px —
+   deci acolo indiciul cedează: seria e ce trebuie văzut înainte de ↵. */
+.qab { container: qab / inline-size; }
+@container qab (max-width: 560px) {
+  .qab .qs-bar:has(.qs-due.series) .qa-hint { display: none; }
+}
 .qab .qs-due:has(.qs-due-x) .qs-due-btn { padding-right: 4px; }
 .qs-due-x {
   height: 100%; padding: 0 8px 0 2px; display: inline-flex; align-items: center;

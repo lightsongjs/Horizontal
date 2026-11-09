@@ -1,6 +1,7 @@
 import type { NewIssue } from '../data/repository'
 import { inboxProjectId, parseCaptureTokens, type CaptureTokens } from './captureTokens'
 import { liveRejections, maskRejected, parseDue, stripSpans } from './parseDue'
+import { pingChipLabel } from './pingSeries'
 import { dayOffset, defaultReminder, reminderAt, startOfLocalDay, toDisplayDate, toTimeInput } from './schedule'
 
 /**
@@ -196,6 +197,23 @@ export function dueLabelParts(iso: string, allDay: boolean, now: Date): { day: s
         : off === -1 ? 'Ieri'
           : `${DAYS[d.getDay()]} ${date}`
   return { day, time: allDay ? null : toTimeInput(iso) }
+}
+
+/**
+ * Jetonul de dată al barei când textul face o serie de mementouri (varianta A
+ * a omului, 2026-11-09): seria însăși, nu doar capătul ei — „Din oră în oră ·
+ * 09:20–16:00", cu ziua în față când nu e azi și zilele la coadă
+ * („Mâine · La 15 min · 09:00–10:00 · zilnic"). Fără serie: '' (butonul rămâne
+ * „Azi 16:00" + clopoțel).
+ */
+export function seriesDueLabel(
+  s: { dueAt: string | null; allDay: boolean; remindAt: string | null; rrule: string | null; pingEvery?: number | null },
+  now: Date,
+): string {
+  if (!s.pingEvery || !s.dueAt) return ''
+  const { day } = dueLabelParts(s.dueAt, s.allDay, now)
+  const label = pingChipLabel({ pingEvery: s.pingEvery, remindAt: s.remindAt, dueAt: s.dueAt, rrule: s.rrule })
+  return day === 'Azi' ? label : `${day} · ${label}`
 }
 
 export interface CaptureInput {

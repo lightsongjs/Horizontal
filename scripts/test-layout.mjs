@@ -1902,11 +1902,12 @@ for (const width of PHONE_WIDTHS) {
  * Invarianți: rândul nu iese din fereastră, Trimite și urgent nestriviți,
  * goală bara are ~96px (fără gol mort), niciun jeton fără fundal.
  */
-const captureBar = ({ empty = false } = {}) => `
+const SERIES = 'Mâine · Din oră în oră · 09:20–16:00 · zilnic'
+const captureBar = ({ empty = false, series = false } = {}) => `
 <div class="qab"><div class="qa qa-bar" style="--pc:#6e7bff"><form class="qa-form">
   <div class="qa-row"><span class="ck${empty ? '' : ' urg'}"></span><span class="qa-wrap"><span class="qa-mirror"></span><input class="qa-input" type="search" value="${empty ? '' : 'Trimite oferta revizuită clientului din Cluj'}" placeholder="Ce ai de făcut?"></span></div>
   <div class="qs-bar">
-    <span class="qs-due${empty ? '' : ' on'}"><button type="button" class="qs-due-btn"><svg width="15" height="15"></svg><span class="qs-due-t">${empty ? 'Dată' : 'Mie 07/10'}</span>${empty ? '' : '<span class="qs-due-h">10:00</span><svg width="13" height="13"></svg>'}</button>${empty ? '' : '<button type="button" class="qs-due-x"><svg width="13" height="13"></svg></button>'}</span>
+    <span class="qs-due${empty ? '' : ' on'}${series ? ' series' : ''}"><button type="button" class="qs-due-btn"><svg width="15" height="15"></svg>${series ? `<span class="qs-due-t">${SERIES}</span>` : `<span class="qs-due-t">${empty ? 'Dată' : 'Mie 07/10'}</span>${empty ? '' : '<span class="qs-due-h">10:00</span><svg width="13" height="13"></svg>'}`}</button>${empty ? '' : '<button type="button" class="qs-due-x"><svg width="13" height="13"></svg></button>'}</span>
     <label class="qs-sel qs-proj${empty ? '' : ' tinted'}"><span class="t-dot" style="background:#6e7bff"></span><span class="qs-sel-t">${empty ? 'Inbox' : 'Aplicație Turism și încă ceva foarte lung'}</span><select><option>x</option></select></label>
     ${empty ? '' : '<span class="qs-who-badge">AP</span>'}
     <span class="qs-tools">
@@ -1916,11 +1917,11 @@ const captureBar = ({ empty = false } = {}) => `
     </span>
   </div>
 </form></div></div>`
-console.log('\nBara de captură de pe Linux (720px, varianta A):')
-for (const empty of [true, false]) {
+console.log('\nBara de captură de pe Linux (720px, varianta A; seria și la 440px):')
+for (const [empty, series, width] of [[true, false, 720], [false, false, 720], [false, true, 720], [false, true, 440]]) {
   for (const theme of ['dark', 'light']) {
-    const page = await browser.newPage({ viewport: { width: 720, height: 300 } })
-    await page.setContent(`<style>${CSS}</style>${captureBar({ empty })}`)
+    const page = await browser.newPage({ viewport: { width, height: 300 } })
+    await page.setContent(`<style>${CSS}</style>${captureBar({ empty, series })}`)
     // Bara e o fereastră de desktop (`installNarrow({ desktop })`), nu „îngustă”.
     await page.evaluate((t) => { document.documentElement.removeAttribute('data-narrow'); document.documentElement.setAttribute('data-theme', t) }, theme)
     await page.evaluate(() => document.fonts.ready)
@@ -1940,12 +1941,18 @@ for (const empty of [true, false]) {
         urgent: Math.round(r(document.querySelector('.qs-urgent')).width),
         proj: Math.round(r(document.querySelector('.qs-proj')).width),
         sendIn: r(document.querySelector('.qs-send')).right <= r(bar).right + 0.5,
-        hint: (() => { const h = document.querySelector('.qa-hint'); return h.scrollWidth <= h.clientWidth + 0.5 })(),
+        hint: (() => { const h = document.querySelector('.qa-hint'); return getComputedStyle(h).display === 'none' || h.scrollWidth <= h.clientWidth + 0.5 })(),
         invisible,
+        // Seria lungă: un singur rând, tăiată cu „…" (nu rupe rândul), ✕ întreg.
+        dueT: (() => { const t = document.querySelector('.qs-due-t'); const cs = getComputedStyle(t); return { cut: t.scrollWidth > t.clientWidth + 0.5, ellipsis: cs.textOverflow === 'ellipsis', lines: Math.round(t.getBoundingClientRect().height / parseFloat(cs.lineHeight || '16')) || 1, w: Math.round(t.getBoundingClientRect().width) } })(),
+        x: (() => { const x = document.querySelector('.qs-due-x'); return x ? Math.round(x.getBoundingClientRect().width) : null })(),
       }
     })
     await page.close()
-    const tag = `${empty ? 'goală' : 'plină'}, ${theme}`
+    const tag = `${empty ? 'goală' : series ? `serie ${width}px` : 'plină'}, ${theme}`
+    if (series) {
+      check(`bara (${tag}): seria pe un rând, cu „…” dacă nu încape, ✕ întreg`, m.dueT.ellipsis && m.dueT.w >= 60 && m.x >= 18 && (width > 600 || m.dueT.cut), `text ${m.dueT.w}px${m.dueT.cut ? ' tăiat' : ''}, ✕ ${m.x}px`)
+    }
     const maxRows = Number(process.env.TEXT_SCALE ?? 1) > 1 ? 2 : 1
     check(`bara (${tag}): rândul nu iese din fereastră`, m.overflow <= 0 && m.sendIn && m.rows <= maxRows, `+${m.overflow}px, ${m.rows} rând(uri)`)
     check(`bara (${tag}): Trimite și urgent nestriviți`, m.send >= 30 && m.urgent >= 30, `${m.send}px / ${m.urgent}px`)
