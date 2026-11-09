@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { parseDue } from '../lib/parseDue'
 import { describeRrule } from '../lib/recurrence'
-import { pingChipLabel } from '../lib/pingSeries'
+import { seriesDueLabel } from '../lib/quickDraft'
 import { dayOffset, toDisplayDate, toTimeInput } from '../lib/schedule'
 import { Icon } from './Icon'
 import { AndroidStatus } from './AndroidStatus'
@@ -193,9 +193,10 @@ function explain(text: string, now: Date): { title: string; due: string | null }
   const r = parseDue(text, now)
   if (!r.dueAt) return { title: r.title, due: null }
   if (r.pingEvery && r.remindAt) {
-    const first = dayOffset(r.remindAt, now)
-    const day = first === 0 ? 'azi' : first === 1 ? 'mâine' : toDisplayDate(r.remindAt)
-    return { title: r.title, due: `${day} · ${pingChipLabel({ pingEvery: r.pingEvery, remindAt: r.remindAt, dueAt: r.dueAt, rrule: r.rrule }).toLowerCase()}` }
+    // Ca jetonul barei: „azi · din oră în oră · primul 10:48 · până la 16:00".
+    const label = seriesDueLabel({ ...r, pingEvery: r.pingEvery }, now)
+    const lc = label.charAt(0).toLowerCase() + label.slice(1)
+    return { title: r.title, due: dayOffset(r.dueAt, now) === 0 ? `azi · ${lc}` : lc }
   }
   const off = dayOffset(r.dueAt, now)
   const day = off === 0 ? 'azi' : off === 1 ? 'mâine' : toDisplayDate(r.dueAt)

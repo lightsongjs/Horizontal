@@ -4,7 +4,7 @@ import { buildAssigneeOptions, type AssigneeOption } from '../lib/assigneeOption
 import { useAuth } from '../auth'
 import { useHorizontal } from '../store'
 import { useUI, type IssueDraft } from '../ui'
-import { useCanWrite, useCoarsePointer, useTitleDate, useNarrow, useMoveIssue } from '../hooks'
+import { useCanWrite, useCoarsePointer, useTitleDate, useNarrow, useMoveIssue, useMinuteTick } from '../hooks'
 import { isPane } from '../lib/pane'
 import { OPEN_SPLIT_EVENT } from '../lib/splitState'
 import { ticketUrl } from '../lib/deepLink'
@@ -22,7 +22,7 @@ import { dueLabelParts } from '../lib/quickDraft'
 import {
   REMINDER_CHIP, addMenuItems, recurChipLabel, visibleChips,
 } from '../lib/formChips'
-import { pingChipLabel } from '../lib/pingSeries'
+import { pingChipLabel, pingPanelLabel, seriesState } from '../lib/pingSeries'
 import { Attachments } from './Attachments'
 import { Thread } from './Thread'
 import { DescFold } from './DescFold'
@@ -495,6 +495,8 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
       : defaultReminder(allDay)
     return { dueAt, allDay, remindAt: reminderAt(dueAt, kind), kind, pingEvery: null as number | null }
   })()
+  // „Următorul 10:48" trece singur pe 11:48: ceas pe minut cât e o serie.
+  const tickMs = useMinuteTick(!!schedule.pingEvery)
   /**
    * Recurența care chiar se salvează. O repetare fără dată de start nu înseamnă
    * nimic — motorul pleacă de la scadență — iar rândul „Repetare" nici nu se
@@ -1088,7 +1090,7 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
      jeton își deschide popoverul; `openPop` e o singură stare. Datele curg
      exact ca înainte (aceleași `set*`), s-a schimbat doar unde stau controalele. */
 
-  const now = new Date()
+  const now = new Date(tickMs)
   const togglePop = (kind: NonNullable<typeof openPop>, anchor: HTMLElement) => {
     if (openPop === kind) { setOpenPop(null); return }
     popAnchor.current = anchor
@@ -1195,7 +1197,11 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
     dirty: () => isDirty,
   } : null
   const dueParts = schedule.dueAt ? dueLabelParts(schedule.dueAt, schedule.allDay, now) : null
-  const late = !!schedule.dueAt && isOverdue({ dueAt: schedule.dueAt, allDay: schedule.allDay, done: existing?.done ?? false }, now)
+  // Cu serie, jetonul datei spune capătul („Azi, până la 16:00"), iar după
+  // ultimul ping e roșu ca o restanță — n-o să mai sune.
+  const seriesNow = schedule.pingEvery ? seriesState({ ...schedule, done: existing?.done ?? false }, now) : null
+  const late = (!!schedule.dueAt && isOverdue({ dueAt: schedule.dueAt, allDay: schedule.allDay, done: existing?.done ?? false }, now))
+    || seriesNow?.phase === 'ended'
   const reminderLabel = schedule.kind === 'none' ? '' : REMINDER_CHIP[schedule.kind]
   const waveObj = waves.find((w) => w.number === wave)
   // Același text ca în bandă: eticheta valului, „Val III" fără ea, „Notițe"
@@ -1236,7 +1242,7 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
       onReminder={schedule.pingEvery ? undefined : (kind) => { setReminder(kind); setReminderTouched(true) }}
       rrule={rruleOut}
       onClearRrule={() => setRrule(null)}
-      series={schedule.pingEvery ? pingChipLabel({ pingEvery: schedule.pingEvery, remindAt: schedule.remindAt, dueAt: schedule.dueAt, rrule: null }) : null}
+      series={schedule.pingEvery ? pingPanelLabel({ pingEvery: schedule.pingEvery, remindAt: schedule.remindAt, dueAt: schedule.dueAt }) : null}
       onClearSeries={() => { setSeries(null); seriesBefore.current = undefined }}
       foot={!narrow && <div className="fc-foot"><kbd>Esc</kbd> închide, înapoi pe jeton</div>}
     />
@@ -1395,7 +1401,7 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
         const first = idx === 0
         if (kind === 'due') {
           const label = dueParts
-            ? `Scadență: ${dueParts.day}${dueParts.time ? ' ' + dueParts.time : ''}${late ? ', restantă' : ''}${reminderLabel ? `, memento ${reminderLabel}` : ''}`
+            ? `Scadență: ${dueParts.day}${dueParts.time ? (seriesNow ? ', până la ' : ' ') + dueParts.time : ''}${late ? ', restantă' : ''}${reminderLabel ? `, memento ${reminderLabel}` : ''}`
             : 'Pune o dată'
           return (
             <button
@@ -1409,7 +1415,7 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
               <Icon name="due" size={14} />
               {dueParts ? (
                 <>
-                  {dueParts.day}
+                  {seriesNow && dueParts.time ? `${dueParts.day}, până la` : dueParts.day}
                   {dueParts.time && <span className="fc-t">{dueParts.time}</span>}
                 </>
               ) : 'Dată'}
@@ -1425,7 +1431,8 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
           )
         }
         if (kind === 'ping') {
-          const label = pingChipLabel({ pingEvery: schedule.pingEvery, remindAt: schedule.remindAt, dueAt: schedule.dueAt, rrule: null })
+          // Zilele sunt pe jetonul de repetare, alături — nu și aici.
+          const label = pingChipLabel({ pingEvery: schedule.pingEvery, remindAt: schedule.remindAt, dueAt: schedule.dueAt, rrule: null, done: existing?.done ?? false }, now)
           return (
             <button key={kind} {...chipProps('date', first)} disabled={!canWrite} className="fc-chip" aria-label={`Serie de mementouri: ${label}`} title={`Serie de mementouri: ${label}`}>
               <Icon name="bell" size={14} />

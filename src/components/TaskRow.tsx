@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useHorizontal } from '../store'
-import { swallowNextClick, useCanWriteIn } from '../hooks'
+import { swallowNextClick, useCanWriteIn, useMinuteTick } from '../hooks'
+import { isPingSeries, pingRowTime } from '../lib/pingSeries'
 import { dayOffset, dueChipDay, hasTime, toDayMonth, toTimeInput } from '../lib/schedule'
 import { isPinnedOpen } from '../lib/pinned'
 import {
@@ -97,6 +98,25 @@ function sameRow(a: ViewProps, b: ViewProps): boolean {
     && a.project === b.project && sameIssue(a.issue, b.issue)
 }
 
+/**
+ * Ora unei serii de mementouri pe rând: următorul ping, cu clopoțelul înainte
+ * („🔔 10:48", „Mâine 🔔 10:48"), nu capătul ferestrei. Își ține singură
+ * ceasul pe minut (`useMinuteTick`): rândul e `memo`, deci ceasul listei nu-l
+ * rerandează. După ultimul ping cade pe afișarea obișnuită (`children`).
+ */
+function SeriesDue({ issue, otherDay, children }: { issue: Issue; otherDay: boolean; children: ReactNode }) {
+  const now = new Date(useMinuteTick(true))
+  const next = pingRowTime(issue, now)
+  if (!next) return <>{children}</>
+  return (
+    <>
+      {otherDay && <span className="t-time t-day">{dueChipDay(issue.dueAt!, now)}</span>}
+      <Bell />
+      <span className="t-time t-ping" title="Următorul memento">{next}</span>
+    </>
+  )
+}
+
 /** Cere ca `onOpen` să fie stabil (`openTaskAnywhere` din App). */
 const TaskRowView = memo(function TaskRowView({ issue, onOpen, late = false, docked = false, day = false, project, onToggle }: ViewProps) {
   const ta = useTaskActions()
@@ -109,6 +129,19 @@ const TaskRowView = memo(function TaskRowView({ issue, onOpen, late = false, doc
   // Desktop: piuneza e un buton (vizibil la hover, mereu pe un rând fixat).
   // Pe telefon fixarea stă în ⋮ / selecție, iar aici rămâne doar semnul.
   const pinnable = !ta.narrow && canWrite && !issue.done
+
+  const due = (
+    <>
+      {late && issue.dueAt
+        ? <span className="t-time missed">{toDayMonth(issue.dueAt)}</span>
+        : otherDay
+          ? <span className="t-time t-day">{dueChipDay(issue.dueAt!, new Date())}{timed && <span className="t-day-h"> {toTimeInput(issue.dueAt!)}</span>}</span>
+          : timed && <span className="t-time">{toTimeInput(issue.dueAt!)}</span>}
+      {issue.remindAt && <Bell />}
+    </>
+  )
+  // O serie care încă sună arată următorul ping; restanța și bifata — capătul, ca oricare.
+  const series = !late && !issue.done && isPingSeries(issue)
 
   const body = (
     <>
@@ -148,12 +181,9 @@ const TaskRowView = memo(function TaskRowView({ issue, onOpen, late = false, doc
         <TaskProgress desc={issue.desc} />
         {/* O restanță își spune ziua ratată; altfel ora, dacă are una. Fără
             oră nu se scrie nimic — absența e cazul obișnuit. */}
-        {late && issue.dueAt
-          ? <span className="t-time missed">{toDayMonth(issue.dueAt)}</span>
-          : otherDay
-            ? <span className="t-time t-day">{dueChipDay(issue.dueAt!, new Date())}{timed && <span className="t-day-h"> {toTimeInput(issue.dueAt!)}</span>}</span>
-            : timed && <span className="t-time">{toTimeInput(issue.dueAt!)}</span>}
-        {issue.remindAt && <Bell />}
+        {series
+          ? <SeriesDue issue={issue} otherDay={otherDay}>{due}</SeriesDue>
+          : due}
         <Recur rrule={issue.rrule} />
         {project && (
           <span className="t-proj" title={project.name}>

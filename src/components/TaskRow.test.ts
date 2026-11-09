@@ -25,3 +25,13 @@ describe('TaskRow — „se repetă" vine din același loc ca „are memento"', 
     expect(taskRowSrc).not.toContain('describeRrule')
   })
 })
+
+// Seria de mementouri pe rând: următorul ping vine din `pingRowTime` (regula
+// din `_shared/pings.ts`), iar ceasul e al rândului — `TaskRow` e `memo`, deci
+// ceasul listei nu l-ar rerandat.
+describe('TaskRow — seria arată următorul ping', () => {
+  it('ora seriei vine din pingRowTime, cu ceasul pe minut al rândului', () => {
+    expect(taskRowSrc).toMatch(/pingRowTime\(issue, now\)/)
+    expect(taskRowSrc).toMatch(/useMinuteTick\(true\)/)
+  })
+})

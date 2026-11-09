@@ -1,7 +1,8 @@
 import type { NewIssue } from '../data/repository'
 import { inboxProjectId, parseCaptureTokens, type CaptureTokens } from './captureTokens'
 import { liveRejections, maskRejected, parseDue, stripSpans } from './parseDue'
-import { pingChipLabel } from './pingSeries'
+import { pingRuleLabel, seriesState } from './pingSeries'
+import { describeRrule } from './recurrence'
 import { dayOffset, defaultReminder, reminderAt, startOfLocalDay, toDisplayDate, toTimeInput } from './schedule'
 
 /**
@@ -200,11 +201,12 @@ export function dueLabelParts(iso: string, allDay: boolean, now: Date): { day: s
 }
 
 /**
- * Jetonul de dată al barei când textul face o serie de mementouri (varianta A
- * a omului, 2026-11-09): seria însăși, nu doar capătul ei — „Din oră în oră ·
- * 09:20–16:00", cu ziua în față când nu e azi și zilele la coadă
- * („Mâine · La 15 min · 09:00–10:00 · zilnic"). Fără serie: '' (butonul rămâne
- * „Azi 16:00" + clopoțel).
+ * Jetonul de dată al barei când textul face o serie de mementouri (înainte de
+ * salvare): regula, primul ping și capătul — „Din oră în oră · primul 10:48 ·
+ * până la 16:00", „Mâine · din oră în oră · primul 09:00 · până la 16:00 ·
+ * zilnic". Primul ping vine din `parseDue` la randare (bara se reface la minut,
+ * `useMinuteTick`, și din nou la salvare), deci nu e deja trecut. Fără serie: ''
+ * (butonul rămâne „Azi 16:00" + clopoțel).
  */
 export function seriesDueLabel(
   s: { dueAt: string | null; allDay: boolean; remindAt: string | null; rrule: string | null; pingEvery?: number | null },
@@ -212,8 +214,18 @@ export function seriesDueLabel(
 ): string {
   if (!s.pingEvery || !s.dueAt) return ''
   const { day } = dueLabelParts(s.dueAt, s.allDay, now)
-  const label = pingChipLabel({ pingEvery: s.pingEvery, remindAt: s.remindAt, dueAt: s.dueAt, rrule: s.rrule })
-  return day === 'Azi' ? label : `${day} · ${label}`
+  const rule = pingRuleLabel({ pingEvery: s.pingEvery, remindAt: s.remindAt, rrule: null })
+  const parts = [day === 'Azi' ? rule : `${day} · ${rule.charAt(0).toLowerCase()}${rule.slice(1)}`]
+  // „Primul" = primul care chiar sună: o serie „de la 10:48" scrisă la 11:05 își
+  // ține ancora grilei la 10:48 (`seriesWindow`), dar sună prima oară la 11:48.
+  const st = seriesState({ pingEvery: s.pingEvery, remindAt: s.remindAt, dueAt: s.dueAt }, now)
+  const thisMinute = Math.floor(now.getTime() / 60_000) * 60_000
+  const first = st?.first == null ? null : st.first >= thisMinute ? st.first : st.next ?? st.first
+  if (first !== null) parts.push(`primul ${toTimeInput(new Date(first).toISOString())}`)
+  parts.push(`până la ${toTimeInput(s.dueAt)}`)
+  const rec = describeRrule(s.rrule)
+  if (rec) parts.push(rec)
+  return parts.join(' · ')
 }
 
 export interface CaptureInput {
@@ -251,6 +263,8 @@ export interface CaptureResult {
   pingEvery: number | null
   /** Ce scrie jetonul de dată („Azi", „Mâine 10:00"); `null` = fără dată. */
   label: { day: string; time: string | null } | null
+  /** Jetonul unei serii de mementouri (`seriesDueLabel`): „Din oră în oră · primul 10:48 · până la 16:00”; `null` fără serie. */
+  series: string | null
   issue: NewIssue | null
   error: DraftError | null
 }
@@ -308,6 +322,7 @@ export function computeDraft(i: CaptureInput): CaptureResult {
     remindAt: schedule.remindAt,
     pingEvery: schedule.pingEvery,
     label: schedule.dueAt ? dueLabelParts(schedule.dueAt, schedule.allDay, now) : null,
+    series: seriesDueLabel(schedule, now) || null,
     issue: 'error' in resolved ? null : resolved,
     error: 'error' in resolved ? resolved.error : null,
   }

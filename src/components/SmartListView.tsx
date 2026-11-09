@@ -11,7 +11,8 @@ import { addDays, startOfLocalDay, toShortDate, WEEK_FIRST_OFFSET } from '../lib
 import type { Issue } from '../lib/types'
 import { Icon, type IconName } from './Icon'
 import { SplitView } from './SplitView'
-import { useNarrow } from '../hooks'
+import { useMinuteTick, useNarrow } from '../hooks'
+import { isPingSeries } from '../lib/pingSeries'
 import { useTaskActions } from './TaskActions'
 import { useCalendar } from '../calendar'
 import { eventsOn, mergeDay, type DayEvents } from '../lib/calendarEvents'
@@ -129,15 +130,14 @@ export function SmartListView({ kind, onOpenTask, focusSignal = 0, captureDueAt 
   useRowPinKey()
   const cal = useCalendar()
   const [showDone, setShowDone] = useState(false)
-  // Un ceas pe minut, doar cât sunt evenimente: un eveniment terminat se
-  // estompează fără să aștepte o altă randare.
-  const [, setTick] = useState(0)
+  // Un ceas pe minut, doar cât sunt evenimente sau serii de mementouri: un
+  // eveniment terminat se estompează, iar o serie trece pe pingul următor, fără
+  // să aștepte o altă randare. Rândurile (`memo`) cu serie își țin singure
+  // ceasul (`TaskRow`); aici e pentru grupuri și evenimente.
   const hasEvents = cal.events.length > 0
-  useEffect(() => {
-    if (!hasEvents) return
-    const t = setInterval(() => setTick((n) => n + 1), 60_000)
-    return () => clearInterval(t)
-  }, [hasEvents])
+  const hasSeries = smartLists.today.some(isPingSeries) || smartLists.overdue.some(isPingSeries)
+    || smartLists.week.some((d) => d.issues.some(isPingSeries))
+  useMinuteTick(hasEvents || hasSeries)
   const now = new Date()
   const today = startOfLocalDay(now)
   const eventsFor = (d: Date) => eventsOn(cal.events, cal.calendars, d, now)

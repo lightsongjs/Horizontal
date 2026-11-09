@@ -1,6 +1,7 @@
 import { dueChipDay, hasTime, isOverdue, reminderKindOf, toDisplayDate, toTimeInput } from '../lib/schedule'
 import { describeRrule } from '../lib/recurrence'
-import { pingChipLabel } from '../lib/pingSeries'
+import { isPingSeries, pingChipLabel, pingRowTime } from '../lib/pingSeries'
+import { useMinuteTick } from '../hooks'
 import type { Issue } from '../lib/types'
 import { Icon } from './Icon'
 
@@ -62,7 +63,7 @@ export function dueTitle(issue: Due, now: Date): string {
   const parts = [toDisplayDate(issue.dueAt) + (hasTime(issue) ? ` ${toTimeInput(issue.dueAt)}` : ' · toată ziua')]
   // O serie își spune fereastra, nu un decalaj față de scadență (care e capătul ei).
   const kind = reminderKindOf(issue.dueAt, issue.remindAt)
-  if (issue.pingEvery) parts.push(`mementouri: ${pingChipLabel({ pingEvery: issue.pingEvery, remindAt: issue.remindAt, dueAt: issue.dueAt, rrule: null }).toLowerCase()}`)
+  if (issue.pingEvery) parts.push(`mementouri: ${pingChipLabel({ pingEvery: issue.pingEvery, remindAt: issue.remindAt, dueAt: issue.dueAt, rrule: null, done: issue.done }, now).toLowerCase()}`)
   else if (kind !== 'none') parts.push(REMINDER_LABEL[kind])
   const rec = describeRrule(issue.rrule)
   if (rec) parts.push(`se repetă ${rec}`)
@@ -88,13 +89,27 @@ interface Props {
  * Ziua e scrisă ca în listele inteligente (`dueChipDay`); data completă e în `title`.
  */
 export function DueChip({ issue, now }: Props) {
+  // O serie care încă sună arată următorul ping, cu clopoțelul înainte
+  // („Azi 🔔 10:48"); ceasul pe minut îl mută singur pe următorul.
+  const series = !!issue.dueAt && isPingSeries({ ...issue, pingEvery: issue.pingEvery ?? null })
+  const tick = useMinuteTick(series)
   if (!issue.dueAt) return null
-  const at = now ?? new Date()
+  const at = now && !series ? now : new Date(tick)
+  const next = series ? pingRowTime({ ...issue, pingEvery: issue.pingEvery ?? null }, at) : null
   return (
     <span className={`due-chip${isOverdue(issue, at) ? ' late' : ''}`} title={dueTitle(issue, at)}>
       <span className="dc-date">{dueChipDay(issue.dueAt, at)}</span>
-      {hasTime(issue) && <span className="dc-time">{toTimeInput(issue.dueAt)}</span>}
-      {issue.remindAt && <Bell />}
+      {next ? (
+        <>
+          <Bell />
+          <span className="dc-time">{next}</span>
+        </>
+      ) : (
+        <>
+          {hasTime(issue) && <span className="dc-time">{toTimeInput(issue.dueAt)}</span>}
+          {issue.remindAt && <Bell />}
+        </>
+      )}
       <Recur rrule={issue.rrule} />
     </span>
   )

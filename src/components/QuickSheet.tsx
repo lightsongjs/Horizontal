@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
-import { useQuickDraft } from '../hooks'
-import { dueLabelParts, quickKey, type QuickCtx } from '../lib/quickDraft'
+import { useMinuteTick, useQuickDraft } from '../hooks'
+import { dueLabelParts, quickKey, seriesDueLabel, type QuickCtx } from '../lib/quickDraft'
 import { fromInputs, toDateInput } from '../lib/schedule'
 import { describeRrule } from '../lib/recurrence'
-import { pingChipLabel } from '../lib/pingSeries'
 import { Icon } from './Icon'
 import { KeyboardSheet } from './KeyboardSheet'
 import { QuickDesc, QuickTitle } from './QuickFields'
@@ -134,7 +133,10 @@ export function QuickSheet({ ctx }: { ctx: QuickCtx }) {
 
   const { dueAt, allDay } = schedule
   const recur = schedule.rrule ? describeRrule(schedule.rrule) : ''
-  const parts = dueAt ? dueLabelParts(dueAt, allDay, new Date()) : null
+  // Seria se spune pe jeton (regula, primul ping, capătul), refăcută la minut.
+  const tickMs = useMinuteTick(!!schedule.pingEvery)
+  const parts = dueAt ? dueLabelParts(dueAt, allDay, new Date(tickMs)) : null
+  const series = seriesDueLabel(schedule, new Date(tickMs))
   const warn = tokens?.unknown.length ? `nu știu ${tokens.unknown.join(', ')}` : error === 'bare' ? 'și ce ai de făcut?' : null
   const status = warn ?? (saving ? 'se salvează…' : '')
   const setDue = (date: string, time: string) => {
@@ -200,15 +202,24 @@ export function QuickSheet({ ctx }: { ctx: QuickCtx }) {
         <div className="qs-bar">
           <button
             type="button"
-            className={`qs-due ${dueAt ? 'on' : ''}`}
+            className={`qs-due ${dueAt ? 'on' : ''}${series ? ' series' : ''}`}
             aria-expanded={whenOpen}
-            title={schedule.pingEvery ? `Mementouri: ${pingChipLabel({ ...schedule, rrule: null }).toLowerCase()}` : 'Data și ora (sau „mâine la 10” în text)'}
+            title={series ? `Mementouri: ${series}` : 'Data și ora (sau „mâine la 10” în text)'}
             onPointerDown={keepFocus}
             onClick={() => setWhenOpen((v) => !v)}
           >
-            <Icon name={recur ? 'recurring' : 'due'} size={15} />
-            <span className="qs-due-t">{parts ? parts.day : 'Fără dată'}</span>
-            {parts?.time && <span className="qs-due-h">{parts.time}</span>}
+            {series ? (
+              <>
+                <Icon name="reminder" size={15} />
+                <span className="qs-due-t">{series}</span>
+              </>
+            ) : (
+              <>
+                <Icon name={recur ? 'recurring' : 'due'} size={15} />
+                <span className="qs-due-t">{parts ? parts.day : 'Fără dată'}</span>
+                {parts?.time && <span className="qs-due-h">{parts.time}</span>}
+              </>
+            )}
           </button>
           {/* Selectul nativ stă transparent PESTE eticheta desenată: atingerea
               îl deschide, iar lățimea o hotărăște eticheta, care se taie cu

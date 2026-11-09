@@ -70,6 +70,13 @@ class CaptureTest {
         assertEquals(listOf("la 10"), r.live); assertEquals(false, r.raw); assertEquals("Mâine 10:00", r.label)
     }
 
+    @Test fun seria_ePeJeton() {
+        val r = parseEngineResult(JSONObject("""{"live":[],"spans":[],"title":"Apă","projectId":"p-daily","assigneeId":null,
+            "urgent":false,"unknown":[],"dueAt":"2026-11-09T14:00:00.000Z","allDay":false,"rrule":null,"remindAt":"2026-11-09T08:48:00.000Z","pingEvery":60,
+            "label":{"day":"Azi","time":"16:00"},"series":"Din oră în oră · primul 10:48 · până la 16:00","issue":{},"error":null}""").toString())
+        assertEquals("Din oră în oră · primul 10:48 · până la 16:00", r.label); assertEquals(60, r.pingEvery)
+    }
+
     @Test fun sugestiile_dinMotor() {
         val json = """{"token":{"sigil":"#","query":"pe","start":7,"end":10},"items":[
             {"id":"p-pers","label":"Personal","insert":"#Personal","apply":{"text":"raport #Personal ","caret":17}}]}"""

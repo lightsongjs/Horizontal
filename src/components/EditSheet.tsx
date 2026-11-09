@@ -1,16 +1,16 @@
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type RefObject } from 'react'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
-import { useAutosave, useCanWriteIn, useTitleDate, type TitleDate } from '../hooks'
+import { useAutosave, useCanWriteIn, useMinuteTick, useTitleDate, type TitleDate } from '../hooks'
 import type { Normalize } from '../lib/autosave'
 import { dateFragments } from '../lib/parseDue'
 import { dueLabelParts } from '../lib/quickDraft'
 import {
-  defaultReminder, fromInputs, reminderAt, reminderKindOf, reschedule,
+  defaultReminder, fromInputs, isOverdue, reminderAt, reminderKindOf, reschedule,
   toDateInput, toTimeInput,
 } from '../lib/schedule'
 import { pinPatch } from '../lib/pinned'
-import { isPingSeries, pingChipLabel } from '../lib/pingSeries'
+import { isPingSeries, pingChipLabel, pingNextLabel, pingPanelLabel, seriesState } from '../lib/pingSeries'
 import { mergeTitleDue } from '../lib/titleDue'
 import { withLinks } from '../lib/titleLinks'
 import { mirrorLinkDown, mirrorLinkHover } from './TitleText'
@@ -130,6 +130,7 @@ function EditBody({ issue }: { issue: Issue }) {
   holdTitle.current = date.active
   // Ce s-ar aplica acum: jetonul de dată îl arată dinainte, ca evidențierea.
   const preview = date.active ? mergeTitleDue(d, date.parsed) : null
+  const tickMs = useMinuteTick(!!(preview ?? d).pingEvery)
   /**
    * Titlul fără fragment + scadența îmbinată, într-un singur patch. Un titlu
    * care era NUMAI dată („mâine la 9") nu se aplică: ar rămâne un tichet fără
@@ -179,7 +180,16 @@ function EditBody({ issue }: { issue: Issue }) {
   }
 
   const shown = preview ?? d
-  const parts = shown.dueAt ? dueLabelParts(shown.dueAt, shown.allDay, new Date()) : null
+  const now = new Date(tickMs)
+  const parts = shown.dueAt ? dueLabelParts(shown.dueAt, shown.allDay, now) : null
+  // O serie de mementouri: jetonul datei spune capătul („Azi, până la 16:00",
+  // roșu după ultimul ping), iar alături stă jetonul seriei cu URMĂTORUL ping.
+  const seriesNow = isPingSeries({ ...shown, pingEvery: shown.pingEvery ?? null }) ? seriesState({ ...shown, pingEvery: shown.pingEvery ?? null, done: issue.done }, now) : null
+  const pingText = seriesNow ? pingChipLabel({ ...shown, pingEvery: shown.pingEvery ?? null, rrule: null, done: issue.done }, now) : ''
+  // Pe rândul îngust al foii încape un singur jeton: cât seria mai sună, el
+  // spune următorul ping („🔔 Următorul 11:48"); restul e în panoul datei.
+  const pingNext = seriesNow ? pingNextLabel({ ...shown, pingEvery: shown.pingEvery ?? null, done: issue.done }, now) : null
+  const dueLate = !!shown.dueAt && (isOverdue({ ...shown, done: issue.done }, now) || seriesNow?.phase === 'ended')
   const status = !canWrite
     ? 'Doar citire: n-ai drept de scriere în proiectul ăsta.'
     : date.active && !date.title ? 'și ce ai de făcut?'
@@ -245,9 +255,9 @@ function EditBody({ issue }: { issue: Issue }) {
         <div className="qs-bar" ref={barRef}>
           <button
             type="button"
-            className={`qs-due ${shown.dueAt ? 'on' : ''} ${preview ? 'pending' : ''}`}
+            className={`qs-due ${shown.dueAt ? 'on' : ''} ${preview ? 'pending' : ''}${seriesNow && dueLate ? ' late' : ''}`}
             aria-expanded={whenOpen}
-            aria-label={parts ? `Scadența${preview ? ' (din titlu)' : ''}: ${parts.day}${parts.time ? ' ' + parts.time : ''}` : 'Fără dată'}
+            aria-label={parts ? `Scadența${preview ? ' (din titlu)' : ''}: ${parts.day}${parts.time ? (seriesNow ? ', până la ' : ' ') + parts.time : ''}${pingText ? ` · ${pingText}` : ''}` : 'Fără dată'}
             disabled={!canWrite}
             onPointerDown={keepFocus}
             onClick={(e) => {
@@ -259,9 +269,18 @@ function EditBody({ issue }: { issue: Issue }) {
               setWhenOpen(true)
             }}
           >
-            <Icon name={shown.rrule ? 'recurring' : 'due'} size={15} />
-            <span className="qs-due-t">{parts ? parts.day : 'Fără dată'}</span>
-            {parts?.time && <span className="qs-due-h">{parts.time}</span>}
+            {pingNext ? (
+              <>
+                <Icon name="reminder" size={15} />
+                <span className="qs-due-t">{pingNext}</span>
+              </>
+            ) : (
+              <>
+                <Icon name={shown.rrule ? 'recurring' : 'due'} size={15} />
+                <span className="qs-due-t">{parts ? (seriesNow && parts.time ? `${parts.day}, până la` : parts.day) : 'Fără dată'}</span>
+                {parts?.time && <span className="qs-due-h">{parts.time}</span>}
+              </>
+            )}
           </button>
           {/* Proiectul se schimbă prin MUTARE (număr nou, `move_issue`), nu
               printr-un câmp: jetonul deschide foaia mică de proiecte. Fără
@@ -428,7 +447,7 @@ function SheetDue({ fields: d, commit }: { fields: EditFields; commit(patch: Par
       onReminder={series ? undefined : (kind) => commit({ remindAt: reminderAt(d.dueAt, kind) })}
       rrule={d.dueAt ? d.rrule : null}
       onClearRrule={() => commit({ rrule: null })}
-      series={series ? pingChipLabel({ ...d, rrule: null }) : null}
+      series={series ? pingPanelLabel(d) : null}
       onClearSeries={() => commit({ pingEvery: null, remindAt: reminderAt(d.dueAt, defaultReminder(d.allDay)) })}
     />
   )

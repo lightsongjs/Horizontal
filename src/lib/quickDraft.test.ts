@@ -173,13 +173,19 @@ describe('seriesDueLabel — butonul de dată al barei spune seria', () => {
   const at = (d: number, h: number, m = 0) => new Date(2026, 10, d, h, m).toISOString()
   const base = { allDay: false, rrule: null as string | null }
   it('azi: fără zi, doar pasul și fereastra', () => {
-    expect(seriesDueLabel({ ...base, pingEvery: 60, remindAt: at(9, 9, 20), dueAt: at(9, 16) }, now)).toBe('Din oră în oră · 09:20–16:00')
+    expect(seriesDueLabel({ ...base, pingEvery: 60, remindAt: at(9, 9, 20), dueAt: at(9, 16) }, now)).toBe('Din oră în oră · primul 09:20 · până la 16:00')
   })
   it('altă zi: ziua în față', () => {
-    expect(seriesDueLabel({ ...base, pingEvery: 15, remindAt: at(10, 9), dueAt: at(10, 10) }, now)).toBe('Mâine · La 15 min · 09:00–10:00')
+    expect(seriesDueLabel({ ...base, pingEvery: 15, remindAt: at(10, 9), dueAt: at(10, 10) }, now)).toBe('Mâine · la 15 min, la fix · primul 09:00 · până la 10:00')
   })
   it('recurentă: zilele la coadă', () => {
-    expect(seriesDueLabel({ ...base, rrule: 'FREQ=DAILY', pingEvery: 60, remindAt: at(9, 9, 20), dueAt: at(9, 16) }, now)).toBe('Din oră în oră · 09:20–16:00 · zilnic')
+    expect(seriesDueLabel({ ...base, rrule: 'FREQ=DAILY', pingEvery: 60, remindAt: at(9, 9, 20), dueAt: at(9, 16) }, now)).toBe('Din oră în oră · primul 09:20 · până la 16:00 · zilnic')
+  })
+  it('„de la 10:48" scris la 11:05: primul e cel care chiar sună (11:48), nu ancora trecută', () => {
+    expect(seriesDueLabel({ ...base, pingEvery: 60, remindAt: at(9, 10, 48), dueAt: at(9, 16) }, new Date(2026, 10, 9, 11, 5))).toBe('Din oră în oră · primul 11:48 · până la 16:00')
+  })
+  it('la fix: în regulă, înaintea primului', () => {
+    expect(seriesDueLabel({ ...base, pingEvery: 60, remindAt: at(9, 10), dueAt: at(9, 16) }, now)).toBe('Din oră în oră, la fix · primul 10:00 · până la 16:00')
   })
   it('fără serie: gol (butonul rămâne „Azi 16:00" + clopoțel)', () => {
     expect(seriesDueLabel({ ...base, pingEvery: null, remindAt: at(9, 15, 45), dueAt: at(9, 16) }, now)).toBe('')

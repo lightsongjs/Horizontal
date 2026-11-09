@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useHorizontal } from '../store'
-import { useQuickDraft } from '../hooks'
+import { useMinuteTick, useQuickDraft } from '../hooks'
 import { fromInputs, toDateInput } from '../lib/schedule'
 import { describeRrule } from '../lib/recurrence'
-import { pingChipLabel } from '../lib/pingSeries'
 import { dueLabel, dueLabelParts, quickKey, seriesDueLabel } from '../lib/quickDraft'
 import { loadBarDraft, saveBarDraft, type BarDraft } from '../lib/barDraft'
 import { Icon } from './Icon'
@@ -112,8 +111,10 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, rich = false,
   const { dueAt, allDay } = schedule
   // Calculat o singură dată — nu de două ori în JSX (condiție + text).
   const recur = schedule.rrule ? describeRrule(schedule.rrule) : ''
-  // Seria de mementouri: fereastra, nu ora capătului (care e `dueAt`).
-  const series = schedule.pingEvery ? pingChipLabel({ ...schedule, rrule: null }) : ''
+  // Seria de mementouri, înainte de salvare: regula, primul ping, capătul. Ceasul
+  // pe minut reface ciorna, ca primul ping să nu rămână în urmă cât stai pe bară.
+  const tickMs = useMinuteTick(!!schedule.pingEvery)
+  const series = seriesDueLabel(schedule, new Date(tickMs))
   const bare = error === 'bare'
 
   const reset = () => { q.reset(); setDescOpen(false); setWhenOpen(false) }
@@ -199,7 +200,7 @@ export function QuickAdd({ defaultDueAt, onAdded, focusSignal = 0, rich = false,
 
   if (rich) {
     const parts = dueAt ? dueLabelParts(dueAt, allDay, new Date()) : null
-    const seriesText = seriesDueLabel(schedule, new Date())
+    const seriesText = series
     const warn = tokens?.unknown.length ? `nu știu ${tokens.unknown.join(', ')}` : bare ? 'și ce ai de făcut?' : null
     const chosenProject = !!(q.manual.projectId || tokens?.projectId)
     const who = assigneeId ? assignees.find((a) => a.id === assigneeId)?.name ?? '' : ''

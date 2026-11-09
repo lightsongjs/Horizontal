@@ -760,12 +760,13 @@ export function useQuickDraft({ ctx, tokens: withTokens = false, initial }: Quic
   const date = useTitleDate(text, { onChange: setText, initialRejected: initial ? () => initial.rejected : undefined })
   const tokens = withTokens ? parseCaptureTokens(date.title, projects, assignees) : null
   // Regulile — aceeași funcție pe care o rulează fereastra nativă de pe telefon.
-  const draft = computeDraft({
+  const draftAt = (nowMs: number) => computeDraft({
     text, desc, rejected: date.live, manual, projects, assignees,
     // Calculat la fiecare randare, nu la montare: proiectele sosesc după
     // primul cadru, iar Inbox trebuie găsit și atunci.
-    defaultProjectId: captureDefaultProjectId(ctx, projects), nowMs: Date.now(), tokens: withTokens, ctx,
+    defaultProjectId: captureDefaultProjectId(ctx, projects), nowMs, tokens: withTokens, ctx,
   })
+  const draft = draftAt(Date.now())
   const project = projects.find((p) => p.id === draft.projectId)
   const resolved: NewIssue | { error: DraftError } = draft.issue ?? { error: draft.error ?? 'empty' }
   const error = draft.error
@@ -783,7 +784,10 @@ export function useQuickDraft({ ctx, tokens: withTokens = false, initial }: Quic
     if ('error' in resolved) { setShake(true); setTimeout(() => setShake(false), 320); return null }
     setSaving(true)
     try {
-      const created = await createIssue(resolved)
+      // O serie fără start scris pornește „de acum + pas": socotită la salvare,
+      // nu la ultima randare, ca primul ping să nu fie deja trecut.
+      const fresh = draft.pingEvery ? draftAt(Date.now()).issue : null
+      const created = await createIssue(fresh ?? resolved)
       reset()
       return created
     } finally {
@@ -959,4 +963,37 @@ export function useLongPress(onLong: (at: { x: number; y: number }) => void) {
       e.stopPropagation()
     },
   }
+}
+
+// ── Ceasul pe minut ─────────────────────────────────────────────────────────
+// Un singur timer pentru toți abonații, pornit pe marginea minutului: „Următorul
+// 10:48" trebuie să treacă pe 11:48 exact când sună, nu până la 59 s mai târziu,
+// iar 20 de rânduri cu serii nu țin 20 de intervale.
+const minuteSubs = new Set<() => void>()
+let minuteTimer: ReturnType<typeof setTimeout> | null = null
+const armMinute = () => {
+  minuteTimer = setTimeout(() => {
+    minuteSubs.forEach((f) => f())
+    armMinute()
+  }, 60_000 - (Date.now() % 60_000) + 50)
+}
+
+/**
+ * Rerandează componenta la fiecare minut de ceas, cât `enabled` e adevărat
+ * (o serie de mementouri, evenimente de calendar). Întoarce „acum" în ms.
+ * Oprit, nu ține niciun timer.
+ */
+export function useMinuteTick(enabled: boolean): number {
+  const [, force] = useState(0)
+  useEffect(() => {
+    if (!enabled) return
+    const f = () => force((n) => n + 1)
+    minuteSubs.add(f)
+    if (!minuteTimer) armMinute()
+    return () => {
+      minuteSubs.delete(f)
+      if (minuteSubs.size === 0 && minuteTimer) { clearTimeout(minuteTimer); minuteTimer = null }
+    }
+  }, [enabled])
+  return Date.now()
 }

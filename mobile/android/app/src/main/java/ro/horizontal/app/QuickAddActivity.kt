@@ -252,7 +252,12 @@ class QuickAddActivity : AppCompatActivity() {
         val dueOn = d.dueAt != null
         due.setBackgroundResource(if (dueOn) R.drawable.bg_q_chip_accent else R.drawable.bg_q_chip)
         due.setTextColor(color(if (dueOn) R.color.q_accent else R.color.q_faint))
-        chipIcon(due, if (d.rrule != null) R.drawable.ic_widget_repeat else R.drawable.ic_q_calendar, if (dueOn) R.color.q_accent else R.color.q_faint, 15)
+        val dueIcon = when {
+            d.pingEvery != null -> R.drawable.ic_widget_bell
+            d.rrule != null -> R.drawable.ic_widget_repeat
+            else -> R.drawable.ic_q_calendar
+        }
+        chipIcon(due, dueIcon, if (dueOn) R.color.q_accent else R.color.q_faint, 15)
         val proj = data?.projects?.firstOrNull { it.id == d.projectId }
         val project = findViewById<TextView>(R.id.q_project)
         project.text = proj?.name ?: "Proiect"

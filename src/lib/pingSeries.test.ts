@@ -1,7 +1,7 @@
 ;(globalThis as unknown as { process: { env: Record<string, string> } }).process.env.TZ = 'Europe/Bucharest'
 
 import { describe, expect, it } from 'vitest'
-import { isPingSeries, pingChipLabel, pingEveryLabel, rollPingSeries, seriesWindow, type SeriesSpec } from './pingSeries'
+import { isPingSeries, pingChipLabel, pingEveryLabel, pingNextLabel, pingPanelLabel, pingRowTime, rollPingSeries, seriesState, seriesWindow, type SeriesSpec } from './pingSeries'
 import { NO_SCHEDULE } from './schedule'
 import type { Issue } from './types'
 
@@ -56,17 +56,92 @@ describe('seriesWindow', () => {
   })
 })
 
-describe('pingChipLabel', () => {
-  const at = (h: number, m = 0) => new Date(2026, 10, 6, h, m).toISOString()
-  it('pasul, fereastra, zilele', () => {
-    expect(pingChipLabel({ pingEvery: 15, remindAt: at(9), dueAt: at(10), rrule: 'FREQ=DAILY' })).toBe('La 15 min · 09:00–10:00 · zilnic')
-    expect(pingChipLabel({ pingEvery: 60, remindAt: at(9), dueAt: at(17), rrule: null })).toBe('Din oră în oră · 09:00–17:00')
+describe('seriesState — unde e seria (regula din `_shared/pings.ts`)', () => {
+  const at = (h: number, m = 0, d = 6) => new Date(2026, 10, d, h, m).toISOString()
+  const s = { pingEvery: 60, remindAt: at(10, 48), dueAt: at(16), done: false }
+  const hmOf = (ms: number | null) => (ms === null ? null : hm(new Date(ms).toISOString()))
+  it('înainte de primul: următorul = primul; ultimul = ultimul ping REAL (15:48), nu capătul', () => {
+    const st = seriesState(s, new Date(2026, 10, 6, 9, 20))!
+    expect([st.phase, hmOf(st.next), hmOf(st.last), st.count]).toEqual(['before', '6 10:48', '6 15:48', 6])
+  })
+  it('în timpul seriei: următorul după acum', () => {
+    const st = seriesState(s, new Date(2026, 10, 6, 11, 5))!
+    expect([st.phase, hmOf(st.next)]).toEqual(['during', '6 11:48'])
+  })
+  it('după ultimul ping: încheiată, fără următorul', () => {
+    const st = seriesState(s, new Date(2026, 10, 6, 15, 50))!
+    expect([st.phase, st.next, hmOf(st.last)]).toEqual(['ended', null, '6 15:48'])
+  })
+  it('bifată / pe jumătate / fără serie', () => {
+    expect(seriesState({ ...s, done: true }, NOW)!.phase).toBe('done')
+    expect(seriesState({ ...s, remindAt: null }, NOW)!.phase).toBe('partial')
+    expect(seriesState({ ...s, pingEvery: null }, NOW)).toBeNull()
+  })
+})
+
+describe('pingChipLabel — jetonul seriei din fereastra tichetului', () => {
+  const at = (h: number, m = 0, d = 6) => new Date(2026, 10, d, h, m).toISOString()
+  const s = { pingEvery: 60, remindAt: at(10, 48), dueAt: at(16), rrule: null as string | null, done: false }
+  const t = (h: number, m = 0, d = 6) => new Date(2026, 10, d, h, m)
+  it('înainte de primul și în timpul seriei: „Următorul"', () => {
+    expect(pingChipLabel(s, t(9, 20))).toBe('Următorul 10:48 · din oră în oră')
+    expect(pingChipLabel(s, t(11, 5))).toBe('Următorul 11:48 · din oră în oră')
+  })
+  it('după ultimul: încheiată, cu ultimul ping real', () => {
+    expect(pingChipLabel(s, t(15, 50))).toBe('Serie încheiată (ultimul 15:48)')
+  })
+  it('zilnică, mâine: ziua în locul lui „Următorul", zilele la coadă', () => {
+    expect(pingChipLabel({ ...s, rrule: 'FREQ=DAILY', remindAt: at(10, 48, 7), dueAt: at(16, 0, 7) }, t(20))).toBe('Mâine 10:48 · din oră în oră · zilnic')
+  })
+  it('în viitor, peste câteva zile: ziua întreagă („Miercuri 09:00"), nu o oră care pare azi', () => {
+    expect(pingChipLabel({ ...s, remindAt: at(9, 0, 11), dueAt: at(16, 0, 11) }, t(9, 20))).toBe('Miercuri 09:00 · din oră în oră, la fix')
+  })
+  it('la fix: grila pe ora fixă', () => {
+    expect(pingChipLabel({ ...s, remindAt: at(10), dueAt: at(16) }, t(10, 20))).toBe('Următorul 11:00 · din oră în oră, la fix')
+    expect(pingChipLabel({ ...s, pingEvery: 15, remindAt: at(9, 45), dueAt: at(10) }, t(9, 50))).toBe('Următorul 10:00 · la 15 min, la fix')
+    expect(pingChipLabel({ ...s, pingEvery: 45, remindAt: at(10), dueAt: at(16) }, t(9))).toBe('Următorul 10:00 · la 45 min')
+  })
+  it('bifată / pe jumătate: doar regula', () => {
+    expect(pingChipLabel({ ...s, done: true }, t(11))).toBe('Din oră în oră')
+    expect(pingChipLabel({ ...s, remindAt: null, dueAt: null }, t(11))).toBe('Din oră în oră')
   })
   it('fără serie: nimic', () => {
-    expect(pingChipLabel({ pingEvery: null, remindAt: at(9), dueAt: at(10), rrule: null })).toBe('')
+    expect(pingChipLabel({ ...s, pingEvery: null }, t(11))).toBe('')
   })
   it('pașii în cuvinte', () => {
     expect([1, 30, 60, 90, 120].map(pingEveryLabel)).toEqual(['La 1 min', 'La jumătate de oră', 'Din oră în oră', 'La 90 min', 'La 2 ore'])
+  })
+})
+
+describe('pingNextLabel — doar următorul ping (foaia de pe telefon)', () => {
+  const at = (h: number, m = 0, d = 6) => new Date(2026, 10, d, h, m).toISOString()
+  const s = { pingEvery: 60, remindAt: at(10, 48), dueAt: at(16), done: false }
+  it('azi, altă zi, nimic după ultimul', () => {
+    expect(pingNextLabel(s, new Date(2026, 10, 6, 11, 5))).toBe('Următorul 11:48')
+    expect(pingNextLabel({ ...s, remindAt: at(10, 48, 7), dueAt: at(16, 0, 7) }, new Date(2026, 10, 6, 20))).toBe('Mâine 10:48')
+    expect(pingNextLabel(s, new Date(2026, 10, 6, 15, 50))).toBeNull()
+  })
+})
+
+describe('pingPanelLabel — rândul din panoul datei', () => {
+  const at = (h: number, m = 0) => new Date(2026, 10, 6, h, m).toISOString()
+  it('pasul, primul → ultimul real, câte, capătul', () => {
+    expect(pingPanelLabel({ pingEvery: 60, remindAt: at(10, 48), dueAt: at(16) })).toBe('din oră în oră, 10:48 → 15:48 (6 mementouri), până la 16:00')
+    expect(pingPanelLabel({ pingEvery: 60, remindAt: at(10), dueAt: at(10) })).toBe('din oră în oră, la fix, 10:00 (un memento), până la 10:00')
+  })
+})
+
+describe('pingRowTime — ora din rândul listei', () => {
+  const at = (h: number, m = 0) => new Date(2026, 10, 6, h, m).toISOString()
+  const s = { pingEvery: 60, remindAt: at(10, 48), dueAt: at(16), done: false }
+  it('următorul ping, nu capătul', () => {
+    expect(pingRowTime(s, new Date(2026, 10, 6, 9, 20))).toBe('10:48')
+    expect(pingRowTime(s, new Date(2026, 10, 6, 11, 5))).toBe('11:48')
+  })
+  it('încheiată / bifată / fără serie: null (rândul arată capătul, roșu ca restanță)', () => {
+    expect(pingRowTime(s, new Date(2026, 10, 6, 15, 50))).toBeNull()
+    expect(pingRowTime({ ...s, done: true }, new Date(2026, 10, 6, 11))).toBeNull()
+    expect(pingRowTime({ ...s, pingEvery: null }, new Date(2026, 10, 6, 11))).toBeNull()
   })
 })
 

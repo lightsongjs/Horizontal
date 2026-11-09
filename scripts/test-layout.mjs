@@ -681,7 +681,7 @@ const quickBar = ({ day = 'Mie 07/10', time = '10:00', proj = 'Aplicație Turism
   <span class="qa-wrap"><span class="qa-mirror"></span><input class="qa-input" value="Sună la bancă"></span>
   <textarea class="qa-desc" rows="1" placeholder="Descriere"></textarea>
   <div class="qs-bar">
-    <button type="button" class="qs-due on"><svg width="15" height="15"></svg><span class="qs-due-t">${day}</span><span class="qs-due-h">${time}</span></button>
+    <button type="button" class="qs-due on"><svg width="15" height="15"></svg><span class="qs-due-t">${day}</span>${time ? `<span class="qs-due-h">${time}</span>` : ''}</button>
     <label class="qs-sel qs-proj"><span class="t-dot" style="background:#6e7bff"></span><span class="qs-sel-t">${proj}</span><select><option>x</option></select></label>
     ${send ? '' : '<button type="button" class="qs-ico qs-who-badge">MIH</button>'}
     <span class="qs-tools">
@@ -760,6 +760,37 @@ for (const width of PHONE_WIDTHS) {
   check(`jetonul de dată vizibil @${width}px`, m.due >= 34, `${m.due}px`)
   check(`fiecare control are fundal @${width}px`, m.invisible.length === 0, m.invisible.length ? `INVIZIBIL: ${m.invisible.join(', ')}` : 'toate')
 }
+}
+
+// Seria de mementouri: foaia de tichet are un jeton scurt („🔔 Următorul 11:48" —
+// două, dată + serie, au strivit proiectul la „E." pe 390px), foaia rapidă unul
+// lung („Din oră în oră · primul 10:48 · până la 16:00"). Un rând, „…" la capăt.
+console.log('\nSeria de mementouri pe rândul foilor (telefon):')
+for (const send of [false, true]) {
+  for (const width of PHONE_WIDTHS) {
+    const page = await browser.newPage({ viewport: { width, height: 844 } })
+    const html = send
+      ? quickBar({ day: 'Din oră în oră · primul 10:48 · până la 16:00', time: '', proj: 'Inbox', send })
+      : quickBar({ day: 'Următorul 11:48', time: '', proj: 'Personal', send })
+    await page.setContent(`<style>${CSS}</style>${html}`)
+    const m = await page.evaluate(() => {
+      const bar = document.querySelector('.qs-bar')
+      const r = (el) => el.getBoundingClientRect()
+      const chips = [...bar.querySelectorAll('.qs-due, .qs-proj')]
+      const t = [...bar.querySelectorAll('.qs-due-t')]
+      return {
+        overflow: bar.scrollWidth - Math.round(r(bar).width),
+        // După mijloc, nu după margine: Trimite (38px) e mai înalt decât jetoanele (34px).
+        rows: new Set([...chips, ...bar.querySelectorAll('.qs-ico, .qs-send')].map((el) => Math.round((r(el).top + r(el).bottom) / 2))).size,
+        minChip: Math.min(...chips.map((el) => Math.round(r(el).width))),
+        ellipsis: t.every((el) => getComputedStyle(el).textOverflow === 'ellipsis' && r(el).height < 24),
+      }
+    })
+    await page.close()
+    const tag = `${send ? 'foaia rapidă' : 'foaia de tichet'} @${width}px`
+    check(`seria, ${tag}: un rând, fără overflow`, m.overflow <= 0 && m.rows === 1, `+${m.overflow}px, ${m.rows} rând(uri)`)
+    check(`seria, ${tag}: jetoanele vizibile, textul cu „…"`, m.minChip >= 34 && m.ellipsis, `cel mai îngust ${m.minChip}px`)
+  }
 }
 
 /**
@@ -1902,7 +1933,7 @@ for (const width of PHONE_WIDTHS) {
  * Invarianți: rândul nu iese din fereastră, Trimite și urgent nestriviți,
  * goală bara are ~96px (fără gol mort), niciun jeton fără fundal.
  */
-const SERIES = 'Mâine · Din oră în oră · 09:20–16:00 · zilnic'
+const SERIES = 'Mâine · din oră în oră · primul 09:00 · până la 16:00 · zilnic'
 const captureBar = ({ empty = false, series = false } = {}) => `
 <div class="qab"><div class="qa qa-bar" style="--pc:#6e7bff"><form class="qa-form">
   <div class="qa-row"><span class="ck${empty ? '' : ' urg'}"></span><span class="qa-wrap"><span class="qa-mirror"></span><input class="qa-input" type="search" value="${empty ? '' : 'Trimite oferta revizuită clientului din Cluj'}" placeholder="Ce ai de făcut?"></span></div>

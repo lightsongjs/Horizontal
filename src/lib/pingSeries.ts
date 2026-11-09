@@ -9,9 +9,9 @@
 // scrie în bază la fiecare ping.
 
 import { describeRrule, firstOccurrence, nextOccurrence, parseRrule } from './recurrence'
-import { addDays, startOfLocalDay, toTimeInput } from './schedule'
+import { addDays, dayOffset, startOfLocalDay, toDayMonth, toTimeInput } from './schedule'
 import type { Issue } from './types'
-import { PING_MAX_MINUTES } from '../../supabase/functions/_shared/pings.ts'
+import { PING_MAX_MINUTES, pings } from '../../supabase/functions/_shared/pings.ts'
 
 export { PING_MAX_MINUTES }
 
@@ -129,18 +129,123 @@ export function pingEveryLabel(every: number): string {
   return `La ${every} min`
 }
 
+type SeriesFields = Pick<Issue, 'pingEvery' | 'remindAt' | 'dueAt'> & { done?: boolean }
+
 /**
- * Jetonul seriei: pasul, fereastra și zilele — „La 15 min · 09:00–10:00 ·
- * zilnic", „Din oră în oră · 09:00–17:00". Fără `dueAt`/`remindAt` (o serie
- * pe jumătate) rămâne doar pasul.
+ * Unde e seria acum — din `pings()` (`_shared/pings.ts`), regula serverului și
+ * a lui Kotlin, nu din „ora + pasul" socotit aici: grila e în milisecunde de la
+ * `remindAt`, deci rămâne corectă peste schimbarea orei.
+ *
+ * - `before` / `during`: `next` e următorul ping (niciodată în trecut);
+ * - `ended`: după ultimul ping, nebifată;
+ * - `done`: bifată; `partial`: fără `remindAt`/`dueAt` (doar pasul).
+ *
+ * `last` e ultimul ping REAL (`remindAt + ⌊(dueAt − remindAt)/pas⌋·pas`), nu
+ * `dueAt`: „din oră în oră 10:48–16:00" sună ultima oară la 15:48.
  */
-export function pingChipLabel(i: Pick<Issue, 'pingEvery' | 'remindAt' | 'dueAt' | 'rrule'>): string {
+export interface SeriesState {
+  phase: 'before' | 'during' | 'ended' | 'done' | 'partial'
+  first: number | null
+  next: number | null
+  last: number | null
+  /** Câte pinguri are fereastra. */
+  count: number
+}
+
+export function seriesState(i: SeriesFields, now: Date): SeriesState | null {
+  if (!i.pingEvery) return null
+  if (!i.remindAt || !i.dueAt) return { phase: 'partial', first: null, next: null, last: null, count: 0 }
+  const first = Date.parse(i.remindAt)
+  const due = Date.parse(i.dueAt)
+  const last = pings(first, i.pingEvery, due, Math.max(first, due)).current ?? first
+  const count = Math.round((last - first) / (i.pingEvery * MIN)) + 1
+  if (i.done) return { phase: 'done', first, next: null, last, count }
+  const p = pings(first, i.pingEvery, due, now.getTime())
+  const phase = p.next === null ? 'ended' : p.current === null ? 'before' : 'during'
+  return { phase, first, next: p.next, last, count }
+}
+
+/**
+ * Grila cade pe ora de ceas: pasul împarte ora și primul ping e pe un multiplu
+ * al lui („la 15 min" de la 9:45), sau pasul e de ore întregi și primul ping e
+ * la fix. Din bază nu se știe dacă omul a scris „la fix" — se vede din grilă,
+ * iar ce se spune e adevărat oricum: pingurile chiar cad la fix.
+ */
+function onTheClock(remindAt: string, every: number): boolean {
+  const d = new Date(remindAt)
+  if (d.getSeconds() !== 0) return false
+  if (every < 60) return 60 % every === 0 && d.getMinutes() % every === 0
+  return every % 60 === 0 && d.getMinutes() === 0
+}
+
+const WD_LONG = ['Duminică', 'Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă']
+
+/** Ziua unui ping care nu e azi: „Mâine", „Vineri" (în săptămâna care vine), altfel „13/11". */
+function pingDay(ms: number, now: Date): string {
+  const iso = new Date(ms).toISOString()
+  const off = dayOffset(iso, now)
+  if (off === 1) return 'Mâine'
+  if (off > 1 && off < 7) return WD_LONG[new Date(ms).getDay()]
+  return toDayMonth(new Date(ms))
+}
+
+/** Regula seriei, cu literă mare: „Din oră în oră", „La 15 min, la fix", „… · zilnic". */
+export function pingRuleLabel(i: Pick<Issue, 'pingEvery' | 'remindAt' | 'rrule'>): string {
   if (!i.pingEvery) return ''
-  const parts = [pingEveryLabel(i.pingEvery)]
-  if (i.remindAt && i.dueAt) parts.push(`${toTimeInput(i.remindAt)}–${toTimeInput(i.dueAt)}`)
+  const fix = i.remindAt && onTheClock(i.remindAt, i.pingEvery) ? ', la fix' : ''
   const rec = describeRrule(i.rrule)
-  if (rec) parts.push(rec)
-  return parts.join(' · ')
+  return `${pingEveryLabel(i.pingEvery)}${fix}${rec ? ` · ${rec}` : ''}`
+}
+
+const lower = (t: string) => t.charAt(0).toLowerCase() + t.slice(1)
+
+/**
+ * Jetonul seriei din fereastra tichetului: URMĂTORUL memento, nu fereastra —
+ * „Următorul 10:48 · din oră în oră", „Mâine 10:48 · din oră în oră · zilnic",
+ * „Serie încheiată (ultimul 15:48)". Bifată sau pe jumătate: doar regula.
+ * Ora arătată nu e niciodată în trecut (cere `now` la minut, `useMinuteTick`).
+ */
+export function pingChipLabel(i: SeriesFields & Pick<Issue, 'rrule'>, now: Date): string {
+  const st = seriesState(i, now)
+  if (!st) return ''
+  const rule = pingRuleLabel(i)
+  if (st.phase === 'ended') return `Serie încheiată (ultimul ${toTimeInput(new Date(st.last!).toISOString())})`
+  const next = pingNextLabel(i, now)
+  return next ? `${next} · ${lower(rule)}` : rule
+}
+
+/**
+ * Doar următorul ping, pentru locurile înguste (foaia de tichet de pe
+ * telefon): „Următorul 11:48", „Mâine 10:48", „Miercuri 09:00"; `null` când
+ * n-are unul (încheiată, bifată, pe jumătate).
+ */
+export function pingNextLabel(i: SeriesFields, now: Date): string | null {
+  const st = seriesState(i, now)
+  if (st?.next == null) return null
+  const at = toTimeInput(new Date(st.next).toISOString())
+  const day = dayOffset(new Date(st.next).toISOString(), now) === 0 ? 'Următorul' : pingDay(st.next, now)
+  return `${day} ${at}`
+}
+
+/** Rândul din panoul datei: „din oră în oră, 10:48 → 15:48 (6 mementouri), până la 16:00". */
+export function pingPanelLabel(i: Pick<Issue, 'pingEvery' | 'remindAt' | 'dueAt'>): string {
+  const st = seriesState(i, new Date(0))
+  if (!st) return ''
+  const rule = lower(pingRuleLabel({ ...i, rrule: null }))
+  if (st.first === null || st.last === null) return rule
+  const t = (ms: number) => toTimeInput(new Date(ms).toISOString())
+  const span = st.count > 1 ? `${t(st.first)} → ${t(st.last)} (${st.count} mementouri)` : `${t(st.first)} (un memento)`
+  return `${rule}, ${span}, până la ${toTimeInput(i.dueAt!)}`
+}
+
+/**
+ * Ora din rândul listei / de pe card: următorul ping („🔔 10:48"), sau `null`
+ * când n-are unul (încheiată, bifată, fără serie) — atunci rândul arată
+ * capătul ca orice scadență, roșu când e restanță.
+ */
+export function pingRowTime(i: SeriesFields, now: Date): string | null {
+  const st = seriesState(i, now)
+  return st?.next != null ? toTimeInput(new Date(st.next).toISOString()) : null
 }
 
 /** Tichetul e o serie de mementouri care chiar poate suna. */

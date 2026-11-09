@@ -117,7 +117,9 @@ fun parseEngineResult(json: String): Draft {
     return Draft(
         o.getString("title"), spans, strings("live"), str("projectId"), str("assigneeId"), o.optBoolean("urgent"),
         strings("unknown"), str("dueAt"), o.optBoolean("allDay", true), str("rrule"), str("remindAt"), str("error"), raw = false,
-        label = o.optJSONObject("label")?.let { l -> l.getString("day") + (if (l.isNull("time")) "" else " " + l.getString("time")) },
+        // O serie de mementouri se spune pe jeton („Din oră în oră · primul 10:48 · până la 16:00”),
+        // ca bara web (`seriesDueLabel`); un motor vechi n-o trimite → ziua și ora.
+        label = str("series") ?: o.optJSONObject("label")?.let { l -> l.getString("day") + (if (l.isNull("time")) "" else " " + l.getString("time")) },
         pingEvery = if (o.has("pingEvery") && !o.isNull("pingEvery")) o.optInt("pingEvery", 0).takeIf { it >= 1 } else null,
     )
 }

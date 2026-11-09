@@ -6088,6 +6088,9 @@ body:has(.kb-sheet) .toast {
 .qs-due svg { flex-shrink: 0; }
 .qs-due-t { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .qs-due.on { background: var(--accent-soft); color: var(--accent); }
+/* Capătul unei serii de mementouri după ultimul ping (foaia de tichet,
+   „Azi, până la 16:00"): roșu ca restanța — nu mai sună nimic. */
+.qs-due.late { background: var(--blocked-soft); color: var(--blocked); }
 /* Scadența care SE VA aplica din titlu (foaia de tichet): același inel ca
    fragmentul evidențiat, ca ochiul să lege jetonul de textul care îl face. */
 .qs-due.pending {
