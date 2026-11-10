@@ -449,6 +449,7 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff, reveal }:
                       <div className="thread-edit">
                         <textarea
                           className="thread-textarea"
+                          spellCheck={false}
                           value={edit.draft}
                           autoFocus
                           onFocus={(ev) => { const n = ev.currentTarget.value.length; ev.currentTarget.setSelectionRange(n, n) }}
@@ -561,6 +562,7 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff, reveal }:
           <textarea
             ref={textareaRef}
             className="thread-textarea"
+            spellCheck={false}
             rows={1}
             value={body}
             onChange={(e) => setBody(e.target.value)}

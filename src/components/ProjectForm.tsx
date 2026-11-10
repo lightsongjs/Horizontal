@@ -83,6 +83,7 @@ export function ProjectForm() {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Pe scurt, despre ce e proiectul…"
+            spellCheck={false}
           />
         </div>
         <div className="fld">

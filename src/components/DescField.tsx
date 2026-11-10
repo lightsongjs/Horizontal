@@ -86,7 +86,7 @@ function Fallback({ el, handoff, ...rest }: { el: MutableRefObject<HTMLTextAreaE
     const t = el.current
     handoff.current = t && document.activeElement === t ? t.selectionStart : null
   }, [el, handoff])
-  return <textarea ref={el} {...rest} />
+  return <textarea ref={el} spellCheck={false} {...rest} />
 }
 
 /** Descrierea fără CodeMirror: rezerva pentru un chunk care n-a putut fi adus. */
@@ -97,6 +97,7 @@ const PlainEditor = forwardRef<EditorHandle, MarkdownEditorProps>(function Plain
     <textarea
       ref={el}
       className="md-fallback"
+      spellCheck={false}
       value={p.value}
       readOnly={p.readOnly}
       placeholder={p.placeholder}

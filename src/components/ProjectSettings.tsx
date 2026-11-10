@@ -69,7 +69,7 @@ export function ProjectSettings() {
         </div>
         <div className="fld">
           <label>Descriere</label>
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} />
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} spellCheck={false} />
         </div>
 
         <div className="sheet-section-t">Culoare accent</div>

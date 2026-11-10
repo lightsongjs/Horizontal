@@ -201,6 +201,7 @@ export function QuickDesc({ value, onChange, textareaRef, onKeyDown, placeholder
       placeholder={placeholder}
       aria-label={ariaLabel}
       readOnly={readOnly}
+      spellCheck={false}
       onChange={(e) => onChange(e.target.value)}
       onKeyDown={onKeyDown}
       onFocus={onFocus}

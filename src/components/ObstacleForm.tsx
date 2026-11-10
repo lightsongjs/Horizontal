@@ -131,6 +131,7 @@ export function ObstacleForm({ obstacleId }: { obstacleId?: string }) {
             value={detail}
             onChange={(e) => setDetail(e.target.value)}
             placeholder="Context, cine a fost întrebat, ce lipsește…"
+            spellCheck={false}
           />
         </div>
         <div className="fld">
@@ -159,7 +160,7 @@ export function ObstacleForm({ obstacleId }: { obstacleId?: string }) {
 
         <div className="fld">
           <label>Ocolire</label>
-          <textarea value={bypass} onChange={(e) => setBypass(e.target.value)} placeholder="Nu există" />
+          <textarea value={bypass} onChange={(e) => setBypass(e.target.value)} placeholder="Nu există" spellCheck={false} />
         </div>
 
         <div className="sheet-section-t">Dovadă</div>

@@ -130,7 +130,7 @@ const MarkdownEditor = forwardRef<EditorHandle, MarkdownEditorProps>(function Ma
           keymap.of([...defaultKeymap.filter((b) => b.key !== 'Mod-Enter'), ...historyKeymap]),
           EditorView.lineWrapping,
           editable.current.of(EditorView.editable.of(!p.readOnly)),
-          EditorView.contentAttributes.of({ 'aria-label': p.ariaLabel, autocapitalize: 'sentences', spellcheck: 'true' }),
+          EditorView.contentAttributes.of({ 'aria-label': p.ariaLabel, autocapitalize: 'sentences', spellcheck: 'false' }),
           cmPlaceholder(p.placeholder ?? ''),
           livePreview(() => props.current.prefixes),
           EditorView.updateListener.of((u) => {
