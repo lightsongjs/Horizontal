@@ -1,5 +1,6 @@
 import * as dbus from 'dbus-next'
 import type { Reminder } from './scheduler'
+import { notifyActions } from './notifyActions'
 
 /** Aceeași formă ca `DesktopAction` din src/lib/desktopBridge.ts — `minutes` doar la `snooze`. */
 export type NotifyAction = { action: 'done' | 'snooze' | 'open'; id: string; minutes?: number }
@@ -42,7 +43,8 @@ export async function createNotifier(onAction: (a: NotifyAction) => void): Promi
     else if (actionKey === 'snooze15') onAction({ action: 'snooze', id: hit.id, minutes: 15 })
     else if (actionKey === 'snooze30') onAction({ action: 'snooze', id: hit.id, minutes: 30 })
     else if (actionKey === 'default') onAction({ action: 'open', id: hit.id })
-    else return
+    // „Am văzut" (doar pe o serie): nimic de scris, doar se închide pingul.
+    else if (actionKey !== 'seen') return
     // Rezidentă: n-ar dispărea singură. Și la „deschide” o închidem — omul merge la tichet.
     void closeKey(hit.key)
   })
@@ -60,13 +62,9 @@ export async function createNotifier(onAction: (a: NotifyAction) => void): Promi
       if (r.series) {
         for (const [key, nid] of [...byKey]) if (byNid.get(nid)?.id === r.id && key !== r.key) await closeKey(key)
       }
-      // Un eveniment de calendar nu se bifează și nu se amână: doar „Deschide".
-      // O serie se bifează („Gata azi"), dar nu se amână: următorul ping vine oricum.
-      const actions = r.kind === 'event'
-        ? ['default', 'Deschide']
-        : r.series
-          ? ['default', 'Deschide', 'done', 'Gata azi']
-          : ['default', 'Deschide', 'done', 'Gata', 'snooze15', '15 min', 'snooze30', '30 min']
+      // Un eveniment: doar „Deschide"; o serie: „Am văzut" + „Gata azi", fără
+      // amânări (următorul ping vine oricum) — vezi `notifyActions`.
+      const actions = notifyActions(r)
       const nid: number = await n.Notify('Horizontal', 0, 'horizontal', r.title, r.body,
         actions,
         { urgency: new dbus.Variant('y', 2), resident: new dbus.Variant('b', true), 'desktop-entry': new dbus.Variant('s', 'horizontal') },

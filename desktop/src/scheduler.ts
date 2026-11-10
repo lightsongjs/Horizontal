@@ -9,7 +9,7 @@ export interface Reminder {
   key: string; id: string; at: number; title: string; body: string
   /** `'event'` = eveniment din Google Calendar: fără „Gata" și amânări (nu se bifează). */
   kind?: 'event'
-  /** Un ping dintr-o serie de mementouri: doar „Gata azi", iar pingul nou îl înlocuiește pe cel vechi. */
+  /** Un ping dintr-o serie de mementouri: „Am văzut" + „Gata azi", iar pingul nou îl înlocuiește pe cel vechi. */
   series?: true
 }
 
