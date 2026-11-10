@@ -106,7 +106,7 @@ Pro (HyperOS 3, Android 16).
   ca un memento nebifat). `pruneSeriesFired` scoate imediat cheile pingurilor
   depășite. Pingul sunat poartă `anchor` = `remind_at`, cu care compară
   `DeferGate` (serverul nu mișcă `remind_at` la fiecare ping). Notificarea are un
-  singur buton, „Gata" = am văzut (`ActionReceiver.SEEN`: doar închide
+  singur buton, „Gata" = am văzut (din `versionCode 25`; `ActionReceiver.SEEN`: doar închide
   notificarea, nu bifează; decizia din 10 nov. 2026) — fără „15 min" și „Amână…". Fereastra nativă trimite
   `ping_every` din motor (`Draft.pingEvery` → `NativeCreate`), doar când e serie.
   Fără `API` nou: un APK mai vechi ignoră `every` și sună doar primul ping.
