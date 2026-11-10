@@ -56,7 +56,7 @@ const GROUPS: Group[] = [
   },
   {
     title: 'Serii de mementouri',
-    note: 'Un memento care revine din N în N minute (1–720), într-o fereastră: de acum (sau de la start) până la capăt (implicit 23:59), azi — ori în zilele scrise. Un singur rând în „Azi"; „Gata azi" o încheie pe ziua de azi.',
+    note: 'Un memento care revine din N în N minute (1–720), într-o fereastră: de acum (sau de la start) până la capăt (implicit 23:59), azi — ori în zilele scrise. Un singur rând în „Azi"; „Gata" din notificare doar închide pingul; bifa din aplicație o încheie pe ziua de azi.',
     examples: [
       'la fiecare 10 minute până la 10', 'din oră în oră între 9 și 17', 'la fiecare oră la fix',
       'la 15 minute 9-17 zilnic', 'la fiecare jumătate de oră de la 14', 'every 15 minutes until 10am',

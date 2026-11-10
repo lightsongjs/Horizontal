@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import fixtures from './pushPayload.fixtures.json'
-import { isReminderAction, isReminderArrived, planNotification, SNOOZE_MINUTES } from './pushPayload'
+import { isReminderAction, isReminderArrived, notificationClick, planNotification, SNOOZE_MINUTES } from './pushPayload'
 
 // Fixtures-urile sunt scrise pentru Europe/Bucharest (aceleași le citește JUnit,
 // cu fusul dat explicit). Node respectă TZ setat la rulare, înainte de primul Date.
@@ -11,7 +11,9 @@ describe('planNotification — fixtures comune cu Kotlin', () => {
   for (const f of fixtures) {
     it(f.name, () => {
       const p = planNotification(f.input)
-      expect({ title: p.title, body: p.body, tag: p.tag }).toEqual(f.want)
+      const { actions, ...want } = f.want as typeof f.want & { actions?: string[] }
+      expect({ title: p.title, body: p.body, tag: p.tag }).toEqual(want)
+      if (actions) expect(p.actions.map((a) => a.action)).toEqual(actions)
     })
   }
 })
@@ -117,5 +119,23 @@ describe('planNotification — cererea semnată', () => {
     // constantă, și de asta testul o compară cu ea, nu cu un text scris de mână.
     const snooze = planNotification(base).actions.find((a) => a.action === 'snooze')
     expect(snooze?.title).toBe(`Amână ${SNOOZE_MINUTES} min`)
+  })
+})
+
+// Bugul din 10 nov. 2026: singurul buton al unui ping de serie era „Gata azi",
+// care bifa tichetul — seria murea după primul ping. „Gata" = am văzut pingul.
+describe('ping de serie — „Gata" doar închide notificarea', () => {
+  it('un singur buton, „Gata", cu acțiunea `seen`', () => {
+    const p = planNotification({ id: 'HZ-9', title: 'M', series: true })
+    expect(p.actions).toEqual([{ action: 'seen', title: 'Gata' }])
+  })
+  it('un memento simplu: „Gata" bifează, ca înainte', () => {
+    expect(planNotification({ id: 'HZ-9', title: 'M' }).actions[0]).toEqual({ action: 'done', title: 'Gata' })
+  })
+  it('clicul: `seen` doar închide, `done`/`snooze` se rezolvă, restul deschide', () => {
+    expect(notificationClick('seen')).toBe('dismiss')
+    expect(notificationClick('done')).toBe('resolve')
+    expect(notificationClick('snooze')).toBe('resolve')
+    expect(notificationClick('')).toBe('open')
   })
 })

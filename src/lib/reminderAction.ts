@@ -21,13 +21,15 @@ export type SnoozeIssue = Pick<Issue, 'dueAt'> & Partial<Pick<Issue, 'remindAt' 
  * desktop trimite 15 sau 30 (vezi `desktop/src/notify.ts`).
  *
  * O serie de mementouri (`pingEvery`) nu se amână: următorul ping vine oricum,
- * iar mutarea lui `remindAt` i-ar muta ancora grilei. Notificarea ei are doar
- * „Gata azi", dar un service worker sau o cutie de dinainte de serii încă arată
- * „Amână" — apăsat acolo, nu face nimic.
+ * iar mutarea lui `remindAt` i-ar muta ancora grilei. Și nici nu se bifează
+ * dintr-o notificare: „Gata" pe un ping = am văzut pingul, seria continuă
+ * (`SERIES_SEEN_LABEL`; bugul din 10 nov. 2026). Notificarea nouă trimite
+ * `seen`, care nu ajunge aici; un worker, o cutie de Linux sau un APK de
+ * dinainte încă trimit „done" (fostul „Gata azi") sau „Amână" — nu fac nimic.
  */
 export function reminderMutation(action: 'done' | 'snooze', issue: (Pick<Issue, 'done'> & Partial<Pick<Issue, 'pingEvery' | 'dueAt' | 'remindAt' | 'snoozedFrom'>>) | undefined, now: Date, minutes: number = SNOOZE_MINUTES): ReminderMutation {
-  if (action === 'done') return issue?.done ? { kind: 'none' } : { kind: 'toggle' }
   if (issue?.pingEvery) return { kind: 'none' }
+  if (action === 'done') return issue?.done ? { kind: 'none' } : { kind: 'toggle' }
   // Tichet necunoscut (nu e în cache): fără bază — n-avem de unde ști mementoul planificat.
   const { remindAt, snoozedFrom } = snoozeTarget({ kind: 'minutes', minutes }, now, { dueAt: null, ...issue })
   return { kind: 'patch', patch: snoozedFrom ? { remindAt, snoozedFrom } : { remindAt } }

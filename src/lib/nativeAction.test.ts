@@ -45,6 +45,13 @@ describe('runNativeAction', () => {
     runNativeAction({ action: 'until', id: 'HZ-1', at: '2026-10-03T06:00:00.000Z' }, d)
     expect(d.updateIssue).not.toHaveBeenCalled()
   })
+  it('„Gata" pe un ping de serie (cutie de Linux sau APK vechi) nu bifează: seria continuă', () => {
+    const d = deps({ done: false, pingEvery: 5 })
+    runNativeAction({ action: 'done', id: 'HZ-1' }, d)
+    runNativeAction({ action: 'done', id: 'HZ-1', prevDueAt: null }, d)
+    expect(d.toggleDone).not.toHaveBeenCalled()
+    expect(d.updateIssue).not.toHaveBeenCalled()
+  })
   it('until cu dueAt: și scadența, exact cum a calculat-o cutia', () => {
     const d = deps(); runNativeAction({ action: 'until', id: 'HZ-1', at: '2026-10-03T06:00:00.000Z', dueAt: '2026-10-03T12:00:00.000Z' }, d)
     expect(d.updateIssue).toHaveBeenCalledWith('HZ-1', { remindAt: '2026-10-03T06:00:00.000Z', dueAt: '2026-10-03T12:00:00.000Z' })

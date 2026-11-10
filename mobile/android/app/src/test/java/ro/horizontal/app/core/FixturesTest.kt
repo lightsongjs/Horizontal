@@ -20,6 +20,10 @@ class FixturesTest {
             val f = all.getJSONObject(i); val inp = f.getJSONObject("input"); val want = f.getJSONObject("want")
             val got = planNotification(inp.getString("id"), inp.str("title"), inp.str("dueAt"), inp.optBoolean("allDay", false), inp.str("projectName"), zone, inp.optBoolean("series", false))
             assertEquals(f.getString("name"), NotificationText(want.getString("title"), want.getString("body"), want.getString("tag")), got)
+            // Butoanele: doar unde fixture-ul le spune (seria — „Gata" = `seen`, nu bifă).
+            want.optJSONArray("actions")?.let { a ->
+                assertEquals(f.getString("name"), (0 until a.length()).map { a.getString(it) }, notificationButtons(inp.optBoolean("series", false)))
+            }
         }
     }
 

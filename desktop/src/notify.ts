@@ -43,7 +43,7 @@ export async function createNotifier(onAction: (a: NotifyAction) => void): Promi
     else if (actionKey === 'snooze15') onAction({ action: 'snooze', id: hit.id, minutes: 15 })
     else if (actionKey === 'snooze30') onAction({ action: 'snooze', id: hit.id, minutes: 30 })
     else if (actionKey === 'default') onAction({ action: 'open', id: hit.id })
-    // „Am văzut" (doar pe o serie): nimic de scris, doar se închide pingul.
+    // „Gata" pe un ping de serie (`seen`): nimic de scris, doar se închide pingul.
     else if (actionKey !== 'seen') return
     // Rezidentă: n-ar dispărea singură. Și la „deschide” o închidem — omul merge la tichet.
     void closeKey(hit.key)
@@ -62,8 +62,8 @@ export async function createNotifier(onAction: (a: NotifyAction) => void): Promi
       if (r.series) {
         for (const [key, nid] of [...byKey]) if (byNid.get(nid)?.id === r.id && key !== r.key) await closeKey(key)
       }
-      // Un eveniment: doar „Deschide"; o serie: „Am văzut" + „Gata azi", fără
-      // amânări (următorul ping vine oricum) — vezi `notifyActions`.
+      // Un eveniment: doar „Deschide"; o serie: doar „Gata" = am văzut pingul,
+      // fără bifă și fără amânări — vezi `notifyActions`.
       const actions = notifyActions(r)
       const nid: number = await n.Notify('Horizontal', 0, 'horizontal', r.title, r.body,
         actions,

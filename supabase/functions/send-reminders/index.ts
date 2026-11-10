@@ -178,7 +178,7 @@ Deno.serve(async (req) => {
       dueAt: issue.due_at,
       allDay: issue.all_day,
       projectName: projectName.get(issue.project_id) ?? '',
-      // Un ping de serie: `dueAt` e capătul ferestrei, iar butonul e doar „Gata azi".
+      // Un ping de serie: `dueAt` e capătul ferestrei, iar butonul e doar „Gata" = am văzut (nu bifează).
       ...(issue.ping_every ? { series: true } : {}),
       ...(actionSecret
         ? { actionToken: await mintToken(actionSecret, issue.id, Date.now()), actionUrl }

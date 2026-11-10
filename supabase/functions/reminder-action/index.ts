@@ -98,13 +98,14 @@ Deno.serve(async (req) => {
     patch = { remind_at: new Date(Date.now() + SNOOZE_MINUTES * 60_000).toISOString(), ...(base ? { snoozed_from: base } : {}) }
   }
 
-  // O serie de mementouri (`ping_every`) nu se amână: următorul ping vine
-  // oricum, iar mutarea lui `remind_at` i-ar muta ancora grilei. Notificarea ei
-  // are doar „Gata azi", dar un service worker de dinainte de serii încă arată
-  // „Amână" — filtrul de mai jos îl face să nu atingă nimic. Același refuz ca
+  // O serie de mementouri (`ping_every`) nu se amână și nu se bifează dintr-o
+  // notificare: următorul ping vine oricum, iar „Gata" pe un ping = am văzut
+  // pingul, nu am terminat (bugul din 10 nov. 2026: bifa oprea seria după
+  // primul ping). Notificarea nouă trimite `seen`, care nu ajunge aici; un
+  // service worker vechi încă trimite „done" (fostul „Gata azi") sau „Amână" —
+  // filtrul de mai jos îl face să nu atingă nimic. Același refuz ca
   // `reminderMutation` din pagină.
-  let q = db.from('issues').update(patch).eq('id', id)
-  if (action === 'snooze') q = q.is('ping_every', null)
+  const q = db.from('issues').update(patch).eq('id', id).is('ping_every', null)
   const { error } = await q
   if (error) return json({ error: error.message }, 500, origin)
 

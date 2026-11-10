@@ -28,8 +28,8 @@ export interface ReminderPayload {
   /**
    * Un ping dintr-o serie de mementouri (`ping_every`, „la fiecare 15 minute
    * până la 10"). `dueAt` e atunci capătul ferestrei, iar notificarea are un
-   * singur buton, „Gata azi": o amânare n-are sens peste un memento care
-   * revine oricum la următorul ping. Absent = memento obișnuit.
+   * singur buton, „Gata" = am văzut pingul (`seen`, vezi `SERIES_SEEN_LABEL`).
+   * Absent = memento obișnuit.
    */
   series?: boolean
   /**
@@ -57,7 +57,7 @@ export interface NotificationPlan {
    * bara de notificări cu același rând.
    */
   tag: string
-  actions: { action: 'done' | 'snooze'; title: string }[]
+  actions: { action: 'done' | 'snooze' | 'seen'; title: string }[]
   /**
    * Cererea pe care workerul o face când nu există nicio filă. `null` dacă
    * serverul n-a trimis token — atunci se cade pe deschiderea tichetului.
@@ -83,10 +83,24 @@ export interface ActionRequest {
 export const SNOOZE_MINUTES = 5
 
 /**
- * Singurul buton al unei serii. „azi", fiindcă bifa unei serii zilnice o mută
- * pe mâine (trigger-ul de recurență), iar una doar de azi se închide.
+ * Singurul buton al unui ping de serie: „Gata" = AM VĂZUT PINGUL, nu „am
+ * terminat sarcina". Acțiunea e `seen`: închide doar notificarea, iar seria
+ * continuă — următorul ping vine la ora lui (decizia omului, 10 nov. 2026:
+ * „e un reminder repetat, nu înseamnă că am completat task-ul"). Seria se
+ * bifează doar din aplicație. Înainte era „Gata azi" = bifă, iar clicul din
+ * reflex oprea seria după primul ping.
  */
-export const SERIES_DONE_LABEL = 'Gata azi'
+export const SERIES_SEEN_LABEL = 'Gata'
+
+/**
+ * Ce face un clic pe notificare: `seen` doar o închide, `done`/`snooze` se
+ * rezolvă fără să deschidă aplicația, orice altceva (corpul) deschide tichetul.
+ */
+export function notificationClick(action: string): 'dismiss' | 'resolve' | 'open' {
+  if (action === 'seen') return 'dismiss'
+  if (action === 'done' || action === 'snooze') return 'resolve'
+  return 'open'
+}
 
 const pad = (n: number) => String(n).padStart(2, '0')
 
@@ -112,7 +126,7 @@ export function planNotification(p: ReminderPayload): NotificationPlan {
     url: `/${p.id}`,
     tag: p.id,
     actions: p.series
-      ? [{ action: 'done', title: SERIES_DONE_LABEL }]
+      ? [{ action: 'seen', title: SERIES_SEEN_LABEL }]
       : [
         { action: 'done', title: 'Gata' },
         { action: 'snooze', title: `Amână ${SNOOZE_MINUTES} min` },

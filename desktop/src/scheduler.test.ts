@@ -56,7 +56,7 @@ describe('parseReminders', () => {
     expect(parseReminders([{ key: 'A@x', id: 'A', at: '2026-10-02T10:00:00.000Z', title: 't', body: 'b', kind: 'altceva' }])[0])
       .not.toHaveProperty('kind')
   })
-  it('păstrează `series: true` (ping de serie: doar „Gata azi"), ignoră orice altă valoare', () => {
+  it('păstrează `series: true` (ping de serie: doar „Gata" = am văzut), ignoră orice altă valoare', () => {
     expect(parseReminders([{ key: 'A@x', id: 'A', at: '2026-10-02T10:00:00.000Z', title: 't', body: 'b', series: true }])[0])
       .toMatchObject({ series: true })
     expect(parseReminders([{ key: 'A@x', id: 'A', at: '2026-10-02T10:00:00.000Z', title: 't', body: 'b', series: 'da' }])[0])

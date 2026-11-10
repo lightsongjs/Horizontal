@@ -38,6 +38,8 @@ export function runNativeAction(raw: DesktopAction, d: NativeActionDeps): void {
     return
   }
   const issue = d.find(a.id)
+  // Nici „Gata" pe o serie (`reminderMutation`): pingul văzut nu bifează.
+  if (issue?.pingEvery) return
   if (a.action === 'done' && a.prevDueAt !== undefined) {
     // Garda recurenței, ca `buildPatch` din cutie: pe o recurentă `done` rămâne
     // false după salt, deci un „Gata" executat a doua oară (sau unul vechi) ar

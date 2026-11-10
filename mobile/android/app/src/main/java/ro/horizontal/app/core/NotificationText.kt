@@ -23,3 +23,12 @@ fun planNotification(id: String, title: String?, dueAt: String?, allDay: Boolean
     if (!projectName.isNullOrEmpty()) parts += projectName
     return NotificationText(t, if (parts.isEmpty()) id else parts.joinToString(" · "), id)
 }
+
+/**
+ * Butoanele notificării, ca acțiuni (cheile din `pushPayload.ts`). Un ping de
+ * serie are UNUL, „Gata" = am văzut pingul (`seen`): închide doar notificarea,
+ * seria continuă — nu bifează (decizia omului, 10 nov. 2026: „e un reminder
+ * repetat, nu înseamnă că am completat task-ul"). Un memento simplu: „Gata"
+ * (bifă) și „15 min". Același `seen` ca pe web: `pushPayload.fixtures.json`.
+ */
+fun notificationButtons(series: Boolean): List<String> = if (series) listOf("seen") else listOf("done", "snooze15")

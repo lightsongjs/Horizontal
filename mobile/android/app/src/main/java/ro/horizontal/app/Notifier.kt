@@ -10,6 +10,7 @@ import android.net.Uri
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import ro.horizontal.app.core.Reminder
+import ro.horizontal.app.core.notificationButtons
 
 /**
  * Canalele și notificarea. Setările unui canal NU se mai pot schimba din cod
@@ -60,15 +61,15 @@ object Notifier {
             .setAutoCancel(true)
             .setWhen(r.at).setShowWhen(true)
             .setContentIntent(openIntent(ctx, r.id))
-        // Un ping de serie are un singur buton, ca pe web (`SERIES_DONE_LABEL`):
-        // o amânare n-are sens peste un memento care revine la pingul următor.
-        // Bifa unei serii zilnice o mută pe mâine; una doar de azi se închide.
-        if (r.every != null) n.addAction(0, "Gata azi", broadcast(ctx, r, ActionReceiver.DONE))
-        else {
-            n.addAction(0, "Gata", broadcast(ctx, r, ActionReceiver.DONE))
-                .addAction(0, "15 min", broadcast(ctx, r, ActionReceiver.SNOOZE15))
-            extraActions(ctx, r, n)
+        // Un ping de serie are un singur buton, ca pe web (`SERIES_SEEN_LABEL`):
+        // „Gata" = am văzut pingul — închide doar notificarea, seria continuă,
+        // nu bifează (`notificationButtons`). Seria se bifează din aplicație.
+        for (b in notificationButtons(series = r.every != null)) when (b) {
+            "seen" -> n.addAction(0, "Gata", broadcast(ctx, r, ActionReceiver.SEEN))
+            "done" -> n.addAction(0, "Gata", broadcast(ctx, r, ActionReceiver.DONE))
+            "snooze15" -> n.addAction(0, "15 min", broadcast(ctx, r, ActionReceiver.SNOOZE15))
         }
+        if (r.every == null) extraActions(ctx, r, n)
         // tag = id: același tichet ÎNLOCUIEȘTE notificarea, ca pe web.
         try { NotificationManagerCompat.from(ctx).notify(r.id, 1, n.build()) } catch (e: SecurityException) { /* permisiunea lipsește: cardul din pagină o spune */ }
     }

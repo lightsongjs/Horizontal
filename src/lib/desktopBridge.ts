@@ -28,9 +28,10 @@ export interface DesktopReminder {
   kind?: 'event'
   /**
    * Un ping dintr-o serie de mementouri (`pingEvery`): cutia de Linux arată
-   * doar „Gata azi" (fără amânări) și închide pingul de dinainte al aceluiași
-   * tichet. O cutie mai veche pune butoanele obișnuite; o amânare de acolo e
-   * refuzată de pagină (`reminderMutation`).
+   * doar „Gata" = am văzut pingul (nu bifează, fără amânări) și închide pingul
+   * de dinainte al aceluiași tichet. O cutie mai veche pune „Gata azi" sau
+   * butoanele obișnuite; bifa sau amânarea de acolo e refuzată de pagină
+   * (`reminderMutation`).
    */
   series?: true
   /**

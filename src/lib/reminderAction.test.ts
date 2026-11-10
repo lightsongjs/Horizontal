@@ -36,7 +36,13 @@ describe('reminderMutation', () => {
   })
   it('o serie de mementouri nu se amână (un worker vechi încă arată „Amână")', () => {
     expect(reminderMutation('snooze', { done: false, pingEvery: 15 }, now)).toEqual({ kind: 'none' })
-    expect(reminderMutation('done', { done: false, pingEvery: 15 }, now)).toEqual({ kind: 'toggle' })
+  })
+  // Bugul din 10 nov. 2026: „Gata" pe un ping înseamnă „am văzut pingul", nu
+  // „am terminat". Bifat, tichetul oprea seria după primul ping. Un worker, o
+  // cutie de Linux sau un APK de dinainte încă trimit „done" pe o serie.
+  it('„Gata" de pe un ping de serie nu bifează tichetul: seria continuă', () => {
+    expect(reminderMutation('done', { done: false, pingEvery: 5 }, now)).toEqual({ kind: 'none' })
+    expect(reminderMutation('done', { done: false }, now)).toEqual({ kind: 'toggle' })
   })
 })
 

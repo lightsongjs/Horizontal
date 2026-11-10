@@ -22,6 +22,7 @@ import { NavigationRoute, registerRoute } from 'workbox-routing'
 import {
   CHIME_READY_CACHE,
   CHIME_READY_KEY,
+  notificationClick,
   planEventNotification,
   planNotification,
   type ActionRequest,
@@ -188,10 +189,14 @@ self.addEventListener('notificationclick', (event) => {
   }
   event.notification.close()
 
+  // „Gata" pe un ping de serie (`seen`) = am văzut pingul: notificarea e deja
+  // închisă, seria continuă, nimic de scris și nimic de deschis.
+  const click = notificationClick(event.action)
+  if (click === 'dismiss') return
   // Acțiunile se rezolvă FĂRĂ să deschidă aplicația — asta le face utile. Dacă
   // nu există nicio filă deschisă, cererea pleacă direct către API.
-  if (event.action === 'done' || event.action === 'snooze') {
-    event.waitUntil(resolveAction(event.action, data.id, data.request))
+  if (click === 'resolve') {
+    event.waitUntil(resolveAction(event.action as 'done' | 'snooze', data.id, data.request))
     return
   }
 
