@@ -200,10 +200,14 @@ export function QuickSearch({ onClose, onOpen }: Props) {
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
       setSelected((s) => Math.max(s - 1, 0))
-    } else if (e.key === 'Enter') {
-      if (filtered[selected]) open(filtered[selected].id)
-    } else if (e.key === 'Escape') {
-      onClose()
+    } else if (e.key === 'Enter' || e.key === 'Escape') {
+      // Tasta e a căutării: React o închide înainte ca dispecerul Vim (pe
+      // `document`) s-o vadă, iar acolo, fără overlay și fără câmp focusat,
+      // același Enter deschidea rândul cursorului peste tichetul ales.
+      e.preventDefault()
+      e.stopPropagation()
+      if (e.key === 'Escape') onClose()
+      else if (filtered[selected]) open(filtered[selected].id)
     }
   }
 

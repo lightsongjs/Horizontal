@@ -2464,6 +2464,47 @@ try {
     check('…iar pastila spune „nesalvat"', /nesalvat/.test(hint), JSON.stringify(hint))
     await vp.close()
 
+    // Căutarea rapidă: Enter deschide rezultatul ALES, nu rândul cursorului.
+    // React închide căutarea înainte ca dispecerul Vim (pe `document`) să vadă
+    // tasta; fără overlay și fără câmp focusat, același Enter deschidea apoi
+    // rândul de sub cursor — tichetul ales sărea, înlocuit de altul.
+    const sp = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+    await sp.goto(BASE, { waitUntil: 'networkidle' })
+    await sp.waitForTimeout(700)
+    for (const t of ['Caută alfa', 'Caută beta', 'Caută gama']) {
+      await sp.locator('.qa-input').first().fill(t)
+      await sp.keyboard.press('Enter')
+      await sp.waitForTimeout(500)
+    }
+    await sp.locator('h1').first().click()
+    await sp.waitForTimeout(200)
+    await keys(sp, 'j')
+    const spCursor = await cursorOf(sp)
+    await keys(sp, 'Control+k')
+    await sp.waitForTimeout(300)
+    await sp.keyboard.type('Caută')
+    await sp.waitForTimeout(200)
+    // Un rând sub primul rezultat, oricare ar fi ordinea: dacă nimerește tot
+    // rândul cursorului, încă unul — altfel testul n-ar deosebi cele două.
+    const cursorTitle = spCursor
+      ? ((await sp.locator(`main .list-row[data-issue-id="${spCursor}"]`).first().textContent().catch(() => '')) ?? '')
+      : ''
+    await keys(sp, 'ArrowDown')
+    let picked = ((await sp.locator('.qs-item.on .qs-item-title').textContent().catch(() => '')) ?? '').trim()
+    if (picked && cursorTitle.includes(picked)) {
+      await keys(sp, 'ArrowDown')
+      picked = ((await sp.locator('.qs-item.on .qs-item-title').textContent().catch(() => '')) ?? '').trim()
+    }
+    await keys(sp, 'Enter')
+    await sp.waitForTimeout(900)
+    const spDocked = await dockedId(sp)
+    const spTitle = spDocked
+      ? ((await sp.locator(`main .list-row[data-issue-id="${spDocked}"]`).first().textContent().catch(() => '')) ?? '')
+      : ''
+    check('căutarea rapidă: Enter deschide rezultatul ales cu săgețile', !!picked && spTitle.includes(picked),
+      `ales=${JSON.stringify(picked)}, docat=${spDocked} ${JSON.stringify(spTitle.trim())}, cursor=${spCursor}`)
+    await sp.close()
+
     // „Listă": j merge exact un rând, în interiorul layerului (nu din layer în layer).
     const lp = await browser.newPage({ viewport: { width: 1440, height: 900 } })
     await lp.goto(BASE, { waitUntil: 'networkidle' })
