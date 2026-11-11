@@ -1319,7 +1319,10 @@ main {
   font-family: var(--mono); font-size: 0.86em;
   background: var(--surface-2); padding: 1px 5px; border-radius: var(--r-s);
 }
-.md-pre {
+/* `pre.md-pre`, nu `.md-pre`: editorul pune aceeași clasă pe fiecare rând de
+   cod (`.cm-line.md-pre`), iar marginea și raza de aici l-ar fi făcut pastilă
+   — și o margine pe un rând CodeMirror (nemăsurată) strică clicul (W-02). */
+pre.md-pre {
   margin: 0.8em 0; padding: 12px 14px; border-radius: var(--r-m);
   background: var(--surface-2); overflow-x: auto;
   font-family: var(--mono); font-size: calc(13px * var(--text-scale)); line-height: 1.55;
@@ -1516,6 +1519,12 @@ main {
   font-family: var(--mono); font-size: calc(13px * var(--text-scale));
   background: var(--surface-2); padding: 0 14px;
 }
+/* Blocul e O cutie: rândurile se ating, rotunjite doar sus și jos. Fără
+   margini — CodeMirror nu le măsoară. Gardurile ``` (ascunse fără cursor)
+   rămân rânduri mai joase, cât un padding al cutiei. */
+.md-editor .cm-line.md-pre-first { border-top-left-radius: var(--r-m); border-top-right-radius: var(--r-m); }
+.md-editor .cm-line.md-pre-last { border-bottom-left-radius: var(--r-m); border-bottom-right-radius: var(--r-m); }
+.md-editor .cm-line.md-pre-fence { font-size: calc(11px * var(--text-scale)); line-height: 1.2; color: var(--txt-faint); }
 .md-editor .cm-line.md-li {
   padding-left: calc((var(--md-depth, 0) + 1) * var(--md-gutter));
   text-indent: calc(-1 * var(--md-gutter));

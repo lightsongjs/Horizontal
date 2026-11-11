@@ -59,6 +59,22 @@ describe('decorationSpecs', () => {
     const d = decorationSpecs('```\na\n```', none, [])
     expect(d.filter((s) => s.k === 'line' && s.cls.includes('md-pre'))).toHaveLength(3)
   })
+  it('blocul de cod e o cutie: un spec pe rând, gardurile ascunse doar fără cursor (W-02)', () => {
+    const s = 'x\n\n```js\nab\ncd\n```\n'
+    const lines = (d: DecoSpec[]) => d.filter((x) => x.k === 'line').map((x) => (x as { at: number; cls: string }))
+    expect(lines(decorationSpecs(s, none, []))).toEqual([
+      { k: 'line', at: 3, cls: 'md-pre md-pre-first md-pre-fence' },
+      { k: 'line', at: 9, cls: 'md-pre' },
+      { k: 'line', at: 12, cls: 'md-pre' },
+      { k: 'line', at: 15, cls: 'md-pre md-pre-last md-pre-fence' },
+    ])
+    expect(of(decorationSpecs(s, none, []), 'hide')).toEqual([{ k: 'hide', from: 3, to: 8 }, { k: 'hide', from: 15, to: 18 }])
+    expect(of(decorationSpecs(s, new Set([2]), []), 'hide')).toEqual([{ k: 'hide', from: 15, to: 18 }])
+    // Blocul neînchis (cât scrii): ultimul rând e cod, nu gard.
+    expect(lines(decorationSpecs('```\nab', none, [])).map((x) => x.cls)).toEqual(['md-pre md-pre-first md-pre-fence', 'md-pre md-pre-last'])
+    // CRLF: `\r` nu intră în ascundere (îl ascunde stratul CodeMirror).
+    expect(of(decorationSpecs('```\r\na\r\n```', none, []), 'hide')).toEqual([{ k: 'hide', from: 0, to: 3 }, { k: 'hide', from: 8, to: 11 }])
+  })
   it('citatul: clasa pe linie, „> " ascuns', () => {
     const d = decorationSpecs('> a', none, [])
     expect(d).toContainEqual({ k: 'line', at: 0, cls: 'md-quote' })

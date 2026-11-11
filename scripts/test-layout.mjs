@@ -1695,6 +1695,68 @@ for (const [where, vp, wrapOpen, wrapClose] of [
   await page.close()
 }
 
+// Blocul de cod din editor (W-02, 2026-11-11). Regula `.md-pre` a cititorului
+// (margine, padding, rază) se lipea și pe fiecare `.cm-line.md-pre`: fiecare
+// rând devenea o pastilă separată, iar marginile — pe care CodeMirror nu le
+// măsoară — mutau harta înălțimilor, deci un clic la capătul unui rând punea
+// cursorul pe rândul de dedesubt. Aici: rândurile blocului se ating (o singură
+// cutie), gardurile ``` nu se văd fără cursor, iar clicul la capătul fiecărui
+// rând pune cursorul pe EL.
+console.log('\nBlocul de cod din editor — o cutie, clicul pe rândul nimerit:')
+const MD_CODE = [
+  '1. ia proiectul',
+  '2. De la Lioara',
+  '',
+  '```',
+  'https://drive.google.com/file/d/1l6Cr9eQ1ihrBj6rUaZySY_3GkXTm44Af/view',
+  'sta este ce au implementat cei de Visma.net Financials = > sectiunea  Usage of AI tools & services',
+  'Visma.net Financials = > Visma.net ERP https://www.visma.com/trust-centre/vismaneterp ',
+  '```',
+  '',
+].join('\n')
+for (const [where, vp, wrap] of [
+  ['panou 1400', { width: 1400, height: 1000 }, '<div class="split-pane" style="position:static;width:760px;padding:16px"><div class="md-field desc-box desc-fixed" id="ed"></div><div id="rd"></div></div>'],
+  ['foaie 390', { width: 390, height: 1200 }, '<div class="edit-sheet" style="position:static;transform:none;padding:0 18px"><div class="es-desc md-field desc-box" id="ed"></div><div id="rd"></div></div>'],
+]) {
+  const page = await browser.newPage({ viewport: vp, ...(vp.width < 900 ? { hasTouch: true, isMobile: true } : {}) })
+  await page.setContent(`<meta name="viewport" content="width=device-width, initial-scale=1.0"><style>${CSS}</style>${wrap}<script>${mdBundle.text}</script>`)
+  await page.evaluate((t) => window.__mount(t), MD_CODE)
+  await page.waitForSelector('#ed .cm-line.md-pre')
+  await page.evaluate(() => document.fonts.ready)
+  const boxes = await page.$$eval('#ed .cm-line.md-pre', (ls) => ls.map((l) => {
+    const r = l.getBoundingClientRect(), cs = getComputedStyle(l)
+    return { top: r.top, bottom: r.bottom, mt: parseFloat(cs.marginTop), mb: parseFloat(cs.marginBottom), text: l.textContent }
+  }))
+  const gaps = boxes.slice(1).map((b, i) => b.top - boxes[i].bottom)
+  check(`blocul de cod (${where}): rândurile se ating, fără margini`, boxes.length === 5 && gaps.every((g) => Math.abs(g) <= 0.5) && boxes.every((b) => !b.mt && !b.mb),
+    `${boxes.length} rânduri, goluri ${gaps.map((g) => g.toFixed(1)).join(', ')}`)
+  check(`blocul de cod (${where}): gardurile \`\`\` nu se văd fără cursor`, !boxes[0].text.includes('`') && !boxes[4].text.includes('`'),
+    `„${boxes[0].text}” / „${boxes[4].text}”`)
+  // Clic la capătul fiecărui rând de cod (pe ultimul lui fragment, dacă e rupt).
+  const miss = []
+  for (const i of [1, 2, 3]) {
+    const pt = await page.evaluate((i) => {
+      const l = document.querySelectorAll('#ed .cm-line.md-pre')[i]
+      const r = document.createRange(); r.selectNodeContents(l)
+      const rs = [...r.getClientRects()].filter((q) => q.width > 0)
+      const last = rs.reduce((a, b) => (b.bottom > a.bottom + 1 || (Math.abs(b.bottom - a.bottom) <= 1 && b.right > a.right) ? b : a))
+      return { x: last.right - 2, y: (last.top + last.bottom) / 2 }
+    }, i)
+    await page.mouse.click(pt.x, pt.y)
+    await page.waitForTimeout(80)
+    const got = await page.evaluate(() => {
+      const n = getSelection().anchorNode
+      const el = n && (n.nodeType === 1 ? n : n.parentElement)
+      return el?.closest('.cm-line')?.textContent ?? null
+    })
+    const want = MD_CODE.split('\n')[4 + i - 1]
+    if (got !== want) miss.push(`rândul ${i}: cursorul pe „${(got ?? '—').slice(0, 30)}”`)
+  }
+  check(`blocul de cod (${where}): clicul la capătul rândului pune cursorul pe el`, miss.length === 0, miss.join('; ') || '3/3')
+  if (MD_SHOTS) await page.screenshot({ path: `${MD_SHOTS}/cod-${where.replace(' ', '-')}.png`, fullPage: true })
+  await page.close()
+}
+
 /**
  * Mutarea în alt proiect (`MoveProject.tsx`): jetonul de proiect de lângă ID
  * în antetul formularului complet, foaia mică de proiecte de pe telefon și

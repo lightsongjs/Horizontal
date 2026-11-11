@@ -138,10 +138,23 @@ export function decorationSpecs(text: string, reveal: ReadonlySet<number>, prefi
           hide(n.from, text[n.to] === ' ' ? n.to + 1 : n.to)
           return
         case 'FencedCode':
-        case 'CodeBlock':
-          lines(n.from, n.to, 'md-pre')
+        case 'CodeBlock': {
+          // Un singur spec de linie pe rând: prima și ultima rotunjesc cutia,
+          // gardurile (``` cu limbajul) sunt rânduri joase, cu textul ascuns
+          // fără cursor — ca în cititor, unde nu se văd deloc.
+          const a = lineOf(n.from), b = lineOf(n.to)
+          const fences = new Set(n.node.getChildren('CodeMark').map((m) => lineOf(m.from)))
+          for (let l = a; l <= b; l++) {
+            const fence = fences.has(l)
+            out.push({ k: 'line', at: starts[l], cls: `md-pre${l === a ? ' md-pre-first' : ''}${l === b ? ' md-pre-last' : ''}${fence ? ' md-pre-fence' : ''}` })
+            if (fence) {
+              const end = l + 1 < starts.length ? starts[l + 1] - 1 : text.length
+              hide(text.slice(starts[l], end).search(/\S/) + starts[l], end - (text[end - 1] === '\r' ? 1 : 0))
+            }
+          }
           noRef.push([n.from, n.to])
           return false
+        }
         case 'Table':
           // Fără cursor în el, tabelul e un widget desenat (`livePreview`);
           // cu cursorul, textul lui brut, pe coloane drepte.
