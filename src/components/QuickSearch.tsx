@@ -63,13 +63,21 @@ function fuzzy(query: string, text: string): boolean {
 // for queries that could plausibly be identifying a ticket by number, so
 // it's gated on the query containing at least one digit — every case the
 // feature exists for ("04", "4", "H-04", "h-04", "kata-12") satisfies this.
+//
+// Separatorul nu contează (D-394): „nk57", „nk 57" și „NK-57" sunt același
+// tichet — comparăm fără nimic în afară de litere și cifre. Iar prefix +
+// număr se potrivesc și fără zerourile din față („h4" → H-04).
+const compactId = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '')
 function matchesId(query: string, id: string): boolean {
   if (!query || !/\d/.test(query)) return false
-  const q = query.toLowerCase()
-  const idLower = id.toLowerCase()
-  if (idLower.includes(q)) return true
+  const q = compactId(query)
+  const idc = compactId(id)
+  if (idc.includes(q)) return true
   const numericPart = id.match(/\d+/)?.[0] ?? ''
-  return numericPart.includes(q)
+  if (numericPart.includes(q)) return true
+  const qm = q.match(/^(\p{L}+)(\d+)$/u)
+  const im = idc.match(/^(\p{L}+)(\d+)$/u)
+  return !!qm && !!im && qm[1] === im[1] && Number(qm[2]) === Number(im[2])
 }
 
 /**

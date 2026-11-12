@@ -81,6 +81,14 @@ describe('rankIssues', () => {
     expect(result.map((i) => i.id)).toEqual(['H-14', 'H-13', 'H-12', 'H-11', 'H-10', 'H-9', 'H-8', 'H-7', 'H-6', 'H-5'])
   })
 
+  it('ID-ul se găsește fără cratimă, cu spațiu și fără zerourile din față (D-394)', () => {
+    const issues = [makeIssue('NK-57', 'Altceva'), makeIssue('NK-58', 'Altceva'), makeIssue('H-04', 'Altceva')]
+    expect(rankIssues('nk57', issues).map((i) => i.id)).toEqual(['NK-57'])
+    expect(rankIssues('NK 57', issues).map((i) => i.id)).toEqual(['NK-57'])
+    expect(rankIssues('h4', issues).map((i) => i.id)).toEqual(['H-04'])
+    expect(rankIssues('nk4', issues).map((i) => i.id)).toEqual([])
+  })
+
   it('a query matching nothing returns an empty array', () => {
     const issues = [makeIssue('H-01', 'Alpha'), makeIssue('H-02', 'Beta')]
     const result = rankIssues('zzz-nope', issues)
