@@ -64,6 +64,7 @@ export function fakeRemote() {
     })()),
     postToThread: vi.fn(guard(() => ({}))),
     updateComment: vi.fn(guard(() => ({}))),
+    deleteComment: vi.fn(guard(() => undefined)),
   } as unknown as Repository
   return { remote, net, server }
 }
@@ -269,6 +270,7 @@ describe('scrieri', () => {
     await expect(repo.postToThread({ issueId: 'HZ-01', projectId: 'p', body: 'x' })).rejects.toBeInstanceOf(OfflineError)
     // Editarea unui comentariu e tot pe fir: nu stă la coadă, spune onest că cere rețea.
     await expect(repo.updateComment('ev-1', 'x')).rejects.toBeInstanceOf(OfflineError)
+    await expect(repo.deleteComment('ev-1')).rejects.toBeInstanceOf(OfflineError)
   })
 
   it('o eroare de server la scrierea directă se aruncă, nu se pune la coadă', async () => {

@@ -856,6 +856,19 @@ export function createSupabaseRepository(): Repository {
       return rowToEvent(data as EventRow)
     },
 
+    async deleteComment(eventId: string): Promise<void> {
+      // RLS nu dă eroare pe un rând refuzat, doar nu-l șterge: fără
+      // `select` am raporta succes pe comentariul altcuiva.
+      const { data, error } = await db
+        .from('issue_events')
+        .delete()
+        .eq('id', eventId)
+        .eq('kind', 'comment')
+        .select('id')
+      if (error) throw error
+      if (!data || data.length === 0) throw new Error('Comentariul nu se poate șterge.')
+    },
+
     async markSeen(issueId: string): Promise<void> {
       // Fără `user_id` explicit: coloana are `default auth.uid()` (migrare),
       // deci baza îl completează singură la INSERT. RLS nu suplinește o

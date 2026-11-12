@@ -621,6 +621,15 @@ export function createLocalRepository(): Repository {
       return clone(ev)
     },
 
+    async deleteComment(eventId: string) {
+      const db = load()
+      const ev = (db.events ?? []).find((e) => e.id === eventId)
+      if (!ev) throw new Error(`comentariu inexistent: ${eventId}`)
+      if (ev.kind !== 'comment') throw new Error('o pasă nu se șterge')
+      db.events = (db.events ?? []).filter((e) => e.id !== eventId)
+      save(db)
+    },
+
     async listClosedIssues() {
       return clone(load().issues.filter((i) => i.done))
     },

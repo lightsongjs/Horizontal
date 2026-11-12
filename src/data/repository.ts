@@ -203,6 +203,10 @@ export interface Repository {
    *  `issue_events_guard`), nu clientul — grantul e doar pe `body`. O pasă nu
    *  se editează: baza o refuză, iar interfața nu oferă creionul. */
   updateComment(eventId: string, body: string): Promise<IssueEvent>
+  /** Șterge un comentariu: al meu sau, ca admin, al oricui (politica
+   *  `events_delete`). O pasă nu se șterge. Fișierele lui rămân pe tichet
+   *  (`event_id` → null) — apelantul le șterge, dacă vrea. */
+  deleteComment(eventId: string): Promise<void>
   markSeen(issueId: string): Promise<void>
   /**
    * Ce arată foaia de telefon despre fir fără să-l încarce: numărul de

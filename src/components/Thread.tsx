@@ -382,6 +382,30 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff, reveal }:
     }
   }
 
+  /**
+   * Optimist, ca editarea: rândul dispare pe loc și revine la eșec. Fișierele
+   * comentariului se șterg DUPĂ ce a reușit — invers, un eșec le-ar pierde
+   * degeaba; așa, cel mult rămân pe tichet (`event_id` → null).
+   */
+  const removeComment = async (e: IssueEvent) => {
+    if (!window.confirm('Ștergi comentariul? Nu se poate anula.')) return
+    const files = attachmentsByEvent.get(e.id) ?? []
+    if (edit?.id === e.id) setEdit(null)
+    setEvents((list) => list.filter((x) => x.id !== e.id))
+    try {
+      await repository.deleteComment(e.id)
+      invalidateThreadSummary(issueId)
+      if (files.length > 0) {
+        const gone = new Set(files.map((a) => a.id))
+        setAllAttachments((list) => list.filter((a) => !gone.has(a.id)))
+        for (const a of files) void deleteAttachment(a).catch(() => {})
+      }
+    } catch (err) {
+      setEvents((list) => [...list, e].sort((a, b) => a.createdAt.localeCompare(b.createdAt)))
+      showToast(`Comentariul nu s-a șters: ${errorMessage(err)}`)
+    }
+  }
+
   return (
     // `tabIndex={-1}`: rândul de fir de sus (`SheetThreadRow` din panou) mută
     // focusul aici, nu în casetă — derulezi ca să citești.
@@ -442,6 +466,17 @@ export function Thread({ issueId, projectId, onDirtyChange, onHandoff, reveal }:
                           title="Editează"
                         >
                           <Icon name="edit" size={13} />
+                        </button>
+                      )}
+                      {author.mine && canWrite && edit?.id !== e.id && (
+                        <button
+                          type="button"
+                          className="thread-edit-btn thread-del-btn"
+                          onClick={() => void removeComment(e)}
+                          aria-label="Șterge comentariul"
+                          title="Șterge"
+                        >
+                          <Icon name="trash" size={13} />
                         </button>
                       )}
                     </div>

@@ -90,7 +90,9 @@ const { fakeDb } = vi.hoisted(() => {
           const gone = new Set(removed.map((r) => r.id))
           this.tables.attachments = this.tables.attachments.filter((a) => !gone.has(a[key]))
         }
-        return { data: null, error: null }
+        // Ca PostgREST cu `.select()`: rândurile șterse. Unul refuzat de RLS
+        // pur și simplu lipsește — fără eroare.
+        return { data: removed, error: null }
       }
       const rows = t.filter((r) => this.match(r))
       return { data: this.single_ ? (rows[0] ?? null) : rows, error: null }
@@ -547,6 +549,20 @@ describe('supabaseRepository', () => {
     expect(Object.keys(fakeDb.tables.issue_events[0]).sort()).toEqual([
       'author_id', 'body', 'created_at', 'edited_at', 'handoff_from', 'handoff_to', 'id', 'issue_id', 'kind', 'project_id',
     ])
+  })
+
+  it('deleteComment șterge doar comentariul; un rând neatins (RLS, pasă) e eroare, nu succes tăcut', async () => {
+    const row = (id: string, kind: string) => ({
+      id, issue_id: 'T-1', project_id: 'p', kind, author_id: 'u1',
+      body: '', handoff_from: null, handoff_to: null,
+      created_at: '2026-09-17T10:00:00+00:00', edited_at: null,
+    })
+    fakeDb.tables.issue_events = [row('e1', 'comment'), row('e2', 'handoff')]
+    const repo = createSupabaseRepository()
+    await repo.deleteComment('e1')
+    expect(fakeDb.tables.issue_events.map((r) => r.id)).toEqual(['e2'])
+    await expect(repo.deleteComment('e2')).rejects.toThrow()
+    expect(fakeDb.tables.issue_events.map((r) => r.id)).toEqual(['e2'])
   })
 
   it('listInbox citește doar rândurile nefinalizate din inbox_rows', async () => {

@@ -388,6 +388,18 @@ describe('firul', () => {
     expect((await repo.updateComment(events[0].id, 'salut')).editedAt).toBeNull()
   })
 
+  it('ștergerea unui comentariu îl scoate din fir; o pasă nu se șterge', async () => {
+    const repo = createLocalRepository()
+    const p = await repo.createProject({ name: 'P', description: '', prefix: 'P' })
+    const i = await repo.createIssue({ projectId: p.id, title: 'T' })
+    const a = await repo.createAssignee('Alex')
+    const { events } = await repo.postToThread({ issueId: i.id, projectId: p.id, body: 'salut' })
+    const pass = (await repo.postToThread({ issueId: i.id, projectId: p.id, handoff: true, to: a.id })).events[0]
+    await repo.deleteComment(events[0].id)
+    expect((await repo.listEvents(i.id)).map((e) => e.id)).toEqual([pass.id])
+    await expect(repo.deleteComment(pass.id)).rejects.toThrow()
+  })
+
   it('o pasă nu se editează', async () => {
     const repo = createLocalRepository()
     const p = await repo.createProject({ name: 'P', description: '', prefix: 'P' })
