@@ -64,16 +64,22 @@ describe('decorationSpecs', () => {
     const lines = (d: DecoSpec[]) => d.filter((x) => x.k === 'line').map((x) => (x as { at: number; cls: string }))
     expect(lines(decorationSpecs(s, none, []))).toEqual([
       { k: 'line', at: 3, cls: 'md-pre md-pre-first md-pre-fence' },
-      { k: 'line', at: 9, cls: 'md-pre' },
+      { k: 'line', at: 9, cls: 'md-pre md-pre-pad' },
       { k: 'line', at: 12, cls: 'md-pre' },
       { k: 'line', at: 15, cls: 'md-pre md-pre-last md-pre-fence' },
     ])
     expect(of(decorationSpecs(s, none, []), 'hide')).toEqual([{ k: 'hide', from: 3, to: 8 }, { k: 'hide', from: 15, to: 18 }])
     expect(of(decorationSpecs(s, new Set([2]), []), 'hide')).toEqual([{ k: 'hide', from: 15, to: 18 }])
     // Blocul neînchis (cât scrii): ultimul rând e cod, nu gard.
-    expect(lines(decorationSpecs('```\nab', none, [])).map((x) => x.cls)).toEqual(['md-pre md-pre-first md-pre-fence', 'md-pre md-pre-last'])
+    expect(lines(decorationSpecs('```\nab', none, [])).map((x) => x.cls)).toEqual(['md-pre md-pre-first md-pre-fence', 'md-pre md-pre-last md-pre-pad'])
     // CRLF: `\r` nu intră în ascundere (îl ascunde stratul CodeMirror).
     expect(of(decorationSpecs('```\r\na\r\n```', none, []), 'hide')).toEqual([{ k: 'hide', from: 0, to: 3 }, { k: 'hide', from: 8, to: 11 }])
+  })
+  it('blocul de cod are UN buton de copiere, la începutul lui, cu sau fără cursor', () => {
+    const s = 'x\n\n```js\nab\n```\n\n    ind'
+    expect(of(decorationSpecs(s, none, []), 'copy')).toEqual([{ k: 'copy', at: 3 }, { k: 'copy', at: s.indexOf('ind') }])
+    expect(of(decorationSpecs(s, new Set([2, 3]), []), 'copy')).toHaveLength(2)
+    expect(of(decorationSpecs('`inline` și text', none, []), 'copy')).toEqual([])
   })
   it('citatul: clasa pe linie, „> " ascuns', () => {
     const d = decorationSpecs('> a', none, [])

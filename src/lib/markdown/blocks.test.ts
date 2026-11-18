@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { toBlocks } from './blocks'
+import { codeTextAt, toBlocks } from './blocks'
 import { safeHref } from './safeUrl'
 
 const P = ['HZ', 'APO']
@@ -133,5 +133,29 @@ describe('toBlocks', () => {
 
   it('HTML brut rămâne text', () => {
     expect(toBlocks('<b>x</b>', P)).toEqual([{ t: 'p', children: [{ t: 'text', text: '<b>x</b>' }] }])
+  })
+})
+
+describe('codeTextAt (butonul de copiere din editor)', () => {
+  it('copiază corpul blocului, fără garduri — același text ca cititorul', () => {
+    const src = 'Intro\n\n```bash\nnpm test\nnpm run x\n```\n\nDupă'
+    const at = src.indexOf('```')
+    expect(codeTextAt(src, at)).toBe('npm test\nnpm run x')
+    expect(codeTextAt(src, at)).toBe((toBlocks(src, P).find((b) => b.t === 'pre') as { text: string }).text)
+    expect(codeTextAt(src, src.indexOf('npm run'))).toBe('npm test\nnpm run x')
+  })
+  it('bloc neînchis, bloc gol, bloc indentat, CRLF', () => {
+    expect(codeTextAt('```\nab', 0)).toBe('ab')
+    expect(codeTextAt('```\n```', 0)).toBe('')
+    expect(codeTextAt('p\n\n    a\n    b', 7)).toBe('a\nb')
+    expect(codeTextAt('```\r\nx\r\ny\r\n```', 0)).toBe('x\ny')
+  })
+  it('în citat și în listă: de la începutul blocului, nu al rândului', () => {
+    const q = '> ```\n> a\n> ```'
+    expect(codeTextAt(q, q.indexOf('```'))).not.toBeNull()
+    expect(codeTextAt('- x\n\n  ```\n  y\n  ```', 7)).not.toBeNull()
+  })
+  it('în afara unui bloc → null', () => {
+    expect(codeTextAt('doar text', 2)).toBeNull()
   })
 })

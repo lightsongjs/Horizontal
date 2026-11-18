@@ -1328,6 +1328,30 @@ pre.md-pre {
   font-family: var(--mono); font-size: calc(13px * var(--text-scale)); line-height: 1.55;
 }
 .md-pre code { font: inherit; }
+.md-pre-box { position: relative; margin: 0.8em 0; }
+.md-pre-box > pre.md-pre { margin: 0; }
+/* Butonul de copiere al blocului de cod, ca pe GitHub: colțul din dreapta-sus,
+   mereu vizibil (pe telefon nu există hover). Același în cititor (`CodeCopy`)
+   și în editor (widget pe primul rând al blocului — rândul primește doar
+   `position`, nicio margine: CodeMirror nu le măsoară). */
+.md-editor .cm-line.md-pre-first { position: relative; }
+.md-editor .cm-line.md-pre.md-pre-pad { padding-right: 44px; }
+.md-copy {
+  position: absolute; top: 6px; right: 6px; z-index: 1;
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+  min-width: 28px; height: 28px; padding: 0 6px;
+  border: 0; border-radius: var(--r-s);
+  background: var(--surface-2); color: var(--txt-faint);
+  font-family: var(--display); font-size: calc(12px * var(--text-scale)); font-weight: 600;
+  line-height: 1; text-indent: 0; cursor: pointer;
+}
+.md-copy:hover { background: var(--surface-3); color: var(--txt); }
+.md-copy:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.md-copy.copied { background: var(--accent-soft); color: var(--accent); }
+.md-copy.copy-failed { color: var(--txt); }
+.desc-box .md-copy { background: var(--surface-3); }
+.desc-box .md-copy:hover { background: var(--line); }
+.desc-box .md-copy.copied { background: var(--accent-soft); }
 .md blockquote { margin: 0 0 0.65em; padding-left: 14px; color: var(--txt-dim); }
 /* Linkul din titlul unui rând / card (`TitleText`): ca în descriere. */
 .md-link, .md-editor .md-link, .title-link {

@@ -193,6 +193,33 @@ function item(li: SyntaxNode, src: string, refs: RegExp | null): Item {
   return { task, children }
 }
 
+/** Textul unui bloc de cod, fără garduri și fără indentarea de bloc. */
+function codeBody(c: SyntaxNode, src: string): string {
+  if (c.name === 'CodeBlock') {
+    const ls = src.lastIndexOf('\n', c.from - 1) + 1
+    return src.slice(ls, c.to).split('\n').map((l) => l.replace(/^( {1,4}|\t)/, '')).join('\n')
+  }
+  const marks = c.getChildren('CodeMark')
+  const bodyFrom = src.indexOf('\n', c.from) + 1
+  const bodyTo = marks.length > 1 ? marks[marks.length - 1].from : c.to
+  if (bodyFrom <= 0 || bodyFrom > bodyTo) return ''
+  return src.slice(bodyFrom, bodyTo).replace(/\r?\n$/, '')
+}
+
+/**
+ * Ce copiază butonul unui bloc de cod din editor: blocul care conține `pos`
+ * (un `\r` de CRLF nu pleacă în clipboard). Același text ca în cititor
+ * (`toBlocks` → `pre`), ca butonul să copieze la fel în ambele. `null` = nu e
+ * într-un bloc de cod.
+ */
+export function codeTextAt(src: string, pos: number): string | null {
+  let n: SyntaxNode | null = mdParser.parse(src).resolveInner(pos, 1)
+  for (; n; n = n.parent) {
+    if (n.name === 'FencedCode' || n.name === 'CodeBlock') return codeBody(n, src).replace(/\r/g, '')
+  }
+  return null
+}
+
 function block(c: SyntaxNode, src: string, refs: RegExp | null): Block | null {
   const level = LEVEL[c.name]
   if (level) {
@@ -214,17 +241,9 @@ function block(c: SyntaxNode, src: string, refs: RegExp | null): Block | null {
       for (let k = c.firstChild; k; k = k.nextSibling) { const b = block(k, src, refs); if (b) children.push(b) }
       return { t: 'quote', children }
     }
-    case 'FencedCode': {
-      const marks = c.getChildren('CodeMark')
-      const bodyFrom = src.indexOf('\n', c.from) + 1
-      const bodyTo = marks.length > 1 ? marks[marks.length - 1].from : c.to
-      if (bodyFrom <= 0 || bodyFrom > bodyTo) return { t: 'pre', text: '' }
-      return { t: 'pre', text: src.slice(bodyFrom, bodyTo).replace(/\r?\n$/, '') }
-    }
-    case 'CodeBlock': {
-      const ls = src.lastIndexOf('\n', c.from - 1) + 1
-      return { t: 'pre', text: src.slice(ls, c.to).split('\n').map((l) => l.replace(/^( {1,4}|\t)/, '')).join('\n') }
-    }
+    case 'FencedCode':
+    case 'CodeBlock':
+      return { t: 'pre', text: codeBody(c, src) }
     case 'HorizontalRule': return { t: 'hr' }
     case 'Table': return table(c, src, refs)
     case 'QuoteMark':

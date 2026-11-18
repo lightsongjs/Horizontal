@@ -3,6 +3,8 @@ import { Decoration, EditorView, ViewPlugin, WidgetType, type DecorationSet, typ
 import { decorationSpecs } from '../../lib/markdown/decorations'
 import { tableField } from './tableEditor'
 import { minimalChange, toggleTask } from '../../lib/markdown/tasks'
+import { codeTextAt } from '../../lib/markdown/blocks'
+import { copyText } from '../../lib/clipboard'
 
 /** O schimbare venită din store (rebază), nu de la om — nu se trimite înapoi. */
 export const External = Annotation.define<boolean>()
@@ -70,6 +72,55 @@ class TaskWidget extends WidgetType {
   ignoreEvent() { return true }
 }
 
+// Aceleași glife ca `Icon` (lucide: copy / check / x) — widget-ul e DOM, nu React.
+const svg = (d: string) => `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`
+export const COPY_GLYPH = {
+  idle: svg('<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>'),
+  ok: svg('<path d="M20 6 9 17l-5-5"/>'),
+  fail: svg('<path d="M18 6 6 18"/><path d="m6 6 12 12"/>'),
+}
+
+/**
+ * Butonul de copiere din colțul blocului de cod (ca `CodeCopy` din cititor).
+ * Nu ține textul: îl citește din document la clic (`codeTextAt`), fiindcă
+ * widget-ul stă pe primul rând, iar o editare mai jos nu-l redesenează.
+ */
+class CopyWidget extends WidgetType {
+  eq() { return true }
+  toDOM(view: EditorView) {
+    const b = document.createElement('button')
+    b.type = 'button'
+    b.className = 'md-copy'
+    b.contentEditable = 'false'
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const show = (state: 'idle' | 'ok' | 'fail') => {
+      b.classList.toggle('copied', state === 'ok')
+      b.classList.toggle('copy-failed', state === 'fail')
+      b.innerHTML = COPY_GLYPH[state] + (state === 'ok' ? '<span>Copiat</span>' : '')
+      const label = state === 'ok' ? 'Copiat' : state === 'fail' ? 'Nu am putut copia' : 'Copiază codul'
+      b.setAttribute('aria-label', label)
+      b.title = label
+    }
+    show('idle')
+    // Nu ia focusul și nu mută cursorul: altfel gardul s-ar arăta și, pe
+    // telefon, ar urca tastatura.
+    const keep = (e: Event) => e.preventDefault()
+    b.addEventListener('pointerdown', keep)
+    b.addEventListener('mousedown', keep)
+    b.addEventListener('click', async (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      const text = codeTextAt(view.state.doc.toString(), view.posAtDOM(b))
+      const ok = text !== null && await copyText(text)
+      show(ok ? 'ok' : 'fail')
+      clearTimeout(timer)
+      timer = setTimeout(() => show('idle'), ok ? 1600 : 4000)
+    })
+    return b
+  }
+  ignoreEvent() { return true }
+}
+
 function build(view: EditorView, prefixes: readonly string[]): DecorationSet {
   const doc = view.state.doc
   const reveal = new Set<number>()
@@ -89,6 +140,7 @@ function build(view: EditorView, prefixes: readonly string[]): DecorationSet {
       case 'bullet': out.push(Decoration.replace({ widget: new BulletWidget() }).range(s.from, s.to)); break
       case 'hr': out.push(Decoration.replace({ widget: new HrWidget() }).range(s.from, s.to)); break
       case 'task': out.push(Decoration.replace({ widget: new TaskWidget(s.checked, disabled) }).range(s.from, s.to)); break
+      case 'copy': out.push(Decoration.widget({ widget: new CopyWidget(), side: -1 }).range(s.at)); break
     }
   }
   // `\r` dintr-un text CRLF rămâne în document (`lineSeparator`), dar nu se

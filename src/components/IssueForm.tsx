@@ -43,6 +43,7 @@ import { displayIssueId, isTempIssueId } from '../lib/issueId'
 import { repository } from '../data'
 import { errorMessage } from '../lib/errorMessage'
 import { OfflineError } from '../data/offline/netError'
+import { copyText } from '../lib/clipboard'
 
 const PALETTE = ['#0284C7', '#059669', '#D97706', '#EA580C', '#E11D48', '#7C3AED', '#06B6D4']
 
@@ -313,9 +314,7 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
 
   // Copiază link-ul absolut al ticketului. Necesar în PWA instalat, unde nu
   // există bară de adrese. clipboard.writeText cere context securizat (https
-  // sau localhost) — fallback pe un textarea ascuns dacă lipsește. execCommand
-  // e deprecat și poate eșua în silență, deci îi verificăm rezultatul: bifa se
-  // arată doar la o copiere confirmată.
+  // sau localhost) — fallback-ul și verificarea lui sunt în `copyText`.
   const copyLink = useCallback(async (id: string | undefined) => {
     if (!id) return
     // Un tichet creat offline n-are încă număr: linkul `/HZ-~…` n-ar deschide
@@ -328,21 +327,7 @@ export function IssueForm({ issueId, docked = false, draft, revealThread = false
       copyResetTimer.current = setTimeout(() => setCopyState('idle'), 4000)
       return
     }
-    const url = ticketUrl(window.location.origin, id)
-    let ok = false
-    try {
-      await navigator.clipboard.writeText(url)
-      ok = true
-    } catch {
-      const ta = document.createElement('textarea')
-      ta.value = url
-      ta.style.position = 'fixed'
-      ta.style.opacity = '0'
-      document.body.appendChild(ta)
-      ta.select()
-      try { ok = document.execCommand('copy') } catch { ok = false }
-      document.body.removeChild(ta)
-    }
+    const ok = await copyText(ticketUrl(window.location.origin, id))
     setCopyState(ok ? 'ok' : 'fail')
     if (copyResetTimer.current) clearTimeout(copyResetTimer.current)
     copyResetTimer.current = setTimeout(() => setCopyState('idle'), ok ? 1600 : 4000)

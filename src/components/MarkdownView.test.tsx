@@ -22,4 +22,10 @@ describe('MarkdownView', () => {
     expect(html('<img src=x onerror=alert(1)>')).not.toContain('<img')
   })
   it('separatorul e ⁂', () => expect(html('a\n\n---\n\nb')).toContain('⁂'))
+  it('blocul de cod are buton de copiere în cutia lui (și în fir, fără onToggle)', () => {
+    for (const h of [html('```bash\nnpm test\n```'), html('```\nx\n```', false)]) {
+      expect(h).toMatch(/<div class="md-pre-box"><pre class="md-pre"><code>[^<]*<\/code><\/pre><button type="button" class="md-copy" aria-label="Copiază codul"/)
+    }
+    expect(html('`inline`')).not.toContain('md-copy')
+  })
 })

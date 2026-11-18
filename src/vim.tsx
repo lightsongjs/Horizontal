@@ -50,6 +50,7 @@ import type { MenuAction, MenuLevel } from './lib/actionMenu'
 import { useMoveIssue } from './hooks'
 import { errorMessage } from './lib/errorMessage'
 import { appHistory } from './lib/historyPort'
+import { copyText } from './lib/clipboard'
 
 export type Pane = 'sidebar' | 'list' | 'panel'
 
@@ -377,24 +378,6 @@ function popFocusables(pop: Element): HTMLElement[] {
 function blurActive() {
   const a = document.activeElement as HTMLElement | null
   if (a && a !== document.body) a.blur()
-}
-
-async function copyText(text: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(text)
-    return true
-  } catch {
-    const ta = document.createElement('textarea')
-    ta.value = text
-    ta.style.position = 'fixed'
-    ta.style.opacity = '0'
-    document.body.appendChild(ta)
-    ta.select()
-    let ok = false
-    try { ok = document.execCommand('copy') } catch { ok = false }
-    document.body.removeChild(ta)
-    return ok
-  }
 }
 
 /** Așteaptă până apare ceva (panoul după o deschidere, formularul după docare). */

@@ -24,6 +24,8 @@ export type DecoSpec =
   | { k: 'num'; from: number; to: number; text: string }
   | { k: 'task'; from: number; to: number; checked: boolean }
   | { k: 'hr'; from: number; to: number }
+  /** Butonul de copiere al unui bloc de cod, la începutul lui (colțul îl dă CSS-ul). */
+  | { k: 'copy'; at: number }
 
 const HEAD: Record<string, string> = {
   ATXHeading1: 'md-h1', ATXHeading2: 'md-h2', ATXHeading3: 'md-h3', ATXHeading4: 'md-h3', ATXHeading5: 'md-h3', ATXHeading6: 'md-h3',
@@ -144,14 +146,18 @@ export function decorationSpecs(text: string, reveal: ReadonlySet<number>, prefi
           // fără cursor — ca în cititor, unde nu se văd deloc.
           const a = lineOf(n.from), b = lineOf(n.to)
           const fences = new Set(n.node.getChildren('CodeMark').map((m) => lineOf(m.from)))
+          // Primul rând de cod lasă loc butonului de copiere (`md-pre-pad`):
+          // în editor rândurile se rup, iar butonul ar acoperi coada lui.
+          const pad = fences.has(a) ? a + 1 : a
           for (let l = a; l <= b; l++) {
             const fence = fences.has(l)
-            out.push({ k: 'line', at: starts[l], cls: `md-pre${l === a ? ' md-pre-first' : ''}${l === b ? ' md-pre-last' : ''}${fence ? ' md-pre-fence' : ''}` })
+            out.push({ k: 'line', at: starts[l], cls: `md-pre${l === a ? ' md-pre-first' : ''}${l === b ? ' md-pre-last' : ''}${fence ? ' md-pre-fence' : ''}${l === pad && !fence ? ' md-pre-pad' : ''}` })
             if (fence) {
               const end = l + 1 < starts.length ? starts[l + 1] - 1 : text.length
               hide(text.slice(starts[l], end).search(/\S/) + starts[l], end - (text[end - 1] === '\r' ? 1 : 0))
             }
           }
+          out.push({ k: 'copy', at: n.from })
           noRef.push([n.from, n.to])
           return false
         }

@@ -1,7 +1,8 @@
-import { useMemo, type ReactNode, type SyntheticEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode, type SyntheticEvent } from 'react'
 import { toBlocks, type Block, type Inline } from '../lib/markdown/blocks'
 import { toggleTask } from '../lib/markdown/tasks'
 import { Icon } from './Icon'
+import { copyText } from '../lib/clipboard'
 
 type Props = {
   text: string
@@ -47,7 +48,12 @@ export function MarkdownView({ text, prefixes, onToggle, onRef, className = '' }
       }
       case 'p': return <p key={i}>{inl(b.children)}</p>
       case 'quote': return <blockquote key={i}>{blk(b.children)}</blockquote>
-      case 'pre': return <pre key={i} className="md-pre"><code>{b.text}</code></pre>
+      case 'pre': return (
+        <div key={i} className="md-pre-box">
+          <pre className="md-pre"><code>{b.text}</code></pre>
+          <CodeCopy text={b.text} />
+        </div>
+      )
       case 'hr': return <div key={i} className="md-hr" role="separator">⁂</div>
       case 'table': return (
         <div key={i} className="md-table-wrap">
@@ -91,4 +97,36 @@ export function MarkdownView({ text, prefixes, onToggle, onRef, className = '' }
     }
   })
   return <div className={`md ${className}`}>{blk(blocks)}</div>
+}
+
+/**
+ * Butonul de copiere din colțul unui bloc de cod, ca pe GitHub. Același aspect
+ * ca widget-ul din editor (`livePreview.ts`, clasa `.md-copy`): bifă și
+ * „Copiat” la o copiere confirmată, ✕ când n-a mers.
+ */
+export function CodeCopy({ text }: { text: string }) {
+  const [state, setState] = useState<'idle' | 'ok' | 'fail'>('idle')
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current) }, [])
+  const copy = async () => {
+    const ok = await copyText(text)
+    setState(ok ? 'ok' : 'fail')
+    if (timer.current) clearTimeout(timer.current)
+    timer.current = setTimeout(() => setState('idle'), ok ? 1600 : 4000)
+  }
+  const label = state === 'ok' ? 'Copiat' : state === 'fail' ? 'Nu am putut copia' : 'Copiază codul'
+  return (
+    <button
+      type="button"
+      className={`md-copy${state === 'ok' ? ' copied' : ''}${state === 'fail' ? ' copy-failed' : ''}`}
+      aria-label={label}
+      title={label}
+      onPointerDown={keep}
+      onMouseDown={keep}
+      onClick={(e) => { e.stopPropagation(); void copy() }}
+    >
+      <Icon name={state === 'ok' ? 'check' : state === 'fail' ? 'close' : 'copy'} size={15} />
+      {state === 'ok' && <span>Copiat</span>}
+    </button>
+  )
 }
