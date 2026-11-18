@@ -6,7 +6,7 @@ interface Env {
   SUPABASE_SERVICE_ROLE_KEY: string
 }
 
-import { sbHeaders, resolveProject, nextIssueId, resolveAssignee, themeExists } from '../_tickets-lib'
+import { sbHeaders, resolveProject, resolveAssignee, themeExists } from '../_tickets-lib'
 import { dueOut, normalizeTheme, parseDue, type DueRow } from '../_api-lib'
 import { ATTACHMENT_SELECT, signAttachments, type AttachmentRow } from '../_attachments-lib'
 
@@ -20,6 +20,23 @@ const FIELD_MAP: Record<string, string> = {
   notes: 'notes',
   selectors: 'selectors',
   scenarios: 'scenarios',
+}
+
+/**
+ * Eroarea lui `move_issue_api` → răspunsul API-ului. Verificările din API
+ * (dependențe, val, temă) prind aproape tot înainte; astea sunt garda din bază.
+ */
+export function moveFailure(status: number, detail: unknown): { status: number; body: Record<string, unknown> } {
+  const d = typeof detail === 'object' && detail !== null ? detail as { code?: unknown; message?: unknown } : {}
+  const message = typeof d.message === 'string' ? { message: d.message } : {}
+  if (d.code === 'PGRST202') {
+    return { status: 501, body: { error: 'migration_missing', detail: 'Rulează supabase/migration-move-issue.sql.' } }
+  }
+  if (d.code === 'HZM01') return { status: 409, body: { error: 'has_dependencies', ...message } }
+  if (d.code === 'HZM02') return { status: 409, body: { error: 'has_obstacle', ...message } }
+  if (d.code === 'HZM05') return { status: 409, body: { error: 'provisional_id', ...message } }
+  if (d.code === 'HZM06') return { status: 404, body: { error: 'not_found', ...message } }
+  return { status: 502, body: { error: 'db_error', ...(detail !== undefined ? { detail } : {}), status } }
 }
 
 export function buildIssueUpdate(body: Record<string, unknown>): Record<string, unknown> {
@@ -192,7 +209,11 @@ export const onRequestPatch: PagesFunction<Env> = async (context) => {
   }
 
   // Move to another project: new id with the target prefix, target wave, no theme.
-  let movedFrom: string | null = null
+  // The move itself is `move_issue_api` (migration-move-issue.sql), one
+  // transaction that carries the thread, files and visits along. A PATCH on
+  // `issues.id` cannot: `issue_events`/`attachments` have a composite FK on
+  // (issue_id, project_id) without `on update cascade` (23503).
+  let move: { target: string; wave: number; theme: string | null } | null = null
   let dupProjectId = current.project_id
 
   if (wantsMove) {
@@ -226,14 +247,12 @@ export const onRequestPatch: PagesFunction<Env> = async (context) => {
         }, { status: 409 })
       }
 
-      const newId = await nextIssueId(target.id, target.prefix, SUPABASE_URL, headers)
-      if (newId === null) return Response.json({ error: 'db_error' }, { status: 502 })
-
       // Wave: caller override, else the target project active wave. Must exist there.
+      // 0 is a real wave (Notițe / Scratchpad), not "missing".
       let wave = target.current_wave
       if ('wave' in body) {
         wave = Number(body.wave)
-        if (!Number.isInteger(wave) || wave < 1) {
+        if (body.wave === null || body.wave === '' || !Number.isInteger(wave) || wave < 0) {
           return Response.json({ error: 'invalid_wave' }, { status: 400 })
         }
       }
@@ -246,7 +265,6 @@ export const onRequestPatch: PagesFunction<Env> = async (context) => {
       if (!waveRows.length) {
         return Response.json({ error: 'wave_not_in_target' }, { status: 422 })
       }
-      issueUpdate.wave = wave
 
       // Theme: cleared by default, because theme keys are per-project.
       // Normalizată mai sus: `""` înseamnă „fără temă”, nu cheia goală.
@@ -262,16 +280,15 @@ export const onRequestPatch: PagesFunction<Env> = async (context) => {
           return Response.json({ error: 'theme_not_in_target' }, { status: 422 })
         }
       }
-      issueUpdate.theme = theme
-      issueUpdate.id = newId
-      issueUpdate.project_id = target.id
-      movedFrom = id
+      delete issueUpdate.wave
+      delete issueUpdate.theme
+      move = { target: target.id, wave, theme }
       dupProjectId = target.id
     }
   }
 
   // Tema trebuie să existe în proiectul tichetului (la mutare s-a verificat mai sus, în țintă).
-  if (!movedFrom && typeof issueUpdate.theme === 'string') {
+  if (!move && typeof issueUpdate.theme === 'string') {
     const ok = await themeExists(current.project_id, issueUpdate.theme, SUPABASE_URL, headers)
     if (ok === null) return Response.json({ error: 'db_error' }, { status: 502 })
     if (!ok) return Response.json({ error: 'theme_not_found', theme: issueUpdate.theme }, { status: 422 })
@@ -279,8 +296,8 @@ export const onRequestPatch: PagesFunction<Env> = async (context) => {
 
   // Dup-check the effective title. A move must check against the target project
   // even when the title is unchanged, since the collision is new there.
-  if ('title' in issueUpdate || movedFrom) {
-    const wave = (issueUpdate.wave as number | undefined) ?? current.wave
+  if ('title' in issueUpdate || move) {
+    const wave = move?.wave ?? (issueUpdate.wave as number | undefined) ?? current.wave
     const effectiveTitle = (issueUpdate.title as string | undefined) ?? current.title
     const encoded = encodeURIComponent(effectiveTitle)
     const dupRes = await fetch(
@@ -309,10 +326,28 @@ export const onRequestPatch: PagesFunction<Env> = async (context) => {
     }
   }
 
+  // The move first (atomic), then the other fields on the new id.
+  let finalId = id
+  if (move) {
+    const rpc = await fetch(`${SUPABASE_URL}/rest/v1/rpc/move_issue_api`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ p_id: id, p_target: move.target, p_wave: move.wave, p_theme: move.theme }),
+    })
+    let detail: unknown
+    try { detail = await rpc.json() } catch { /* corp ne-JSON */ }
+    if (!rpc.ok) {
+      const f = moveFailure(rpc.status, detail)
+      return Response.json(f.body, { status: f.status })
+    }
+    if (typeof detail !== 'string') return Response.json({ error: 'db_error', detail }, { status: 502 })
+    finalId = detail
+  }
+
   // PATCH issue fields (if any)
   if (Object.keys(issueUpdate).length > 0) {
     const patchRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/issues?id=eq.${encodeURIComponent(id)}`,
+      `${SUPABASE_URL}/rest/v1/issues?id=eq.${encodeURIComponent(finalId)}`,
       { method: 'PATCH', headers, body: JSON.stringify(issueUpdate) }
     )
     if (!patchRes.ok) {
@@ -323,7 +358,7 @@ export const onRequestPatch: PagesFunction<Env> = async (context) => {
         // non-JSON error body from PostgREST — fall back to a bare db_error
       }
       return Response.json(
-        { error: 'db_error', ...(detail !== undefined ? { detail } : {}) },
+        { error: 'db_error', ...(move ? { id: finalId, movedFrom: id } : {}), ...(detail !== undefined ? { detail } : {}) },
         { status: 502 }
       )
     }
@@ -355,16 +390,15 @@ export const onRequestPatch: PagesFunction<Env> = async (context) => {
   }
   const updatedFields = [
     ...Object.keys(issueUpdate)
-      .filter(k => k !== 'id' && k !== 'project_id' && k !== 'due_at' && k !== 'all_day' && k !== 'remind_at')
+      .filter(k => k !== 'due_at' && k !== 'all_day' && k !== 'remind_at')
       .map(k => dbToClient[k] ?? k),
-    ...(movedFrom ? ['projectId'] : []),
+    ...(move ? ['wave', 'theme', 'projectId'] : []),
     ...(hasDeps ? ['deps'] : []),
     ...(wantsDue ? ['due'] : []),
   ]
-  const finalId = (issueUpdate.id as string | undefined) ?? id
   return Response.json({
     id: finalId,
-    ...(movedFrom ? { movedFrom } : {}),
+    ...(move ? { movedFrom: id } : {}),
     updated: updatedFields,
   })
 }

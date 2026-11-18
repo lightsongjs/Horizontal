@@ -402,15 +402,14 @@ describe('PATCH /api/tickets/<id>: mutarea cu temă goală', () => {
       route('/rest/v1/issues?id=eq.CC-01&select=id,project_id,title,wave', [{ id: 'CC-01', project_id: 'cc', title: 'A', wave: 1, rrule: null }]),
       route('/rest/v1/projects?', [{ id: 'tk', prefix: 'TK', current_wave: 1 }]),
       route('/rest/v1/dependencies?', []),
-      route('/rest/v1/issues?project_id=eq.tk&select=id', [{ id: 'TK-01' }]),
       route('/rest/v1/waves?', [{ number: 1 }]),
       route('&title=ilike.', []),
-      route('/rest/v1/issues?id=eq.CC-01', [{ id: 'TK-02' }], { method: 'PATCH' }),
+      route('/rest/v1/rpc/move_issue_api', 'TK-02', { method: 'POST' }),
     ])
     const res = await ticketOne.onRequestPatch(ctx('/api/tickets/CC-01', { method: 'PATCH', params: { id: 'CC-01' }, body: { projectId: 'tk', theme: '' } }))
     expect(res.status).toBe(200)
     expect(calls.some(c => c.url.includes('/rest/v1/themes?'))).toBe(false)
-    expect(calls.find(c => c.method === 'PATCH')!.body).toMatchObject({ theme: null, id: 'TK-02', project_id: 'tk' })
+    expect(calls.find(c => c.url.includes('/rpc/move_issue_api'))!.body).toMatchObject({ p_theme: null, p_target: 'tk' })
   })
 })
 

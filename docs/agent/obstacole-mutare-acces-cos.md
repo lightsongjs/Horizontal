@@ -56,6 +56,13 @@ firul, fișierele (rândurile) și vizitele urmează tichetul.
   cascade`. Numărul = `nextIssueId` în SQL, sub `for update` pe proiectul țintă,
   cu 3 reîncercări la 23505. Refuzurile au errcode `HZM01..06` și mesajul
   românesc pe care îl vede omul.
+- **API-ul / `tk update --project` trece prin aceeași mutare**: `move_issue_api(p_id,
+  p_target, p_wave, p_theme)` (doar `service_role`), care cheamă, ca și
+  `move_issue`, gestul comun `move_issue_apply` (fără drepturi de verificat, de
+  aceea nechemabil din afară). Până pe 2026-11-18 API-ul făcea un PATCH pe
+  `issues.id` → 23503 pe FK-ul compus al firului/fișierelor: se mutau doar
+  tichetele fără activitate. **Nu scrie niciodată `issues.id`/`project_id` cu
+  un PATCH.** `--sprint 0` (Notițe/Scratchpad) e un val valid la mutare.
 - **Pozele nu se mută fizic**: calea rămâne `vechiulProiect/HZ-12/…`; politicile
   de select/delete de pe `storage.objects` au un al doilea drum, prin rândul din
   `attachments` cu acel `path`.

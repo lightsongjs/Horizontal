@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest'
-import { attachmentsPayload, buildIssueUpdate, onRequestGet, onRequestPatch } from './[id]'
+import { attachmentsPayload, buildIssueUpdate, moveFailure, onRequestGet, onRequestPatch } from './[id]'
 
 describe('buildIssueUpdate', () => {
   it('maps desc to details', () => {
@@ -160,9 +160,9 @@ function moveRoutes(over: Route[] = []): Route[] {
     route('/rest/v1/projects?or=', [{ id: 'ticket-kit', prefix: 'TK', current_wave: 2 }]),
     route('/rest/v1/dependencies?or=', []),
     route('/rest/v1/waves?project_id=eq.ticket-kit', [{ number: 2 }]),
-    route('/rest/v1/issues?project_id=eq.ticket-kit&select=id', [{ id: 'TK-01' }, { id: 'TK-02' }]),
     route('&title=ilike.', []),
-    route('/rest/v1/issues?id=eq.HZ-07', [{ id: 'IGNORED-99' }], { method: 'PATCH' }),
+    route('/rest/v1/rpc/move_issue_api', 'TK-03', { method: 'POST' }),
+    route('/rest/v1/issues?id=eq.TK-03', [{ id: 'TK-03' }], { method: 'PATCH' }),
   ]
 }
 
@@ -176,11 +176,47 @@ describe('onRequestPatch move to another project', () => {
     expect(out.movedFrom).toBe('HZ-07')
     expect(out.updated).toContain('projectId')
 
-    const write = calls.find(c => c.method === 'PATCH')!
-    expect(write.body.id).toBe('TK-03')
-    expect(write.body.project_id).toBe('ticket-kit')
-    expect(write.body.wave).toBe(2)      // target current_wave
-    expect(write.body.theme).toBe(null)  // theme keys are per-project
+    // The move is ONE rpc (thread, files and visits go along, atomically) —
+    // never a PATCH on issues.id, which broke on the composite FKs (23503).
+    const rpc = calls.find(c => c.url.includes('/rpc/move_issue_api'))!
+    expect(rpc.body).toEqual({ p_id: 'HZ-07', p_target: 'ticket-kit', p_wave: 2, p_theme: null })
+    expect(calls.some(c => c.method === 'PATCH')).toBe(false)
+  })
+
+  it('moves into wave 0 (Notițe / Scratchpad): 0 is a wave, not "missing"', async () => {
+    const calls = mockFetch(moveRoutes([
+      route('/rest/v1/waves?project_id=eq.ticket-kit&number=eq.0', [{ number: 0 }]),
+    ]))
+    const res = await onRequestPatch(patchCtx('HZ-07', { projectId: 'ticket-kit', wave: 0 }))
+    expect(res.status).toBe(200)
+    expect(calls.find(c => c.url.includes('/rpc/move_issue_api'))!.body.p_wave).toBe(0)
+    expect(calls.find(c => c.url.includes('&title=ilike.'))!.url).toContain('wave=eq.0')
+  })
+
+  it('400s on a negative or null wave', async () => {
+    for (const wave of [-1, null]) {
+      mockFetch(moveRoutes())
+      const res = await onRequestPatch(patchCtx('HZ-07', { projectId: 'ticket-kit', wave }))
+      expect(res.status).toBe(400)
+      expect(await res.json()).toEqual({ error: 'invalid_wave' })
+    }
+  })
+
+  it('maps the database guard (obstacle, missing migration) to clear errors, writes nothing else', async () => {
+    let calls = mockFetch(moveRoutes([
+      route('/rest/v1/rpc/move_issue_api', { code: 'HZM02', message: 'Nu se poate muta HZ-07: e legat de un obstacol.' }, { ok: false, status: 400 }),
+    ]))
+    let res = await onRequestPatch(patchCtx('HZ-07', { projectId: 'ticket-kit', title: 'T2' }))
+    expect(res.status).toBe(409)
+    expect(await res.json()).toMatchObject({ error: 'has_obstacle' })
+    expect(calls.some(c => c.method === 'PATCH')).toBe(false)
+
+    calls = mockFetch(moveRoutes([
+      route('/rest/v1/rpc/move_issue_api', { code: 'PGRST202' }, { ok: false, status: 404 }),
+    ]))
+    res = await onRequestPatch(patchCtx('HZ-07', { projectId: 'ticket-kit' }))
+    expect(res.status).toBe(501)
+    expect(await res.json()).toMatchObject({ error: 'migration_missing' })
   })
 
   it('accepts field edits in the same request as the move', async () => {
@@ -189,10 +225,13 @@ describe('onRequestPatch move to another project', () => {
       patchCtx('HZ-07', { projectId: 'ticket-kit', title: 'Fixed title', desc: 'body' })
     )
     expect(res.status).toBe(200)
-    const write = calls.find(c => c.method === 'PATCH')!
-    expect(write.body.title).toBe('Fixed title')
-    expect(write.body.details).toBe('body')
-    expect(write.body.id).toBe('TK-03')
+    // Fields land on the NEW id, after the move.
+    const i = calls.findIndex(c => c.url.includes('/rpc/move_issue_api'))
+    const write = calls.findIndex(c => c.method === 'PATCH')
+    expect(i).toBeGreaterThanOrEqual(0)
+    expect(write).toBeGreaterThan(i)
+    expect(calls[write].url).toContain('id=eq.TK-03')
+    expect(calls[write].body).toEqual({ title: 'Fixed title', details: 'body' })
   })
 
   it('treats a move to the current project as a no-op', async () => {
@@ -270,7 +309,7 @@ describe('onRequestPatch move dependency guard', () => {
       route('/rest/v1/dependencies?or=', [{ issue_id: 'HZ-07', depends_on_id: 'HZ-03' }]),
     ]))
     await onRequestPatch(patchCtx('HZ-07', { projectId: 'ticket-kit' }))
-    expect(calls.some(c => c.method === 'PATCH')).toBe(false)
+    expect(calls.some(c => c.method === 'PATCH' || c.url.includes('/rpc/'))).toBe(false)
   })
 
   it('refuses to combine a move with a deps update', async () => {
@@ -303,8 +342,7 @@ describe('onRequestPatch move wave and theme overrides', () => {
     ]))
     const res = await onRequestPatch(patchCtx('HZ-07', { projectId: 'ticket-kit', wave: 4 }))
     expect(res.status).toBe(200)
-    const write = calls.find(c => c.method === 'PATCH')!
-    expect(write.body.wave).toBe(4)
+    expect(calls.find(c => c.url.includes('/rpc/move_issue_api'))!.body.p_wave).toBe(4)
   })
 
   it('422s on a wave the target project does not have', async () => {
@@ -335,8 +373,7 @@ describe('onRequestPatch move wave and theme overrides', () => {
     ]))
     const res = await onRequestPatch(patchCtx('HZ-07', { projectId: 'ticket-kit', theme: 'api' }))
     expect(res.status).toBe(200)
-    const write = calls.find(c => c.method === 'PATCH')!
-    expect(write.body.theme).toBe('api')
+    expect(calls.find(c => c.url.includes('/rpc/move_issue_api'))!.body.p_theme).toBe('api')
   })
 
   it('422s on a theme key the target project does not have', async () => {
@@ -692,5 +729,14 @@ describe('onRequestPatch assignee', () => {
     const res = await onRequestPatch(patchCtx('HZ-07', { title: 'New', assigneeId: 'Ionut' }))
     expect(res.status).toBe(200)
     expect(calls.find(c => c.method === 'PATCH')!.body).toEqual({ title: 'New', assignee_id: 'uuid-ionut' })
+  })
+})
+
+describe('moveFailure', () => {
+  it('maps the HZM codes of move_issue_api', () => {
+    expect(moveFailure(404, { code: 'PGRST202' })).toMatchObject({ status: 501, body: { error: 'migration_missing' } })
+    expect(moveFailure(400, { code: 'HZM01', message: 'm' })).toEqual({ status: 409, body: { error: 'has_dependencies', message: 'm' } })
+    expect(moveFailure(400, { code: 'HZM06' })).toEqual({ status: 404, body: { error: 'not_found' } })
+    expect(moveFailure(409, { code: '23503' }).status).toBe(502)
   })
 })

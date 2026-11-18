@@ -267,6 +267,86 @@ await scenario('mutare reușită: fir, atașament, văzut, câmpuri', async () =
   check('vizitele (și ale altora) au urmat tichetul', seen.length === 2 && seen.every((s) => s.issue_id === 'APO-08'), JSON.stringify(seen))
 })
 
+/** `move_issue_api` ca API-ul (`tk update --project`): rolul `service_role`. */
+async function moveApi(id, target, wave = null, theme = null, role = 'service_role') {
+  await db.query('savepoint mv')
+  try {
+    await db.query(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify({ role })])
+    await db.query(`set local role ${role}`)
+    const { rows } = await db.query('select public.move_issue_api($1, $2, $3, $4) as id', [id, target, wave, theme])
+    await db.query('reset role')
+    await db.query('release savepoint mv')
+    return { id: rows[0].id }
+  } catch (e) {
+    await db.query('rollback to savepoint mv')
+    await db.query('reset role')
+    return { error: e }
+  }
+}
+
+// Bugul din 2026-11-18: API-ul făcea PATCH pe issues.id, care pica pe FK-ul
+// compus al firului (23503) — se mutau doar tichetele fără activitate.
+await scenario('API: tichet cu fir, fișiere și vizite, în valul 0', async () => {
+  const u = await user()
+  await project('en', 'EN'); await project('turbo', 'TB', 'Turboterm', 2)
+  await db.query(`insert into waves (project_id, number, name) values ('turbo', 0, 'Scratchpad') on conflict do nothing`)
+  await db.query(`insert into themes values ('turbo','cl','Clienți','#123456')`)
+  await issue('TB-01', 'turbo'); await issue('EN-07', 'en', { title: 'Cu istoric' })
+  await db.query(`insert into issue_events (issue_id, project_id, kind, author_id, body) values ('EN-07','en','comment',$1,'a'), ('EN-07','en','comment',$1,'b')`, [u.id])
+  await db.query(`insert into attachments (issue_id, project_id, path, filename, size, content_type) values ('EN-07','en','en/EN-07/a.jpg','a.jpg',10,'image/jpeg')`)
+  await db.query(`insert into issue_seen (user_id, issue_id) values ($1,'EN-07')`, [u.id])
+  const r = await moveApi('EN-07', 'turbo', 0, 'cl')
+  check('API: mută și întoarce ID-ul nou', r.id === 'TB-02', why(r))
+  const { rows: [row] } = await db.query(`select * from issues where id = 'TB-02'`)
+  check('API: valul 0 și tema ceruți', row?.project_id === 'turbo' && row.wave === 0 && row.theme === 'cl' && row.title === 'Cu istoric', JSON.stringify(row))
+  const { rows: gone } = await db.query(`select 1 from issues where id = 'EN-07'`)
+  check('API: rândul vechi a dispărut', gone.length === 0)
+  const { rows: ev } = await db.query(`select issue_id, project_id from issue_events`)
+  check('API: istoricul a urmat tichetul', ev.length === 2 && ev.every((e) => e.issue_id === 'TB-02' && e.project_id === 'turbo'), JSON.stringify(ev))
+  const { rows: at } = await db.query(`select issue_id, project_id, path from attachments`)
+  check('API: atașamentul a urmat tichetul', at.length === 1 && at[0].issue_id === 'TB-02' && at[0].project_id === 'turbo', JSON.stringify(at))
+  const { rows: seen } = await db.query(`select issue_id from issue_seen`)
+  check('API: vizitele au urmat tichetul', seen.length === 1 && seen[0].issue_id === 'TB-02', JSON.stringify(seen))
+})
+
+await scenario('API: fără val = valul activ al țintei, fără temă', async () => {
+  await project('en', 'EN'); await project('turbo', 'TB', 'Turboterm', 2)
+  await issue('EN-03', 'en', { theme: null })
+  const r = await moveApi('EN-03', 'turbo')
+  const { rows: [row] } = await db.query(`select wave, theme from issues where id = $1`, [r.id ?? ''])
+  check('API: valul activ', r.id === 'TB-01' && row?.wave === 2 && row.theme === null, `${why(r)} ${JSON.stringify(row)}`)
+})
+
+await scenario('API: refuzurile rămân (dependență, obstacol, același proiect)', async () => {
+  await project('en', 'EN'); await project('turbo', 'TB')
+  await issue('EN-01', 'en'); await issue('EN-02', 'en'); await issue('EN-03', 'en')
+  await db.query(`insert into dependencies values ('EN-02','EN-01')`)
+  await db.query(`insert into obstacles (id, project_id, title) values ('EN-O01','en','X')`)
+  await db.query(`insert into obstacle_issues values ('EN-O01','EN-03')`)
+  check('API: dependență', refused(await moveApi('EN-01', 'turbo'), 'HZM01'))
+  check('API: obstacol', refused(await moveApi('EN-03', 'turbo'), 'HZM02'))
+  check('API: același proiect', refused(await moveApi('EN-02', 'en'), 'HZM04'))
+  check('API: tichet inexistent', refused(await moveApi('EN-99', 'turbo'), 'HZM06'))
+  const { rows } = await db.query(`select id from issues order by id`)
+  check('API: nimic mutat', rows.map((x) => x.id).join() === 'EN-01,EN-02,EN-03', JSON.stringify(rows))
+})
+
+await scenario('API: ușa nu se deschide cu sesiunea unui om', async () => {
+  const u = await user(); await project('en', 'EN'); await project('turbo', 'TB'); await member(u, 'en'); await member(u, 'turbo')
+  await issue('EN-01', 'en')
+  const r = await moveApi('EN-01', 'turbo', null, null, 'authenticated')
+  check('API: authenticated nu poate chema move_issue_api', refused(r, '42501'), why(r))
+  await db.query('savepoint g')
+  let direct
+  try {
+    await db.query('set local role authenticated')
+    await db.query(`select public.move_issue_apply(i, p, 1, null) from issues i, projects p where i.id = 'EN-01' and p.id = 'turbo'`)
+    direct = 'a mers'
+  } catch (e) { direct = e.code }
+  await db.query('rollback to savepoint g'); await db.query('reset role')
+  check('API: authenticated nu poate chema move_issue_apply', direct === '42501', direct)
+})
+
 await scenario('persoana: păstrată dacă e membru al țintei, altfel scoasă', async () => {
   const u = await user(); const inTarget = await user(); const outside = await user(); const admin = await user({ admin: true })
   await project('hz', 'HZ'); await project('apo', 'APO')
