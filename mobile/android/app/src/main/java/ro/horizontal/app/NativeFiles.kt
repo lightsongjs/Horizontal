@@ -83,7 +83,7 @@ object NativeFiles {
     }
 
     /** Poza camerei e de obicei „culcată" + o etichetă EXIF; reencodată, eticheta s-ar pierde. */
-    private fun rotateByExif(path: String, b: Bitmap): Bitmap {
+    fun rotateByExif(path: String, b: Bitmap): Bitmap {
         val deg = when (ExifInterface(path).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)) {
             ExifInterface.ORIENTATION_ROTATE_90 -> 90f; ExifInterface.ORIENTATION_ROTATE_180 -> 180f; ExifInterface.ORIENTATION_ROTATE_270 -> 270f
             else -> return b

@@ -285,3 +285,8 @@ voie să piardă un memento.
   Repornirea în cele 30 s → `flush`: sună tot ce aștepta.
 - **Ce NU face:** retrage o notificare deja afișată pe telefon când acționezi
   după cele 30 s. Pentru asta e nevoie de FCM (Etapa 2).
+- **Pozele din foaia nativă a tichetului (`versionCode 26`)**: `TicketActivity` (deschisă
+  din widget) le deschidea cu `ACTION_VIEW` → Android întreba „cu ce aplicație?", pe când
+  în pagină se deschid în `Lightbox`. Acum pozele (fără SVG) se văd în `ImageViewer`
+  (dialog nativ pe tot ecranul: glisat = următoarea, ciupit/dublu-tap = mărire, atingere/
+  Înapoi = închis); doar documentele (PDF…) mai pleacă în aplicația telefonului. Fără `API` nou.

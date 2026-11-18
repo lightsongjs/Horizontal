@@ -31,7 +31,8 @@ import java.util.UUID
  * Foaia unui tichet, deschisă din widget-ul de agendă: nativă, peste ecranul de
  * start, fără WebView. ID · proiect și data se văd; titlul și descrierea se
  * editează și se salvează singure (800 ms de pauză și la orice închidere);
- * atașamentele se văd ca miniaturi și se deschid în aplicația telefonului.
+ * atașamentele se văd ca miniaturi; pozele se deschid în galeria din aplicație
+ * (`ImageViewer`, ca `Lightbox`-ul paginii), restul în aplicația telefonului.
  *
  * Primul cadru vine din ce știe deja telefonul (rândul din agendă); descrierea
  * și atașamentele, de pe server. Scrierile trec prin coada `edits` (`core/Edit.kt`),
@@ -183,7 +184,7 @@ class TicketActivity : AppCompatActivity() {
             val thumb = f.file?.takeIf { f.type.startsWith("image/") }?.let { decodeThumb(it) }
             if (thumb != null) iv.setImageBitmap(thumb) else { iv.setImageResource(R.drawable.ic_q_attach); iv.setPadding(dp(22), dp(22), dp(22), dp(22)) }
             iv.contentDescription = f.name
-            iv.setOnClickListener { openFile(f) }
+            iv.setOnClickListener { if (viewable(f)) showImages(files, f) else openFile(f) }
             row.addView(iv)
         }
     }
@@ -196,7 +197,24 @@ class TicketActivity : AppCompatActivity() {
         BitmapFactory.decodeFile(f.path, BitmapFactory.Options().apply { inSampleSize = s })
     } catch (e: Throwable) { null }
 
-    /** În aplicația telefonului (galerie, PDF…), prin FileProvider. Un fișier nedescărcat se descarcă întâi. */
+    /** Pozele pe care le putem desena noi (SVG nu): se văd în aplicație, ca în pagină. */
+    private fun viewable(f: Shown) = f.type.startsWith("image/") && !f.type.contains("svg")
+
+    /** Galeria din aplicație cu toate pozele tichetului, de la cea atinsă. */
+    private fun showImages(files: List<Shown>, at: Shown) {
+        val images = files.filter { viewable(it) }
+        ImageViewer(this, images.map { ImageViewer.Item(it.name, it.file, it.url) }, images.indexOf(at)) { item ->
+            item.file?.takeIf { it.exists() } ?: item.url?.let { download(it, item.name) }
+        }.show()
+    }
+
+    /** Fișierul local, descărcat din URL-ul semnat; pe un fir de lucru. `null` = fără rețea. */
+    private fun download(url: String, name: String): File? {
+        val out = File(File(cacheDir, "attach").apply { mkdirs() }, "${UUID.randomUUID()}-${name.replace(Regex("[^A-Za-z0-9._-]"), "_").takeLast(60)}")
+        return out.takeIf { try { SupabaseApi.download(url, it) } catch (e: Exception) { false } }
+    }
+
+    /** Restul (PDF, documente) în aplicația telefonului, prin FileProvider. Un fișier nedescărcat se descarcă întâi. */
     private fun openFile(f: Shown) {
         val show = { file: File ->
             val uri = FileProvider.getUriForFile(this, "$packageName.fileprovider", file)
@@ -207,9 +225,8 @@ class TicketActivity : AppCompatActivity() {
         val url = f.url ?: return
         Toast.makeText(this, "Se descarcă…", Toast.LENGTH_SHORT).show()
         Thread {
-            val out = File(File(cacheDir, "attach").apply { mkdirs() }, "${UUID.randomUUID()}-${f.name.replace(Regex("[^A-Za-z0-9._-]"), "_").takeLast(60)}")
-            val ok = try { SupabaseApi.download(url, out) } catch (e: Exception) { false }
-            main.post { if (ok) show(out) else Toast.makeText(this, "Fișierul cere rețea", Toast.LENGTH_SHORT).show() }
+            val out = download(url, f.name)
+            main.post { if (out != null) show(out) else Toast.makeText(this, "Fișierul cere rețea", Toast.LENGTH_SHORT).show() }
         }.start()
     }
 
