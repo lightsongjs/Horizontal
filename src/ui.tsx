@@ -74,6 +74,12 @@ interface UI {
   dockedIssueId: string | null
   /** Cheia React a formularului docat — `keyId ?? issueId`, vezi `sheetKey`. */
   dockedKeyId: string | null
+  /**
+   * Un formular de editare deschis acum ar sta în panoul lateral: o
+   * vizualizare destul de lată găzduiește panoul. Îl citește deschiderea
+   * timpurie (`planOpen`): formularul docat se remontează pe date noi.
+   */
+  canDock: boolean
   /** O vizualizare anunță că poate găzdui panoul. Întoarce dezabonarea. */
   registerSplitHost(): () => void
   /** Formularul docat își raportează starea „am modificări nesalvate”. */
@@ -296,6 +302,7 @@ export function UIProvider({ children }: { children: ReactNode }) {
       canGoBack: sheets.length > 1,
       dockedIssueId,
       dockedKeyId,
+      canDock: splitHosts > 0,
       registerSplitHost,
       setDockedDirty,
       isDockedDirty,
@@ -367,7 +374,7 @@ export function UIProvider({ children }: { children: ReactNode }) {
       clearToast,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sheet, sheets.length, ticketId, dockedIssueId, dockedKeyId, registerSplitHost, setDockedDirty, isDockedDirty, subscribeDockedDirty, nudgeSave, saveNudge, clearPendingSwitch, toast, showToast, clearToast],
+    [sheet, sheets.length, ticketId, dockedIssueId, dockedKeyId, splitHosts, registerSplitHost, setDockedDirty, isDockedDirty, subscribeDockedDirty, nudgeSave, saveNudge, clearPendingSwitch, toast, showToast, clearToast],
   )
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

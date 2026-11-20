@@ -26,6 +26,7 @@ import { syncLabel } from './lib/syncLabel'
 import { drawerSwipe, EDGE_PX, lockAxis, type Axis } from './lib/swipe'
 import { Drawer } from './components/Drawer'
 import { preloadEditor } from './components/DescField'
+import { planOpen, type OpenPlan } from './lib/openEarly'
 import { FilterView } from './components/FilterView'
 import { FILTER_DELETED_EVENT, OPEN_FILTER_EVENT } from './components/FilterForm'
 import { OPEN_USERS_EVENT } from './components/AppSettings'
@@ -279,12 +280,12 @@ const slugify = (name: string) =>
   name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '')
 
 function Shell({ onSplit }: { onSplit?: (s: SplitState) => void }) {
-  const { loading, error, project, projects, issuesLoadedFor, issuesLoadFailedFor, byId, dueIssues, selectProject, refresh, inbox, recurrenceUndo, undoRecurrence, clearRecurrenceUndo, activeWave, setActiveWave, undoEntry, takeUndo, expireUndo } = useHorizontal()
+  const { loading, error, project, projects, issuesLoadedFor, issuesLoadFailedFor, byId, dueIssues, openIssues, selectProject, refresh, inbox, recurrenceUndo, undoRecurrence, clearRecurrenceUndo, activeWave, setActiveWave, undoEntry, takeUndo, expireUndo } = useHorizontal()
   const ta = useTaskActions()
   // Pentru `onPop`, care se atașează rar: stratul de închis e cel de ACUM.
   const taRef = useRef(ta)
   taRef.current = ta
-  const { openNewIssue, openNewProject, openProjectSettings, openAppSettings, openFilterForm, openIssue, closeSheet, pushSheet, sheet, ticketId, dockedIssueId, toast, clearToast, showToast, isDockedDirty, subscribeDockedDirty, nudgeSave } = useUI()
+  const { openNewIssue, openNewProject, openProjectSettings, openAppSettings, openFilterForm, openIssue, closeSheet, pushSheet, sheet, ticketId, dockedIssueId, canDock, toast, clearToast, showToast, isDockedDirty, subscribeDockedDirty, nudgeSave } = useUI()
   const { vim: vimOn } = useTheme()
   // Stabil peste randări nelegate de toast: `recurrenceUndo` (din store, un
   // `useState`) nu-și schimbă identitatea decât când SE SCHIMBĂ toast-ul, deci
@@ -409,6 +410,9 @@ function Shell({ onSplit }: { onSplit?: (s: SplitState) => void }) {
   // Setat cât timp un deep link se rezolvă, ca sincronizarea proiect → URL să
   // nu scrie /project/<slug> peste /MS-03. Vezi Task 4.
   const deepLinkPending = useRef<string | null>(null)
+  // Cât are voie tichetul în așteptare să nu aștepte lista autoritară — vezi
+  // `planOpen` (`src/lib/openEarly.ts`). Scris odată cu `deepLinkPending`.
+  const pendingPlan = useRef<OpenPlan>('when-loaded')
   // Efectul de boot rulează o singură dată. `loading` e acum doar al pornirii —
   // `refresh()` nu-l mai ridică — dar garda rămâne: efectul depinde de `loading`
   // și n-are voie să se rejoace dacă altcineva îl atinge vreodată.
@@ -684,9 +688,29 @@ function Shell({ onSplit }: { onSplit?: (s: SplitState) => void }) {
       }
       return
     }
-    deepLinkPending.current = target
+    // Stiva e goală aici (vezi mai sus), deci foaia deschisă ar fi singura.
+    const plan = planOpen({
+      compact: narrowRef.current,
+      docked: canDockRef.current,
+      inList: listHas(target),
+    })
     selectProject(owner.id)
+    if (plan === 'now') {
+      // Foaia de telefon citește sarcina din listă; proiectul vine în spate.
+      openIssue(target)
+      return
+    }
+    deepLinkPending.current = target
+    pendingPlan.current = plan
   }
+  const narrowRef = useRef(narrow)
+  narrowRef.current = narrow
+  const canDockRef = useRef(canDock)
+  canDockRef.current = canDock
+  const listsRef = useRef({ dueIssues, openIssues })
+  listsRef.current = { dueIssues, openIssues }
+  const listHas = (id: string) =>
+    listsRef.current.dueIssues.some((i) => i.id === id) || listsRef.current.openIssues.some((i) => i.id === id)
 
   /**
    * Deschide o sarcină dintr-o listă inteligentă, PESTE listă.
@@ -735,6 +759,9 @@ function Shell({ onSplit }: { onSplit?: (s: SplitState) => void }) {
       const owner = resolveTicketProject(projects, target)
       if (owner) {
         deepLinkPending.current = target
+        // Fără `now`: la pornire listele pot fi încă goale, iar foaia de
+        // telefon fără tichet ar spune „nu mai există".
+        pendingPlan.current = planOpen({ compact: narrow, docked: false, inList: false })
         selectProject(owner.id)
       } else {
         // Fără proiecte în listă nu putem ști dacă ticketul a dispărut sau doar
@@ -798,13 +825,17 @@ function Shell({ onSplit }: { onSplit?: (s: SplitState) => void }) {
   useEffect(() => {
     const pending = deepLinkPending.current
     if (!pending || !project) return
-    if (issuesLoadFailedFor === project.id) {
+    // Deschiderea timpurie (`planOpen`): tichetul e deja în `byId` — din
+    // memoria sesiunii sau din cadrul bazei locale —, deci foaia nu mai
+    // așteaptă runda către server. Doar verdictul „nu există" o așteaptă.
+    const early = pendingPlan.current !== 'when-loaded' && !!byId[resolveIssueId(pending)]
+    if (!early && issuesLoadFailedFor === project.id) {
       deepLinkPending.current = null
       setNotice(deepLinkNotice(pending, 'load-failed'))
       settleUrl(project)
       return
     }
-    if (issuesLoadedFor !== project.id) return
+    if (!early && issuesLoadedFor !== project.id) return
     deepLinkPending.current = null
     // Încă o traducere: remaparea poate sosi cât se încărcau tichetele, iar
     // `byId` le are deja pe ID-ul real. Un ID provizoriu care nu e nici în
