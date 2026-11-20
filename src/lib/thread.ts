@@ -165,6 +165,27 @@ export interface ThreadSummary {
   seenAt: string | null
 }
 
+/**
+ * Rezumatele mai multor fire dintr-o singură citire (`threadSummaries`):
+ * toate evenimentele tichetelor cerute, în orice ordine, și vizitele mele.
+ * Un tichet fără evenimente primește tot un rezumat (gol) — „știm că n-are
+ * fir" e altceva decât „nu știm", iar foaia îl folosește ca să nu aștepte.
+ */
+export function summarizeThreads(
+  ids: readonly string[],
+  events: readonly IssueEvent[],
+  seen: Readonly<Record<string, string | null>>,
+): Record<string, ThreadSummary> {
+  const by = new Map<string, IssueEvent[]>(ids.map((id) => [id, []]))
+  for (const e of events) by.get(e.issueId)?.push(e)
+  const out: Record<string, ThreadSummary> = {}
+  for (const [id, evs] of by) {
+    const recent = [...evs].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 2)
+    out[id] = { count: evs.length, recent, seenAt: seen[id] ?? null }
+  }
+  return out
+}
+
 /** Cine sunt, pentru „al meu" (cont) și „către mine" (rândul din `assignees`). */
 export interface ThreadMe {
   userId: string

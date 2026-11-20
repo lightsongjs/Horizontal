@@ -9,6 +9,7 @@ import { withPin, withoutPin, withPositions, type Pin } from '../lib/pins'
 import { normalizeRules, type SavedFilter } from '../lib/savedFilters'
 import { SEED_ISSUES, SEED_PROJECTS, SEED_THEMES, SEED_WAVES } from '../lib/seed'
 import { planRestore, sortTrash, TRASH_DAYS, type LocalTrashEntry, type TrashItem } from '../lib/trash'
+import { summarizeThreads } from '../lib/thread'
 import type { Assignee, Issue, IssueEvent, InboxRow, Obstacle, ObstacleLink, Project, ProjectMember, Theme, Wave } from '../lib/types'
 import {
   themeKey,
@@ -706,9 +707,12 @@ export function createLocalRepository(): Repository {
 
     async threadSummary(issueId: string) {
       const db = load()
-      const mine = (db.events ?? []).filter((e) => e.issueId === issueId)
-      const recent = [...mine].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 2)
-      return clone({ count: mine.length, recent, seenAt: db.seen?.[issueId] ?? null })
+      return clone(summarizeThreads([issueId], db.events ?? [], db.seen ?? {})[issueId])
+    },
+
+    async threadSummaries(issueIds: string[]) {
+      const db = load()
+      return clone(summarizeThreads(issueIds, db.events ?? [], db.seen ?? {}))
     },
 
     async listInbox() {

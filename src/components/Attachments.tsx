@@ -3,7 +3,9 @@ import {
   deleteAttachment,
   downloadAllAttachments,
   isRenderableImage,
+  knownThumbUrls,
   listAttachments,
+  peekAttachments,
   signedDownloadUrl,
   signedUrls,
   uploadPicked,
@@ -130,8 +132,10 @@ export function Attachments({
    *  fișiere aceluiași drum de urcare — fără o a doua copie a lui `addFiles`. */
   addRef?: MutableRefObject<((files: File[]) => void) | null>
 }) {
-  const [items, setItems] = useState<Attachment[]>([])
-  const [urls, setUrls] = useState<Record<string, string>>({})
+  // Din ultima listă văzută (`peekAttachments`): rândul e la locul lui din
+  // primul cadru, iar `load` de mai jos îl reîmprospătează pe loc.
+  const [items, setItems] = useState<Attachment[]>(() => (issueId && peekAttachments(issueId)) || [])
+  const [urls, setUrls] = useState<Record<string, string>>(() => (issueId ? knownThumbUrls(issueId) : {}))
   const [busy, setBusy] = useState(0)
   const [message, setMessage] = useState<string | null>(null)
   const [armed, setArmed] = useState<string | null>(null)

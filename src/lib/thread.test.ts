@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { firstUnreadId, groupInbox, keepUnread, needsSeen, isUnread, reconcileInbox, withCreation, shortAgo, threadRowFromInbox, threadRowState, threadRowText, type ThreadSummary } from './thread'
+import { firstUnreadId, groupInbox, keepUnread, needsSeen, isUnread, reconcileInbox, withCreation, shortAgo, summarizeThreads, threadRowFromInbox, threadRowState, threadRowText, type ThreadSummary } from './thread'
 import type { Assignee, InboxRow, Issue, IssueEvent } from './types'
 
 const row = (patch: Partial<InboxRow>): InboxRow => ({
@@ -316,5 +316,28 @@ describe('shortAgo', () => {
     expect(shortAgo(at(11, 8), now)).toBe('3 z')
     expect(shortAgo(at(1, 8), now)).toBe('01/10')
     expect(shortAgo('nu-i dată', now)).toBe('')
+  })
+})
+
+describe('summarizeThreads', () => {
+  const ev = (issueId: string, id: string, createdAt: string): IssueEvent => ({
+    id, issueId, projectId: 'p', kind: 'comment', authorId: null, body: id, handoffFrom: null, handoffTo: null, createdAt, editedAt: null,
+  })
+  it('numără, ia cele mai noi două și vizita, pe tichet', () => {
+    const out = summarizeThreads(['A-1', 'A-2'], [
+      ev('A-1', 'x', '2026-11-01T10:00:00Z'),
+      ev('A-1', 'z', '2026-11-03T10:00:00Z'),
+      ev('A-1', 'y', '2026-11-02T10:00:00Z'),
+      ev('A-2', 'w', '2026-11-01T10:00:00Z'),
+    ], { 'A-2': '2026-11-05T00:00:00Z' })
+    expect(out['A-1']).toMatchObject({ count: 3, seenAt: null })
+    expect(out['A-1'].recent.map((e) => e.id)).toEqual(['z', 'y'])
+    expect(out['A-2']).toMatchObject({ count: 1, seenAt: '2026-11-05T00:00:00Z' })
+  })
+  it('un tichet fără fir primește un rezumat gol, nu lipsește — „știm că n-are" ≠ „nu știm"', () => {
+    expect(summarizeThreads(['B-1'], [], {})).toEqual({ 'B-1': { count: 0, recent: [], seenAt: null } })
+  })
+  it('evenimentele altor tichete nu intră', () => {
+    expect(summarizeThreads(['C-1'], [ev('C-9', 'q', '2026-11-01T00:00:00Z')], {})['C-1'].count).toBe(0)
   })
 })

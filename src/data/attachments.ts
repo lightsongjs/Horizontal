@@ -130,6 +130,25 @@ export function resetUrlCache(): void {
   urlCache.clear()
 }
 
+/**
+ * Ultima listă de fișiere văzută pe tichet, în sesiune. Rândul de fișiere stă
+ * DEASUPRA descrierii (foaia de telefon, formularul), deci unul care apărea
+ * abia după o rundă la server împingea descrierea în jos la fiecare
+ * deschidere. Foaia pornește din lista asta și o reîmprospătează pe loc
+ * (`docs/agent/viteza-deschidere.md`). Doar în memorie, ca URL-urile semnate.
+ */
+const listCache = new Map<string, Attachment[]>()
+
+export function peekAttachments(issueId: string): Attachment[] | undefined {
+  return listCache.get(issueId)
+}
+
+/** URL-urile miniaturilor din lista memorată, fără rețea — primul cadru al unei foi. */
+export function knownThumbUrls(issueId: string): Record<string, string> {
+  const paths = (listCache.get(issueId) ?? []).filter((a) => isRenderableImage(a.contentType)).map((a) => a.path)
+  return cachedUrls(paths, Date.now()).hits
+}
+
 export async function listAttachments(issueId: string): Promise<Attachment[]> {
   const db = requireSupabase()
   const { data, error } = await db
@@ -138,7 +157,29 @@ export async function listAttachments(issueId: string): Promise<Attachment[]> {
     .eq('issue_id', issueId)
     .order('created_at')
   if (error) throw error
-  return ((data ?? []) as AttachmentRow[]).map(rowToAttachment)
+  const list = ((data ?? []) as AttachmentRow[]).map(rowToAttachment)
+  listCache.set(issueId, list)
+  return list
+}
+
+/**
+ * Fișierele unei liste de sarcini, într-o singură cerere, plus URL-urile
+ * miniaturilor — ca prima deschidere să aibă și ea rândul la locul lui
+ * (`sheetPrefetch.ts`). Doar tichetele încă necunoscute; restul se
+ * reîmprospătează la deschidere. Un tichet fără fișiere e memorat gol.
+ */
+export async function prefetchAttachments(ids: readonly string[]): Promise<void> {
+  const want = ids.filter((id) => !listCache.has(id))
+  if (!want.length) return
+  const db = requireSupabase()
+  const { data, error } = await db.from('attachments').select('*').in('issue_id', want).order('created_at')
+  if (error) throw error
+  const by = new Map<string, Attachment[]>(want.map((id) => [id, []]))
+  for (const a of ((data ?? []) as AttachmentRow[]).map(rowToAttachment)) by.get(a.issueId)?.push(a)
+  // O listă sosită între timp pe drumul obișnuit (foaia deschisă) e mai nouă.
+  for (const [id, list] of by) if (!listCache.has(id)) listCache.set(id, list)
+  const imgs = [...by.values()].flat().filter((a) => isRenderableImage(a.contentType)).map((a) => a.path)
+  if (imgs.length) await signedUrls(imgs)
 }
 
 /**
@@ -184,7 +225,11 @@ export async function uploadAttachment(input: {
     await removeObjects([path])
     throw new Error(`Fișierul nu s-a putut salva: ${error?.message ?? 'rând lipsă'}`)
   }
-  return rowToAttachment(data as AttachmentRow)
+  const saved = rowToAttachment(data as AttachmentRow)
+  // Lista memorată ține pasul, ca următoarea deschidere să nu pornească din ea veche.
+  const known = listCache.get(saved.issueId)
+  if (known) listCache.set(saved.issueId, [...known, saved])
+  return saved
 }
 
 /**
@@ -216,6 +261,8 @@ export async function deleteAttachment(a: Attachment): Promise<void> {
   const db = requireSupabase()
   const { error } = await db.from('attachments').delete().eq('id', a.id)
   if (error) throw error
+  const known = listCache.get(a.issueId)
+  if (known) listCache.set(a.issueId, known.filter((x) => x.id !== a.id))
   await removeObjects([a.path])
 }
 

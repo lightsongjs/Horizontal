@@ -3,7 +3,9 @@ import { repository } from '../data'
 import {
   deleteAttachment,
   isRenderableImage,
+  knownThumbUrls,
   listAttachments,
+  peekAttachments,
   signedDownloadUrl,
   signedUrls,
   uploadPicked,
@@ -163,8 +165,10 @@ export interface TicketFiles {
  * TICHET (`event_id` null), nu de un comentariu.
  */
 export function useTicketFiles(issueId: string, projectId: string, onError: (m: string) => void): TicketFiles {
-  const [items, setItems] = useState<Attachment[]>([])
-  const [urls, setUrls] = useState<Record<string, string>>({})
+  // Din ultima listă văzută (`peekAttachments`): miniaturile stau deasupra
+  // descrierii, deci un rând sosit după o rundă la server o împingea în jos.
+  const [items, setItems] = useState<Attachment[]>(() => peekAttachments(issueId) ?? [])
+  const [urls, setUrls] = useState<Record<string, string>>(() => knownThumbUrls(issueId))
   const [pending, setPending] = useState<Pending[]>([])
   const onErrorRef = useRef(onError)
   onErrorRef.current = onError

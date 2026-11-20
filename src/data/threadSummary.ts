@@ -8,12 +8,25 @@
 //
 // Se invalidează la scrierea în fir (`postToThread`, `updateComment`) și la
 // `refresh()` din store; vizita (`markSeen`) doar mută `seenAt` pe loc.
-
+//
+// Invalidat NU înseamnă șters (2026-11-20, `docs/agent/viteza-deschidere.md`):
+// rândul stă DEASUPRA descrierii, deci unul care apărea abia după o rundă la
+// server împingea descrierea în jos (~80px pe telefon) la fiecare deschidere
+// de după un `refresh()` — adică după orice revenire în tab. Valoarea veche
+// rămâne pe ecran cât se cere cea nouă, care o înlocuiește pe loc. Numai
+// pentru rând: `loadThreadSummary` (vizita, pentru separatorul „nou" din fir)
+// nu întoarce niciodată o valoare veche. Iar dacă cererea pică (offline),
+// valoarea veche pleacă — regula de mai sus rămâne.
+//
+// Prima deschidere a unui tichet din listă nu mai așteaptă nici ea: lista își
+// cere rezumatele în lot (`prefetchThreadSummaries`, `sheetPrefetch.ts`).
 import { useEffect, useState } from 'react'
 import { repository } from '.'
 import type { ThreadSummary } from '../lib/thread'
 
 const cache = new Map<string, ThreadSummary>()
+/** Intrările invalidate: se arată, dar se cer din nou. */
+const stale = new Set<string>()
 const inflight = new Map<string, Promise<ThreadSummary | null>>()
 const listeners = new Set<() => void>()
 /** Crește la fiecare invalidare: un răspuns plecat înainte nu mai intră în cache. */
@@ -21,14 +34,16 @@ let generation = 0
 
 const notify = () => { for (const fn of listeners) fn() }
 
+/** Ce se poate arăta acum — și o valoare invalidată, cât vine cea nouă. */
 export function peekThreadSummary(issueId: string): ThreadSummary | undefined {
   return cache.get(issueId)
 }
 
+const fresh = (issueId: string) => cache.has(issueId) && !stale.has(issueId)
+
 /** `null` = nu se știe (offline, eroare). Nu se ține minte, ca să se reîncerce. */
 export function loadThreadSummary(issueId: string): Promise<ThreadSummary | null> {
-  const hit = cache.get(issueId)
-  if (hit) return Promise.resolve(hit)
+  if (fresh(issueId)) return Promise.resolve(cache.get(issueId)!)
   const pending = inflight.get(issueId)
   if (pending) return pending
   const gen = generation
@@ -36,21 +51,53 @@ export function loadThreadSummary(issueId: string): Promise<ThreadSummary | null
     .then((s) => {
       if (gen === generation) {
         cache.set(issueId, s)
+        stale.delete(issueId)
         notify()
       }
       return s
     })
-    .catch(() => null)
+    .catch(() => {
+      // Offline: fără rând, nu cu unul vechi (vezi sus).
+      if (gen === generation && stale.has(issueId)) { cache.delete(issueId); stale.delete(issueId); notify() }
+      return null
+    })
     .finally(() => { if (inflight.get(issueId) === p) inflight.delete(issueId) })
   inflight.set(issueId, p)
   return p
 }
 
+/**
+ * Rezumatele unei liste, într-un singur drum (`threadSummaries`). Doar ce nu
+ * e deja proaspăt sau pe drum; un eșec e tăcut — foaia își cere rândul
+ * singură la deschidere, ca înainte.
+ */
+export function prefetchThreadSummaries(ids: readonly string[]): Promise<void> {
+  const want = ids.filter((id) => !fresh(id) && !inflight.has(id))
+  if (!want.length) return Promise.resolve()
+  const gen = generation
+  const batch = repository.threadSummaries(want)
+  for (const id of want) {
+    const one = batch.then((all) => all[id] ?? null, () => null)
+      .finally(() => { if (inflight.get(id) === one) inflight.delete(id) })
+    inflight.set(id, one)
+  }
+  return batch.then((all) => {
+    if (gen !== generation) return
+    for (const [id, s] of Object.entries(all)) { cache.set(id, s); stale.delete(id) }
+    notify()
+  }, () => {})
+}
+
 /** Fără argument: tot (reîmprospătarea din store). */
 export function invalidateThreadSummary(issueId?: string): void {
   generation++
-  if (issueId === undefined) { cache.clear(); inflight.clear() }
-  else { cache.delete(issueId); inflight.delete(issueId) }
+  if (issueId === undefined) {
+    for (const id of cache.keys()) stale.add(id)
+    inflight.clear()
+  } else {
+    if (cache.has(issueId)) stale.add(issueId)
+    inflight.delete(issueId)
+  }
   notify()
 }
 
@@ -72,8 +119,9 @@ export function useThreadSummary(issueId: string): ThreadSummary | null | undefi
     let alive = true
     const sync = () => {
       const hit = peekThreadSummary(issueId)
-      if (hit) { setState(hit); return }
-      setState((prev) => (prev === null ? null : undefined))
+      if (hit) setState(hit)
+      else setState((prev) => (prev === null ? null : undefined))
+      if (fresh(issueId)) return
       void loadThreadSummary(issueId).then((s) => { if (alive && !peekThreadSummary(issueId)) setState(s) })
     }
     sync()

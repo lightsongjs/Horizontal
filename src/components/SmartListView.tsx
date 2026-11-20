@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { usePrefetchSheets } from '../data/sheetPrefetch'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { PushToggle } from './PushToggle'
@@ -158,6 +159,7 @@ export function SmartListView({ kind, onOpenTask, focusSignal = 0, captureDueAt 
     ? [...smartLists.pinned, ...overdueRows, ...todayRows, ...(showDone ? smartLists.doneToday : [])]
     : [...smartLists.weekPinned, ...smartLists.week.flatMap((d) => unpinned(d.issues))]
   const visibleKey = visible.map((i) => i.id).join(',')
+  usePrefetchSheets(visibleKey ? visibleKey.split(',') : [])
   const { setVisible, exitSelectMode } = ta
   useEffect(() => { setVisible(visibleKey ? visibleKey.split(',') : []) }, [visibleKey, setVisible])
   // Selecția e a unei liste: alt ecran (sau altă listă) o închide.

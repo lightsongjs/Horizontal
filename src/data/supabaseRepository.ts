@@ -8,6 +8,7 @@ import { buildNewProject, initialWaves } from '../lib/newProject'
 import { nextPinPosition, type Pin, type PinKind } from '../lib/pins'
 import { isFilterIcon, normalizeRules, type SavedFilter } from '../lib/savedFilters'
 import { sortTrash, type TrashItem } from '../lib/trash'
+import { summarizeThreads } from '../lib/thread'
 import { pathsForProject, removeObjects } from './attachments'
 import { themeKey, type DueRange, type NewIssue, type NewObstacle, type NewProject, type NewThreadPost, type Repository } from './repository'
 
@@ -897,6 +898,22 @@ export function createSupabaseRepository(): Repository {
         recent,
         seenAt: isoOrNull((seen.data as { seen_at: string } | null)?.seen_at ?? null),
       }
+    },
+
+    async threadSummaries(issueIds: string[]) {
+      if (!issueIds.length) return {}
+      // Toate evenimentele tichetelor cerute: listele inteligente au puține
+      // fire (în producție, 3 din 45 de sarcini pe „Azi"), deci asta e mai
+      // ieftin decât câte două cereri pe tichet.
+      const [ev, seen] = await Promise.all([
+        db.from('issue_events').select('*').in('issue_id', issueIds),
+        db.from('issue_seen').select('issue_id, seen_at').in('issue_id', issueIds),
+      ])
+      if (ev.error) throw ev.error
+      if (seen.error) throw seen.error
+      const visits = Object.fromEntries(((seen.data ?? []) as { issue_id: string; seen_at: string }[])
+        .map((r) => [r.issue_id, isoOrNull(r.seen_at)]))
+      return summarizeThreads(issueIds, ((ev.data ?? []) as EventRow[]).map(rowToEvent), visits)
     },
 
     async listInbox(): Promise<InboxRow[]> {

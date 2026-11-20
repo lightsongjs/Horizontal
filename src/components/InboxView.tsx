@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { usePrefetchSheets } from '../data/sheetPrefetch'
 import { useHorizontal } from '../store'
 import { toShortDate } from '../lib/schedule'
 import { isUnread } from '../lib/thread'
@@ -38,6 +39,7 @@ function timeAgo(iso: string | null): string {
  */
 export function InboxView({ onOpen }: { onOpen(issueId: string): void }) {
   const { inbox, inboxLoaded, myAssigneeId, myUserId, assignees, markInboxSeen } = useHorizontal()
+  usePrefetchSheets([...inbox.fresh, ...inbox.rest].map((r) => r.issueId))
   // Un singur timer: a doua deschidere (navigare rapidă înainte-înapoi)
   // anulează marcarea celei dintâi, ca să nu stingem o bulină la care omul
   // n-a apucat să se uite.

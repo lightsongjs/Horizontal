@@ -214,6 +214,12 @@ export interface Repository {
    * moment) și vizita mea. Vezi `threadRowState` din `src/lib/thread.ts`.
    */
   threadSummary(issueId: string): Promise<ThreadSummary>
+  /**
+   * Același rezumat pentru mai multe tichete, în două cereri în total — foaia
+   * se deschide apoi cu rândul firului deja la locul lui, fără să împingă
+   * descrierea în jos (`src/data/sheetPrefetch.ts`). Cheie = ID-ul cerut.
+   */
+  threadSummaries(issueIds: string[]): Promise<Record<string, ThreadSummary>>
   /** Cutia de pase: transversal pe proiecte, ca listDueIssues. */
   listInbox(): Promise<InboxRow[]>
   /**

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { usePrefetchSheets } from '../data/sheetPrefetch'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { HiddenDone, WaveTabs, type WhoFilter } from './WaveTabs'
@@ -31,6 +32,7 @@ export function ListView() {
   const [personFilter, setPersonFilter] = useState<string | 'none' | null>(null)
 
   const allIds = useMemo(() => orderedLayers.flatMap((g) => g.ids), [orderedLayers])
+  usePrefetchSheets(allIds)
   const unassignedCount = useMemo(
     () => allIds.filter((id) => !byId[id]?.assigneeId).length,
     [allIds, byId],

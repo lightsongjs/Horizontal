@@ -758,6 +758,10 @@ export function createOfflineRepository(remote: Repository, kvReady: Promise<Kv 
     threadSummary: (iid) => isTempIssueId(iid)
       ? Promise.resolve({ count: 0, recent: [], seenAt: null })
       : net(() => remote.threadSummary(resolveId(iid))),
+    threadSummaries: (ids) => {
+      const real = ids.filter((id) => !isTempIssueId(id))
+      return real.length ? net(() => remote.threadSummaries(real)) : Promise.resolve({})
+    },
     postToThread: (input) => netWrite(() => remote.postToThread(input)),
     updateComment: (id, body) => netWrite(() => remote.updateComment(id, body)),
     deleteComment: (id) => netWrite(() => remote.deleteComment(id)),

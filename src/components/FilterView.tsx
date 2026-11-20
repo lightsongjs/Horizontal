@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react'
+import { usePrefetchSheets } from '../data/sheetPrefetch'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
 import { filterIssues, groupByProject } from '../lib/savedFilters'
@@ -53,6 +54,7 @@ export function FilterView({ filterId, onOpenTask }: { filterId: string; onOpenT
     [filter, openIssues, filterContext],
   )
   const groups = useMemo(() => groupByProject(matched, projects), [matched, projects])
+  usePrefetchSheets(matched.map((i) => i.id))
 
   // Rândurile de pe ecran, pentru „Toate" din antetul selecției.
   const visibleKey = matched.map((i) => i.id).join(',')
