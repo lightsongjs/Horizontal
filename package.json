@@ -25,6 +25,7 @@
     "test:chime": "node scripts/test-chime.mjs",
     "test:layout": "node scripts/test-layout.mjs",
     "test:nav": "node scripts/test-nav.mjs",
+    "perf:open": "node scripts/perf-open/measure.mjs",
     "test:quick-add": "node scripts/test-quick-add.mjs",
     "test:recurrence-sql": "node scripts/test-recurrence-sql.mjs",
     "test:move-sql": "node scripts/test-move-sql.mjs",
