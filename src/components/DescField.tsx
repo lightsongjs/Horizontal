@@ -1,4 +1,5 @@
-import { Suspense, forwardRef, lazy, useImperativeHandle, useLayoutEffect, useRef, type CSSProperties, type MouseEvent, type MutableRefObject, type ReactNode, type Ref } from 'react'
+import { Suspense, forwardRef, lazy, useImperativeHandle, useLayoutEffect, useRef, useState, type CSSProperties, type MouseEvent, type MutableRefObject, type ReactNode, type Ref } from 'react'
+import { createRoot } from 'react-dom/client'
 import type { EditorHandle, FormatCmd, MarkdownEditorProps } from './MarkdownEditor'
 
 /**
@@ -6,10 +7,52 @@ import type { EditorHandle, FormatCmd, MarkdownEditorProps } from './MarkdownEdi
  * să golească aplicația: câmpul rămâne un textarea simplu (`PlainEditor`), cu
  * același contract — se scrie și se salvează, doar fără live preview.
  */
-const MarkdownEditor = lazy(() => import('./MarkdownEditor').catch(() => ({ default: PlainEditor })))
+const MarkdownEditor = lazy(() => editorModule().catch(() => ({ default: PlainEditor })))
 
-/** Chemat la pornire, ca editorul să fie gata până deschizi primul tichet. */
-export const preloadEditor = () => { import('./MarkdownEditor').catch(() => {}) }
+/**
+ * Editorul, odată sosit. `lazy` suspendă la PRIMA randare chiar cu modulul
+ * deja adus (promisiunea lui se rezolvă abia la tick-ul următor), deci primul
+ * tichet deschis arăta textarea-ul de rezervă un cadru și abia apoi editorul.
+ * Cu modulul în mână, `DescField` îl folosește direct.
+ */
+let loadedEditor: typeof import('./MarkdownEditor').default | null = null
+const editorModule = () => import('./MarkdownEditor').then((m) => { loadedEditor = m.default; return m })
+
+/**
+ * Chemat la pornire, ca editorul să fie gata până deschizi primul tichet.
+ *
+ * Adusul chunk-ului nu ajunge: primul `EditorView` din sesiune costa încă
+ * ~100ms pe telefon (4× CPU) — compilarea codului CodeMirror și a
+ * live-preview-ului la prima folosire —, deci primul tichet deschis își arăta
+ * descrierea cu un cadru gol în plus față de al doilea
+ * (`docs/agent/viteza-deschidere.md`). De-aia, în idle, un editor ascuns se
+ * montează o dată peste un text care atinge toate decorările, și pleacă.
+ */
+export const preloadEditor = () => {
+  editorModule().then((m) => whenIdle(() => warmEditor(m.default))).catch(() => {})
+}
+
+const WARM_DOC = '## Titlu\n\nText **gros**, *cursiv*, `cod`, [link](https://example.com) și H-1.\n\n- [ ] de făcut\n- [x] făcut\n  - sub\n1. unu\n\n> citat\n\n```js\nconst a = 1\n```\n\n| a | b |\n|---|---|\n| 1 | 2 |\n'
+
+function whenIdle(fn: () => void) {
+  // Safari n-are `requestIdleCallback`.
+  if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(fn, { timeout: 3000 })
+  else setTimeout(fn, 300)
+}
+
+function warmEditor(Editor: typeof import('./MarkdownEditor').default) {
+  // Fără `md-editor` în pagină după încălzire: testele de browser îl caută.
+  const box = document.createElement('div')
+  box.setAttribute('aria-hidden', 'true')
+  box.inert = true
+  box.style.cssText = 'position:fixed;left:-10000px;top:0;width:360px;visibility:hidden;pointer-events:none'
+  document.body.appendChild(box)
+  const root = createRoot(box)
+  const noop = () => {}
+  root.render(<Editor value={WARM_DOC} onChange={noop} onCommit={noop} readOnly ariaLabel="" prefixes={['H']} />)
+  // Două cadre: CodeMirror își măsoară rândurile în `requestAnimationFrame`.
+  requestAnimationFrame(() => requestAnimationFrame(() => { root.unmount(); box.remove() }))
+}
 
 /**
  * Descrierea: editorul CodeMirror, încărcat leneș (~250 KB, ~82 KB gzip, nu
@@ -38,6 +81,9 @@ export const DescField = forwardRef<EditorHandle, MarkdownEditorProps & BoxProps
     const editor = useRef<EditorHandle>(null)
     const fallback = useRef<HTMLTextAreaElement>(null)
     const handoff = useRef<number | null>(null)
+    // Ales o dată pe câmp: o schimbare de tip (leneș → direct) l-ar remonta,
+    // cu tot cu focusul și cursorul.
+    const [Editor] = useState(() => loadedEditor ?? MarkdownEditor)
     useImperativeHandle(ref, () => ({
       focus: () => (editor.current ? editor.current.focus() : fallback.current?.focus()),
       focusEnd: () => (editor.current ? editor.current.focusEnd() : textareaEnd(fallback.current)),
@@ -61,7 +107,7 @@ export const DescField = forwardRef<EditorHandle, MarkdownEditorProps & BoxProps
             />
           }
         >
-          <MarkdownEditor ref={editor} {...p} takeFocus={() => { const at = handoff.current; handoff.current = null; return at }} />
+          <Editor ref={editor} {...p} takeFocus={() => { const at = handoff.current; handoff.current = null; return at }} />
         </Suspense>
         {after}
       </div>
