@@ -66,10 +66,19 @@ const server = createServer((req, res) => {
   res.end(readFileSync(file))
 })
 
+// Markerul intră și într-un script inline, pe care Vite îl pune în bundle: așa build-ul nou
+// schimbă JS-ul cu hash, deci și precache-ul din `sw.js`, ca un release real. Doar titlul nu
+// ajunge: o aplicație strict online (Kata) nu pune HTML-ul în precache, `sw.js` ieșea identic
+// și browserul n-avea ce actualiza — testul pica pe orice cod, deci nu dovedea nimic.
 function buildWithTitle(marker) {
   writeFileSync(
     INDEX_SRC,
-    original.replace(/<title>[^<]*<\/title>/, `<title>${BASE_TITLE} ${marker}</title>`),
+    original
+      .replace(/<title>[^<]*<\/title>/, `<title>${BASE_TITLE} ${marker}</title>`)
+      .replace(
+        '</head>',
+        `<script type="module">window.__UPGRADE_MARKER__ = '${marker}'</script></head>`,
+      ),
   )
   execSync('npm run build', { stdio: 'pipe' })
 }
