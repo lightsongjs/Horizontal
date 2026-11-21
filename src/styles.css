@@ -352,13 +352,17 @@ main {
 }
 
 /* TABS */
+/* Lipit sus la derulare, deci are fundalul paginii: transparent, lista și banda
+   de sprinturi treceau pe sub taburi și se citeau prin ele. Marginea negativă
+   + padding-ul egal întind fundalul peste padding-ul lateral al `.view`
+   (14px aici, 32px pe lat), altfel rândurile se vedeau pe margini. */
 .tabs {
   display: flex;
   gap: 3px;
-  background: none;
+  background: var(--bg);
   border-radius: 0;
-  padding: 0;
-  margin-bottom: 14px;
+  padding: 0 14px;
+  margin: 0 -14px 14px;
   position: sticky;
   top: 0;
   z-index: 5;
@@ -3422,6 +3426,8 @@ background: var(--accent-soft);
 /* Wider tabs */
 :where(html:not([data-narrow])) .tabs {
   max-width: none;
+  margin-inline: -32px;
+  padding-inline: 32px;
 }
 
 /* Layer blocks — grid multi-column on desktop */
