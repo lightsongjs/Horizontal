@@ -1571,6 +1571,15 @@ se creează, aici se primește. `screen` din `App.tsx` ține „Ale mele" ca un
 `kind` separat, în afara `SmartListKind`, tocmai ca aceste trei să rămână
 neatinse.
 
+**Numerele lui „Ale mele": necititele roșii, totalul gri și mereu vizibil**
+(decizia omului, 23 nov. 2026). Până atunci necititele erau pe accent („o pasă
+necitită e o chemare, nu o restanță"); Ionuț vrea ca un tichet necitit să sară
+în ochi, deci `.sl-new` și `.tb-badge` sunt pe `--blocked`, ca `.sl-late`.
+Totalul (deschise pe mine, `fresh + rest` din `groupInbox`, adică `inbox_rows`
+`done = false`) stă lângă, gri: `.sl-count` în sidebar, `count` (`.dr-count`)
+pe rândul din sertar și `.tb-count` lângă eticheta tabului de pe telefon —
+inclusiv pe tabul activ, unde eticheta e albastră și numărul rămâne gri.
+
 **De ce firul e o singură tabelă, cu `kind`, nu două.** Un comentariu și o pasă
 sunt evenimente pe aceeași axă de timp, iar orice loc care le arată (Thread.tsx,
 un export, un raport viitor) le vrea împreună, cronologic. Cu două tabele,

@@ -198,6 +198,7 @@ function TabBar({ screen, onScreen }: {
   onScreen(s: Screen): void
 }) {
   const { inbox } = useHorizontal()
+  const inboxTotal = inbox.fresh.length + inbox.rest.length
   return (
     <nav className="tabbar">
       <button className={screen === 'today' ? 'on' : ''} onClick={() => onScreen('today')} data-tab="today">
@@ -209,8 +210,10 @@ function TabBar({ screen, onScreen }: {
       <button className={screen === 'inbox' ? 'on' : ''} onClick={() => onScreen('inbox')} data-tab="inbox">
         <span className="tb-ico">
           <Icon name="people" size={21} />
-          {inbox.fresh.length > 0 && <span className="tb-badge">{inbox.fresh.length}</span>}
-        </span>Ale mele
+          {inbox.fresh.length > 0 && <span className="tb-badge" title={`${inbox.fresh.length} necitite`}>{inbox.fresh.length}</span>}
+        </span>
+        {/* Totalul deschiselor de pe mine, mereu (gri); necititele sunt bulina roșie de sus. */}
+        <span>Ale mele{inboxTotal > 0 && <span className="tb-count">{inboxTotal}</span>}</span>
       </button>
     </nav>
   )

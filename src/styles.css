@@ -5683,16 +5683,17 @@ body:has(.kb-sheet) .toast {
   line-height: 1.5;
 }
 .sidebar-nav-item .sl-late + .sl-count { margin-left: 6px; }
-/* Necititele din „Ale mele" — aceeași formă ca `.sl-late`, dar accent, nu
-   roșu: o pasă necitită e o chemare, nu o restanță. Perechea cu `.sl-count`
-   de lângă ea repetă exact tiparul „restanțe + total" de pe „Azi". */
+/* Necititele din „Ale mele" — aceeași formă și același roșu ca `.sl-late`
+   (decizia omului, 2026-11-23; până atunci era accent, „o chemare, nu o
+   restanță"): Ionuț vrea ca un tichet necitit să sară în ochi. Totalul de
+   lângă (`.sl-count`, gri) rămâne mereu vizibil — „restanțe + total" ca pe „Azi". */
 .sl-new {
   margin-left: auto;
   font-family: var(--mono);
   font-size: calc(10px * var(--text-scale));
   font-weight: 700;
   color: var(--on-accent);
-  background: var(--accent);
+  background: var(--blocked);
   border-radius: var(--r-s);
   padding: 1px 6px;
   line-height: 1.5;
@@ -6555,17 +6556,27 @@ body:has(.kb-sheet) .toast {
 :where(html[data-narrow]) .tabbar button.on { color: var(--accent); }
 :where(html[data-narrow]) .tabbar .tb-ico { position: relative; display: inline-flex; align-items: center; justify-content: center; }
 /* Bulina „Ale mele" necitite — un jeton, nu o casetă activă: nu ține de
-   starea butonului, ci de conținutul din spatele lui. */
+   starea butonului, ci de conținutul din spatele lui. Roșie, ca `.sl-new`
+   (2026-11-23). */
 :where(html[data-narrow]) .tb-badge {
   position: absolute;
   top: -3px; right: -9px;
   min-width: 14px; height: 14px; padding: 0 3px;
   border-radius: var(--r-s);
-  background: var(--accent);
+  background: var(--blocked);
   color: var(--on-accent);
   font-family: var(--display);
   font-size: calc(9.5px * var(--text-scale)); font-weight: 700; line-height: 14px;
   text-align: center;
+}
+
+/* Totalul „Ale mele" (deschise, pe mine), lângă etichetă: mereu vizibil și gri,
+   ca `.sl-count` din sidebar — necititele sunt bulina roșie de pe iconiță. Gri și
+   pe tabul activ: culoarea tabului e a etichetei, nu a numărului. */
+:where(html[data-narrow]) .tabbar .tb-count {
+  margin-left: 4px;
+  color: var(--txt-faint);
+  font-variant-numeric: tabular-nums;
 }
 
 /* „Senin": numele scurt al proiectului rămâne lângă punct; titlul e cel
@@ -7624,6 +7635,8 @@ body:has(.qab) { overflow-y: auto; }
   flex-shrink: 0;
 }
 .dr-row .sl-late, .dr-row .sl-new { margin-left: 0; flex-shrink: 0; }
+/* Necitite + total, ca perechea din sidebar: 6px între ele, nu golul de 12px al rândului. */
+.dr-row .sl-new + .dr-count { margin-left: -6px; }
 .dr-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 .dr-projects { padding: 0 0 8px; }
 .dr-label {

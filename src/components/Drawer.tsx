@@ -40,7 +40,7 @@ interface RowProps {
   count?: number
   /** Restanțele de pe „Azi" — același jeton ca în sidebar. */
   late?: number
-  /** Necititele din „Ale mele" — bulina existentă. */
+  /** Necititele din „Ale mele" — bulina roșie; totalul vine în `count` (gri). */
   fresh?: number
 }
 
@@ -275,7 +275,7 @@ export function Drawer({ current, onPick, onClose, onSettings, onNewProject, onF
               count={weekCount} />
             <Row icon={<Icon name="people" size={19} />} label="Ale mele" on={same(current, { kind: 'screen', screen: 'inbox' })}
               onClick={() => go({ kind: 'screen', screen: 'inbox' })} onMenu={openMenu}
-              fresh={inbox.fresh.length} />
+              fresh={inbox.fresh.length} count={inbox.fresh.length + inbox.rest.length} />
             {inboxProject && (
               <Row icon={<ProjectMark project={inboxProject} size={19} />} label={inboxProject.name}
                 on={same(current, { kind: 'project', id: inboxProject.id })}
