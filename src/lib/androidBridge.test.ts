@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { agendaKey, androidListKey, captureData, captureKey, canTakeActions, getAndroidBridge, pageReadAt } from './androidBridge'
+import { agendaKey, androidListKey, captureData, captureKey, canTakeActions, getAndroidBridge, inboxSeenIds, pageReadAt } from './androidBridge'
 
 const w = globalThis as unknown as { window?: unknown }
 
@@ -88,5 +88,19 @@ describe('captureData', () => {
     const ana2 = { ...ana, email: 'y' }
     expect(captureKey(d)).toBe(captureKey(captureData([p2], [ana2], 7)))
     expect(captureKey(d)).not.toBe(captureKey(captureData([{ ...p, name: 'Daily' }], [], 7)))
+  })
+})
+
+describe('inboxSeenIds', () => {
+  it('trimite id-urile din „Ale mele", sortate și fără dubluri', () => {
+    expect(inboxSeenIds([{ issueId: 'MS-9' }, { issueId: 'HZ-2' }, { issueId: 'MS-9' }], true)).toEqual(['HZ-2', 'MS-9'])
+  })
+  it('nu trimite nimic cu pagina ascunsă: o reîmprospătare în fundal n-a văzut-o nimeni', () => {
+    expect(inboxSeenIds([{ issueId: 'MS-9' }], false)).toBeNull()
+  })
+  it('setInboxSeen pleacă prin nativePromise', async () => {
+    const { nativePromise } = fakeCapacitor('android')
+    await getAndroidBridge()!.setInboxSeen({ ids: ['MS-1'] })
+    expect(nativePromise).toHaveBeenCalledWith('HorizontalAndroid', 'setInboxSeen', { ids: ['MS-1'] })
   })
 })

@@ -73,6 +73,12 @@ class SyncWorker(ctx: Context, p: WorkerParameters) : Worker(ctx, p) {
                 agendaNative = agenda?.let { AgendaList(it, startedAt) } ?: s.agendaNative) to true
         }
         if (written) Engine.reschedule(ctx)
+        // Tichetele primite (`HandoffWatch`), DUPĂ plan: un eșec al lor rămâne aici —
+        // mementourile sunt deja scrise, iar următoarea rulare reia comparația.
+        if (written && !isStopped) try { HandoffWatch.check(ctx, owner, me, startedAt) }
+            catch (e: AccountChanged) {}
+            catch (e: IOException) {}
+            catch (e: RuntimeException) { Log.w("hz-handoff", "verificarea tichetelor primite a picat", e) }
         return Result.success()
     }
 

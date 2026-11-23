@@ -1580,6 +1580,14 @@ Totalul (deschise pe mine, `fresh + rest` din `groupInbox`, adică `inbox_rows`
 pe rândul din sertar și `.tb-count` lângă eticheta tabului de pe telefon —
 inclusiv pe tabul activ, unde eticheta e albastră și numărul rămâne gri.
 
+**Notificarea „ți-a dat un tichet" pe telefon** (APK, `versionCode 27`, API 8):
+în cutie nu există web push, deci `SyncWorker` compară la fiecare rulare
+mulțimea tichetelor deschise de pe mine (aceeași regulă ca `inbox_rows`) cu cea
+de data trecută — toate drumurile de scriere (fir, `tk comment --to`, formular,
+`/api/tickets`) se termină în `assignee_id`, dar numai pasele lasă eveniment.
+Detalii, regula „cine a fost" și golurile: „Aplicația de Android" →
+`docs/agent/android.md`, „Tichete primite".
+
 **De ce firul e o singură tabelă, cu `kind`, nu două.** Un comentariu și o pasă
 sunt evenimente pe aceeași axă de timp, iar orice loc care le arată (Thread.tsx,
 un export, un raport viitor) le vrea împreună, cronologic. Cu două tabele,

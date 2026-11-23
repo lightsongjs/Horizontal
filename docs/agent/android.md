@@ -290,3 +290,30 @@ voie să piardă un memento.
   în pagină se deschid în `Lightbox`. Acum pozele (fără SVG) se văd în `ImageViewer`
   (dialog nativ pe tot ecranul: glisat = următoarea, ciupit/dublu-tap = mărire, atingere/
   Înapoi = închis); doar documentele (PDF…) mai pleacă în aplicația telefonului. Fără `API` nou.
+- **Tichete primite** (decizia omului, 2026-11-23, `versionCode 27`, API 8):
+  notificare când un tichet AJUNGE pe mine, nu la fiecare comentariu pe unul care
+  e deja al meu și nu când mi-l pun singur. Fără migrare și fără server: după
+  plan, `SyncWorker` cheamă `HandoffWatch.check` (eșecurile rămân acolo —
+  mementourile sunt deja scrise). Rularea obișnuită = o cerere mică
+  (`issues?select=id&done=is.false&assignee_id=eq.<eu>`, `mineOpenQuery`);
+  mulțimea se ține în `hz-handoffs` (cont, id-uri, pornirea verificării). Ce
+  apare nou față de data trecută e o sosire; abia atunci încă 3–4 cereri
+  (titlu/creator, ultima pasă către mine, `issue_seen`, numele). Regula, pură, în
+  `core/Handoffs.kt` (`decideArrival`, teste `HandoffsTest`):
+  - pasă către mine de după verificarea precedentă → autorul ei; eu → tac;
+  - fără pasă (formular, API): creat de mine → tac; creat de curând de altcineva
+    → creatorul; altfel „Tichet nou pe tine: MS-270" (formularul nu lasă urme);
+  - văzut deja după sosire (`issue_seen`, de ex. pe laptop) → tac;
+  - pagina din APK spune ce a arătat în „Ale mele" (`setInboxSeen`, numai cu
+    pagina vizibilă) → acelea sunt știute — așa tace și un tichet pe care mi
+    l-am pus singur din formular, cu aplicația deschisă.
+  Prima rulare după instalare, login sau alt cont învață în tăcere (logout și
+  schimbarea de cont golesc starea). Un răspuns plin (1000) nu se compară; cel
+  mult 5 notificări pe rulare. Canal „Tichete primite" (importanță implicită:
+  sunet, fără fereastră peste ecran), tag `primit:<id>` — o a doua sosire
+  înlocuiește notificarea; atingerea deschide tichetul ca un memento
+  (`openIntent` → `reminderAction` `open`). Întârziere: până la 15 min (Doze:
+  mai mult). **Goluri știute:** un tichet pe care mi-l pun singur din formular
+  pe laptop, fără fir necitit, cu aplicația de pe telefon închisă, se anunță
+  fără nume; la fel un tichet redeschis (debifat) de altcineva sau scos din coș;
+  o mutare în masă arată doar 5. Fără `assignees` legat, nimic (ca „Ale mele").

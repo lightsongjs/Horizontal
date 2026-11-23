@@ -10,6 +10,7 @@ import android.net.Uri
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import ro.horizontal.app.core.Reminder
+import ro.horizontal.app.core.handoffTitle
 import ro.horizontal.app.core.notificationButtons
 
 /**
@@ -20,6 +21,8 @@ import ro.horizontal.app.core.notificationButtons
 object Notifier {
     const val CH_REMINDERS = "mementouri-v2"
     const val CH_STATUS = "stare"
+    /** Tichete date mie de altcineva (`HandoffWatch`). Importanță implicită: sunet, fără fereastră peste ecran. */
+    const val CH_HANDOFFS = "tichete-primite"
     const val EXTRA_OPEN = "hz-open"
 
     fun ensureChannels(ctx: Context) {
@@ -35,6 +38,9 @@ object Notifier {
             // noaptea te învață să-l ignori (răspunsul omului, 2026-10-02).
         })
         nm.createNotificationChannel(NotificationChannel(CH_STATUS, "Stare", NotificationManager.IMPORTANCE_LOW))
+        nm.createNotificationChannel(NotificationChannel(CH_HANDOFFS, "Tichete primite", NotificationManager.IMPORTANCE_DEFAULT).apply {
+            description = "Când cineva îți dă un tichet"
+        })
         nm.createNotificationChannel(Shade.channel(ctx))
     }
 
@@ -72,6 +78,21 @@ object Notifier {
         if (r.every == null) extraActions(ctx, r, n)
         // tag = id: același tichet ÎNLOCUIEȘTE notificarea, ca pe web.
         try { NotificationManagerCompat.from(ctx).notify(r.id, 1, n.build()) } catch (e: SecurityException) { /* permisiunea lipsește: cardul din pagină o spune */ }
+    }
+
+    /**
+     * Un tichet a ajuns pe mine. Tag = `primit:<id>`: o a doua sosire a aceluiași
+     * tichet ÎNLOCUIEȘTE notificarea, nu o dublează, și nu se bate cu mementoul lui
+     * (tag = id). Atingerea deschide tichetul, ca la un memento (`openIntent`).
+     */
+    fun showHandoff(ctx: Context, id: String, title: String, actorName: String?) {
+        val n = NotificationCompat.Builder(ctx, CH_HANDOFFS).setSmallIcon(R.drawable.ic_stat_hz)
+            .setContentTitle(handoffTitle(id, actorName)).setContentText(title)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(title))
+            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+            .setAutoCancel(true)
+            .setContentIntent(openIntent(ctx, id))
+        try { NotificationManagerCompat.from(ctx).notify("primit:$id", 1, n.build()) } catch (e: SecurityException) { /* permisiunea lipsește: cardul din pagină o spune */ }
     }
 
     private const val STATUS_ID = 2

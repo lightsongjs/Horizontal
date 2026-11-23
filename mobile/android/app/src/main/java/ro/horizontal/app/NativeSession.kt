@@ -65,6 +65,7 @@ object NativeSession {
         if (accountSwitched(acct.getString("lastUserId", null), t.userId) || acct.getBoolean("clearPending", false)) {
             acct.edit().putString("lastUserId", t.userId).putBoolean("clearPending", true).commit()
             PlanStore.clear(ctx)
+            HandoffWatch.reset(ctx)
             AlarmScheduler.arm(ctx, null)
             Notifier.cancelAll(ctx)
             acct.edit().remove("clearPending").commit()
@@ -128,6 +129,8 @@ object NativeSession {
         } catch (e: Exception) {}
         synchronized(lock) { ctx.getSharedPreferences(PREFS, 0).edit().clear().commit() }
         PlanStore.clear(ctx)
+        // Tichetele primite se învață din nou, în tăcere, la următorul login.
+        HandoffWatch.reset(ctx)
         AlarmScheduler.arm(ctx, null)
         Notifier.cancelAll(ctx)
     }

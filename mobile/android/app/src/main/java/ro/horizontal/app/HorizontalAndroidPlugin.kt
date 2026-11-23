@@ -89,6 +89,17 @@ class HorizontalAndroidPlugin : Plugin() {
         call.resolve()
     }
 
+    /**
+     * API 8. Tichetele din „Ale mele", cu aplicația pe ecran: omul le-a văzut, deci
+     * `HandoffWatch` nu le mai anunță — nici pe unul pe care și l-a pus singur din
+     * formular (acolo nu rămâne nicio urmă pe server).
+     */
+    @PluginMethod fun setInboxSeen(call: PluginCall) {
+        val ids = call.getArray("ids", JSArray())!!
+        HandoffWatch.pageSeen(context, (0 until ids.length()).mapNotNull { ids.optString(it).ifEmpty { null } })
+        call.resolve()
+    }
+
     @PluginMethod fun setAgenda(call: PluginCall) {
         val items = call.getArray("items", JSArray())!!
         val readAt = call.data.optLong("readAt", 0L)   // `optLong`: vezi `setReminders`
@@ -261,7 +272,8 @@ class HorizontalAndroidPlugin : Plugin() {
         // 5: getShade / setShade și evenimentul „shade" (notificarea fixă din bară, D-185).
         // 6: setSystemBars (barele de sistem în culoarea paginii, D-324).
         // 7: getScreenshot / takeScreenshot / skipScreenshot (captura oferită în foaia rapidă din pagină).
-        const val API = 7
+        // 8: setInboxSeen („Ale mele" de pe ecran = tichete știute, fără notificare de sosire).
+        const val API = 8
 
         data class Bars(val color: Int, val dark: Boolean)
         @Volatile private var bars: Bars? = null

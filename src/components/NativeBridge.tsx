@@ -3,7 +3,7 @@ import { useHorizontal } from '../store'
 import { useWritableProjects } from '../hooks'
 import { repository } from '../data'
 import { getDesktopBridge, upcomingReminders, type DesktopAction } from '../lib/desktopBridge'
-import { ANDROID_API_BARS, ANDROID_API_CAPTURE, ANDROID_API_MINE, ANDROID_API_SHADE, ANDROID_API_WIDGETS, ANDROID_WINDOW, GO_TODAY_EVENT, agendaKey, captureData, captureKey, androidListKey, canTakeActions, getAndroidBridge, pageReadAt } from '../lib/androidBridge'
+import { ANDROID_API_BARS, ANDROID_API_CAPTURE, ANDROID_API_INBOX_SEEN, ANDROID_API_MINE, ANDROID_API_SHADE, ANDROID_API_WIDGETS, ANDROID_WINDOW, GO_TODAY_EVENT, agendaKey, captureData, captureKey, androidListKey, canTakeActions, getAndroidBridge, inboxSeenIds, pageReadAt } from '../lib/androidBridge'
 import { agendaItems } from '../lib/agenda'
 import { parseTicketPath } from '../lib/deepLink'
 import { runNativeAction } from '../lib/nativeAction'
@@ -31,7 +31,7 @@ const REFRESH_MS = 5 * 60_000
  * timerele din pagină ar fi sugrumate cât fereastra stă ascunsă.
  */
 export function NativeBridge() {
-  const { dueLoaded, dueIssues, issues, projects, assignees, byId, refresh, toggleDone, updateIssue, syncStatus, myAssigneeId, myUserId } = useHorizontal()
+  const { dueLoaded, dueIssues, issues, projects, assignees, byId, refresh, toggleDone, updateIssue, syncStatus, myAssigneeId, myUserId, inbox, inboxLoaded } = useHorizontal()
   // Evenimentele de calendar sună doar pe Linux (și prin web push). Android le
   // primește într-o etapă următoare: planul nativ ar pune „Gata"/„Amână" pe ele
   // și le-ar rescrie cu citirea lui din `issues` — vezi CLAUDE.md, „Google Calendar".
@@ -81,6 +81,25 @@ export function NativeBridge() {
     lastCapture.current = key
     void android.setCaptureData(d).catch(() => { lastCapture.current = '' })
   }, [android, api, writable, assignees])
+
+  // „Ale mele" de pe ecran (API 8): cutia nu mai anunță ca „tichet primit" ce omul a
+  // văzut deja aici. Doar cu pagina vizibilă (`inboxSeenIds`), retrimis la revenire.
+  const lastInboxSeen = useRef('')
+  useEffect(() => {
+    if (!android || api < ANDROID_API_INBOX_SEEN || !inboxLoaded) return
+    const send = () => {
+      const ids = inboxSeenIds([...inbox.fresh, ...inbox.rest], document.visibilityState === 'visible')
+      if (!ids) return
+      const key = ids.join(',')
+      if (key === lastInboxSeen.current) return
+      lastInboxSeen.current = key
+      void android.setInboxSeen({ ids }).catch(() => { lastInboxSeen.current = '' })
+    }
+    send()
+    const onVis = () => { if (document.visibilityState === 'visible') send() }
+    document.addEventListener('visibilitychange', onVis)
+    return () => document.removeEventListener('visibilitychange', onVis)
+  }, [android, api, inbox, inboxLoaded])
 
   // Reatribuit la fiecare randare: listenerii (puși o dată) văd mereu store-ul de acum.
   const run = useRef<(a: DesktopAction) => void>(() => {})

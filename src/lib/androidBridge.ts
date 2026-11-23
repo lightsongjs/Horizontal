@@ -37,6 +37,12 @@ export const ANDROID_API_BARS = 6
  * pe telefon captura nu ajunge în clipboard, deci un Ctrl+V n-are ce lipi.
  */
 export const ANDROID_API_SHOTS = 7
+/**
+ * `setInboxSeen` (2026-11-23): „Ale mele" de pe ecran, ca cutia să nu anunțe ca
+ * „tichet primit" ceva deja văzut în aplicație — inclusiv un tichet pe care
+ * mi l-am pus singur din formular (de acolo nu rămâne nicio urmă pe server).
+ */
+export const ANDROID_API_INBOX_SEEN = 8
 
 /** Ce îi trebuie ferestrei de quick add: proiectele în care se poate scrie și oamenii. */
 export interface CaptureData {
@@ -100,6 +106,8 @@ export interface HorizontalAndroidPlugin {
   takeScreenshot(o: { id: string }): Promise<{ name: string; type: string; data: string }>
   /** API 7. Sarcina a plecat fără ea: nu se mai oferă. */
   skipScreenshot(o: { id: string }): Promise<void>
+  /** API 8. Tichetele din „Ale mele", văzute pe ecran: nu se mai anunță ca sosite. */
+  setInboxSeen(o: { ids: string[] }): Promise<void>
   addListener(event: 'reminderAction', fn: (a: DesktopAction) => void): Promise<Listener>
   addListener(event: 'changed', fn: () => void): Promise<Listener>
   addListener(event: 'widget', fn: (e: WidgetEvent) => void): Promise<Listener>
@@ -155,6 +163,7 @@ function buildBridge(cap: CapacitorGlobal): HorizontalAndroidPlugin {
     getScreenshot: call('getScreenshot'),
     takeScreenshot: call('takeScreenshot'),
     skipScreenshot: call('skipScreenshot'),
+    setInboxSeen: call('setInboxSeen'),
     async addListener(eventName: string, fn: (d: never) => void) {
       const callbackId = cap.nativeCallback(NAME, 'addListener', { eventName }, fn as (d: unknown) => void)
       return { remove: async () => { await cap.nativePromise(NAME, 'removeListener', { eventName, callbackId }) } }
@@ -193,6 +202,17 @@ export function canTakeActions(sync: DueFreshness | undefined): boolean {
  *  face lista paginii mai proaspătă decât cea nativă, chiar cu același conținut. */
 export function androidListKey(list: DesktopReminder[], heldIds: string[], readAt: number): string {
   return JSON.stringify([list, heldIds, readAt])
+}
+
+/**
+ * Ce îi spune pagina cutiei despre „Ale mele" (API 8): id-urile, sortate (cheia de
+ * retrimitere), și numai cu pagina pe ecran — o reîmprospătare în fundal (evenimentul
+ * `changed` al cutiei) n-a fost văzută de nimeni, iar un tichet abia sosit ar fi
+ * trecut drept știut înainte ca omul să afle de el.
+ */
+export function inboxSeenIds(rows: readonly { issueId: string }[], visible: boolean): string[] | null {
+  if (!visible) return null
+  return [...new Set(rows.map((r) => r.issueId))].sort()
 }
 
 /** Cheia de deduplicare a agendei trimise widget-ului; `readAt` intră, ca la `androidListKey`. */
