@@ -1050,6 +1050,9 @@ export function HorizontalProvider({ children }: { children: ReactNode }) {
     })
     setDueRaw((prev) => prev.filter((i) => i.projectId !== id))
     setOpenRaw((prev) => prev.filter((i) => i.projectId !== id))
+    // Și „Ale mele”: rândul rămas aici ducea, la deschidere, la un „văzut” pe
+    // un tichet care nu mai există.
+    setInboxRaw((prev) => prev.filter((r) => r.projectId !== id))
     setAllProjectMembers((prev) => prev.filter((m) => m.projectId !== id))
     setLoadedProjects((prev) => { const n = new Set(prev); n.delete(id); return n })
     setProjectId((cur) => (cur === id ? null : cur))

@@ -25,6 +25,9 @@ const { fakeDb } = vi.hoisted(() => {
       this.payload = rows
       return this
     }
+    upsert(rows: Row | Row[]) {
+      return this.insert(rows)
+    }
     update(row: Row) {
       this.op = 'update'
       this.payload = row
@@ -274,6 +277,29 @@ describe('supabaseRepository', () => {
     try {
       await expect(createSupabaseRepository().createIssue({ projectId: 'p', title: 'B', deps: ['P-01', 'P-01'] })).rejects.toMatchObject({ code: '23505' })
       expect(fakeDb.tables.issues.filter((r) => r.title === 'B')).toHaveLength(1)
+    } finally {
+      fakeDb.Query.beforeInsert = null
+    }
+  })
+
+  // Proiectul MCPC șters, iar în „Ale mele” rămăsese un rând de-al lui: la
+  // deschidere, omul vedea „violates foreign key constraint issue_seen_issue_id_fkey”.
+  it('markSeen pe un tichet care nu mai există nu e o eroare (23503)', async () => {
+    fakeDb.tables.issue_seen = []
+    fakeDb.Query.beforeInsert = (table) =>
+      table === 'issue_seen' ? { code: '23503', message: 'violates foreign key constraint "issue_seen_issue_id_fkey"' } : undefined
+    try {
+      await expect(createSupabaseRepository().markSeen('MCPC-01')).resolves.toBeUndefined()
+    } finally {
+      fakeDb.Query.beforeInsert = null
+    }
+  })
+
+  it('markSeen aruncă în continuare celelalte refuzuri', async () => {
+    fakeDb.tables.issue_seen = []
+    fakeDb.Query.beforeInsert = (table) => (table === 'issue_seen' ? { code: '42501', message: 'rls' } : undefined)
+    try {
+      await expect(createSupabaseRepository().markSeen('P-01')).rejects.toMatchObject({ code: '42501' })
     } finally {
       fakeDb.Query.beforeInsert = null
     }

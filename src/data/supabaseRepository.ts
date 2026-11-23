@@ -878,6 +878,10 @@ export function createSupabaseRepository(): Repository {
       const { error } = await db
         .from('issue_seen')
         .upsert({ issue_id: issueId, seen_at: new Date().toISOString() }, { onConflict: 'user_id,issue_id' })
+      // 23503 = tichetul nu mai există (șters, sau cu tot proiectul, pe alt
+      // dispozitiv). N-ai ce marca: un rând rămas în „Ale mele” sau o vizită
+      // din coada offline nu trebuie să arate omului eroarea de cheie străină.
+      if (error?.code === '23503') return
       if (error) throw error
     },
 
