@@ -309,8 +309,10 @@ voie să piardă un memento.
     l-am pus singur din formular, cu aplicația deschisă.
   Prima rulare după instalare, login sau alt cont învață în tăcere (logout și
   schimbarea de cont golesc starea). Un răspuns plin (1000) nu se compară; cel
-  mult 5 notificări pe rulare. Canal „Tichete primite" (importanță implicită:
-  sunet, fără fereastră peste ecran), tag `primit:<id>` — o a doua sosire
+  mult 5 notificări pe rulare. Canal „Tichete primite" (importanță mare:
+  coboară câteva secunde sus, ca în InvestLab, apoi rămâne în bară — decizia lui
+  Ionuț, 24 nov. 2026; Android nu lasă schimbată importanța unui canal deja creat,
+  deci o schimbare ulterioară cere alt id de canal), tag `primit:<id>` — o a doua sosire
   înlocuiește notificarea; atingerea deschide tichetul ca un memento
   (`openIntent` → `reminderAction` `open`). Întârziere: până la 15 min (Doze:
   mai mult). **Goluri știute:** un tichet pe care mi-l pun singur din formular

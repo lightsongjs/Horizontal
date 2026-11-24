@@ -21,7 +21,7 @@ import ro.horizontal.app.core.notificationButtons
 object Notifier {
     const val CH_REMINDERS = "mementouri-v2"
     const val CH_STATUS = "stare"
-    /** Tichete date mie de altcineva (`HandoffWatch`). Importanță implicită: sunet, fără fereastră peste ecran. */
+    /** Tichete date mie de altcineva (`HandoffWatch`). Importanță mare: coboară câteva secunde sus, ca notificările din InvestLab, apoi rămâne în bară (Ionuț, 24 nov. 2026). */
     const val CH_HANDOFFS = "tichete-primite"
     const val EXTRA_OPEN = "hz-open"
 
@@ -38,7 +38,7 @@ object Notifier {
             // noaptea te învață să-l ignori (răspunsul omului, 2026-10-02).
         })
         nm.createNotificationChannel(NotificationChannel(CH_STATUS, "Stare", NotificationManager.IMPORTANCE_LOW))
-        nm.createNotificationChannel(NotificationChannel(CH_HANDOFFS, "Tichete primite", NotificationManager.IMPORTANCE_DEFAULT).apply {
+        nm.createNotificationChannel(NotificationChannel(CH_HANDOFFS, "Tichete primite", NotificationManager.IMPORTANCE_HIGH).apply {
             description = "Când cineva îți dă un tichet"
         })
         nm.createNotificationChannel(Shade.channel(ctx))
@@ -90,6 +90,7 @@ object Notifier {
             .setContentTitle(handoffTitle(id, actorName)).setContentText(title)
             .setStyle(NotificationCompat.BigTextStyle().bigText(title))
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+            .setPriority(NotificationCompat.PRIORITY_HIGH) // Android sub 8: tot coborârea sus
             .setAutoCancel(true)
             .setContentIntent(openIntent(ctx, id))
         try { NotificationManagerCompat.from(ctx).notify("primit:$id", 1, n.build()) } catch (e: SecurityException) { /* permisiunea lipsește: cardul din pagină o spune */ }
