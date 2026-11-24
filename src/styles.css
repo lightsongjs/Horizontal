@@ -2259,6 +2259,12 @@ button.we-del:hover { color: var(--blocked); background: var(--blocked-soft); }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* „Nimeni — rămâne la creator" în selectorul de responsabil: lămurirea, ca la `.thread-to-sub`. */
+.dep-result-sub {
+  margin-left: 6px;
+  font-size: calc(12px * var(--text-scale));
+  color: var(--txt-faint);
+}
 .dep-no-results {
   padding: 10px 12px;
   font-size: calc(14px * var(--text-scale));

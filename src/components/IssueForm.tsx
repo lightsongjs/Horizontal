@@ -197,20 +197,32 @@ function AssigneeSearch({ assigneeId, assignees, members, myAssigneeId, myUserId
    * câțiva, nu o mie, deci a cere un termen de căutare ca să vezi trei nume e
    * o taxă pe nimic — și pe telefon înseamnă tastatură scoasă degeaba.
    * Căutarea rămâne pentru când lista chiar e lungă.
+   *
+   * Și pornește DESCHISĂ: selectorul trăiește doar în popoverul chipului, deci
+   * a-l deschide e deja gestul „vreau să schimb omul". Închisă, apăsarea pe
+   * chipul unui tichet pasat arăta doar căutarea, iar singurul drum spre gol
+   * era X-ul microscopic de pe nume — de aici „nu-l mai pot scoate de pe mine".
    */
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(true)
 
   const options = buildAssigneeOptions(assignees, members, myUserId)
   const filtered = q.trim() ? options.filter((o) => o.name.toLowerCase().includes(q.toLowerCase())) : options
   const hasExact = options.some((o) => o.name.toLowerCase() === q.toLowerCase().trim())
   const showCreate = q.trim() && !hasExact
-  const optionCount = filtered.length + (showCreate ? 1 : 0)
+  // „Nimeni" e primul rând, mereu (cât nu cauți): fără el, un tichet pus din
+  // greșeală pe cineva nu mai putea fi lăsat liber decât prin X-ul mic de pe
+  // nume, pe care nu-l găsea nimeni. Gol = „al creatorului" (vezi
+  // docs/agent/fir-pasare.md), deci iese din „Ale mele" al oricui.
+  const showNone = !q.trim()
+  const offset = showNone ? 1 : 0
+  const optionCount = offset + filtered.length + (showCreate ? 1 : 0)
 
   const selected = assigneeId ? assignees.find((a) => a.id === assigneeId) : null
 
   // Câmpul ține O SINGURĂ persoană, deci alegerea e și sfârșitul căutării:
   // lista se închide, spre deosebire de selectorul de dependențe, unde rămâne
   // deschisă fiindcă urmează de obicei încă una.
+  const selectNone = () => { onSelect(null); setQ(''); setHlIdx(0); setOpen(false) }
   const selectOption = async (opt: AssigneeOption) => {
     if (opt.kind === 'assignee') { onSelect(opt.id); setQ(''); setHlIdx(0); setOpen(false); return }
     if (linking) return
@@ -224,7 +236,8 @@ function AssigneeSearch({ assigneeId, assignees, members, myAssigneeId, myUserId
     else if (e.key === 'ArrowUp') { e.preventDefault(); setHlIdx((p) => Math.max(p - 1, 0)) }
     else if (e.key === 'Enter') {
       e.preventDefault()
-      if (hlIdx < filtered.length) void selectOption(filtered[hlIdx])
+      if (hlIdx < offset) selectNone()
+      else if (hlIdx < offset + filtered.length) void selectOption(filtered[hlIdx - offset])
       else if (showCreate) handleCreate()
     } else if (e.key === 'Escape') { setQ(''); setHlIdx(0); setOpen(false) }
   }
@@ -259,7 +272,16 @@ function AssigneeSearch({ assigneeId, assignees, members, myAssigneeId, myUserId
       </div>
       {(open || q.trim()) && (
         <div className="dep-results">
-          {filtered.map((o, idx) => {
+          {showNone && (
+            <button className={`dep-result-row ${assigneeId === null ? 'on' : ''} ${hlIdx === 0 ? 'hl' : ''}`}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={selectNone}>
+              <span className={`ic ${assigneeId === null ? 'ok' : 'ext'}`}><Icon name={assigneeId === null ? 'check' : 'close'} size={14} /></span>
+              <span className="dep-result-title">Nimeni <span className="dep-result-sub">rămâne la creator</span></span>
+            </button>
+          )}
+          {filtered.map((o, i) => {
+            const idx = i + offset
             const key = o.kind === 'assignee' ? o.id : `member:${o.userId}`
             const on = o.kind === 'assignee' && o.id === assigneeId
             return (
@@ -274,7 +296,7 @@ function AssigneeSearch({ assigneeId, assignees, members, myAssigneeId, myUserId
           })}
           {filtered.length === 0 && !showCreate && <p className="dep-no-results">No one found.</p>}
           {showCreate && (
-            <button className={`dep-create-btn ${hlIdx === filtered.length ? 'hl' : ''}`}
+            <button className={`dep-create-btn ${hlIdx === offset + filtered.length ? 'hl' : ''}`}
               onMouseDown={(e) => e.preventDefault()}
               onClick={handleCreate} disabled={creating}>
               <span className="dep-create-plus">+</span>
