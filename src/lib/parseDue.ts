@@ -13,6 +13,20 @@ import { startOfLocalDay, addDays } from './schedule'
 import { firstOccurrence, formatRrule, nextOccurrence, parseRrule } from './recurrence'
 import { PING_MAX_MINUTES, seriesWindow } from './pingSeries'
 
+/** Cuvintele aceleiași litere vecine inversate: „daily" → „adily", „dialy", „daliy", „daiyl". */
+function adjacentSwaps(word: string): string[] {
+  const out: string[] = []
+  for (let i = 0; i < word.length - 1; i++) {
+    if (word[i] === word[i + 1]) continue
+    out.push(word.slice(0, i) + word[i + 1] + word[i] + word.slice(i + 2))
+  }
+  return out
+}
+
+/** D-464: „zilnic"/„daily", cu tot cu scăpările de tastare (litere vecine inversate). */
+const DAILY_WORD = new RegExp(`\\b(?:${['zilnic', 'daily'].flatMap((w) => [w, ...adjacentSwaps(w)]).join('|')})\\b`)
+
+
 export interface ParsedDue {
   /** Titlul cu fragmentele de dată scoase. Poate fi GOL — vezi mai jos. */
   title: string
@@ -470,7 +484,11 @@ export function parseDue(raw: string, now: Date = new Date()): ParsedDue {
 
   // „zilnic", „daily", „săptămânal", „lunar", „anual"
   if (!rrule) {
-    m = hay.match(/\b(?:zilnic|daily)\b/)
+    // D-464: și scăpările de tastare la „daily"/„zilnic" — două litere vecine
+    // inversate („dialy" pe telefon nu se recunoștea, iar sarcina nu se repeta).
+    // Doar la cuvintele astea două: inversările lor nu sunt alte cuvinte, pe când
+    // la „anual" una e „anula", deci acolo nu.
+    m = hay.match(DAILY_WORD)
     if (m) { rrule = 'FREQ=DAILY'; hit(m) }
     m = hay.match(/\b(?:saptamanal|weekly)\b/)
     if (m) { rrule = 'FREQ=WEEKLY'; hit(m) }

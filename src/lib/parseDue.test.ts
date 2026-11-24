@@ -415,6 +415,16 @@ describe('recurență în text', () => {
     expect(r('every 2 days water')).toBe('FREQ=DAILY;INTERVAL=2')
   })
 
+  it('D-464: „dialy" și alte litere vecine inversate tot zilnic înseamnă', () => {
+    expect(parseDue('veronica pe pomelnic dialy', NOW)).toMatchObject({ title: 'veronica pe pomelnic', rrule: 'FREQ=DAILY' })
+    for (const typo of ['adily', 'daliy', 'daiyl', 'zlinic', 'zilinc', 'zilnci', 'Dialy']) {
+      expect(r(`bea apă ${typo}`), typo).toBe('FREQ=DAILY')
+    }
+    // Numai daily/zilnic: „anula" (inversarea lui „anual") rămâne verb, nu recurență.
+    expect(r('anula abonamentul')).toBeNull()
+    expect(r('dial the number')).toBeNull()
+  })
+
   it('ziua săptămânii, una sau mai multe', () => {
     expect(r('în fiecare luni raport')).toBe('FREQ=WEEKLY;BYDAY=MO')
     expect(r('lunea raport')).toBe('FREQ=WEEKLY;BYDAY=MO')
