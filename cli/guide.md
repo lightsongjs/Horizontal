@@ -68,7 +68,7 @@ tk mine --project cc --json             # un singur proiect; brut (alias: ale-me
 
 tk lookup "Setup DB" --wave 1           # → KATA-03   sau   not_found
 
-tk get KATA-03                          # JSON complet: desc, deps, notes, selectors,
+tk get KATA-03                          # JSON complet: desc, deps, selectors,
                                         # scenarios, assigneeId, dueAt, urgent, pinnedAt,
                                         # attachments, commentCount (câte rânduri are firul)
 
@@ -90,7 +90,7 @@ tk create "Auth flow" --deps KATA-03,KATA-04 --desc "…"
 #   Fără --sprint intră în sprintul ACTIV al proiectului (ca o captură din aplicație).
 #   Opțiuni: --sprint N (= --wave N)  --theme <cheie>  --assignee <nume|id>
 #            --due "2026-10-24"  /  --due "2026-10-24 15:30"  --urgent
-#            (--notes există, dar e câmpul vechi — discuția merge în fir, `tk comment`)
+#            (--notes NU mai există: e refuzat — vezi „Unde scrii ce”)
 
 tk update KATA-05 --done                # bifat;  --done false = debifat
 tk update KATA-05 --title "Nou titlu" --wave 2
@@ -242,9 +242,17 @@ există e refuzat (`invalid_deps: …`).
 - **Discuția pe un tichet e firul**, ca în aplicație: `tk comments` îl citește,
   `tk comment` scrie în el. Înainte să te apuci de un tichet cu `commentCount`
   > 0, citește firul — acolo sunt deciziile de după descriere.
-- **`notes` e un câmp vechi**, nu comentariile. Conținutul lui a fost mutat o
-  dată în fir (apare ca „notă mutată”), iar aplicația nu-l mai arată. Nu scrie
-  observații, progres sau întrebări în `--notes`: scrie un comentariu.
+- **Unde scrii ce:** ce s-a decis și contextul de care are nevoie cine
+  implementează → `--desc` (descrierea, pe care o vede oricine deschide
+  tichetul); întrebări, progres și discuție → `tk comment <ID> "…" --to <cine>`.
+- **`notes` a fost scos.** E un câmp vechi pe care aplicația nu-l mai arată, deci
+  ce se scria acolo devenea invizibil pentru oameni. `--notes` e refuzat la orice
+  comandă („câmpul notes a fost scos; folosește --desc sau tk comment”), API-ul
+  (din deploy-ul care include schimbarea) răspunde `notes_removed` la orice
+  conținut — se poate doar goli, iar `tk get` nu-l mai afișează.
+  Conținutul vechi a fost mutat o dată în fir (apare ca „notă mutată”) și, pe
+  2026-10-30, la finalul descrierii, sub „## Note de lucru (mutate din câmpul
+  vechi „notes”)”.
 - **Comentariul e al omului**, nu al unei unelte: în aplicație apare ca scris de
   cel din `tk whoami` (sau `--as`). Scrie deci ca el ar semna — scurt, la obiect.
 - **Pasarea** (`--to`) e regula aplicației: tichetul ajunge în „Ale mele” la

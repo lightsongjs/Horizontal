@@ -479,7 +479,11 @@ cmds.lookup = async ({ positional, flags }) => {
 cmds.get = async ({ positional, flags }) => {
   const id = ticketId(positional, flags, 'tk get <ID>')
   const { status, data } = await api(`/api/tickets/${enc(id)}`)
-  if (status === 200) return out(JSON.stringify(data, null, 2))
+  if (status === 200) {
+    // `notes` (câmpul vechi, scos) nu se mai arată: conținutul e în desc sau în fir.
+    const { notes: _legacy, ...ticket } = data
+    return out(JSON.stringify(ticket, null, 2))
+  }
   if (status === 404) { out('not_found'); process.exit(1) }
   fail(status, data)
 }
@@ -766,10 +770,10 @@ Citire
 
 Scriere
   tk create "Titlu" [--desc …] [--deps A,B] [--sprint N] [--theme cheie]
-                    [--assignee nume] [--due "AAAA-LL-ZZ[ HH:MM]"] [--urgent] [--notes …]
+                    [--assignee nume] [--due "AAAA-LL-ZZ[ HH:MM]"] [--urgent]
   tk update HZ-7 [--title …] [--done [false]] [--deps A,B|""] [--sprint N] [--desc …]
                  [--theme cheie|""] [--assignee nume|""] [--due …|""] [--urgent [false]]
-                 [--pin [false]] [--notes …] [--selectors JSON] [--scenarios JSON]
+                 [--pin [false]] [--selectors JSON] [--scenarios JSON]
                  [--project țintă]  (mută; ID nou)
   tk comment HZ-7 "text" [--to persoană|""] [--attach a.png …] [--as persoană]
                  comentariu (+ pasă) în numele tău (tk whoami); text "-" = de pe stdin

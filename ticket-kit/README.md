@@ -78,7 +78,7 @@ node ticket-kit/ai-client.mjs --create --project Katalist --title "Auth flow" --
 node ticket-kit/ai-client.mjs --create --project Katalist --title "Auth flow" --wave 1 --assignee Ionut
 # output: KATA-04   (sau "assignee_not_found")
 
-# Vezi toate detaliile unui tichet (desc, deps, selectors, scenarios, notes etc.)
+# Vezi toate detaliile unui tichet (desc, deps, selectors, scenarios etc.)
 node ticket-kit/ai-client.mjs --get --id KATA-03
 # output: JSON complet cu toate câmpurile
 

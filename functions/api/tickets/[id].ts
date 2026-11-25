@@ -17,9 +17,23 @@ const FIELD_MAP: Record<string, string> = {
   wave: 'wave',
   done: 'done',
   urgent: 'urgent',
-  notes: 'notes',
   selectors: 'selectors',
   scenarios: 'scenarios',
+}
+
+/**
+ * `notes` e câmpul vechi, pe care aplicația nu-l mai arată: ce se scria acolo
+ * devenea invizibil pentru oameni. Se poate doar GOLI (`notes: ""`); orice
+ * conținut e refuzat cu `notes_removed` — locul lui e `desc` sau firul.
+ * Coloana rămâne în bază (vezi migration-comments.sql).
+ */
+export function notesRefusal(body: Record<string, unknown>): Response | null {
+  if (!('notes' in body)) return null
+  if (body.notes === '' || body.notes === null) return null
+  return Response.json(
+    { error: 'notes_removed', message: 'câmpul notes a fost scos; folosește desc sau un comentariu' },
+    { status: 400 },
+  )
 }
 
 /**
@@ -44,6 +58,8 @@ export function buildIssueUpdate(body: Record<string, unknown>): Record<string, 
   for (const [clientKey, dbKey] of Object.entries(FIELD_MAP)) {
     if (clientKey in body) update[dbKey] = body[clientKey]
   }
+  // Doar golirea trece (vezi notesRefusal): nimic nou nu mai intră în `notes`.
+  if ('notes' in body && (body.notes === '' || body.notes === null)) update.notes = ''
   return update
 }
 
@@ -129,6 +145,9 @@ export const onRequestPatch: PagesFunction<Env> = async (context) => {
   } catch {
     return Response.json({ error: 'invalid_json' }, { status: 400 })
   }
+
+  const notesNo = notesRefusal(body)
+  if (notesNo) return notesNo
 
   const issueUpdate = buildIssueUpdate(body)
   const hasDeps = 'deps' in body

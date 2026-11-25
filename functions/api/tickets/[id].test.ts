@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest'
-import { attachmentsPayload, buildIssueUpdate, moveFailure, onRequestGet, onRequestPatch } from './[id]'
+import { attachmentsPayload, buildIssueUpdate, moveFailure, notesRefusal, onRequestGet, onRequestPatch } from './[id]'
 
 describe('buildIssueUpdate', () => {
   it('maps desc to details', () => {
@@ -23,6 +23,22 @@ describe('buildIssueUpdate', () => {
   })
   it('does not include deps (relation handled separately)', () => {
     expect(buildIssueUpdate({ title: 'T', deps: ['KATA-01'] })).toEqual({ title: 'T' })
+  })
+  it('notes: only clearing passes through, never content', () => {
+    expect(buildIssueUpdate({ notes: '' })).toEqual({ notes: '' })
+    expect(buildIssueUpdate({ notes: 'x', title: 'T' })).toEqual({ title: 'T' })
+  })
+})
+
+describe('notesRefusal', () => {
+  it('lets bodies without notes, or clearing notes, through', () => {
+    expect(notesRefusal({ title: 'T' })).toBe(null)
+    expect(notesRefusal({ notes: '' })).toBe(null)
+  })
+  it('refuses any content with 400 notes_removed', async () => {
+    const r = notesRefusal({ notes: 'x' })
+    expect(r?.status).toBe(400)
+    expect(await r?.json()).toMatchObject({ error: 'notes_removed' })
   })
 })
 

@@ -153,6 +153,7 @@ interface CreateBody {
   deps?: string[]
   theme?: string | null
   desc?: string
+  /** Câmpul vechi: refuzat dacă are conținut (`notes_removed`), vezi tickets/[id].ts. */
   notes?: string
   assigneeId?: string | null
   /** `"2026-10-24"` (toată ziua) sau `"2026-10-24 15:30"`, ora României. */
@@ -172,6 +173,14 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     body = await context.request.json() as CreateBody
   } catch {
     return Response.json({ error: 'invalid_json' }, { status: 400 })
+  }
+
+  // Clienții vechi (ai-client) trimit `notes: ""` la orice creare: golul trece.
+  if (typeof body.notes === 'string' ? body.notes !== '' : body.notes != null) {
+    return Response.json(
+      { error: 'notes_removed', message: 'câmpul notes a fost scos; folosește desc sau un comentariu' },
+      { status: 400 },
+    )
   }
 
   const { projectId, title, wave } = body
@@ -282,7 +291,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       done: false,
       selectors: [],
       scenarios: [],
-      notes: body.notes ?? '',
+      notes: '',
       assignee_id: assigneeId,
       ...(createdBy ? { created_by: createdBy } : {}),
       ...(due ? due : {}),

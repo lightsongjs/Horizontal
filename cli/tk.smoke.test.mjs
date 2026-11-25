@@ -143,8 +143,16 @@ describe('tk contra unui server fals', () => {
     expect(r.stdout.trim()).toBe('KATA-09')
     expect(last().headers['x-api-key']).toBe(KEY)
     expect(JSON.parse(last().raw.toString())).toEqual({
-      projectId: 'kata', title: 'Auth flow', wave: 3, deps: ['KATA-01'], desc: 'd', notes: '', assigneeId: null, urgent: true,
+      projectId: 'kata', title: 'Auth flow', wave: 3, deps: ['KATA-01'], desc: 'd', assigneeId: null, urgent: true,
     })
+  })
+
+  it('update --notes e refuzat fără nicio cerere spre server', async () => {
+    const before = seen.length
+    const r = await tk(['update', 'KATA-01', '--notes', 'x'], { cwd: repo() })
+    expect(r.code).toBe(1)
+    expect(r.stderr).toContain('câmpul notes a fost scos; folosește --desc sau tk comment')
+    expect(seen.length).toBe(before)
   })
 
   it('create pe titlu existent → duplicate:', async () => {

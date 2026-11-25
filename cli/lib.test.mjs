@@ -125,7 +125,12 @@ describe('CLAUDE.md', () => {
 describe('corpurile cererilor', () => {
   it('create: deps, due, urgent, assignee', () => {
     expect(buildCreateBody({ projectId: 'kata', title: 'T', wave: '2', flags: { deps: 'A-1, A-2', due: '2026-10-24', urgent: true, assignee: 'Ionut' } }))
-      .toEqual({ projectId: 'kata', title: 'T', wave: 2, deps: ['A-1', 'A-2'], desc: '', notes: '', assigneeId: 'Ionut', due: '2026-10-24', urgent: true })
+      .toEqual({ projectId: 'kata', title: 'T', wave: 2, deps: ['A-1', 'A-2'], desc: '', assigneeId: 'Ionut', due: '2026-10-24', urgent: true })
+  })
+  it('--notes e refuzat la orice comandă (câmpul vechi, scos)', () => {
+    for (const argv of [['update', 'X-1', '--notes', 'x'], ['update', 'X-1', '--notes='], ['create', 'T', '--notes'], ['--create', '--notes', 'x']]) {
+      expect(() => parseArgs(argv)).toThrow('câmpul notes a fost scos; folosește --desc sau tk comment')
+    }
   })
   it('create: fără titlu sau cu val greșit → UsageError', () => {
     expect(() => buildCreateBody({ projectId: 'k', title: '', wave: 1, flags: {} })).toThrow(UsageError)
@@ -153,6 +158,7 @@ describe('afișarea', () => {
     expect(md).toContain('tk guide')
     expect(md).toContain('`kata`')
     expect(md.split('\n').length).toBeLessThan(20)
+    expect(md).toContain('--notes` nu mai există')
   })
 })
 

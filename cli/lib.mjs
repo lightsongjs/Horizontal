@@ -64,6 +64,12 @@ function canonical(name) {
 }
 
 /**
+ * `notes` e câmpul vechi pe care aplicația nu-l mai arată: ce se scria acolo
+ * devenea invizibil pentru oameni. Refuzat la orice comandă, înainte de rețea.
+ */
+export const NOTES_REMOVED = 'câmpul notes a fost scos; folosește --desc sau tk comment'
+
+/**
  * `tk create "Titlu" --deps A,B --urgent` → { cmd, positional, flags }.
  * Acceptă și forma veche, `tk --create --project x --title "…"`: primul
  * `--<comandă>` cunoscut devine comanda. `--a=b` merge ca `--a b`.
@@ -86,6 +92,7 @@ export function parseArgs(argv) {
     let value
     const eq = name.indexOf('=')
     if (eq >= 0) { value = name.slice(eq + 1); name = name.slice(0, eq) }
+    if (name === 'notes') throw new UsageError(NOTES_REMOVED)
     name = FLAG_ALIASES[name] ?? name
     // Forma veche: `--create`, `--list`… fără valoare, în locul comenzii.
     if (cmd === null && value === undefined && canonical(name) && !BOOL_FLAGS.has(name) && name !== 'project') {
@@ -145,7 +152,6 @@ export function buildCreateBody({ projectId, title, wave, flags, author = null }
     wave: waveNumber(wave),
     deps: flags.deps !== undefined ? splitList(flags.deps) : [],
     desc: flags.desc ?? '',
-    notes: flags.notes ?? '',
     assigneeId: flags.assignee ? String(flags.assignee) : null,
   }
   if (flags.theme !== undefined) body.theme = flags.theme
@@ -164,7 +170,6 @@ export function buildUpdateBody(flags, positional = []) {
   if (flags.title !== undefined) body.title = flags.title
   else if (positional.length) body.title = positional.join(' ')
   if (flags.desc !== undefined) body.desc = flags.desc
-  if (flags.notes !== undefined) body.notes = flags.notes
   if (flags.theme !== undefined) body.theme = flags.theme
   if (flags.wave !== undefined) body.wave = waveNumber(flags.wave)
   if (flags.done !== undefined) body.done = flags.done
@@ -181,7 +186,7 @@ export function buildUpdateBody(flags, positional = []) {
   if (flags.selectors !== undefined) body.selectors = jsonFlag(flags, 'selectors')
   if (flags.scenarios !== undefined) body.scenarios = jsonFlag(flags, 'scenarios')
   if (!Object.keys(body).length) {
-    throw new UsageError('nimic de schimbat: --title, --desc, --notes, --wave, --done, --deps, --theme, --assignee, --due, --urgent, --pin, --project, --selectors, --scenarios')
+    throw new UsageError('nimic de schimbat: --title, --desc, --wave, --done, --deps, --theme, --assignee, --due, --urgent, --pin, --project, --selectors, --scenarios')
   }
   return body
 }
@@ -534,6 +539,9 @@ tk get ${project.prefix}-7                         # tot tichetul, cu atașament
 tk create "Titlu" --deps ${project.prefix}-3 --desc "…"   # tichet nou
 tk update ${project.prefix}-7 --done                       # bifat
 \`\`\`
+
+Unde scrii ce: ce s-a decis și contextul → \`--desc\`; întrebări și discuție → \`tk comment <ID> "…" --to <cine>\`.
+\`--notes\` nu mai există (câmpul vechi nu se vede în aplicație) și e refuzat.
 `
 }
 

@@ -32,6 +32,13 @@ for (let i = 0; i < args.length; i++) {
   if (args[i].startsWith('--')) flags[args[i].slice(2)] = args[i + 1] ?? true
 }
 
+// `notes` e câmpul vechi, pe care aplicația Horizontal nu-l mai arată: ce se
+// scria acolo devenea invizibil pentru oameni. Refuzat înainte de orice cerere.
+if ('notes' in flags) {
+  console.error('câmpul notes a fost scos; folosește --desc sau tk comment')
+  process.exit(1)
+}
+
 // --lookup --project KATA --title "Setup DB" --wave 1
 // Prints: KATA-03   OR   not_found
 async function lookup() {
@@ -67,9 +74,9 @@ function boolFlag(name) {
 // --due "2026-10-24" (all day) or "2026-10-24 15:30" (Romanian time); --urgent true
 // Prints: KATA-05   OR   duplicate: KATA-03   OR   theme_not_found
 async function create() {
-  const { project, title, wave, deps, theme, desc, notes, assignee, due } = flags
+  const { project, title, wave, deps, theme, desc, assignee, due } = flags
   if (!project || !title || wave === undefined) {
-    console.error('Usage: --create --project <id> --title "<title>" --wave <n> [--deps ID1,ID2] [--theme key] [--desc "..."] [--notes "..."] [--assignee <id|name>] [--due "YYYY-MM-DD[ HH:MM]"] [--urgent true]')
+    console.error('Usage: --create --project <id> --title "<title>" --wave <n> [--deps ID1,ID2] [--theme key] [--desc "..."] [--assignee <id|name>] [--due "YYYY-MM-DD[ HH:MM]"] [--urgent true]')
     process.exit(1)
   }
   if (due === true) {
@@ -89,7 +96,6 @@ async function create() {
       deps: deps ? String(deps).split(',').map(s => s.trim()).filter(Boolean) : [],
       theme: theme ?? undefined,
       desc: desc ?? '',
-      notes: notes ?? '',
       assigneeId: assignee ? String(assignee) : null,
       ...(due !== undefined ? { due: String(due) } : {}),
       ...('urgent' in flags ? { urgent: boolFlag('urgent') } : {}),
@@ -230,7 +236,8 @@ async function get() {
   }
   const { status, data } = await apiFetch(`/api/tickets/${encodeURIComponent(id)}`)
   if (status === 200) {
-    console.log(JSON.stringify(data, null, 2))
+    const { notes: _legacy, ...ticket } = data // câmpul vechi, scos
+    console.log(JSON.stringify(ticket, null, 2))
   } else if (status === 404) {
     console.log('not_found')
   } else {
@@ -240,7 +247,7 @@ async function get() {
 }
 
 // --update --id KATA-03 [--title "..."] [--wave N] [--done true] [--deps ID1,ID2]
-// [--desc "..."] [--notes "..."] [--theme key] [--selectors '[...]'] [--scenarios '[...]']
+// [--desc "..."] [--theme key] [--selectors '[...]'] [--scenarios '[...]']
 // [--project <target>]  moves the ticket to another project; it gets a new ID with
 //                       that project's prefix. Refused if any dependency touches it.
 // [--assignee <id|name>]  gives the ticket to a person; --assignee "" takes it back.
@@ -250,7 +257,7 @@ async function get() {
 async function update() {
   const { id } = flags
   if (!id) {
-    console.error('Usage: --update --id <ticket-id> [--title "..."] [--wave N] [--done true|false] [--deps ID1,ID2] [--desc "..."] [--notes "..."] [--theme key] [--project <target>] [--assignee <id|name>] [--selectors \'[...]\'] [--scenarios \'[...]\']')
+    console.error('Usage: --update --id <ticket-id> [--title "..."] [--wave N] [--done true|false] [--deps ID1,ID2] [--desc "..."] [--theme key] [--project <target>] [--assignee <id|name>] [--selectors \'[...]\'] [--scenarios \'[...]\']')
     process.exit(1)
   }
 
@@ -263,7 +270,6 @@ async function update() {
     if (isNaN(body.wave)) { console.error('--wave must be a number'); process.exit(1) }
   }
   if ('done' in flags) body.done = flags.done === 'true'
-  if ('notes' in flags) body.notes = flags.notes
   if ('project' in flags) {
     if (flags.project === true) { console.error('--project requires a value'); process.exit(1) }
     body.projectId = String(flags.project)
@@ -292,9 +298,9 @@ async function update() {
     catch { console.error('--scenarios must be valid JSON array'); process.exit(1) }
   }
 
-  const knownFields = ['title', 'desc', 'theme', 'wave', 'done', 'notes', 'deps', 'selectors', 'scenarios', 'projectId', 'assigneeId', 'due', 'urgent']
+  const knownFields = ['title', 'desc', 'theme', 'wave', 'done', 'deps', 'selectors', 'scenarios', 'projectId', 'assigneeId', 'due', 'urgent']
   if (!knownFields.some(f => f in body)) {
-    console.error('Provide at least one field: --title, --wave, --done, --deps, --desc, --notes, --theme, --project, --assignee, --due, --urgent, --selectors, --scenarios')
+    console.error('Provide at least one field: --title, --wave, --done, --deps, --desc, --theme, --project, --assignee, --due, --urgent, --selectors, --scenarios')
     process.exit(1)
   }
 
