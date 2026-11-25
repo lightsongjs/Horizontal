@@ -1067,6 +1067,13 @@ try {
   // dovedește. Back o închide și te lasă pe „Azi"; „…" deschide formularul
   // complet pe ACELAȘI tichet, iar Back îl închide tot pe „Azi". Filă curată.
   const tel = await browser.newPage({ viewport: { width: 390, height: 844 } })
+  // Ceasul paginii pornește azi la 10:00 (și curge de acolo): mai jos, „la 17"
+  // scris în titlul unei sarcini de azi trebuie să rămână AZI. După 17:00 real,
+  // regula D-317 (oră trecută → mâine, `mergeTitleDue`) o muta corect pe mâine,
+  // iar testul pica — și apoi expira căutând sarcina în „Azi". Toate datele din
+  // secțiune se fac în pagină (`tel.evaluate`), deci urmează același ceas.
+  const telMorning = new Date(); telMorning.setHours(10, 0, 0, 0)
+  await tel.clock.install({ time: telMorning })
   await tel.goto(BASE, { waitUntil: 'networkidle' })
   await tel.waitForTimeout(800)
   const editOpen = () => tel.locator('.edit-sheet').count().then((n) => n > 0)
