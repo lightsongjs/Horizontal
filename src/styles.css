@@ -7004,56 +7004,115 @@ body:has(.kb-sheet) .toast {
   line-height: 1.5;
 }
 
-/* HARTĂ */
-.map-wrap {
-  background: var(--surface);
-  border-radius: var(--r);
-  box-shadow: var(--amb);
-  overflow-x: auto;
-  overflow-y: hidden;
+/* HARTĂ — ramuri de la stânga la dreapta (MapView.tsx, lib/branchMap.ts,
+   docs/agent/harta.md; macheta aprobată: design/harta/). Pozițiile vin din
+   așezare, inline; aici doar înfățișarea. Lățimile nodurilor (240/260) și
+   culoarul (72/56) sunt în componentă, fiindcă intră în aritmetică. */
+.bm { position: relative; padding-bottom: 24px; }
+.bm-bar { display: flex; align-items: center; gap: 12px; margin: 4px 0 6px; }
+.bm-sum { flex: 1; min-width: 0; color: var(--txt-dim); font-size: calc(13px * var(--text-scale)); }
+.bm-toggle { cursor: pointer; border: 0; font-size: calc(12.5px * var(--text-scale)); padding: 7px 12px; }
+.bm-toggle.on { background: var(--done-soft); color: var(--done); }
+:where(html[data-narrow]) .bm-bar { flex-wrap: wrap; }
+:where(html[data-narrow]) .bm-sum { flex-basis: 100%; order: 2; }
+.bm-empty { color: var(--txt-dim); font-size: calc(13.5px * var(--text-scale)); margin: 24px 0; max-width: 60ch; }
+.bm-sect { margin: 30px 0 0; color: var(--txt-faint); font-size: calc(12px * var(--text-scale)); font-weight: 650; }
+.bm-branch { margin-top: 26px; }
+.bm-head { display: flex; align-items: baseline; gap: 8px; margin: 0 0 10px; font-size: calc(12px * var(--text-scale)); font-weight: 650; color: var(--txt-dim); min-width: 0; }
+.bm-head .bm-hid { font-family: var(--mono); font-weight: 500; color: var(--txt-faint); white-space: nowrap; }
+.bm-head .bm-ht { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.bm-head .bm-hn { color: var(--txt-faint); font-weight: 550; white-space: nowrap; }
+.bm-sect + .bm-head { margin-top: 14px; }
+/* Banda derulează orizontal de la o margine la alta a ecranului (ca rândul
+   de taburi), deci iese din padding-ul lui <main>: 14px îngust, 32px lat. */
+.bm-band { overflow-x: auto; overflow-y: hidden; margin: 0 -14px; padding: 4px 14px 14px; scrollbar-width: thin; scroll-padding-left: 14px; }
+:where(html:not([data-narrow])) .bm-band { margin-inline: -32px; padding-inline: 32px; scroll-padding-left: 32px; }
+:where(html[data-narrow]) .bm-band { scroll-snap-type: x proximity; }
+/* Istoria derulată spre stânga se vede că există: marginea se stinge. */
+.bm-band.cut-l { -webkit-mask-image: linear-gradient(90deg, transparent 8px, #000 72px); mask-image: linear-gradient(90deg, transparent 8px, #000 72px); }
+.bm-canvas { position: relative; }
+.bm-edges { position: absolute; inset: 0; overflow: visible; pointer-events: none; }
+.bm-edge { fill: none; stroke: var(--border-strong); stroke-width: 1.5; transition: stroke 150ms, opacity 150ms; }
+.bm-edge.blk { stroke: var(--blocked); stroke-dasharray: 5 4; opacity: 0.7; }
+.bm-edge.hot { stroke: var(--accent); stroke-width: 2; opacity: 1; }
+.bm-edge.dim { opacity: 0.3; }
+
+.bm-node {
+  position: absolute; display: block; text-align: left; border: 0; cursor: pointer;
+  padding: 10px 12px 10px 38px; border-radius: var(--r-m);
+  background: var(--surface); box-shadow: var(--amb); color: var(--txt);
+  scroll-snap-align: start; transition: opacity 150ms, box-shadow 150ms;
 }
-.map-band { fill: var(--surface-2); }
-.map-bandtxt {
-  font-family: var(--display);
-  font-size: calc(10px * var(--text-scale));
-  letter-spacing: 0;
-  fill: var(--txt-faint);
+.bm-node > .ck { position: absolute; left: 12px; top: 11px; width: 16px; height: 16px; }
+.bm-node .bm-id { display: block; font-family: var(--mono); font-size: calc(11px * var(--text-scale)); color: var(--txt-faint); line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bm-node .bm-t {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  margin-top: 2px; font-size: calc(13px * var(--text-scale)); font-weight: 550; line-height: 1.38;
 }
-.map-id {
-  font-family: var(--mono);
-  font-size: calc(9.5px * var(--text-scale));
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  fill: var(--txt-faint);
+.bm-node.blocked { background: var(--surface-2); box-shadow: none; }
+.bm-node.blocked > .ck { box-shadow: none; border: 2px dotted var(--txt-faint); }
+.bm-node.blocked .bm-t { color: var(--txt-dim); }
+.bm-node.done { background: transparent; box-shadow: inset 0 0 0 1px var(--line); }
+.bm-node.done .bm-t { color: var(--txt-faint); font-weight: 500; }
+.bm-node.done > .ck { width: 14px; height: 14px; left: 13px; top: 12px; background: var(--done); box-shadow: none; }
+/* Obstacolul: poarta cu muchia stângă teșită; colțul dreapta-sus retezat = are ocolire. */
+.bm-node.obst { background: var(--surface-3); box-shadow: none; padding-left: 40px; clip-path: polygon(13px 0, 100% 0, 100% 100%, 13px 100%, 0 50%); }
+.bm-node.obst.bypass { clip-path: polygon(13px 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 13px 100%, 0 50%); }
+.bm-node.obst.done { background: transparent; }
+.bm-node .bm-ic { position: absolute; left: 18px; top: 11px; color: var(--txt-faint); display: inline-flex; }
+.bm-node.obst.blocking .bm-ic { color: var(--blocked); }
+.bm-node.sel { box-shadow: var(--amb), 0 0 0 2px var(--accent); }
+.bm-node.done.sel, .bm-node.blocked.sel { box-shadow: 0 0 0 2px var(--accent); }
+.bm-node.dim, .bm-root.dim { opacity: 0.3; }
+
+/* Rădăcina strânsă: închisele de dinainte, din care pornesc ramurile. Singurul verde. */
+.bm-root {
+  position: absolute; display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  min-width: calc(52px * var(--text-scale)); height: calc(28px * var(--text-scale)); padding: 0 10px;
+  border: 0; border-radius: var(--r-s); background: var(--done-soft); color: var(--done);
+  font-size: calc(12px * var(--text-scale)); font-weight: 650; cursor: pointer; white-space: nowrap; transition: opacity 150ms;
 }
-.map-own {
-  font-family: var(--display);
-  font-size: calc(9px * var(--text-scale));
-  letter-spacing: 0;
-  fill: var(--txt-faint);
-  text-anchor: end;
+.bm-root b { font-family: var(--mono); font-weight: 500; font-size: calc(12.5px * var(--text-scale)); }
+
+/* Fără legături: rânduri plate, pe teme. */
+.bm-loose { margin-top: 8px; max-width: 880px; transition: opacity 150ms; }
+.bm-loose.dim { opacity: 0.3; }
+.bm-grp-h {
+  display: flex; align-items: center; gap: 8px; width: 100%; padding: 12px 0 8px; border: 0; background: none;
+  text-align: left; cursor: pointer; color: var(--txt-dim); font-weight: 650; font-size: calc(13px * var(--text-scale));
 }
-.map-title { font-family: var(--display); font-size: calc(12.5px * var(--text-scale)); fill: var(--txt); }
-.map-title.dim { fill: var(--txt-dim); }
-/* Umbra ambientală se leagă aici, nu pe `.map-node` (grupul), ca textul
-   (`.map-id`, `.map-own`, `.map-title`) să nu fie blurat de ea — regula 4,
-   o singură umbră, pe forma nodului. Filtrul se schimbă cu tema: SVG n-are
-   cum să citească `--amb` direct într-un `feDropShadow`, deci sunt două
-   filtre (`#amb-dark`/`#amb-light`, definite în MapView.tsx / build-preview.py)
-   și CSS-ul alege între ele, ca orice altă proprietate de temă. */
-.map-tick { fill: var(--surface-2); filter: url(#amb-dark); }
-.map-obst { fill: var(--surface-3); filter: url(#amb-dark); }
-[data-theme='light'] .map-tick,
-[data-theme='light'] .map-obst { filter: url(#amb-light); }
-.map-edge { fill: none; stroke-width: 1.5; }
-.map-edge.dep { stroke: var(--txt-faint); opacity: 0.4; }
-.map-edge.blk { stroke: var(--blocked); opacity: 0.6; stroke-dasharray: 5 4; }
-.map-edge.don { stroke: var(--done); opacity: 0.45; }
-.map-head.dep { fill: var(--txt-faint); opacity: 0.4; }
-.map-head.blk { fill: var(--blocked); opacity: 0.7; }
-.map-head.don { fill: var(--done); opacity: 0.5; }
-.map-strike { stroke: var(--done); stroke-width: 1.2; opacity: 0.8; }
-.map-node { cursor: pointer; }
+.bm-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--txt-faint); flex: none; }
+.bm-n { color: var(--txt-faint); font-weight: 550; }
+.bm-chev { margin-left: auto; color: var(--txt-faint); display: inline-flex; transition: transform 200ms; }
+.bm-chev.open { transform: rotate(90deg); }
+.bm-row {
+  position: relative; display: flex; align-items: baseline; gap: 10px; width: 100%; padding: 10px 0 10px 30px;
+  border: 0; background: none; text-align: left; cursor: pointer; color: var(--txt); font-size: calc(14px * var(--text-scale));
+}
+.bm-row::after { content: ''; position: absolute; left: 30px; right: 0; bottom: 0; height: 1px; background: var(--line); }
+.bm-row > .ck { position: absolute; left: 2px; top: 11px; width: 18px; height: 18px; }
+.bm-row > .bm-ic { position: absolute; left: 3px; top: 12px; color: var(--txt-faint); display: inline-flex; }
+.bm-row .bm-t { min-width: 0; flex: 1; }
+.bm-row .bm-id { font-family: var(--mono); font-size: calc(11.5px * var(--text-scale)); color: var(--txt-faint); white-space: nowrap; }
+.bm-row.done .bm-t { color: var(--txt-faint); }
+.bm-row.done > .ck { background: var(--done); box-shadow: none; }
+
+/* Telefon: prima atingere alege; bara spune ce e și de cine așteaptă, a doua atingere deschide. */
+.bm-selbar {
+  /* Deasupra butonului + (`.fab`), care stă fix în colțul din dreapta jos. */
+  position: sticky; bottom: 84px; z-index: 6; display: flex; align-items: center; gap: 10px;
+  min-height: 56px; margin-top: 12px; padding: 8px 8px 8px 14px; border-radius: var(--r-m);
+  background: var(--surface-2); box-shadow: var(--amb-lg);
+}
+.bm-selbar .bm-id { flex: none; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--mono); font-size: calc(11px * var(--text-scale)); color: var(--txt-faint); }
+.bm-selbar .bm-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 550; font-size: calc(14px * var(--text-scale)); }
+.bm-selbar button { flex: none; height: 40px; padding: 0 14px; border: 0; border-radius: var(--r-s); background: var(--accent); color: var(--on-accent); font-weight: 650; font-size: calc(14px * var(--text-scale)); cursor: pointer; }
+.bm-probe { position: absolute; left: -9999px; top: 0; visibility: hidden; pointer-events: none; }
+.bm-probe .bm-node { position: static; display: block; }
+.bm-probe .bm-root { position: static; }
+@media (prefers-reduced-motion: reduce) {
+  .bm-edge, .bm-node, .bm-root, .bm-chev, .bm-loose { transition: none; }
+}
 
 /* Proveniența, la coada foii: un fapt care se citește o dată nu are ce căuta
    în primul rând de sub titlu. Stinsă și despărțită de restul printr-un salt

@@ -285,94 +285,77 @@ ORDINE = WAVES + WAVE_GATE + ''.join([
 ])
 
 # ═══ ECRANUL „HARTĂ" ═════════════════════════════════════════════════════════
-# DOM real al MapView.tsx: o poartă deschisă, una cu ocolire (colț retezat),
-# una depășită (tăiată), două tichete, o muchie din fiecare ton (dep/blk/don)
-# și linia „azi". Coordonatele sunt puse de mână, nu prin layoutMap — bancul
-# arată markup-ul și clasele reale, nu reproduce algoritmul de layout.
-M_NODE_W, M_NODE_H, M_COL_GAP, M_ROW_GAP, M_PAD, M_TOP = 196, 52, 68, 24, 36, 112
+# DOM real al MapView.tsx (ramurile, 2026-11-25): o ramură în lucru cu
+# rădăcina strânsă „✓ 3", un obstacol care blochează (poarta, cu ocolire),
+# un tichet gata, doi blocați și muchia `blk`; apoi o ramură terminată, ca
+# după „Arată și închise" (noduri `.done`), și „Fără legături". Coordonatele
+# sunt puse de mână, nu prin layoutBranch — bancul arată markup-ul și clasele
+# reale, nu reproduce algoritmul.
+B_W, B_H, B_GAP, B_RW, B_RH = 240, 64, 72, 52, 28
 
 
-def gate_path(x, y, has_bypass):
-    """Port 1:1 al `gatePath` din MapView.tsx: muchia stângă teșită; colțul
-    dreapta-sus retezat doar dacă `bypass !== null`."""
-    c = 13
-    if has_bypass:
-        return ('M%d %d H%d L%d %d V%d H%d L%d %g Z'
-                 % (x + c, y, x + M_NODE_W - 14, x + M_NODE_W, y + 14, y + M_NODE_H, x + c, x, y + M_NODE_H / 2))
-    return ('M%d %d H%d V%d H%d L%d %g Z'
-             % (x + c, y, x + M_NODE_W, y + M_NODE_H, x + c, x, y + M_NODE_H / 2))
+def ortho(x0, y0, xb, y1, x1):
+    """Port 1:1 al `orthoPath` din lib/branchMap.ts."""
+    if abs(y1 - y0) < 1:
+        return 'M%g %gH%g' % (x0, y0, x1)
+    sg = 1 if y1 > y0 else -1
+    r = max(0, min(8, abs(y1 - y0) / 2, xb - x0, x1 - xb))
+    return ('M%g %gH%gQ%g %g %g %gV%gQ%g %g %g %gH%g'
+            % (x0, y0, xb - r, xb, y0, xb, y0 + sg * r, y1 - sg * r, xb, y1, xb + r, y1, x1))
 
 
-def map_node(kind, nid, title, owner, x, y, bar, bypass=None, closed=False):
-    id_x = x + (26 if kind == 'obstacle' else 14)
-    disp = title if len(title) <= 24 else title[:23] + '…'
-    strike_end = min(id_x + len(disp) * 6.05, x + M_NODE_W - 12)
-    shape = ('<path class="map-obst" d="%s" />' % gate_path(x, y, bypass is not None)) if kind == 'obstacle' else (
-        '<rect class="map-tick" x="%d" y="%d" width="%d" height="%d" rx="10" />' % (x, y, M_NODE_W, M_NODE_H))
-    bar_x = x + 13 if kind == 'obstacle' else x
-    strike = ('<line class="map-strike" x1="%g" y1="%d" x2="%g" y2="%d" />' % (id_x, y + 34, strike_end, y + 34)
-               if closed else '')
-    return ('<g class="map-node">%s'
-            '<rect x="%d" y="%d" width="2.5" height="%d" fill="%s" />'
-            '<text class="map-id" x="%g" y="%d">%s</text>'
-            '<text class="map-own" x="%d" y="%d">%s</text>'
-            '<text class="map-title%s" x="%g" y="%d">%s</text>%s</g>'
-            % (shape, bar_x, y, M_NODE_H, bar, id_x, y + 19, nid, x + M_NODE_W - 12, y + 19, owner,
-               ' dim' if closed else '', id_x, y + 38, disp, strike))
+def bm_node(x, y, nid, title, cls='', obst=False):
+    lead = ('<span class="bm-ic">%s</span>' % ic('octagon-alert', 14)) if obst else (
+        '<span class="ck%s">%s</span>' % (' on' if 'done' in cls else '', ic('check', 12) if 'done' in cls else ''))
+    return ('<button type="button" class="bm-node%s" style="left:%dpx;top:%dpx;width:%dpx;height:%dpx">%s'
+            '<span class="bm-id">%s</span><span class="bm-t">%s</span></button>'
+            % ((' ' + cls) if cls else '', x, y, B_W, B_H, lead, nid, title))
 
 
-def map_edge(a, b, tone):
-    x1, y1 = a['x'] + M_NODE_W, a['y'] + M_NODE_H / 2
-    x2, y2 = b['x'], b['y'] + M_NODE_H / 2
-    dx = max(46, (x2 - x1) / 2.3)
-    d = 'M%g %g C%g %g %g %g %g %g' % (x1, y1, x1 + dx, y1, x2 - dx, y2, x2 - 9, y2)
-    head = 'M%g %g L%g %g L%g %g Z' % (x2 - 9, y2 - 4.5, x2 - 1, y2, x2 - 9, y2 + 4.5)
-    return '<g><path class="map-edge %s" d="%s" /><path class="map-head %s" d="%s" /></g>' % (tone, d, tone, head)
+def bm_branch(head_id, head_t, count, width, height, edges, nodes):
+    return ('<section class="bm-branch"><div class="bm-head"><span class="bm-hid">%s</span>'
+            '<span class="bm-ht">%s</span><span class="bm-hn">· %s</span></div>'
+            '<div class="bm-band"><div class="bm-canvas" style="width:%dpx;height:%dpx">'
+            '<svg class="bm-edges" width="%d" height="%d">%s</svg>%s</div></div></section>'
+            % (head_id, head_t, count, width, height, width, height,
+               ''.join('<path class="bm-edge%s" d="%s" />' % ((' ' + c) if c else '', d) for d, c in edges),
+               ''.join(nodes)))
 
 
-def mnode(kind, nid, title, owner, x, y, bar, bypass=None, closed=False):
-    return {'kind': kind, 'id': nid, 'title': title, 'owner': owner, 'x': x, 'y': y,
-            'bar': bar, 'bypass': bypass, 'closed': closed}
-
-
-_M_COL1 = M_PAD + M_NODE_W + M_COL_GAP
-_M_O1 = mnode('obstacle', 'TUR-B1', 'API key provider extern', 'Echipa API', M_PAD, M_TOP, 'var(--blocked)')
-_M_O2 = mnode('obstacle', 'TUR-B2', 'Aviz juridic date personale', 'Juridic', M_PAD,
-               M_TOP + (M_NODE_H + M_ROW_GAP), 'var(--blocked)', bypass='Pornim cu date mock')
-_M_O3 = mnode('obstacle', 'TUR-B3', 'Acces VPN clienți', 'IT', M_PAD,
-               M_TOP + 2 * (M_NODE_H + M_ROW_GAP), 'var(--done)', closed=True)
-_M_I1 = mnode('issue', 'TUR-07', 'Config webhook plăți', '', _M_COL1, M_TOP, 'var(--active)')
-_M_I2 = mnode('issue', 'TUR-08', 'Trimite draft ofertă', '', _M_COL1, M_TOP + (M_NODE_H + M_ROW_GAP), 'var(--layer-1)')
-_M_NODES = [_M_O1, _M_O2, _M_O3, _M_I1, _M_I2]
-# O muchie din fiecare ton: dep (tichet → tichet), blk (obstacol deschis →
-# tichet), don (obstacol depășit → tichet).
-_M_EDGES = [(_M_I1, _M_I2, 'dep'), (_M_O1, _M_I1, 'blk'), (_M_O3, _M_I2, 'don')]
-
-_M_MAX_ROWS = 3
-_M_WIDTH = M_PAD * 2 + 1 * (M_NODE_W + M_COL_GAP) + M_NODE_W
-_M_HEIGHT = M_TOP + _M_MAX_ROWS * (M_NODE_H + M_ROW_GAP) + M_PAD
-_M_TODAY_X = _M_COL1 - 34
+_C1 = B_W + B_GAP  # coloana 0 are și obstacolul, deci e lată cât un nod
+_C2 = _C1 + B_W + B_GAP
+_ROOT_Y, _OB_Y = 18, 92
+_T7_Y = 55
+_T8_Y, _T9_Y = 0, 110
+_HARTA_LIVE = bm_branch(
+    'TUR-01', 'Contul de comerciant', '3 deschise din 7', _C2 + B_W, 174,
+    [(ortho(B_RW, _ROOT_Y + B_RH / 2, _C1 - B_GAP / 2, _T7_Y + B_H / 2, _C1), ''),
+     (ortho(B_W, _OB_Y + B_H / 2, _C1 - B_GAP / 2, _T7_Y + B_H / 2, _C1), 'blk'),
+     (ortho(_C1 + B_W, _T7_Y + B_H / 2, _C2 - B_GAP / 2, _T8_Y + B_H / 2, _C2), ''),
+     (ortho(_C1 + B_W, _T7_Y + B_H / 2, _C2 - B_GAP / 2, _T9_Y + B_H / 2, _C2), '')],
+    ['<button type="button" class="bm-root" style="left:0;top:%dpx">%s<b>3</b></button>' % (_ROOT_Y, ic('check', 12)),
+     bm_node(0, _OB_Y, 'obstacol · Echipa API', 'API key de la procesatorul de plăți', 'obst blocking bypass', obst=True),
+     bm_node(_C1, _T7_Y, 'TUR-07', 'Config webhook plăți și semnătura cererilor'),
+     bm_node(_C2, _T8_Y, 'TUR-08', 'Trimite draft ofertă către client', 'blocked'),
+     bm_node(_C2, _T9_Y, 'TUR-09', 'Rambursările din panoul de administrare', 'blocked')])
+_HARTA_DONE = bm_branch(
+    'TUR-02', 'Domeniul și certificatul', 'toate 2 închise', _C1 + B_W, B_H,
+    [(ortho(B_W, B_H / 2, _C1 - B_GAP / 2, B_H / 2, _C1), '')],
+    [bm_node(0, 0, 'TUR-02', 'Domeniul și certificatul', 'done'),
+     bm_node(_C1, 0, 'TUR-05', 'Redirecționările de pe domeniul vechi', 'done')])
 
 HARTA = (
-    '<div class="map-wrap"><svg width="%d" height="%d" viewBox="0 0 %d %d">'
-    % (_M_WIDTH, _M_HEIGHT, _M_WIDTH, _M_HEIGHT)
-    # Umbra e pe forma nodului (.map-tick/.map-obst în styles.css), nu pe
-    # `<g class="map-node">` — la fel ca MapView.tsx, ca textul să nu fie
-    # blurat. Două filtre, unul per temă; CSS-ul alege (styles.css e link-uit
-    # direct de acest bancul, deci regula reală decide, nu ceva duplicat aici).
-    + '<defs>'
-      '<filter id="amb-dark" x="-25%" y="-40%" width="150%" height="190%">'
-      '<feDropShadow dx="0" dy="3" stdDeviation="7" flood-opacity="0.30" /></filter>'
-      '<filter id="amb-light" x="-25%" y="-40%" width="150%" height="190%">'
-      '<feDropShadow dx="0" dy="3" stdDeviation="7" flood-color="#29343A" flood-opacity="0.06" /></filter>'
-      '</defs>'
-    + '<line x1="%g" y1="16" x2="%g" y2="%d" stroke="var(--accent)" stroke-width="2" stroke-dasharray="2 5" />'
-      % (_M_TODAY_X, _M_TODAY_X, _M_HEIGHT - 12)
-    + '<text class="map-bandtxt" x="%g" y="14">AZI · 10 sept</text>' % (_M_TODAY_X + 8)
-    + ''.join(map_edge(a, b, tone) for a, b, tone in _M_EDGES)
-    + ''.join(map_node(n['kind'], n['id'], n['title'], n['owner'], n['x'], n['y'], n['bar'],
-                        bypass=n['bypass'], closed=n['closed']) for n in _M_NODES)
-    + '</svg></div>'
+    '<div class="bm"><div class="bm-bar"><span class="bm-sum">1 ramură în lucru · 2 fără legături · 1 terminată</span>'
+    '<button type="button" class="chip bm-toggle on" aria-pressed="true">%sArată și închise</button></div>'
+    % ic('check', 14)
+    + _HARTA_LIVE
+    + '<h3 class="bm-sect">Ramuri terminate · 1</h3>' + _HARTA_DONE
+    + '<section class="bm-loose"><h3 class="bm-sect">Fără legături · 2</h3><div class="bm-grp">'
+      '<button type="button" class="bm-grp-h" aria-expanded="true"><span class="bm-dot"></span>Fără temă'
+      '<span class="bm-n">2</span><span class="bm-chev open">%s</span></button>'
+      '<button type="button" class="bm-row"><span class="ck"></span><span class="bm-t">Textele pentru pagina de prețuri</span><span class="bm-id">TUR-11</span></button>'
+      '<button type="button" class="bm-row done"><span class="ck on">%s</span><span class="bm-t">Logo în format vectorial</span><span class="bm-id">TUR-04</span></button>'
+      '</div></section></div>' % (ic('chevron-right', 14), ic('check', 12))
 )
 
 # ═══ ECRANUL „AZI" ═══════════════════════════════════════════════════════════
@@ -1195,10 +1178,10 @@ SCREENS = {
     'lista-gol': ('Aplicație Turism', 'Listă · niciun tichet ales', 'TU', True, True,
                   '<div class="tabs"><button class="tab">Ordine</button><button class="tab on">Listă</button>'
                   '<button class="tab">Hartă</button><button class="tab">Teme</button></div>' + LISTA_GOL),
-    # MapView.tsx randează `.map-wrap` direct, fără `.panel` în jur — screen()
+    # MapView.tsx randează `.bm` direct, fără `.panel` în jur — screen()
     # pune deja tot corpul într-un singur `.view` (ca ProjectDetail.tsx), deci
     # aici nu se mai adaugă alt înveliș.
-    'harta': ('Aplicație Turism', 'Hartă · toate valurile', 'TU', True, True,
+    'harta': ('Aplicație Turism', 'Hartă · ramuri', 'TU', True, True,
               '<div class="tabs"><button class="tab">Ordine</button><button class="tab">Listă</button>'
               '<button class="tab on">Hartă</button><button class="tab">Teme</button></div>'
               + HARTA),

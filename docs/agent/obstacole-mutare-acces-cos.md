@@ -20,8 +20,8 @@ separate, nu un singur „rezolvat", fiindcă răspund la întrebări diferite: 
 spune „obstacolul nu mai există", cealaltă „există încă, dar l-am ocolit" — un
 raport care le-ar contopi ar minți despre ce chiar s-a rezolvat.
 
-`bypass !== null` e sursa unică a colțului retezat de pe hartă (`gatePath` din
-`MapView.tsx`). La salvare, `ObstacleForm.tsx` normalizează un câmp de ocolire
+`bypass !== null` e sursa unică a colțului retezat de pe hartă (clasa `bypass`
+pe nodul `.bm-node.obst` din `MapView.tsx`, vezi `docs/agent/harta.md`). La salvare, `ObstacleForm.tsx` normalizează un câmp de ocolire
 gol (`''`) la `null` — gol înseamnă „nu are ocolire", nu „ocolire cu text
 gol", și de-aia un obstacol fără ocolire nu are colțul retezat.
 

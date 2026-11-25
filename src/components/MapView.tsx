@@ -1,201 +1,331 @@
-import { useMemo } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useHorizontal } from '../store'
 import { useUI } from '../ui'
-import { COL_GAP, layoutMap, NODE_H, NODE_W, PAD, TOP, type MapNode } from '../lib/mapLayout'
-import { openObstacles } from '../lib/obstacles'
-import { layerVar } from '../lib/layerColors'
+import { useNarrow } from '../hooks'
+import { Icon } from './Icon'
 import { displayIssueId } from '../lib/issueId'
-
-const RO_MONTHS = ['ian', 'feb', 'mar', 'apr', 'mai', 'iun', 'iul', 'aug', 'sept', 'oct', 'nov', 'dec']
-
-const BAND_H = 26
-const BAND_Y = TOP - BAND_H - 20
-
-/** Poarta: muchia stângă teșită. Colț dreapta-sus retezat = are ocolire. */
-function gatePath(x: number, y: number, hasBypass: boolean): string {
-  const c = 13
-  return hasBypass
-    ? `M${x + c} ${y} H${x + NODE_W - 14} L${x + NODE_W} ${y + 14} V${y + NODE_H} H${x + c} L${x} ${y + NODE_H / 2} Z`
-    : `M${x + c} ${y} H${x + NODE_W} V${y + NODE_H} H${x + c} L${x} ${y + NODE_H / 2} Z`
-}
+import { deriveState, indexById } from '../lib/engine'
+import { openObstacles } from '../lib/obstacles'
+import {
+  branchGraph, edgeOnLineage, layoutBranch, lineage, ROOT, splitBranches,
+  type Branch, type BranchGraph, type BranchLayout, type MapItem,
+} from '../lib/branchMap'
 
 /**
- * Închis, în sensul afișat pe hartă: tichet bifat, sau obstacol EFECTIV
- * închis. „Efectiv" contează, nu starea lui brută: `openObstacles` spune
- * deschis dacă starea proprie e deschisă SAU dacă orice obstacol de care
- * depinde e încă deschis — exact cazul din spec, „#19 câte tool-uri" e
- * depășit în teorie, dar dacă „#1 cine e utilizatorul" e încă deschis,
- * răspunsul lui nu ține. Un obstacol `depasit`/`ocolit` cu o dependență încă
- * deschisă tot blochează, deci tot trebuie citit ca deschis pe hartă — altfel
- * harta s-ar contrazice cu propria muchie (`blk` care pleacă dintr-un nod
- * desenat ca „gata").
+ * „Hartă": dependențele ca ramuri, de la stânga la dreapta (decizia omului,
+ * 2026-11-25; macheta aprobată e `design/harta/`). Aritmetica stă în
+ * `lib/branchMap.ts`; aici doar desenul și gesturile. Regulile și de-ce-urile:
+ * `docs/agent/harta.md`.
  */
-function isClosed(n: MapNode, openObstacleIds: Set<string>): boolean {
-  return n.kind === 'issue' ? n.state === 'done' : !openObstacleIds.has(n.id)
+
+const SHOW_ALL_KEY = (projectId: string) => `horizontal:map-all:${projectId}`
+const readShowAll = (projectId: string | undefined): boolean => {
+  if (!projectId) return false
+  try { return localStorage.getItem(SHOW_ALL_KEY(projectId)) === '1' } catch { return false }
 }
 
-/**
- * Culoarea barei din stânga nodului. Pentru obstacole, `--blocked`/`--done`
- * vine din `openObstacles` (efectiv deschis, cu lanțul de dependențe), nu din
- * starea brută — vezi comentariul de la `isClosed`.
- *
- * Pentru tichete, `layerVar(i)` e indexat, peste tot în restul aplicației,
- * după poziția layerului în vederea ORDONATĂ — aici nu există așa ceva, harta
- * are doar coloane de adâncime. Indexul pe care i-l dăm mai jos e coloana
- * (adâncimea de dependență), reconstruită din `x`, fiindcă `MapNode` nu
- * poartă separat coloana — e o aproximare onestă, nu „layerul real" al
- * tichetului în vreo vedere filtrată pe val.
- */
-function barColor(n: MapNode, openObstacleIds: Set<string>, blockingById: Record<string, boolean>): string {
-  if (n.kind === 'obstacle') {
-    if (!openObstacleIds.has(n.id)) return 'var(--done)'
-    // Deschis dar `blocking: false` nu oprește nimic — bara nu are voie să-l
-    // arate identic cu un obstacol care chiar blochează. Cade pe neutru
-    // (`--txt-faint`), aceeași culoare pe care o ia muchia lui (tonul `dep`).
-    return blockingById[n.id] ? 'var(--blocked)' : 'var(--txt-faint)'
-  }
-  if (n.state === 'done') return 'var(--done)'
-  if (n.state === 'active') return 'var(--active)'
-  const col = Math.round((n.x - PAD) / (NODE_W + COL_GAP))
-  return layerVar(col)
-}
+/** Grupurile din „Fără legături" mai lungi de atât pornesc strânse. */
+const LOOSE_OPEN_MAX = 8
+
+type Sel = { branch: string; key: string; hover?: boolean } | null
 
 export function MapView() {
-  const { issues, obstacles, obstacleLinks, waves } = useHorizontal()
+  const { project, issues, obstacles, obstacleLinks, themes, blockedByObstacle } = useHorizontal()
   const { openIssue, pushSheet } = useUI()
+  const narrow = useNarrow()
+  const projectId = project?.id
 
-  const layout = useMemo(
-    () => layoutMap({ issues, obstacles, links: obstacleLinks, waves }),
-    [issues, obstacles, obstacleLinks, waves],
-  )
-  const openObstacleIds = useMemo(() => openObstacles(obstacles), [obstacles])
-  const blockingById = useMemo(() => {
-    const m: Record<string, boolean> = {}
-    for (const o of obstacles) m[o.id] = o.blocking
-    return m
-  }, [obstacles])
+  const [showAll, setShowAllState] = useState(() => readShowAll(projectId))
+  const [shownFor, setShownFor] = useState(projectId)
+  if (shownFor !== projectId) { setShownFor(projectId); setShowAllState(readShowAll(projectId)) }
+  const [sel, setSel] = useState<Sel>(null)
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
 
-  // Nu „niciun tichet" — un proiect poate avea o fază formată numai din
-  // depășire de obstacole, fără niciun tichet (Faza 0 din cazul care a
-  // motivat funcția). Harta se desenează cât timp e ceva de desenat; golul
-  // real e „nici tichet, nici obstacol".
-  if (layout.nodes.length === 0) {
-    return (
-      <div className="panel">
-        <p className="empty">Nimic de afișat pe hartă. Adaugă un tichet sau un obstacol.</p>
-      </div>
-    )
+  // ── Datele: tichete + obstacole ca noduri, cu predecesorii lor ──────────
+  const openObst = useMemo(() => openObstacles(obstacles), [obstacles])
+  const byIssue = useMemo(() => indexById(issues), [issues])
+  const { items, byId } = useMemo(() => {
+    const linksTo: Record<string, string[]> = {}
+    for (const l of obstacleLinks) (linksTo[l.issueId] ??= []).push(l.obstacleId)
+    const items: MapItem[] = [
+      ...issues.map((i): MapItem => ({ id: i.id, kind: 'issue', closed: i.done, deps: [...(i.deps ?? []), ...(linksTo[i.id] ?? [])] })),
+      ...obstacles.map((o): MapItem => ({ id: o.id, kind: 'obstacle', closed: !openObst.has(o.id), deps: o.deps ?? [] })),
+    ]
+    return { items, byId: Object.fromEntries(items.map((it) => [it.id, it])) }
+  }, [issues, obstacles, obstacleLinks, openObst])
+  const split = useMemo(() => splitBranches(items), [items])
+  const obstById = useMemo(() => Object.fromEntries(obstacles.map((o) => [o.id, o])), [obstacles])
+
+  // ── Mărimile: măsurate pe un nod-probă, ca să urmeze fontul și mărimea textului ──
+  const probe = useRef<HTMLDivElement>(null)
+  const [dims, setDims] = useState({ nodeH: 64, rootW: 52, rootH: 28 })
+  useLayoutEffect(() => {
+    const el = probe.current
+    if (!el) return
+    const measure = () => {
+      const node = el.querySelector<HTMLElement>('.bm-node')!
+      const root = el.querySelector<HTMLElement>('.bm-root')!
+      const next = { nodeH: Math.ceil(node.offsetHeight), rootW: Math.ceil(root.offsetWidth), rootH: Math.ceil(root.offsetHeight) }
+      setDims((d) => (d.nodeH === next.nodeH && d.rootW === next.rootW && d.rootH === next.rootH ? d : next))
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+  const nodeW = narrow ? 260 : 240
+  const gap = narrow ? 56 : 72
+
+  const shown: Branch[] = useMemo(() => (showAll ? [...split.active, ...split.finished] : split.active), [split, showAll])
+  const drawn = useMemo(() => {
+    const out = new Map<string, { g: BranchGraph; L: BranchLayout }>()
+    for (const b of shown) {
+      const g = branchGraph(b, byId, showAll)
+      out.set(b.rootId, { g, L: layoutBranch(g, { nodeW, nodeH: dims.nodeH, gap, vgap: 14, rootW: dims.rootW, rootH: dims.rootH }) })
+    }
+    return out
+  }, [shown, byId, showAll, nodeW, gap, dims])
+
+  // ── „Arată și închise": deschisele rămân pe loc, istoria apare în stânga ──
+  const wrap = useRef<HTMLDivElement>(null)
+  const flip = useRef<{ rects: Map<string, DOMRect>; roots: Map<string, DOMRect>; anchors: Map<string, { key: string; left: number }> } | null>(null)
+  const setShowAll = (v: boolean) => {
+    const root = wrap.current
+    if (root) {
+      const rects = new Map<string, DOMRect>(), roots = new Map<string, DOMRect>(), anchors = new Map<string, { key: string; left: number }>()
+      root.querySelectorAll<HTMLElement>('[data-bm-key]').forEach((n) => {
+        const b = n.closest<HTMLElement>('[data-branch]')!.dataset.branch!
+        const r = n.getBoundingClientRect()
+        rects.set(`${b}|${n.dataset.bmKey}`, r)
+        if (n.dataset.bmKey === ROOT) roots.set(b, r)
+        else if (!anchors.has(b) && !n.classList.contains('done')) anchors.set(b, { key: n.dataset.bmKey!, left: r.left })
+      })
+      flip.current = { rects, roots, anchors }
+    }
+    setSel(null)
+    setShowAllState(v)
+    if (projectId) try { localStorage.setItem(SHOW_ALL_KEY(projectId), v ? '1' : '0') } catch { /* doar comoditate */ }
+  }
+  useLayoutEffect(() => {
+    const f = flip.current
+    const root = wrap.current
+    flip.current = null
+    if (!f || !root) return
+    root.querySelectorAll<HTMLElement>('[data-branch]').forEach((br) => {
+      const a = f.anchors.get(br.dataset.branch!)
+      const band = br.querySelector<HTMLElement>('.bm-band')
+      const n = a && br.querySelector<HTMLElement>(`[data-bm-key="${CSS.escape(a.key)}"]`)
+      if (band && n) band.scrollLeft += n.getBoundingClientRect().left - a.left
+      band?.classList.toggle('cut-l', band.scrollLeft > 4)
+    })
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    root.querySelectorAll<HTMLElement>('[data-bm-key]').forEach((n) => {
+      const b = n.closest<HTMLElement>('[data-branch]')!.dataset.branch!
+      const old = f.rects.get(`${b}|${n.dataset.bmKey}`)
+      const from = old ?? f.roots.get(b)
+      if (!from) return
+      const now = n.getBoundingClientRect()
+      const dx = from.left - now.left, dy = from.top - now.top
+      n.animate(old
+        ? [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }]
+        : [{ transform: `translate(${dx}px, ${dy}px) scale(0.6)`, opacity: 0 }, { transform: 'none', opacity: 1 }],
+      { duration: 240, easing: 'ease-out' })
+    })
+    root.querySelectorAll('.bm-edges').forEach((s) => s.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 240, easing: 'ease-out' }))
+  }, [showAll])
+
+  // ── Gesturile ─────────────────────────────────────────────────────────
+  const open = (key: string) => {
+    if (byId[key]?.kind === 'obstacle') pushSheet({ kind: 'obstacle-form', obstacleId: key })
+    else openIssue(key)
+  }
+  const tapNode = (branch: string, key: string, el: HTMLElement) => {
+    if (key === ROOT) { setShowAll(true); return }
+    // Pe desktop clicul deschide direct (panoul lateral); lanțul rămâne aprins.
+    if (!narrow) { setSel({ branch, key }); open(key); return }
+    // Pe telefon prima atingere alege și aprinde lanțul; a doua deschide.
+    if (sel && !sel.hover && sel.branch === branch && sel.key === key) { open(key); return }
+    setSel({ branch, key })
+    // Centrat și pe orizontală (banda), și pe verticală (pagina): altfel un
+    // tichet de jos ajunge sub bara de selecție.
+    const smooth = !matchMedia('(prefers-reduced-motion: reduce)').matches
+    el.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'center', inline: 'center' })
+  }
+  const lit = useMemo(() => {
+    if (!sel) return null
+    const d = drawn.get(sel.branch)
+    return d ? { ...sel, l: lineage(d.g.edges, sel.key) } : null
+  }, [sel, drawn])
+
+  const markScroll = (e: React.UIEvent<HTMLElement>) => {
+    const band = e.currentTarget
+    band.classList.toggle('cut-l', band.scrollLeft > 4)
   }
 
-  const { nodes, edges, bands, todayX, width, height } = layout
-  const byId: Record<string, MapNode> = {}
-  for (const n of nodes) byId[n.id] = n
+  // ── „Fără legături", pe teme ───────────────────────────────────────────
+  const looseGroups = useMemo(() => {
+    const groups = new Map<string, string[]>()
+    for (const id of split.loose) {
+      const it = byId[id]
+      if (it.closed && !showAll) continue
+      const k = it.kind === 'obstacle' ? '@obstacle' : (byIssue[id]?.theme || '')
+      if (!groups.has(k)) groups.set(k, [])
+      groups.get(k)!.push(id)
+    }
+    for (const ids of groups.values()) ids.sort((a, b) => Number(byId[a].closed) - Number(byId[b].closed))
+    // Temele în ordinea proiectului, apoi „Fără temă", apoi obstacolele.
+    const rank = (k: string) => k === '@obstacle' ? 1e6 : k === '' ? 1e5 : themes.findIndex((t) => t.key === k)
+    return [...groups.entries()].sort((a, b) => rank(a[0]) - rank(b[0]))
+  }, [split, byId, byIssue, showAll, themes])
 
-  const now = new Date()
-  const todayLabel = `AZI · ${now.getDate()} ${RO_MONTHS[now.getMonth()]}`
+  if (items.length === 0) {
+    return <div className="panel"><p className="empty">Nimic de afișat pe hartă. Adaugă un tichet sau un obstacol.</p></div>
+  }
 
-  const handleClick = (n: MapNode) => {
-    if (n.kind === 'issue') openIssue(n.id)
-    else pushSheet({ kind: 'obstacle-form', obstacleId: n.id })
+  const looseOpen = split.loose.filter((id) => !byId[id].closed).length
+  const pc = project?.accent ? ({ ['--pc' as string]: project.accent }) : undefined
+  const selected = sel && !sel.hover ? sel : null
+  const selItem = selected ? byId[selected.key] : null
+
+  const nodeClass = (key: string): string => {
+    const it = byId[key]
+    if (it.kind === 'obstacle') {
+      const o = obstById[key]
+      return `bm-node obst${it.closed ? ' done' : o?.blocking ? ' blocking' : ''}${o?.bypass ? ' bypass' : ''}`
+    }
+    if (it.closed) return 'bm-node done'
+    const i = byIssue[key]
+    const blocked = (i && deriveState(i, byIssue) === 'blocked') || (blockedByObstacle[key]?.length ?? 0) > 0
+    return `bm-node${blocked ? ' blocked' : ''}`
+  }
+  const nodeTitle = (key: string) => byIssue[key]?.title ?? obstById[key]?.title ?? key
+  const nodeLabel = (key: string) => byId[key].kind === 'obstacle' ? (obstById[key]?.owner ? `obstacol · ${obstById[key].owner}` : 'obstacol') : displayIssueId(key)
+  const waitsOf = (key: string): string[] => {
+    const i = byIssue[key]
+    if (!i || i.done) return []
+    return [
+      ...(i.deps ?? []).filter((d) => byIssue[d] && !byIssue[d].done).map(displayIssueId),
+      ...(blockedByObstacle[key] ?? []).map((o) => obstById[o]?.title ?? 'un obstacol'),
+    ]
   }
 
   return (
-    <div className="map-wrap">
-      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
-        {/* Umbra ambientală (regula 4) — o singură dată, pe forma nodului,
-            NU pe grupul întreg: aplicată pe `<g>` ar cădea și pe text, adică
-            l-ar blura. Două filtre, nu unul, fiindcă `feDropShadow` nu poate
-            citi `--amb` din CSS direct — `flood-opacity` e totuși un
-            atribut de prezentare, deci CSS-ul alege între ele (`.map-tick`,
-            `.map-obst` în styles.css), la fel cum orice altă clasă și-ar
-            alege umbra pe temă. Valorile reproduc `--amb`: negru 0.30 pe
-            întuneric (~0.42 în box-shadow, scăzut fiindcă filtrul se vede
-            peste un fundal deja închis), #29343A 0.06 pe deschis — identic
-            cu tonul umbrei din `--amb` acolo. */}
-        <defs>
-          <filter id="amb-dark" x="-25%" y="-40%" width="150%" height="190%">
-            <feDropShadow dx="0" dy="3" stdDeviation="7" floodOpacity="0.30" />
-          </filter>
-          <filter id="amb-light" x="-25%" y="-40%" width="150%" height="190%">
-            <feDropShadow dx="0" dy="3" stdDeviation="7" floodColor="#29343A" floodOpacity="0.06" />
-          </filter>
-        </defs>
+    <div className={`bm${lit ? ' lit' : ''}`} ref={wrap} style={pc} onClick={(e) => { if (e.target === e.currentTarget) setSel(null) }}>
+      <div className="bm-bar">
+        <span className="bm-sum">
+          {split.active.length} {split.active.length === 1 ? 'ramură' : 'ramuri'} în lucru · {looseOpen} fără legături
+          {showAll && split.finished.length > 0 && ` · ${split.finished.length} ${split.finished.length === 1 ? 'terminată' : 'terminate'}`}
+        </span>
+        <button type="button" className={`chip bm-toggle${showAll ? ' on' : ''}`} aria-pressed={showAll} onClick={() => setShowAll(!showAll)}>
+          <Icon name={showAll ? 'check' : 'show'} size={14} />Arată și închise
+        </button>
+      </div>
 
-        {bands.map((b, i) => (
-          <g key={i}>
-            <rect className="map-band" x={b.x1} y={BAND_Y} width={b.x2 - b.x1} height={BAND_H} rx="6" />
-            <text className="map-bandtxt" x={b.x1 + 12} y={BAND_Y + 17}>
-              {b.label}
-            </text>
-          </g>
-        ))}
+      {split.active.length === 0 && !showAll && (
+        <p className="bm-empty">Nicio ramură în lucru: tot ce are legături e închis. „Arată și închise" aduce istoria înapoi.</p>
+      )}
 
-        <line
-          x1={todayX}
-          y1={16}
-          x2={todayX}
-          y2={height - 12}
-          stroke="var(--accent)"
-          strokeWidth="2"
-          strokeDasharray="2 5"
-        />
-        <text className="map-bandtxt" x={todayX + 8} y={14}>
-          {todayLabel}
-        </text>
+      {shown.map((b, i) => {
+        const d = drawn.get(b.rootId)
+        if (!d) return null
+        const { g, L } = d
+        const inBranch = lit?.branch === b.rootId
+        const keep = (key: string) => !lit || (inBranch && (key === lit.key || lit.l.up.has(key) || lit.l.down.has(key)))
+        return (
+          <section key={b.rootId} className="bm-branch" data-branch={b.rootId}>
+            {showAll && i === split.active.length && <h3 className="bm-sect">Ramuri terminate · {split.finished.length}</h3>}
+            <div className="bm-head">
+              <span className="bm-hid">{nodeLabel(b.rootId)}</span>
+              <span className="bm-ht">{nodeTitle(b.rootId)}</span>
+              <span className="bm-hn">· {b.open ? `${b.open} ${b.open === 1 ? 'deschis' : 'deschise'} din ${b.ids.length}` : `toate ${b.ids.length} închise`}</span>
+            </div>
+            <div className="bm-band" onScroll={markScroll} onClick={(e) => { if (!(e.target as HTMLElement).closest('button')) setSel(null) }}>
+              <div className="bm-canvas" style={{ width: L.width, height: L.height }}>
+                <svg className="bm-edges" width={L.width} height={L.height} aria-hidden="true">
+                  {L.paths.map((p) => {
+                    const hot = inBranch && lit ? edgeOnLineage(p.from, p.to, lit.key, lit.l) : false
+                    const src = byId[p.from]
+                    const blk = src?.kind === 'obstacle' && !src.closed && obstById[p.from]?.blocking
+                    return <path key={`${p.from}>${p.to}`} d={p.d} className={`bm-edge${blk ? ' blk' : ''}${hot ? ' hot' : lit ? ' dim' : ''}`} />
+                  })}
+                </svg>
+                {g.nodes.map((n) => {
+                  const box = L.boxes[n.key]
+                  if (!box) return null
+                  const dim = !keep(n.key)
+                  const isSel = selected?.branch === b.rootId && selected.key === n.key
+                  if (n.kind === 'root') {
+                    return (
+                      <button key={ROOT} type="button" data-bm-key={ROOT} className={`bm-root${dim ? ' dim' : ''}`}
+                        style={{ left: box.x, top: box.y }} title={`Arată cele ${n.count} închise de dinainte`}
+                        onClick={(e) => tapNode(b.rootId, ROOT, e.currentTarget)}>
+                        <Icon name="check" size={12} /><b>{n.count}</b>
+                      </button>
+                    )
+                  }
+                  return (
+                    <button key={n.key} type="button" data-bm-key={n.key}
+                      className={`${nodeClass(n.key)}${dim ? ' dim' : ''}${isSel ? ' sel' : ''}`}
+                      style={{ left: box.x, top: box.y, width: box.w, height: box.h }}
+                      onClick={(e) => tapNode(b.rootId, n.key, e.currentTarget)}
+                      onMouseEnter={narrow ? undefined : () => setSel((s) => (s && !s.hover ? s : { branch: b.rootId, key: n.key, hover: true }))}
+                      onMouseLeave={narrow ? undefined : () => setSel((s) => (s?.hover ? null : s))}>
+                      {byId[n.key].kind === 'obstacle'
+                        ? <span className="bm-ic"><Icon name="obstacle" size={14} /></span>
+                        : <span className={`ck${byId[n.key].closed ? ' on' : ''}`}>{byId[n.key].closed && <Icon name="check" size={12} />}</span>}
+                      <span className="bm-id">{nodeLabel(n.key)}</span>
+                      <span className="bm-t">{nodeTitle(n.key)}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </section>
+        )
+      })}
 
-        {/* Muchiile se desenează înaintea nodurilor, ca nodurile să le acopere. */}
-        {edges.map((e, i) => {
-          const a = byId[e.from]
-          const b = byId[e.to]
-          if (!a || !b) return null
-          const x1 = a.x + NODE_W
-          const y1 = a.y + NODE_H / 2
-          const x2 = b.x
-          const y2 = b.y + NODE_H / 2
-          const dx = Math.max(46, (x2 - x1) / 2.3)
-          const d = `M${x1} ${y1} C${x1 + dx} ${y1} ${x2 - dx} ${y2} ${x2 - 9} ${y2}`
-          const head = `M${x2 - 9} ${y2 - 4.5} L${x2 - 1} ${y2} L${x2 - 9} ${y2 + 4.5} Z`
-          return (
-            <g key={`${e.from}-${e.to}-${i}`}>
-              <path className={`map-edge ${e.tone}`} d={d} />
-              <path className={`map-head ${e.tone}`} d={head} />
-            </g>
-          )
-        })}
+      {looseGroups.length > 0 && (
+        <section className={`bm-loose${lit ? ' dim' : ''}`}>
+          <h3 className="bm-sect">Fără legături · {looseGroups.reduce((s, [, ids]) => s + ids.length, 0)}</h3>
+          {looseGroups.map(([k, ids]) => {
+            const theme = themes.find((t) => t.key === k)
+            const name = k === '@obstacle' ? 'Obstacole' : theme?.name ?? (k ? k : 'Fără temă')
+            const isOpen = openGroups[k] ?? ids.length <= LOOSE_OPEN_MAX
+            return (
+              <div key={k || '@none'} className="bm-grp">
+                <button type="button" className="bm-grp-h" aria-expanded={isOpen} onClick={() => setOpenGroups((g) => ({ ...g, [k]: !isOpen }))}>
+                  <span className="bm-dot" style={theme ? { background: theme.color } : undefined} />
+                  {name}<span className="bm-n">{ids.length}</span>
+                  <span className={`bm-chev${isOpen ? ' open' : ''}`}><Icon name="expand" size={14} /></span>
+                </button>
+                {isOpen && ids.map((id) => (
+                  <button key={id} type="button" className={`bm-row${byId[id].closed ? ' done' : ''}`} onClick={() => open(id)}>
+                    {byId[id].kind === 'obstacle'
+                      ? <span className="bm-ic"><Icon name="obstacle" size={14} /></span>
+                      : <span className={`ck${byId[id].closed ? ' on' : ''}`}>{byId[id].closed && <Icon name="check" size={12} />}</span>}
+                    <span className="bm-t">{nodeTitle(id)}</span>
+                    {byId[id].kind === 'issue' && <span className="bm-id">{displayIssueId(id)}</span>}
+                  </button>
+                ))}
+              </div>
+            )
+          })}
+        </section>
+      )}
 
-        {nodes.map((n) => {
-          const closed = isClosed(n, openObstacleIds)
-          const idX = n.x + (n.kind === 'obstacle' ? 26 : 14)
-          const title = n.title.length > 24 ? n.title.slice(0, 23) + '…' : n.title
-          const strikeEnd = Math.min(idX + title.length * 6.05, n.x + NODE_W - 12)
-          return (
-            <g key={n.id} className="map-node" onClick={() => handleClick(n)}>
-              {n.kind === 'obstacle' ? (
-                <path className="map-obst" d={gatePath(n.x, n.y, n.bypass !== null)} />
-              ) : (
-                <rect className="map-tick" x={n.x} y={n.y} width={NODE_W} height={NODE_H} rx="10" />
-              )}
-              <rect
-                x={n.kind === 'obstacle' ? n.x + 13 : n.x}
-                y={n.y}
-                width="2.5"
-                height={NODE_H}
-                fill={barColor(n, openObstacleIds, blockingById)}
-              />
-              <text className="map-id" x={idX} y={n.y + 19}>
-                {displayIssueId(n.id)}
-              </text>
-              <text className="map-own" x={n.x + NODE_W - 12} y={n.y + 19}>
-                {n.owner}
-              </text>
-              <text className={`map-title${closed ? ' dim' : ''}`} x={idX} y={n.y + 38}>
-                {title}
-              </text>
-              {closed && <line className="map-strike" x1={idX} y1={n.y + 34} x2={strikeEnd} y2={n.y + 34} />}
-            </g>
-          )
-        })}
-      </svg>
+      {narrow && selected && selItem && (
+        <div className="bm-selbar" role="status">
+          <span className="bm-id">{nodeLabel(selected.key)}{waitsOf(selected.key).length > 0 && ` · așteaptă ${waitsOf(selected.key).join(', ')}`}</span>
+          <span className="bm-t">{nodeTitle(selected.key)}</span>
+          <button type="button" onClick={() => open(selected.key)}>Deschide</button>
+        </div>
+      )}
+
+      {/* Proba de mărime: un nod cu titlul pe două rânduri și o rădăcină. */}
+      <div className="bm-probe" ref={probe} aria-hidden="true">
+        <span className="bm-node" style={{ width: nodeW }}><span className="ck" /><span className="bm-id">H-00</span><span className="bm-t">Măsurătoare pe două rânduri, destul de lungă cât să se rupă</span></span>
+        <span className="bm-root"><Icon name="check" size={12} /><b>888</b></span>
+      </div>
     </div>
   )
 }

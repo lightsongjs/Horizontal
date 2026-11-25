@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Harta nouă</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;550;650;700&display=swap" rel="stylesheet">
+<style>
+:root { --bg:#EEF0F3; --txt:#1A1C20; --dim:#565C66; --accent:#2F6BFF; --card:#fff; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--txt); font-family:'Inter',system-ui,sans-serif; font-size:14px; }
+.bar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:12px 16px; }
+.bar h1 { font-size:15px; margin:0 12px 0 0; }
+.seg { display:inline-flex; background:#fff; border-radius:8px; padding:3px; box-shadow:0 1px 2px rgba(16,24,40,.06); }
+.seg button { border:0; background:none; padding:6px 12px; border-radius:6px; font:inherit; font-weight:550; color:var(--dim); cursor:pointer; }
+.seg button[aria-pressed='true'] { background:var(--accent); color:#fff; }
+.stage { display:flex; gap:28px; padding:0 16px 24px; align-items:flex-start; }
+.frame { background:var(--card); border-radius:20px; overflow:hidden; box-shadow:0 2px 6px rgba(16,24,40,.06), 0 18px 44px rgba(16,24,40,.12); flex:none; }
+.frame iframe { display:block; border:0; }
+.desk { flex:1; min-width:0; }
+.desk iframe { width:100%; height:calc(100vh - 90px); }
+.phone iframe { width:390px; height:844px; }
+.notes { max-width:420px; line-height:1.55; color:var(--dim); }
+.notes h2 { color:var(--txt); font-size:15px; margin:4px 0 8px; }
+.notes ul { padding-left:18px; margin:0 0 14px; }
+.notes li { margin:4px 0; }
+.notes b { color:var(--txt); font-weight:650; }
+[hidden] { display:none !important; }
+@media (max-width:860px) { .stage { flex-direction:column; } .phone iframe { width:100%; } }
+</style>
+</head>
+<body>
+<div class="bar">
+  <h1>Harta nouă — Dolmenwood</h1>
+  <div class="seg" role="group" aria-label="Ecran">
+    <button data-v="desk" aria-pressed="false">Desktop</button>
+    <button data-v="phone" aria-pressed="true">Telefon</button>
+  </div>
+  <div class="seg" role="group" aria-label="Temă">
+    <button data-t="dark" aria-pressed="true">Întunecat</button>
+    <button data-t="light" aria-pressed="false">Luminos</button>
+  </div>
+</div>
+<div class="stage">
+  <div class="frame desk" hidden><iframe title="Harta pe desktop"></iframe></div>
+  <div class="frame phone"><iframe title="Harta pe telefon"></iframe></div>
+  <aside class="notes">
+    <h2>Ce s-a schimbat față de harta de acum</h2>
+    <ul>
+      <li><b>Implicit doar ce e deschis.</b> Închisele de dinaintea lor se strâng în pastila verde „✓ 14", din care pornesc ramurile.</li>
+      <li><b>„Arată și închise"</b> (sau o atingere pe pastilă) desface istoria spre stânga; tichetele deschise rămân pe loc. Alegerea se ține minte.</li>
+      <li><b>O ramură = un grup de tichete legate între ele</b>, pe rândul ei, cu titlul tichetului de la care pornește.</li>
+      <li><b>Linii în unghi drept, ca la organigramă</b>, ordonate să se încrucișeze cât mai puțin; o legătură lungă ocolește cardurile.</li>
+      <li><b>Titlul pe două rânduri.</b> Fără text tăiat: închisele sunt doar mai stinse, cu bifă verde.</li>
+      <li><b>Tichetele fără legături</b> (53 deschise aici) stau la final, ca listă, grupate pe temă; întrebările de produs sunt strânse.</li>
+      <li><b>Atinge un tichet:</b> i se aprinde tot lanțul (ce îl blochează, ce deblochează), restul se estompează. A doua atingere îl deschide.</li>
+      <li><b>Pe telefon</b> fiecare ramură se derulează pe orizontală, cu oprire pe fiecare coloană; pagina se derulează normal în jos.</li>
+      <li>Au ieșit linia „azi" și banda de sprint (coloanele sunt ordinea dependențelor, nu timp).</li>
+    </ul>
+    <p>Starea „blocat" (inel punctat, „așteaptă DW-07") nu apare în Dolmenwood: toate tichetele deschise cu legături au deja predecesorii închiși.</p>
+  </aside>
+</div>
+<script>
+let view = 'phone', theme = 'dark'
+const desk = document.querySelector('.desk'), phone = document.querySelector('.phone')
+function go() {
+  desk.hidden = view !== 'desk'; phone.hidden = view !== 'phone'
+  const f = view === 'desk' ? desk : phone
+  f.querySelector('iframe').src = `app.html?theme=${theme}${view === 'phone' ? '&phone=1' : ''}`
+  document.querySelector('.notes').hidden = view === 'desk'
+  document.querySelectorAll('[data-v]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === view)))
+  document.querySelectorAll('[data-t]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.t === theme)))
+}
+document.querySelectorAll('[data-v]').forEach((b) => b.onclick = () => { view = b.dataset.v; go() })
+document.querySelectorAll('[data-t]').forEach((b) => b.onclick = () => { theme = b.dataset.t; go() })
+go()
+</script>
+</body>
+</html>

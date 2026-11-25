@@ -67,6 +67,7 @@ Deciziile omului, de-ce-urile și capcanele fiecărei funcționalități stau î
 | Rândul de jetoane, `DescFold`, markdown (CodeMirror, tabele, `/`) | `docs/agent/formular-descriere.md` |
 | Recurențe (trigger SQL), sarcini fixate, rutine | `docs/agent/recurente-fixate-rutine.md` |
 | Glisare/selecție pe telefon, tab-uri și Back, sertar, filtre salvate | `docs/agent/navigare-telefon.md` |
+| Harta (ramurile, rădăcina strânsă, „Arată și închise”) | `docs/agent/harta.md` |
 | Obstacole, mutarea între proiecte, accesul la Notițe, coșul | `docs/agent/obstacole-mutare-acces-cos.md` |
 | Firul, pasarea, „Ale mele”, `isMine`, firul în API | `docs/agent/fir-pasare.md` |
 | Reîmprospătarea, listele lungi, offline (IndexedDB, coada) | `docs/agent/date-offline.md` |
