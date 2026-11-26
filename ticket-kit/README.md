@@ -190,16 +190,16 @@ repetă, scadența e refuzată (`recurring`) — se schimbă din aplicație.
 
 ### Ștergerea unui tichet
 
-Pentru o încărcare greșită:
+Pentru orice tichet de care nu mai e nevoie, și cu comentarii sau fișiere:
 
 ```bash
 node ai-client.mjs --delete --id CC-05
 # output: deleted: CC-05
 ```
 
-Refuzată dacă alte tichete depind de el (`has_dependents: CC-06, …`) sau dacă are
-comentarii ori fișiere (`has_activity` — acelea se șterg din aplicație). Nu se
-poate anula.
+Refuzată doar dacă alte tichete depind de el (`has_dependents: CC-06, …`).
+Tichetul ajunge în coșul aplicației cu tot cu comentarii, pase și fișiere; omul
+îl restaurează de acolo (rotița → Date → Coș) timp de 30 de zile.
 
 ### Fișiere atașate (poze, capturi, PDF-uri)
 
@@ -223,8 +223,8 @@ tichetului din aplicație, exact ca unul urcat de acolo. `--get` le arată și e
   poate). Pentru o poză de cameră, micșoreaz-o înainte dacă nu-ți trebuie la
   rezoluția completă.
 - Un ID provizoriu (`HZ-~abc123`) e refuzat (`temp_id`): tichetul nu e încă în bază.
-- Ștergerea unui fișier se face din aplicație. Atenție: un tichet cu fișiere nu
-  mai poate fi șters prin API (`has_activity`).
+- Ștergerea unui fișier se face din aplicație. Ștergerea tichetului îl duce cu
+  el în coș.
 
 Direct pe API (fără ai-client):
 

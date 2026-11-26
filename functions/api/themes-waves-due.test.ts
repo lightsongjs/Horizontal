@@ -431,6 +431,7 @@ describe('DELETE /api/tickets/<id>', () => {
     route('/rest/v1/issues?id=eq.CC-05', [{ id: 'CC-05' }], { method: 'DELETE' }),
     route('/rest/v1/issues?id=eq.CC-05&select=id', o.exists === false ? [] : [{ id: 'CC-05' }]),
     route('/rest/v1/dependencies?depends_on_id=eq.CC-05', o.dependents ?? []),
+    // Nu mai sunt citite; rămân ca testul să dovedească asta.
     route('/rest/v1/issue_events?', o.events ?? []),
     route('/rest/v1/attachments?', o.files ?? []),
   ]
@@ -450,11 +451,23 @@ describe('DELETE /api/tickets/<id>', () => {
     expect(await res.json()).toEqual({ error: 'has_dependents', dependedOnBy: ['CC-06'] })
     expect(calls.some(c => c.method === 'DELETE')).toBe(false)
   })
-  it('refuză dacă are comentarii sau fișiere', async () => {
-    mockFetch(routes({ events: [{ id: 'e1' }] }))
-    expect((await del()).status).toBe(409)
-    mockFetch(routes({ files: [{ id: 'f1' }] }))
-    expect((await del()).status).toBe(409)
+  // Comentariile, pasele și fișierele nu mai opresc ștergerea: triggerul
+  // `issues_trash` le pune în coș, de unde `restore_issue` le aduce înapoi.
+  it('șterge și un tichet cu comentarii sau fișiere — nici nu le mai întreabă', async () => {
+    const calls = mockFetch(routes({ events: [{ id: 'e1' }], files: [{ id: 'f1' }] }))
+    const res = await del()
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ id: 'CC-05', deleted: true })
+    expect(calls.some(c => c.url.includes('issue_events') || c.url.includes('attachments'))).toBe(false)
+    expect(calls.filter(c => c.method === 'DELETE').map(c => c.url)).toEqual([expect.stringMatching(/\/rest\/v1\/issues\?id=eq\.CC-05$/)])
+  })
+  it('o citire picată → db_error, fără ștergere', async () => {
+    const calls = mockFetch([
+      route('/rest/v1/dependencies?depends_on_id=eq.CC-05', null, { ok: false, status: 500 }),
+      ...routes({}),
+    ])
+    expect((await del()).status).toBe(502)
+    expect(calls.some(c => c.method === 'DELETE')).toBe(false)
   })
   it('404 pe un tichet care nu există', async () => {
     mockFetch(routes({ exists: false }))

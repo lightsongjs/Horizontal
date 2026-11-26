@@ -420,8 +420,8 @@ async function updateWave() {
 }
 
 // --delete --id CC-05
-// For fixing a bad import. Refused if other tickets depend on it (has_dependents)
-// or it has comments / files (has_activity) — those are deleted in the app.
+// Refused only if other tickets depend on it (has_dependents). Comments and files
+// go with it into the app's trash, where it can be restored for 30 days.
 // Prints: deleted: CC-05
 async function del() {
   need(['id'], '--delete --id <ticket-id>')

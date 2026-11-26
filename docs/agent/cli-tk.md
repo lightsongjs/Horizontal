@@ -88,6 +88,13 @@ copierii lui `ticket-kit/` în fiecare proiect. Node ≥ 20, fără dependențe 
   PostgREST n-are tranzacții: înainte de ștergerea rândului se verifică iar
   că valul e gol. `GET /api/waves` întoarce și arhivatele, cu `archived: true`
   (`tk waves` scrie „(arhivat)”).
+- **Ștergerea tichetului** (2026-11-26, cerută de om): `DELETE
+  /api/tickets/<id>` (`tk delete`) nu mai refuză un tichet cu comentarii /
+  pase / fișiere (`has_activity` a dispărut). Refuzul venea din vremea fără
+  coș; acum triggerul `issues_trash` pune deoparte firul, rândurile de fișiere
+  și căile, iar octeții rămân în Storage până la `purge_trash` / expirare, deci
+  `restore_issue` aduce tot înapoi. Agenții ajungeau să comenteze „rezolvat” în
+  loc să șteargă. Rămâne doar `has_dependents` (ar rupe alt tichet).
 - Ieșirea rămâne cea din ai-client (un rând pe element, `updated:`,
   `duplicate:`, `not_found`), iar forma veche a flagurilor (`tk --create
   --title …`, `--get --id`, `--attach --file`) merge în continuare.

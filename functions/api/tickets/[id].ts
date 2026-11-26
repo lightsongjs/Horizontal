@@ -422,16 +422,14 @@ export const onRequestPatch: PagesFunction<Env> = async (context) => {
   })
 }
 
-// DELETE /api/tickets/<id> — repară o încărcare greșită. API-ul scrie cu cheia de
-// serviciu, deci o ștergere nu se poate anula: se refuză tot ce ar pierde muncă
-// sau ar rupe alt tichet — tichete care depind de el, comentarii / pase,
-// fișiere (ar rămâne orfane în Storage). Dependențele LUI, vizitele și
-// legăturile cu obstacole pleacă odată cu el (`on delete cascade`).
-// Din migration-trash.sql ștergerea trece și ea prin coș (`deleted_by` null),
-// dar refuzurile rămân: un tichet abia încărcat n-are ce pierde.
-// Asumat: verificările și ștergerea nu sunt o tranzacție. Un comentariu scris
-// exact între ele ar pleca odată cu tichetul — fereastra e de milisecunde, iar
-// ruta e pentru tichete abia încărcate, pe care nu scrie nimeni.
+// DELETE /api/tickets/<id> — ștergere prin coș. Triggerul `issues_trash`
+// (migration-trash.sql) pune deoparte, înainte de cascadă, rândul și tot ce
+// pleacă odată cu el: firul (comentarii / pase), rândurile de fișiere,
+// dependențele lui, vizitele, legăturile cu obstacole. Octeții fișierelor rămân
+// în Storage cât stă tichetul în coș (30 de zile). Deci și un tichet cu
+// comentarii sau fișiere se poate șterge: omul îl restaurează din aplicație
+// (rotița → Date → Coș), cu tot cu fir și fișiere; `deleted_by` e null.
+// Se refuză doar ce ar rupe alt tichet: tichete care depind de el.
 export const onRequestDelete: PagesFunction<Env> = async (context) => {
   const id = context.params.id as string
   const enc = encodeURIComponent(id)
@@ -442,22 +440,14 @@ export const onRequestDelete: PagesFunction<Env> = async (context) => {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers })
     return res.ok ? await res.json() as T[] : null
   }
-  const [issue, dependents, events, files] = await Promise.all([
+  const [issue, dependents] = await Promise.all([
     get<{ id: string }>(`issues?id=eq.${enc}&select=id&limit=1`),
     get<{ issue_id: string }>(`dependencies?depends_on_id=eq.${enc}&select=issue_id`),
-    get<{ id: string }>(`issue_events?issue_id=eq.${enc}&select=id&limit=1`),
-    get<{ id: string }>(`attachments?issue_id=eq.${enc}&select=id&limit=1`),
   ])
-  if (!issue || !dependents || !events || !files) return Response.json({ error: 'db_error' }, { status: 502 })
+  if (!issue || !dependents) return Response.json({ error: 'db_error' }, { status: 502 })
   if (!issue.length) return Response.json({ error: 'not_found' }, { status: 404 })
   if (dependents.length) {
     return Response.json({ error: 'has_dependents', dependedOnBy: dependents.map((d) => d.issue_id) }, { status: 409 })
-  }
-  if (events.length || files.length) {
-    return Response.json({
-      error: 'has_activity',
-      detail: 'Tichetul are comentarii sau fișiere; se șterge din aplicație.',
-    }, { status: 409 })
   }
 
   const del = await fetch(`${SUPABASE_URL}/rest/v1/issues?id=eq.${enc}`, { method: 'DELETE', headers })

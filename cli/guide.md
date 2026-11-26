@@ -265,7 +265,7 @@ există e refuzat (`invalid_deps: …`).
 
 ### Ce refuză API-ul și de ce
 
-API-ul scrie cu cheia de serviciu, deci ce nu se poate anula se refuză:
+API-ul scrie cu cheia de serviciu, deci ce nu se poate anula (sau ar rupe alt tichet) se refuză:
 
 | Răspuns | Când | Ce faci |
 |---|---|---|
@@ -279,7 +279,6 @@ API-ul scrie cu cheia de serviciu, deci ce nu se poate anula se refuză:
 | `invalid_due` | scadența nu e `AAAA-LL-ZZ` sau `AAAA-LL-ZZ HH:MM` | |
 | `recurring` | scadență pe un tichet care se repetă | se schimbă din aplicație |
 | `has_dependents: …` | ștergi un tichet de care depind altele | scoate-l din deps-urile lor |
-| `has_activity` | ștergi un tichet cu comentarii sau fișiere | se șterge din aplicație |
 | `has_dependencies` | muți un tichet legat prin deps | vezi „Mutarea" |
 | `temp_id` | atașezi / comentezi pe un ID provizoriu (`HZ-~abc`) | așteaptă sincronizarea |
 | `author_not_found: X` / `author_not_linked: X` | `tk comment` / `--as` cu un om necunoscut sau fără cont | `tk whoami --set` cu un om din `tk assignees` care NU e „(fără cont)” |
@@ -300,8 +299,11 @@ API-ul scrie cu cheia de serviciu, deci ce nu se poate anula se refuză:
 
 ### Ștergerea
 
-Pentru o încărcare greșită. Trece prin coșul aplicației, dar din API nu există
-„restaurează" — tratează-o ca definitivă. Refuzată cu dependenți sau activitate.
+Pentru orice tichet de care nu mai e nevoie — și pentru unul cu comentarii, pase
+sau fișiere. Nu-l comenta „rezolvat” ca să scapi de el: șterge-l. Trece prin
+coșul aplicației cu tot cu fir și fișiere; omul îl restaurează de acolo (rotița →
+Date → Coș) timp de 30 de zile. Din tk nu există „restaurează”.
+Refuzată doar dacă alte tichete depind de el (`has_dependents`).
 
 ### Fișierele
 
@@ -310,8 +312,8 @@ Pentru o încărcare greșită. Trece prin coșul aplicației, dar din API nu ex
 - Tipul se ghicește după extensie; doar png/jpg/webp/gif apar ca miniatură.
 - Pozele **nu se micșorează** pe drum — micșorează o poză de cameră înainte,
   dacă nu-ți trebuie la rezoluția completă.
-- Un fișier pus nu se mai șterge din CLI, iar tichetul nu se mai poate șterge
-  din API (`has_activity`).
+- Un fișier pus nu se mai șterge din CLI (din aplicație, da). Ștergerea
+  tichetului îl duce cu el în coș.
 - Dacă un fișier din mijloc pică, tk spune care și listează ce a ajuns deja —
   acelea rămân pe tichet; nu le urca din nou.
 

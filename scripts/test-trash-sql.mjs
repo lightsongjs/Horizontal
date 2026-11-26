@@ -372,11 +372,20 @@ await scenario('„Șterge definitiv" și expirarea', async () => {
   check('după 30 de zile iese, înainte rămâne', n === 1 && left.length === 1 && left[0].issue_id === 'HZ-03' && q2.length === 2, `n=${n} ${JSON.stringify(left)} ${JSON.stringify(q2)}`)
 })
 
-await scenario('cheia de serviciu: fără autor', async () => {
-  await project('hz', 'HZ'); await issue('HZ-01', 'hz')
+// Drumul lui `DELETE /api/tickets/<id>` (`tk delete`): API-ul nu mai refuză un
+// tichet cu fir sau fișiere, deci coșul trebuie să le aducă înapoi.
+await scenario('cheia de serviciu: fără autor, cu fir și fișier', async () => {
+  const u = await user(); await project('hz', 'HZ'); await member(u, 'hz'); await issue('HZ-01', 'hz')
+  const { rows: [ev] } = await db.query(`insert into issue_events (issue_id, project_id, kind, author_id, body) values ('HZ-01','hz','comment',$1,'lămurit') returning id`, [u.id])
+  await db.query(`insert into attachments (issue_id, project_id, path, filename, size, content_type, event_id) values ('HZ-01','hz','hz/HZ-01/a.png','a.png',10,'image/png',$1)`, [ev.id])
   await db.query(`delete from issues where id = 'HZ-01'`)
   const t = await trashOf('HZ-01')
   check('ștergerea fără sesiune ajunge în coș cu deleted_by null', !!t && t.deleted_by === null, JSON.stringify(t && t.deleted_by))
+  check('cu firul și fișierul', t?.events.length === 1 && t.attachments.length === 1 && t.paths[0] === 'hz/HZ-01/a.png', JSON.stringify(t && [t.events.length, t.attachments.length, t.paths]))
+  const r = await restore(u, t.id)
+  const { rows: [c] } = await db.query(`select (select count(*) from issue_events where issue_id='HZ-01' and body='lămurit')::int e,
+    (select count(*) from attachments where issue_id='HZ-01' and event_id is not null)::int a`)
+  check('un membru îl restaurează din aplicație, cu fir și fișier', !r.error && r.value?.id === 'HZ-01' && c.e === 1 && c.a === 1, err(r) + JSON.stringify(c))
 })
 
 await db.end()
