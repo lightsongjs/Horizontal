@@ -88,6 +88,7 @@ describe('wave 0 is a real wave', () => {
     const calls = mockFetch([
       projectRoute,
       route('/rest/v1/issues?project_id=eq.horizontal&select=id', [{ id: 'MS-160' }]),
+      route('/rest/v1/issues_trash?project_id=eq.horizontal&select=issue_id', []),
       route('&title=ilike.', []),
       route('/rest/v1/issues', [{ id: 'MS-161' }], { method: 'POST' }),
     ])
@@ -102,6 +103,7 @@ describe('wave 0 is a real wave', () => {
     const calls = mockFetch([
       projectRoute,
       route('/rest/v1/issues?project_id=eq.horizontal&select=id', [{ id: 'MS-160' }]),
+      route('/rest/v1/issues_trash?project_id=eq.horizontal&select=issue_id', []),
       route('&title=ilike.', []),
       route('/rest/v1/issues', [{ id: 'MS-161' }], { method: 'POST' }),
     ])
@@ -217,11 +219,28 @@ describe('list by assignee (tk mine, tk list --assignee)', () => {
   })
 })
 
+describe('create: numărul nou', () => {
+  // Un tichet din coș își ține numărul: altfel coșul ajungea cu două `H-19`.
+  it('sare peste numerele din coș', async () => {
+    const calls = mockFetch([
+      projectRoute,
+      route('/rest/v1/issues?project_id=eq.horizontal&select=id', [{ id: 'MS-160' }]),
+      route('/rest/v1/issues_trash?project_id=eq.horizontal&select=issue_id', [{ issue_id: 'MS-161' }, { issue_id: 'MS-163' }]),
+      route('&title=ilike.', []),
+      route('/rest/v1/issues', [{ id: 'MS-164' }], { method: 'POST' }),
+    ])
+    const res = await onRequestPost(postCtx({ projectId: 'MS', title: 'Nota', wave: 1 }))
+    expect(res.status).toBe(201)
+    expect(calls.find(c => c.method === 'POST')!.body.id).toBe('MS-164')
+  })
+})
+
 describe('create with an assignee', () => {
   const createRoutes = (assignees: unknown) => [
     projectRoute,
     route('/rest/v1/assignees?', assignees),
     route('/rest/v1/issues?project_id=eq.horizontal&select=id', [{ id: 'MS-160' }]),
+    route('/rest/v1/issues_trash?project_id=eq.horizontal&select=issue_id', []),
     route('&title=ilike.', []),
     route('/rest/v1/issues', [{ id: 'MS-161' }], { method: 'POST' }),
   ]
@@ -262,6 +281,7 @@ describe('create with an author (created_by)', () => {
     projectRoute,
     route('/rest/v1/assignees?', people),
     route('/rest/v1/issues?project_id=eq.horizontal&select=id', [{ id: 'MS-160' }]),
+    route('/rest/v1/issues_trash?project_id=eq.horizontal&select=issue_id', []),
     route('&title=ilike.', []),
     route('/rest/v1/issues', [{ id: 'MS-161' }], { method: 'POST' }),
   ]

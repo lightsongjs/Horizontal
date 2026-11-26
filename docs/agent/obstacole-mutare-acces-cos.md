@@ -156,6 +156,17 @@ offline sunt neschimbate.
   coloanele de azi (`trash_reinsert`, o coloană nouă primește default-ul); val
   / temă / persoană dispărute cad pe valul activ / fără / null; un memento
   trecut nu sună; dependențele revin doar spre tichete existente și fără ciclu.
+- **Numerele din coș rămân ocupate** (2026-11-26). Înainte, „cel mai mare + 1”
+  dădea numărul unui tichet șters următorului tichet nou: după `tk delete H-19`
+  și un `tk create`, coșul a ajuns cu două `H-19`, iar o trimitere veche („vezi
+  H-19”) arăta alt tichet. Acum toate cele patru locuri care aleg un număr
+  numără și `issues_trash`: `project_issue_ids` (pagina + `DrainWorker`),
+  `nextIssueId` din `functions/api/_tickets-lib.ts`, `move_issue`,
+  `restore_issue` (plus `localRepository`). Restaurarea își găsește deci
+  numărul liber; „ocupat” mai apare doar la dublurile de dinainte și la un
+  tichet mutat cu numărul ăsta din afară. După golirea coșului (30 de zile)
+  numărul se poate refolosi — asumat. Teste: `test:trash-sql` („numerele din
+  coș…”, „două cu același număr…”).
 - **Pozele nu se mai șterg la ștergere** (`deleteIssuesImpl` șterge doar
   rânduri). Octeții pleacă când tichetul iese din coș: „Șterge definitiv”
   (`purge_trash`) și expirarea de 30 de zile pun căile în `storage_purge`, iar
@@ -171,6 +182,10 @@ offline sunt neschimbate.
 - Teste: `src/lib/trash.test.ts`, repo-urile, `npm run test:trash-sql`
   (Docker de unică folosință, ca `test:move-sql` — NICIODATĂ producția),
   `test:nav` („coș: …”), `test:layout` (rândul la 320–430px).
+
+Numerele din coș (2026-11-26), în ordine, oricând înainte de push:
+`npm run migrate supabase/migration-issue-ids.sql` → `…/migration-move-issue.sql`
+→ `…/migration-trash.sql`.
 
 Deploy, în ordine: `supabase functions deploy purge-trash` →
 `npm run migrate supabase/migration-move-issue.sql` →

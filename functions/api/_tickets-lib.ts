@@ -43,19 +43,23 @@ export function nextIdFrom(existingIds: string[], prefix: string): string {
   return `${prefix}-${String(maxNum + 1).padStart(2, '0')}`
 }
 
+// Numerele din coș sunt ocupate și ele, ca în `project_issue_ids` (pagina, APK-ul):
+// altfel un tichet nou lua numărul unuia șters, iar coșul ajungea cu două `H-19`.
 export async function nextIssueId(
   projectId: string,
   prefix: string,
   supabaseUrl: string,
   headers: Record<string, string>
 ): Promise<string | null> {
-  const res = await fetch(
-    `${supabaseUrl}/rest/v1/issues?project_id=eq.${encodeURIComponent(projectId)}&select=id`,
-    { headers }
-  )
-  if (!res.ok) return null
-  const rows = await res.json() as Array<{ id: string }>
-  return nextIdFrom(rows.map(r => r.id), prefix)
+  const pid = encodeURIComponent(projectId)
+  const [live, trash] = await Promise.all([
+    fetch(`${supabaseUrl}/rest/v1/issues?project_id=eq.${pid}&select=id`, { headers }),
+    fetch(`${supabaseUrl}/rest/v1/issues_trash?project_id=eq.${pid}&select=issue_id`, { headers }),
+  ])
+  if (!live.ok || !trash.ok) return null
+  const rows = await live.json() as Array<{ id: string }>
+  const trashed = await trash.json() as Array<{ issue_id: string }>
+  return nextIdFrom([...rows.map(r => r.id), ...trashed.map(t => t.issue_id)], prefix)
 }
 
 export interface Assignee {

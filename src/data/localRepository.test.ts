@@ -602,16 +602,16 @@ describe('coșul (modul local)', () => {
     await expect(repo.restoreFromTrash(trash[0].id)).rejects.toThrow('Tichetul nu mai e în coș.')
   })
 
-  it('numărul refolosit între timp → număr nou; „Șterge definitiv" golește', async () => {
+  it('numărul din coș nu se dă unui tichet nou: revine cu el; „Șterge definitiv" golește', async () => {
     const repo = createLocalRepository()
     const p = await repo.createProject({ name: 'Coș', description: '', prefix: 'CS' })
     await repo.createIssue({ projectId: p.id, title: 'A' })
     const b = await repo.createIssue({ projectId: p.id, title: 'B' })
     await repo.deleteIssue(b.id)
-    const reborn = await repo.createIssue({ projectId: p.id, title: 'altul' })
-    expect(reborn.id).toBe(b.id)
+    const next = await repo.createIssue({ projectId: p.id, title: 'altul' })
+    expect(next.id).toBe('CS-03')
     const [t] = await repo.listTrash()
-    expect(await repo.restoreFromTrash(t.id)).toEqual({ id: 'CS-03', originalId: b.id })
+    expect(await repo.restoreFromTrash(t.id)).toEqual({ id: b.id, originalId: b.id })
 
     const c = await repo.createIssue({ projectId: p.id, title: 'C' })
     await repo.deleteIssues([c.id])

@@ -121,11 +121,14 @@ function save(db: DB): void {
   localStorage.setItem(KEY, JSON.stringify(db))
 }
 
-/** Next free issue id for a project, e.g. TUR-09. */
+/** Next free issue id for a project, e.g. TUR-09. Numerele din coș sunt
+ *  ocupate și ele, ca `project_issue_ids` pe server. */
 function nextIssueId(db: DB, project: Project): string {
-  const max = db.issues
-    .filter((i) => i.projectId === project.id)
-    .map((i) => Number(i.id.slice(project.prefix.length + 1)))
+  const max = [
+    ...db.issues.filter((i) => i.projectId === project.id).map((i) => i.id),
+    ...db.trash.filter((t) => t.projectId === project.id).map((t) => t.issue.id),
+  ]
+    .map((id) => Number(id.slice(project.prefix.length + 1)))
     .filter((n) => Number.isFinite(n))
     .reduce((a, b) => Math.max(a, b), 0)
   return `${project.prefix}-${String(max + 1).padStart(2, '0')}`

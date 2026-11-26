@@ -104,7 +104,7 @@ for (const f of ['supabase/migration-push.sql', 'supabase/migration-attachments.
   await db.query(read(f))
 }
 // De două ori: migrările trebuie să fie re-rulabile.
-for (const f of ['supabase/migration-move-issue.sql', 'supabase/migration-trash.sql']) {
+for (const f of ['supabase/migration-issue-ids.sql', 'supabase/migration-move-issue.sql', 'supabase/migration-trash.sql']) {
   await db.query(read(f))
   await db.query(read(f))
 }
@@ -266,6 +266,39 @@ await scenario('numărul refolosit între timp → număr nou', async () => {
   check('întoarce numărul nou și pe cel vechi', !r.error && r.value?.id === 'HZ-03' && r.value?.original_id === 'HZ-02', err(r))
   const { rows } = await db.query('select issue_id from issue_events')
   check('firul urmează numărul nou', rows.length === 1 && rows[0].issue_id === 'HZ-03', JSON.stringify(rows))
+})
+
+// Un număr din coș nu se mai dă: altfel coșul ajungea cu două `H-19` (2026-11-26).
+await scenario('numerele din coș rămân ocupate (creare, mutare)', async () => {
+  const u = await user(); await project('hz', 'HZ'); await project('ap', 'AP'); await member(u, 'hz'); await member(u, 'ap')
+  await issue('HZ-01', 'hz'); await issue('HZ-02', 'hz'); await issue('HZ-03', 'hz')
+  await del(u, 'HZ-02', 'HZ-03')
+  const ids = await asUser(u, `select id from public.project_issue_ids('hz') order by 1`)
+  check('project_issue_ids dă și numerele din coș', JSON.stringify(ids.map((r) => r.id)) === '["HZ-01","HZ-02","HZ-03"]', JSON.stringify(ids))
+  const stranger = await user()
+  const none = await asUser(stranger, `select id from public.project_issue_ids('hz')`)
+  check('… dar nu unui nemembru', none.length === 0, JSON.stringify(none))
+  await issue('AP-01', 'ap')
+  const m = await moveAs(u, 'AP-01', 'hz')
+  check('mutarea în proiect sare peste coș', m.id === 'HZ-04', why(m))
+  const r = await restore(u, (await trashOf('HZ-03')).id)
+  check('tichetul din coș revine cu numărul lui', !r.error && r.value?.id === 'HZ-03', err(r))
+})
+
+// Dubluri rămase de dinainte de regula de mai sus (două `H-19` în coș).
+await scenario('două cu același număr în coș', async () => {
+  const u = await user(); await project('hz', 'HZ'); await member(u, 'hz')
+  await issue('HZ-19', 'hz', { title: 'primul' }); await del(u, 'HZ-19')
+  await issue('HZ-19', 'hz', { title: 'al doilea' }); await del(u, 'HZ-19')
+  await issue('HZ-20', 'hz'); await del(u, 'HZ-20')
+  const { rows: two } = await db.query(`select id, title from issues_trash where issue_id = 'HZ-19' order by deleted_at`)
+  check('coșul le ține pe amândouă', two.length === 2, JSON.stringify(two))
+  const a = await restore(u, two[1].id)
+  check('primul restaurat ia numărul', !a.error && a.value?.id === 'HZ-19', err(a))
+  const b = await restore(u, two[0].id)
+  check('al doilea ia unul nou, peste ce e în coș', !b.error && b.value?.id === 'HZ-21' && b.value?.original_id === 'HZ-19', err(b))
+  const { rows } = await db.query(`select id, title from issues where project_id = 'hz' order by id`)
+  check('amândouă sunt înapoi', JSON.stringify(rows) === '[{"id":"HZ-19","title":"al doilea"},{"id":"HZ-21","title":"primul"}]', JSON.stringify(rows))
 })
 
 await scenario('refuzuri: doar citire, ne-membru', async () => {

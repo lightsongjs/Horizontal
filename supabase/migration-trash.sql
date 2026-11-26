@@ -234,15 +234,19 @@ begin
   end if;
 
   -- Numărul: cel vechi dacă e liber, altfel cel mai mare + 1 (minim două
-  -- cifre). O creare din client nu ia lacătul, deci 23505 → încă o dată.
+  -- cifre), peste tichete ȘI coș, ca `project_issue_ids`. Cum numerele din coș
+  -- nu se mai dau, „ocupat" rămâne pentru dublurile de dinainte (două `H-19`
+  -- în coș) și pentru un tichet mutat aici cu numărul ăsta.
+  -- O creare din client nu ia lacătul, deci 23505 → încă o dată.
   v_new := v_t.issue_id;
   loop
     v_try := v_try + 1;
     if v_try > 1 or exists (select 1 from public.issues where id = v_new) then
-      select coalesce(max(substr(i.id, pg_catalog.length(v_p.prefix) + 2)::numeric), 0) into v_max
-        from public.issues i
-       where i.project_id = v_p.id
-         and substr(i.id, pg_catalog.length(v_p.prefix) + 2) ~ '^[0-9]+$';
+      select coalesce(max(substr(x.id, pg_catalog.length(v_p.prefix) + 2)::numeric), 0) into v_max
+        from (select i.id from public.issues i where i.project_id = v_p.id
+              union all
+              select t.issue_id from public.issues_trash t where t.project_id = v_p.id) x
+       where substr(x.id, pg_catalog.length(v_p.prefix) + 2) ~ '^[0-9]+$';
       v_n := greatest(v_max + 1, v_n + 1);
       v_new := v_p.prefix || '-' || case when v_n < 10 then '0' || v_n::text else v_n::text end;
     end if;

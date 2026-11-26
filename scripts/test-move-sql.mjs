@@ -106,6 +106,8 @@ for (const f of ['supabase/migration-push.sql', 'supabase/migration-attachments.
 // De două ori: migrarea trebuie să fie re-rulabilă.
 await db.query(read('supabase/migration-move-issue.sql'))
 await db.query(read('supabase/migration-move-issue.sql'))
+// `move_issue` numără și coșul (numerele de acolo rămân ocupate).
+await db.query(read('supabase/migration-trash.sql'))
 
 // ── unelte ──────────────────────────────────────────────────────────────────
 let failed = 0

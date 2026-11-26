@@ -343,6 +343,7 @@ describe('POST /api/tickets: tema verificată, scadența, urgentul', () => {
     projectRoute,
     route('/rest/v1/themes?', themeFound ? [{ key: 'pasul-2' }] : []),
     route('/rest/v1/issues?project_id=eq.cc&select=id', [{ id: 'CC-01' }]),
+    route('/rest/v1/issues_trash?project_id=eq.cc&select=issue_id', []),
     route('&title=ilike.', []),
     route('/rest/v1/issues', [{ id: 'CC-02' }], { method: 'POST' }),
   ]

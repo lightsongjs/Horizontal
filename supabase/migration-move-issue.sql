@@ -90,12 +90,14 @@ begin
   -- mai mare număr din proiectul țintă + 1, minim două cifre. O creare din
   -- client nu ia lacătul pe proiect, deci poate ciocni (23505): se reîncearcă
   -- de până la 3 ori, ca `createIssue`, cu un număr mereu mai mare.
+  -- Numerele din coș sunt ocupate și ele (`project_issue_ids`).
   loop
     v_try := v_try + 1;
-    select coalesce(max(substr(i.id, pg_catalog.length(p_dst.prefix) + 2)::numeric), 0) into v_max
-      from public.issues i
-     where i.project_id = p_dst.id
-       and substr(i.id, pg_catalog.length(p_dst.prefix) + 2) ~ '^[0-9]+$';
+    select coalesce(max(substr(x.id, pg_catalog.length(p_dst.prefix) + 2)::numeric), 0) into v_max
+      from (select i.id from public.issues i where i.project_id = p_dst.id
+            union all
+            select t.issue_id from public.issues_trash t where t.project_id = p_dst.id) x
+     where substr(x.id, pg_catalog.length(p_dst.prefix) + 2) ~ '^[0-9]+$';
     v_n := greatest(v_max + 1, v_n + 1);
     v_new := p_dst.prefix || '-' || case when v_n < 10 then '0' || v_n::text else v_n::text end;
     begin
