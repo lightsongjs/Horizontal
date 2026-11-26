@@ -1448,6 +1448,12 @@ try {
     const dFocus = await dp.evaluate(() => document.activeElement?.tagName)
     check('panou (desktop): click pe linkul din titlu îl deschide', !!dr && JSON.stringify(dOpened) === '["https://youtu.be/AvHjix2TpH4"]' && dFocus !== 'TEXTAREA',
       dr ? `deschise=${JSON.stringify(dOpened)} focus=${dFocus}` : 'fără link în panou')
+    // Cu focus în titlu (Vim, un click anterior) mausul tot deschide linkul.
+    await dp.locator('.split-pane .sh-title-input').focus()
+    if (dr) await dp.mouse.click(dr.x, dr.y)
+    await dp.waitForTimeout(500)
+    const dOpened2 = await dp.evaluate(() => window.__opened)
+    check('panou (desktop), titlul cu focus: click pe link îl deschide', dOpened2.length === 2, `deschise=${JSON.stringify(dOpened2)}`)
     await dctx.close()
   }
 

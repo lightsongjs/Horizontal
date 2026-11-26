@@ -51,9 +51,14 @@ function linkAt(mirror: HTMLElement | null, x: number, y: number): string | null
   return null
 }
 
-/** Cât nu scrii în titlu, sau cu Ctrl/⌘ oricând — regula linkurilor din descriere. */
+/**
+ * Cu mausul, oricând: focusul nu înseamnă că scrii (Vim pune cursorul în
+ * titlu la Enter, un click de mai devreme îl lasă acolo), iar un link care nu
+ * se deschide la click arată stricat. Pe atingere, cât nu scrii în titlu —
+ * acolo cu focus linkul e text de corectat (tastatura e deja sus).
+ */
 const opens = (e: PointerEvent<HTMLElement>) =>
-  document.activeElement !== e.currentTarget || e.ctrlKey || e.metaKey
+  e.pointerType === 'mouse' || document.activeElement !== e.currentTarget || e.ctrlKey || e.metaKey
 
 /**
  * `pointerdown` pe textarea unui titlu cu oglindă (foaia de tichet, formularul):

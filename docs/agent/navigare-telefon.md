@@ -196,4 +196,4 @@ arată fără `https://`. Linkul nu-și ia singur click-ul: rândul/cardul într
 arborele, glisarea și rândul deschis au prioritate. Span, nu `<a>` (rândurile
 sunt `<button>`). În foaia de tichet titlul e textarea: oglinda subliniază
 linkul și o atingere pe el îl deschide **doar cât titlul nu are focus** (regula
-descrierii); cu focus e text — pe desktop Ctrl/⌘+click îl deschide oricând. La fel în panoul lateral / formular (`IssueForm`, `sh-title-mirror`); helperii comuni sunt `mirrorLinkDown`/`mirrorLinkHover` din `TitleText.tsx`. Păzit în `test:nav`.
+descrierii); cu focus e text. Cu mausul, click-ul îl deschide oricând, și cu focus (decizia omului, 26 nov.: focusul vine des fără să scrii — Vim, un click anterior — și linkul părea stricat). La fel în panoul lateral / formular (`IssueForm`, `sh-title-mirror`); helperii comuni sunt `mirrorLinkDown`/`mirrorLinkHover` din `TitleText.tsx`. Păzit în `test:nav`.
