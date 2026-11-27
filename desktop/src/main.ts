@@ -76,7 +76,32 @@ function createMain() {
   // Închiderea ascunde: fereastra principală e cea care știe mementourile, deci
   // trebuie să rămână încărcată. Ieșirea reală: meniul (Alt → File → Quit, Ctrl+Q).
   mainWin.on('close', (e) => { if (!quitting) { e.preventDefault(); mainWin?.hide() } })
+  newWindowKey(mainWin.webContents)
   if (!HIDDEN) mainWin.once('ready-to-show', () => mainWin?.show())
+}
+
+/**
+ * Ctrl+Shift+N: încă o fereastră Horizontal, pe ruta celei din care ai apăsat —
+ * de mutat pe alt ecran (H-16; split-ul rămâne, dar nu se mai investește în el).
+ * Prinsă aici, nu în pagină: fără punte nouă și fără APK/site de aliniat.
+ * Clona se închide de-adevăratelea și nu știe mementourile (puntea le primește
+ * doar de la fereastra principală).
+ */
+function newWindowKey(wc: WebContents) {
+  wc.on('before-input-event', (e, input) => {
+    if (input.type !== 'keyDown' || !input.control || !input.shift || input.alt || input.key.toLowerCase() !== 'n') return
+    e.preventDefault()
+    const url = wc.getURL()
+    createClone(url && new URL(url).origin === ORIGIN ? url : START_URL)
+  })
+}
+
+function createClone(url: string) {
+  const win = new BrowserWindow({ width: 1200, height: 850, show: false, title: 'Horizontal', icon: WINDOW_ICON, autoHideMenuBar: true, webPreferences: webPreferences() })
+  guard(win.webContents)
+  newWindowKey(win.webContents)
+  load(win.webContents, url)
+  win.once('ready-to-show', () => win.show())
 }
 
 function createBar() {

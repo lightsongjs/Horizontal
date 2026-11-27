@@ -108,6 +108,11 @@ Ctrl+Shift+A și mementouri cu aplicația în fundal. Spec/plan:
   (construit de server, neatins). Scurtătura cheamă `ro.horizontal.App.QuickAdd`
   prin `gdbus` (~10 ms), cu rezervă `horizontal --quick-add`. X pe fereastra
   principală o ascunde (ea știe mementourile); ieșire: Ctrl+Q / `Quit`.
+- **Ctrl+Shift+N = încă o fereastră** (H-16, decizia omului 2026-11-27: se
+  ADAUGĂ lângă split, nu-l înlocuiește; în split nu se mai investește). Prinsă
+  în `before-input-event` (`newWindowKey`), nu în pagină — fără punte nouă.
+  Clona deschide ruta ferestrei din care ai apăsat, se închide de-adevăratelea
+  și nu știe mementourile (`hz:set-reminders` vine doar de la `mainWin`).
 - **Alt+Shift+H = arată / ascunde fereastra principală** (decizia omului,
   2026-11-27): `horizontal-show` cheamă `ro.horizontal.App.Toggle` (în față →
   ascunde, altfel `showMain`), cu rezervă pe pornirea aplicației. `showMain`
