@@ -14,6 +14,7 @@ export function ProjectSettings() {
   const [description, setDescription] = useState(project?.description ?? '')
   const [accent, setAccent] = useState(project?.accent ?? ACCENTS[0])
   const [remindersOnly, setRemindersOnly] = useState(project?.remindersOnly ?? false)
+  const [type, setType] = useState<'personal' | 'work'>(project?.type ?? 'personal')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -22,7 +23,7 @@ export function ProjectSettings() {
   if (!project) return null
 
   const dirty = name.trim() !== project.name || description.trim() !== project.description || accent !== project.accent
-    || remindersOnly !== (project.remindersOnly ?? false)
+    || remindersOnly !== (project.remindersOnly ?? false) || type !== (project.type ?? 'personal')
   const valid = name.trim().length > 0
 
   const save = async () => {
@@ -33,6 +34,7 @@ export function ProjectSettings() {
       await updateProject(project.id, {
         name: name.trim(), description: description.trim(), accent,
         ...(remindersOnly !== (project.remindersOnly ?? false) ? { remindersOnly } : {}),
+        ...(type !== (project.type ?? 'personal') ? { type } : {}),
       })
       closeSheet()
     } catch (e) {
@@ -70,6 +72,12 @@ export function ProjectSettings() {
         <div className="fld">
           <label>Descriere</label>
           <textarea value={description} onChange={(e) => setDescription(e.target.value)} spellCheck={false} />
+        </div>
+
+        <div className="sheet-section-t">Tip proiect</div>
+        <div className="chips" style={{ margin: '0 0 16px' }}>
+          <button className={`chip ${type === 'personal' ? 'on' : ''}`} onClick={() => setType('personal')}>Personal</button>
+          <button className={`chip ${type === 'work' ? 'on' : ''}`} onClick={() => setType('work')}>Serviciu</button>
         </div>
 
         <div className="sheet-section-t">Culoare accent</div>
