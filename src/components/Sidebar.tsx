@@ -46,6 +46,8 @@ interface SidebarProps {
   onSearch?: () => void
   /** „Împarte ecranul" (panoul dublu), jos în bară; doar de la 1200px. */
   onSplit?: () => void
+  /** „Fereastră nouă" (`newWindowOpener`) — lipsă: fără buton (telefon, APK, cutie veche, panou). */
+  onNewWindow?: () => void
   /**
    * Panoul dublu: bara e a GAZDEI și conduce panoul cu focus. Locul „pe ecran"
    * vine din ruta panoului (`marks`), nu din store-ul gazdei (care n-are
@@ -61,7 +63,7 @@ interface SidebarProps {
   }
 }
 
-export function Sidebar({ showUsers = false, onNavigate, smartList = null, onSmartList, inboxActive = false, inboxUnread = 0, inboxTotal = 0, onInbox, filterId = null, onFilter, onFilterForm, onSearch, onSplit, split }: SidebarProps = {}) {
+export function Sidebar({ showUsers = false, onNavigate, smartList = null, onSmartList, inboxActive = false, inboxUnread = 0, inboxTotal = 0, onInbox, filterId = null, onFilter, onFilterForm, onSearch, onSplit, onNewWindow, split }: SidebarProps = {}) {
   const { projects, project: storeProject, openCountByProject, selectProject, reorderProjects, smartLists, reportError, pins, movePins, savedFilters, filterCounts, assignees, myAssigneeId } = useHorizontal()
   // Meniul de fixare: click dreapta pe un rând, sau ⋮ pe rândul de proiect.
   const [menu, setMenu] = useState<MenuTarget | null>(null)
@@ -451,6 +453,11 @@ export function Sidebar({ showUsers = false, onNavigate, smartList = null, onSma
             title={split && split.focusIx !== null ? 'Un singur panou' : 'Împarte ecranul'}
           >
             <Icon name="split" size={15} />
+          </button>
+        )}
+        {onNewWindow && (
+          <button className="sidebar-theme-btn" onClick={onNewWindow} aria-label="Fereastră nouă" title="Fereastră nouă (Ctrl+Shift+N)">
+            <Icon name="newWindow" size={15} />
           </button>
         )}
         {enabled && (

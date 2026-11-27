@@ -86,6 +86,12 @@ export interface HorizontalDesktop {
    * Opțional: o cutie instalată înainte de el n-o are, iar telefonul sună atunci la minut.
    */
   onPresence?(fn: (active: boolean) => void): () => void
+  /**
+   * Încă o fereastră Horizontal pe ruta paginii (H-16, ca Ctrl+Shift+N).
+   * Opțional: o cutie instalată înainte de el n-o are, iar butonul lipsește —
+   * `window.open` acolo ar pleca în browserul sistemului.
+   */
+  newWindow?(): void
 }
 
 export function getDesktopBridge(): HorizontalDesktop | null {

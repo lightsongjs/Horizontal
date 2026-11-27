@@ -9,6 +9,7 @@ import { Login } from './components/Login'
 import { ProjectDetail, type Tab } from './components/ProjectDetail'
 import { SheetHost } from './components/SheetHost'
 import { Sidebar } from './components/Sidebar'
+import { newWindowOpener } from './lib/newWindow'
 import { QuickSearch } from './components/QuickSearch'
 import { isSearchShortcut } from './lib/searchShortcut'
 import { UsersView } from './components/UsersView'
@@ -1491,6 +1492,7 @@ function Shell({ onSplit }: { onSplit?: (s: SplitState) => void }) {
   // unde erai, cu tichetul; dreapta = același ecran, fără tichet.
   const splitWide = useMediaQuery(SPLIT_MIN_QUERY)
   const canSplit = !paneMode && splitWide && !!onSplit
+  const [openNewWindow] = useState(newWindowOpener)
   const startSplit = () => {
     if (!canSplit) return
     // Tichetul trece într-un alt formular (al panoului) — o remontare, ca la
@@ -1534,6 +1536,7 @@ function Shell({ onSplit }: { onSplit?: (s: SplitState) => void }) {
         onFilterForm={(id) => { if (leaveDocked()) openFilterForm(id) }}
         onSearch={() => { if (leaveDocked()) setShowSearch(true) }}
         onSplit={canSplit ? startSplit : undefined}
+        onNewWindow={!paneMode && !narrow ? openNewWindow ?? undefined : undefined}
       />}
       <div className="app-body">
         {paneMode && <PaneBar route={paneRoute} peer={panePeer} onBack={() => closeSheet()} onClose={() => { if (paneTryClose()) postPaneClose() }} />}

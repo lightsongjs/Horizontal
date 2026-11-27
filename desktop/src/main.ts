@@ -200,6 +200,12 @@ function start() {
       reminders = parseReminders(list)
       reschedule()
     })
+    // Butonul din bara laterală (puntea `newWindow`): pe ruta ferestrei care cere, nu a barei.
+    ipcMain.on('hz:new-window', (e) => {
+      if (e.sender === barWin?.webContents) return
+      const url = e.sender.getURL()
+      createClone(url && new URL(url).origin === ORIGIN ? url : START_URL)
+    })
     ipcMain.on('hz:hide-bar', (e) => { if (e.sender === barWin?.webContents) barWin?.hide() })
     // Bara își cere înălțimea conținutului: ~96px goală, mai mult cu descrierea
     // (Tab) sau panoul datei. Limitată: o pagină stricată n-are voie să întindă

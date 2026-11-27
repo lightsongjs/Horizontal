@@ -113,6 +113,9 @@ Ctrl+Shift+A și mementouri cu aplicația în fundal. Spec/plan:
   în `before-input-event` (`newWindowKey`), nu în pagină — fără punte nouă.
   Clona deschide ruta ferestrei din care ai apăsat, se închide de-adevăratelea
   și nu știe mementourile (`hz:set-reminders` vine doar de la `mainWin`).
+  Și butonul din bara laterală (lângă split, `newWindowOpener` în
+  `src/lib/newWindow.ts`): pe Linux prin punte (`newWindow` → `hz:new-window`),
+  în browser un popup pe aceeași adresă, pe APK / telefon / în panou — nimic.
 - **Alt+Shift+H = arată / ascunde fereastra principală** (decizia omului,
   2026-11-27): `horizontal-show` cheamă `ro.horizontal.App.Toggle` (în față →
   ascunde, altfel `showMain`), cu rezervă pe pornirea aplicației. `showMain`
