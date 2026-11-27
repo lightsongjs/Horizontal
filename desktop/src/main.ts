@@ -113,7 +113,22 @@ function showBar() {
 
 function showMain() {
   if (!mainWin || mainWin.isDestroyed()) createMain()
-  mainWin!.show(); mainWin!.focus()
+  const win = mainWin!
+  // Același motiv ca la bară (`showBar`): scurtătura GNOME nu dă token xdg-activation,
+  // deci `focus()` pe o fereastră acoperită nu făcea nimic. Ascunsă și arătată
+  // din nou, e o suprafață nouă, iar mutter o aduce singur în față.
+  const maximized = win.isMaximized()
+  if (win.isMinimized()) win.restore()
+  if (win.isVisible() && !win.isFocused()) win.hide()
+  win.showInactive()
+  if (maximized && !win.isMaximized()) win.maximize()
+  win.webContents.focus()
+}
+
+/** Alt+Shift+H: a doua apăsare, cu fereastra în față, o ascunde (ca X-ul). */
+function toggleMain() {
+  if (mainWin && !mainWin.isDestroyed() && mainWin.isVisible() && !mainWin.isMinimized() && mainWin.isFocused()) mainWin.hide()
+  else showMain()
 }
 
 // ── Mementourile ────────────────────────────────────────────────────────────
@@ -178,7 +193,7 @@ function start() {
     })
 
     try { notifier = await createNotifier(onNotifyAction) } catch (e) { console.error('D-Bus Notifications indisponibil', e) }
-    try { await exportAppService({ quickAdd: showBar, show: showMain, quit: () => app.quit() }) } catch (e) { console.error('D-Bus ro.horizontal.App', e) }
+    try { await exportAppService({ quickAdd: showBar, show: showMain, toggle: toggleMain, quit: () => app.quit() }) } catch (e) { console.error('D-Bus ro.horizontal.App', e) }
 
     powerMonitor.on('resume', reschedule)
     // Fereastra principală stă ascunsă, deci n-are `visibilitychange`: după somn

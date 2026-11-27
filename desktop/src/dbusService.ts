@@ -8,17 +8,19 @@ const PATH = '/ro/horizontal/App'
  * rapid decât o a doua lansare a binarului, care pornește tot Chromium doar ca
  * să afle că există deja o instanță. `Quit` e pentru instalator.
  */
-export async function exportAppService(h: { quickAdd(): void; show(): void; quit(): void }): Promise<boolean> {
+export async function exportAppService(h: { quickAdd(): void; show(): void; toggle(): void; quit(): void }): Promise<boolean> {
   const { Interface } = dbus.interface
   class AppIface extends Interface {
     QuickAdd() { h.quickAdd() }
     Show() { h.show() }
+    Toggle() { h.toggle() }
     Quit() { h.quit() }
   }
   AppIface.configureMembers({
     methods: {
       QuickAdd: { inSignature: '', outSignature: '' },
       Show: { inSignature: '', outSignature: '' },
+      Toggle: { inSignature: '', outSignature: '' },
       Quit: { inSignature: '', outSignature: '' },
     },
   })

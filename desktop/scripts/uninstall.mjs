@@ -24,6 +24,4 @@ run('gsettings', ['set', KB, 'custom-keybindings', formatStrv(withoutPath(withou
 for (const path of [KEYBINDING_PATH, SHOW_KEYBINDING_PATH]) {
   for (const k of ['name', 'command', 'binding']) run('gsettings', ['reset', `${KB}.custom-keybinding:${path}`, k])
 }
-// Super+H se întoarce la GNOME („ascunde fereastra").
-run('gsettings', ['reset', 'org.gnome.desktop.wm.keybindings', 'minimize'])
 console.log('Dezinstalat. Iconițele din ~/.local/share/icons rămân (le folosește și varianta PWA).')

@@ -4,9 +4,12 @@
  * noastră la listă, n-o rescrie — de-aia funcții care primesc lista existentă.
  */
 export const KEYBINDING_PATH = '/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/horizontal/'
-/** Super+H: fereastra principală (Super+H din GNOME, „ascunde fereastra", se eliberează). */
+/**
+ * Alt+Shift+H: arată / ascunde fereastra principală. Nu Super+H: tasta F5 de pe
+ * tastaturile Logi („dictare") trimite chiar Super+H (dictarea din Windows).
+ */
 export const SHOW_KEYBINDING_PATH = '/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/horizontal-show/'
-export const SHOW_BINDING = '<Super>h'
+export const SHOW_BINDING = '<Alt><Shift>h'
 
 export function parseStrv(s) {
   return [...s.matchAll(/'([^']*)'/g)].map((m) => m[1])
