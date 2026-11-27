@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process'
 import { chmodSync, cpSync, existsSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import { formatStrv, KEYBINDING_PATH, parseStrv, withPath } from './gsettings.mjs'
+import { formatStrv, KEYBINDING_PATH, parseStrv, SHOW_BINDING, SHOW_KEYBINDING_PATH, withoutPath, withPath } from './gsettings.mjs'
 
 const HOME = homedir()
 const here = new URL('..', import.meta.url).pathname
@@ -13,6 +13,7 @@ const opt = join(HOME, '.local', 'opt', 'horizontal')
 const bin = join(HOME, '.local', 'bin')
 const exe = join(bin, 'horizontal')
 const quick = join(bin, 'horizontal-quick-add')
+const show = join(bin, 'horizontal-show')
 const run = (cmd, args) => execFileSync(cmd, args, { encoding: 'utf8' }).trim()
 
 if (!existsSync(join(built, 'horizontal'))) throw new Error(`lipsește ${built}/horizontal — rulează întâi electron-builder`)
@@ -41,6 +42,11 @@ writeFileSync(quick, `#!/bin/sh
 gdbus call --session --dest ro.horizontal.App --object-path /ro/horizontal/App --method ro.horizontal.App.QuickAdd >/dev/null 2>&1 || exec "${exe}" --quick-add
 `)
 chmodSync(quick, 0o755)
+// Super+H: fereastra principală; aplicația oprită → o pornește (a doua lansare = `showMain`).
+writeFileSync(show, `#!/bin/sh
+gdbus call --session --dest ro.horizontal.App --object-path /ro/horizontal/App --method ro.horizontal.App.Show >/dev/null 2>&1 || exec "${exe}"
+`)
+chmodSync(show, 0o755)
 
 // 4. Iconițele, în tema utilizatorului (vezi DESKTOP-INSTALL-HOWTO.md).
 const icons = join(HOME, '.local', 'share', 'icons', 'hicolor')
@@ -79,5 +85,16 @@ const kb = `${KB}.custom-keybinding:${KEYBINDING_PATH}`
 run('gsettings', ['set', kb, 'name', 'Horizontal — captură'])
 run('gsettings', ['set', kb, 'command', quick])
 run('gsettings', ['set', kb, 'binding', '<Control><Shift>a'])
+
+// 7. Super+H = fereastra principală. GNOME o ține pentru „ascunde fereastra"
+//    (minimize), pe care omul n-o folosește — se scoate de acolo, altfel câștigă GNOME.
+run('gsettings', ['set', KB, 'custom-keybindings', formatStrv(withPath(parseStrv(run('gsettings', ['get', KB, 'custom-keybindings'])), SHOW_KEYBINDING_PATH))])
+const kbShow = `${KB}.custom-keybinding:${SHOW_KEYBINDING_PATH}`
+run('gsettings', ['set', kbShow, 'name', 'Horizontal — deschide'])
+run('gsettings', ['set', kbShow, 'command', show])
+run('gsettings', ['set', kbShow, 'binding', SHOW_BINDING])
+const WM = 'org.gnome.desktop.wm.keybindings'
+const minimize = parseStrv(run('gsettings', ['get', WM, 'minimize']))
+if (minimize.includes(SHOW_BINDING)) run('gsettings', ['set', WM, 'minimize', formatStrv(withoutPath(minimize, SHOW_BINDING))])
 
 console.log(`Instalat în ${opt}. Pornește-l din meniu sau cu: ${exe}`)

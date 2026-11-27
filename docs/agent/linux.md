@@ -108,6 +108,11 @@ Ctrl+Shift+A și mementouri cu aplicația în fundal. Spec/plan:
   (construit de server, neatins). Scurtătura cheamă `ro.horizontal.App.QuickAdd`
   prin `gdbus` (~10 ms), cu rezervă `horizontal --quick-add`. X pe fereastra
   principală o ascunde (ea știe mementourile); ieșire: Ctrl+Q / `Quit`.
+- **Super+H = fereastra principală** (decizia omului, 2026-11-27): `horizontal-show`
+  cheamă `ro.horizontal.App.Show`, cu rezervă pe pornirea aplicației. Nu
+  Ctrl+Shift+H: o scurtătură GNOME e globală și ar fura-o Firefox-ului (istoricul)
+  și VS Code-ului. Instalarea scoate `<Super>h` din `wm.keybindings minimize`
+  („ascunde fereastra", nefolosită); dezinstalarea îl pune la loc.
 - **`openExternal` doar `http:`/`https:`/`mailto:`** (linkuri din comentarii scrise
   de oameni); orice navigare în altă origine pleacă în browserul sistemului.
 - **Instalare**: `npm run desktop:install` → `~/.local/opt/horizontal` (build

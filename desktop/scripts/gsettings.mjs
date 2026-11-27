@@ -4,6 +4,9 @@
  * noastră la listă, n-o rescrie — de-aia funcții care primesc lista existentă.
  */
 export const KEYBINDING_PATH = '/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/horizontal/'
+/** Super+H: fereastra principală (Super+H din GNOME, „ascunde fereastra", se eliberează). */
+export const SHOW_KEYBINDING_PATH = '/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/horizontal-show/'
+export const SHOW_BINDING = '<Super>h'
 
 export function parseStrv(s) {
   return [...s.matchAll(/'([^']*)'/g)].map((m) => m[1])
