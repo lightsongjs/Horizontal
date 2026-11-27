@@ -51,6 +51,15 @@ function isoOrNull(v: string | null | undefined): string | null {
   return v ? new Date(v).toISOString() : null
 }
 
+/**
+ * Coloanele pe care le citește `rowToIssue` — nu `*`. `*` aducea și `notes`
+ * (câmpul vechi, scos din API, dar rămas în tabel: ~20% din lista tichetelor
+ * deschise) și `reminder_sent_at`. O coloană nouă în `IssueRow` intră și aici.
+ * `details` rămâne: foaia de tichet se deschide din rândul listei, cu tot cu
+ * descrierea, și tot din el offline (`viteza-deschidere.md`).
+ */
+const ISSUE_COLS = 'id, project_id, title, details, theme, wave, done, selectors, scenarios, assignee_id, created_by, created_at, urgent, due_at, all_day, remind_at, rrule, pinned_at, ping_every, snoozed_from'
+
 function rowToIssue(row: IssueRow, depsByIssue: Record<string, string[]>): Issue {
   return {
     id: row.id,
@@ -479,7 +488,7 @@ export function createSupabaseRepository(): Repository {
     },
 
     async listIssues(projectId: string) {
-      const { data, error } = await db.from('issues').select('*').eq('project_id', projectId).order('id')
+      const { data, error } = await db.from('issues').select(ISSUE_COLS).eq('project_id', projectId).order('id')
       if (error) throw error
       const issueIds = (data as IssueRow[]).map((r) => r.id)
       const deps = await loadDeps(issueIds)
@@ -492,7 +501,7 @@ export function createSupabaseRepository(): Repository {
       // Indexul parțial `issues_due_idx` acoperă `lt('due_at', …)`.
       const { data, error } = await db
         .from('issues')
-        .select('*')
+        .select(ISSUE_COLS)
         .not('due_at', 'is', null)
         .lt('due_at', to)
         .or(`done.eq.false,due_at.gte.${doneFrom}`)
@@ -504,7 +513,7 @@ export function createSupabaseRepository(): Repository {
     },
 
     async listClosedIssues() {
-      const { data, error } = await db.from('issues').select('*').eq('done', true)
+      const { data, error } = await db.from('issues').select(ISSUE_COLS).eq('done', true)
         .order('created_at', { ascending: false }).limit(3000)
       if (error) throw error
       return ((data ?? []) as IssueRow[]).map((row) => rowToIssue(row, {}))
@@ -513,14 +522,15 @@ export function createSupabaseRepository(): Repository {
     async listOpenIssues() {
       // Fără ordonare pe server: ecranele își fac singure ordinea (proiect,
       // scadență). Dependențele pe bucăți: un `in` cu sute de ID-uri ar lungi
-      // URL-ul cererii peste ce acceptă un proxy.
-      const { data, error } = await db.from('issues').select('*').eq('done', false)
+      // URL-ul cererii peste ce acceptă un proxy. Bucățile pleacă deodată —
+      // una după alta, 348 de tichete deschise făceau trei drumuri în șir
+      // (`pg_stat_statements`, 2026-11-27: cea mai chemată interogare).
+      const { data, error } = await db.from('issues').select(ISSUE_COLS).eq('done', false)
       if (error) throw error
       const rows = (data ?? []) as IssueRow[]
-      const deps: Record<string, string[]> = {}
-      for (let i = 0; i < rows.length; i += 150) {
-        Object.assign(deps, await loadDeps(rows.slice(i, i + 150).map((r) => r.id)))
-      }
+      const chunks: string[][] = []
+      for (let i = 0; i < rows.length; i += 150) chunks.push(rows.slice(i, i + 150).map((r) => r.id))
+      const deps: Record<string, string[]> = Object.assign({}, ...await Promise.all(chunks.map((ids) => loadDeps(ids))))
       return rows.map((row) => rowToIssue(row, deps))
     },
 
@@ -576,7 +586,7 @@ export function createSupabaseRepository(): Repository {
         }
       }
 
-      const { data, error } = await db.from('issues').select('*').eq('id', id).single()
+      const { data, error } = await db.from('issues').select(ISSUE_COLS).eq('id', id).single()
       if (error) throw error
       const deps = await loadDeps([(data as IssueRow).id])
       return rowToIssue(data as IssueRow, deps)
@@ -597,7 +607,7 @@ export function createSupabaseRepository(): Repository {
       if (error?.code === 'PGRST202') throw new Error('Mutarea între proiecte nu e încă activă pe server (lipsește migrarea).')
       if (error) throw error
       // Refuzurile (`HZM0x`) vin cu mesajul românesc din `raise exception`.
-      const { data: row, error: rErr } = await db.from('issues').select('*').eq('id', data as string).single()
+      const { data: row, error: rErr } = await db.from('issues').select(ISSUE_COLS).eq('id', data as string).single()
       if (rErr) throw rErr
       // Fără dependențe, prin definiție: `move_issue` refuză orice dependență.
       return rowToIssue(row as IssueRow, {})
